@@ -115,7 +115,7 @@ public class BatchingFontRenderer {
 
     private int vtxWriterIndex = 0;
     private int idxWriterIndex = 0;
-    private static final int INITIAL_BATCH_SIZE = 256;
+    private static final int INITIAL_BATCH_SIZE = 2048;
     private static final ResourceLocation DUMMY_RESOURCE_LOCATION = new ResourceLocation("angelica$dummy",
         "this is invalid!");
     private FloatBuffer batchVtxPositions = memAllocFloat(INITIAL_BATCH_SIZE * 2);
@@ -484,6 +484,7 @@ public class BatchingFontRenderer {
             boolean curUnderline = false;
 
             float glyphScaleY = getGlyphScaleY();
+            float glyphScaleX = getGlyphScaleX();
             float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
 
             final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
@@ -589,8 +590,8 @@ public class BatchingFontRenderer {
 
                 final float uStart = fontProvider.getUStart(chr);
                 final float vStart = fontProvider.getVStart(chr);
-                final float xAdvance = fontProvider.getXAdvance(chr) * getGlyphScaleX();
-                final float glyphW = fontProvider.getGlyphW(chr) * getGlyphScaleX();
+                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
+                final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
                 final float uSz = fontProvider.getUSize(chr);
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
