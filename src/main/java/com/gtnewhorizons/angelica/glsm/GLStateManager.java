@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizon.gtnhlib.client.opengl.GLCaps;
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
@@ -257,6 +258,7 @@ public class GLStateManager {
         }
     }
     protected static final IntegerStateStack activeTextureUnit = new IntegerStateStack(0);
+    private static int clientActiveTextureUnit = 0;
     protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
     // Client array state (not push/pop tracked, but needed for display list compilation)
@@ -390,8 +392,9 @@ public class GLStateManager {
     @Getter protected static int listBase = 0;
 
     @Getter protected static int boundVBO;
+    @Getter protected static int boundEBO;
     @Getter protected static int boundVAO;
-    private static int defaultVAO; // Non-zero on core profile
+    @Getter private static int defaultVAO; // Non-zero on core profile
 
     public static void reset() {
         runningSplash = true;
@@ -929,6 +932,7 @@ public class GLStateManager {
             case GL11.GL_STENCIL_CLEAR_VALUE -> stencilState.getClearValue();
 
             case GL15.GL_ARRAY_BUFFER_BINDING -> boundVBO;
+            case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> boundEBO;
 
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
 
@@ -1580,6 +1584,22 @@ public class GLStateManager {
         }
     }
 
+    public static void glClientActiveTexture(int texture) {
+        clientActiveTextureUnit = texture - GL13.GL_TEXTURE0;
+    }
+
+    public static int getClientActiveTextureUnit() {
+        return clientActiveTextureUnit;
+    }
+
+    private static int texCoordAttributeLocation() {
+        return switch (clientActiveTextureUnit) {
+            case 0 -> Usage.PRIMARY_UV.getAttributeLocation();
+            case 1 -> Usage.SECONDARY_UV.getAttributeLocation();
+            default -> -1;
+        };
+    }
+
     private static int getBoundTexture() {
         return getBoundTexture(activeTextureUnit.getValue());
     }
@@ -1919,7 +1939,11 @@ public class GLStateManager {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
         ShaderManager.getInstance().preDraw();
-        GL11.glDrawElements(mode, indices);
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(indices);
+        } else {
+            GL11.glDrawElements(mode, indices);
+        }
     }
 
     public static void glDrawElements(int mode, ShortBuffer indices) {
@@ -1927,7 +1951,11 @@ public class GLStateManager {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
         ShaderManager.getInstance().preDraw();
-        GL11.glDrawElements(mode, indices);
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(indices);
+        } else {
+            GL11.glDrawElements(mode, indices);
+        }
     }
 
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
@@ -1935,7 +1963,11 @@ public class GLStateManager {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
         ShaderManager.getInstance().preDraw();
-        GL11.glDrawElements(mode, count, type, indices);
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(count, type, indices);
+        } else {
+            GL11.glDrawElements(mode, count, type, indices);
+        }
     }
 
     public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
@@ -1951,7 +1983,11 @@ public class GLStateManager {
             }
         }
         ShaderManager.getInstance().preDraw();
-        GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
+        } else {
+            GL11.glDrawElements(mode, indices_count, type, indices_buffer_offset);
+        }
     }
 
     public static void glDrawBuffer(int mode) {
@@ -2052,39 +2088,53 @@ public class GLStateManager {
 
     public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
         if (!ShaderManager.getInstance().isActive()) return;
-        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, type, false, stride, pointer);
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
         if (!ShaderManager.getInstance().isActive()) return;
-        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        GL20.glVertexAttribPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
         if (!ShaderManager.getInstance().isActive()) return;
-        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        GL20.glVertexAttribPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
         if (!ShaderManager.getInstance().isActive()) return;
-        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        GL20.glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
         if (!ShaderManager.getInstance().isActive()) return;
-        GL20.glVertexAttribPointer(Usage.PRIMARY_UV.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
         if (!ShaderManager.getInstance().isActive()) return;
         final int location = clientStateToAttributeLocation(cap);
         if (location >= 0) GL20.glEnableVertexAttribArray(location);
+        final int flag = clientStateToVertexFlag(cap);
+        if (flag != 0) ShaderManager.getInstance().enableClientVertexFlag(flag);
     }
 
     public static void glDisableClientState(int cap) {
         if (!ShaderManager.getInstance().isActive()) return;
         final int location = clientStateToAttributeLocation(cap);
         if (location >= 0) GL20.glDisableVertexAttribArray(location);
+        final int flag = clientStateToVertexFlag(cap);
+        if (flag != 0) ShaderManager.getInstance().disableClientVertexFlag(flag);
     }
 
     private static int clientStateToAttributeLocation(int cap) {
@@ -2092,9 +2142,153 @@ public class GLStateManager {
             case GL11.GL_VERTEX_ARRAY -> Usage.POSITION.getAttributeLocation();
             case GL11.GL_COLOR_ARRAY -> Usage.COLOR.getAttributeLocation();
             case GL11.GL_NORMAL_ARRAY -> Usage.NORMAL.getAttributeLocation();
-            case GL11.GL_TEXTURE_COORD_ARRAY -> Usage.PRIMARY_UV.getAttributeLocation();
+            case GL11.GL_TEXTURE_COORD_ARRAY -> texCoordAttributeLocation();
             default -> -1;
         };
+    }
+
+    private static int clientStateToVertexFlag(int cap) {
+        return switch (cap) {
+            case GL11.GL_COLOR_ARRAY -> VertexFlags.COLOR_BIT;
+            case GL11.GL_NORMAL_ARRAY -> VertexFlags.NORMAL_BIT;
+            case GL11.GL_TEXTURE_COORD_ARRAY -> switch (clientActiveTextureUnit) {
+                case 0 -> VertexFlags.TEXTURE_BIT;
+                case 1 -> VertexFlags.BRIGHTNESS_BIT;
+                default -> 0;
+            };
+            default -> 0; // GL_VERTEX_ARRAY — position is implicit
+        };
+    }
+
+    private static final int CLIENT_ATTRIB_STACK_DEPTH = 16;
+    private static final int[] clientAttribSavedTextureUnit = new int[CLIENT_ATTRIB_STACK_DEPTH];
+    private static final int[] clientAttribSavedVertexFlags = new int[CLIENT_ATTRIB_STACK_DEPTH];
+    private static int clientAttribStackPointer = 0;
+
+    public static void glPushClientAttrib(int mask) {
+        if (clientAttribStackPointer < CLIENT_ATTRIB_STACK_DEPTH) {
+            clientAttribSavedTextureUnit[clientAttribStackPointer] = clientActiveTextureUnit;
+            clientAttribSavedVertexFlags[clientAttribStackPointer] = ShaderManager.getInstance().getCurrentVertexFlags();
+            clientAttribStackPointer++;
+        }
+    }
+
+    public static void glPopClientAttrib() {
+        if (clientAttribStackPointer > 0) {
+            clientAttribStackPointer--;
+            clientActiveTextureUnit = clientAttribSavedTextureUnit[clientAttribStackPointer];
+            ShaderManager.getInstance().setCurrentVertexFlags(clientAttribSavedVertexFlags[clientAttribStackPointer]);
+        }
+    }
+
+    public static void glInterleavedArrays(int format, int stride, long pointer) {
+        if (!ShaderManager.getInstance().isActive()) {
+            return;
+        }
+
+        // Mesa _mesa_get_interleaved_layout decomposition
+        final int f = 4; // sizeof(float)
+        final int c = f * ((4 + (f - 1)) / f); // 4 ubytes padded to float alignment = 4
+
+        boolean tflag = false, cflag = false, nflag = false;
+        int tcomps = 0, ccomps = 0, vcomps = 0;
+        int ctype = 0;
+        final int toffset = 0;
+        int coffset = 0;
+        int noffset = 0;
+        int voffset = 0;
+        final int defstride;
+
+        switch (format) {
+            case GL11.GL_V2F:
+                vcomps = 2; defstride = 2 * f; break;
+            case GL11.GL_V3F:
+                vcomps = 3; defstride = 3 * f; break;
+            case GL11.GL_C4UB_V2F:
+                cflag = true; ccomps = 4; vcomps = 2;
+                ctype = GL11.GL_UNSIGNED_BYTE; voffset = c; defstride = c + 2 * f; break;
+            case GL11.GL_C4UB_V3F:
+                cflag = true; ccomps = 4; vcomps = 3;
+                ctype = GL11.GL_UNSIGNED_BYTE; voffset = c; defstride = c + 3 * f; break;
+            case GL11.GL_C3F_V3F:
+                cflag = true; ccomps = 3; vcomps = 3;
+                ctype = GL11.GL_FLOAT; voffset = 3 * f; defstride = 6 * f; break;
+            case GL11.GL_N3F_V3F:
+                nflag = true; vcomps = 3;
+                voffset = 3 * f; defstride = 6 * f; break;
+            case GL11.GL_C4F_N3F_V3F:
+                cflag = true; nflag = true; ccomps = 4; vcomps = 3;
+                ctype = GL11.GL_FLOAT; noffset = 4 * f; voffset = 7 * f; defstride = 10 * f; break;
+            case GL11.GL_T2F_V3F:
+                tflag = true; tcomps = 2; vcomps = 3;
+                voffset = 2 * f; defstride = 5 * f; break;
+            case GL11.GL_T4F_V4F:
+                tflag = true; tcomps = 4; vcomps = 4;
+                voffset = 4 * f; defstride = 8 * f; break;
+            case GL11.GL_T2F_C4UB_V3F:
+                tflag = true; cflag = true; tcomps = 2; ccomps = 4; vcomps = 3;
+                ctype = GL11.GL_UNSIGNED_BYTE; coffset = 2 * f; voffset = c + 2 * f; defstride = c + 5 * f; break;
+            case GL11.GL_T2F_C3F_V3F:
+                tflag = true; cflag = true; tcomps = 2; ccomps = 3; vcomps = 3;
+                ctype = GL11.GL_FLOAT; coffset = 2 * f; voffset = 5 * f; defstride = 8 * f; break;
+            case GL11.GL_T2F_N3F_V3F:
+                tflag = true; nflag = true; tcomps = 2; vcomps = 3;
+                noffset = 2 * f; voffset = 5 * f; defstride = 8 * f; break;
+            case GL11.GL_T2F_C4F_N3F_V3F:
+                tflag = true; cflag = true; nflag = true; tcomps = 2; ccomps = 4; vcomps = 3;
+                ctype = GL11.GL_FLOAT; coffset = 2 * f; noffset = 6 * f; voffset = 9 * f; defstride = 12 * f; break;
+            case GL11.GL_T4F_C4F_N3F_V4F:
+                tflag = true; cflag = true; nflag = true; tcomps = 4; ccomps = 4; vcomps = 4;
+                ctype = GL11.GL_FLOAT; coffset = 4 * f; noffset = 8 * f; voffset = 11 * f; defstride = 15 * f; break;
+            default:
+                return; // Invalid format
+        }
+
+        if (stride == 0) stride = defstride;
+
+        if (tflag) {
+            glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+            glTexCoordPointer(tcomps, GL11.GL_FLOAT, stride, pointer + toffset);
+        } else {
+            glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
+        }
+
+        if (cflag) {
+            glEnableClientState(GL11.GL_COLOR_ARRAY);
+            glColorPointer(ccomps, ctype, stride, pointer + coffset);
+        } else {
+            glDisableClientState(GL11.GL_COLOR_ARRAY);
+        }
+
+        if (nflag) {
+            glEnableClientState(GL11.GL_NORMAL_ARRAY);
+            glNormalPointer(GL11.GL_FLOAT, stride, pointer + noffset);
+        } else {
+            glDisableClientState(GL11.GL_NORMAL_ARRAY);
+        }
+
+        glEnableClientState(GL11.GL_VERTEX_ARRAY);
+        glVertexPointer(vcomps, GL11.GL_FLOAT, stride, pointer + voffset);
+    }
+
+    public static void glInterleavedArrays(int format, int stride, ByteBuffer pointer) {
+        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(pointer));
+    }
+
+    public static void glInterleavedArrays(int format, int stride, FloatBuffer pointer) {
+        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+    }
+
+    public static void glInterleavedArrays(int format, int stride, DoubleBuffer pointer) {
+        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+    }
+
+    public static void glInterleavedArrays(int format, int stride, IntBuffer pointer) {
+        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
+    }
+
+    public static void glInterleavedArrays(int format, int stride, ShortBuffer pointer) {
+        glInterleavedArrays(format, stride, MemoryUtilities.memAddress0(MemoryUtilities.memByteBuffer(pointer)));
     }
 
     public static void glLogicOp(int opcode) {
@@ -2797,6 +2991,8 @@ public class GLStateManager {
 
     private static final Vector3f rotation = new Vector3f();
     public static void glRotatef(float angle, float x, float y, float z) {
+        final float lenSq = x * x + y * y + z * z;
+        if (lenSq == 0.0f) return;
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             rotation.set(x, y, z).normalize();
@@ -2811,6 +3007,8 @@ public class GLStateManager {
     }
 
     public static void glRotated(double angle, double x, double y, double z) {
+        final double lenSq = x * x + y * y + z * z;
+        if (lenSq == 0.0) return;
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             rotation.set((float) x, (float) y, (float) z).normalize();
@@ -4070,6 +4268,8 @@ public class GLStateManager {
         if (target == GL15.GL_ARRAY_BUFFER) {
             // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
             boundVBO = buffer;
+        } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
+            boundEBO = buffer;
         }
         GL15.glBindBuffer(target, buffer);
     }

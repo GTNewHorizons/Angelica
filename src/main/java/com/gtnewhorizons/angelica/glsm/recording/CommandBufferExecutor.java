@@ -519,7 +519,7 @@ public final class CommandBufferExecutor {
                     ptr += 4;
                 }
                 case GLCommand.BIND_VAO -> {
-                    UniversalVAO.bindVertexArray(memGetInt(ptr));
+                    GLStateManager.glBindVertexArray(memGetInt(ptr));
                     ptr += 4;
                 }
 
