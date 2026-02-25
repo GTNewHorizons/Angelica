@@ -9,11 +9,12 @@ import org.lwjgl.opengl.PixelFormat;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 import javax.imageio.ImageIO;
 
 /**
- * Requests a GL 3.3 core profile context
+ * Requests highest GL version with core profile context
  */
 @Mixin(value = ForgeHooksClient.class, remap = false)
 public abstract class MixinForgeHooksClient_CoreProfile {
@@ -22,46 +23,35 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
     /**
      * @author Angelica
-     * @reason Request GL 3.3 core profile context
+     * @reason Request highest GL version with core profile context
      */
     @Overwrite
     public static void createDisplay() throws LWJGLException {
         ImageIO.setUseCache(false);
-        final PixelFormat format = new PixelFormat().withDepthBits(24);
-        final ContextAttribs attribs = new ContextAttribs(3, 3)
-            .withProfileCore(true)
-            .withForwardCompatible(true);
-
         // Preserve vanilla Forge stencil support -- enabled via -Dforge.forceDisplayStencil=true by users/modpacks
         final boolean wantStencil = Boolean.parseBoolean(System.getProperty("forge.forceDisplayStencil", "false"));
+        stencilBits = wantStencil ? 8 : 0;
 
-        if (!wantStencil) {
-            try {
-                Display.create(format, attribs);
-            } catch (LWJGLException e) {
-                reportContextFailure(e);
-                throw e;
-            }
-            stencilBits = 0;
-            return;
-        }
+        final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
 
-        try {
-            Display.create(format.withStencilBits(8), attribs);
-            stencilBits = 8;
-        } catch (LWJGLException e) {
-            try {
-                Display.create(format, attribs);
-                stencilBits = 0;
-            } catch (LWJGLException e2) {
-                reportContextFailure(e2);
-                throw e2;
+        LWJGLException cur_exception = null;
+        for(byte cur_major = 4; cur_major > 0; --cur_major) {
+            for(byte cur_minor = 5; cur_minor >= 0; --cur_minor) {
+                try {
+                    Display.create(format, new ContextAttribs(cur_major, cur_minor).withProfileCore(true).withForwardCompatible(true));
+                    return;
+                }catch (LWJGLException e) {
+                    cur_exception = e;
+                }
             }
         }
+        angelica$reportContextFailure(cur_exception);
+        throw cur_exception;
     }
 
-    private static void reportContextFailure(LWJGLException e) {
-        System.err.println("[Angelica] FATAL: Failed to create OpenGL 3.3 core profile context.");
+    @Unique
+    private static void angelica$reportContextFailure(LWJGLException e) {
+        System.err.println("[Angelica] FATAL: Failed to create OpenGL core profile context.");
         System.err.println("[Angelica] Error: " + e.getMessage());
         try {
             System.err.println("[Angelica] GPU: " + GL11.glGetString(GL11.GL_RENDERER) + ", Driver: " + GL11.glGetString(GL11.GL_VERSION));
