@@ -67,6 +67,7 @@ public final class CommandBufferProcessor {
 
             // Four int commands
             case GLCommand.VIEWPORT -> out.writeViewport(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
+            case GLCommand.SCISSOR -> out.writeScissor(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
             case GLCommand.BLEND_FUNC -> out.writeBlendFunc(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
             case GLCommand.COLOR_MASK -> out.writeColorMask(raw.readInt() != 0, raw.readInt() != 0, raw.readInt() != 0, raw.readInt() != 0);
             case GLCommand.STENCIL_FUNC_SEPARATE -> out.writeStencilFuncSeparate(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
