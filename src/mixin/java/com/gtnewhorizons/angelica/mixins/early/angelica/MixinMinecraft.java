@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
@@ -109,5 +110,10 @@ public abstract class MixinMinecraft {
         if (AngelicaMod.options().performance.cpuRenderAheadLimit > 0) {
             celeritas$renderAheadManager.endFrame();
         }
+    }
+
+    @Inject(method = "runTick", at = @At("RETURN"))
+    private void angelica$streamingBufferEndFrame(CallbackInfo ci) {
+        TessellatorStreamingDrawer.endFrame();
     }
 }
