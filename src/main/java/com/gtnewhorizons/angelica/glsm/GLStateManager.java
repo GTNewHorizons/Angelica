@@ -951,6 +951,9 @@ public class GLStateManager {
 
             case GL30.GL_VERTEX_ARRAY_BINDING -> boundVAO;
 
+            case GL30.GL_DRAW_FRAMEBUFFER_BINDING -> drawFramebuffer;
+            case GL30.GL_READ_FRAMEBUFFER_BINDING -> readFramebuffer;
+
             default -> {
                 yield switch (pname) {
                     case GL11.GL_FOG_MODE -> fogState.getFogMode();

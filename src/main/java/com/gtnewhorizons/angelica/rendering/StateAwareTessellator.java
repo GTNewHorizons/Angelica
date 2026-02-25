@@ -8,5 +8,12 @@ public interface StateAwareTessellator {
 
     void angelica$setAppliedAo(boolean flag);
 
+    /**
+     * Sets whether we're doing terrain meshing as part of celeritas -- collects additional information.
+     *
+     * Enables per-vertex AO state collection into {@link #angelica$getVertexStates()}.
+     */
+    void angelica$setCeleritasMeshing(boolean active);
+
     int[] angelica$getVertexStates();
 }
