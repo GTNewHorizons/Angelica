@@ -94,6 +94,8 @@ public class ShaderManager {
         currentFragmentKeyPacked = Long.MIN_VALUE;
     }
 
+
+
     public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
         GLStateManager.flushDeferredVertexAttribs();
         BlendModeStorage.flushDeferredBlend();
@@ -165,6 +167,11 @@ public class ShaderManager {
 
     public static void bumpNormalGeneration() { normalGeneration++; }
     public static void bumpTexCoordGeneration() { texCoordGeneration++; }
+
+    public void enableClientVertexFlag(int flag)  { currentVertexFlags |= flag; }
+    public void disableClientVertexFlag(int flag) { currentVertexFlags &= ~flag; }
+    public int getCurrentVertexFlags() { return currentVertexFlags; }
+    public void setCurrentVertexFlags(int flags) { currentVertexFlags = flags; }
 
     public void onBindVertexArray(int vaoId) {
         final int flags = vaoVertexFlags.get(vaoId);

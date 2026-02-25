@@ -232,6 +232,9 @@ public final class AngelicaRedirector {
             .add("glTexCoordPointer")
             .add("glEnableClientState")
             .add("glDisableClientState")
+            .add("glInterleavedArrays")
+            .add("glPushClientAttrib")
+            .add("glPopClientAttrib")
             .add("glViewport")
         );
         methodRedirects.put(GL12, RedirectMap.newMap()
@@ -242,6 +245,7 @@ public final class AngelicaRedirector {
         methodRedirects.put(GL13, RedirectMap.newMap()
             .add("glActiveTexture")
             .add("glSampleCoverage")
+            .add("glClientActiveTexture")
             .add("glMultiTexCoord2f")
             .add("glMultiTexCoord2s")
         );
