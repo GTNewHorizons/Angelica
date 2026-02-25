@@ -352,6 +352,12 @@ public class DisplayListManager {
         currentRecorder.recordViewport(x, y, width, height);
     }
 
+    public static void recordScissor(int x, int y, int width, int height) {
+        if (currentRecorder == null) return;
+        drawBarrier();
+        currentRecorder.recordScissor(x, y, width, height);
+    }
+
     public static void recordPointSize(float size) {
         if (currentRecorder == null) return;
         drawBarrier();

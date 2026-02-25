@@ -196,6 +196,14 @@ public final class CommandBufferExecutor {
                     ptr += 16;
                     GLStateManager.glViewport(x, y, width, height);
                 }
+                case GLCommand.SCISSOR -> {
+                    final int x = memGetInt(ptr);
+                    final int y = memGetInt(ptr + 4);
+                    final int width = memGetInt(ptr + 8);
+                    final int height = memGetInt(ptr + 12);
+                    ptr += 16;
+                    GLStateManager.glScissor(x, y, width, height);
+                }
                 case GLCommand.BLEND_FUNC -> {
                     final int srcRgb = memGetInt(ptr);
                     final int dstRgb = memGetInt(ptr + 4);

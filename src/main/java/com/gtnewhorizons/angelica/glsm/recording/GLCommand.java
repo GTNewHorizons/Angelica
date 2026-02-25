@@ -51,6 +51,7 @@ public final class GLCommand {
     public static final int COLOR_MASK = 42;         // [cmd:4][r:4][g:4][b:4][a:4] (0 or 1 each)
     public static final int STENCIL_FUNC_SEPARATE = 43; // [cmd:4][face:4][func:4][ref:4][mask:4]
     public static final int STENCIL_OP_SEPARATE = 44; // [cmd:4][face:4][sfail:4][dpfail:4][dppass:4]
+    public static final int SCISSOR = 45;             // [cmd:4][x:4][y:4][width:4][height:4]
 
     // === Float commands ===
     public static final int POINT_SIZE = 50;         // [cmd:4][size:4f]
@@ -147,6 +148,7 @@ public final class GLCommand {
             case STENCIL_OP -> "STENCIL_OP";
             case TEX_PARAMETERI -> "TEX_PARAMETERI";
             case VIEWPORT -> "VIEWPORT";
+            case SCISSOR -> "SCISSOR";
             case BLEND_FUNC -> "BLEND_FUNC";
             case COLOR_MASK -> "COLOR_MASK";
             case STENCIL_FUNC_SEPARATE -> "STENCIL_FUNC_SEPARATE";
@@ -220,6 +222,7 @@ public final class GLCommand {
             // Four int commands (20 bytes)
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
+                 GLCommand.SCISSOR,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
 
             case GLCommand.DRAW_ELEMENTS -> 24;

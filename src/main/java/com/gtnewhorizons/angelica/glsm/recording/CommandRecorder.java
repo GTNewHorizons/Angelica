@@ -172,6 +172,11 @@ public final class CommandRecorder {
         commandCount++;
     }
 
+    public void recordScissor(int x, int y, int width, int height) {
+        buffer.writeScissor(x, y, width, height);
+        commandCount++;
+    }
+
     public void recordPointSize(float size) {
         buffer.writePointSize(size);
         commandCount++;

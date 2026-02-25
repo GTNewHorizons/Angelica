@@ -3962,12 +3962,8 @@ public class GLStateManager {
                 return;
             }
         }
-        if (isCachingEnabled()) {
-            lineState.setStippleFactor(factor);
-            lineState.setStipplePattern(pattern);
-        }
-        if (guardUnsupportedFFP("glLineStipple", "glLineStipple is not available in GL 3.3 core profile.")) return;
-        GL11.glLineStipple(factor, pattern);
+        lineState.setStippleFactor(factor);
+        lineState.setStipplePattern(pattern);
     }
 
     public static void glPointSize(float size) {
@@ -4042,8 +4038,12 @@ public class GLStateManager {
     }
 
     public static void glScissor(int x, int y, int width, int height) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glScissor in display lists not yet implemented - if you see this, please report!");
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordScissor(x, y, width, height);
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
         }
         GL11.glScissor(x, y, width, height);
     }

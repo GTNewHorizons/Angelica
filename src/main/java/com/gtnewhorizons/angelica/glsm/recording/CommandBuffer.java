@@ -263,6 +263,15 @@ public final class CommandBuffer {
         writeInt(height);
     }
 
+    public void writeScissor(int x, int y, int width, int height) {
+        ensureCapacity(20);
+        writeInt(GLCommand.SCISSOR);
+        writeInt(x);
+        writeInt(y);
+        writeInt(width);
+        writeInt(height);
+    }
+
     public void writeBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         ensureCapacity(20);
         writeInt(GLCommand.BLEND_FUNC);
