@@ -52,6 +52,10 @@ public final class CeleritasBlockTransform {
         Pair.of("maxZ", "field_149757_G")
     );
 
+    /**
+     * These functions are the ones for which we need to create overloads.
+     * Other functions may be modified elsewhere, so creating overloads in the ASM will cause some issues.
+     */
     private static final List<Pair<String, String>> methodCanOverloadStatic = ImmutableList.of(
         Pair.of("setBlockBounds", "func_149676_a"),
         Pair.of("setBlockBoundsBasedOnState", "func_149719_a"),
@@ -186,8 +190,19 @@ public final class CeleritasBlockTransform {
     private record MethodInvokeRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, String newDesc) {}
 
     private static class MethodInvokeInfo {
+        /**
+         * How many times a given input parameter is used by a specific function call.
+         * non-`Block` parameters are always 0.
+         * **paramSlot -> count**
+         */
         private final int[] paramUsedCount;
+        /**
+         * Records of instructions that invoke the method that we have already overloaded.
+         */
         private final ArrayList<MethodInvokeRecord> records = new ArrayList<>();
+        /**
+         * **paramSlot -> cacheSlot**
+         */
         private int[] cacheSlots;
 
         MethodInvokeInfo(MethodNode mn) {
@@ -201,6 +216,7 @@ public final class CeleritasBlockTransform {
             records.add(new MethodInvokeRecord(nodeIndex, methodNode, paramSlot, newDesc));
         }
 
+        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
         private void prepareCaches(MethodNode mn, int[] cacheSlots) {
             int[] paramUsedCount = this.paramUsedCount.clone();
             if (cacheSlots != null) {
@@ -263,7 +279,7 @@ public final class CeleritasBlockTransform {
 
         boolean changed = false;
         Map<String, int[]> methodCacheSlots = new HashMap<>(); // methodName+desc -> cacheSlots
-        for (int i = 0; i < cn.methods.size(); i++) {
+        for (int i = 0; i < cn.methods.size(); i++) { // Use index-based loop because we may add new methods during iteration.
             MethodNode mn = cn.methods.get(i);
             if (mn.instructions.size() == 0) continue;
 
@@ -273,7 +289,7 @@ public final class CeleritasBlockTransform {
                 // FIXME The game launches fine but analyze fails on some classes, that's strange.
                 // If analysis fails, fall back to the original implementation.
                 // This will not cause any issues other than potential performance impact.
-                analyzer.analyze(cn.name, mn);
+                analyzer.analyze(cn.name, mn); // TODO This takes 50ms but the old implementation only takes 5ms for the entire transform.
                 analyzeSuccess = true;
             } catch (Exception e) {
                 LOGGER.warn("Failed to analyze method {} in {}, falling back to the old implementation.", mn.name, transformedName);
@@ -315,7 +331,7 @@ public final class CeleritasBlockTransform {
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             try {
                 // FIXME The game launches fine but analyze fails on some classes, that's strange.
-                analyzer.analyze(cn.name, mn);
+                analyzer.analyze(cn.name, mn); // TODO This takes 50ms but the old implementation only takes 5ms for the entire transform.
             } catch (Exception e) {
                 LOGGER.warn("Failed to analyze method {} in {}, do nothing in this method.", mn.name, transformedName);
                 continue;
