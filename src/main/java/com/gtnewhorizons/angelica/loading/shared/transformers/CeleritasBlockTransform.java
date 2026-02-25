@@ -234,7 +234,6 @@ public final class CeleritasBlockTransform {
                 analyzeSuccess = true;
             } catch (Exception e) {
                 LOGGER.warn("Failed to analyze method {} in {}, falling back to the old implementation.", mn.name, transformedName);
-                e.printStackTrace();
             }
 
             FieldAccessInfo info = getFieldAccessInfo(mn, analyzeSuccess ? analyzer.getFrames() : null); // Pass null to fall back.
@@ -271,7 +270,6 @@ public final class CeleritasBlockTransform {
                 analyzer.analyze(cn.name, mn);
             } catch (Exception e) {
                 LOGGER.warn("Failed to analyze method {} in {}, do nothing in this method.", mn.name, transformedName);
-                e.printStackTrace();
                 continue;
             }
 
