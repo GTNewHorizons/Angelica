@@ -54,6 +54,7 @@ public final class CeleritasBlockTransform {
 
     private static final List<Pair<String, String>> methodCanOverloadStatic = ImmutableList.of(
         Pair.of("setBlockBounds", "func_149676_a"),
+        Pair.of("setBlockBoundsBasedOnState", "func_149719_a"),
         Pair.of("isVecInsideYZBounds", "func_149654_a"),
         Pair.of("isVecInsideXZBounds", "func_149687_b"),
         Pair.of("isVecInsideXYBounds", "func_149661_c"),
