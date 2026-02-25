@@ -250,6 +250,13 @@ public final class CeleritasBlockTransform {
             return false;
         }
 
+        if (!overloadedMethods.containsKey(cn.name)) {
+            Map<String, String> superMethods = cn.superName != null ? overloadedMethods.get(cn.superName) : null;
+            if (superMethods != null) {
+                overloadedMethods.put(cn.name, new HashMap<>(superMethods));
+            }
+        }
+
         boolean changed = false;
         Map<String, int[]> methodCacheSlots = new HashMap<>(); // methodName+desc -> cacheSlots
         for (int i = 0; i < cn.methods.size(); i++) {
