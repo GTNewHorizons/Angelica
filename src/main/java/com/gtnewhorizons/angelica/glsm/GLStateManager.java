@@ -2044,6 +2044,14 @@ public class GLStateManager {
     // Client array state interception methods (for glDrawArrays conversion)
     // State is tracked globally in clientArrayState, which ImmediateModeRecorder reads from directly.
 
+    public static void glVertexPointer(int size, int stride, IntBuffer pointer) {
+        glVertexPointer(size, GL11.GL_INT, stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glVertexPointer(int size, int stride, ShortBuffer pointer) {
+        glVertexPointer(size, GL11.GL_SHORT, stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
         if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
@@ -2080,6 +2088,18 @@ public class GLStateManager {
         GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
     }
 
+    public static void glNormalPointer(int stride, FloatBuffer pointer) {
+        glNormalPointer(GL11.GL_FLOAT, stride, pointer);
+    }
+
+    public static void glNormalPointer(int stride, ByteBuffer pointer) {
+        glNormalPointer(GL11.GL_BYTE, stride, pointer);
+    }
+
+    public static void glNormalPointer(int stride, IntBuffer pointer) {
+        glNormalPointer(GL11.GL_INT, stride, pointer);
+    }
+
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
         if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
@@ -2110,6 +2130,18 @@ public class GLStateManager {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
+        glTexCoordPointer(size, GL11.GL_FLOAT, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int stride, IntBuffer pointer) {
+        glTexCoordPointer(size, GL11.GL_INT, stride, pointer);
+    }
+
+    public static void glTexCoordPointer(int size, int stride, ShortBuffer pointer) {
+        glTexCoordPointer(size, GL11.GL_SHORT, stride, pointer);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {

@@ -119,8 +119,14 @@ public class CompatShaderTransformer {
     }
 
     private static boolean needsTransformation(String source) {
-        return NEEDS_TRANSFORM_PATTERN.matcher(source).find()
-            || LEGACY_QUALIFIER_PATTERN.matcher(source).find();
+        // Shaders already at 330+ core don't need compat transformation
+        final Matcher vm = VERSION_PATTERN.matcher(source);
+        if (vm.find()) {
+            final int version = Integer.parseInt(vm.group(1));
+            if (version >= 330 && "core".equals(vm.group(2))) return false;
+        }
+
+        return NEEDS_TRANSFORM_PATTERN.matcher(source).find() || LEGACY_QUALIFIER_PATTERN.matcher(source).find();
     }
 
     private static String transformInternal(String source, boolean isFragment) {
