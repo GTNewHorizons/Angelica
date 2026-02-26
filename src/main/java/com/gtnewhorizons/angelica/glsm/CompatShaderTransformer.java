@@ -42,19 +42,21 @@ public class CompatShaderTransformer {
     private static final Pattern VERSION_PATTERN =
         Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
 
+    private static final Pattern DEFINE_PATTERN =
+        Pattern.compile("^\\s*#\\s*define\\s+.+$", Pattern.MULTILINE);
+
     /** Compat builtins that trigger AST transformation.  */
     private static final Set<String> COMPAT_BUILTINS = Set.of(
         "gl_ModelView", "gl_Projection", "gl_NormalMatrix", "gl_TextureMatrix",
         "gl_FragColor", "gl_Fog", "gl_FrontColor", "gl_Color",
         "gl_Vertex", "gl_MultiTexCoord", "gl_TexCoord", "gl_Normal", "ftransform",
         "texture2D", "texture3D", "texelFetch2D", "texelFetch3D", "textureSize2D",
-        "shadow2D"
+        "shadow2D", "gl_FrontLightModelProduct"
     );
 
-    private static final Pattern NEEDS_TRANSFORM_PATTERN = Pattern.compile(String.join("|", COMPAT_BUILTINS));
-
-    /** Legacy storage qualifiers removed in core profile. Checked with word boundaries since these are common words. */
-    private static final Pattern LEGACY_QUALIFIER_PATTERN = Pattern.compile("\\b(attribute|varying)\\b");
+    private static final Pattern NEEDS_TRANSFORM_PATTERN = Pattern.compile(
+        String.join("|", COMPAT_BUILTINS) + "|\\b(?:attribute|varying)\\b"
+    );
 
     private static final Map<String, String> MATRIX_RENAMES = Map.of(
         "gl_ModelViewMatrix", "angelica_ModelViewMatrix",
@@ -107,7 +109,7 @@ public class CompatShaderTransformer {
 
             try {
                 result = transformInternal(source, isFragment);
-                cache.put(new CacheKey(source, isFragment), result);
+                cache.put(key, result);
             } catch (Exception e) {
                 LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
                 result = fixupVersion(source);
@@ -126,7 +128,7 @@ public class CompatShaderTransformer {
             if (version >= 330 && "core".equals(vm.group(2))) return false;
         }
 
-        return NEEDS_TRANSFORM_PATTERN.matcher(source).find() || LEGACY_QUALIFIER_PATTERN.matcher(source).find();
+        return NEEDS_TRANSFORM_PATTERN.matcher(source).find();
     }
 
     private static String transformInternal(String source, boolean isFragment) {
@@ -148,6 +150,12 @@ public class CompatShaderTransformer {
         injectMatrixUniforms(transformer);
 
         transformFog(transformer, isFragment);
+
+        // gl_FrontLightModelProduct.sceneColor → angelica_SceneColor uniform
+        if (source.contains("gl_FrontLightModelProduct")) {
+            transformer.injectVariable("uniform vec4 angelica_SceneColor;");
+            transformer.replaceExpression("gl_FrontLightModelProduct.sceneColor", "angelica_SceneColor");
+        }
 
         // gl_FrontColor (vertex) → gl_Color (fragment) varying chain
         if (!isFragment) {
@@ -190,7 +198,15 @@ public class CompatShaderTransformer {
 
         final String versionDirective = "#version " + targetVersion + " core\n";
         final String extensions = VERSION_PATTERN.matcher(GlslTransformUtils.getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
-        final String header = versionDirective + (extensions.isEmpty() ? "" : "\n" + extensions);
+
+        // Preserve #define directives
+        final StringBuilder defines = new StringBuilder();
+        final Matcher defineMatcher = DEFINE_PATTERN.matcher(source);
+        while (defineMatcher.find()) {
+            defines.append(defineMatcher.group().trim()).append('\n');
+        }
+
+        final String header = versionDirective + (extensions.isEmpty() ? "" : "\n" + extensions) + (defines.isEmpty() ? "" : "\n" + defines);
         final StringBuilder result = new StringBuilder();
         transformer.mutateTree(tree -> result.append(GlslTransformUtils.getFormattedShader(tree, header)));
 
@@ -326,10 +342,13 @@ public class CompatShaderTransformer {
         return "unknown";
     }
 
+    private static final Pattern ATTRIBUTE_PATTERN = Pattern.compile("\\battribute\\b");
+    private static final Pattern VARYING_PATTERN = Pattern.compile("\\bvarying\\b");
+
     /** Replace legacy storage qualifiers removed in core profile. Safe on AST-serialized output (no comments). */
     private static String fixupQualifiers(String source, boolean isFragment) {
-        source = source.replaceAll("\\battribute\\b", "in");
-        source = source.replaceAll("\\bvarying\\b", isFragment ? "in" : "out");
+        source = ATTRIBUTE_PATTERN.matcher(source).replaceAll("in");
+        source = VARYING_PATTERN.matcher(source).replaceAll(isFragment ? "in" : "out");
         return source;
     }
 

@@ -498,6 +498,38 @@ class CompatShaderTransformerTest {
     }
 
     @Test
+    void testDefinePreservedDuringTransformation() {
+        String src = """
+            #version 120
+            #define M_PI 3.1415926535897932384626433832795
+            void main() {
+                float x = 2.0 * M_PI;
+                gl_FragColor = vec4(x);
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, true);
+        assertTrue(result.contains("#define M_PI 3.1415926535897932384626433832795"),
+            "#define should be preserved through transformation\n\n" + result);
+    }
+
+    @Test
+    void testGlFrontLightModelProductSceneColor() {
+        String src = """
+            #version 120
+            void main() {
+                gl_FrontColor = gl_FrontLightModelProduct.sceneColor;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertFalse(result.contains("gl_FrontLightModelProduct"), "gl_FrontLightModelProduct should be replaced");
+        assertTrue(result.contains("uniform vec4 angelica_SceneColor"), "angelica_SceneColor uniform should be injected");
+        assertTrue(result.contains("angelica_SceneColor"), "should reference angelica_SceneColor");
+    }
+
+    @Test
     void testLegacyQualifierConversion() {
         String vertSrc = """
             #version 120

@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
+import com.gtnewhorizons.angelica.glsm.states.LightModelState;
+import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
@@ -35,7 +37,8 @@ public class CompatUniformManager {
     static final int LOC_IRIS_NORMAL = 12;
     static final int LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX = 13;
     static final int LOC_ALPHA_TEST_REF = 14;
-    static final int LOC_COUNT = 15;
+    static final int LOC_SCENE_COLOR = 15;
+    static final int LOC_COUNT = 16;
 
     private static final String[] UNIFORM_NAMES = {
         "angelica_ModelViewMatrix",
@@ -53,6 +56,7 @@ public class CompatUniformManager {
         "iris_NormalMatrix",
         "iris_LightmapTextureMatrix",
         "angelica_currentAlphaTest",
+        "angelica_SceneColor",
     };
 
     /** Per-program cached uniform locations. Maps program ID → int[LOC_COUNT]. */
@@ -78,6 +82,7 @@ public class CompatUniformManager {
     private static int lastProjGen = -1;
     private static int lastTexMatGen = -1;
     private static int lastFragmentGen = -1;
+    private static int lastLightingGen = -1;
 
     private CompatUniformManager() {}
 
@@ -124,6 +129,15 @@ public class CompatUniformManager {
         if (programChanged || fragGen != lastFragmentGen) {
             lastFragmentGen = fragGen;
             uploadFragmentUniforms(locs);
+        }
+
+        // Lighting-derived uniforms (scene color) — skip if lighting state unchanged
+        if (locs[LOC_SCENE_COLOR] != -1) {
+            final int litGen = GLStateManager.lightingGeneration;
+            if (programChanged || litGen != lastLightingGen) {
+                lastLightingGen = litGen;
+                uploadSceneColor(locs);
+            }
         }
     }
 
@@ -229,6 +243,22 @@ public class CompatUniformManager {
             }
             GL20.glUniform1f(locs[LOC_ALPHA_TEST_REF], ref);
         }
+    }
+
+    /**
+     * Scene color = emission + ambient * lightModel.ambient, alpha = diffuse.a
+     * Same computation as {@code Uniforms.uploadLightingPreComputed()}.
+     */
+    private static void uploadSceneColor(int[] locs) {
+        final MaterialState mat = GLStateManager.getFrontMaterial();
+        final LightModelState lm = GLStateManager.getLightModel();
+        vec4Buf.clear();
+        vec4Buf.put(mat.emission.x + mat.ambient.x * lm.ambient.x)
+               .put(mat.emission.y + mat.ambient.y * lm.ambient.y)
+               .put(mat.emission.z + mat.ambient.z * lm.ambient.z)
+               .put(mat.diffuse.w);
+        vec4Buf.flip();
+        GL20.glUniform4(locs[LOC_SCENE_COLOR], vec4Buf);
     }
 
     public static void onDeleteProgram(int program) {

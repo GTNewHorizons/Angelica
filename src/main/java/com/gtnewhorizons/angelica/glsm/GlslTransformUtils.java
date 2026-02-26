@@ -34,8 +34,9 @@ public class GlslTransformUtils {
     private static final Pattern TEXTURE_PATTERN = Pattern.compile("\\btexture\\s*\\(|(\\btexture\\b)");
 
     /** Reserved words added in later GLSL versions that may appear as identifiers in older shaders. */
-    private static final Map<Integer, List<String>> VERSIONED_RESERVED_WORDS = Map.of(
-        400, List.of("sample")
+    private record ReservedWordRename(Pattern pattern, String replacement) {}
+    private static final Map<Integer, List<ReservedWordRename>> VERSIONED_RESERVED_WORDS = Map.of(
+        400, List.of(new ReservedWordRename(Pattern.compile("\\bsample\\b"), RENAMED_PREFIX + "sample"))
     );
 
     public static String replaceTexture(String input) {
@@ -55,8 +56,8 @@ public class GlslTransformUtils {
     public static String renameReservedWords(String source, int targetVersion) {
         for (var entry : VERSIONED_RESERVED_WORDS.entrySet()) {
             if (targetVersion < entry.getKey()) {
-                for (String reservedWord : entry.getValue()) {
-                    source = source.replaceAll("\\b" + reservedWord + "\\b", RENAMED_PREFIX + reservedWord);
+                for (var rename : entry.getValue()) {
+                    source = rename.pattern().matcher(source).replaceAll(rename.replacement());
                 }
             }
         }
