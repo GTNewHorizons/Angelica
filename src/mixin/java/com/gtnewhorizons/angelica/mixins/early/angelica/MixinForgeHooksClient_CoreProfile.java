@@ -12,6 +12,9 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 
 import javax.imageio.ImageIO;
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Field;
 
 /**
  * Requests highest GL version with core profile context
@@ -34,14 +37,34 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
         final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
 
+        final ContextAttribs attribs = new ContextAttribs(4, 5).withProfileCore(true).withForwardCompatible(true);
+        final MethodHandle setMajor, setMinor;
+        try {
+            final Field majorField = ContextAttribs.class.getDeclaredField("majorVersion");
+            final Field minorField = ContextAttribs.class.getDeclaredField("minorVersion");
+            majorField.setAccessible(true);
+            minorField.setAccessible(true);
+            final MethodHandles.Lookup lookup = MethodHandles.lookup();
+            setMajor = lookup.unreflectSetter(majorField);
+            setMinor = lookup.unreflectSetter(minorField);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException("Failed to obtain ContextAttribs version setters", e);
+        }
+
         LWJGLException cur_exception = null;
-        for(byte cur_major = 4; cur_major > 0; --cur_major) {
-            for(byte cur_minor = 5; cur_minor >= 0; --cur_minor) {
+        for (int major = 4; major >= 3; --major) {
+            final int maxMinor = (major == 4) ? 6 : 3;
+            final int minMinor = (major == 3) ? 3 : 0;
+            for (int minor = maxMinor; minor >= minMinor; --minor) {
                 try {
-                    Display.create(format, new ContextAttribs(cur_major, cur_minor).withProfileCore(true).withForwardCompatible(true));
+                    setMajor.invokeExact(attribs, major);
+                    setMinor.invokeExact(attribs, minor);
+                    Display.create(format, attribs);
                     return;
-                }catch (LWJGLException e) {
+                } catch (LWJGLException e) {
                     cur_exception = e;
+                } catch (Throwable t) {
+                    throw new RuntimeException("Failed to set ContextAttribs version", t);
                 }
             }
         }

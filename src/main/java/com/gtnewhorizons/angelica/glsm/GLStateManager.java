@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizon.gtnhlib.client.opengl.GLCaps;
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
@@ -241,6 +240,9 @@ public class GLStateManager {
         }
         return -1;
     }
+
+    private static final String TEXTURE = "texture";
+    private static final String TEXTURE_RENAMED = "gtexture";
 
     // GLStateManager State Trackers
     private static final IntStack attribs = new IntArrayList(MAX_ATTRIB_STACK_DEPTH);
@@ -3120,13 +3122,35 @@ public class GLStateManager {
         }
     }
 
-    private static final Matrix4f perspectiveMatrix = new Matrix4f();
-    private static final FloatBuffer perspectiveBuffer = BufferUtils.createFloatBuffer(16);
-    public static void gluPerspective(float fovy, float aspect, float zNear, float zFar) {
-        perspectiveMatrix.identity().perspective((float)Math.toRadians(fovy), aspect, zNear, zFar);
+    private static final Matrix4f gluMatrix = new Matrix4f();
+    private static final FloatBuffer gluBuffer = BufferUtils.createFloatBuffer(16);
 
-        perspectiveMatrix.get(0, perspectiveBuffer);
-        GLStateManager.glMultMatrix(perspectiveBuffer);
+    public static void gluPerspective(float fovy, float aspect, float zNear, float zFar) {
+        gluMatrix.identity().perspective((float)Math.toRadians(fovy), aspect, zNear, zFar);
+        gluMatrix.get(0, gluBuffer);
+        GLStateManager.glMultMatrix(gluBuffer);
+    }
+
+    public static void gluLookAt(float eyex, float eyey, float eyez, float centerx, float centery, float centerz, float upx, float upy, float upz) {
+        gluMatrix.identity().lookAt(eyex, eyey, eyez, centerx, centery, centerz, upx, upy, upz);
+        gluMatrix.get(0, gluBuffer);
+        GLStateManager.glMultMatrix(gluBuffer);
+    }
+
+    public static void gluOrtho2D(float left, float right, float bottom, float top) {
+        GLStateManager.glOrtho(left, right, bottom, top, -1.0, 1.0);
+    }
+
+    public static void gluPickMatrix(float x, float y, float deltaX, float deltaY, IntBuffer viewport) {
+        if (deltaX <= 0 || deltaY <= 0) return;
+        GLStateManager.glTranslatef(
+            (viewport.get(viewport.position() + 2) - 2 * (x - viewport.get(viewport.position() + 0))) / deltaX,
+            (viewport.get(viewport.position() + 3) - 2 * (y - viewport.get(viewport.position() + 1))) / deltaY,
+            0);
+        GLStateManager.glScalef(
+            viewport.get(viewport.position() + 2) / deltaX,
+            viewport.get(viewport.position() + 3) / deltaY,
+            1.0f);
     }
 
     public static void glViewport(int x, int y, int width, int height) {
@@ -4681,11 +4705,44 @@ public class GLStateManager {
     }
 
     public static int glGetUniformLocation(int program, CharSequence name) {
-        return GL20.glGetUniformLocation(program, name);
+        int loc = GL20.glGetUniformLocation(program, name);
+        if (loc == -1 && TEXTURE.contentEquals(name)) {
+            loc = GL20.glGetUniformLocation(program, TEXTURE_RENAMED);
+        }
+        return loc;
     }
 
     public static int glGetUniformLocation(int program, ByteBuffer name) {
-        return GL20.glGetUniformLocation(program, name);
+        int loc = GL20.glGetUniformLocation(program, name);
+        if (loc == -1 && isTextureBuffer(name)) {
+            loc = GL20.glGetUniformLocation(program, TEXTURE_RENAMED);
+        }
+        return loc;
+    }
+
+    public static int glGetAttribLocation(int program, CharSequence name) {
+        int loc = GL20.glGetAttribLocation(program, name);
+        if (loc == -1 && TEXTURE.contentEquals(name)) {
+            loc = GL20.glGetAttribLocation(program, TEXTURE_RENAMED);
+        }
+        return loc;
+    }
+
+    public static int glGetAttribLocation(int program, ByteBuffer name) {
+        int loc = GL20.glGetAttribLocation(program, name);
+        if (loc == -1 && isTextureBuffer(name)) {
+            loc = GL20.glGetAttribLocation(program, TEXTURE_RENAMED);
+        }
+        return loc;
+    }
+
+    private static final ByteBuffer TEXTURE_BYTES = ByteBuffer.wrap(TEXTURE.getBytes(StandardCharsets.US_ASCII));
+    private static boolean isTextureBuffer(ByteBuffer buf) {
+        final int len = buf.remaining();
+        if (len != 7 && len != 8) return false;
+        // I believe the driver accepts null terminated or not
+        if (len == 8 && buf.get(buf.position() + 7) != 0) return false;
+        return buf.slice(buf.position(), 7).equals(TEXTURE_BYTES);
     }
 
     public static void glDeleteObjectARB(int obj) {
