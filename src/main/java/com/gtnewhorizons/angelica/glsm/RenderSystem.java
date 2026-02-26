@@ -147,10 +147,7 @@ public class RenderSystem {
 
 	public static void texImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
 		GLStateManager.glBindTexture(target, texture);
-		GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-		if (target == GL11.GL_TEXTURE_2D && level == 0) {
-			TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-		}
+        GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
 	}
 
 	public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {
@@ -215,22 +212,13 @@ public class RenderSystem {
 		dsaState.texParameterf(texture, target, pname, param);
 	}
 
-	public static void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+	public static void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels) {
 		dsaState.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
 	}
 
-	public static void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-		dsaState.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
-	}
-
-	public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
+	public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels) {
 		dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
 	}
-
-	public static void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
-		dsaState.textureSubImage2D(texture, target, level, xoffset, yoffset, width, height, format, type, pixels);
-	}
-
 
 	public static void texImage1D(int texture, int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
 		GL11.glBindTexture(target, texture);

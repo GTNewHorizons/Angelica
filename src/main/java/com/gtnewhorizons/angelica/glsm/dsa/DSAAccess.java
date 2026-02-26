@@ -1,17 +1,13 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
-import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
+import java.nio.*;
 
 public interface DSAAccess {
     void generateMipmaps(int texture, int target);
 
     // Texture image upload - DSA allows specifying texture directly without binding
-    void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels);
-    void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels);
-    void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels);
-    void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels);
+    void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset);
+    void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset);
 
     void texParameteri(int texture, int target, int pname, int param);
     void texParameterf(int texture, int target, int pname, float param);

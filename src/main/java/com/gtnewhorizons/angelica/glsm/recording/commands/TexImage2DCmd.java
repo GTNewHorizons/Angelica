@@ -6,11 +6,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.DoubleBuffer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
+import java.nio.*;
 
 /**
  * Command: glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels)
@@ -26,7 +22,7 @@ public record TexImage2DCmd(
     int border,
     int format,
     int type,
-    @Nullable byte[] pixelData
+    byte @Nullable [] pixelData
 ) implements DisplayListCommand {
 
     /**
@@ -91,6 +87,23 @@ public record TexImage2DCmd(
             int size = limit - pos;
             data = new byte[size];
             pixels.get(data);
+            pixels.position(pos); // Restore position
+        }
+        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, data);
+    }
+
+    /**
+     * Create command from ShortBuffer
+     */
+    public static TexImage2DCmd fromShortBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ShortBuffer pixels) {
+        byte[] data = null;
+        if (pixels != null) {
+            int pos = pixels.position();
+            int limit = pixels.limit();
+            int size = (limit - pos) * 2; // 2 bytes per short
+            data = new byte[size];
+            ByteBuffer bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
+            bb.asShortBuffer().put(pixels);
             pixels.position(pos); // Restore position
         }
         return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, data);

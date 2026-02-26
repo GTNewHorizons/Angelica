@@ -3,10 +3,8 @@ package com.gtnewhorizons.angelica.glsm.texture;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 
-import java.nio.Buffer;
 import java.util.concurrent.locks.ReentrantLock;
 
 public class TextureInfoCache {
@@ -40,19 +38,9 @@ public class TextureInfoCache {
         }
     }
 
-    public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
+    public void onTexImage2D(int bound_texture, int target, int level, int internalformat, int width, int height) {
         if (target == GL11.GL_TEXTURE_2D && level == 0) {
-            final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
-            if (info == null) return;
-            info.internalFormat = internalformat;
-            info.width = width;
-            info.height = height;
-        }
-    }
-
-    public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-        if (target == GL11.GL_TEXTURE_2D && level == 0) {
-            final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+            final TextureInfo info = getInfo(bound_texture);
             if (info == null) return;
             info.internalFormat = internalformat;
             info.width = width;
