@@ -6,7 +6,12 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
-import java.nio.*;
+import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
+import java.nio.ByteOrder;
 
 /**
  * Command: glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels)

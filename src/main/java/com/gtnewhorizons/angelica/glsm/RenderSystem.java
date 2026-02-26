@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
-import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

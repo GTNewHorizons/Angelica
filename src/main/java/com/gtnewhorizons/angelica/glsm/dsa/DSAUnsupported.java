@@ -11,7 +11,8 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL42;
 
-import java.nio.*;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 public class DSAUnsupported implements DSAAccess {
 

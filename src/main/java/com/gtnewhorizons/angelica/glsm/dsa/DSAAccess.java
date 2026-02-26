@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
-import java.nio.*;
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 
 public interface DSAAccess {
     void generateMipmaps(int texture, int target);

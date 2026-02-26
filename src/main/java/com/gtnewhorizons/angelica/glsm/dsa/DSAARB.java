@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.GL45;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
