@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.google.common.base.Stopwatch;
+import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
@@ -381,6 +382,7 @@ public class ShaderTransformer {
             // Pre-parse reserved word renaming — prevents ANTLR parse failures
             input = GlslTransformUtils.replaceTexture(input);
             input = GlslTransformUtils.renameReservedWords(input, versionInt);
+            input = CompatShaderTransformer.fixupQualifiers(input, parameters.type == ShaderType.FRAGMENT);
 
             final var parsedShader = ShaderParser.parseShader(input);
             final var transformer = new Transformer(parsedShader.full());

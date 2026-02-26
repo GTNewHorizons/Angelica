@@ -346,7 +346,7 @@ public class CompatShaderTransformer {
     private static final Pattern VARYING_PATTERN = Pattern.compile("\\bvarying\\b");
 
     /** Replace legacy storage qualifiers removed in core profile. Safe on AST-serialized output (no comments). */
-    private static String fixupQualifiers(String source, boolean isFragment) {
+    public static String fixupQualifiers(String source, boolean isFragment) {
         source = ATTRIBUTE_PATTERN.matcher(source).replaceAll("in");
         source = VARYING_PATTERN.matcher(source).replaceAll(isFragment ? "in" : "out");
         return source;
