@@ -43,6 +43,7 @@ public final class AngelicaRedirector {
     private static final String ARBVertexArrayObject = "org/lwjgl/opengl/ARBVertexArrayObject";
     private static final String APPLEVertexArrayObject = "org/lwjgl/opengl/APPLEVertexArrayObject";
     private static final String Project = "org/lwjgl/util/glu/Project";
+    private static final String GLU = "org/lwjgl/util/glu/GLU";
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
@@ -275,6 +276,7 @@ public final class AngelicaRedirector {
             .add("glDetachShader")
             .add("glValidateProgram")
             .add("glGetUniformLocation")
+            .add("glGetAttribLocation")
             .add("glUniform1f")
             .add("glUniform2f")
             .add("glUniform3f")
@@ -331,6 +333,7 @@ public final class AngelicaRedirector {
             .add("glDetachObjectARB", "glDetachShader")
             .add("glValidateProgramARB", "glValidateProgram")
             .add("glGetUniformLocationARB", "glGetUniformLocation")
+            .add("glGetAttribLocationARB", "glGetAttribLocation")
             .add("glDeleteObjectARB")
             .add("glGetObjectParameterARB")
             .add("glGetObjectParameteriARB")
@@ -374,7 +377,17 @@ public final class AngelicaRedirector {
         );
 
         // OTHER
-        methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+        methodRedirects.put(Project, RedirectMap.newMap()
+            .add("gluPerspective")
+            .add("gluLookAt")
+            .add("gluPickMatrix")
+        );
+        methodRedirects.put(GLU, RedirectMap.newMap()
+            .add("gluPerspective")
+            .add("gluLookAt")
+            .add("gluOrtho2D")
+            .add("gluPickMatrix")
+        );
 
         // Interface/virtual redirects — callers invoke these on a receiver object
         interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()

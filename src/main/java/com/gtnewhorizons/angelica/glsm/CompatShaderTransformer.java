@@ -26,6 +26,8 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
  * <p>Handles:
  * <ul>
  *   <li>Matrix builtin replacement (gl_ModelViewMatrix, gl_ProjectionMatrix, etc.)</li>
+ *   <li>Vertex attribute replacement (gl_Vertex, gl_Color, gl_MultiTexCoord0/1, gl_Normal)</li>
+ *   <li>gl_TexCoord[N] varying array → per-index in/out declarations</li>
  *   <li>Texture function renames (texture2D → texture, etc.)</li>
  *   <li>Fragment output handling (gl_FragColor → layout-qualified out declarations)</li>
  *   <li>Fog builtins (gl_Fog, gl_FogFragCoord)</li>
@@ -44,6 +46,7 @@ public class CompatShaderTransformer {
     private static final Set<String> COMPAT_BUILTINS = Set.of(
         "gl_ModelView", "gl_Projection", "gl_NormalMatrix", "gl_TextureMatrix",
         "gl_FragColor", "gl_Fog", "gl_FrontColor", "gl_Color",
+        "gl_Vertex", "gl_MultiTexCoord", "gl_TexCoord", "gl_Normal", "ftransform",
         "texture2D", "texture3D", "texelFetch2D", "texelFetch3D", "textureSize2D",
         "shadow2D"
     );
@@ -145,9 +148,20 @@ public class CompatShaderTransformer {
             transformer.injectVariable("out vec4 angelica_FrontColor;");
             transformer.rename("gl_FrontColor", "angelica_FrontColor");
             transformer.prependMain("angelica_FrontColor = vec4(1.0);");
+
+            // Vertex attributes — replaces removed FFP vertex inputs with explicit in declarations
+            transformVertexAttributes(transformer, source);
         } else {
             transformer.injectVariable("in vec4 angelica_FrontColor;");
             transformer.rename("gl_Color", "angelica_FrontColor");
+        }
+
+        // gl_TexCoord[N] varying array → per-index in/out declarations
+        final Set<Integer> texCoordIndices = new HashSet<>();
+        transformer.renameArray("gl_TexCoord", "angelica_TexCoord", texCoordIndices);
+        for (Integer i : texCoordIndices) {
+            final String qualifier = isFragment ? "in" : "out";
+            transformer.injectVariable(qualifier + " vec4 angelica_TexCoord" + i + ";");
         }
 
         // Fragment output handling + alpha test discard
@@ -244,6 +258,36 @@ public class CompatShaderTransformer {
             "angelica_FogParameters angelica_Fog = angelica_FogParameters("
             + "angelica_FogColor, angelica_FogDensity, angelica_FogStart, angelica_FogEnd, "
             + "1.0f / (angelica_FogEnd - angelica_FogStart));");
+    }
+
+    /**
+     * Replace removed FFP vertex attributes with explicit {@code in} declarations at core profile attribute locations.
+     */
+    private static void transformVertexAttributes(Transformer transformer, String source) {
+        if (source.contains("gl_Vertex") || source.contains("ftransform")) {
+            transformer.injectVariable("layout(location = 0) in vec4 angelica_Vertex;");
+            transformer.rename("gl_Vertex", "angelica_Vertex");
+        }
+        // gl_Color in vertex shaders is the per-vertex color attribute, distinct from the fragment gl_Color (interpolated gl_FrontColor) handled above
+        if (source.contains("gl_Color")) {
+            transformer.injectVariable("layout(location = 1) in vec4 angelica_Color;");
+            transformer.rename("gl_Color", "angelica_Color");
+        }
+        if (source.contains("gl_MultiTexCoord0")) {
+            transformer.injectVariable("layout(location = 2) in vec4 angelica_MultiTexCoord0;");
+            transformer.rename("gl_MultiTexCoord0", "angelica_MultiTexCoord0");
+        }
+        if (source.contains("gl_MultiTexCoord1")) {
+            transformer.injectVariable("layout(location = 3) in vec4 angelica_MultiTexCoord1;");
+            transformer.rename("gl_MultiTexCoord1", "angelica_MultiTexCoord1");
+        }
+        if (source.contains("gl_Normal")) {
+            transformer.injectVariable("layout(location = 4) in vec3 angelica_Normal;");
+            transformer.rename("gl_Normal", "angelica_Normal");
+        }
+        if (source.contains("ftransform")) {
+            transformer.replaceExpression("ftransform()", "(angelica_ProjectionMatrix * angelica_ModelViewMatrix * angelica_Vertex)");
+        }
     }
 
     private static void dumpShader(String original, String transformed, boolean isFragment, boolean wasTransformed) {

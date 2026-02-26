@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.dsa.*;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
+import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
+import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import net.coderbot.iris.gl.shader.StandardMacros;

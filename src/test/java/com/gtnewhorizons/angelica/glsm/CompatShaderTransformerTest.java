@@ -330,4 +330,203 @@ class CompatShaderTransformerTest {
         assertFalse(result.contains("texelFetch3D"), "texelFetch3D should be renamed");
         assertTrue(result.contains("texelFetch"), "texelFetch3D should become texelFetch");
     }
+
+    @Test
+    void testVertexAttributeGlVertex() {
+        String src = """
+            #version 120
+            void main() {
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertFalse(result.contains("gl_Vertex"), "gl_Vertex should be replaced");
+        assertTrue(result.contains("angelica_Vertex"), "should become angelica_Vertex");
+        assertTrue(result.contains("in vec4 angelica_Vertex"), "should have in declaration");
+        assertTrue(result.contains("location = 0"), "should use attribute location 0");
+    }
+
+    @Test
+    void testVertexAttributeGlColorInVertexShader() {
+        // gl_Color in a vertex shader is the per-vertex color attribute, not the fragment varying
+        String src = """
+            #version 120
+            varying vec4 v_Color;
+            void main() {
+                v_Color = gl_Color;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertTrue(result.contains("angelica_Color"), "gl_Color → angelica_Color (vertex attribute)");
+        assertTrue(result.contains("in vec4 angelica_Color"), "should have in declaration");
+        assertTrue(result.contains("location = 1"), "should use attribute location 1");
+        assertFalse(result.contains("gl_Color"), "gl_Color should not remain");
+    }
+
+    @Test
+    void testVertexAttributeMultiTexCoord0() {
+        String src = """
+            #version 120
+            void main() {
+                gl_TexCoord[0] = gl_MultiTexCoord0;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertFalse(result.contains("gl_MultiTexCoord0"), "gl_MultiTexCoord0 should be replaced");
+        assertTrue(result.contains("angelica_MultiTexCoord0"), "should become angelica_MultiTexCoord0");
+        assertTrue(result.contains("in vec4 angelica_MultiTexCoord0"), "should have in declaration");
+        assertTrue(result.contains("location = 2"), "should use attribute location 2");
+    }
+
+    @Test
+    void testVertexAttributeMultiTexCoord1() {
+        String src = """
+            #version 120
+            void main() {
+                vec4 lm = gl_TextureMatrix[1] * gl_MultiTexCoord1;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertFalse(result.contains("gl_MultiTexCoord1"), "gl_MultiTexCoord1 should be replaced");
+        assertTrue(result.contains("angelica_MultiTexCoord1"), "should become angelica_MultiTexCoord1");
+        assertTrue(result.contains("location = 3"), "should use attribute location 3");
+    }
+
+    @Test
+    void testVertexAttributeGlNormal() {
+        String src = """
+            #version 120
+            void main() {
+                vec3 n = gl_NormalMatrix * gl_Normal;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertFalse(result.contains("gl_Normal"), "gl_Normal should be replaced");
+        assertTrue(result.contains("angelica_Normal"), "should become angelica_Normal");
+        assertTrue(result.contains("in vec3 angelica_Normal"), "should have in vec3 declaration");
+        assertTrue(result.contains("location = 4"), "should use attribute location 4");
+    }
+
+    @Test
+    void testTexCoordVaryingVertexShader() {
+        String src = """
+            #version 120
+            void main() {
+                gl_TexCoord[0] = gl_MultiTexCoord0;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertFalse(result.contains("gl_TexCoord"), "gl_TexCoord should be replaced");
+        assertTrue(result.contains("angelica_TexCoord0"), "should become angelica_TexCoord0");
+        assertTrue(result.contains("out vec4 angelica_TexCoord0"), "vertex shader should have 'out' declaration");
+    }
+
+    @Test
+    void testTexCoordVaryingFragmentShader() {
+        String src = """
+            #version 120
+            void main() {
+                vec2 uv = gl_TexCoord[0].xy;
+                gl_FragColor = vec4(uv, 0.0, 1.0);
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, true);
+        assertFalse(result.contains("gl_TexCoord"), "gl_TexCoord should be replaced");
+        assertTrue(result.contains("angelica_TexCoord0"), "should become angelica_TexCoord0");
+        assertTrue(result.contains("in vec4 angelica_TexCoord0"), "fragment shader should have 'in' declaration");
+    }
+
+    @Test
+    void testTexCoordMultipleIndices() {
+        String src = """
+            #version 120
+            void main() {
+                gl_TexCoord[0] = gl_MultiTexCoord0;
+                gl_TexCoord[1] = gl_MultiTexCoord1;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertTrue(result.contains("out vec4 angelica_TexCoord0"), "should have TexCoord0 out");
+        assertTrue(result.contains("out vec4 angelica_TexCoord1"), "should have TexCoord1 out");
+        assertFalse(result.contains("gl_TexCoord"), "no gl_TexCoord should remain");
+    }
+
+    @Test
+    void testGlColorVertexVsFragmentDifferentTreatment() {
+        // Vertex: gl_Color = vertex attribute → angelica_Color
+        // Fragment: gl_Color = interpolated gl_FrontColor → angelica_FrontColor
+        String vertSrc = """
+            #version 120
+            void main() {
+                gl_FrontColor = gl_Color;
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+        String fragSrc = """
+            #version 120
+            void main() {
+                gl_FragColor = gl_Color;
+            }
+            """;
+
+        String vertResult = CompatShaderTransformer.transform(vertSrc, false);
+        String fragResult = CompatShaderTransformer.transform(fragSrc, true);
+
+        // Vertex shader: gl_Color → angelica_Color (attribute), gl_FrontColor → angelica_FrontColor (out)
+        assertTrue(vertResult.contains("angelica_Color"), "vertex gl_Color → angelica_Color");
+        assertTrue(vertResult.contains("angelica_FrontColor"), "vertex gl_FrontColor → angelica_FrontColor");
+        assertFalse(vertResult.contains("gl_Color"), "no gl_Color should remain in vertex");
+        assertFalse(vertResult.contains("gl_FrontColor"), "no gl_FrontColor should remain");
+
+        // Fragment shader: gl_Color → angelica_FrontColor (in varying)
+        assertTrue(fragResult.contains("angelica_FrontColor"), "fragment gl_Color → angelica_FrontColor");
+        assertFalse(fragResult.contains("angelica_Color"), "fragment should NOT have angelica_Color");
+    }
+
+    @Test
+    void testLegacyQualifierConversion() {
+        String vertSrc = """
+            #version 120
+            attribute float a_Custom;
+            varying vec2 v_TexCoord;
+            void main() {
+                v_TexCoord = vec2(a_Custom);
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+        String fragSrc = """
+            #version 120
+            varying vec2 v_TexCoord;
+            void main() {
+                gl_FragColor = vec4(v_TexCoord, 0.0, 1.0);
+            }
+            """;
+
+        String vertResult = CompatShaderTransformer.transform(vertSrc, false);
+        String fragResult = CompatShaderTransformer.transform(fragSrc, true);
+
+        // attribute → in, varying → out (vertex)
+        assertFalse(vertResult.contains("attribute"), "no 'attribute' keyword in core profile");
+        assertFalse(vertResult.contains("varying"), "no 'varying' keyword in vertex");
+        assertTrue(vertResult.contains("in float a_Custom"), "attribute → in");
+        assertTrue(vertResult.contains("out vec2 v_TexCoord"), "varying → out in vertex");
+
+        // varying → in (fragment)
+        assertFalse(fragResult.contains("varying"), "no 'varying' keyword in fragment");
+        assertTrue(fragResult.contains("in vec2 v_TexCoord"), "varying → in in fragment");
+    }
 }
