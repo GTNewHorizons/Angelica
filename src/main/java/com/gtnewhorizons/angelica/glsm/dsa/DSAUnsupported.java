@@ -27,7 +27,7 @@ public class DSAUnsupported implements DSAAccess {
         final int cachedBinding = GLStateManager.getBoundTextureForServerState();
         GL11.glBindTexture(target, texture);
         GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
-        GL11.glBindTexture(target, cachedBinding);
+        if(cachedBinding != texture) GL11.glBindTexture(target, cachedBinding);
     }
 
     @Override
@@ -35,7 +35,7 @@ public class DSAUnsupported implements DSAAccess {
         final int cachedBinding = GLStateManager.getBoundTextureForServerState();
         GL11.glBindTexture(target, texture);
         GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
-        GL11.glBindTexture(target, cachedBinding);
+        if(cachedBinding != texture) GL11.glBindTexture(target, cachedBinding);
     }
 
     @Override
