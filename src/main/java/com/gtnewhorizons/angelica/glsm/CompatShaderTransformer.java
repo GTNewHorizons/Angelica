@@ -327,7 +327,7 @@ public class CompatShaderTransformer {
     }
 
     /** Replace legacy storage qualifiers removed in core profile. Safe on AST-serialized output (no comments). */
-    private static String fixupQualifiers(String source, boolean isFragment) {
+    public static String fixupQualifiers(String source, boolean isFragment) {
         source = source.replaceAll("\\battribute\\b", "in");
         source = source.replaceAll("\\bvarying\\b", isFragment ? "in" : "out");
         return source;
