@@ -4,10 +4,12 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer;
+import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer.UploadStrategy;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
@@ -45,6 +47,7 @@ public class TessellatorStreamingDrawer {
     private static int repackCapacity;
 
     private static boolean initialized = false;
+    private static UploadStrategy orphanStrategy = UploadStrategy.BUFFER_SUB_DATA;
 
     static {
         // Initial repack buffer: 64KB
@@ -56,7 +59,14 @@ public class TessellatorStreamingDrawer {
     private static void init() {
         if (initialized) return;
         initialized = true;
-        if (RenderSystem.supportsBufferStorage()) {
+
+        // Select orphan upload strategy from config
+        if (AngelicaMod.options() != null && AngelicaMod.options().advanced.useMapBufferRange) {
+            orphanStrategy = UploadStrategy.MAP_BUFFER_RANGE;
+        }
+        LOGGER.info("Orphan upload strategy: {}", orphanStrategy);
+
+        if (RenderSystem.supportsBufferStorage() && !Boolean.getBoolean("angelica.forceOrphanStreaming")) {
             try {
                 persistentBuffer = new PersistentStreamingBuffer();
                 LOGGER.info("Persistent streaming buffer created ({}MB)", PersistentStreamingBuffer.DEFAULT_CAPACITY / (1024 * 1024));
@@ -96,26 +106,7 @@ public class TessellatorStreamingDrawer {
         repackBuffer.position(0);
         repackBuffer.limit((int)(writePtr - repackAddress));
 
-        ensureVAO(flags, format);
-
-        int firstVertex = -1;
-
-        if (persistentBuffer != null) {
-            firstVertex = persistentBuffer.upload(repackBuffer, vertexSize);
-        }
-
-        if (firstVertex >= 0) {
-            GLStateManager.glBindVertexArray(persistentVAOs[flags]);
-        } else {
-            GLStateManager.glBindVertexArray(orphanVAOs[flags]);
-            orphanBuffers[flags].upload(repackBuffer, vertexSize);
-            firstVertex = 0;
-        }
-
-        ShaderManager.getInstance().preDraw(flags);
-        drawWithQuadConversion(tess.drawMode, firstVertex, vertexCount);
-
-        GLStateManager.glBindVertexArray(0);
+        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
 
         // Shrink rawBuffer if oversized
         if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
@@ -143,26 +134,7 @@ public class TessellatorStreamingDrawer {
         final ByteBuffer buffer = dt.getWriteBuffer();
         final int vertexSize = format.getVertexSize();
 
-        ensureVAO(flags, format);
-
-        int firstVertex = -1;
-
-        if (persistentBuffer != null) {
-            firstVertex = persistentBuffer.upload(buffer, vertexSize);
-        }
-
-        if (firstVertex >= 0) {
-            GLStateManager.glBindVertexArray(persistentVAOs[flags]);
-        } else {
-            GLStateManager.glBindVertexArray(orphanVAOs[flags]);
-            orphanBuffers[flags].upload(buffer, vertexSize);
-            firstVertex = 0;
-        }
-
-        ShaderManager.getInstance().preDraw(flags);
-        drawWithQuadConversion(drawMode, firstVertex, vertexCount);
-
-        GLStateManager.glBindVertexArray(0);
+        uploadAndDraw(buffer, flags, format, vertexSize, drawMode, vertexCount);
     }
 
     public static String getDebugInfo() {
@@ -195,6 +167,64 @@ public class TessellatorStreamingDrawer {
         if (persistentBuffer != null) {
             persistentBuffer.postDraw();
         }
+        for (int i = 0; i < FORMAT_COUNT; i++) {
+            if (orphanBuffers[i] != null) {
+                orphanBuffers[i].postDraw();
+            }
+        }
+    }
+
+    /**
+     * Draw a merged batch of pre-packed vertex data from a DeferredBatchTessellator.
+     * Copies byte ranges into repackBuffer, then uploads and draws.
+     */
+    static void drawPackedBatch(DeferredBatchTessellator source,
+                                java.util.List<DeferredBatchTessellator.DrawRange> ranges,
+                                int from, int to,
+                                int totalBytes, int totalVertices,
+                                int drawMode, int flags) {
+        if (totalVertices == 0) return;
+
+        final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
+        final int vertexSize = format.getVertexSize();
+
+        ensureRepackCapacity(totalBytes);
+
+        long writePos = repackAddress;
+        for (int j = from; j < to; j++) {
+            final DeferredBatchTessellator.DrawRange r = ranges.get(j);
+            source.copyRange(r.byteOffset(), r.byteLength(), writePos);
+            writePos += r.byteLength();
+        }
+        repackBuffer.position(0);
+        repackBuffer.limit(totalBytes);
+
+        uploadAndDraw(repackBuffer, flags, format, vertexSize, drawMode, totalVertices);
+    }
+
+    /**
+     * Upload packed vertex data to a streaming buffer and issue the draw call.
+     * Tries the persistent ring buffer first, falls back to orphan buffer on overflow.
+     */
+    private static void uploadAndDraw(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
+        ensureVAO(flags, format);
+
+        int firstVertex = -1;
+
+        if (persistentBuffer != null) {
+            firstVertex = persistentBuffer.upload(packed, vertexSize);
+        }
+
+        if (firstVertex >= 0) {
+            GLStateManager.glBindVertexArray(persistentVAOs[flags]);
+        } else {
+            GLStateManager.glBindVertexArray(orphanVAOs[flags]);
+            firstVertex = orphanBuffers[flags].upload(packed, vertexSize);
+        }
+
+        ShaderManager.getInstance().preDraw(flags);
+        drawWithQuadConversion(drawMode, firstVertex, vertexCount);
+        GLStateManager.glBindVertexArray(0);
     }
 
     private static void drawWithQuadConversion(int drawMode, int firstVertex, int vertexCount) {
@@ -223,7 +253,7 @@ public class TessellatorStreamingDrawer {
         init();
 
         if (orphanVAOs[flags] == 0) {
-            orphanBuffers[flags] = new OrphanStreamingBuffer();
+            orphanBuffers[flags] = new OrphanStreamingBuffer(orphanStrategy);
 
             orphanVAOs[flags] = GL30.glGenVertexArrays();
             GLStateManager.glBindVertexArray(orphanVAOs[flags]);

@@ -2,9 +2,12 @@ package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer.UploadStrategy;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
@@ -17,73 +20,212 @@ import static org.junit.jupiter.api.Assertions.*;
 @ExtendWith(AngelicaExtension.class)
 class StreamingBufferTest {
 
-    @Test
-    void orphan_uploadReturnsZero() {
-        OrphanStreamingBuffer buf = new OrphanStreamingBuffer();
+    @ParameterizedTest
+    @EnumSource(UploadStrategy.class)
+    void orphan_firstUploadReturnsZero(UploadStrategy strategy) {
+        OrphanStreamingBuffer buf = new OrphanStreamingBuffer(strategy);
         try {
             ByteBuffer data = memAlloc(128);
             fillPattern(data);
             data.flip();
-            assertEquals(0, buf.upload(data, 32));
+            assertEquals(0, buf.upload(data, 32), "First upload should return offset 0");
             memFree(data);
         } finally {
             buf.destroy();
         }
     }
 
-    @Test
-    void orphan_dataIntegrity() {
-        OrphanStreamingBuffer buf = new OrphanStreamingBuffer();
+    @ParameterizedTest
+    @EnumSource(UploadStrategy.class)
+    void orphan_dataIntegrity(UploadStrategy strategy) {
+        OrphanStreamingBuffer buf = new OrphanStreamingBuffer(strategy);
         try {
             ByteBuffer data = memAlloc(64);
-            for (int i = 0; i < 64; i++) data.put((byte) i);
-            data.flip();
+            ByteBuffer readBack = null;
+            try {
+                for (int i = 0; i < 64; i++) data.put((byte) i);
+                data.flip();
 
-            buf.upload(data, 16);
+                buf.upload(data, 16);
 
-            // Read back via glGetBufferSubData
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, buf.getBufferId());
-            ByteBuffer readBack = memAlloc(64);
-            GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, 0, readBack);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                // Read back via glGetBufferSubData
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, buf.getBufferId());
+                readBack = memAlloc(64);
+                GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, 0, readBack);
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-            for (int i = 0; i < 64; i++) {
-                assertEquals((byte) i, readBack.get(i), "Mismatch at byte " + i);
+                for (int i = 0; i < 64; i++) {
+                    assertEquals((byte) i, readBack.get(i), "Mismatch at byte " + i);
+                }
+            } finally {
+                memFree(data);
+                if (readBack != null) memFree(readBack);
             }
-            memFree(readBack);
         } finally {
             buf.destroy();
         }
     }
 
-    @Test
-    void orphan_multipleUploadsGrowCapacity() {
-        OrphanStreamingBuffer buf = new OrphanStreamingBuffer();
+    @ParameterizedTest
+    @EnumSource(UploadStrategy.class)
+    void orphan_multipleUploadsSubAllocate(UploadStrategy strategy) {
+        OrphanStreamingBuffer buf = new OrphanStreamingBuffer(strategy);
         try {
-            // First upload: small
+            final int stride = 16;
             ByteBuffer small = memAlloc(64);
-            fillPattern(small);
-            small.flip();
-            buf.upload(small, 16);
-            memFree(small);
-
-            // Second upload: larger
             ByteBuffer big = memAlloc(256);
-            fillPattern(big);
-            big.flip();
-            buf.upload(big, 16);
-            memFree(big);
+            ByteBuffer readBack = null;
+            try {
+                // First upload: small
+                fillPattern(small);
+                small.flip();
+                int v1 = buf.upload(small, stride);
+                assertEquals(0, v1, "First upload should be at offset 0");
 
-            // Verify larger data is present
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, buf.getBufferId());
-            ByteBuffer readBack = memAlloc(256);
-            GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, 0, readBack);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                // Second upload: larger — sub-allocates after first (64KB min capacity)
+                fillPattern(big);
+                big.flip();
+                int v2 = buf.upload(big, stride);
+                assertTrue(v2 > 0, "Second upload should sub-allocate at non-zero offset");
 
-            for (int i = 0; i < 256; i++) {
-                assertEquals((byte) (i & 0xFF), readBack.get(i), "Mismatch at byte " + i);
+                // Verify second upload's data at its offset
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, buf.getBufferId());
+                readBack = memAlloc(buf.getCapacity());
+                GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, 0, readBack);
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+
+                int byteOffset = v2 * stride;
+                for (int i = 0; i < 256; i++) {
+                    assertEquals((byte) (i & 0xFF), readBack.get(byteOffset + i), "Mismatch at byte " + i);
+                }
+            } finally {
+                memFree(small);
+                memFree(big);
+                if (readBack != null) memFree(readBack);
             }
-            memFree(readBack);
+        } finally {
+            buf.destroy();
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(UploadStrategy.class)
+    void orphan_subAllocationReturnsIncreasingOffsets(UploadStrategy strategy) {
+        OrphanStreamingBuffer buf = new OrphanStreamingBuffer(strategy);
+        try {
+            final int stride = 16;
+            final int dataSize = 64; // 4 vertices worth
+
+            ByteBuffer data1 = memAlloc(dataSize);
+            ByteBuffer data2 = memAlloc(dataSize);
+            ByteBuffer data3 = memAlloc(dataSize);
+            ByteBuffer readBack = null;
+            try {
+                // First upload: offset 0
+                for (int i = 0; i < dataSize; i++) data1.put((byte) (i + 10));
+                data1.flip();
+                int v1 = buf.upload(data1, stride);
+                assertEquals(0, v1, "First upload should be at vertex 0");
+
+                // Second upload: should be at aligned offset after first
+                for (int i = 0; i < dataSize; i++) data2.put((byte) (i + 20));
+                data2.flip();
+                int v2 = buf.upload(data2, stride);
+                assertTrue(v2 > 0, "Second upload should be at a non-zero vertex offset");
+                assertEquals(0, v2 % 4, "Vertex offset must be quad-aligned (multiple of 4)");
+
+                // Third upload
+                for (int i = 0; i < dataSize; i++) data3.put((byte) (i + 30));
+                data3.flip();
+                int v3 = buf.upload(data3, stride);
+                assertTrue(v3 > v2, "Third upload should be after second");
+                assertEquals(0, v3 % 4, "Vertex offset must be quad-aligned");
+
+                // Verify all three regions have correct data
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, buf.getBufferId());
+                readBack = memAlloc(buf.getCapacity());
+                GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, 0, readBack);
+                GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+
+                for (int i = 0; i < dataSize; i++) {
+                    assertEquals((byte) (i + 10), readBack.get(v1 * stride + i), "Upload 1 mismatch at byte " + i);
+                    assertEquals((byte) (i + 20), readBack.get(v2 * stride + i), "Upload 2 mismatch at byte " + i);
+                    assertEquals((byte) (i + 30), readBack.get(v3 * stride + i), "Upload 3 mismatch at byte " + i);
+                }
+            } finally {
+                memFree(data1);
+                memFree(data2);
+                memFree(data3);
+                if (readBack != null) memFree(readBack);
+            }
+        } finally {
+            buf.destroy();
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(UploadStrategy.class)
+    void orphan_overflowResetsToZero(UploadStrategy strategy) {
+        OrphanStreamingBuffer buf = new OrphanStreamingBuffer(strategy);
+        try {
+            final int stride = 16;
+
+            // First upload: establishes capacity
+            ByteBuffer data1 = memAlloc(64);
+            try {
+                fillPattern(data1);
+                data1.flip();
+                buf.upload(data1, stride);
+            } finally {
+                memFree(data1);
+            }
+
+            int capacityAfterFirst = buf.getCapacity();
+
+            // Second upload: fills remaining space or overflows
+            ByteBuffer data2 = memAlloc(capacityAfterFirst); // exactly fills or overflows
+            try {
+                fillPattern(data2);
+                data2.flip();
+                int v2 = buf.upload(data2, stride);
+                // Either sub-allocated (if it fit after alignment) or reset to 0 (overflow)
+                assertEquals(0, v2 % 4, "Offset must be quad-aligned");
+            } finally {
+                memFree(data2);
+            }
+        } finally {
+            buf.destroy();
+        }
+    }
+
+    @ParameterizedTest
+    @EnumSource(UploadStrategy.class)
+    void orphan_postDrawResetsForNextFrame(UploadStrategy strategy) {
+        OrphanStreamingBuffer buf = new OrphanStreamingBuffer(strategy);
+        try {
+            final int stride = 16;
+
+            ByteBuffer data = memAlloc(64);
+            try {
+                // Frame 1: two uploads
+                fillPattern(data);
+                data.flip();
+                buf.upload(data, stride);
+                data.position(0).limit(64);
+                int v2 = buf.upload(data, stride);
+                assertTrue(v2 > 0, "Second upload in frame should be at non-zero offset");
+
+                // End of frame
+                buf.postDraw();
+                assertEquals(0, buf.getWritePos(), "writePos should reset after postDraw");
+
+                // Frame 2: first upload should be at offset 0 again (after orphan)
+                data.position(0).limit(64);
+                int v3 = buf.upload(data, stride);
+                assertEquals(0, v3, "First upload after postDraw should return 0");
+            } finally {
+                memFree(data);
+            }
         } finally {
             buf.destroy();
         }
