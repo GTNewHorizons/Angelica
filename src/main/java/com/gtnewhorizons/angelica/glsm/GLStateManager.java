@@ -4727,8 +4727,59 @@ public class GLStateManager {
     }
 
     public static void glLinkProgram(int program) {
+        if (ShaderManager.getInstance().isEnabled()) {
+            generateVertexShaderIfNeeded(program);
+        }
         GL20.glLinkProgram(program);
         CompatUniformManager.onLinkProgram(program);
+    }
+
+    private static final IntBuffer SHADER_BUF = BufferUtils.createIntBuffer(8);
+
+    /**
+     * If a program has a fragment shader but no vertex shader, generate a passthrough
+     * vertex shader from the fragment's in declarations and attach it.
+     */
+    private static void generateVertexShaderIfNeeded(int program) {
+        final int shaderCount = GL20.glGetProgrami(program, GL20.GL_ATTACHED_SHADERS);
+        if (shaderCount == 0 || shaderCount > SHADER_BUF.capacity()) return;
+
+        SHADER_BUF.clear().limit(shaderCount);
+        GL20.glGetAttachedShaders(program, null, SHADER_BUF);
+
+        int fragmentShader = 0;
+        boolean hasVertex = false;
+        for (int i = 0; i < shaderCount; i++) {
+            final int shader = SHADER_BUF.get(i);
+            final int type = GL20.glGetShaderi(shader, GL20.GL_SHADER_TYPE);
+            if (type == GL20.GL_VERTEX_SHADER) {
+                hasVertex = true;
+                break;
+            } else if (type == GL20.GL_FRAGMENT_SHADER) {
+                fragmentShader = shader;
+            }
+        }
+
+        if (hasVertex || fragmentShader == 0) return;
+
+        // Fragment-only program — generate a passthrough vertex shader
+        final String fragSource = GL20.glGetShaderSource(fragmentShader, 65536);
+        final String vertSource = CompatShaderTransformer.generatePassthroughVertexShader(fragSource);
+
+        final int vertShader = GL20.glCreateShader(GL20.GL_VERTEX_SHADER);
+        GL20.glShaderSource(vertShader, vertSource);
+        GL20.glCompileShader(vertShader);
+
+        if (GL20.glGetShaderi(vertShader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
+            final String log = GL20.glGetShaderInfoLog(vertShader, 8192);
+            AngelicaTweaker.LOGGER.warn("CompatShaderTransformer: Generated passthrough vertex shader failed to compile:\n{}\nSource:\n{}", log, vertSource);
+            GL20.glDeleteShader(vertShader);
+            return;
+        }
+
+        AngelicaTweaker.LOGGER.debug("CompatShaderTransformer: Generated passthrough vertex shader for fragment-only program {}", program);
+        GL20.glAttachShader(program, vertShader);
+        GL20.glDeleteShader(vertShader);
     }
 
     public static void glDeleteProgram(int program) {

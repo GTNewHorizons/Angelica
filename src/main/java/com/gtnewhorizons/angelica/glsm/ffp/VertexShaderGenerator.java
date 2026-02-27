@@ -171,10 +171,10 @@ public final class VertexShaderGenerator {
             sb.append("out vec3 v_SpecularColor;\n");
         }
         if (key.textureEnabled() || key.hasVertexTexCoord() || key.texGenEnabled()) {
-            sb.append("out vec2 v_TexCoord0;\n");
+            sb.append("out vec4 v_TexCoord0;\n");
         }
         if (key.lightmapEnabled()) {
-            sb.append("out vec2 v_TexCoord1;\n");
+            sb.append("out vec4 v_TexCoord1;\n");
         }
         if (key.fogEnabled()) {
             sb.append("out float v_FogCoord;\n");
@@ -327,23 +327,23 @@ public final class VertexShaderGenerator {
             sb.append("  // Texture coordinates\n");
             if (key.hasVertexTexCoord()) {
                 if (key.textureMatrixEnabled()) {
-                    sb.append("  v_TexCoord0 = (u_TextureMatrix0 * vec4(a_TexCoord0, 0.0, 1.0)).st;\n");
+                    sb.append("  v_TexCoord0 = u_TextureMatrix0 * vec4(a_TexCoord0, 0.0, 1.0);\n");
                 } else {
-                    sb.append("  v_TexCoord0 = a_TexCoord0;\n");
+                    sb.append("  v_TexCoord0 = vec4(a_TexCoord0, 0.0, 1.0);\n");
                 }
             } else {
                 if (key.textureMatrixEnabled()) {
-                    sb.append("  v_TexCoord0 = (u_TextureMatrix0 * u_CurrentTexCoord).st;\n");
+                    sb.append("  v_TexCoord0 = u_TextureMatrix0 * u_CurrentTexCoord;\n");
                 } else {
-                    sb.append("  v_TexCoord0 = u_CurrentTexCoord.st;\n");
+                    sb.append("  v_TexCoord0 = u_CurrentTexCoord;\n");
                 }
             }
         }
         if (key.lightmapEnabled()) {
             if (key.hasVertexLightmap()) {
-                sb.append("  v_TexCoord1 = (u_LightmapTextureMatrix * vec4(a_TexCoord1, 0.0, 1.0)).st;\n");
+                sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(a_TexCoord1, 0.0, 1.0);\n");
             } else {
-                sb.append("  v_TexCoord1 = (u_LightmapTextureMatrix * vec4(u_CurrentLightmapCoord, 0.0, 1.0)).st;\n");
+                sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(u_CurrentLightmapCoord, 0.0, 1.0);\n");
             }
         }
     }
@@ -363,7 +363,7 @@ public final class VertexShaderGenerator {
         emitTexGenComponent(sb, key.texGenModeQ(), "q", "Q", key);
 
         // Always apply texture matrix when texgen is active (forced on in VertexKey)
-        sb.append("  v_TexCoord0 = (u_TextureMatrix0 * texGenCoord).st;\n");
+        sb.append("  v_TexCoord0 = u_TextureMatrix0 * texGenCoord;\n");
     }
 
     private static void emitTexGenComponent(StringBuilder sb, int mode, String swizzle, String coordName, VertexKey key) {

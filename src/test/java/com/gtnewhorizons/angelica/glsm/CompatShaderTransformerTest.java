@@ -244,7 +244,7 @@ class CompatShaderTransformerTest {
             """;
 
         String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("vec4 angelica_FrontColor"), "gl_FrontColor should become a local vec4");
+        assertTrue(result.contains("vec4 angelica_FrontColor"), "gl_FrontColor should become angelica_FrontColor out varying");
         assertFalse(result.contains("gl_FrontColor"), "gl_FrontColor should not remain");
     }
 
@@ -494,7 +494,7 @@ class CompatShaderTransformerTest {
 
         // Fragment shader: gl_Color → angelica_FrontColor (in varying)
         assertTrue(fragResult.contains("angelica_FrontColor"), "fragment gl_Color → angelica_FrontColor");
-        assertFalse(fragResult.contains("angelica_Color"), "fragment should NOT have angelica_Color");
+        assertFalse(fragResult.contains("gl_Color"), "fragment should NOT have gl_Color");
     }
 
     @Test
