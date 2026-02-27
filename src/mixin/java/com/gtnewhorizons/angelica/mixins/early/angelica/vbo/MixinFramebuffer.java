@@ -14,7 +14,6 @@ public abstract class MixinFramebuffer {
     @Shadow
     public int framebufferTexture;
 
-    @Shadow
 
     /**
      * @author Sisyphus
