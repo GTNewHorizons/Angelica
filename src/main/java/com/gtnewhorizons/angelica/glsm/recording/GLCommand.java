@@ -89,6 +89,7 @@ public final class GLCommand {
     public static final int LIGHT = 91;              // [cmd:4][light:4][pname:4][count:4][params:16f] = 32 bytes
     public static final int LIGHT_MODEL = 92;        // [cmd:4][pname:4][count:4][params:16f] = 28 bytes
     public static final int MATERIAL = 93;           // [cmd:4][face:4][pname:4][count:4][params:16f] = 32 bytes
+    public static final int CLIP_PLANE = 94;         // [cmd:4][plane:4][a:8d][b:8d][c:8d][d:8d] = 40 bytes
 
     // === Draw commands ===
     public static final int DRAW_RANGE = 100;        // [cmd:4][vboIndex:4] = 8 bytes
@@ -179,6 +180,7 @@ public final class GLCommand {
             case LIGHT -> "LIGHT";
             case LIGHT_MODEL -> "LIGHT_MODEL";
             case MATERIAL -> "MATERIAL";
+            case CLIP_PLANE -> "CLIP_PLANE";
             case DRAW_RANGE -> "DRAW_RANGE";
             case CALL_LIST -> "CALL_LIST";
             case DRAW_BUFFER -> "DRAW_BUFFER";
@@ -254,6 +256,7 @@ public final class GLCommand {
                 final int count = memGetInt(ptr + 12);  // light/face at +4, pname at +8, count at +12
                 yield 16 + count * 4;
             }
+            case GLCommand.CLIP_PLANE -> 40;  // cmd + plane + 4 doubles
 
             default -> throw new IllegalStateException("Unknown command: " + cmd);
         };
