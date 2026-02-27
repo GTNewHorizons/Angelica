@@ -12,7 +12,7 @@ import org.spongepowered.asm.mixin.Shadow;
 public abstract class MixinFramebuffer {
 
     @Shadow
-    public abstract void bindFramebufferTexture();
+    public int framebufferTexture;
 
     @Shadow
     public abstract void unbindFramebufferTexture();
@@ -36,11 +36,11 @@ public abstract class MixinFramebuffer {
         GLStateManager.disableAlphaTest();
         GLStateManager.disableBlend();
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
-        this.bindFramebufferTexture();
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, framebufferTexture);
         PostProcessingHelper.bindFullscreenVAO();
         PostProcessingHelper.drawFullscreenQuad();
         PostProcessingHelper.unbindVAO();
-        this.unbindFramebufferTexture();
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         GLStateManager.glDepthMask(true);
         GLStateManager.glColorMask(true, true, true, true);
     }
