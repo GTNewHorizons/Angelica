@@ -108,6 +108,11 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addClientMixins("angelica.optimizations.MixinGLAllocation")),
 
+    ANGELICA_DEFERRED_TESSELLATOR_BATCH(new MixinBuilder("Deferred tessellator batching for particles to reduce draw calls")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
+        .addClientMixins("angelica.particles.MixinEffectRenderer_DeferredBatch")),
+
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new MixinBuilder()
         .setPhase(Phase.EARLY)
