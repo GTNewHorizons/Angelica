@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.vbo;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.PostProcessingHelper;
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.shader.Framebuffer;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(Framebuffer.class)
 public abstract class MixinFramebuffer {
