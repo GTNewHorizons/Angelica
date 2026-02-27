@@ -51,7 +51,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
             throw new RuntimeException("Failed to obtain ContextAttribs version setters", e);
         }
 
-        LWJGLException cur_exception = null;
+        Exception cur_exception = null;
         for (int major = 4; major >= 3; --major) {
             final int maxMinor = (major == 4) ? 6 : 3;
             final int minMinor = (major == 3) ? 3 : 0;
@@ -59,21 +59,26 @@ public abstract class MixinForgeHooksClient_CoreProfile {
                 try {
                     setMajor.invokeExact(attribs, major);
                     setMinor.invokeExact(attribs, minor);
-                    Display.create(format, attribs);
-                    return;
-                } catch (LWJGLException e) {
-                    cur_exception = e;
                 } catch (Throwable t) {
                     throw new RuntimeException("Failed to set ContextAttribs version", t);
+                }
+                try {
+                    Display.create(format, attribs);
+                    return;
+                } catch (LWJGLException | RuntimeException e) {
+                    cur_exception = e;
                 }
             }
         }
         angelica$reportContextFailure(cur_exception);
-        throw cur_exception;
+        if (cur_exception instanceof LWJGLException lwjgl) {
+            throw lwjgl;
+        }
+        throw new LWJGLException("Failed to create OpenGL core profile context", cur_exception);
     }
 
     @Unique
-    private static void angelica$reportContextFailure(LWJGLException e) {
+    private static void angelica$reportContextFailure(Exception e) {
         System.err.println("[Angelica] FATAL: Failed to create OpenGL core profile context.");
         System.err.println("[Angelica] Error: " + e.getMessage());
         try {
