@@ -19,10 +19,6 @@ public abstract class MixinFramebuffer {
     @Shadow
     public abstract void unbindFramebufferTexture();
 
-
-    @Unique
-    private static IVertexArrayObject angelica$vao;
-
     /**
      * @author Sisyphus
      * @reason Replace FFP with statically allocated Buffers.
