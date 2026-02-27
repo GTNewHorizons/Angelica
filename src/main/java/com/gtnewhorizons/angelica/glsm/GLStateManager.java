@@ -32,6 +32,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
+import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -52,6 +53,7 @@ import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.Minecraft;
@@ -144,6 +146,7 @@ public class GLStateManager {
     public static int lightingGeneration;
     public static int fragmentGeneration; // fog + alpha ref
     public static int colorGeneration;    // current vertex color
+    public static int clipPlaneGeneration; // clip plane equation changes
 
     // Deferred vertex attribute upload flags — set when state changes, flushed before draw
     private static boolean dirtyColorAttrib;
@@ -366,6 +369,7 @@ public class GLStateManager {
 
     // Clip plane states
     @Getter protected static final BooleanStateStack[] clipPlaneStates = new BooleanStateStack[MAX_CLIP_PLANES];
+    @Getter protected static final ClipPlaneState clipPlaneState = new ClipPlaneState();
 
     @Getter protected static final MatrixModeStack matrixMode = new MatrixModeStack();
     @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
@@ -581,6 +585,7 @@ public class GLStateManager {
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
             clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].enable();
+            clipPlaneGeneration++;
             return;
         }
 
@@ -660,6 +665,7 @@ public class GLStateManager {
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
             clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].disable();
+            clipPlaneGeneration++;
             return;
         }
 
@@ -3788,6 +3794,8 @@ public class GLStateManager {
             if (caching) {
                 activeProgram = 0; // Track that FFP was requested
             }
+            // Deregister Iris ValueUpdateNotifier listeners so they don't fire
+            ProgramUniforms.clearActiveUniforms();
             ffp.activate();
             return;
         }
@@ -3802,6 +3810,8 @@ public class GLStateManager {
             if (caching) {
                 activeProgram = program;
             }
+            // Deregister Iris ValueUpdateNotifier listeners before switching programs.
+            ProgramUniforms.clearActiveUniforms();
             if (AngelicaMod.lwjglDebug) {
                 final String programName = GLDebug.getObjectLabel(KHRDebug.GL_PROGRAM, program);
                 GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
@@ -4204,9 +4214,23 @@ public class GLStateManager {
     // Clip Plane Commands
     public static void glClipPlane(int plane, DoubleBuffer equation) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glClipPlane in display lists not yet implemented - if you see this, please report!");
+            final int pos = equation.position();
+            DisplayListManager.recordClipPlane(plane, equation.get(pos), equation.get(pos + 1), equation.get(pos + 2), equation.get(pos + 3));
+            return;
         }
-        GL11.glClipPlane(plane, equation);
+        final int index = plane - GL11.GL_CLIP_PLANE0;
+        if (index < 0 || index >= MAX_CLIP_PLANES) return;
+        final int pos = equation.position();
+        clipPlaneState.setPlane(index, equation.get(pos), equation.get(pos + 1), equation.get(pos + 2), equation.get(pos + 3), modelViewMatrix);
+        clipPlaneGeneration++;
+    }
+
+    /** Returns true if any GL_CLIP_PLANE0..7 is currently enabled. */
+    public static boolean anyClipPlaneEnabled() {
+        for (int i = 0; i < MAX_CLIP_PLANES; i++) {
+            if (clipPlaneStates[i].isEnabled()) return true;
+        }
+        return false;
     }
 
     // Clear Commands

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
+import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -38,7 +39,9 @@ public class CompatUniformManager {
     static final int LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX = 13;
     static final int LOC_ALPHA_TEST_REF = 14;
     static final int LOC_SCENE_COLOR = 15;
-    static final int LOC_COUNT = 16;
+    static final int LOC_CLIP_PLANES = 16;
+    static final int LOC_CLIP_PLANES_ENABLED = 17;
+    static final int LOC_COUNT = 18;
 
     private static final String[] UNIFORM_NAMES = {
         "angelica_ModelViewMatrix",
@@ -57,6 +60,8 @@ public class CompatUniformManager {
         "iris_LightmapTextureMatrix",
         "angelica_currentAlphaTest",
         "angelica_SceneColor",
+        "angelica_ClipPlane[0]",
+        "angelica_ClipPlanesEnabled",
     };
 
     /** Per-program cached uniform locations. Maps program ID → int[LOC_COUNT]. */
@@ -66,6 +71,7 @@ public class CompatUniformManager {
     private static final FloatBuffer mat4Buf = BufferUtils.createFloatBuffer(16);
     private static final FloatBuffer mat3Buf = BufferUtils.createFloatBuffer(9);
     private static final FloatBuffer vec4Buf = BufferUtils.createFloatBuffer(4);
+    private static final FloatBuffer clipPlaneBuf = BufferUtils.createFloatBuffer(32); // 8 planes * vec4
     private static final Matrix3f normalMatrix = new Matrix3f();
     private static final Matrix4f scratchMatrix = new Matrix4f();
 
@@ -83,6 +89,7 @@ public class CompatUniformManager {
     private static int lastTexMatGen = -1;
     private static int lastFragmentGen = -1;
     private static int lastLightingGen = -1;
+    private static int lastClipPlaneGen = -1;
 
     private CompatUniformManager() {}
 
@@ -137,6 +144,15 @@ public class CompatUniformManager {
             if (programChanged || litGen != lastLightingGen) {
                 lastLightingGen = litGen;
                 uploadSceneColor(locs);
+            }
+        }
+
+        // Clip plane equations + enabled bool — uploaded when enable state or equations change
+        if (locs[LOC_CLIP_PLANES] != -1 || locs[LOC_CLIP_PLANES_ENABLED] != -1) {
+            final int cpGen = GLStateManager.clipPlaneGeneration;
+            if (programChanged || cpGen != lastClipPlaneGen) {
+                lastClipPlaneGen = cpGen;
+                uploadClipPlanes(locs);
             }
         }
     }
@@ -259,6 +275,21 @@ public class CompatUniformManager {
                .put(mat.diffuse.w);
         vec4Buf.flip();
         GL20.glUniform4(locs[LOC_SCENE_COLOR], vec4Buf);
+    }
+
+    private static void uploadClipPlanes(int[] locs) {
+        if (locs[LOC_CLIP_PLANES_ENABLED] != -1) {
+            GL20.glUniform1i(locs[LOC_CLIP_PLANES_ENABLED], GLStateManager.anyClipPlaneEnabled() ? 1 : 0);
+        }
+        if (locs[LOC_CLIP_PLANES] != -1) {
+            final ClipPlaneState cps = GLStateManager.getClipPlaneState();
+            clipPlaneBuf.clear();
+            for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
+                cps.putEyePlane(i, clipPlaneBuf);
+            }
+            clipPlaneBuf.flip();
+            GL20.glUniform4(locs[LOC_CLIP_PLANES], clipPlaneBuf);
+        }
     }
 
     public static void onDeleteProgram(int program) {

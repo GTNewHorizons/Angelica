@@ -76,6 +76,9 @@ public class Program {
     public int locTexGenEyePlaneR = -1;
     public int locTexGenEyePlaneQ = -1;
 
+    // Clip planes
+    public int locClipPlanes = -1;
+
     // Fragment uniforms
     public int locSampler0 = -1;
     public int locSampler1 = -1;
@@ -142,6 +145,9 @@ public class Program {
         locTexGenEyePlaneT = loc("u_TexGenEyePlaneT");
         locTexGenEyePlaneR = loc("u_TexGenEyePlaneR");
         locTexGenEyePlaneQ = loc("u_TexGenEyePlaneQ");
+
+        // Clip planes
+        locClipPlanes = loc("u_ClipPlane[0]");
 
         // Fragment
         locSampler0 = loc("u_Sampler0");
