@@ -15,7 +15,6 @@ public abstract class MixinFramebuffer {
     public int framebufferTexture;
 
     @Shadow
-    public abstract void unbindFramebufferTexture();
 
     /**
      * @author Sisyphus
