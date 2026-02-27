@@ -40,6 +40,8 @@ public final class VertexKey {
     private static final int BIT_TEXGEN_T            = 25;
     private static final int BIT_TEXGEN_R            = 28;
     private static final int BIT_TEXGEN_Q            = 31;
+    // bits 31-33: texGenModeQ (3 bits)
+    private static final int BIT_CLIP_PLANES         = 34;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -88,6 +90,8 @@ public final class VertexKey {
     public int texGenModeQ()              { return (int)((packed >> BIT_TEXGEN_Q) & 0x7); }
     /** Whether any texgen coordinate is enabled. */
     public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
+    /** Whether any clip plane is enabled. */
+    public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
 
     /** Whether vertex color replaces material ambient in this variant. */
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -214,6 +218,11 @@ public final class VertexKey {
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
 
+        // Clip planes
+        if (GLStateManager.anyClipPlaneEnabled()) {
+            bits |= (1L << BIT_CLIP_PLANES);
+        }
+
         return bits;
     }
 
@@ -239,10 +248,10 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%09X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d]",
+        return String.format("FFPVertexKey[0x%09X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b]",
             packed, lightingEnabled(), light0Enabled(), light1Enabled(),
             colorMaterialEnabled(), fogEnabled(), textureEnabled(), lightmapEnabled(),
             hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(),
-            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ());
+            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled());
     }
 }

@@ -497,6 +497,12 @@ public class DisplayListManager {
         currentRecorder.recordMaterial(face, pname, params);
     }
 
+    public static void recordClipPlane(int plane, double a, double b, double c, double d) {
+        if (currentRecorder == null) return;
+        drawBarrier();
+        currentRecorder.recordClipPlane(plane, a, b, c, d);
+    }
+
     public static void recordStencilFunc(int func, int ref, int mask) {
         if (currentRecorder == null) return;
         drawBarrier();

@@ -32,6 +32,9 @@ public final class VertexShaderGenerator {
         if (key.fogEnabled()) {
             emitFogDistance(sb, key);
         }
+        if (key.clipPlanesEnabled()) {
+            emitClipDistances(sb);
+        }
         sb.append("}\n");
 
         return sb.toString();
@@ -110,6 +113,10 @@ public final class VertexShaderGenerator {
             }
         }
 
+        if (key.clipPlanesEnabled()) {
+            sb.append("uniform vec4 u_ClipPlane[8];\n");
+        }
+
         sb.append('\n');
     }
 
@@ -180,8 +187,8 @@ public final class VertexShaderGenerator {
         sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
         sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
 
-        // Eye position needed for lighting, fog, and EYE_LINEAR texgen
-        if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key)) {
+        // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
+        if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key) || key.clipPlanesEnabled()) {
             sb.append("  vec4 eyePos = u_ModelViewMatrix * pos4;\n");
         }
         sb.append('\n');
@@ -389,6 +396,13 @@ public final class VertexShaderGenerator {
                 sb.append("  v_FogCoord = abs(eyePos.z);\n");
             default ->
                 sb.append("  v_FogCoord = abs(eyePos.z);\n");
+        }
+    }
+
+    private static void emitClipDistances(StringBuilder sb) {
+        sb.append("  // Clip distances\n");
+        for (int i = 0; i < 8; i++) {
+            sb.append("  gl_ClipDistance[").append(i).append("] = dot(u_ClipPlane[").append(i).append("], eyePos);\n");
         }
     }
 }

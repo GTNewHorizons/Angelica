@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
@@ -30,6 +31,7 @@ public class Uniforms {
     private final FloatBuffer mat3Buf = memAllocFloat(9);
     private final FloatBuffer vec4Buf = memAllocFloat(4);
     private final FloatBuffer vec3Buf = memAllocFloat(3);
+    private final FloatBuffer clipPlaneBuf = memAllocFloat(32); // 8 planes * vec4
 
     // Derived matrices (computed on CPU)
     private final Matrix4f mvpMatrix = new Matrix4f();
@@ -57,6 +59,7 @@ public class Uniforms {
     private float lastLightmapX = Float.NaN;
     private float lastLightmapY = Float.NaN;
     private int lastTexGenGen = -1;
+    private int lastClipPlaneGen = -1;
 
     /**
      * Upload all relevant uniforms to the given FFP program based on current GLSM state.
@@ -125,6 +128,14 @@ public class Uniforms {
             if (programChanged || tgGen != lastTexGenGen) {
                 uploadTexGen(program);
                 lastTexGenGen = tgGen;
+            }
+        }
+
+        if (program.getVertexKey().clipPlanesEnabled()) {
+            final int cpGen = GLStateManager.clipPlaneGeneration;
+            if (programChanged || cpGen != lastClipPlaneGen) {
+                uploadClipPlanes(program);
+                lastClipPlaneGen = cpGen;
             }
         }
 
@@ -368,6 +379,17 @@ public class Uniforms {
         GL20.glUniform4(loc, vec4Buf);
     }
 
+    private void uploadClipPlanes(Program program) {
+        if (program.locClipPlanes == -1) return;
+        final ClipPlaneState cps = GLStateManager.getClipPlaneState();
+        clipPlaneBuf.clear();
+        for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
+            cps.putEyePlane(i, clipPlaneBuf);
+        }
+        clipPlaneBuf.flip();
+        GL20.glUniform4(program.locClipPlanes, clipPlaneBuf);
+    }
+
     private void uploadFragmentUniforms(Program program) {
         final FragmentKey fk = program.getFragmentKey();
 
@@ -442,5 +464,6 @@ public class Uniforms {
         memFree(mat3Buf);
         memFree(vec4Buf);
         memFree(vec3Buf);
+        memFree(clipPlaneBuf);
     }
 }

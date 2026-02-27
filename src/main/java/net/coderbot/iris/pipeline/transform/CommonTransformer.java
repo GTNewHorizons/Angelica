@@ -74,5 +74,21 @@ public class CommonTransformer {
 		root.renameFunctionCall(GlslTransformUtils.TEXTURE_RENAMES);
 		root.renameAndWrapShadow("shadow2D", "texture");
 		root.renameAndWrapShadow("shadow2DLod", "textureLod");
+
+		if (parameters.patch == Patch.ATTRIBUTES && parameters.type == ShaderType.VERTEX) {
+			root.injectVariable("uniform bool angelica_ClipPlanesEnabled;");
+			root.injectVariable("uniform vec4 angelica_ClipPlane[8];");
+			root.appendMain(
+				"{ if (angelica_ClipPlanesEnabled) { vec4 _cp_ep = iris_ModelViewMatrix * iris_Vertex; "
+				+ "gl_ClipDistance[0] = dot(angelica_ClipPlane[0], _cp_ep); "
+				+ "gl_ClipDistance[1] = dot(angelica_ClipPlane[1], _cp_ep); "
+				+ "gl_ClipDistance[2] = dot(angelica_ClipPlane[2], _cp_ep); "
+				+ "gl_ClipDistance[3] = dot(angelica_ClipPlane[3], _cp_ep); "
+				+ "gl_ClipDistance[4] = dot(angelica_ClipPlane[4], _cp_ep); "
+				+ "gl_ClipDistance[5] = dot(angelica_ClipPlane[5], _cp_ep); "
+				+ "gl_ClipDistance[6] = dot(angelica_ClipPlane[6], _cp_ep); "
+				+ "gl_ClipDistance[7] = dot(angelica_ClipPlane[7], _cp_ep); } }"
+			);
+		}
 	}
 }

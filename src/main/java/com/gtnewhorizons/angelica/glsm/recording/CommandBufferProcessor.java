@@ -143,6 +143,16 @@ public final class CommandBufferProcessor {
                 out.writeMaterial(face, pname, fb);
             }
 
+            // Clip plane command (4 doubles)
+            case GLCommand.CLIP_PLANE -> {
+                final int plane = raw.readInt();
+                final double a = raw.readDouble();
+                final double b = raw.readDouble();
+                final double c = raw.readDouble();
+                final double d = raw.readDouble();
+                out.writeClipPlane(plane, a, b, c, d);
+            }
+
             // Draw/call commands
             case GLCommand.DRAW_RANGE -> out.writeDrawRange(raw.readInt());
             case GLCommand.CALL_LIST -> out.writeCallList(raw.readInt());
