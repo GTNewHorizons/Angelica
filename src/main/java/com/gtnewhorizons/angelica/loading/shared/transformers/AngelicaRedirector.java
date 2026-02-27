@@ -15,7 +15,6 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -65,7 +64,7 @@ public final class AngelicaRedirector {
         "initializeTextures", "func_77474_a"
     );
 
-    private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
+    private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>(32);
     private static final Map<String, Map<String, String>> interfaceRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
     private static final ClassConstantPoolParser cstPoolParser;
@@ -286,6 +285,8 @@ public final class AngelicaRedirector {
         // OTHER
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
 
+        ArrayList<String> stringsToSearch = new ArrayList<>(32);
+
         // Interface/virtual redirects — callers invoke these on a receiver object
         interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()
             .add("glBindVertexArray")
@@ -293,22 +294,12 @@ public final class AngelicaRedirector {
         interfaceRedirects.put(LWJGLService, RedirectMap.newMap()
             .add("glBindVertexArray")
         );
-
-        final List<String> stringsToSearch = new ArrayList<>();
-        stringsToSearch.add(GL11);
-        stringsToSearch.add(GL12);
-        stringsToSearch.add(GL13);
-        stringsToSearch.add(GL14);
-        stringsToSearch.add(GL20);
-        stringsToSearch.add(OpenGlHelper);
-        stringsToSearch.add(EXTBlendFunc);
-        stringsToSearch.add(ARBMultiTexture);
-        stringsToSearch.add(Project);
-        stringsToSearch.add(UniversalVAO);
         stringsToSearch.add(VaoFunctions);
         stringsToSearch.add(LWJGLService);
+
         final String glPrefix = "org/lwjgl/opengl/GL";
         for (var entry : new HashMap<>(methodRedirects).entrySet()) {
+            stringsToSearch.add(entry.getKey());
             if (entry.getKey().startsWith(glPrefix)) {
                 methodRedirects.put(entry.getKey() + "C", entry.getValue());
                 stringsToSearch.add(entry.getKey() + "C");
@@ -328,7 +319,7 @@ public final class AngelicaRedirector {
     }
 
     public boolean shouldTransform(byte[] basicClass) {
-        return cstPoolParser.find(basicClass, true);
+        return cstPoolParser.find(basicClass);
     }
 
     /** @return Was the class changed? */
