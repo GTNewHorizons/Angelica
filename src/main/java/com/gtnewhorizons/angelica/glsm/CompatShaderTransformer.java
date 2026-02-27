@@ -149,7 +149,7 @@ public class CompatShaderTransformer {
 
         injectMatrixUniforms(transformer);
 
-        transformFog(transformer, isFragment);
+        transformFog(transformer, isFragment, source);
 
         // gl_FrontLightModelProduct.sceneColor → angelica_SceneColor uniform
         if (source.contains("gl_FrontLightModelProduct")) {
@@ -158,6 +158,8 @@ public class CompatShaderTransformer {
         }
 
         // gl_FrontColor (vertex) → gl_Color (fragment) varying chain
+        // Vertex side is unconditional: fragment may read gl_Color without vertex writing gl_FrontColor.
+        // Uses angelica_ prefix to avoid colliding with user-declared varyings (e.g. "v_Color").
         if (!isFragment) {
             transformer.injectVariable("out vec4 angelica_FrontColor;");
             transformer.rename("gl_FrontColor", "angelica_FrontColor");
@@ -166,8 +168,10 @@ public class CompatShaderTransformer {
             // Vertex attributes — replaces removed FFP vertex inputs with explicit in declarations
             transformVertexAttributes(transformer, source);
         } else {
-            transformer.injectVariable("in vec4 angelica_FrontColor;");
-            transformer.rename("gl_Color", "angelica_FrontColor");
+            if (source.contains("gl_Color")) {
+                transformer.injectVariable("in vec4 angelica_FrontColor;");
+                transformer.rename("gl_Color", "angelica_FrontColor");
+            }
         }
 
         // gl_TexCoord[N] varying array → per-index in/out declarations
@@ -261,13 +265,16 @@ public class CompatShaderTransformer {
         }
     }
 
-    private static void transformFog(Transformer transformer, boolean isFragment) {
+    private static void transformFog(Transformer transformer, boolean isFragment, String source) {
+        // Vertex side is unconditional: fragment may read gl_FogFragCoord without vertex writing it
         transformer.rename("gl_FogFragCoord", "angelica_FogFragCoord");
         if (!isFragment) {
             transformer.injectVariable("out float angelica_FogFragCoord;");
-            transformer.prependMain("angelica_FogFragCoord = 0.0f;");
+            transformer.prependMain("angelica_FogFragCoord = 0.0;");
         } else {
-            transformer.injectVariable("in float angelica_FogFragCoord;");
+            if (source.contains("gl_FogFragCoord")) {
+                transformer.injectVariable("in float angelica_FogFragCoord;");
+            }
         }
 
         transformer.rename("gl_Fog", "angelica_Fog");
@@ -279,7 +286,7 @@ public class CompatShaderTransformer {
         transformer.injectFunction(
             "angelica_FogParameters angelica_Fog = angelica_FogParameters("
             + "angelica_FogColor, angelica_FogDensity, angelica_FogStart, angelica_FogEnd, "
-            + "1.0f / (angelica_FogEnd - angelica_FogStart));");
+            + "1.0 / (angelica_FogEnd - angelica_FogStart));");
     }
 
     /**
@@ -350,6 +357,63 @@ public class CompatShaderTransformer {
         source = ATTRIBUTE_PATTERN.matcher(source).replaceAll("in");
         source = VARYING_PATTERN.matcher(source).replaceAll(isFragment ? "in" : "out");
         return source;
+    }
+
+    // Patterns for parsing fragment shader in declarations to generate passthrough vertex shaders
+    private static final Pattern FRAG_IN_COLOR = Pattern.compile("\\bin\\s+vec4\\s+angelica_FrontColor\\b");
+    private static final Pattern FRAG_IN_TEXCOORD = Pattern.compile("\\bin\\s+vec4\\s+angelica_TexCoord(\\d+)\\b");
+    private static final Pattern FRAG_IN_FOGCOORD = Pattern.compile("\\bin\\s+float\\s+angelica_FogFragCoord\\b");
+
+    /**
+     * Generate a passthrough vertex shader for a fragment-only program.
+     *
+     * @param fragmentSource the transformed fragment shader source
+     * @return a complete vertex shader source string
+     */
+    public static String generatePassthroughVertexShader(String fragmentSource) {
+        final StringBuilder sb = new StringBuilder(512);
+        sb.append("#version 330 core\n\n");
+
+        // Always have position
+        sb.append("layout(location = 0) in vec4 a_Position;\n");
+
+        // Matrix uniforms for position transform
+        sb.append("uniform mat4 angelica_ModelViewMatrix;\n");
+        sb.append("uniform mat4 angelica_ProjectionMatrix;\n");
+
+        final StringBuilder varyings = new StringBuilder();
+        final StringBuilder assignments = new StringBuilder();
+        if (FRAG_IN_COLOR.matcher(fragmentSource).find()) {
+            sb.append("layout(location = 1) in vec4 a_Color;\n");
+            varyings.append("out vec4 angelica_FrontColor;\n");
+            assignments.append("  angelica_FrontColor = a_Color;\n");
+        }
+
+        final Matcher texCoordMatcher = FRAG_IN_TEXCOORD.matcher(fragmentSource);
+        final Set<Integer> texCoordIndices = new HashSet<>();
+        while (texCoordMatcher.find()) {
+            texCoordIndices.add(Integer.parseInt(texCoordMatcher.group(1)));
+        }
+        for (int i : texCoordIndices) {
+            // PRIMARY_UV=2, SECONDARY_UV=3. Only indices 0 and 1 are supported; higher indices collide at location 3.
+            final int location = i == 0 ? 2 : 3;
+            sb.append("layout(location = ").append(location).append(") in vec4 a_TexCoord").append(i).append(";\n");
+            varyings.append("out vec4 angelica_TexCoord").append(i).append(";\n");
+            assignments.append("  angelica_TexCoord").append(i).append(" = a_TexCoord").append(i).append(";\n");
+        }
+
+        if (FRAG_IN_FOGCOORD.matcher(fragmentSource).find()) {
+            varyings.append("out float angelica_FogFragCoord;\n");
+            assignments.append("  angelica_FogFragCoord = abs((angelica_ModelViewMatrix * a_Position).z);\n");
+        }
+
+        sb.append(varyings);
+        sb.append("\nvoid main() {\n");
+        sb.append("  gl_Position = angelica_ProjectionMatrix * angelica_ModelViewMatrix * a_Position;\n");
+        sb.append(assignments);
+        sb.append("}\n");
+
+        return sb.toString();
     }
 
     /** Ensure #version is at least 330 core, strip 'compatibility' profile. */

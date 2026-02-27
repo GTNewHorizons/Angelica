@@ -37,10 +37,10 @@ public final class FragmentShaderGenerator {
             sb.append("in vec3 v_SpecularColor;\n");
         }
         if (key.textureEnabled()) {
-            sb.append("in vec2 v_TexCoord0;\n");
+            sb.append("in vec4 v_TexCoord0;\n");
         }
         if (key.lightmapEnabled()) {
-            sb.append("in vec2 v_TexCoord1;\n");
+            sb.append("in vec4 v_TexCoord1;\n");
         }
         if (key.fogMode() != FragmentKey.FOG_NONE) {
             sb.append("in float v_FogCoord;\n");
@@ -70,10 +70,10 @@ public final class FragmentShaderGenerator {
 
     private static void emitTextureSampling(StringBuilder sb, FragmentKey key) {
         if (key.textureEnabled()) {
-            sb.append("  vec4 texColor = texture(u_Sampler0, v_TexCoord0);\n");
+            sb.append("  vec4 texColor = texture(u_Sampler0, v_TexCoord0.st);\n");
         }
         if (key.lightmapEnabled()) {
-            sb.append("  vec4 lightmapColor = texture(u_Sampler1, v_TexCoord1);\n");
+            sb.append("  vec4 lightmapColor = texture(u_Sampler1, v_TexCoord1.st);\n");
         }
     }
 
