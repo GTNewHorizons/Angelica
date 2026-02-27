@@ -554,6 +554,16 @@ public final class CommandBuffer {
         }
     }
 
+    public void writeClipPlane(int plane, double a, double b, double c, double d) {
+        ensureCapacity(40);
+        writeInt(GLCommand.CLIP_PLANE);
+        writeInt(plane);
+        writeDouble(a);
+        writeDouble(b);
+        writeDouble(c);
+        writeDouble(d);
+    }
+
     // === Draw commands ===
 
     public void writeDrawRange(int vboIndex) {

@@ -32,6 +32,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
+import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -52,6 +53,7 @@ import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.client.Minecraft;
@@ -144,6 +146,7 @@ public class GLStateManager {
     public static int lightingGeneration;
     public static int fragmentGeneration; // fog + alpha ref
     public static int colorGeneration;    // current vertex color
+    public static int clipPlaneGeneration; // clip plane equation changes
 
     // Deferred vertex attribute upload flags — set when state changes, flushed before draw
     private static boolean dirtyColorAttrib;
@@ -366,6 +369,7 @@ public class GLStateManager {
 
     // Clip plane states
     @Getter protected static final BooleanStateStack[] clipPlaneStates = new BooleanStateStack[MAX_CLIP_PLANES];
+    @Getter protected static final ClipPlaneState clipPlaneState = new ClipPlaneState();
 
     @Getter protected static final MatrixModeStack matrixMode = new MatrixModeStack();
     @Getter protected static final Matrix4fStack modelViewMatrix = new Matrix4fStack(MAX_MODELVIEW_STACK_DEPTH);
@@ -581,6 +585,7 @@ public class GLStateManager {
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
             clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].enable();
+            clipPlaneGeneration++;
             return;
         }
 
@@ -660,6 +665,7 @@ public class GLStateManager {
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
         if (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES) {
             clipPlaneStates[cap - GL11.GL_CLIP_PLANE0].disable();
+            clipPlaneGeneration++;
             return;
         }
 
@@ -3833,6 +3839,8 @@ public class GLStateManager {
             if (caching) {
                 activeProgram = 0; // Track that FFP was requested
             }
+            // Deregister Iris ValueUpdateNotifier listeners so they don't fire
+            ProgramUniforms.clearActiveUniforms();
             ffp.activate();
             return;
         }
@@ -3847,6 +3855,8 @@ public class GLStateManager {
             if (caching) {
                 activeProgram = program;
             }
+            // Deregister Iris ValueUpdateNotifier listeners before switching programs.
+            ProgramUniforms.clearActiveUniforms();
             if (AngelicaMod.lwjglDebug) {
                 final String programName = GLDebug.getObjectLabel(KHRDebug.GL_PROGRAM, program);
                 GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
@@ -4311,9 +4321,23 @@ public class GLStateManager {
     // Clip Plane Commands
     public static void glClipPlane(int plane, DoubleBuffer equation) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glClipPlane in display lists not yet implemented - if you see this, please report!");
+            final int pos = equation.position();
+            DisplayListManager.recordClipPlane(plane, equation.get(pos), equation.get(pos + 1), equation.get(pos + 2), equation.get(pos + 3));
+            return;
         }
-        GL11.glClipPlane(plane, equation);
+        final int index = plane - GL11.GL_CLIP_PLANE0;
+        if (index < 0 || index >= MAX_CLIP_PLANES) return;
+        final int pos = equation.position();
+        clipPlaneState.setPlane(index, equation.get(pos), equation.get(pos + 1), equation.get(pos + 2), equation.get(pos + 3), modelViewMatrix);
+        clipPlaneGeneration++;
+    }
+
+    /** Returns true if any GL_CLIP_PLANE0..7 is currently enabled. */
+    public static boolean anyClipPlaneEnabled() {
+        for (int i = 0; i < MAX_CLIP_PLANES; i++) {
+            if (clipPlaneStates[i].isEnabled()) return true;
+        }
+        return false;
     }
 
     // Clear Commands
@@ -4810,8 +4834,59 @@ public class GLStateManager {
     }
 
     public static void glLinkProgram(int program) {
+        if (ShaderManager.getInstance().isEnabled()) {
+            generateVertexShaderIfNeeded(program);
+        }
         GL20.glLinkProgram(program);
         CompatUniformManager.onLinkProgram(program);
+    }
+
+    private static final IntBuffer SHADER_BUF = BufferUtils.createIntBuffer(8);
+
+    /**
+     * If a program has a fragment shader but no vertex shader, generate a passthrough
+     * vertex shader from the fragment's in declarations and attach it.
+     */
+    private static void generateVertexShaderIfNeeded(int program) {
+        final int shaderCount = GL20.glGetProgrami(program, GL20.GL_ATTACHED_SHADERS);
+        if (shaderCount == 0 || shaderCount > SHADER_BUF.capacity()) return;
+
+        SHADER_BUF.clear().limit(shaderCount);
+        GL20.glGetAttachedShaders(program, null, SHADER_BUF);
+
+        int fragmentShader = 0;
+        boolean hasVertex = false;
+        for (int i = 0; i < shaderCount; i++) {
+            final int shader = SHADER_BUF.get(i);
+            final int type = GL20.glGetShaderi(shader, GL20.GL_SHADER_TYPE);
+            if (type == GL20.GL_VERTEX_SHADER) {
+                hasVertex = true;
+                break;
+            } else if (type == GL20.GL_FRAGMENT_SHADER) {
+                fragmentShader = shader;
+            }
+        }
+
+        if (hasVertex || fragmentShader == 0) return;
+
+        // Fragment-only program — generate a passthrough vertex shader
+        final String fragSource = GL20.glGetShaderSource(fragmentShader, 65536);
+        final String vertSource = CompatShaderTransformer.generatePassthroughVertexShader(fragSource);
+
+        final int vertShader = GL20.glCreateShader(GL20.GL_VERTEX_SHADER);
+        GL20.glShaderSource(vertShader, vertSource);
+        GL20.glCompileShader(vertShader);
+
+        if (GL20.glGetShaderi(vertShader, GL20.GL_COMPILE_STATUS) == GL11.GL_FALSE) {
+            final String log = GL20.glGetShaderInfoLog(vertShader, 8192);
+            AngelicaTweaker.LOGGER.warn("CompatShaderTransformer: Generated passthrough vertex shader failed to compile:\n{}\nSource:\n{}", log, vertSource);
+            GL20.glDeleteShader(vertShader);
+            return;
+        }
+
+        AngelicaTweaker.LOGGER.debug("CompatShaderTransformer: Generated passthrough vertex shader for fragment-only program {}", program);
+        GL20.glAttachShader(program, vertShader);
+        GL20.glDeleteShader(vertShader);
     }
 
     public static void glDeleteProgram(int program) {

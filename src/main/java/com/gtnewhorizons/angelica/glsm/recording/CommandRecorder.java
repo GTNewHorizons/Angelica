@@ -292,6 +292,11 @@ public final class CommandRecorder {
         commandCount++;
     }
 
+    public void recordClipPlane(int plane, double a, double b, double c, double d) {
+        buffer.writeClipPlane(plane, a, b, c, d);
+        commandCount++;
+    }
+
     public void recordStencilFunc(int func, int ref, int mask) {
         buffer.writeStencilFunc(func, ref, mask);
         commandCount++;
