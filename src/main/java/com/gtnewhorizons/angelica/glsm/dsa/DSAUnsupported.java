@@ -11,7 +11,6 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL42;
 
-import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -24,36 +23,19 @@ public class DSAUnsupported implements DSAAccess {
     }
 
     @Override
-    public void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-        // Get what cache thinks is bound - we'll restore to this to keep cache/GL in sync
+    public void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
         final int cachedBinding = GLStateManager.getBoundTextureForServerState();
         GL11.glBindTexture(target, texture);
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        GL11.glBindTexture(target, cachedBinding); // Restore to cache value
+        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        if(cachedBinding != texture) GL11.glBindTexture(target, cachedBinding);
     }
 
     @Override
-    public void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
+    public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
         final int cachedBinding = GLStateManager.getBoundTextureForServerState();
         GL11.glBindTexture(target, texture);
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        GL11.glBindTexture(target, cachedBinding);
-    }
-
-    @Override
-    public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
-        final int cachedBinding = GLStateManager.getBoundTextureForServerState();
-        GL11.glBindTexture(target, texture);
-        GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-        GL11.glBindTexture(target, cachedBinding);
-    }
-
-    @Override
-    public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
-        final int cachedBinding = GLStateManager.getBoundTextureForServerState();
-        GL11.glBindTexture(target, texture);
-        GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-        GL11.glBindTexture(target, cachedBinding);
+        GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        if(cachedBinding != texture) GL11.glBindTexture(target, cachedBinding);
     }
 
     @Override

@@ -16,26 +16,16 @@ public class DSAARB extends DSAUnsupported {
     }
 
     @Override
-    public void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+    public void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
         // Note: DSA glTextureImage2D doesn't exist in ARB_direct_state_access
         // We need to use glTextureStorage2D + glTextureSubImage2D, or fall back to bind-based approach
         // For simplicity, use the fallback which binds, uploads, and restores
-        super.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
+        super.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
     }
 
     @Override
-    public void textureImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
-        super.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels);
-    }
-
-    @Override
-    public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
-        ARBDirectStateAccess.glTextureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels);
-    }
-
-    @Override
-    public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
-        ARBDirectStateAccess.glTextureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels);
+    public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
+        ARBDirectStateAccess.glTextureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
     }
 
     @Override

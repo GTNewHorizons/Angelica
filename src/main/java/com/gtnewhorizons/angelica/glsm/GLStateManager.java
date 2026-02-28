@@ -1662,6 +1662,46 @@ public class GLStateManager {
         }
     }
 
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        final int texture = getBoundTextureForServerState();
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        TextureInfoCache.INSTANCE.onTexImage2D(texture, target, level, internalformat, width, height);
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture
+            RenderSystem.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        }
+    }
+
+    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ShortBuffer pixels) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromShortBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        final int texture = getBoundTextureForServerState();
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        TextureInfoCache.INSTANCE.onTexImage2D(texture, target, level, internalformat, width, height);
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture
+            RenderSystem.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        }
+    }
+
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -1670,13 +1710,15 @@ public class GLStateManager {
                 return;
             }
         }
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        final int texture = getBoundTextureForServerState();
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        TextureInfoCache.INSTANCE.onTexImage2D(texture, target, level, internalformat, width, height);
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture
-            RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
+            RenderSystem.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         } else {
             // Non-main thread or proxy texture - use direct GL call
-            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         }
     }
 
@@ -1688,9 +1730,16 @@ public class GLStateManager {
                 return;
             }
         }
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        // FloatBuffer not in DSA interface - use direct GL call
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        final int texture = getBoundTextureForServerState();
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        TextureInfoCache.INSTANCE.onTexImage2D(texture, target, level, internalformat, width, height);
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture
+            RenderSystem.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        }
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
@@ -1701,26 +1750,15 @@ public class GLStateManager {
                 return;
             }
         }
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        // DoubleBuffer not in DSA interface - use direct GL call
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-    }
-
-    public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
-            if (mode == RecordMode.COMPILE) {
-                return;
-            }
-        }
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : null);
+        final int texture = getBoundTextureForServerState();
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        TextureInfoCache.INSTANCE.onTexImage2D(texture, target, level, internalformat, width, height);
         if (shouldUseDSA(target)) {
-            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
-            RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
+            // Use DSA to upload directly to the texture
+            RenderSystem.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         } else {
             // Non-main thread or proxy texture - use direct GL call
-            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         }
     }
 
@@ -1728,8 +1766,15 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage2D with buffer offset in display lists not yet supported");
         }
-        TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        final int texture = getBoundTextureForServerState();
+        TextureInfoCache.INSTANCE.onTexImage2D(texture, target, level, internalformat, width, height);
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture
+            RenderSystem.textureImage2D(texture, target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        }
     }
 
     public static void glTexCoord1f(float s) {
@@ -3928,12 +3973,31 @@ public class GLStateManager {
                 return;
             }
         }
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture - keeps GL binding state unchanged
-            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
         } else {
             // Non-main thread or proxy texture - use direct GL call
-            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        }
+    }
+
+    public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ShortBuffer pixels) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromShortBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
         }
     }
 
@@ -3945,12 +4009,49 @@ public class GLStateManager {
                 return;
             }
         }
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
         if (shouldUseDSA(target)) {
-            // Use DSA to upload directly to the texture
-            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
+            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
         } else {
             // Non-main thread or proxy texture - use direct GL call
-            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        }
+    }
+
+    public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, FloatBuffer pixels) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromFloatBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        }
+    }
+
+    public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, DoubleBuffer pixels) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromDoubleBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        final long pixels_buffer_offset = pixels != null ? MemoryUtilities.memAddress(pixels) : 0L;
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
         }
     }
 
@@ -3958,7 +4059,13 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexSubImage2D with buffer offset in display lists not yet supported");
         }
-        GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        if (shouldUseDSA(target)) {
+            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
+            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        } else {
+            // Non-main thread or proxy texture - use direct GL call
+            GL11.glTexSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        }
     }
 
     public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {
