@@ -620,6 +620,7 @@ public final class GLDebug {
 		private int depth = 0;
         private static final int maxDepth = GL11.glGetInteger(KHRDebug.GL_MAX_DEBUG_GROUP_STACK_DEPTH);
         private static final int maxNameLength = GL11.glGetInteger(KHRDebug.GL_MAX_LABEL_LENGTH);
+        private final String[] groupStack = new String[maxDepth + 1];
 
 		@Override
 		public void nameObject(int id, int object, String name) {
@@ -628,20 +629,28 @@ public final class GLDebug {
 
 		@Override
 		public void pushGroup(String name) {
-            depth++;
-            if (depth > maxDepth) {
-                throw new RuntimeException("Stack overflow");
+            if (depth + 1 > maxDepth) {
+                final StringBuilder sb = new StringBuilder();
+                sb.append("Debug group stack overflow (maxDepth=").append(maxDepth).append("), current stack:\n");
+                for (int i = 0; i < depth; i++) {
+                    sb.append("  [").append(i).append("] ").append(groupStack[i]).append('\n');
+                }
+                sb.append("  -> ").append(name).append(" (rejected)");
+                throw new RuntimeException(sb.toString());
             }
+            groupStack[depth] = name;
 			KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, ID, name);
+            depth++;
 		}
 
 		@Override
 		public void popGroup() {
-            depth--;
-            if (depth < 0) {
+            if (depth - 1 < 0) {
                 throw new RuntimeException("Stack underflow");
             }
             KHRDebug.glPopDebugGroup();
+            depth--;
+            groupStack[depth] = null;
 		}
 
         @Override
