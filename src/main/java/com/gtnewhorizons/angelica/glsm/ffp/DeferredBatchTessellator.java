@@ -3,9 +3,12 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
+import org.joml.Vector3f;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -27,9 +30,19 @@ class DeferredBatchTessellator extends DirectTessellator {
     private final Matrix4f defaultModelview = new Matrix4f();
     private final Matrix4f defaultModelviewInverse = new Matrix4f();
     private final Matrix4f deltaMatrix = new Matrix4f(); // reusable scratch
+    private final Vector3f scratch = new Vector3f();
+    private Matrix4fc currentTransform;
 
     DeferredBatchTessellator(ByteBuffer buffer) {
         super(buffer, false); // deleteAfter=false: keep buffer across resets for reuse
+    }
+
+    @Override
+    protected long writeVertexData(VertexFormat format, int[] rawBuffer, int rawBufferIndex) {
+        if (currentTransform != null) {
+            return format.writeToBuffer0(writePtr, rawBuffer, rawBufferIndex, currentTransform, scratch);
+        }
+        return super.writeVertexData(format, rawBuffer, rawBufferIndex);
     }
 
     /** Snapshot the current modelview as the "default" for this bracket. */
@@ -44,9 +57,9 @@ class DeferredBatchTessellator extends DirectTessellator {
         final Matrix4f currentMV = GLStateManager.getModelViewMatrix();
         if (!currentMV.equals(defaultModelview)) {
             defaultModelviewInverse.mul(currentMV, deltaMatrix);
-            this.vertexTransform = deltaMatrix;
+            this.currentTransform = deltaMatrix;
         } else {
-            this.vertexTransform = null;
+            this.currentTransform = null;
         }
 
         final int byteOffsetBefore = bufferLimit();
@@ -59,7 +72,7 @@ class DeferredBatchTessellator extends DirectTessellator {
 
         final int byteOffsetAfter = bufferLimit();
         ranges.add(new DrawRange(stateKey, byteOffsetBefore, byteOffsetAfter - byteOffsetBefore, vertCount, drawMode, flags));
-        this.vertexTransform = null; // clear for next draw
+        this.currentTransform = null; // clear for next draw
         return result;
     }
 
