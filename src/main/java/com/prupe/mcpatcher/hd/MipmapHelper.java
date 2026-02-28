@@ -71,13 +71,13 @@ public class MipmapHelper {
     }
 
     static void setupTexture(int width, int height, boolean blur, boolean clamp, String textureName) {
-        int mipmaps = useMipmapsForTexture(textureName) ? getMipmapLevels(width, height, 1) : 0;
+        final int mipmaps = useMipmapsForTexture(textureName) ? getMipmapLevels(width, height, 1) : 0;
         logger.finer("setupTexture(%s) %dx%d %d mipmaps", textureName, width, height, mipmaps);
-        int magFilter = blur ? GL11.GL_LINEAR : GL11.GL_NEAREST;
-        int minFilter = mipmaps > 0 ? GL11.GL_LINEAR_MIPMAP_LINEAR : magFilter;
-        int wrap = clamp ? GL11.GL_CLAMP : GL11.GL_REPEAT;
+        final int magFilter = blur ? GL11.GL_LINEAR : GL11.GL_NEAREST;
+        final int minFilter = mipmaps > 0 ? GL11.GL_LINEAR_MIPMAP_LINEAR : magFilter;
+        final int wrap = clamp ? GL11.GL_CLAMP : GL11.GL_REPEAT;
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmaps);
         if (mipmaps > 0) {
-            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, mipmaps);
             checkGLError("%s: set GL_TEXTURE_MAX_LEVEL = %d", textureName, mipmaps);
             if (anisoSupported && anisoLevel > 1) {
                 GL11.glTexParameterf(
@@ -125,12 +125,12 @@ public class MipmapHelper {
         mipmapType.clear();
         mipmapType.put("terrain", true);
         mipmapType.put("items", false);
-        PropertiesFile properties = PropertiesFile.get(logger, MIPMAP_PROPERTIES);
+        final PropertiesFile properties = PropertiesFile.get(logger, MIPMAP_PROPERTIES);
         if (properties != null) {
             for (Map.Entry<String, String> entry : properties.entrySet()) {
-                String key = entry.getKey()
+                final String key = entry.getKey()
                     .trim();
-                boolean value = Boolean.parseBoolean(
+                final boolean value = Boolean.parseBoolean(
                     entry.getValue()
                         .trim()
                         .toLowerCase());
@@ -172,7 +172,7 @@ public class MipmapHelper {
     }
 
     static int getMipmapLevelsForCurrentTexture() {
-        int filter = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
+        final int filter = GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
         if (filter != GL11.GL_NEAREST_MIPMAP_LINEAR && filter != GL11.GL_NEAREST_MIPMAP_NEAREST) {
             return 0;
         }
@@ -195,7 +195,7 @@ public class MipmapHelper {
     static void scaleHalf(IntBuffer in, int w, int h, IntBuffer out, int rotate) {
         for (int i = 0; i < w / 2; i++) {
             for (int j = 0; j < h / 2; j++) {
-                int k = w * 2 * j + 2 * i;
+                final int k = w * 2 * j + 2 * i;
                 int pixel00 = in.get(k);
                 int pixel01 = in.get(k + 1);
                 int pixel10 = in.get(k + w);
@@ -216,10 +216,10 @@ public class MipmapHelper {
     }
 
     private static int average4RGBA(int pixel00, int pixel01, int pixel10, int pixel11) {
-        int a00 = pixel00 & 0xff;
-        int a01 = pixel01 & 0xff;
-        int a10 = pixel10 & 0xff;
-        int a11 = pixel11 & 0xff;
+        final int a00 = pixel00 & 0xff;
+        final int a01 = pixel01 & 0xff;
+        final int a10 = pixel10 & 0xff;
+        final int a11 = pixel11 & 0xff;
         switch ((a00 << 24) | (a01 << 16) | (a10 << 8) | a11) {
             case 0xff000000:
                 return pixel00;
@@ -256,10 +256,10 @@ public class MipmapHelper {
                 return average2RGBA(average2RGBA(pixel00, pixel11), average2RGBA(pixel01, pixel10));
 
             default:
-                int a = a00 + a01 + a10 + a11;
+                final int a = a00 + a01 + a10 + a11;
                 int pixel = a >> 2;
                 for (int i = 8; i < 32; i += 8) {
-                    int average = (a00 * ((pixel00 >> i) & 0xff) + a01 * ((pixel01 >> i) & 0xff)
+                    final int average = (a00 * ((pixel00 >> i) & 0xff) + a01 * ((pixel01 >> i) & 0xff)
                         + a10 * ((pixel10 >> i) & 0xff)
                         + a11 * ((pixel11 >> i) & 0xff)) / a;
                     pixel |= (average << i);
@@ -273,9 +273,9 @@ public class MipmapHelper {
     }
 
     private static void checkGLError(String format, Object... params) {
-        int error = GL11.glGetError();
+        final int error = GL11.glGetError();
         if (error != 0) {
-            String message = GLU.gluErrorString(error) + ": " + String.format(format, params);
+            final String message = GLU.gluErrorString(error) + ": " + String.format(format, params);
             new RuntimeException(message).printStackTrace();
         }
     }
