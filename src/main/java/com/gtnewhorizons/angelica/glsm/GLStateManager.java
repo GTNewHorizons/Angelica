@@ -963,14 +963,12 @@ public class GLStateManager {
             case GL30.GL_DRAW_FRAMEBUFFER_BINDING -> drawFramebuffer;
             case GL30.GL_READ_FRAMEBUFFER_BINDING -> readFramebuffer;
 
-            default -> {
-                yield switch (pname) {
-                    case GL11.GL_FOG_MODE -> fogState.getFogMode();
-                    case GL11.GL_LINE_STIPPLE_PATTERN -> lineState.getStipplePattern() & 0xFFFF;
-                    case GL11.GL_LINE_STIPPLE_REPEAT -> lineState.getStippleFactor();
-                    default -> GL11.glGetInteger(pname);
-                };
-            }
+            default -> switch (pname) {
+                case GL11.GL_FOG_MODE -> fogState.getFogMode();
+                case GL11.GL_LINE_STIPPLE_PATTERN -> lineState.getStipplePattern() & 0xFFFF;
+                case GL11.GL_LINE_STIPPLE_REPEAT -> lineState.getStippleFactor();
+                default -> GL11.glGetInteger(pname);
+            };
         };
     }
 
@@ -1046,10 +1044,7 @@ public class GLStateManager {
                 params.put((float) viewportState.depthRangeNear);
                 params.put((float) viewportState.depthRangeFar);
             }
-            case GL14.GL_BLEND_COLOR -> {
-                params.put(blendState.getBlendColorR()).put(blendState.getBlendColorG())
-                    .put(blendState.getBlendColorB()).put(blendState.getBlendColorA());
-            }
+            case GL14.GL_BLEND_COLOR -> params.put(blendState.getBlendColorR()).put(blendState.getBlendColorG()).put(blendState.getBlendColorB()).put(blendState.getBlendColorA());
             case GL11.GL_CURRENT_NORMAL -> {
                 final Vector3f normal = ShaderManager.getCurrentNormal();
                 params.put(normal.x).put(normal.y).put(normal.z);
@@ -1955,6 +1950,10 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        if (FeedbackManager.isFeedbackMode()) {
+            FeedbackManager.processDrawElements(mode, indices);
+            return;
+        }
         ShaderManager.getInstance().preDraw();
         GL11.glDrawElements(mode, indices);
     }
@@ -1962,6 +1961,10 @@ public class GLStateManager {
     public static void glDrawElements(int mode, IntBuffer indices) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+        }
+        if (FeedbackManager.isFeedbackMode()) {
+            FeedbackManager.processDrawElements(mode, indices);
+            return;
         }
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
@@ -1975,6 +1978,10 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
         }
+        if (FeedbackManager.isFeedbackMode()) {
+            FeedbackManager.processDrawElements(mode, indices);
+            return;
+        }
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
@@ -1986,6 +1993,10 @@ public class GLStateManager {
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+        }
+        if (FeedbackManager.isFeedbackMode()) {
+            FeedbackManager.processDrawElements(mode, count, type, indices);
+            return;
         }
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
@@ -2006,6 +2017,10 @@ public class GLStateManager {
             if (recordMode == RecordMode.COMPILE) {
                 return;
             }
+        }
+        if (FeedbackManager.isFeedbackMode()) {
+            FeedbackManager.processDrawElements(mode, indices_count, type, indices_buffer_offset);
+            return;
         }
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
@@ -2037,6 +2052,10 @@ public class GLStateManager {
             if (result != null) {
                 DisplayListManager.addImmediateModeDraw(result);
             }
+            return;
+        }
+        if (FeedbackManager.isFeedbackMode()) {
+            FeedbackManager.processDrawArrays(mode, first, count);
             return;
         }
         ShaderManager.getInstance().preDraw();
@@ -2754,8 +2773,11 @@ public class GLStateManager {
 
     public static void glCallList(int list) {
         GLDebug.pushGroup("glCallList " + list);
-        DisplayListManager.glCallList(list);
-        GLDebug.popGroup();
+        try {
+            DisplayListManager.glCallList(list);
+        } finally {
+            GLDebug.popGroup();
+        }
     }
 
     public static void pushState(int mask) {
@@ -2916,9 +2938,12 @@ public class GLStateManager {
         GLDebug.popGroup();
         poppingAttributes = true;
         GLDebug.pushGroup("popState");
-        popState();
-        GLDebug.popGroup();
-        poppingAttributes = false;
+        try {
+            popState();
+        } finally {
+            GLDebug.popGroup();
+            poppingAttributes = false;
+        }
     }
 
     // Matrix Operations
@@ -4725,6 +4750,31 @@ public class GLStateManager {
     public static void glAccum(int op, float value) {
         guardUnsupportedFFP("glAccum", "The accumulation buffer is not available in GL 3.3 core profile.");
     }
+
+    public static void glFeedbackBuffer(int type, FloatBuffer buffer) {
+        FeedbackManager.glFeedbackBuffer(type, buffer);
+    }
+
+    public static int glRenderMode(int mode) {
+        return FeedbackManager.glRenderMode(mode);
+    }
+
+    public static void glPassThrough(float token) {
+        FeedbackManager.glPassThrough(token);
+    }
+
+    private static boolean selectWarned = false;
+    public static void glSelectBuffer(IntBuffer buffer) {
+        if (!selectWarned) {
+            LOGGER.warn("glSelectBuffer: selection mode not emulated");
+            selectWarned = true;
+        }
+    }
+
+    public static void glInitNames() { /* no-op: ignored outside GL_SELECT */ }
+    public static void glPushName(int name) { /* no-op */ }
+    public static void glPopName() { /* no-op */ }
+    public static void glLoadName(int name) { /* no-op */ }
 
     public static void glLinkProgram(int program) {
         if (ShaderManager.getInstance().isEnabled()) {
