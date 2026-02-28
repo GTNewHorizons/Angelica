@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -17,7 +18,6 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
-import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform {
 
-    private final List<String> blockFieldNames = new ArrayList<>();
+    private final ClassConstantPoolParser cstPoolParser;
     private final Map<String, String> blockFieldRedirects = new HashMap<>();
 
     public CeleritasBlockTransform(boolean isObf) {
@@ -41,9 +41,10 @@ public final class CeleritasBlockTransform {
         );
         for (Pair<String, String> pair : mappings) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
-            this.blockFieldNames.add(name);
             this.blockFieldRedirects.put(name, pair.getLeft());
         }
+
+        this.cstPoolParser = new ClassConstantPoolParser(this.blockFieldRedirects.keySet().toArray(new String[0]));
     }
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
@@ -111,16 +112,29 @@ public final class CeleritasBlockTransform {
         };
     }
 
+    public void trackBlockSubclasses(String className, String classSuperName) {
+        if (!isVanillaBlockSubclass(className) && isBlockSubclass(classSuperName)) {
+            moddedBlockSubclasses.add(className);
+        }
+    }
+
+    public boolean shouldTransform(byte[] classBytes) {
+        return cstPoolParser.find(classBytes);
+    }
+
     /** @return Was the class changed? */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if ("net.minecraft.block.Block".equals(transformedName) && isCeleritasEnabled()) {
-            cn.fields.removeIf(field -> blockFieldNames.stream().anyMatch(name -> field.name.equals(name)));
+        if (!isCeleritasEnabled()) {
+            return false;
         }
 
-        // Track subclasses of Block
-        if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
-            moddedBlockSubclasses.add(cn.name);
+        boolean changed = false;
+
+        if ("net.minecraft.block.Block".equals(transformedName)) {
+            changed = cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
         }
+
+        trackBlockSubclasses(cn.name, cn.superName);
 
         // Check if this class shadows any fields of the parent class
         if (moddedBlockSubclasses.contains(cn.name)) {
@@ -132,7 +146,7 @@ public final class CeleritasBlockTransform {
             } else {
                 // Check if we declare any known field names
                 for (FieldNode field : cn.fields) {
-                    if (blockFieldNames.contains(field.name)) {
+                    if (blockFieldRedirects.containsKey(field.name)) {
                         doWeShadow = true;
                         break;
                     }
@@ -144,11 +158,6 @@ public final class CeleritasBlockTransform {
             }
         }
 
-        if (!isCeleritasEnabled()) {
-            return false;
-        }
-
-        boolean changed = false;
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
