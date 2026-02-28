@@ -285,8 +285,6 @@ public final class AngelicaRedirector {
         // OTHER
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
 
-        ArrayList<String> stringsToSearch = new ArrayList<>(32);
-
         // Interface/virtual redirects — callers invoke these on a receiver object
         interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()
             .add("glBindVertexArray")
@@ -294,9 +292,10 @@ public final class AngelicaRedirector {
         interfaceRedirects.put(LWJGLService, RedirectMap.newMap()
             .add("glBindVertexArray")
         );
+
+        ArrayList<String> stringsToSearch = new ArrayList<>(32);
         stringsToSearch.add(VaoFunctions);
         stringsToSearch.add(LWJGLService);
-
         final String glPrefix = "org/lwjgl/opengl/GL";
         for (var entry : new HashMap<>(methodRedirects).entrySet()) {
             stringsToSearch.add(entry.getKey());
