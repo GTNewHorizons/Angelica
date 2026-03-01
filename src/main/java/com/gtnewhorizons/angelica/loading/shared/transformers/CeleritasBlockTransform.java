@@ -40,13 +40,42 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform {
 
+    private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
+    private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
+    private static final String BlockClass = "net/minecraft/block/Block";
+    private static final String BlockPackage = "net/minecraft/block/Block";
+    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
+    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
+    private static final String[] VanillaBlockExclusions = {
+        "net/minecraft/block/IGrowable",
+        "net/minecraft/block/ITileEntityProvider",
+        "net/minecraft/block/BlockEventData",
+        "net/minecraft/block/BlockSourceImpl",
+        "net/minecraft/block/material/"
+    };
+    // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
+    private static final MethodHandle angelicaConfigCeleritasEnabledGetter;
+    private static boolean isCeleritasEnabled;
+
+    static {
+        try {
+            final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
+            angelicaConfigCeleritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    // Block owners we *shouldn't* redirect because they shadow one of our fields
+    private final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ClassConstantPoolParser cstPoolParser;
     private final ImmutableMap<String, String> blockFieldRedirects;
     private final ImmutableList<String> methodNames;
+    private final Map<String, Map<String, String>> overloadedMethods = new ConcurrentHashMap<>();
 
     /** isObf will not be changed during runtime. */
     public CeleritasBlockTransform(boolean isObf) {
-
         final List<Pair<String, String>> mappings = ImmutableList.of(
             Pair.of("minX", "field_149759_B"),
             Pair.of("minY", "field_149760_C"),
@@ -55,7 +84,6 @@ public final class CeleritasBlockTransform {
             Pair.of("maxY", "field_149756_F"),
             Pair.of("maxZ", "field_149757_G")
         );
-
         // These functions are the ones for which we need to create overloads.
         // Other functions may be modified elsewhere, so creating overloads in the ASM will cause some issues.
         final List<Pair<String, String>> methodCanOverload = ImmutableList.of(
@@ -90,36 +118,6 @@ public final class CeleritasBlockTransform {
         this.cstPoolParser = new ClassConstantPoolParser(names.toArray(new String[0]));
     }
 
-    private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
-    private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
-    private static final String BlockClass = "net/minecraft/block/Block";
-    private static final String BlockPackage = "net/minecraft/block/Block";
-    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
-    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
-    private static final String[] VanillaBlockExclusions = {
-        "net/minecraft/block/IGrowable",
-        "net/minecraft/block/ITileEntityProvider",
-        "net/minecraft/block/BlockEventData",
-        "net/minecraft/block/BlockSourceImpl",
-        "net/minecraft/block/material/"
-    };
-
-    private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    // Block owners we *shouldn't* redirect because they shadow one of our fields
-    private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
-    private static final MethodHandle angelicaConfigCeleritasEnabledGetter;
-    private static boolean isCeleritasEnabled;
-
-    static {
-        try {
-            final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
-            angelicaConfigCeleritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
-        }
-    }
-
     private static boolean isCeleritasEnabled() {
         if (isCeleritasEnabled) return true;
         try {
@@ -129,7 +127,11 @@ public final class CeleritasBlockTransform {
         }
     }
 
-    private boolean isVanillaBlockSubclass(String className) {
+    public void setCeleritasSetting() {
+        isCeleritasEnabled = true;
+    }
+
+    private static boolean isVanillaBlockSubclass(String className) {
         if (className.startsWith(BlockPackage)) {
             for (String exclusion : VanillaBlockExclusions) {
                 if (className.startsWith(exclusion)) {
@@ -165,138 +167,30 @@ public final class CeleritasBlockTransform {
         return cstPoolParser.find(classBytes);
     }
 
-    private static final Map<String, Map<String, String>> overloadedMethods = new ConcurrentHashMap<>();
-
-    private record FieldAccessRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {}
-
-    private static class FieldAccessInfo {
-        /**
-         * The number of times fields of incoming parameters that need to be redirected are read or written in the function.
-         * non-`Block` parameters are always 0.
-         * **paramSlot -> count**
-         */
-        private final int[] paramUsedCount;
-        private final Map<VarInsnNode, Integer> varUsedCount = new HashMap<>();
-        /**
-         * Records of instructions that read or write fields requiring redirection.
-         */
-        private final ArrayList<FieldAccessRecord> records = new ArrayList<>();
-        /** **paramSlot -> cacheSlot** */
-        private int[] cacheSlots;
-        /** **VarInsnNode -> cacheSlot** */
-        private Map<VarInsnNode, Integer> cacheVars;
-
-        FieldAccessInfo(MethodNode mn) {
-            paramUsedCount = new int[maxParamSlots(mn)];
-        }
-
-        private void addRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {
-            if (paramSlot >= 0) {
-                paramUsedCount[paramSlot]++;
-            }
-            if (varStore != null) {
-                varUsedCount.put(varStore, varUsedCount.getOrDefault(varStore, 0) + 1);
-            }
-            assert (paramSlot < 0) || (varStore == null) : "Only one of paramSlot and varStore should be set";
-            records.add(new FieldAccessRecord(nodeIndex, fieldNode, paramSlot, varStore, fieldRedirect));
-        }
-
-        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
-        private void prepareCaches(MethodNode mn) {
-            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
-            this.cacheSlots = ret.getLeft();
-            this.cacheVars = ret.getRight();
-        }
-    }
-
-    private record MethodInvokeRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, VarInsnNode varStore, String newDesc) {}
-
-    private static class MethodInvokeInfo {
-        /**
-         * How many times a given input parameter is used by a specific function call.
-         * non-`Block` parameters are always 0.
-         * **paramSlot -> count**
-         */
-        private final int[] paramUsedCount;
-        private final Map<VarInsnNode, Integer> varUsedCount = new HashMap<>();
-        /**
-         * Records of instructions that invoke the method that we have already overloaded.
-         */
-        private final ArrayList<MethodInvokeRecord> records = new ArrayList<>();
-        /** **paramSlot -> cacheSlot** */
-        private int[] cacheSlots;
-        /** **VarInsnNode -> cacheSlot** */
-        private Map<VarInsnNode, Integer> cacheVars;
-
-        MethodInvokeInfo(MethodNode mn) {
-            paramUsedCount = new int[maxParamSlots(mn)];
-        }
-
-        private void addRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, VarInsnNode varStore, String newDesc) {
-            if (paramSlot >= 0) {
-                paramUsedCount[paramSlot]++;
-            }
-            if (varStore != null) {
-                varUsedCount.put(varStore, varUsedCount.getOrDefault(varStore, 0) + 1);
-            }
-            assert (paramSlot < 0) || (varStore == null) : "Only one of paramSlot and varStore should be set";
-            records.add(new MethodInvokeRecord(nodeIndex, methodNode, paramSlot, varStore, newDesc));
-        }
-
-        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
-        private void prepareCaches(MethodNode mn, int[] cacheSlots, Map<VarInsnNode, Integer> cacheVars) {
-            int[] paramUsedCount = this.paramUsedCount.clone();
-            if (cacheSlots != null) {
-                for (int i = 0; i < cacheSlots.length; i++) {
-                    if (cacheSlots[i] > 0) paramUsedCount[i] = 0; // Do not cache it again.
-                }
-            }
-            Map<VarInsnNode, Integer> varUsedCount = new HashMap<>(this.varUsedCount);
-            if (cacheVars != null) {
-                for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
-                    if (entry.getValue() > 0) varUsedCount.put(entry.getKey(), 0); // Do not cache it again.
-                }
-            }
-            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
-            this.cacheSlots = ret.getLeft();
-            this.cacheVars = ret.getRight();
-            if (cacheSlots != null) {
-                for (int i = 0; i < cacheSlots.length; i++) {
-                    if (cacheSlots[i] > 0) this.cacheSlots[i] = cacheSlots[i]; // Use the existing cache slot if it exists.
-                }
-            }
-            if (cacheVars != null) {
-                for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
-                    if (entry.getValue() > 0) this.cacheVars.put(entry.getKey(), entry.getValue()); // Use the existing cache slot if it exists.
-                }
-            }
-        }
-    }
-
     /**
      * For field names contained in blockFieldNames, we replace accesses of `block.foo` with `ThreadedBlockData.get(block).foo`.
-     *
+     * <p>
      * When multiple accesses are detected, for example:
-     *
+     * <p>
      * ```java
      * block.foo1
      * block.foo2
      * block.foo3
      * ```
-     *
+     * <p>
      * to reduce the number of ThreadLocal lookups, these are transformed into:
-     *
+     * <p>
      * ```java
      * var cache = ThreadedBlockData.get(block);
      * cache.foo1
      * cache.foo2
      * cache.foo3
      * ```
-     *
+     * <p>
      * Also, for methods where `block` is `this`, we create overloads whose first parameter is `ThreadedBlockData cache`.
-     *
+     * <p>
      * Where possible, we replace calls with calls to the overloaded methods so the `cache` can be reused.
-     *
+     * <p>
      * To avoid interfering with other ASM and Mixins, only create overloads for method names whitelisted in methodNames.
      *
      * @return Was the class changed?
@@ -349,7 +243,9 @@ public final class CeleritasBlockTransform {
             MethodNode mn = cn.methods.get(i);
             if (mn.instructions.size() == 0) continue;
 
-            if (willGetFieldAccessInfoReturnEmpty(mn)) continue; // Skip analysis if there are no relevant field accesses, to improve performance.
+            if (willGetFieldAccessInfoReturnEmpty(mn)) {
+                continue; // Skip analysis if there are no relevant field accesses, to improve performance.
+            }
 
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             boolean analyzeSuccess = false;
@@ -401,7 +297,9 @@ public final class CeleritasBlockTransform {
         for (MethodNode mn : cn.methods) {
             if (mn.instructions.size() == 0) continue;
 
-            if (willGetMethodInvokeInfoReturnEmpty(mn)) continue; // Skip analysis if there are no relevant method invokes, to improve performance.
+            if (willGetMethodInvokeInfoReturnEmpty(mn)) {
+                continue; // Skip analysis if there are no relevant method invokes, to improve performance.
+            }
 
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             try {
@@ -414,7 +312,9 @@ public final class CeleritasBlockTransform {
 
             MethodInvokeInfo info = getMethodInvokeInfo(mn, analyzer.getFrames());
 
-            if (info.records.isEmpty()) continue; // It's possible that `willGetMethodInvokeInfoReturnEmpty == false && info.records.isEmpty()`
+            if (info.records.isEmpty()) {
+                continue; // It's possible that `willGetMethodInvokeInfoReturnEmpty == false && info.records.isEmpty()`
+            }
 
             info.prepareCaches(mn, methodCacheSlots.get(mn.name + mn.desc), methodCacheVars.get(mn.name + mn.desc)); // Reuse the same cache if this method also accesses fields.
 
@@ -438,7 +338,7 @@ public final class CeleritasBlockTransform {
         return changed;
     }
 
-    private static @NotNull MethodInvokeInfo getMethodInvokeInfo(MethodNode mn, Frame<SourceValue>[] frames) {
+    private @NotNull MethodInvokeInfo getMethodInvokeInfo(MethodNode mn, Frame<SourceValue>[] frames) {
         MethodInvokeInfo info = new MethodInvokeInfo(mn);
         for (int i = 0; i < mn.instructions.size(); i++) {
             AbstractInsnNode node = mn.instructions.get(i);
@@ -466,7 +366,7 @@ public final class CeleritasBlockTransform {
      * Inconsistent with the behavior of willGetFieldAccessInfoReturnEmpty:
      * This function returns false does not mean that getMethodInvokeInfo will definitely not return empty.
      */
-    private static boolean willGetMethodInvokeInfoReturnEmpty(MethodNode mn) {
+    private boolean willGetMethodInvokeInfoReturnEmpty(MethodNode mn) {
         for (int i = 0; i < mn.instructions.size(); i++) {
             AbstractInsnNode node = mn.instructions.get(i);
             if ((node.getOpcode() == Opcodes.INVOKEVIRTUAL || node.getOpcode() == Opcodes.INVOKESPECIAL) && node instanceof MethodInsnNode mNode) {
@@ -730,7 +630,113 @@ public final class CeleritasBlockTransform {
         return size;
     }
 
-    public void setCeleritasSetting() {
-        isCeleritasEnabled = true;
+    private record FieldAccessRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {}
+
+    private static class FieldAccessInfo {
+        /**
+         * The number of times fields of incoming parameters that need to be redirected are read or written in the function.
+         * non-`Block` parameters are always 0.
+         * **paramSlot -> count**
+         */
+        private final int[] paramUsedCount;
+        private final Map<VarInsnNode, Integer> varUsedCount = new HashMap<>();
+        /**
+         * Records of instructions that read or write fields requiring redirection.
+         */
+        private final ArrayList<FieldAccessRecord> records = new ArrayList<>();
+        /** paramSlot -> cacheSlot** */
+        private int[] cacheSlots;
+        /** VarInsnNode -> cacheSlot** */
+        private Map<VarInsnNode, Integer> cacheVars;
+
+        FieldAccessInfo(MethodNode mn) {
+            paramUsedCount = new int[maxParamSlots(mn)];
+        }
+
+        private void addRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {
+            if (paramSlot >= 0) {
+                paramUsedCount[paramSlot]++;
+            }
+            if (varStore != null) {
+                varUsedCount.put(varStore, varUsedCount.getOrDefault(varStore, 0) + 1);
+            }
+            assert (paramSlot < 0) || (varStore == null) : "Only one of paramSlot and varStore should be set";
+            records.add(new FieldAccessRecord(nodeIndex, fieldNode, paramSlot, varStore, fieldRedirect));
+        }
+
+        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+        private void prepareCaches(MethodNode mn) {
+            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
+            this.cacheSlots = ret.getLeft();
+            this.cacheVars = ret.getRight();
+        }
+    }
+
+    private record MethodInvokeRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, VarInsnNode varStore, String newDesc) {}
+
+    private static class MethodInvokeInfo {
+        /**
+         * How many times a given input parameter is used by a specific function call.
+         * non-`Block` parameters are always 0.
+         * **paramSlot -> count**
+         */
+        private final int[] paramUsedCount;
+        private final Map<VarInsnNode, Integer> varUsedCount = new HashMap<>();
+        /**
+         * Records of instructions that invoke the method that we have already overloaded.
+         */
+        private final ArrayList<MethodInvokeRecord> records = new ArrayList<>();
+        /** paramSlot -> cacheSlot** */
+        private int[] cacheSlots;
+        /** VarInsnNode -> cacheSlot** */
+        private Map<VarInsnNode, Integer> cacheVars;
+
+        MethodInvokeInfo(MethodNode mn) {
+            paramUsedCount = new int[maxParamSlots(mn)];
+        }
+
+        private void addRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, VarInsnNode varStore, String newDesc) {
+            if (paramSlot >= 0) {
+                paramUsedCount[paramSlot]++;
+            }
+            if (varStore != null) {
+                varUsedCount.put(varStore, varUsedCount.getOrDefault(varStore, 0) + 1);
+            }
+            assert (paramSlot < 0) || (varStore == null) : "Only one of paramSlot and varStore should be set";
+            records.add(new MethodInvokeRecord(nodeIndex, methodNode, paramSlot, varStore, newDesc));
+        }
+
+        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+        private void prepareCaches(MethodNode mn, int[] cacheSlots, Map<VarInsnNode, Integer> cacheVars) {
+            int[] paramUsedCount = this.paramUsedCount.clone();
+            if (cacheSlots != null) {
+                for (int i = 0; i < cacheSlots.length; i++) {
+                    if (cacheSlots[i] > 0) paramUsedCount[i] = 0; // Do not cache it again.
+                }
+            }
+            Map<VarInsnNode, Integer> varUsedCount = new HashMap<>(this.varUsedCount);
+            if (cacheVars != null) {
+                for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
+                    if (entry.getValue() > 0) varUsedCount.put(entry.getKey(), 0); // Do not cache it again.
+                }
+            }
+            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
+            this.cacheSlots = ret.getLeft();
+            this.cacheVars = ret.getRight();
+            if (cacheSlots != null) {
+                for (int i = 0; i < cacheSlots.length; i++) {
+                    if (cacheSlots[i] > 0) {
+                        this.cacheSlots[i] = cacheSlots[i]; // Use the existing cache slot if it exists.
+                    }
+                }
+            }
+            if (cacheVars != null) {
+                for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
+                    if (entry.getValue() > 0) {
+                        this.cacheVars.put(entry.getKey(), entry.getValue()); // Use the existing cache slot if it exists.
+                    }
+                }
+            }
+        }
     }
 }
