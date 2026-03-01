@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading.rfb.transformers;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.loading.shared.transformers.CeleritasBlockTransform;
+import com.gtnewhorizons.retrofuturabootstrap.api.ClassHeaderMetadata;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -44,7 +45,23 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
     public boolean shouldTransformClass(@NotNull ExtensibleClassLoader classLoader,
                                         @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest, @NotNull String className,
                                         @NotNull ClassNodeHandle classNode) {
-        return classNode.isPresent();
+        if (!classNode.isPresent()) {
+            return false;
+        }
+
+        ClassHeaderMetadata metadata = classNode.getOriginalMetadata();
+        if (metadata == null) {
+            return false;
+        }
+
+        if (inner.shouldTransform(classNode.getOriginalBytes())) {
+            return true;
+        }
+
+        // Track possible block subclasses even if we don't need to transform this class
+        inner.trackBlockSubclasses(metadata.binaryThisName, metadata.binarySuperName);
+
+        return false;
     }
 
     @Override

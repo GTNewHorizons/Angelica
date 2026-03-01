@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -39,7 +40,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform {
 
-    private final ImmutableList<String> blockFieldNames;
+    private final ClassConstantPoolParser cstPoolParser;
     private final ImmutableMap<String, String> blockFieldRedirects;
     private final ImmutableList<String> methodNames;
 
@@ -71,14 +72,11 @@ public final class CeleritasBlockTransform {
             Pair.of("getBlockBoundsMaxZ", "func_149693_C")
         );
 
-        var blockFieldNames = ImmutableList.<String>builder();
         var blockFieldRedirects = ImmutableMap.<String, String>builder();
         for (Pair<String, String> pair : mappings) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
-            blockFieldNames.add(name);
             blockFieldRedirects.put(name, pair.getLeft());
         }
-        this.blockFieldNames = blockFieldNames.build();
         this.blockFieldRedirects = blockFieldRedirects.build();
         var methodNames = ImmutableList.<String>builder();
         for (Pair<String, String> pair : methodCanOverload) {
@@ -86,6 +84,7 @@ public final class CeleritasBlockTransform {
             methodNames.add(name);
         }
         this.methodNames = methodNames.build();
+        this.cstPoolParser = new ClassConstantPoolParser(this.blockFieldRedirects.keySet().toArray(new String[0]));
     }
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
@@ -151,6 +150,16 @@ public final class CeleritasBlockTransform {
             "com.gtnewhorizon.gtnhlib.asm.",
             "me.eigenraven.lwjgl3ify"
         };
+    }
+
+    public void trackBlockSubclasses(String className, String classSuperName) {
+        if (!isVanillaBlockSubclass(className) && isBlockSubclass(classSuperName)) {
+            moddedBlockSubclasses.add(className);
+        }
+    }
+
+    public boolean shouldTransform(byte[] classBytes) {
+        return cstPoolParser.find(classBytes);
     }
 
     private static final Map<String, Map<String, String>> overloadedMethods = new ConcurrentHashMap<>();
@@ -290,14 +299,15 @@ public final class CeleritasBlockTransform {
      * @return Was the class changed?
      */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if ("net.minecraft.block.Block".equals(transformedName) && isCeleritasEnabled()) {
-            cn.fields.removeIf(field -> blockFieldNames.stream().anyMatch(name -> field.name.equals(name)));
+        if (!isCeleritasEnabled()) {
+            return false;
         }
 
-        // Track subclasses of Block
-        if (!isVanillaBlockSubclass(cn.name) && isBlockSubclass(cn.superName)) {
-            moddedBlockSubclasses.add(cn.name);
+        if ("net.minecraft.block.Block".equals(transformedName)) {
+            cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
         }
+
+        trackBlockSubclasses(cn.name, cn.superName);
 
         // Check if this class shadows any fields of the parent class
         if (moddedBlockSubclasses.contains(cn.name)) {
@@ -309,7 +319,7 @@ public final class CeleritasBlockTransform {
             } else {
                 // Check if we declare any known field names
                 for (FieldNode field : cn.fields) {
-                    if (blockFieldNames.contains(field.name)) {
+                    if (blockFieldRedirects.containsKey(field.name)) {
                         doWeShadow = true;
                         break;
                     }
@@ -319,10 +329,6 @@ public final class CeleritasBlockTransform {
                 LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
                 blockOwnerExclusions.add(cn.name);
             }
-        }
-
-        if (!isCeleritasEnabled()) {
-            return false;
         }
 
         Map<String, String> overloaded = new HashMap<>(); // Cache it first in a local variable, so we don't need a ConcurrentHashMap.

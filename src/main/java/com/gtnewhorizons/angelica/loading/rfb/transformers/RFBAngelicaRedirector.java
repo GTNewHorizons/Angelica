@@ -48,10 +48,6 @@ public class RFBAngelicaRedirector implements RfbClassTransformer {
         if (!classNode.isPresent()) {
             return false;
         }
-        if (!classNode.isOriginal()) {
-            // If a class is already a transformed ClassNode, conservatively continue processing.
-            return true;
-        }
         return inner.shouldTransform(classNode.getOriginalBytes());
     }
 
