@@ -163,6 +163,30 @@ public final class CeleritasBlockTransform {
         }
     }
 
+    private void trackBlockShadowingFields(ClassNode cn) {
+        // Check if this class shadows any fields of the parent class
+        if (moddedBlockSubclasses.contains(cn.name)) {
+            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
+            // superclass
+            boolean doWeShadow = false;
+            if (blockOwnerExclusions.contains(cn.superName)) {
+                doWeShadow = true;
+            } else {
+                // Check if we declare any known field names
+                for (FieldNode field : cn.fields) {
+                    if (blockFieldRedirects.containsKey(field.name)) {
+                        doWeShadow = true;
+                        break;
+                    }
+                }
+            }
+            if (doWeShadow) {
+                LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
+                blockOwnerExclusions.add(cn.name);
+            }
+        }
+    }
+
     public boolean shouldTransform(byte[] classBytes) {
         return cstPoolParser.find(classBytes);
     }
@@ -206,28 +230,7 @@ public final class CeleritasBlockTransform {
         }
 
         trackBlockSubclasses(cn.name, cn.superName);
-
-        // Check if this class shadows any fields of the parent class
-        if (moddedBlockSubclasses.contains(cn.name)) {
-            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
-            // superclass
-            boolean doWeShadow = false;
-            if (blockOwnerExclusions.contains(cn.superName)) {
-                doWeShadow = true;
-            } else {
-                // Check if we declare any known field names
-                for (FieldNode field : cn.fields) {
-                    if (blockFieldRedirects.containsKey(field.name)) {
-                        doWeShadow = true;
-                        break;
-                    }
-                }
-            }
-            if (doWeShadow) {
-                LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
-                blockOwnerExclusions.add(cn.name);
-            }
-        }
+        trackBlockShadowingFields(cn);
 
         Map<String, String> overloaded = new HashMap<>(); // Cache it first in a local variable, so we don't need a ConcurrentHashMap.
         if (!overloadedMethods.containsKey(cn.name)) {
