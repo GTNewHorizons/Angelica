@@ -42,7 +42,7 @@ public final class CeleritasBlockTransform {
     private final ImmutableList<String> blockFieldNames;
     private final ImmutableMap<String, String> blockFieldRedirects;
     private final ImmutableList<String> methodNames;
-    
+
     /** isObf will not be changed during runtime. */
     public CeleritasBlockTransform(boolean isObf) {
 
@@ -261,7 +261,34 @@ public final class CeleritasBlockTransform {
         }
     }
 
-    /** @return Was the class changed? */
+    /**
+     * For field names contained in blockFieldNames, we replace accesses of `block.foo` with `ThreadedBlockData.get(block).foo`.
+     *
+     * When multiple accesses are detected, for example:
+     *
+     * ```java
+     * block.foo1
+     * block.foo2
+     * block.foo3
+     * ```
+     *
+     * to reduce the number of ThreadLocal lookups, these are transformed into:
+     *
+     * ```java
+     * var cache = ThreadedBlockData.get(block);
+     * cache.foo1
+     * cache.foo2
+     * cache.foo3
+     * ```
+     *
+     * Also, for methods where `block` is `this`, we create overloads whose first parameter is `ThreadedBlockData cache`.
+     *
+     * Where possible, we replace calls with calls to the overloaded methods so the `cache` can be reused.
+     *
+     * To avoid interfering with other ASM and Mixins, only create overloads for method names whitelisted in methodNames.
+     *
+     * @return Was the class changed?
+     */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
         if ("net.minecraft.block.Block".equals(transformedName) && isCeleritasEnabled()) {
             cn.fields.removeIf(field -> blockFieldNames.stream().anyMatch(name -> field.name.equals(name)));
