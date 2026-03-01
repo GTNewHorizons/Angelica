@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.google.common.collect.ImmutableListMultimap;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
@@ -21,17 +22,17 @@ public class AngelicaRenderPassConfiguration {
         @Override
         public void setup() {
             if (pass == 0) {
-                GL11.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
             }
             if (disableAlphaTest) {
-                GL11.glDisable(GL11.GL_ALPHA_TEST);
+                GLStateManager.disableAlphaTest();
             }
         }
 
         @Override
         public void clear() {
             if (disableAlphaTest) {
-                GL11.glEnable(GL11.GL_ALPHA_TEST);
+                GLStateManager.enableAlphaTest();
             }
         }
     }
@@ -40,7 +41,7 @@ public class AngelicaRenderPassConfiguration {
         return TerrainRenderPass.builder()
             .pipelineState(new AngelicaPipelineState(pass, disableAlphaTest))
             .vertexType(vertexType)
-            .primitiveType(QuadPrimitiveType.DIRECT);
+            .primitiveType(QuadPrimitiveType.TRIANGULATED);
     }
 
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {

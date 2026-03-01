@@ -29,6 +29,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ChunkProviderClient;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.chunk.EmptyChunk;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
@@ -97,17 +98,18 @@ public class ChunkDebugMinimap {
         GLStateManager.enableBlend();
         GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        GLStateManager.glBegin(GL11.GL_QUADS);
+        final Tessellator tess = Tessellator.instance;
+        tess.startDrawingQuads();
 
         final ChunkProviderClient chunkProvider = (ChunkProviderClient) mc.theWorld.getChunkProvider();
 
         for (int x = playerChunkX - RANGE; x < playerChunkX + RANGE; x++) {
             for (int z = playerChunkZ - RANGE; z < playerChunkZ + RANGE; z++) {
-                drawChunk(x, z, playerChunkX, playerChunkZ, manager, chunkProvider);
+                drawChunk(tess, x, z, playerChunkX, playerChunkZ, manager, chunkProvider);
             }
         }
 
-        GL11.glEnd();
+        tess.draw();
 
         // Restore GL state
         GLStateManager.enableLighting();
@@ -117,7 +119,7 @@ public class ChunkDebugMinimap {
         GLStateManager.glPopAttrib();
     }
 
-    private void drawChunk(int chunkX, int chunkZ, int playerChunkX, int playerChunkZ, AngelicaRenderSectionManager manager, ChunkProviderClient chunkProvider) {
+    private void drawChunk(Tessellator tess, int chunkX, int chunkZ, int playerChunkX, int playerChunkZ, AngelicaRenderSectionManager manager, ChunkProviderClient chunkProvider) {
         boolean initialized = false;
         float r = 0, g = 0, b = 0;
 
@@ -143,16 +145,16 @@ public class ChunkDebugMinimap {
             }
         }
 
-        GL11.glColor4f(r, g, b, 0.8f);
+        tess.setColorRGBA_F(r, g, b, 0.8f);
 
         final int xStart = chunkX - playerChunkX;
         final int zStart = chunkZ - playerChunkZ;
         final int xEnd = xStart + 1;
         final int zEnd = zStart + 1;
 
-        GLStateManager.glVertex3d(xStart, zStart, 0);
-        GLStateManager.glVertex3d(xStart, zEnd, 0);
-        GLStateManager.glVertex3d(xEnd, zEnd, 0);
-        GLStateManager.glVertex3d(xEnd, zStart, 0);
+        tess.addVertex(xStart, zStart, 0);
+        tess.addVertex(xStart, zEnd, 0);
+        tess.addVertex(xEnd, zEnd, 0);
+        tess.addVertex(xEnd, zStart, 0);
     }
 }

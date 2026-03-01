@@ -1,7 +1,5 @@
 package net.coderbot.iris.texture.util;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
-
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
@@ -11,6 +9,8 @@ import org.lwjgl.opengl.GL30;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
 
 public class TextureManipulationUtil {
 	private static int colorFillFBO = -1;
@@ -29,7 +29,7 @@ public class TextureManipulationUtil {
             GL11.glGetInteger(GL11.GL_VIEWPORT, previousViewportBuffer);
 
             OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, colorFillFBO);
-            GL11.glClearColor(
+            GLStateManager.glClearColor(
                 (rgba >> 24 & 0xFF) / 255.0f,
                 (rgba >> 16 & 0xFF) / 255.0f,
                 (rgba >> 8 & 0xFF) / 255.0f,
@@ -45,7 +45,7 @@ public class TextureManipulationUtil {
                     GL11.GL_TEXTURE_2D,
                     textureId,
                     level);
-                GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
                 if (Minecraft.isRunningOnMac) {
                     GL11.glGetError();
                 }
@@ -59,7 +59,7 @@ public class TextureManipulationUtil {
             }
 
             OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, previousFramebufferId);
-            GL11.glClearColor(
+            GLStateManager.glClearColor(
                 previousClearColorBuffer.get(0),
                 previousClearColorBuffer.get(1),
                 previousClearColorBuffer.get(2),

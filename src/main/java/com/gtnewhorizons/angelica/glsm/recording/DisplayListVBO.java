@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import org.lwjgl.opengl.GL15;
 
 /**
  * A class that stores multiple vertex formats & their corresponding buffers.

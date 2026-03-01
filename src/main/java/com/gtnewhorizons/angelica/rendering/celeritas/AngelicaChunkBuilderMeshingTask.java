@@ -104,6 +104,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         onEnterExecute();
 
         final Tessellator tessellator = getTessellator();
+        ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
 
         try {
             tessellator.setTranslation(-minX, -minY, -minZ);
@@ -207,6 +208,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         } catch (Throwable ex) {
             throw fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building chunk meshes"), region, blockPos);
         } finally {
+            ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
             SmoothBiomeColorCache.clearActiveCache();
             onExitExecute();
         }
@@ -270,15 +272,19 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
             final RenderBlocks mainThreadRenderBlocks = new RenderBlocks(region);
             final Tessellator mainTessellator = Tessellator.instance;
+            ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(true);
             mainTessellator.setTranslation(-minX, -minY, -minZ);
 
-            for (DeferredBlock deferred : deferredBlocks) {
-                renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
-                    mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
-                    blockRenderContext, minX, minY, minZ, deferred.materialOverride(), deferred.isShaderPackOverride());
+            try {
+                for (DeferredBlock deferred : deferredBlocks) {
+                    renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
+                        mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
+                        blockRenderContext, minX, minY, minZ, deferred.materialOverride(), deferred.isShaderPackOverride());
+                }
+            } finally {
+                ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(false);
+                mainTessellator.setTranslation(0, 0, 0);
             }
-
-            mainTessellator.setTranslation(0, 0, 0);
         }, AngelicaRenderQueue.executor());
 
         if (Thread.currentThread().isInterrupted()) {

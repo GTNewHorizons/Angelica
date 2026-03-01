@@ -15,6 +15,7 @@ import org.objectweb.asm.tree.MethodNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -42,9 +43,11 @@ public final class AngelicaRedirector {
     private static final String ARBVertexArrayObject = "org/lwjgl/opengl/ARBVertexArrayObject";
     private static final String APPLEVertexArrayObject = "org/lwjgl/opengl/APPLEVertexArrayObject";
     private static final String Project = "org/lwjgl/util/glu/Project";
+    private static final String GLU = "org/lwjgl/util/glu/GLU";
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
+    private static final String ARBShaderObjects = "org/lwjgl/opengl/ARBShaderObjects";
 
     // Redirect VAO related calls from NHLib and LWJGLService
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -102,6 +105,8 @@ public final class AngelicaRedirector {
             .add("glColorMask")
             .add("glColorMaterial")
             .add("glDeleteLists")
+            .add("glGenLists")
+            .add("glIsList")
             .add("glDeleteTextures")
             .add("glDepthFunc")
             .add("glDepthMask")
@@ -174,6 +179,13 @@ public final class AngelicaRedirector {
             .add("glTexCoord3f")
             .add("glTexCoord4d")
             .add("glTexCoord4f")
+            .add("glTexEnvi")
+            .add("glTexEnvf")
+            .add("glTexEnv")
+            .add("glTexGeni")
+            .add("glTexGenf")
+            .add("glTexGend")
+            .add("glTexGen")
             .add("glTexImage1D")
             .add("glTexImage2D")
             .add("glTexImage3D")
@@ -185,6 +197,8 @@ public final class AngelicaRedirector {
             .add("glCopyTexSubImage2D")
             .add("glPixelStoref")
             .add("glPixelStorei")
+            .add("glPixelTransferf")
+            .add("glPixelTransferi")
             .add("glTexParameter")
             .add("glTexParameterf")
             .add("glTexParameteri")
@@ -197,6 +211,8 @@ public final class AngelicaRedirector {
             .add("glPointSize")
             .add("glPolygonMode")
             .add("glPolygonOffset")
+            .add("glPolygonStipple")
+            .add("glAccum")
             .add("glReadBuffer")
             .add("glSampleCoverage")
             .add("glScissor")
@@ -214,9 +230,22 @@ public final class AngelicaRedirector {
             .add("glVertex3f")
             .add("glVertexPointer")
             .add("glColorPointer")
+            .add("glNormalPointer")
+            .add("glTexCoordPointer")
             .add("glEnableClientState")
             .add("glDisableClientState")
+            .add("glInterleavedArrays")
+            .add("glPushClientAttrib")
+            .add("glPopClientAttrib")
             .add("glViewport")
+            .add("glFeedbackBuffer")
+            .add("glRenderMode")
+            .add("glPassThrough")
+            .add("glSelectBuffer")
+            .add("glInitNames")
+            .add("glPushName")
+            .add("glPopName")
+            .add("glLoadName")
         );
         methodRedirects.put(GL12, RedirectMap.newMap()
             .add("glTexImage3D")
@@ -226,6 +255,10 @@ public final class AngelicaRedirector {
         methodRedirects.put(GL13, RedirectMap.newMap()
             .add("glActiveTexture")
             .add("glSampleCoverage")
+            .add("glClientActiveTexture")
+            .add("glMultiTexCoord2f")
+            .add("glMultiTexCoord2d")
+            .add("glMultiTexCoord2s")
         );
         methodRedirects.put(GL14, RedirectMap.newMap()
             .add("glBlendFuncSeparate", "tryBlendFuncSeparate")
@@ -242,9 +275,40 @@ public final class AngelicaRedirector {
             .add("glStencilMaskSeparate")
             .add("glStencilOpSeparate")
             .add("glUseProgram")
+            .add("glShaderSource")
+            .add("glLinkProgram")
+            .add("glDeleteProgram")
+            .add("glCreateShader")
+            .add("glCompileShader")
+            .add("glCreateProgram")
+            .add("glAttachShader")
+            .add("glDetachShader")
+            .add("glValidateProgram")
+            .add("glGetUniformLocation")
+            .add("glGetAttribLocation")
+            .add("glUniform1f")
+            .add("glUniform2f")
+            .add("glUniform3f")
+            .add("glUniform4f")
+            .add("glUniform1i")
+            .add("glUniform2i")
+            .add("glUniform3i")
+            .add("glUniform4i")
+            .add("glUniform1")
+            .add("glUniform2")
+            .add("glUniform3")
+            .add("glUniform4")
+            .add("glUniformMatrix2")
+            .add("glUniformMatrix3")
+            .add("glUniformMatrix4")
+            .add("glGetActiveUniform")
+            .add("glGetAttachedShaders")
+            .add("glGetShaderSource")
+            .add("glGetUniform")
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
             .add("glBindFramebuffer")
         );
 
@@ -267,8 +331,46 @@ public final class AngelicaRedirector {
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap()
             .add("glActiveTextureARB")
         );
+        methodRedirects.put(ARBShaderObjects, RedirectMap.newMap()
+            .add("glUseProgramObjectARB", "glUseProgram")
+            .add("glShaderSourceARB", "glShaderSource")
+            .add("glLinkProgramARB", "glLinkProgram")
+            .add("glCreateShaderObjectARB", "glCreateShader")
+            .add("glCompileShaderARB", "glCompileShader")
+            .add("glCreateProgramObjectARB", "glCreateProgram")
+            .add("glAttachObjectARB", "glAttachShader")
+            .add("glDetachObjectARB", "glDetachShader")
+            .add("glValidateProgramARB", "glValidateProgram")
+            .add("glGetUniformLocationARB", "glGetUniformLocation")
+            .add("glGetAttribLocationARB", "glGetAttribLocation")
+            .add("glDeleteObjectARB")
+            .add("glGetObjectParameterARB")
+            .add("glGetObjectParameteriARB")
+            .add("glGetInfoLogARB")
+            .add("glGetHandleARB")
+            .add("glUniform1fARB", "glUniform1f")
+            .add("glUniform2fARB", "glUniform2f")
+            .add("glUniform3fARB", "glUniform3f")
+            .add("glUniform4fARB", "glUniform4f")
+            .add("glUniform1iARB", "glUniform1i")
+            .add("glUniform2iARB", "glUniform2i")
+            .add("glUniform3iARB", "glUniform3i")
+            .add("glUniform4iARB", "glUniform4i")
+            .add("glUniform1ARB", "glUniform1")
+            .add("glUniform2ARB", "glUniform2")
+            .add("glUniform3ARB", "glUniform3")
+            .add("glUniform4ARB", "glUniform4")
+            .add("glUniformMatrix2ARB", "glUniformMatrix2")
+            .add("glUniformMatrix3ARB", "glUniformMatrix3")
+            .add("glUniformMatrix4ARB", "glUniformMatrix4")
+            .add("glGetActiveUniformARB", "glGetActiveUniform")
+            .add("glGetAttachedObjectsARB", "glGetAttachedShaders")
+            .add("glGetShaderSourceARB", "glGetShaderSource")
+            .add("glGetUniformARB", "glGetUniform")
+        );
         methodRedirects.put(ARBVertexArrayObject, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
         );
 
 
@@ -280,20 +382,32 @@ public final class AngelicaRedirector {
         // GTNHLib VAO
         methodRedirects.put(UniversalVAO, RedirectMap.newMap()
             .add("bindVertexArray", "glBindVertexArray")
+            .add("deleteVertexArrays", "glDeleteVertexArrays")
         );
 
         // OTHER
-        methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+        methodRedirects.put(Project, RedirectMap.newMap()
+            .add("gluPerspective")
+            .add("gluLookAt")
+            .add("gluPickMatrix")
+        );
+        methodRedirects.put(GLU, RedirectMap.newMap()
+            .add("gluPerspective")
+            .add("gluLookAt")
+            .add("gluOrtho2D")
+            .add("gluPickMatrix")
+        );
 
         // Interface/virtual redirects — callers invoke these on a receiver object
         interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
         );
         interfaceRedirects.put(LWJGLService, RedirectMap.newMap()
             .add("glBindVertexArray")
         );
 
-        ArrayList<String> stringsToSearch = new ArrayList<>(32);
+        final List<String> stringsToSearch = new ArrayList<>(32);
         stringsToSearch.add(VaoFunctions);
         stringsToSearch.add(LWJGLService);
         final String glPrefix = "org/lwjgl/opengl/GL";

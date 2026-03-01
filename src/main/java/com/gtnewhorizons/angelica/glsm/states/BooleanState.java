@@ -6,12 +6,18 @@ import org.lwjgl.opengl.GL11;
 
 public class BooleanState implements ISettableState<BooleanState> {
     protected final int glCap;
+    protected final boolean ffpStateOnly;
 
     @Getter protected boolean enabled;
     protected boolean stateUnknown;
 
     public BooleanState(int glCap) {
+        this(glCap, false);
+    }
+
+    public BooleanState(int glCap, boolean ffpStateOnly) {
         this.glCap = glCap;
+        this.ffpStateOnly = ffpStateOnly;
     }
 
     public void setUnknownState() {
@@ -33,11 +39,12 @@ public class BooleanState implements ISettableState<BooleanState> {
             if (!bypass) {
                 this.enabled = enabled;
             }
-            // Always call GL - the calling method controls whether we reach here based on recording mode
-            if (enabled) {
-                GL11.glEnable(this.glCap);
-            } else {
-                GL11.glDisable(this.glCap);
+            if (!ffpStateOnly) {
+                if (enabled) {
+                    GL11.glEnable(this.glCap);
+                } else {
+                    GL11.glDisable(this.glCap);
+                }
             }
         }
     }

@@ -10,6 +10,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
@@ -25,6 +26,8 @@ public final class CommandBufferExecutor {
     private static final FloatBuffer MATRIX_BUFFER = BufferUtils.createFloatBuffer(16);
     // Static reusable buffer for fog/light/material params
     private static final FloatBuffer PARAMS_BUFFER = BufferUtils.createFloatBuffer(4);
+    // Static reusable buffer for clip plane equation
+    private static final DoubleBuffer PARAMS_DOUBLE_BUFFER = BufferUtils.createDoubleBuffer(4);
     // Static reusable buffer for draw buffers
     private static final int MAX_DRAW_BUFFERS = 8;
     private static final IntBuffer DRAW_BUFFERS_BUFFER = BufferUtils.createIntBuffer(MAX_DRAW_BUFFERS);
@@ -195,6 +198,14 @@ public final class CommandBufferExecutor {
                     final int height = memGetInt(ptr + 12);
                     ptr += 16;
                     GLStateManager.glViewport(x, y, width, height);
+                }
+                case GLCommand.SCISSOR -> {
+                    final int x = memGetInt(ptr);
+                    final int y = memGetInt(ptr + 4);
+                    final int width = memGetInt(ptr + 8);
+                    final int height = memGetInt(ptr + 12);
+                    ptr += 16;
+                    GLStateManager.glScissor(x, y, width, height);
                 }
                 case GLCommand.BLEND_FUNC -> {
                     final int srcRgb = memGetInt(ptr);
@@ -449,6 +460,19 @@ public final class CommandBufferExecutor {
                     GLStateManager.glMaterial(face, pname, PARAMS_BUFFER);
                 }
 
+                case GLCommand.CLIP_PLANE -> {
+                    final int plane = memGetInt(ptr);
+                    final double a = memGetDouble(ptr + 4);
+                    final double b = memGetDouble(ptr + 12);
+                    final double c = memGetDouble(ptr + 20);
+                    final double d = memGetDouble(ptr + 28);
+                    ptr += 36;
+                    PARAMS_DOUBLE_BUFFER.clear();
+                    PARAMS_DOUBLE_BUFFER.put(a).put(b).put(c).put(d);
+                    PARAMS_DOUBLE_BUFFER.flip();
+                    GLStateManager.glClipPlane(plane, PARAMS_DOUBLE_BUFFER);
+                }
+
                 // === Draw commands ===
                 case GLCommand.DRAW_RANGE -> {
                     final int vboIndex = memGetInt(ptr);
@@ -519,7 +543,7 @@ public final class CommandBufferExecutor {
                     ptr += 4;
                 }
                 case GLCommand.BIND_VAO -> {
-                    UniversalVAO.bindVertexArray(memGetInt(ptr));
+                    GLStateManager.glBindVertexArray(memGetInt(ptr));
                     ptr += 4;
                 }
 

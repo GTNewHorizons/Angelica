@@ -12,6 +12,14 @@
    * Complementary + Euphoria Patches is the primary compatibility target
    * Sildurs, Seus, and any other shaders might work
 
+## Core Profile
+Targets GL 3.3+ core profile
+* FFP emulation via generated GLSL shaders
+* Display list emulation
+* Software matrix stacks and state management through GLSM
+* GL_QUADS → GL_TRIANGLES conversion
+* Automatic transformation of mod shaders that use compat-only GLSL builtins (`gl_ModelViewMatrix`, `texture2D`, etc.)
+
 
 # Required Dependencies
 * [UniMixins](https://github.com/LegacyModdingMC/UniMixins/releases) >= 0.1.23
@@ -56,9 +64,9 @@
   * The [Iris](https://github.com/IrisShaders/Iris) Team: coderbot, IMS212, Justsnoopy30, FoundationGames
   * Asek3 for the Iris Forge port [Oculus](https://github.com/Asek3/Oculus/tree/839ce8eca8cf0c4f6b7a1322b906e5c99125ca69)
   * Backported code under the LGPL
-* Sodium
+* Sodium / Celeritas
   * JellySquid & the CaffeineMC team, for making Sodium in the first place
-  * Embeddedt for [Embeddium](https://github.com/embeddedt/embeddium/tree/dc59ca357c25beefd6288f0d1d40b4cd8e670ab8) under the [LGPL 3.0](https://github.com/embeddedt/embeddium/blob/16.x/forge/LICENSE)
+  * Embeddedt for Celeritas used under the LGPL 3.0
 * Reese's Sodium Options
   * FlashyReese for [Reese's Sodium Options](https://github.com/FlashyReese/reeses-sodium-options/tree/aa4ea67047cf53e54976e93c6bb1ab5ba16b142b) under the [MIT license](https://github.com/FlashyReese/reeses-sodium-options/blob/aa4ea67047cf53e54976e93c6bb1ab5ba16b142b/LICENSE.txt)
 * Neodymium
@@ -85,3 +93,8 @@
   * FalsePattern for [FalseTweaks](https://github.com/falsepattern/falsetweaks) - Item Rendering Optimizations taken from FalseTweaks under the LGPL 3.0 license
 * Beddium
   * Venn and Falsepattern for [Beddium](https://github.com/vfx-dev/Beddium) - MinimapRenderer, SafeChunkTracker, and some debug commands adapted under the LGPL 3.0 License
+* [Mesa](https://gitlab.freedesktop.org/mesa/mesa) — Code ported and/or inspired from Mesa - under the MIT licensed
+  * Display list ID allocator ported from [util_idalloc](https://gitlab.freedesktop.org/mesa/mesa/-/blob/main/src/util/u_idalloc.c) (Copyright 2017 Valve Corporation)
+  * FFP vertex shader generation inspired by ffvertex_prog.c (Copyright 2007 VMware, Inc.)
+  * FFP fragment shader generation inspired by ff_fragment_shader.c (Copyright 2007, 2009 VMware, Inc. / 2010-2011 Intel Corporation)
+  * Fog parameter optimization inspired by st_nir_lower_fog.c (Copyright 2023 Google LLC) and prog_statevars.c (Copyright 1999-2007 Brian Paul)

@@ -12,7 +12,9 @@ import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
  * Stress tests for display list system.
@@ -97,7 +99,7 @@ class GLSM_DisplayList_Stress_Test {
         GLStateManager.glCallList(list);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // All push/pop pairs cancel out, only final translate remains
         assertEquals(42.0f, actualBuf.get(12), 0.0001f,
@@ -155,7 +157,7 @@ class GLSM_DisplayList_Stress_Test {
 
         // Final matrix should have translation = chainLength (each list adds 1)
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         Matrix4f expected = new Matrix4f().translate(chainLength, 0.0f, 0.0f);
         FloatBuffer expectedBuf = BufferUtils.createFloatBuffer(16);
@@ -198,7 +200,7 @@ class GLSM_DisplayList_Stress_Test {
         GLStateManager.glCallList(list);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // All pushes and pops cancel out, only final 99 translate remains
         assertEquals(99.0f, actualBuf.get(12), 0.0001f,
@@ -230,7 +232,7 @@ class GLSM_DisplayList_Stress_Test {
 
                 // Verify correct transform was applied
                 FloatBuffer buf = BufferUtils.createFloatBuffer(16);
-                GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buf);
+                GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buf);
                 assertEquals(i + 1, buf.get(12), 0.0001f,
                     "List " + i + " should translate by " + (i + 1));
 
@@ -255,7 +257,7 @@ class GLSM_DisplayList_Stress_Test {
         GLStateManager.glCallList(list);
 
         FloatBuffer buf1 = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buf1);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buf1);
         assertEquals(5.0f, buf1.get(12), 0.0001f, "First compilation should translate by 5");
 
         GLStateManager.glPopMatrix();
@@ -271,7 +273,7 @@ class GLSM_DisplayList_Stress_Test {
         GLStateManager.glCallList(list);
 
         FloatBuffer buf2 = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buf2);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, buf2);
         assertEquals(10.0f, buf2.get(12), 0.0001f, "Recompilation should translate by 10");
 
         GLStateManager.glPopMatrix();
@@ -297,7 +299,7 @@ class GLSM_DisplayList_Stress_Test {
         GLStateManager.glCallList(list);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Build expected with JOML
         Matrix4f expected = new Matrix4f()

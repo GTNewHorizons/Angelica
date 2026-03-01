@@ -111,19 +111,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.celeritas$renderer.scheduleTerrainUpdate();
     }
 
-    @Unique
-    private static boolean sortAndRenderLogged = false;
-
     /**
      * @author celeritas
      * @reason Redirect to our renderer with Iris phase support
      */
     @Overwrite
     public int sortAndRender(EntityLivingBase entity, int pass, double partialTicks) {
-        if (!sortAndRenderLogged && ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
-            Iris.logger.info("[SHADOW DEBUG] sortAndRender called! pass={}", pass);
-            sortAndRenderLogged = true;
-        }
 
         final WorldRenderingPipeline pipeline;
         if (!Iris.enabled) {

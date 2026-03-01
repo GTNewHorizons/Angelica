@@ -34,18 +34,18 @@ public class GlImage extends GlObject {
 
 		GLDebug.nameObject(GL11.GL_TEXTURE, handle(), name);
 
-		GL11.glBindTexture(target.getGlType(), handle());
+		GLStateManager.glBindTexture(target.getGlType(), handle());
 		target.apply(handle(), width, height, depth, internalFormat.getGlFormat(), format.getGlFormat(), pixelType.getGlFormat(), null);
 
-		int texture = handle();
+		final int texture = handle();
 
 		setup(texture, width, height, depth);
 
-		GL11.glBindTexture(target.getGlType(), 0);
+		GLStateManager.glBindTexture(target.getGlType(), 0);
 	}
 
 	protected void setup(int texture, int width, int height, int depth) {
-		boolean isInteger = internalTextureFormat.getPixelFormat().isInteger();
+		final boolean isInteger = internalTextureFormat.getPixelFormat().isInteger();
 		RenderSystem.texParameteri(texture, target.getGlType(), GL11.GL_TEXTURE_MIN_FILTER, isInteger ? GL11.GL_NEAREST : GL11.GL_LINEAR);
 		RenderSystem.texParameteri(texture, target.getGlType(), GL11.GL_TEXTURE_MAG_FILTER, isInteger ? GL11.GL_NEAREST : GL11.GL_LINEAR);
 		RenderSystem.texParameteri(texture, target.getGlType(), GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
@@ -139,14 +139,14 @@ public class GlImage extends GlObject {
 
 		@Override
 		public void updateNewSize(int width, int height) {
-			GL11.glBindTexture(target.getGlType(), handle());
+			GLStateManager.glBindTexture(target.getGlType(), handle());
 			target.apply(handle(), (int) (width * relativeWidth), (int) (height * relativeHeight), 0, internalTextureFormat.getGlFormat(), format.getGlFormat(), pixelType.getGlFormat(), null);
 
-			int texture = handle();
+			final int texture = handle();
 
 			setup(texture, width, height, 0);
 
-			GL11.glBindTexture(target.getGlType(), 0);
+			GLStateManager.glBindTexture(target.getGlType(), 0);
 		}
 	}
 }

@@ -28,16 +28,14 @@ public final class FontProviderMC implements FontProvider {
     public int[] charWidth;
 
     static {
+        MCFONT_ASCII_MAP.defaultReturnValue((short) -1);
         for (short i = 0; i < MCFONT_CHARS.length(); i++) {
             MCFONT_ASCII_MAP.put(MCFONT_CHARS.charAt(i), i);
         }
     }
 
     public int lookupMcFontPosition(char ch) {
-        if (isGlyphAvailable(ch)) {
-            return MCFONT_ASCII_MAP.get(ch);
-        }
-        return -1;
+        return MCFONT_ASCII_MAP.get(ch);
     }
 
     @Override

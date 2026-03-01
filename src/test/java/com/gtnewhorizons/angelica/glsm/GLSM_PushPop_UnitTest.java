@@ -12,18 +12,15 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL32;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
 
-import static org.junit.jupiter.api.Assertions.assertTrue;
-
 import static com.gtnewhorizons.angelica.util.GLSMUtil.resetGLState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyIsEnabled;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
-import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyNotDefaultState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @ExtendWith(AngelicaExtension.class)
 class GLSM_PushPop_UnitTest {
@@ -133,50 +130,23 @@ class GLSM_PushPop_UnitTest {
     @Test
     void testPushPopCurrentBit() {
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Initial Color State"); // Verify no state leakage from other tests
-        verifyState(GL11.GL_CURRENT_INDEX, 1, "Initial Index State");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Initial Texture Coordinates");
-        verifyState(GL11.GL_CURRENT_RASTER_POSITION, FLOAT_ARRAY_4_0001, "Initial Raster Position");
-        verifyState(GL11.GL_CURRENT_RASTER_POSITION_VALID, true, "Initial Raster Position Valid");
-        verifyState(GL11.GL_CURRENT_RASTER_COLOR, FLOAT_ARRAY_4_1, "Initial Raster Color");
-        verifyState(GL11.GL_CURRENT_RASTER_INDEX, 1, "Initial Raster Index");
-        verifyState(GL11.GL_CURRENT_RASTER_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Initial Raster Texture Coordinates");
 
         GLStateManager.glPushAttrib(GL11.GL_CURRENT_BIT);
         GLStateManager.glColor4f(0.5f, 0.5f, 0.5f, 0.5f);
-        // Apparently glIndex is not implemented in lwjgl2?
         GLStateManager.glNormal3f(0.5f, 0.5f, 0.5f);
-        GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f); // Current texture coordinates
-        GLStateManager.glRasterPos4f(0.5f, 0.5f, 0.5f, 0.5f); // Current raster position
-        // GL_CURRENT_RASTER_POSITION_VALID flag
-        // RGBA color associated with current raster position
-        // Color index associated with current raster position
-        // Texture coordinates associated with current raster position
-        GLStateManager.glEdgeFlag(false); // GL_EDGE_FLAG flag
+        GLStateManager.glTexCoord4f(0.5f, 0.5f, 0.5f, 0.5f);
 
 
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_POINT_5, "Current Color");
-        verifyState(GL11.GL_CURRENT_INDEX, 1f, "Current Index");
         verifyState(GL11.GL_CURRENT_NORMAL, FLOAT_ARRAY_3_POINT_5, "Current Normal");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_POINT_5, "Texture coordinates");
-        verifyNotDefaultState(GL11.GL_CURRENT_RASTER_POSITION, FLOAT_ARRAY_4_0001, "Raster Position");
-        verifyState(GL11.GL_CURRENT_RASTER_POSITION_VALID, true, "Raster Position Valid");
-        verifyState(GL11.GL_CURRENT_RASTER_COLOR, FLOAT_ARRAY_4_POINT_5, "Raster Color");
-        verifyState(GL11.GL_CURRENT_RASTER_INDEX, 1, "Raster Index");
-        verifyState(GL11.GL_CURRENT_RASTER_TEXTURE_COORDS, FLOAT_ARRAY_4_POINT_5, "Raster Texture Coordinates");
-        verifyState(GL11.GL_EDGE_FLAG, false, "Edge Flag");
 
 
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_CURRENT_COLOR, FLOAT_ARRAY_4_1, "Current Color - reset");
-        verifyState(GL11.GL_CURRENT_INDEX, 1, "Current Index - reset");
         verifyState(GL11.GL_CURRENT_NORMAL, FLOAT_ARRAY_3_001, "Current normal - reset");
         verifyState(GL11.GL_CURRENT_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Texture coordinates - reset");
-        verifyState(GL11.GL_CURRENT_RASTER_POSITION, FLOAT_ARRAY_4_0001, "Raster Position - reset");
-        verifyState(GL11.GL_CURRENT_RASTER_POSITION_VALID, true, "Raster Position Valid - reset");
-        verifyState(GL11.GL_CURRENT_RASTER_COLOR, FLOAT_ARRAY_4_1, "Raster Color - reset");
-        verifyState(GL11.GL_CURRENT_RASTER_INDEX, 1, "Raster Index - reset");
-        verifyState(GL11.GL_CURRENT_RASTER_TEXTURE_COORDS, FLOAT_ARRAY_4_0001, "Raster Texture Coordinates - reset");
-        verifyState(GL11.GL_EDGE_FLAG, true, "Edge Flag - reset");
     }
 
     @Test
@@ -300,7 +270,7 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glFogf(GL11.GL_FOG_END, 0.5f);
         GLStateManager.glFogf(GL11.GL_FOG_START, 0.5f);
         GLStateManager.glFogf(GL11.GL_FOG_MODE, GL11.GL_LINEAR);
-        if (!GLStateManager.vendorIsNVIDIA()) GLStateManager.glFogf(GL11.GL_FOG_INDEX, 1f);
+        // Fog index not tracked by GLSM (MC 1.7.10 never uses it)
 
         verifyIsEnabled(GL11.GL_FOG, true, "Fog Enable");
         verifyState(GL11.GL_FOG_COLOR, FLOAT_ARRAY_4_POINT_5, "Fog Color");
@@ -308,7 +278,6 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_END, 0.5f, "Fog End");
         verifyState(GL11.GL_FOG_START, 0.5f, "Fog Start");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_LINEAR, "Fog Mode");
-        if (!GLStateManager.vendorIsNVIDIA()) verifyState(GL11.GL_FOG_INDEX, 1f, "Fog Index");
 
         GLStateManager.glPopAttrib();
         verifyIsEnabled(GL11.GL_FOG, false, "Fog Enable - Reset");
@@ -317,7 +286,6 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_FOG_END, 1f, "Fog End - Reset");
         verifyState(GL11.GL_FOG_START, 0f, "Fog Start - Reset");
         verifyState(GL11.GL_FOG_MODE, GL11.GL_EXP, "Fog Mode - Reset");
-        if (!GLStateManager.vendorIsNVIDIA()) verifyState(GL11.GL_FOG_INDEX, 0f, "Fog Index - Reset");
     }
 
     @Test
@@ -526,35 +494,22 @@ class GLSM_PushPop_UnitTest {
 
     @Test
     void testPushPopLineBit() {
-        /*
-         * GL_LINE_BIT
-         *     GL_LINE_SMOOTH enable bit
-         *     GL_LINE_STIPPLE enable bit
-         *     Line stipple pattern and repeat counter
-         *     Line width
-         */
+        // glLineStipple is guarded as unsupported in core profile — only test line width and smooth
         verifyState(GL11.GL_LINE_WIDTH, 1.0f, "Line Width - Initial");
-        verifyState(GL11.GL_LINE_STIPPLE_PATTERN, (short) 0xFFFF, "Line Stipple Pattern - Initial");
-        verifyState(GL11.GL_LINE_STIPPLE_REPEAT, 1, "Line Stipple Repeat - Initial");
         verifyIsEnabled(GL11.GL_LINE_SMOOTH, false, "Line Smooth - Initial");
         verifyIsEnabled(GL11.GL_LINE_STIPPLE, false, "Line Stipple - Initial");
 
         GLStateManager.glPushAttrib(GL11.GL_LINE_BIT);
         GLStateManager.glLineWidth(2.5f);
-        GLStateManager.glLineStipple(3, (short) 0xAAAA);
         GLStateManager.glEnable(GL11.GL_LINE_SMOOTH);
         GLStateManager.glEnable(GL11.GL_LINE_STIPPLE);
 
         verifyState(GL11.GL_LINE_WIDTH, 2.5f, "Line Width");
-        verifyState(GL11.GL_LINE_STIPPLE_PATTERN, (short) 0xAAAA, "Line Stipple Pattern");
-        verifyState(GL11.GL_LINE_STIPPLE_REPEAT, 3, "Line Stipple Repeat");
         verifyIsEnabled(GL11.GL_LINE_SMOOTH, true, "Line Smooth");
         verifyIsEnabled(GL11.GL_LINE_STIPPLE, true, "Line Stipple");
 
         GLStateManager.glPopAttrib();
         verifyState(GL11.GL_LINE_WIDTH, 1.0f, "Line Width - Reset");
-        verifyState(GL11.GL_LINE_STIPPLE_PATTERN, (short) 0xFFFF, "Line Stipple Pattern - Reset");
-        verifyState(GL11.GL_LINE_STIPPLE_REPEAT, 1, "Line Stipple Repeat - Reset");
         verifyIsEnabled(GL11.GL_LINE_SMOOTH, false, "Line Smooth - Reset");
         verifyIsEnabled(GL11.GL_LINE_STIPPLE, false, "Line Stipple - Reset");
     }

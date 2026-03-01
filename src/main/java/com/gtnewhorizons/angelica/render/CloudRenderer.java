@@ -25,38 +25,44 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.uniform.GlUniformFloat2v;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.texture.DynamicTexture;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Vec3;
+import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
+import org.embeddedt.embeddium.impl.gl.shader.GlShader;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderBindingContext;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
+import org.embeddedt.embeddium.impl.gl.shader.ShaderType;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat3v;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformFloat4v;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformInt;
+import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
 public class CloudRenderer implements IResourceManagerReloadListener {
-    // Shared constants.
     private static final float PX_SIZE = 1 / 256F;
 
-    // Building constants.
-    private static final int TOP_SECTIONS = 12;    // Number of slices a top face will span.
+    private static final int TOP_SECTIONS = 12;
     private static final int HEIGHT = 4;
     private static final float INSET = 0.001F;
     private static final float ALPHA = 0.8F;
 
-    // Debug
     private static final boolean WIREFRAME = false;
 
-    // Instance fields
     private final Minecraft mc = Minecraft.getMinecraft();
     private final ResourceLocation texture = new ResourceLocation("textures/environment/clouds.png");
 
@@ -66,14 +72,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private int cloudElevation = -1;
     private int scaleMult = -1;
 
-    private DynamicTexture COLOR_TEX = null;
-    private int texColor;
-
     private int texW;
     private int texH;
 
+    private GlProgram<CloudUniforms> program;
+    private final Matrix4f mvpScratch = new Matrix4f();
+
     public CloudRenderer() {
-        // Resource manager should always be reloadable.
         ((IReloadableResourceManager) mc.getResourceManager()).registerReloadListener(this);
     }
 
@@ -89,24 +94,28 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private float ceilToScale(float value) {
-        float scale = getScale();
+        final float scale = getScale();
         return (float)Math.ceil(value / scale) * scale;
     }
 
+    private float meshExtent() {
+        return ceilToScale(renderDistance * 4 * 16);
+    }
+
     private void vertices(Tessellator tessellator) {
-        GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
-        boolean fancy = cloudGraphicsQuality == GraphicsQualityOff.FANCY || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics;
+        final GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
+        final boolean fancy = cloudGraphicsQuality == GraphicsQualityOff.FANCY || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics;
 
-        float scale = getScale();
-        float CULL_DIST = 2 * scale;
+        final float scale = getScale();
+        final float CULL_DIST = 2 * scale;
 
-        float bCol = fancy ? 0.7F : 1F;
+        final float bCol = fancy ? 0.7F : 1F;
 
-        float sectEnd = ceilToScale((renderDistance * 2) * 16);
-        float sectStart = -sectEnd;
+        final float sectEnd = meshExtent();
+        final float sectStart = -sectEnd;
 
-        float sectStep = ceilToScale(sectEnd * 2 / TOP_SECTIONS);
-        float sectPx = PX_SIZE / scale;
+        final float sectStep = ceilToScale(sectEnd * 2 / TOP_SECTIONS);
+        final float sectPx = PX_SIZE / scale;
 
         tessellator.startDrawingQuads();
 
@@ -128,10 +137,10 @@ public class CloudRenderer implements IResourceManagerReloadListener {
                 if (sectZ1 > sectEnd)
                     sectZ1 = sectEnd;
 
-                float u0 = sectX0 * sectPx;
-                float u1 = sectX1 * sectPx;
-                float v0 = sectZ0 * sectPx;
-                float v1 = sectZ1 * sectPx;
+                final float u0 = sectX0 * sectPx;
+                final float u1 = sectX1 * sectPx;
+                final float v0 = sectZ0 * sectPx;
+                final float v1 = sectZ1 * sectPx;
 
                 // Bottom
                 tessellator.setColorRGBA_F(bCol, bCol, bCol, ALPHA);
@@ -222,6 +231,10 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             vao.delete();
             vao = null;
         }
+        if (program != null) {
+            program.delete();
+            program = null;
+        }
     }
 
     private void build() {
@@ -239,7 +252,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     public void checkSettings() {
-        GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
+        final GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff)Settings.MODE_CLOUDS.option.getStore();
         final int cloudQualitySetting = cloudGraphicsQuality == GraphicsQualityOff.FANCY
             || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics ? 2 : 1;
         final boolean newEnabled = cloudGraphicsQuality != GraphicsQualityOff.OFF
@@ -273,91 +286,170 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         }
     }
 
+    private void initProgram() {
+        if (program != null) return;
+
+        final GlShader vert = ShaderLoader.loadShader(ShaderType.VERTEX, "angelica:cloud.vert", ShaderConstants.EMPTY);
+        final GlShader frag = ShaderLoader.loadShader(ShaderType.FRAGMENT, "angelica:cloud.frag", ShaderConstants.EMPTY);
+        try {
+            program = GlProgram.builder("angelica:cloud")
+                .attachShader(vert)
+                .attachShader(frag)
+                .link(CloudUniforms::new);
+        } finally {
+            vert.delete();
+            frag.delete();
+        }
+
+        final CloudUniforms u = program.getInterface();
+        final float start = renderDistance * 16.0f;
+        final float end = meshExtent();
+        final float range = end - start;
+
+        program.bind();
+        u.cloudTex.setInt(0);
+        u.fogParams.set(new float[] {
+            range != 0.0f ? -1.0f / range : 0.0f,
+            range != 0.0f ? end / range : 1.0f,
+            0.0f, 0.0f
+        });
+        program.unbind();
+    }
+
+    private void uploadFogUniforms(float partialTicks) {
+        final CloudUniforms u = program.getInterface();
+        final boolean fogEnabled = GLStateManager.getFogMode().isEnabled();
+        u.setFogEnabled(fogEnabled);
+
+        if (fogEnabled) {
+            final Vec3 sky = mc.theWorld.getSkyColor(mc.renderViewEntity, partialTicks);
+            u.setFogColor((float) sky.xCoord, (float) sky.yCoord, (float) sky.zCoord);
+        }
+    }
+
+    private static class CloudUniforms {
+        final GlUniformMatrix4f mvp;
+        final GlUniformFloat3v colorMult;
+        final GlUniformFloat2v texOffset;
+        final GlUniformFloat2v fogOrigin;
+        final GlUniformFloat4v fogParams;
+        final GlUniformFloat4v fogColor;
+        final GlUniformInt fogEnabled;
+        final GlUniformInt cloudTex;
+
+        private int lastFogEnabled = -1;
+        private float lastFogR = Float.NaN, lastFogG = Float.NaN, lastFogB = Float.NaN;
+        private float lastColorR = Float.NaN, lastColorG = Float.NaN, lastColorB = Float.NaN;
+        private final float[] fogColorBuf = new float[4];
+
+        CloudUniforms(ShaderBindingContext ctx) {
+            mvp = ctx.bindUniform("u_MVPMatrix", GlUniformMatrix4f::new);
+            colorMult = ctx.bindUniform("u_ColorMultiplier", GlUniformFloat3v::new);
+            texOffset = ctx.bindUniform("u_TexOffset", GlUniformFloat2v::new);
+            fogOrigin = ctx.bindUniform("u_FogOrigin", GlUniformFloat2v::new);
+            fogParams = ctx.bindUniform("u_FogParams", GlUniformFloat4v::new);
+            fogColor = ctx.bindUniform("u_FogColor", GlUniformFloat4v::new);
+            fogEnabled = ctx.bindUniform("u_FogEnabled", GlUniformInt::new);
+            cloudTex = ctx.bindUniform("u_CloudTexture", GlUniformInt::new);
+        }
+
+        void setFogEnabled(boolean enabled) {
+            final int val = enabled ? 1 : 0;
+            if (val != lastFogEnabled) {
+                lastFogEnabled = val;
+                fogEnabled.setInt(val);
+            }
+        }
+
+        void setFogColor(float r, float g, float b) {
+            if (r != lastFogR || g != lastFogG || b != lastFogB) {
+                lastFogR = r; lastFogG = g; lastFogB = b;
+                fogColorBuf[0] = r; fogColorBuf[1] = g; fogColorBuf[2] = b; fogColorBuf[3] = 1.0f;
+                fogColor.set(fogColorBuf);
+            }
+        }
+
+        void setColorMult(float r, float g, float b) {
+            if (r != lastColorR || g != lastColorG || b != lastColorB) {
+                lastColorR = r; lastColorG = g; lastColorB = b;
+                colorMult.set(r, g, b);
+            }
+        }
+    }
+
     public boolean render(int cloudTicks, float partialTicks) {
         if (!isBuilt())
             return false;
 
-        Entity entity = mc.renderViewEntity;
+        if (program == null) {
+            initProgram();
+            if (program == null) return false;
+        }
 
-        double totalOffset = cloudTicks + partialTicks;
+        final Entity entity = mc.renderViewEntity;
 
-        double x = entity.prevPosX + (entity.posX - entity.prevPosX) * partialTicks + totalOffset * 0.03;
-        double y = cloudElevation - (entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks) + 0.33;
+        final double totalOffset = cloudTicks + partialTicks;
+
+        final double x = entity.prevPosX + (entity.posX - entity.prevPosX) * partialTicks + totalOffset * 0.03;
+        final double y = cloudElevation - (entity.lastTickPosY + (entity.posY - entity.lastTickPosY) * partialTicks) + 0.33;
         double z = entity.prevPosZ + (entity.posZ - entity.prevPosZ) * partialTicks;
 
-        int scale = getScale();
+        final int scale = getScale();
 
         if (cloudMode == 2)
             z += 0.33 * scale;
 
-        // Integer UVs to translate the texture matrix by.
         int offU = fullCoord(x, scale);
         int offV = fullCoord(z, scale);
 
         GLStateManager.glPushMatrix();
-
-        // Translate by the remainder after the UV offset.
         GLStateManager.glTranslated((offU * scale) - x, y, (offV * scale) - z);
 
-        // Modulo to prevent texture samples becoming inaccurate at extreme offsets.
+        final float fogOriginX = (float)(x - offU * scale);
+        final float fogOriginZ = (float)(z - offV * scale);
+
         offU = offU % texW;
         offV = offV % texH;
-
-        // Translate the texture.
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glTranslatef(offU * PX_SIZE, offV * PX_SIZE, 0);
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
 
         GLStateManager.disableCull();
 
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
-        // Color multiplier.
-        Vec3 color = mc.theWorld.getCloudColour(partialTicks);
+        final Vec3 color = mc.theWorld.getCloudColour(partialTicks);
         float r = (float) color.xCoord;
         float g = (float) color.yCoord;
         float b = (float) color.zCoord;
 
         if (mc.gameSettings.anaglyph) {
-            float tempR = r * 0.3F + g * 0.59F + b * 0.11F;
-            float tempG = r * 0.3F + g * 0.7F;
-            float tempB = r * 0.3F + b * 0.7F;
+            final float tempR = r * 0.3F + g * 0.59F + b * 0.11F;
+            final float tempG = r * 0.3F + g * 0.7F;
+            final float tempB = r * 0.3F + b * 0.7F;
             r = tempR;
             g = tempG;
             b = tempB;
         }
 
-        // Apply a color multiplier through a texture upload if shaders aren't supported.
-        final int newColor = 0xFF000000
-            | ((int) (r * 255)) << 16
-            | ((int) (g * 255)) << 8
-            | (int) (b * 255);
-        if (texColor != newColor) {
-            if (COLOR_TEX == null) {
-                COLOR_TEX = new DynamicTexture(1, 1);
-            }
-            COLOR_TEX.getTextureData()[0] = newColor;
-            COLOR_TEX.updateDynamicTexture();
-            texColor = newColor;
-        }
-
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, COLOR_TEX.getGlTextureId());
-        GLStateManager.enableTexture();
-
-        // Bind the clouds texture last so the shader's sampler2D is correct.
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         mc.renderEngine.bindTexture(texture);
+        program.bind();
+
+        final CloudUniforms u = program.getInterface();
+        final Matrix4fStack mv = GLStateManager.getModelViewMatrix();
+        GLStateManager.getProjectionMatrix().mul(mv, mvpScratch);
+        u.mvp.set(mvpScratch);
+        u.texOffset.set(offU * PX_SIZE, offV * PX_SIZE);
+        u.setColorMult(r, g, b);
+        u.fogOrigin.set(fogOriginX, fogOriginZ);
+
+        uploadFogUniforms(partialTicks);
 
         vao.bind();
 
         // Depth pass to prevent insides rendering from the outside.
         GLStateManager.glColorMask(false, false, false, false);
-
         vao.draw();
 
-        // Full render.
         if (!mc.gameSettings.anaglyph) {
             GLStateManager.glColorMask(true, true, true, true);
         } else {
@@ -371,32 +463,19 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             }
         }
 
-        // Wireframe for debug.
         if (WIREFRAME) {
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
-            GL11.glLineWidth(2.0F);
-            GLStateManager.disableTexture();
+            GLStateManager.glLineWidth(2.0F);
             GLStateManager.glDepthMask(false);
-            GLStateManager.disableFog();
             vao.draw();
             GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
             GLStateManager.glDepthMask(true);
-            GLStateManager.enableTexture();
-            GLStateManager.enableFog();
         }
 
         vao.draw();
         vao.unbind(); // Unbind buffer.
 
-        // Disable our coloring.
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-        GLStateManager.disableTexture();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-
-        // Reset texture matrix.
-        GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glLoadIdentity();
-        GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+        program.unbind();
 
         GLStateManager.disableBlend();
         GLStateManager.enableCull();
@@ -417,5 +496,9 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     @Override
     public void onResourceManagerReload(IResourceManager resourceManager) {
         reloadTextures();
+        if (program != null) {
+            program.delete();
+            program = null;
+        }
     }
 }

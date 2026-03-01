@@ -263,6 +263,15 @@ public final class CommandBuffer {
         writeInt(height);
     }
 
+    public void writeScissor(int x, int y, int width, int height) {
+        ensureCapacity(20);
+        writeInt(GLCommand.SCISSOR);
+        writeInt(x);
+        writeInt(y);
+        writeInt(width);
+        writeInt(height);
+    }
+
     public void writeBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         ensureCapacity(20);
         writeInt(GLCommand.BLEND_FUNC);
@@ -543,6 +552,16 @@ public final class CommandBuffer {
         for (int i = 0; i < count; i++) {
             writeFloat(params.get(pos + i));
         }
+    }
+
+    public void writeClipPlane(int plane, double a, double b, double c, double d) {
+        ensureCapacity(40);
+        writeInt(GLCommand.CLIP_PLANE);
+        writeInt(plane);
+        writeDouble(a);
+        writeDouble(b);
+        writeDouble(c);
+        writeDouble(d);
     }
 
     // === Draw commands ===

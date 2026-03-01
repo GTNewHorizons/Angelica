@@ -8,17 +8,16 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
-import org.spongepowered.asm.mixin.injection.Constant;
 
 import java.util.Random;
 
@@ -173,7 +172,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             this.blue = (float)(argb >> 8 & 255) / 255.0F;
             this.green = (float)(argb & 255) / 255.0F;
             this.alpha = (float)(argb >> 24 & 255) / 255.0F;
-            GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
             this.posX = (float)x;
             this.posY = (float)y;
             return (int) angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text, 0, text.length());
