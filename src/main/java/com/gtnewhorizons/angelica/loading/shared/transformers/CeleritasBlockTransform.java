@@ -50,16 +50,14 @@ public final class CeleritasBlockTransform {
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
-    private static final String BlockPackage = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
-    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
-    private static final String[] VanillaBlockExclusions = {
-        "net/minecraft/block/IGrowable",
-        "net/minecraft/block/ITileEntityProvider",
-        "net/minecraft/block/BlockEventData",
-        "net/minecraft/block/BlockSourceImpl",
-        "net/minecraft/block/material/"
-    };
+
+    /** All <tt>net.minecraft.block.Block*</tt> classes are Block subclasses save for these. */
+    private static final Set<String> VanillaBlockExclusions = ConcurrentHashMap.newKeySet();
+    static {
+        VanillaBlockExclusions.add("net/minecraft/block/BlockEventData");
+        VanillaBlockExclusions.add("net/minecraft/block/BlockSourceImpl");
+    }
 
     private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Block owners we *shouldn't* redirect because they shadow one of our fields
@@ -87,15 +85,7 @@ public final class CeleritasBlockTransform {
     }
 
     private boolean isVanillaBlockSubclass(String className) {
-        if (className.startsWith(BlockPackage)) {
-            for (String exclusion : VanillaBlockExclusions) {
-                if (className.startsWith(exclusion)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+        return className.startsWith(BlockClass) && !VanillaBlockExclusions.contains(className);
     }
 
     private boolean isBlockSubclass(String className) {
