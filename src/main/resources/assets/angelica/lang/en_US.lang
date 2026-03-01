@@ -209,8 +209,6 @@ options.angelica.mobSpawnerRenderDistance=Mob spawner render distance
 options.angelica.mobSpawnerRenderDistance.tooltip=Render distance for the spinning mob inside mod spawners
 options.angelica.itemdisplaylistcount=Item Renderer Cache Limit
 options.angelica.itemdisplaylistcount.tooltip=The upper limit of VBO's to cache in the optimized item renderer. Higher values will significantly increase performance, but may result in increased VRAM usage.
-options.angelica.sleepbeforeswap=Alternate FPS Limiter
-options.angelica.sleepbeforeswap.tooltip=Switches to an alternate FPS limiter that gives more stable frametimes, in exchange for slightly more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.
 options.angelica.threadedChunkBuilding=Threaded Chunk Building
 options.angelica.threadedChunkBuilding.tooltip=If enabled, chunk meshing will be performed on multiple threads in parallel, significantly improving chunk build speed. Disable if you experience rendering issues with mods that have custom block renderers. Requires renderer reload to take effect.
 

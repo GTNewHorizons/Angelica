@@ -173,11 +173,6 @@ public class AngelicaConfig {
     @Config.RangeDouble(min = 16D, max = 64D)
     public static double mobSpawnerRenderDistance;
 
-    @Config.Comment("Switches to an alternate FPS limiter that gives more stable frametimes, in exchange for slightly " +
-        "more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.")
-    @Config.DefaultBoolean(false)
-    public static boolean sleepBeforeSwap;
-
     @Config.Comment("Allows unicode languages to use an odd gui scale")
     @Config.DefaultBoolean(true)
     public static boolean removeUnicodeEvenScaling;
