@@ -72,19 +72,22 @@ public final class CeleritasBlockTransform {
             Pair.of("getBlockBoundsMaxZ", "func_149693_C")
         );
 
+        ArrayList<String> names = new ArrayList<>();
         var blockFieldRedirects = ImmutableMap.<String, String>builder();
         for (Pair<String, String> pair : mappings) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
             blockFieldRedirects.put(name, pair.getLeft());
+            names.add(name);
         }
         this.blockFieldRedirects = blockFieldRedirects.build();
         var methodNames = ImmutableList.<String>builder();
         for (Pair<String, String> pair : methodCanOverload) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
             methodNames.add(name);
+            names.add(name);
         }
         this.methodNames = methodNames.build();
-        this.cstPoolParser = new ClassConstantPoolParser(this.blockFieldRedirects.keySet().toArray(new String[0]));
+        this.cstPoolParser = new ClassConstantPoolParser(names.toArray(new String[0]));
     }
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
