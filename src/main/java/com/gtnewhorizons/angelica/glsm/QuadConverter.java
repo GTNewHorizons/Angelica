@@ -84,11 +84,13 @@ public final class QuadConverter {
         assert first % 4 == 0 : "QuadConverter: first (" + first + ") must be a multiple of 4";
         assert vertexCount % 4 == 0 : "QuadConverter: vertexCount (" + vertexCount + ") must be a multiple of 4";
         final int quadCount = vertexCount / 4;
+        final int prevEbo = GLStateManager.getBoundEBO();
         ensureCapacity(first / 4 + quadCount);
         GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
         // Index offset: first vertex / 4 quads * 6 indices * 4 bytes per int
         final long indexOffset = (long) (first / 4) * 6 * 4;
         GL11.glDrawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
+        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
     }
 
     /**

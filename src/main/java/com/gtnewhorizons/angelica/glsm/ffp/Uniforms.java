@@ -398,16 +398,18 @@ public class Uniforms {
             GL20.glUniform1f(program.locAlphaRef, GLStateManager.getAlphaState().getReference());
         }
 
-        // Tex env color (only used by GL_BLEND mode)
-        if (program.locTexEnvColor != -1) {
-            final var envColor = GLStateManager.getTexEnvColor();
-            vec4Buf.clear();
-            vec4Buf.put(envColor.getRed());
-            vec4Buf.put(envColor.getGreen());
-            vec4Buf.put(envColor.getBlue());
-            vec4Buf.put(envColor.getAlpha());
-            vec4Buf.flip();
-            GL20.glUniform4(program.locTexEnvColor, vec4Buf);
+        // Per-unit tex env color
+        for (int i = 0; i < 4; i++) {
+            if (program.locTexEnvColor[i] != -1) {
+                final var envState = GLStateManager.getTextures().getTexEnvState(i);
+                vec4Buf.clear();
+                vec4Buf.put(envState.envColorR);
+                vec4Buf.put(envState.envColorG);
+                vec4Buf.put(envState.envColorB);
+                vec4Buf.put(envState.envColorA);
+                vec4Buf.flip();
+                GL20.glUniform4(program.locTexEnvColor[i], vec4Buf);
+            }
         }
 
         // Fog

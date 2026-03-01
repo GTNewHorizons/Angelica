@@ -29,6 +29,7 @@ public class LightState implements ISettableState<LightState> {
     public final Vector3f spotDirection;
     public float spotExponent;
     public float spotCutoff;
+    public float spotCosCutoff;
     public float constantAttenuation;
     public float linearAttenuation;
     public float quadraticAttenuation;
@@ -60,6 +61,7 @@ public class LightState implements ISettableState<LightState> {
         this.specular = specular;
         this.spotExponent = spotExponent;
         this.spotCutoff = spotCutoff;
+        this.spotCosCutoff = (float) Math.cos(Math.toRadians(spotCutoff));
         this.constantAttenuation = constantAttenuation;
         this.linearAttenuation = linearAttenuation;
         this.quadraticAttenuation = quadraticAttenuation;
@@ -180,6 +182,7 @@ public class LightState implements ISettableState<LightState> {
     public void setSpotCutoff(float f) {
         if (GLStateManager.shouldBypassCache() || Float.compare(f, this.spotCutoff) != 0) {
             this.spotCutoff = f;
+            this.spotCosCutoff = (float) Math.cos(Math.toRadians(f));
         }
     }
 
@@ -246,6 +249,7 @@ public class LightState implements ISettableState<LightState> {
         this.spotDirection.set(state.spotDirection);
         this.spotExponent = state.spotExponent;
         this.spotCutoff = state.spotCutoff;
+        this.spotCosCutoff = state.spotCosCutoff;
         this.constantAttenuation = state.constantAttenuation;
         this.linearAttenuation = state.linearAttenuation;
         this.quadraticAttenuation = state.quadraticAttenuation;

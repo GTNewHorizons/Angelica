@@ -10,7 +10,7 @@ class DeferredDrawBatcherTest {
 
     @Test
     void stateKey_roundtrip_basic() {
-        long key = DeferredDrawBatcher.packStateKey(42, GL11.GL_SRC_ALPHA, GL11.GL_ONE, true, false);
+        long key = DeferredDrawBatcher.packStateKey(42, GL11.GL_SRC_ALPHA, GL11.GL_ONE, true, false, true, true);
         assertEquals(42, DeferredDrawBatcher.unpackTextureId(key));
         assertEquals(GL11.GL_SRC_ALPHA, DeferredDrawBatcher.unpackSrcRgb(key));
         assertEquals(GL11.GL_ONE, DeferredDrawBatcher.unpackDstRgb(key));
@@ -20,7 +20,7 @@ class DeferredDrawBatcherTest {
 
     @Test
     void stateKey_roundtrip_allFlags() {
-        long key = DeferredDrawBatcher.packStateKey(0, 0, 0, false, true);
+        long key = DeferredDrawBatcher.packStateKey(0, 0, 0, false, true, true, true);
         assertEquals(0, DeferredDrawBatcher.unpackTextureId(key));
         assertEquals(0, DeferredDrawBatcher.unpackSrcRgb(key));
         assertEquals(0, DeferredDrawBatcher.unpackDstRgb(key));
@@ -32,7 +32,7 @@ class DeferredDrawBatcherTest {
     void stateKey_roundtrip_largeTextureId() {
         // 20-bit texture ID = max 1048575
         int texId = (1 << 20) - 1;
-        long key = DeferredDrawBatcher.packStateKey(texId, 0x0302, 0x0303, true, true);
+        long key = DeferredDrawBatcher.packStateKey(texId, 0x0302, 0x0303, true, true, true, true);
         assertEquals(texId, DeferredDrawBatcher.unpackTextureId(key));
         assertEquals(0x0302, DeferredDrawBatcher.unpackSrcRgb(key));
         assertEquals(0x0303, DeferredDrawBatcher.unpackDstRgb(key));
@@ -42,9 +42,9 @@ class DeferredDrawBatcherTest {
 
     @Test
     void stateKey_differentKeysNotEqual() {
-        long keyA = DeferredDrawBatcher.packStateKey(42, GL11.GL_SRC_ALPHA, GL11.GL_ONE, true, false);
-        long keyB = DeferredDrawBatcher.packStateKey(43, GL11.GL_SRC_ALPHA, GL11.GL_ONE, true, false);
-        long keyC = DeferredDrawBatcher.packStateKey(42, GL11.GL_ONE, GL11.GL_ONE, true, false);
+        long keyA = DeferredDrawBatcher.packStateKey(42, GL11.GL_SRC_ALPHA, GL11.GL_ONE, true, false, true, true);
+        long keyB = DeferredDrawBatcher.packStateKey(43, GL11.GL_SRC_ALPHA, GL11.GL_ONE, true, false, true, true);
+        long keyC = DeferredDrawBatcher.packStateKey(42, GL11.GL_ONE, GL11.GL_ONE, true, false, true, true);
         assertNotEquals(keyA, keyB, "Different texture IDs should produce different keys");
         assertNotEquals(keyA, keyC, "Different blend funcs should produce different keys");
     }
@@ -52,8 +52,8 @@ class DeferredDrawBatcherTest {
     @Test
     void grouping_sameKeyEntriesMerged() {
         // Verify that entries with the same state key sort together
-        long keyA = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true);
-        long keyB = DeferredDrawBatcher.packStateKey(2, 0x0302, 0x0001, true, true);
+        long keyA = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true, true, true);
+        long keyB = DeferredDrawBatcher.packStateKey(2, 0x0302, 0x0001, true, true, true, true);
 
         // Create entries with interleaved keys: A, B, A, B, A
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
@@ -94,7 +94,7 @@ class DeferredDrawBatcherTest {
 
     @Test
     void grouping_mergedVertexCountCorrect() {
-        long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true);
+        long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true, true, true);
 
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
         var entries = new java.util.ArrayList<DeferredBatchTessellator.DrawRange>();
@@ -116,7 +116,7 @@ class DeferredDrawBatcherTest {
 
     @Test
     void grouping_differentDrawModesFormSubgroups() {
-        long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true);
+        long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true, true, true);
 
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
         var entries = new java.util.ArrayList<DeferredBatchTessellator.DrawRange>();
@@ -154,7 +154,7 @@ class DeferredDrawBatcherTest {
 
         for (int src : blendConstants) {
             for (int dst : blendConstants) {
-                long key = DeferredDrawBatcher.packStateKey(1, src, dst, true, true);
+                long key = DeferredDrawBatcher.packStateKey(1, src, dst, true, true, true, true);
                 assertEquals(src, DeferredDrawBatcher.unpackSrcRgb(key), "srcRgb roundtrip failed for 0x" + Integer.toHexString(src));
                 assertEquals(dst, DeferredDrawBatcher.unpackDstRgb(key), "dstRgb roundtrip failed for 0x" + Integer.toHexString(dst));
             }
@@ -162,8 +162,35 @@ class DeferredDrawBatcherTest {
     }
 
     @Test
+    void stateKey_textureEnableRoundtrip() {
+        // tex0=true, tex1=false
+        long key1 = DeferredDrawBatcher.packStateKey(42, 0x0302, 0x0001, true, true, true, false);
+        assertTrue(DeferredDrawBatcher.unpackTex0Enabled(key1));
+        assertFalse(DeferredDrawBatcher.unpackTex1Enabled(key1));
+        assertEquals(42, DeferredDrawBatcher.unpackTextureId(key1));
+
+        // tex0=false, tex1=true
+        long key2 = DeferredDrawBatcher.packStateKey(42, 0x0302, 0x0001, true, true, false, true);
+        assertFalse(DeferredDrawBatcher.unpackTex0Enabled(key2));
+        assertTrue(DeferredDrawBatcher.unpackTex1Enabled(key2));
+        assertEquals(42, DeferredDrawBatcher.unpackTextureId(key2));
+
+        // Enable bits don't interfere with existing fields
+        long keyBothOff = DeferredDrawBatcher.packStateKey(42, 0x0302, 0x0001, true, true, false, false);
+        long keyBothOn  = DeferredDrawBatcher.packStateKey(42, 0x0302, 0x0001, true, true, true, true);
+        assertEquals(DeferredDrawBatcher.unpackTextureId(keyBothOff), DeferredDrawBatcher.unpackTextureId(keyBothOn));
+        assertEquals(DeferredDrawBatcher.unpackSrcRgb(keyBothOff), DeferredDrawBatcher.unpackSrcRgb(keyBothOn));
+        assertEquals(DeferredDrawBatcher.unpackDstRgb(keyBothOff), DeferredDrawBatcher.unpackDstRgb(keyBothOn));
+        assertEquals(DeferredDrawBatcher.unpackBlendEnabled(keyBothOff), DeferredDrawBatcher.unpackBlendEnabled(keyBothOn));
+        assertEquals(DeferredDrawBatcher.unpackDepthMask(keyBothOff), DeferredDrawBatcher.unpackDepthMask(keyBothOn));
+
+        // Different tex enable states produce different keys
+        assertNotEquals(key1, key2, "Different texture enable states should produce different keys");
+    }
+
+    @Test
     void drawRange_byteOffsetsNonOverlapping() {
-        long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true);
+        long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true, true, true);
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
 
         // Simulate sequential byte offsets as would be produced by interceptDraw

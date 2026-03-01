@@ -51,7 +51,8 @@ public class CompatShaderTransformer {
         "gl_FragColor", "gl_Fog", "gl_FrontColor", "gl_Color",
         "gl_Vertex", "gl_MultiTexCoord", "gl_TexCoord", "gl_Normal", "ftransform",
         "texture2D", "texture3D", "texelFetch2D", "texelFetch3D", "textureSize2D",
-        "shadow2D", "gl_FrontLightModelProduct"
+        "shadow2D", "gl_FrontLightModelProduct",
+        "gl_LightSource", "gl_FrontMaterial"
     );
 
     private static final Pattern NEEDS_TRANSFORM_PATTERN = Pattern.compile(
@@ -155,6 +156,28 @@ public class CompatShaderTransformer {
         if (source.contains("gl_FrontLightModelProduct")) {
             transformer.injectVariable("uniform vec4 angelica_SceneColor;");
             transformer.replaceExpression("gl_FrontLightModelProduct.sceneColor", "angelica_SceneColor");
+        }
+
+        // gl_LightSource[i] → struct + uniform array (both via injectFunction to keep struct before uniform)
+        if (source.contains("gl_LightSource")) {
+            transformer.injectFunction(
+                "struct angelica_LightSourceParameters {"
+                + "vec4 ambient;vec4 diffuse;vec4 specular;vec4 position;vec4 halfVector;"
+                + "vec3 spotDirection;float spotExponent;float spotCutoff;float spotCosCutoff;"
+                + "float constantAttenuation;float linearAttenuation;float quadraticAttenuation;"
+                + "};");
+            transformer.injectFunction("uniform angelica_LightSourceParameters angelica_LightSource[2];");
+            transformer.rename("gl_LightSource", "angelica_LightSource");
+        }
+
+        // gl_FrontMaterial → struct + uniform (both via injectFunction to keep struct before uniform)
+        if (source.contains("gl_FrontMaterial")) {
+            transformer.injectFunction(
+                "struct angelica_MaterialParameters {"
+                + "vec4 emission;vec4 ambient;vec4 diffuse;vec4 specular;float shininess;"
+                + "};");
+            transformer.injectFunction("uniform angelica_MaterialParameters angelica_FrontMaterial;");
+            transformer.rename("gl_FrontMaterial", "angelica_FrontMaterial");
         }
 
         // gl_FrontColor (vertex) → gl_Color (fragment) varying chain
