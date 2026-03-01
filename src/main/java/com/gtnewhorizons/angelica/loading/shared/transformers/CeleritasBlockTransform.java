@@ -349,13 +349,15 @@ public final class CeleritasBlockTransform {
             MethodNode mn = cn.methods.get(i);
             if (mn.instructions.size() == 0) continue;
 
+            if (willGetFieldAccessInfoReturnEmpty(mn)) continue; // Skip analysis if there are no relevant field accesses, to improve performance.
+
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             boolean analyzeSuccess = false;
             try {
                 // FIXME The game launches fine but analyze fails on some classes, that's strange.
                 // If analysis fails, fall back to the original implementation.
                 // This will not cause any issues other than potential performance impact.
-                analyzer.analyze(cn.name, mn); // TODO This takes 50ms but the old implementation only takes 5ms for the entire transform.
+                analyzer.analyze(cn.name, mn);
                 analyzeSuccess = true;
             } catch (Exception e) {
                 LOGGER.warn("Failed to analyze method {} in {}, falling back to the old implementation.", mn.name, transformedName);
@@ -363,7 +365,10 @@ public final class CeleritasBlockTransform {
 
             FieldAccessInfo info = getFieldAccessInfo(mn, analyzeSuccess ? analyzer.getFrames() : null); // Pass null to fall back.
 
-            if (info.records.isEmpty()) continue;
+            if (info.records.isEmpty()) { // `willGetFieldAccessInfoReturnEmpty == false && info.records.isEmpty()` should be impossible.
+                LOGGER.error("Method {} in {}, willGetFieldAccessInfoReturnEmpty returns false but no field accesses found! This should not happen.", mn.name, transformedName);
+                continue;
+            }
 
             changed = true;
 
@@ -396,10 +401,12 @@ public final class CeleritasBlockTransform {
         for (MethodNode mn : cn.methods) {
             if (mn.instructions.size() == 0) continue;
 
+            if(willGetMethodInvokeInfoReturnEmpty(mn)) continue; // Skip analysis if there are no relevant method invokes, to improve performance.
+
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             try {
                 // FIXME The game launches fine but analyze fails on some classes, that's strange.
-                analyzer.analyze(cn.name, mn); // TODO This takes 50ms but the old implementation only takes 5ms for the entire transform.
+                analyzer.analyze(cn.name, mn);
             } catch (Exception e) {
                 LOGGER.warn("Failed to analyze method {} in {}, do nothing in this method.", mn.name, transformedName);
                 continue;
@@ -407,7 +414,7 @@ public final class CeleritasBlockTransform {
 
             MethodInvokeInfo info = getMethodInvokeInfo(mn, analyzer.getFrames());
 
-            if (info.records.isEmpty()) continue;
+            if (info.records.isEmpty()) continue; // It's possible that `willGetMethodInvokeInfoReturnEmpty == false && info.records.isEmpty()`
 
             info.prepareCaches(mn, methodCacheSlots.get(mn.name + mn.desc), methodCacheVars.get(mn.name + mn.desc)); // Reuse the same cache if this method also accesses fields.
 
@@ -453,6 +460,24 @@ public final class CeleritasBlockTransform {
             }
         }
         return info;
+    }
+
+    /**
+     * Inconsistent with the behavior of willGetFieldAccessInfoReturnEmpty:
+     * This function returns false does not mean that getMethodInvokeInfo will definitely not return empty.
+     */
+    private static boolean willGetMethodInvokeInfoReturnEmpty(MethodNode mn) {
+        for (int i = 0; i < mn.instructions.size(); i++) {
+            AbstractInsnNode node = mn.instructions.get(i);
+            if ((node.getOpcode() == Opcodes.INVOKEVIRTUAL || node.getOpcode() == Opcodes.INVOKESPECIAL) && node instanceof MethodInsnNode mNode) {
+                Map<String, String> map = overloadedMethods.get(mNode.owner);
+                if (map == null) continue;
+                String newDesc = map.get(mNode.name + mNode.desc);
+                if (newDesc == null) continue;
+                return false;
+            }
+        }
+        return true;
     }
 
     private static @NotNull InsnList makeRedirect(@NotNull FieldInsnNode node, int paramSlot, VarInsnNode varStore, @NotNull FieldAccessInfo info) {
@@ -659,6 +684,22 @@ public final class CeleritasBlockTransform {
             }
         }
         return info;
+    }
+
+    private boolean willGetFieldAccessInfoReturnEmpty(MethodNode mn) {
+        for (int i = 0; i < mn.instructions.size(); i++) {
+            AbstractInsnNode node = mn.instructions.get(i);
+            if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
+                    String fieldRedirect = blockFieldRedirects.get(fNode.name);
+                    if (fieldRedirect == null) {
+                        continue;
+                    }
+                    return false;
+                }
+            }
+        }
+        return true;
     }
 
     private static VarInsnNode getVarStore(@NotNull AbstractInsnNode src, @NotNull MethodNode mn, @NotNull Frame<SourceValue> frame) {
