@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import java.util.Arrays;
+
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
@@ -35,7 +37,9 @@ public class ShaderManager {
     private boolean active = false;
     private Program currentProgram = null;
     private long currentVertexKeyPacked = Long.MIN_VALUE;
-    private long currentFragmentKeyPacked = Long.MIN_VALUE;
+    private final long[] currentFKScratch = new long[FragmentKey.MAX_UNITS];
+    private final long[] currentFKPacked = new long[FragmentKey.MAX_UNITS];
+    private int currentFKLen = 0;
 
     @Getter private static final Vector3f currentNormal = new Vector3f(0.0f, 0.0f, 1.0f);
     @Getter private static final Vector4f currentTexCoord = new Vector4f(0.0f, 0.0f, 0.0f, 1.0f);
@@ -91,7 +95,7 @@ public class ShaderManager {
         active = false;
         currentProgram = null;
         currentVertexKeyPacked = Long.MIN_VALUE;
-        currentFragmentKeyPacked = Long.MIN_VALUE;
+        currentFKLen = 0;
     }
 
 
@@ -114,14 +118,10 @@ public class ShaderManager {
         }
 
         final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap);
-        final long fkPacked = FragmentKey.packFromState();
+        final int fkLen = FragmentKey.packFromState(currentFKScratch);
 
-        if (vkPacked != currentVertexKeyPacked || fkPacked != currentFragmentKeyPacked) {
-            currentVertexKeyPacked = vkPacked;
-            currentFragmentKeyPacked = fkPacked;
-
-            currentProgram = cache.getOrCreate(vkPacked, fkPacked);
-            GL20.glUseProgram(currentProgram.getProgramId());
+        if (vkPacked != currentVertexKeyPacked || !Arrays.equals(currentFKScratch, 0, fkLen, currentFKPacked, 0, currentFKLen)) {
+            commitVariant(vkPacked, fkLen);
         }
 
         uploadUniforms();
@@ -142,10 +142,16 @@ public class ShaderManager {
     }
 
     private void updateVariant(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        currentVertexKeyPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap);
-        currentFragmentKeyPacked = FragmentKey.packFromState();
+        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap);
+        final int fkLen = FragmentKey.packFromState(currentFKScratch);
+        commitVariant(vkPacked, fkLen);
+    }
 
-        currentProgram = cache.getOrCreate(currentVertexKeyPacked, currentFragmentKeyPacked);
+    private void commitVariant(long vkPacked, int fkLen) {
+        currentVertexKeyPacked = vkPacked;
+        System.arraycopy(currentFKScratch, 0, currentFKPacked, 0, fkLen);
+        currentFKLen = fkLen;
+        currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
         GL20.glUseProgram(currentProgram.getProgramId());
     }
 

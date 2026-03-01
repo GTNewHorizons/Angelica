@@ -10,12 +10,15 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.KHRDebug;
 
+import java.util.concurrent.atomic.AtomicInteger;
+
 /**
  * A compiled and linked FFP emulation program (vertex + fragment shader pair). Owns the GL program handle and caches uniform locations.
  */
 public class Program {
 
     private static final Logger LOGGER = LogManager.getLogger("FFPProgram");
+    private static final AtomicInteger PROGRAM_COUNTER = new AtomicInteger();
 
     @Getter private final int programId;
     @Getter private final VertexKey vertexKey;
@@ -80,10 +83,9 @@ public class Program {
     public int locClipPlanes = -1;
 
     // Fragment uniforms
-    public int locSampler0 = -1;
-    public int locSampler1 = -1;
+    public final int[] locSampler = { -1, -1, -1, -1 };
     public int locAlphaRef = -1;
-    public int locTexEnvColor = -1;
+    public final int[] locTexEnvColor = { -1, -1, -1, -1 };
     public int locFogParams = -1;
     public int locFogColor = -1;
 
@@ -150,10 +152,13 @@ public class Program {
         locClipPlanes = loc("u_ClipPlane[0]");
 
         // Fragment
-        locSampler0 = loc("u_Sampler0");
-        locSampler1 = loc("u_Sampler1");
+        for (int i = 0; i < 4; i++) {
+            locSampler[i] = loc("u_Sampler" + i);
+        }
         locAlphaRef = loc("u_AlphaRef");
-        locTexEnvColor = loc("u_TexEnvColor");
+        for (int i = 0; i < 4; i++) {
+            locTexEnvColor[i] = loc("u_TexEnvColor" + i);
+        }
         locFogParams = loc("u_FogParams");
         locFogColor = loc("u_FogColor");
     }
@@ -170,8 +175,9 @@ public class Program {
      * Compile a shader, link it into a program, and return the FFPProgram.
      */
     static Program create(VertexKey vk, FragmentKey fk, String vertSrc, String fragSrc) {
+        final int id = PROGRAM_COUNTER.getAndIncrement();
         final int vs = compileShader(GL20.GL_VERTEX_SHADER, vertSrc, "ffp_v_" + Long.toHexString(vk.pack()));
-        final int fs = compileShader(GL20.GL_FRAGMENT_SHADER, fragSrc, "ffp_f_" + Long.toHexString(fk.pack()));
+        final int fs = compileShader(GL20.GL_FRAGMENT_SHADER, fragSrc, "ffp_f_" + id);
 
         final int program = GL20.glCreateProgram();
         GL20.glAttachShader(program, vs);
@@ -180,7 +186,7 @@ public class Program {
 
         final String log = RenderSystem.getProgramInfoLog(program);
         if (!log.isEmpty()) {
-            LOGGER.warn("FFP program link log (vk=0x{}, fk=0x{}): {}", Long.toHexString(vk.pack()), Long.toHexString(fk.pack()), log);
+            LOGGER.warn("FFP program link log (vk=0x{}, fk={}): {}", Long.toHexString(vk.pack()), fk, log);
         }
 
         final int linkStatus = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
@@ -188,10 +194,10 @@ public class Program {
             GL20.glDeleteProgram(program);
             GL20.glDeleteShader(vs);
             GL20.glDeleteShader(fs);
-            throw new RuntimeException("FFP shader link failed (vk=0x" + Long.toHexString(vk.pack()) + ", fk=0x" + Long.toHexString(fk.pack()) + "): " + log);
+            throw new RuntimeException("FFP shader link failed (vk=0x" + Long.toHexString(vk.pack()) + ", fk=" + fk + "): " + log);
         }
 
-        final String debugName = "FFP(v=0x" + Long.toHexString(vk.pack()) + ",f=0x" + Long.toHexString(fk.pack()) + ")";
+        final String debugName = "FFP(v=0x" + Long.toHexString(vk.pack()) + ",f=" + id + ")";
         GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, debugName);
 
         // Detach and delete individual shaders — they're linked into the program
@@ -204,8 +210,9 @@ public class Program {
 
         final int previousProgram = GLStateManager.getActiveProgram();
         GL20.glUseProgram(program);
-        if (ffpProgram.locSampler0 != -1) GL20.glUniform1i(ffpProgram.locSampler0, 0);
-        if (ffpProgram.locSampler1 != -1) GL20.glUniform1i(ffpProgram.locSampler1, 1);
+        for (int i = 0; i < 4; i++) {
+            if (ffpProgram.locSampler[i] != -1) GL20.glUniform1i(ffpProgram.locSampler[i], i);
+        }
         GL20.glUseProgram(previousProgram);
 
         return ffpProgram;

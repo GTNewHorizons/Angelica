@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.stacks.FogStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.LightStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.LightModelState;
+import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.joml.Matrix3f;
@@ -41,28 +43,62 @@ public class CompatUniformManager {
     static final int LOC_SCENE_COLOR = 15;
     static final int LOC_CLIP_PLANES = 16;
     static final int LOC_CLIP_PLANES_ENABLED = 17;
-    static final int LOC_COUNT = 18;
 
-    private static final String[] UNIFORM_NAMES = {
-        "angelica_ModelViewMatrix",
-        "angelica_ModelViewMatrixInverse",
-        "angelica_ProjectionMatrix",
-        "angelica_ProjectionMatrixInverse",
-        "angelica_NormalMatrix",
-        "angelica_LightmapTextureMatrix",
-        "angelica_FogDensity",
-        "angelica_FogStart",
-        "angelica_FogEnd",
-        "angelica_FogColor",
-        "iris_ModelViewMatrix",
-        "iris_ProjectionMatrix",
-        "iris_NormalMatrix",
-        "iris_LightmapTextureMatrix",
-        "angelica_currentAlphaTest",
-        "angelica_SceneColor",
-        "angelica_ClipPlane[0]",
-        "angelica_ClipPlanesEnabled",
+    // Light source fields: 12 per light × 2 lights = 24 locations
+    static final int LIGHT_FIELDS = 12;
+    static final int LF_AMBIENT = 0, LF_DIFFUSE = 1, LF_SPECULAR = 2, LF_POSITION = 3;
+    static final int LF_HALF_VECTOR = 4, LF_SPOT_DIRECTION = 5, LF_SPOT_EXPONENT = 6;
+    static final int LF_SPOT_CUTOFF = 7, LF_SPOT_COS_CUTOFF = 8;
+    static final int LF_CONSTANT_ATTEN = 9, LF_LINEAR_ATTEN = 10, LF_QUADRATIC_ATTEN = 11;
+    static final int LOC_LIGHT_BASE = 18;
+
+    // Material fields: 5 locations
+    static final int MF_EMISSION = 0, MF_AMBIENT = 1, MF_DIFFUSE = 2, MF_SPECULAR = 3, MF_SHININESS = 4;
+    static final int MAT_FIELDS = 5;
+    static final int LOC_MAT_BASE = LOC_LIGHT_BASE + 2 * LIGHT_FIELDS; // 42
+
+    static final int LOC_COUNT = LOC_MAT_BASE + MAT_FIELDS; // 47
+
+    private static final String[] LIGHT_FIELD_NAMES = {
+        "ambient", "diffuse", "specular", "position", "halfVector",
+        "spotDirection", "spotExponent", "spotCutoff", "spotCosCutoff",
+        "constantAttenuation", "linearAttenuation", "quadraticAttenuation",
     };
+    private static final String[] MAT_FIELD_NAMES = {
+        "emission", "ambient", "diffuse", "specular", "shininess",
+    };
+
+    private static final String[] UNIFORM_NAMES;
+    static {
+        UNIFORM_NAMES = new String[LOC_COUNT];
+        UNIFORM_NAMES[LOC_MODELVIEW] = "angelica_ModelViewMatrix";
+        UNIFORM_NAMES[LOC_MODELVIEW_INVERSE] = "angelica_ModelViewMatrixInverse";
+        UNIFORM_NAMES[LOC_PROJECTION] = "angelica_ProjectionMatrix";
+        UNIFORM_NAMES[LOC_PROJECTION_INVERSE] = "angelica_ProjectionMatrixInverse";
+        UNIFORM_NAMES[LOC_NORMAL] = "angelica_NormalMatrix";
+        UNIFORM_NAMES[LOC_LIGHTMAP_TEXTURE_MATRIX] = "angelica_LightmapTextureMatrix";
+        UNIFORM_NAMES[LOC_FOG_DENSITY] = "angelica_FogDensity";
+        UNIFORM_NAMES[LOC_FOG_START] = "angelica_FogStart";
+        UNIFORM_NAMES[LOC_FOG_END] = "angelica_FogEnd";
+        UNIFORM_NAMES[LOC_FOG_COLOR] = "angelica_FogColor";
+        UNIFORM_NAMES[LOC_IRIS_MODELVIEW] = "iris_ModelViewMatrix";
+        UNIFORM_NAMES[LOC_IRIS_PROJECTION] = "iris_ProjectionMatrix";
+        UNIFORM_NAMES[LOC_IRIS_NORMAL] = "iris_NormalMatrix";
+        UNIFORM_NAMES[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX] = "iris_LightmapTextureMatrix";
+        UNIFORM_NAMES[LOC_ALPHA_TEST_REF] = "angelica_currentAlphaTest";
+        UNIFORM_NAMES[LOC_SCENE_COLOR] = "angelica_SceneColor";
+        UNIFORM_NAMES[LOC_CLIP_PLANES] = "angelica_ClipPlane[0]";
+        UNIFORM_NAMES[LOC_CLIP_PLANES_ENABLED] = "angelica_ClipPlanesEnabled";
+        for (int li = 0; li < 2; li++) {
+            for (int fi = 0; fi < LIGHT_FIELDS; fi++) {
+                UNIFORM_NAMES[LOC_LIGHT_BASE + li * LIGHT_FIELDS + fi] =
+                    "angelica_LightSource[" + li + "]." + LIGHT_FIELD_NAMES[fi];
+            }
+        }
+        for (int fi = 0; fi < MAT_FIELDS; fi++) {
+            UNIFORM_NAMES[LOC_MAT_BASE + fi] = "angelica_FrontMaterial." + MAT_FIELD_NAMES[fi];
+        }
+    }
 
     /** Per-program cached uniform locations. Maps program ID → int[LOC_COUNT]. */
     private static final Int2ObjectOpenHashMap<int[]> programLocations = new Int2ObjectOpenHashMap<>();
@@ -138,13 +174,13 @@ public class CompatUniformManager {
             uploadFragmentUniforms(locs);
         }
 
-        // Lighting-derived uniforms (scene color) — skip if lighting state unchanged
-        if (locs[LOC_SCENE_COLOR] != -1) {
-            final int litGen = GLStateManager.lightingGeneration;
-            if (programChanged || litGen != lastLightingGen) {
-                lastLightingGen = litGen;
-                uploadSceneColor(locs);
-            }
+        // Lighting-derived uniforms (scene color, light sources, material)
+        final int litGen = GLStateManager.lightingGeneration;
+        if (programChanged || litGen != lastLightingGen) {
+            lastLightingGen = litGen;
+            if (locs[LOC_SCENE_COLOR] != -1) uploadSceneColor(locs);
+            uploadLightSources(locs);
+            uploadMaterial(locs);
         }
 
         // Clip plane equations + enabled bool — uploaded when enable state or equations change
@@ -275,6 +311,75 @@ public class CompatUniformManager {
                .put(mat.diffuse.w);
         vec4Buf.flip();
         GL20.glUniform4(locs[LOC_SCENE_COLOR], vec4Buf);
+    }
+
+    private static void uploadLightSources(int[] locs) {
+        // Early exit: if the first light field isn't present, no lighting uniforms exist
+        if (locs[LOC_LIGHT_BASE] == -1) return;
+        final LightStateStack[] lights = GLStateManager.getLightDataStates();
+        for (int li = 0; li < 2; li++) {
+            final int base = LOC_LIGHT_BASE + li * LIGHT_FIELDS;
+            final LightState light = lights[li];
+
+            if (locs[base + LF_AMBIENT] != -1)
+                GL20.glUniform4f(locs[base + LF_AMBIENT], light.ambient.x, light.ambient.y, light.ambient.z, light.ambient.w);
+            if (locs[base + LF_DIFFUSE] != -1)
+                GL20.glUniform4f(locs[base + LF_DIFFUSE], light.diffuse.x, light.diffuse.y, light.diffuse.z, light.diffuse.w);
+            if (locs[base + LF_SPECULAR] != -1)
+                GL20.glUniform4f(locs[base + LF_SPECULAR], light.specular.x, light.specular.y, light.specular.z, light.specular.w);
+            if (locs[base + LF_POSITION] != -1)
+                GL20.glUniform4f(locs[base + LF_POSITION], light.position.x, light.position.y, light.position.z, light.position.w);
+            if (locs[base + LF_HALF_VECTOR] != -1) {
+                // halfVector = normalize(normalize(position.xyz) + eye), eye=(0,0,1) for infinite viewer
+                float hx, hy, hz;
+                if (light.position.w == 0.0f) {
+                    float len = (float) Math.sqrt(light.position.x * light.position.x
+                        + light.position.y * light.position.y + light.position.z * light.position.z);
+                    if (len > 0) {
+                        hx = light.position.x / len;
+                        hy = light.position.y / len;
+                        hz = light.position.z / len + 1.0f;
+                    } else {
+                        hx = 0; hy = 0; hz = 1;
+                    }
+                } else {
+                    hx = 0; hy = 0; hz = 1;
+                }
+                float hlen = (float) Math.sqrt(hx * hx + hy * hy + hz * hz);
+                if (hlen > 0) { hx /= hlen; hy /= hlen; hz /= hlen; }
+                GL20.glUniform4f(locs[base + LF_HALF_VECTOR], hx, hy, hz, 0.0f);
+            }
+            if (locs[base + LF_SPOT_DIRECTION] != -1)
+                GL20.glUniform3f(locs[base + LF_SPOT_DIRECTION], light.spotDirection.x, light.spotDirection.y, light.spotDirection.z);
+            if (locs[base + LF_SPOT_EXPONENT] != -1)
+                GL20.glUniform1f(locs[base + LF_SPOT_EXPONENT], light.spotExponent);
+            if (locs[base + LF_SPOT_CUTOFF] != -1)
+                GL20.glUniform1f(locs[base + LF_SPOT_CUTOFF], light.spotCutoff);
+            if (locs[base + LF_SPOT_COS_CUTOFF] != -1)
+                GL20.glUniform1f(locs[base + LF_SPOT_COS_CUTOFF], light.spotCosCutoff);
+            if (locs[base + LF_CONSTANT_ATTEN] != -1)
+                GL20.glUniform1f(locs[base + LF_CONSTANT_ATTEN], light.constantAttenuation);
+            if (locs[base + LF_LINEAR_ATTEN] != -1)
+                GL20.glUniform1f(locs[base + LF_LINEAR_ATTEN], light.linearAttenuation);
+            if (locs[base + LF_QUADRATIC_ATTEN] != -1)
+                GL20.glUniform1f(locs[base + LF_QUADRATIC_ATTEN], light.quadraticAttenuation);
+        }
+    }
+
+    private static void uploadMaterial(int[] locs) {
+        // Early exit: if the first material field isn't present, no material uniforms exist
+        if (locs[LOC_MAT_BASE] == -1) return;
+        final MaterialState mat = GLStateManager.getFrontMaterial();
+        if (locs[LOC_MAT_BASE + MF_EMISSION] != -1)
+            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_EMISSION], mat.emission.x, mat.emission.y, mat.emission.z, mat.emission.w);
+        if (locs[LOC_MAT_BASE + MF_AMBIENT] != -1)
+            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_AMBIENT], mat.ambient.x, mat.ambient.y, mat.ambient.z, mat.ambient.w);
+        if (locs[LOC_MAT_BASE + MF_DIFFUSE] != -1)
+            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_DIFFUSE], mat.diffuse.x, mat.diffuse.y, mat.diffuse.z, mat.diffuse.w);
+        if (locs[LOC_MAT_BASE + MF_SPECULAR] != -1)
+            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_SPECULAR], mat.specular.x, mat.specular.y, mat.specular.z, mat.specular.w);
+        if (locs[LOC_MAT_BASE + MF_SHININESS] != -1)
+            GL20.glUniform1f(locs[LOC_MAT_BASE + MF_SHININESS], mat.shininess);
     }
 
     private static void uploadClipPlanes(int[] locs) {

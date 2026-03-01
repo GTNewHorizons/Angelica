@@ -301,10 +301,6 @@ public class GLStateManager {
     @Getter protected static final AlphaStateStack alphaState = new AlphaStateStack();
     @Getter protected static final BooleanStateStack alphaTest = new BooleanStateStack(GL11.GL_ALPHA_TEST, false, true);
 
-    // Texture environment mode (GL_MODULATE default per OpenGL spec)
-    @Getter protected static final IntegerStateStack texEnvMode = new IntegerStateStack(GL11.GL_MODULATE);
-    // Texture environment color (used by GL_BLEND mode)
-    @Getter protected static final Color4Stack texEnvColor = new Color4Stack(new Color4(0.0f, 0.0f, 0.0f, 0.0f));
 
     @Getter protected static final BooleanStateStack lightingState = new BooleanStateStack(GL11.GL_LIGHTING, false, true);
     @Getter protected static final BooleanStateStack rescaleNormalState = new BooleanStateStack(GL12.GL_RESCALE_NORMAL, false, true);
@@ -2893,6 +2889,7 @@ public class GLStateManager {
         if ((mask & GL11.GL_LIGHTING_BIT) != 0 && lightingGeneration != savedLightingGen[depth]) lightingGeneration++;
         if ((mask & GL11.GL_FOG_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++;
         if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++; // alpha ref
+        if ((mask & GL11.GL_TEXTURE_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++; // texenv state
         if ((mask & GL11.GL_TRANSFORM_BIT) != 0) {
             if (mvGeneration != savedMvGen[depth]) mvGeneration++;
             if (projGeneration != savedProjGen[depth]) projGeneration++;
@@ -4519,11 +4516,24 @@ public class GLStateManager {
 
     public static void glMultiTexCoord2f(int target, float s, float t) {
         if (target == GL13.GL_TEXTURE0) {
+            if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+                ImmediateModeRecorder.setTexCoord(s, t);
+                return;
+            }
             ShaderManager.setCurrentTexCoord(s, t, 0.0f, 1.0f);
             dirtyTexCoordAttrib = true;
         } else if (target == GL13.GL_TEXTURE1) {
+            if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+                ImmediateModeRecorder.setLightmapCoord(s, t);
+                return;
+            }
             setLightmapTextureCoords(target, s, t);
         }
+        // Units 2+ silently ignored — shader uses v_TexCoord0 for all non-lightmap units
+    }
+
+    public static void glMultiTexCoord2d(int target, double s, double t) {
+        glMultiTexCoord2f(target, (float) s, (float) t);
     }
 
     public static void glMultiTexCoord2s(int target, short s, short t) {
@@ -4596,8 +4606,6 @@ public class GLStateManager {
         }
     }
 
-    private static final String TEXENV_COMBINE_MSG = "Texture environment combine mode is not supported in FFP emulation.";
-
     public static void glTexEnvi(int target, int pname, int param) {
         handleTexEnvScalar(target, pname, param);
     }
@@ -4609,24 +4617,31 @@ public class GLStateManager {
     public static void glTexEnv(int target, int pname, FloatBuffer params) {
         if (target == GL11.GL_TEXTURE_ENV && pname == GL11.GL_TEXTURE_ENV_COLOR && params.remaining() >= 4) {
             final int pos = params.position();
-            texEnvColor.setRed(params.get(pos));
-            texEnvColor.setGreen(params.get(pos + 1));
-            texEnvColor.setBlue(params.get(pos + 2));
-            texEnvColor.setAlpha(params.get(pos + 3));
+            final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+            envState.envColorR = params.get(pos);
+            envState.envColorG = params.get(pos + 1);
+            envState.envColorB = params.get(pos + 2);
+            envState.envColorA = params.get(pos + 3);
             fragmentGeneration++;
             return;
         }
-        guardTexEnvTarget(target, "glTexEnv");
+        if (target == GL14.GL_TEXTURE_FILTER_CONTROL) {
+            guardUnsupportedFFP("glTexEnv", "LOD bias via buffer glTexEnv is not supported; use glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, value) instead.");
+            return;
+        }
+        // Silently ignore other buffer glTexEnv calls (some mods pass combine params via buffers)
     }
 
     public static void glTexEnv(int target, int pname, IntBuffer params) {
-        guardTexEnvTarget(target, "glTexEnv");
+        if (target == GL11.GL_TEXTURE_ENV) {
+            handleTexEnvScalar(target, pname, (float) params.get(params.position()));
+        }
     }
 
     /**
      * Scalar glTexEnvi/glTexEnvf dispatch. glTexEnv is removed in core profile.
      * GL_TEXTURE_FILTER_CONTROL (LOD bias) is remapped to glTexParameterf.
-     * GL_TEXTURE_ENV_MODE values (MODULATE, REPLACE, ADD, DECAL, BLEND) are tracked in cache.
+     * All GL_TEXTURE_ENV parameters including GL_COMBINE sub-params are tracked in per-unit TexEnvState.
      */
     private static void handleTexEnvScalar(int target, int pname, float param) {
         if (target == GL14.GL_TEXTURE_FILTER_CONTROL) {
@@ -4634,27 +4649,82 @@ public class GLStateManager {
             glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, param);
             return;
         }
-        if (target == GL11.GL_TEXTURE_ENV && pname == GL11.GL_TEXTURE_ENV_MODE) {
-            final int mode = (int) param;
-            if (mode == GL11.GL_MODULATE || mode == GL11.GL_REPLACE
-                || mode == GL11.GL_ADD || mode == GL11.GL_DECAL || mode == GL11.GL_BLEND) {
-                texEnvMode.setValue(mode);
-                fragmentGeneration++;
-                return;
-            }
-        }
-        guardUnsupportedFFP("glTexEnv", TEXENV_COMBINE_MSG);
-    }
+        if (target != GL11.GL_TEXTURE_ENV) return;
 
-    /**
-     * Guard for buffer glTexEnv variants. glTexEnv is removed in core profile.
-     */
-    private static void guardTexEnvTarget(int target, String function) {
-        if (target == GL14.GL_TEXTURE_FILTER_CONTROL) {
-            guardUnsupportedFFP(function, "LOD bias via buffer glTexEnv is not supported; use glTexParameterf(GL_TEXTURE_2D, GL_TEXTURE_LOD_BIAS, value) instead.");
-            return;
+        final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+        final int iparam = (int) param;
+
+        switch (pname) {
+            case GL11.GL_TEXTURE_ENV_MODE -> {
+                envState.mode = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_COMBINE_RGB -> {
+                envState.combineRgb = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_COMBINE_ALPHA -> {
+                envState.combineAlpha = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_SOURCE0_RGB -> {
+                envState.sourceRgb[0] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_SOURCE1_RGB -> {
+                envState.sourceRgb[1] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_SOURCE2_RGB -> {
+                envState.sourceRgb[2] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_SOURCE0_ALPHA -> {
+                envState.sourceAlpha[0] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_SOURCE1_ALPHA -> {
+                envState.sourceAlpha[1] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_SOURCE2_ALPHA -> {
+                envState.sourceAlpha[2] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_OPERAND0_RGB -> {
+                envState.operandRgb[0] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_OPERAND1_RGB -> {
+                envState.operandRgb[1] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_OPERAND2_RGB -> {
+                envState.operandRgb[2] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_OPERAND0_ALPHA -> {
+                envState.operandAlpha[0] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_OPERAND1_ALPHA -> {
+                envState.operandAlpha[1] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_OPERAND2_ALPHA -> {
+                envState.operandAlpha[2] = iparam;
+                fragmentGeneration++;
+            }
+            case GL13.GL_RGB_SCALE -> {
+                envState.scaleRgb = param;
+                fragmentGeneration++;
+            }
+            case GL11.GL_ALPHA_SCALE -> {
+                envState.scaleAlpha = param;
+                fragmentGeneration++;
+            }
+            // Silently ignore unknown pname — other mods may pass unrecognized params
         }
-        guardUnsupportedFFP(function, TEXENV_COMBINE_MSG);
     }
 
     // TexGen generation counter for FFP uniform dirty tracking

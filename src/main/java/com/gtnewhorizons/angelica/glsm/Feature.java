@@ -299,8 +299,7 @@ public class Feature {
         ));
         final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
             GLStateManager.activeTextureUnit // Active texture unit
-            , GLStateManager.texEnvMode // GL_TEXTURE_ENV_MODE
-            , GLStateManager.texEnvColor // GL_TEXTURE_ENV_COLOR
+                // GL_TEXTURE_ENV_MODE + GL_TEXTURE_ENV_COLOR — now per-unit in TexEnvState (added below)
                 // Enable bits for the four texture coordinates
 
                 // Border color for each texture image
@@ -314,10 +313,10 @@ public class Feature {
                 // Current texture bindings (for example, GL_TEXTURE_BINDING_2D) - Below
         ));
 
-        // Current Texture Bindings - GL_TEXTURE_BINDING_2D
+        // Current Texture Bindings - GL_TEXTURE_BINDING_2D + per-unit TexEnvState
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
             textureAttribs.add(GLStateManager.textures.getTextureUnitBindings(i));
-//            textureAttribs.add(GLStateManager.textures.getInfo(i))
+            textureAttribs.add(GLStateManager.textures.getTexEnvState(i));
         }
 
         // Enable bits GL_TEXTURE_GEN_x where x is S, T, R, or Q

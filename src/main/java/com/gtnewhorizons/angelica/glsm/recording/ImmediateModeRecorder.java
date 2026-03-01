@@ -60,6 +60,14 @@ public final class ImmediateModeRecorder {
     }
 
     /**
+     * Set the current lightmap coordinate as packed brightness.
+     * Called by GLStateManager.glMultiTexCoord2f for unit 1 during recording/drawing.
+     */
+    public static void setLightmapCoord(float s, float t) {
+        tessellator().setBrightness(((int) t << 16) | ((int) s & 0xFFFF));
+    }
+
+    /**
      * Set the current normal vector.
      * Called by GLStateManager.glNormal*.
      */

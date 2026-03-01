@@ -257,6 +257,7 @@ public final class AngelicaRedirector {
             .add("glSampleCoverage")
             .add("glClientActiveTexture")
             .add("glMultiTexCoord2f")
+            .add("glMultiTexCoord2d")
             .add("glMultiTexCoord2s")
         );
         methodRedirects.put(GL14, RedirectMap.newMap()

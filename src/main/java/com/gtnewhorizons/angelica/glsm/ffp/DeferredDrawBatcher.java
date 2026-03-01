@@ -110,7 +110,7 @@ public class DeferredDrawBatcher {
 
     /**
      * Pack current GLSM state into a long key for grouping.
-     * Layout: [textureId:20][srcRgb:12][dstRgb:12][blendEnabled:1][depthMask:1] = 46 bits
+     * Layout: [tex1En:1][tex0En:1][textureId:20][srcRgb:12][dstRgb:12][blendEnabled:1][depthMask:1] = 48 bits
      * GL blend constants (e.g. GL_SRC_ALPHA=0x0302) need 12 bits.
      *
      * NOT captured (uniform within a particle layer bracket — set once before startDrawingQuads,
@@ -126,16 +126,20 @@ public class DeferredDrawBatcher {
         final int dstRgb = GLStateManager.getBlendState().getDstRgb();
         final boolean blendEnabled = GLStateManager.getBlendMode().isEnabled();
         final boolean depthMask = GLStateManager.getDepthState().isEnabled();
+        final boolean tex0Enabled = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
+        final boolean tex1Enabled = GLStateManager.getTextures().getTextureUnitStates(1).isEnabled();
 
-        return packStateKey(textureId, srcRgb, dstRgb, blendEnabled, depthMask);
+        return packStateKey(textureId, srcRgb, dstRgb, blendEnabled, depthMask, tex0Enabled, tex1Enabled);
     }
 
-    static long packStateKey(int textureId, int srcRgb, int dstRgb, boolean blendEnabled, boolean depthMask) {
+    static long packStateKey(int textureId, int srcRgb, int dstRgb, boolean blendEnabled, boolean depthMask, boolean tex0Enabled, boolean tex1Enabled) {
         return ((long) (textureId & 0xFFFFF) << 26)
             | ((long) (srcRgb & 0xFFF) << 14)
             | ((long) (dstRgb & 0xFFF) << 2)
             | (blendEnabled ? 2L : 0L)
-            | (depthMask ? 1L : 0L);
+            | (depthMask ? 1L : 0L)
+            | (tex0Enabled ? (1L << 46) : 0L)
+            | (tex1Enabled ? (1L << 47) : 0L);
     }
 
     static int unpackTextureId(long key) { return (int) ((key >> 26) & 0xFFFFF); }
@@ -143,6 +147,8 @@ public class DeferredDrawBatcher {
     static int unpackDstRgb(long key) { return (int) ((key >> 2) & 0xFFF); }
     static boolean unpackBlendEnabled(long key) { return (key & 2L) != 0; }
     static boolean unpackDepthMask(long key) { return (key & 1L) != 0; }
+    static boolean unpackTex0Enabled(long key) { return (key & (1L << 46)) != 0; }
+    static boolean unpackTex1Enabled(long key) { return (key & (1L << 47)) != 0; }
 
     static void applyStateKey(long key) {
         final int textureId = unpackTextureId(key);
@@ -150,7 +156,11 @@ public class DeferredDrawBatcher {
         final int dstRgb = unpackDstRgb(key);
         final boolean blendEnabled = unpackBlendEnabled(key);
         final boolean depthMask = unpackDepthMask(key);
+        final boolean tex0Enabled = unpackTex0Enabled(key);
+        final boolean tex1Enabled = unpackTex1Enabled(key);
 
+        GLStateManager.getTextures().getTextureUnitStates(0).setEnabled(tex0Enabled);
+        GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(tex1Enabled);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textureId);
         GLStateManager.glBlendFunc(srcRgb, dstRgb);
         if (blendEnabled) {

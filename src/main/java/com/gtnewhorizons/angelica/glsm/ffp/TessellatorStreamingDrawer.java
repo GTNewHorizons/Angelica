@@ -137,8 +137,18 @@ public class TessellatorStreamingDrawer {
         uploadAndDraw(buffer, flags, format, vertexSize, drawMode, vertexCount);
     }
 
+    private static String cachedDebugInfo = "Stream: not initialized";
+    private static long lastDebugUpdateNanos;
+    private static final long DEBUG_UPDATE_INTERVAL_NS = 500_000_000L; // 500ms
+
     public static String getDebugInfo() {
         if (!initialized) return "Stream: not initialized";
+
+        final long now = System.nanoTime();
+        if (now - lastDebugUpdateNanos < DEBUG_UPDATE_INTERVAL_NS) {
+            return cachedDebugInfo;
+        }
+        lastDebugUpdateNanos = now;
 
         int orphanCount = 0;
         int orphanBytes = 0;
@@ -150,17 +160,19 @@ public class TessellatorStreamingDrawer {
         }
 
         if (persistentBuffer != null) {
-            return String.format("Stream: Persistent %s (%s free) + %d orphan (%s)",
+            cachedDebugInfo = String.format("Stream: Persistent %s (%s free) + %d orphan (%s)",
                 formatBytes(persistentBuffer.getCapacity()), formatBytes(persistentBuffer.getRemaining()),
                 orphanCount, formatBytes(orphanBytes));
+        } else {
+            cachedDebugInfo = String.format("Stream: Orphan (%d bufs, %s)", orphanCount, formatBytes(orphanBytes));
         }
-        return String.format("Stream: Orphan (%d bufs, %s)", orphanCount, formatBytes(orphanBytes));
+        return cachedDebugInfo;
     }
 
     private static String formatBytes(int bytes) {
-        if (bytes >= 1024 * 1024) return String.format("%dMB", bytes / (1024 * 1024));
-        if (bytes >= 1024) return String.format("%dKB", bytes / 1024);
-        return bytes + "B";
+        if (bytes >= 1024 * 1024) return String.format("%5.1fMB", bytes / (1024.0 * 1024.0));
+        if (bytes >= 1024) return String.format("%5.1fKB", bytes / 1024.0);
+        return String.format("%5dB", bytes);
     }
 
     public static void endFrame() {
