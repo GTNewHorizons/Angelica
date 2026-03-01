@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
+import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -24,7 +25,7 @@ public class HandRenderer {
     public static final HandRenderer INSTANCE = new HandRenderer();
 
     private boolean ACTIVE;
-    private boolean renderingSolid;
+    private @Getter boolean renderingSolid;
     public static final float DEPTH = 0.125F;
 
     private void setupGlState(RenderGlobal gameRenderer, Camera camera, float tickDelta) {
@@ -178,9 +179,5 @@ public class HandRenderer {
 
     public boolean isActive() {
         return ACTIVE;
-    }
-
-    public boolean isRenderingSolid() {
-        return renderingSolid;
     }
 }

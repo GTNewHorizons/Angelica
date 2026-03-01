@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -15,19 +16,13 @@ public class MixinItemRendererBackhand {
     @Inject(method = "renderItemInFirstPerson", at = @At("HEAD"), cancellable = true)
     private void iris$skipTranslucentHands(float partialTicks, CallbackInfo ci) {
         if (IrisApi.getInstance().isShaderPackInUse()) {
-            boolean isHandTranslucent = HandRenderer.INSTANCE.isHandTranslucent(InteractionHand.MAIN_HAND);
+            final boolean isHandTranslucent = HandRenderer.INSTANCE.isHandTranslucent(InteractionHand.MAIN_HAND);
             if (HandRenderer.INSTANCE.isRenderingSolid() && isHandTranslucent) {
                 ci.cancel();
-                if (ModStatus.isBackhandLoaded){
-                    iris$skipTranslucentHandsBackhand(partialTicks, ci);
-                    ModStatus.backhandCompat.renderOffhand(partialTicks);
-                }
+                BackhandReflectionCompat.renderOffhand(partialTicks);
             } else if (!HandRenderer.INSTANCE.isRenderingSolid() && !isHandTranslucent) {
                 ci.cancel();
-                if (ModStatus.isBackhandLoaded){
-                    iris$skipTranslucentHandsBackhand(partialTicks, ci);
-                    ModStatus.backhandCompat.renderOffhand(partialTicks);
-                }
+                BackhandReflectionCompat.renderOffhand(partialTicks);
             }
         }
     }
@@ -36,7 +31,7 @@ public class MixinItemRendererBackhand {
     @Inject(method = "renderItemInFirstPerson", at = @At("RETURN"), cancellable = true, order = 900)
     private void iris$skipTranslucentHandsBackhand(float partialTicks, CallbackInfo ci) {
         if (ModStatus.isBackhandLoaded && IrisApi.getInstance().isShaderPackInUse()) {
-            boolean isHandTranslucent = HandRenderer.INSTANCE.isHandTranslucent(InteractionHand.OFF_HAND);
+            final boolean isHandTranslucent = HandRenderer.INSTANCE.isHandTranslucent(InteractionHand.OFF_HAND);
             if (HandRenderer.INSTANCE.isRenderingSolid() && isHandTranslucent) {
                 ci.cancel();
             } else if (!HandRenderer.INSTANCE.isRenderingSolid() && !isHandTranslucent) {
