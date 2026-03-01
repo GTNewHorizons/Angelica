@@ -306,8 +306,9 @@ public final class CeleritasBlockTransform {
             return false;
         }
 
+        boolean changed = false;
         if ("net.minecraft.block.Block".equals(transformedName)) {
-            cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
+            changed = cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
         }
 
         trackBlockSubclasses(cn.name, cn.superName);
@@ -342,7 +343,6 @@ public final class CeleritasBlockTransform {
             }
         }
 
-        boolean changed = false;
         Map<String, int[]> methodCacheSlots = new HashMap<>(); // methodName+desc -> cacheSlots
         Map<String, Map<VarInsnNode, Integer>> methodCacheVars = new HashMap<>(); // methodName+desc -> (var -> cacheSlot)
         for (int i = 0; i < cn.methods.size(); i++) { // Use index-based loop because we may add new methods during iteration.
