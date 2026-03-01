@@ -401,7 +401,7 @@ public final class CeleritasBlockTransform {
         for (MethodNode mn : cn.methods) {
             if (mn.instructions.size() == 0) continue;
 
-            if(willGetMethodInvokeInfoReturnEmpty(mn)) continue; // Skip analysis if there are no relevant method invokes, to improve performance.
+            if (willGetMethodInvokeInfoReturnEmpty(mn)) continue; // Skip analysis if there are no relevant method invokes, to improve performance.
 
             Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
             try {
