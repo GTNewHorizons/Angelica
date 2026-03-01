@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
@@ -38,51 +39,53 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform {
 
-    private static final List<String> blockFieldNames = new ArrayList<>();
-    private static final Map<String, String> blockFieldRedirects = new HashMap<>();
-
-    private static final List<String> methodNames = new ArrayList<>();
-
-    private static final List<Pair<String, String>> mappingsStatic = ImmutableList.of(
-        Pair.of("minX", "field_149759_B"),
-        Pair.of("minY", "field_149760_C"),
-        Pair.of("minZ", "field_149754_D"),
-        Pair.of("maxX", "field_149755_E"),
-        Pair.of("maxY", "field_149756_F"),
-        Pair.of("maxZ", "field_149757_G")
-    );
-
-    /**
-     * These functions are the ones for which we need to create overloads.
-     * Other functions may be modified elsewhere, so creating overloads in the ASM will cause some issues.
-     */
-    private static final List<Pair<String, String>> methodCanOverloadStatic = ImmutableList.of(
-        Pair.of("setBlockBounds", "func_149676_a"),
-        Pair.of("setBlockBoundsBasedOnState", "func_149719_a"),
-        Pair.of("isVecInsideYZBounds", "func_149654_a"),
-        Pair.of("isVecInsideXZBounds", "func_149687_b"),
-        Pair.of("isVecInsideXYBounds", "func_149661_c"),
-        Pair.of("getBlockBoundsMinX", "func_149704_x"),
-        Pair.of("getBlockBoundsMaxX", "func_149753_y"),
-        Pair.of("getBlockBoundsMinY", "func_149665_z"),
-        Pair.of("getBlockBoundsMaxY", "func_149669_A"),
-        Pair.of("getBlockBoundsMinZ", "func_149706_B"),
-        Pair.of("getBlockBoundsMaxZ", "func_149693_C")
-    );
-
+    private final ImmutableList<String> blockFieldNames;
+    private final ImmutableMap<String, String> blockFieldRedirects;
+    private final ImmutableList<String> methodNames;
+    
     /** isObf will not be changed during runtime. */
     public CeleritasBlockTransform(boolean isObf) {
-        if (blockFieldNames.isEmpty()) {
-            for (Pair<String, String> pair : mappingsStatic) {
-                final String name = isObf ? pair.getRight() : pair.getLeft();
-                blockFieldNames.add(name);
-                blockFieldRedirects.put(name, pair.getLeft());
-            }
-            for (Pair<String, String> pair : methodCanOverloadStatic) {
-                final String name = isObf ? pair.getRight() : pair.getLeft();
-                methodNames.add(name);
-            }
+
+        final List<Pair<String, String>> mappings = ImmutableList.of(
+            Pair.of("minX", "field_149759_B"),
+            Pair.of("minY", "field_149760_C"),
+            Pair.of("minZ", "field_149754_D"),
+            Pair.of("maxX", "field_149755_E"),
+            Pair.of("maxY", "field_149756_F"),
+            Pair.of("maxZ", "field_149757_G")
+        );
+
+        // These functions are the ones for which we need to create overloads.
+        // Other functions may be modified elsewhere, so creating overloads in the ASM will cause some issues.
+        final List<Pair<String, String>> methodCanOverload = ImmutableList.of(
+            Pair.of("setBlockBounds", "func_149676_a"),
+            Pair.of("setBlockBoundsBasedOnState", "func_149719_a"),
+            Pair.of("isVecInsideYZBounds", "func_149654_a"),
+            Pair.of("isVecInsideXZBounds", "func_149687_b"),
+            Pair.of("isVecInsideXYBounds", "func_149661_c"),
+            Pair.of("getBlockBoundsMinX", "func_149704_x"),
+            Pair.of("getBlockBoundsMaxX", "func_149753_y"),
+            Pair.of("getBlockBoundsMinY", "func_149665_z"),
+            Pair.of("getBlockBoundsMaxY", "func_149669_A"),
+            Pair.of("getBlockBoundsMinZ", "func_149706_B"),
+            Pair.of("getBlockBoundsMaxZ", "func_149693_C")
+        );
+
+        var blockFieldNames = ImmutableList.<String>builder();
+        var blockFieldRedirects = ImmutableMap.<String, String>builder();
+        for (Pair<String, String> pair : mappings) {
+            final String name = isObf ? pair.getRight() : pair.getLeft();
+            blockFieldNames.add(name);
+            blockFieldRedirects.put(name, pair.getLeft());
         }
+        this.blockFieldNames = blockFieldNames.build();
+        this.blockFieldRedirects = blockFieldRedirects.build();
+        var methodNames = ImmutableList.<String>builder();
+        for (Pair<String, String> pair : methodCanOverload) {
+            final String name = isObf ? pair.getRight() : pair.getLeft();
+            methodNames.add(name);
+        }
+        this.methodNames = methodNames.build();
     }
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
@@ -150,7 +153,7 @@ public final class CeleritasBlockTransform {
         };
     }
 
-    private static final Map<String, Map<String, String>> overloadedMethods = new HashMap<>();
+    private static final Map<String, Map<String, String>> overloadedMethods = new ConcurrentHashMap<>();
 
     private record FieldAccessRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {}
 
@@ -295,10 +298,11 @@ public final class CeleritasBlockTransform {
             return false;
         }
 
+        Map<String, String> overloaded = new HashMap<>(); // Cache it first in a local variable, so we don't need a ConcurrentHashMap.
         if (!overloadedMethods.containsKey(cn.name)) {
             Map<String, String> superMethods = cn.superName != null ? overloadedMethods.get(cn.superName) : null;
             if (superMethods != null) {
-                overloadedMethods.put(cn.name, new HashMap<>(superMethods));
+                overloaded.putAll(superMethods);
             }
         }
 
@@ -330,7 +334,7 @@ public final class CeleritasBlockTransform {
             if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0 && methodNames.contains(mn.name)) {
                 MethodNode overload = createOverload(mn, info.records, methodCacheSlots);
                 cn.methods.add(overload);
-                overloadedMethods.computeIfAbsent(cn.name, _ -> new HashMap<>()).put(mn.name + mn.desc, overload.desc);
+                overloaded.put(mn.name + mn.desc, overload.desc);
             }
 //            if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0 && !methodNames.contains(mn.name)) {
 //                LOGGER.warn("Method {} in {} accesses block bounds fields but is not in the overload list.", mn.name, transformedName);
@@ -352,6 +356,7 @@ public final class CeleritasBlockTransform {
                 mn.instructions.insertBefore(node, makeRedirect(node, record.paramSlot, record.varStore, info));
             }
         }
+        overloadedMethods.put(cn.name, overloaded);
         for (MethodNode mn : cn.methods) {
             if (mn.instructions.size() == 0) continue;
 
