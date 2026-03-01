@@ -2074,38 +2074,31 @@ public class GLStateManager {
     }
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
         GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
     }
 
@@ -2122,32 +2115,26 @@ public class GLStateManager {
     }
 
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
 
     public static void glNormalPointer(int type, int stride, FloatBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, ShortBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
-        if (!ShaderManager.getInstance().isActive()) return;
         GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer);
@@ -2166,35 +2153,30 @@ public class GLStateManager {
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         GL20.glVertexAttribPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         GL20.glVertexAttribPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         GL20.glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int location = clientStateToAttributeLocation(cap);
         if (location >= 0) GL20.glEnableVertexAttribArray(location);
         final int flag = clientStateToVertexFlag(cap);
@@ -2202,7 +2184,6 @@ public class GLStateManager {
     }
 
     public static void glDisableClientState(int cap) {
-        if (!ShaderManager.getInstance().isActive()) return;
         final int location = clientStateToAttributeLocation(cap);
         if (location >= 0) GL20.glDisableVertexAttribArray(location);
         final int flag = clientStateToVertexFlag(cap);
