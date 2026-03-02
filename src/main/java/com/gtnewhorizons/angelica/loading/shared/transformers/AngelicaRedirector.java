@@ -440,7 +440,7 @@ public final class AngelicaRedirector {
     public boolean transformClassNode(String transformedName, ClassNode cn) {
         boolean changed = false;
         final boolean isOpenGlHelper = transformedName.equals("net.minecraft.client.renderer.OpenGlHelper");
-        final boolean isUniversalVAO = transformedName.equals(UniversalVAODot);
+        final boolean isUniversalVAO = transformedName.startsWith(UniversalVAODot);
         for (MethodNode mn : cn.methods) {
             if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
