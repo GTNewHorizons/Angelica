@@ -21,6 +21,7 @@ public class ThreadedBlockData {
     }
 
     public static ThreadedBlockData get(Block block) {
+        if (block == null) return null; // Now, null can be passed in `CeleritasBlockTransform`.
         return ((Getter)block).angelica$getThreadData();
     }
 
