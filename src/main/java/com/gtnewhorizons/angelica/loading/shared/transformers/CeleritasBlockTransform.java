@@ -88,7 +88,6 @@ public final class CeleritasBlockTransform {
         // Other functions may be modified elsewhere, so creating overloads in the ASM will cause some issues.
         final List<Pair<String, String>> methodCanOverload = ImmutableList.of(
             Pair.of("setBlockBounds", "func_149676_a"),
-            Pair.of("setBlockBoundsBasedOnState", "func_149719_a"),
             Pair.of("isVecInsideYZBounds", "func_149654_a"),
             Pair.of("isVecInsideXZBounds", "func_149687_b"),
             Pair.of("isVecInsideXYBounds", "func_149661_c"),
