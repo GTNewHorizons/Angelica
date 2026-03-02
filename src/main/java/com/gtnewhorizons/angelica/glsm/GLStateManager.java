@@ -2656,12 +2656,10 @@ public class GLStateManager {
             PBRTextureManager.INSTANCE.onDeleteTexture(id);
         }
 
-        // Only update cached texture bindings on main thread
-        if (isCachingEnabled()) {
-            for (int i = 0; i <= maxBoundTextureUnit; i++) {
-                if (textures.getTextureUnitBindings(i).getBinding() == id) {
-                    textures.getTextureUnitBindings(i).setBinding(0);
-                }
+        // Always delete
+        for (int i = 0; i <= maxBoundTextureUnit; i++) {
+            if (textures.getTextureUnitBindings(i).getBinding() == id) {
+                textures.getTextureUnitBindings(i).setBinding(0);
             }
         }
     }
