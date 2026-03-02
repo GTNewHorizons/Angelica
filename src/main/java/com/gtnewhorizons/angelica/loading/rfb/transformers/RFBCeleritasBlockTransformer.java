@@ -65,12 +65,20 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
     }
 
     @Override
-    public void transformClass(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
-                               @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
+    public boolean transformClassIfNeeded(@NotNull ExtensibleClassLoader classLoader,
+                                          @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest,
+                                          @NotNull String className, @NotNull ClassNodeHandle classNode) {
         final boolean changed = inner.transformClassNode(className, classNode.getNode());
         if (changed) {
             classNode.computeMaxs();
             AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }
+        return changed;
+    }
+
+    @Override
+    public void transformClass(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
+                               @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
+        transformClassIfNeeded(classLoader, context, manifest, className, classNode);
     }
 }
