@@ -42,6 +42,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import cpw.mods.fml.relauncher.ReflectionHelper;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntStack;
@@ -410,6 +411,10 @@ public class GLStateManager {
     @Getter protected static int boundVBO;
     @Getter protected static int boundEBO;
     @Getter protected static int boundVAO;
+    private static final Int2IntOpenHashMap vaoEboMap = new Int2IntOpenHashMap();
+    static {
+        vaoEboMap.defaultReturnValue(0);
+    }
     @Getter private static int defaultVAO; // Non-zero on core profile
 
     public static void reset() {
@@ -431,6 +436,7 @@ public class GLStateManager {
 
         modelViewMatrix.clear();
         projectionMatrix.clear();
+        vaoEboMap.clear();
     }
 
     /**
@@ -4395,6 +4401,7 @@ public class GLStateManager {
             boundVBO = buffer;
         } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
             boundEBO = buffer;
+            vaoEboMap.put(boundVAO, buffer);
         }
         GL15.glBindBuffer(target, buffer);
     }
@@ -4410,6 +4417,7 @@ public class GLStateManager {
         }
         if (boundVAO != array) {
             boundVAO = array;
+            boundEBO = vaoEboMap.get(array);
             UniversalVAO.bindVertexArray(array);
             if (ShaderManager.getInstance().isEnabled()) {
                 ShaderManager.getInstance().onBindVertexArray(array);
@@ -4419,9 +4427,11 @@ public class GLStateManager {
 
     public static void glDeleteVertexArrays(int array) {
         ShaderManager.getInstance().onDeleteVertexArray(array);
+        vaoEboMap.remove(array);
         if (array == boundVAO) {
             // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
             boundVAO = defaultVAO;
+            boundEBO = vaoEboMap.get(defaultVAO);
             UniversalVAO.bindVertexArray(defaultVAO);
         }
         UniversalVAO.deleteVertexArrays(array);

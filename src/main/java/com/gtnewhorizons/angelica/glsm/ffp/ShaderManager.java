@@ -71,10 +71,7 @@ public class ShaderManager {
 
         VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
             currentVertexFlags = format.getVertexFlags();
-            final int boundVao = GLStateManager.getBoundVAO();
-            if (boundVao != 0) {
-                vaoVertexFlags.put(boundVao, currentVertexFlags);
-            }
+            vaoVertexFlags.put(GLStateManager.getBoundVAO(), currentVertexFlags);
             return false;
         });
 
