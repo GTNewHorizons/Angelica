@@ -144,7 +144,7 @@ public final class CeleritasBlockTransform {
     }
 
     private boolean isBlockSubclass(String className) {
-        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
+        return moddedBlockSubclasses.contains(className) || isVanillaBlockSubclass(className);
     }
 
     public String[] getTransformerExclusions() {
@@ -590,15 +590,13 @@ public final class CeleritasBlockTransform {
     }
 
     private boolean willGetFieldAccessInfoReturnEmpty(MethodNode mn) {
-        for (int i = 0; i < mn.instructions.size(); i++) {
-            AbstractInsnNode node = mn.instructions.get(i);
+        for (AbstractInsnNode node : mn.instructions.toArray()) {
             if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
                 if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
                     String fieldRedirect = blockFieldRedirects.get(fNode.name);
-                    if (fieldRedirect == null) {
-                        continue;
+                    if (fieldRedirect != null) {
+                        return false;
                     }
-                    return false;
                 }
             }
         }
