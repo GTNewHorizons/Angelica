@@ -344,6 +344,11 @@ public enum Mixins implements IMixins {
         .addClientMixins("angelica.textures.MixinTextureUtil_OptimizeMipmap")
         .setApplyIf(() -> AngelicaConfig.optimizeTextureLoading)),
 
+    REPLACE_FFP(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addClientMixins("angelica.vbo.MixinFramebuffer")
+        .setApplyIf(() -> AngelicaConfig.replaceFFPUploads)),
+
     //From NotFine
     NOTFINE_BASE_MOD(new MixinBuilder()
         .setPhase(Phase.EARLY)

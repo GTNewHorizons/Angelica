@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
 import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
 import com.gtnewhorizons.angelica.compat.battlegear2.Battlegear2Compat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
@@ -552,7 +553,7 @@ public class DynamicLights {
                     }
                 }
                 else if (ModStatus.isBackhandLoaded){
-                    ItemStack offhand = ModStatus.backhandCompat.getOffhandItem(player);
+                    ItemStack offhand = BackhandReflectionCompat.getOffhandItem(player);
                     if (offhand != null) {
                         luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
                     }
