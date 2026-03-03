@@ -498,6 +498,11 @@ public class GLStateManager {
         final String glVendor = GL11.glGetString(GL11.GL_VENDOR);
         VENDOR = Vendor.getVendor(glVendor.toLowerCase());
 
+        // The initial mask value should be defined as all 1's. However, some drivers have it set to 0's.
+        // To ensure consistency & correctness across all drivers, we're setting them to 0xFF.
+        GL11.glStencilFunc(stencilState.getFuncFront(), stencilState.getRefFront(), 0xFF);
+        GL11.glStencilMask(0xFF);
+
         // Compute stencil bit mask — driver clamps stencil masks to buffer depth
         // GL_STENCIL_BITS was removed in core profile; query via default FBO attachment
         final int stencilBits = GL30.glGetFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
