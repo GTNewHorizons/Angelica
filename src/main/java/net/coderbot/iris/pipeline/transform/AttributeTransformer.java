@@ -12,73 +12,59 @@ import java.util.Map;
  * transformation methods.
  */
 class AttributeTransformer {
-	public static void transform(Transformer transformer, AttributeParameters parameters, String profile, int version) {
-		boolean isCore = profile.equals("core") || (version > 140 && !profile.equals("compatibility"));
-
-		// Common patches (compatibility profile)
-		CommonTransformer.transform(transformer, parameters, isCore, version);
+	public static void transform(Transformer transformer, AttributeParameters parameters, int version) {
+		// Always core profile — minimum GLSL version is 330 (see ShaderTransformer.getStageMinimumVersion)
+		CommonTransformer.transform(transformer, parameters, true, version);
 
 		// Entity ID and overlay color patching (uniform path)
 		EntityPatcher.patchEntityId(transformer, parameters);
 		EntityPatcher.patchOverlayColor(transformer, parameters);
 
-		if (isCore) {
-			if (parameters.type == ShaderType.VERTEX) {
-				throw new IllegalStateException("Vertex shaders must be in the compatibility profile to run properly!");
+		transformCore(transformer, parameters);
+	}
+
+	private static void transformCore(Transformer transformer, AttributeParameters parameters) {
+		CoreTransformHelper.injectMatrixUniforms(transformer);
+
+		if (parameters.type == ShaderType.VERTEX) {
+			transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
+			transformer.injectVariable("layout(location = 1) in vec4 iris_Color;");
+			transformer.injectVariable("layout(location = 2) in vec4 iris_MultiTexCoord0;");
+			transformer.injectVariable("layout(location = 3) in vec4 iris_MultiTexCoord1;");
+			transformer.injectVariable("layout(location = 4) in vec3 iris_Normal;");
+
+			transformer.rename("gl_Vertex", "iris_Vertex");
+			transformer.rename("gl_Color", "iris_Color");
+			transformer.rename("gl_Normal", "iris_Normal");
+
+			// ftransform() = gl_ModelViewProjectionMatrix * gl_Vertex
+			transformer.renameFunctionCall("ftransform", "iris_ftransform");
+			transformer.injectFunction("vec4 iris_ftransform() { return (iris_ProjectionMatrix * iris_ModelViewMatrix) * iris_Vertex; }");
+
+			// gl_MultiTexCoord1 and gl_MultiTexCoord2 are both lightmap
+			if (parameters.inputs.lightmap) {
+				transformer.rename("gl_MultiTexCoord2", "gl_MultiTexCoord1");
 			}
-			return;
-		}
 
-		// gl_MultiTexCoord1 and gl_MultiTexCoord2 are both ways to refer to the
-		// lightmap texture coordinate.
-		// See https://github.com/IrisShaders/Iris/issues/1149
-		if (parameters.inputs.lightmap) {
-			transformer.rename("gl_MultiTexCoord2", "gl_MultiTexCoord1");
-		}
+			Map<String, String> texCoordReplacements = new HashMap<>();
+			if (!parameters.inputs.lightmap) {
+				texCoordReplacements.put("gl_MultiTexCoord1", "vec4(240.0, 240.0, 0.0, 1.0)");
+				texCoordReplacements.put("gl_MultiTexCoord2", "vec4(240.0, 240.0, 0.0, 1.0)");
+			}
+			if (!parameters.inputs.texture) {
+				texCoordReplacements.put("gl_MultiTexCoord0", "vec4(240.0, 240.0, 0.0, 1.0)");
+			}
+			texCoordReplacements.forEach(transformer::replaceExpression);
 
-		Map<String, String> texCoordReplacements = new HashMap<>();
-		if (!parameters.inputs.lightmap) {
-			texCoordReplacements.put("gl_MultiTexCoord1", "vec4(240.0, 240.0, 0.0, 1.0)");
-			texCoordReplacements.put("gl_MultiTexCoord2", "vec4(240.0, 240.0, 0.0, 1.0)");
-		}
-		if (!parameters.inputs.texture) {
-			texCoordReplacements.put("gl_MultiTexCoord0", "vec4(240.0, 240.0, 0.0, 1.0)");
-		}
-		texCoordReplacements.forEach(transformer::replaceExpression);
+			// Rename remaining gl_MultiTexCoord references to iris_ versions
+			transformer.rename("gl_MultiTexCoord0", "iris_MultiTexCoord0");
+			transformer.rename("gl_MultiTexCoord1", "iris_MultiTexCoord1");
 
-		patchTextureMatrices(transformer, parameters.inputs.lightmap);
-
-		if (parameters.type == ShaderType.VERTEX && transformer.hasVariable("gl_MultiTexCoord3") && !transformer.hasVariable("mc_midTexCoord")) {
-			transformer.rename("gl_MultiTexCoord3", "mc_midTexCoord");
-			transformer.injectVariable("attribute vec4 mc_midTexCoord;");
+			if (transformer.hasVariable("gl_MultiTexCoord3") && !transformer.hasVariable("mc_midTexCoord")) {
+				transformer.rename("gl_MultiTexCoord3", "mc_midTexCoord");
+				transformer.injectVariable("in vec4 mc_midTexCoord;");
+			}
 		}
 	}
 
-	private static void patchTextureMatrices(Transformer transformer, boolean hasLightmap) {
-		transformer.rename("gl_TextureMatrix", "iris_TextureMatrix");
-
-		transformer.injectVariable("float iris_ONE_OVER_256 = 0.00390625;");
-		transformer.injectVariable("float iris_ONE_OVER_32 = iris_ONE_OVER_256 * 8;");
-
-		if (hasLightmap) {
-			transformer.injectVariable("mat4 iris_LightmapTextureMatrix = gl_TextureMatrix[1];");
-		} else {
-			transformer.injectVariable("mat4 iris_LightmapTextureMatrix =" +
-				"mat4(iris_ONE_OVER_256, 0.0, 0.0, 0.0," +
-				"     0.0, iris_ONE_OVER_256, 0.0, 0.0," +
-				"     0.0, 0.0, iris_ONE_OVER_256, 0.0," +
-				"     iris_ONE_OVER_32, iris_ONE_OVER_32, iris_ONE_OVER_32, iris_ONE_OVER_256);");
-		}
-
-		transformer.injectVariable("mat4 iris_TextureMatrix[8] = mat4[8](" +
-			"gl_TextureMatrix[0]," +
-			"iris_LightmapTextureMatrix," +
-			"mat4(1.0)," +
-			"mat4(1.0)," +
-			"mat4(1.0)," +
-			"mat4(1.0)," +
-			"mat4(1.0)," +
-			"mat4(1.0)" +
-			");");
-	}
 }

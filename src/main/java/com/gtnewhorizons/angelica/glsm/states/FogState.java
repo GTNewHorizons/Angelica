@@ -16,6 +16,8 @@ public class FogState implements ISettableState<FogState> {
     protected float density = 1.0F;
     protected float start;
     protected float end = 1.0F;
+    /** Fog distance computation mode: 0=EYE_RADIAL, 1=EYE_PLANE, 2=EYE_PLANE_ABS */
+    protected int fogDistanceMode = 2;
 
     @Override
     public FogState set(FogState state) {
@@ -23,16 +25,20 @@ public class FogState implements ISettableState<FogState> {
         this.fogColor.set(state.fogColor);
         this.fogAlpha = state.fogAlpha;
         this.fogColorBuffer.put(0, state.fogColorBuffer.get(0));
+        this.fogColorBuffer.put(1, state.fogColorBuffer.get(1));
+        this.fogColorBuffer.put(2, state.fogColorBuffer.get(2));
+        this.fogColorBuffer.put(3, state.fogColorBuffer.get(3));
         this.density = state.density;
         this.start = state.start;
         this.end = state.end;
+        this.fogDistanceMode = state.fogDistanceMode;
         return this;
     }
     @Override
     public boolean sameAs(Object state) {
         if (this == state) return true;
         if (!(state instanceof FogState fogState)) return false;
-        return fogMode == fogState.fogMode && Float.compare(fogState.fogAlpha, fogAlpha) == 0 && Float.compare(fogState.density, density) == 0 && Float.compare(fogState.start, start) == 0 && Float.compare(fogState.end, end) == 0 && fogColor.equals(fogState.fogColor);
+        return fogMode == fogState.fogMode && fogDistanceMode == fogState.fogDistanceMode && Float.compare(fogState.fogAlpha, fogAlpha) == 0 && Float.compare(fogState.density, density) == 0 && Float.compare(fogState.start, start) == 0 && Float.compare(fogState.end, end) == 0 && fogColor.equals(fogState.fogColor);
     }
 
     @Override

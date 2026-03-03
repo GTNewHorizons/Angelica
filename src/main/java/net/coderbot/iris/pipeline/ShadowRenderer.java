@@ -2,25 +2,20 @@ package net.coderbot.iris.pipeline;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
-import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.PackDirectives;
-import net.coderbot.iris.shaderpack.ShadowCullState;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import net.coderbot.iris.shaderpack.ProgramSource;
+import net.coderbot.iris.shaderpack.ShadowCullState;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import net.coderbot.iris.shadows.CullingDataCache;
 import net.coderbot.iris.shadows.ShadowCompositeRenderer;
@@ -32,7 +27,6 @@ import net.coderbot.iris.shadows.frustum.advanced.AdvancedShadowCullingFrustum;
 import net.coderbot.iris.shadows.frustum.advanced.SafeZoneCullingFrustum;
 import net.coderbot.iris.shadows.frustum.fallback.BoxCullingFrustum;
 import net.coderbot.iris.shadows.frustum.fallback.NonCullingFrustum;
-import net.coderbot.iris.uniforms.CameraUniforms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.CelestialUniforms;
 import net.minecraft.client.Minecraft;
@@ -47,7 +41,6 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
-import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.joml.Matrix4f;
 import org.joml.Vector3d;
@@ -59,6 +52,13 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
+
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.List;
+import java.util.Objects;
 
 public class ShadowRenderer {
 	public static final Matrix4f MODELVIEW = new Matrix4f();
@@ -485,14 +485,14 @@ public class ShadowRenderer {
         GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GLStateManager.glPolygonOffset(1.0f, 1.0f);
 
-        GL11.glPushMatrix();
+        GLStateManager.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GL11.glLoadMatrix(MODELVIEW_BUFFER);
+        GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
     }
 
     private void teardownEntityShadowState() {
-        GL11.glPopMatrix();
+        GLStateManager.glPopMatrix();
 
         GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         GLStateManager.glPolygonOffset(0.0f, 0.0f);
@@ -553,7 +553,7 @@ public class ShadowRenderer {
         }
         int brightness = tile.getWorldObj().getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0);
         GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
-        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         TileEntityRendererDispatcher.instance.renderTileEntityAt(tile,
             (double)tile.xCoord - cameraX,
             (double)tile.yCoord - cameraY,
@@ -573,10 +573,10 @@ public class ShadowRenderer {
 			culler.setPosition(cameraX, cameraY, cameraZ);
 		}
 
-        GL11.glPushMatrix();
+        GLStateManager.glPushMatrix();
         MODELVIEW_BUFFER.clear().rewind();
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
-        GL11.glLoadMatrix(MODELVIEW_BUFFER);
+        GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
 
         GbufferPrograms.beginBlockEntities();
         GbufferPrograms.setBlockEntityDefaults();

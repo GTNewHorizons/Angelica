@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.debug;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
@@ -10,31 +11,31 @@ import org.lwjgl.opengl.GL11;
 public class F3Direction {
     public static void renderWorldDirectionsEvent(Minecraft mc, RenderGameOverlayEvent.Pre event) {
         if (mc.gameSettings.showDebugInfo && mc.gameSettings.thirdPersonView == 0) {
-            ScaledResolution scaledresolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-            int width = scaledresolution.getScaledWidth();
-            int height = scaledresolution.getScaledHeight();
+            final ScaledResolution scaledresolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            final int width = scaledresolution.getScaledWidth();
+            final int height = scaledresolution.getScaledHeight();
 
-            GL11.glPushMatrix();
+            GLStateManager.glPushMatrix();
 
-            GL11.glTranslatef((float) (width / 2), (float) (height / 2), -90);
+            GLStateManager.glTranslatef((float) (width / 2), (float) (height / 2), -90);
 
-            Entity entity = mc.renderViewEntity;
-            GL11.glRotatef(entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * event.partialTicks, -1.0F, 0.0F, 0.0F);
-            GL11.glRotatef(entity.prevRotationYaw + (entity.rotationYaw - entity.prevRotationYaw) * event.partialTicks, 0.0F, 1.0F, 0.0F);
+            final Entity entity = mc.renderViewEntity;
+            GLStateManager.glRotatef(entity.prevRotationPitch + (entity.rotationPitch - entity.prevRotationPitch) * event.partialTicks, -1.0F, 0.0F, 0.0F);
+            GLStateManager.glRotatef(entity.prevRotationYaw + (entity.rotationYaw - entity.prevRotationYaw) * event.partialTicks, 0.0F, 1.0F, 0.0F);
 
-            GL11.glScalef(-1.0F, -1.0F, -1.0F);
+            GLStateManager.glScalef(-1.0F, -1.0F, -1.0F);
 
             renderWorldDirections();
 
-            GL11.glPopMatrix();
+            GLStateManager.glPopMatrix();
         }
     }
     public static void renderWorldDirections() {
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
-        GL11.glDepthMask(false);
-        Tessellator tessellator = Tessellator.instance;
+        GLStateManager.disableTexture();
+        GLStateManager.glDepthMask(false);
+        final Tessellator tessellator = Tessellator.instance;
 
-        GL11.glLineWidth(2.0F);
+        GLStateManager.glLineWidth(2.0F);
         tessellator.startDrawing(GL11.GL_LINES);
 
         //X
@@ -54,8 +55,8 @@ public class F3Direction {
 
         tessellator.draw();
 
-        GL11.glLineWidth(1.0F);
-        GL11.glDepthMask(true);
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GLStateManager.glLineWidth(1.0F);
+        GLStateManager.glDepthMask(true);
+        GLStateManager.enableTexture();
     }
 }

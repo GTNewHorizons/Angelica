@@ -11,7 +11,6 @@ import org.apache.logging.log4j.Logger;
 public class ModStatus {
     public static final Logger LOGGER = LogManager.getLogger("ModCompat");
 
-    public static BackhandReflectionCompat backhandCompat;
     public static boolean isBetterCrashesLoaded;
     public static boolean isNEIDLoaded;
     public static boolean isNEIDMetadataExtended;
@@ -27,9 +26,8 @@ public class ModStatus {
     public static boolean isBaublesLoaded;
     public static boolean isFluidLoggedLoaded;
 
-    public static void preInit(){
-        isBackhandLoaded = Loader.isModLoaded("backhand");
-        if(isBackhandLoaded) {
+    public static void preInit() {
+        if (Loader.isModLoaded("backhand")) {
             isBackhandLoaded = BackhandReflectionCompat.isBackhandLoaded();
         }
 

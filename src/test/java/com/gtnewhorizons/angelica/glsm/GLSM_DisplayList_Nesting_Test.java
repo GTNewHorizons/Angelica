@@ -10,7 +10,7 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for nested display list execution.
@@ -64,7 +64,7 @@ class GLSM_DisplayList_Nesting_Test {
 
         // Check final matrix state - should have parent's translate applied
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Expected: translate(10, 0, 0)
         Matrix4f expected = new Matrix4f().translate(10.0f, 0.0f, 0.0f);
@@ -108,7 +108,7 @@ class GLSM_DisplayList_Nesting_Test {
 
         // Check final matrix state - should be translate(10,0,0) * translate(1,0,0) = translate(11,0,0)
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Expected: translate(11, 0, 0) = parent(10) + child(1)
         Matrix4f expected = new Matrix4f().translate(11.0f, 0.0f, 0.0f);
@@ -154,7 +154,7 @@ class GLSM_DisplayList_Nesting_Test {
 
         // Check final matrix state - should still be translate(10,0,0) because child did push/pop
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Expected: translate(10, 0, 0) only (child's transform was popped)
         Matrix4f expected = new Matrix4f().translate(10.0f, 0.0f, 0.0f);
@@ -203,7 +203,7 @@ class GLSM_DisplayList_Nesting_Test {
 
         // Check final matrix state - should be 100 + 10 + 1 = 111
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Expected: translate(111, 0, 0)
         Matrix4f expected = new Matrix4f().translate(111.0f, 0.0f, 0.0f);
@@ -228,7 +228,7 @@ class GLSM_DisplayList_Nesting_Test {
         // This is a uncommon but technically valid per the spec.
 
         // Get initial stack depth
-        int initialDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        int initialDepth = GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
 
         // Create a display list that only pushes the matrix
         int matrixPushList = GL11.glGenLists(1);
@@ -243,11 +243,11 @@ class GLSM_DisplayList_Nesting_Test {
         GLStateManager.glEndList();
 
         // Verify initial stack depth hasn't changed after compilation
-        assertEquals(initialDepth, GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH), "Stack depth should be unchanged after compiling display lists");
+        assertEquals(initialDepth, GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH), "Stack depth should be unchanged after compiling display lists");
 
         // Call the push list - should increase stack depth
         GLStateManager.glCallList(matrixPushList);
-        int depthAfterPush = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        int depthAfterPush = GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
         assertEquals(initialDepth + 1, depthAfterPush, "Stack depth should increase by 1 after calling push list");
 
         // Optionally do some operations here that would benefit from the pushed matrix
@@ -255,7 +255,7 @@ class GLSM_DisplayList_Nesting_Test {
 
         // Call the pop list - should restore stack depth
         GLStateManager.glCallList(matrixPopList);
-        int depthAfterPop = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        int depthAfterPop = GLStateManager.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
         assertEquals(initialDepth, depthAfterPop, "Stack depth should return to initial after calling pop list");
 
         // Cleanup

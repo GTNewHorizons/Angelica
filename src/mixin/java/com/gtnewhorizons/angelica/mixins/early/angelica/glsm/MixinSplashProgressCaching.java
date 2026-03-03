@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.mixin.Mixin;
@@ -27,10 +28,19 @@ public class MixinSplashProgressCaching {
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     /**
-     *  On return from finish() - mark splash complete
+     * Before splash starts, create a separate DirectTessellator for the splash thread.
+     */
+    @Inject(method = "start", at = @At("HEAD"))
+    private static void angelica$initSplashTessellator(CallbackInfo ci) {
+        ImmediateModeRecorder.initSplashTessellator();
+    }
+
+    /**
+     *  On return from finish() - destroy splash tessellator and mark splash complete
      */
     @Inject(method = "finish", at = @At("RETURN"))
     private static void angelica$enableCachingOnFinish(CallbackInfo ci) {
+        ImmediateModeRecorder.destroySplashTessellator();
         GLStateManager.markSplashComplete();
         LOGGER.info("Splash Complete");
     }

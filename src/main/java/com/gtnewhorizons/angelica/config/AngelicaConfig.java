@@ -112,7 +112,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeWorldUpdateLight;
 
-    @Config.Comment("Speedup Animations. [From Hodgepodge]")
+    @Config.Comment("Optimize Texture Animations. [From Hodgepodge]")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean speedupAnimations;
@@ -234,5 +234,9 @@ public class AngelicaConfig {
     @Config.Comment("Disables additional F3 information added by Angelica.")
     @Config.DefaultBoolean(false)
     public static boolean disableF3Additions;
+
+    @Config.Comment("Replaces various FFP uploads with statically allocated VBO's.")
+    @Config.DefaultBoolean(true)
+    public static boolean replaceFFPUploads;
 
 }

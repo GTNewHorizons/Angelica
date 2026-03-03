@@ -22,5 +22,18 @@ repositories {
             includeGroup 'org.taumc'
         }
     }
+    ivy {
+        name = 'modernsplash-github'
+        url = 'https://github.com/MalTeeez/ModernSplash/releases/download/'
+        patternLayout {
+            artifact '[revision]/[module]-[revision](-[classifier]).[ext]'
+        }
+        content {
+            includeModule 'com.github.MalTeeez', 'modernsplash'
+        }
+        metadataSources {
+            artifact()
+        }
+    }
     mavenLocal()
 }

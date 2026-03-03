@@ -1,31 +1,23 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
-import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import net.minecraft.launchwrapper.Launch;
-import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
-import org.objectweb.asm.tree.FieldInsnNode;
-import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
-import java.util.Collections;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * This transformer redirects many GL calls to our custom GLStateManager
@@ -51,9 +43,11 @@ public final class AngelicaRedirector {
     private static final String ARBVertexArrayObject = "org/lwjgl/opengl/ARBVertexArrayObject";
     private static final String APPLEVertexArrayObject = "org/lwjgl/opengl/APPLEVertexArrayObject";
     private static final String Project = "org/lwjgl/util/glu/Project";
+    private static final String GLU = "org/lwjgl/util/glu/GLU";
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
+    private static final String ARBShaderObjects = "org/lwjgl/opengl/ARBShaderObjects";
 
     // Redirect VAO related calls from NHLib and LWJGLService
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -73,10 +67,10 @@ public final class AngelicaRedirector {
         "initializeTextures", "func_77474_a"
     );
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL12, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, Project);
-    private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
+    private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>(32);
     private static final Map<String, Map<String, String>> interfaceRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
+    private static final ClassConstantPoolParser cstPoolParser;
 
     static {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_ALPHA_TEST, "AlphaTest");
@@ -111,6 +105,9 @@ public final class AngelicaRedirector {
             .add("glColorMask")
             .add("glColorMaterial")
             .add("glDeleteLists")
+            .add("glGenLists")
+            .add("glGenTextures")
+            .add("glIsList")
             .add("glDeleteTextures")
             .add("glDepthFunc")
             .add("glDepthMask")
@@ -183,6 +180,13 @@ public final class AngelicaRedirector {
             .add("glTexCoord3f")
             .add("glTexCoord4d")
             .add("glTexCoord4f")
+            .add("glTexEnvi")
+            .add("glTexEnvf")
+            .add("glTexEnv")
+            .add("glTexGeni")
+            .add("glTexGenf")
+            .add("glTexGend")
+            .add("glTexGen")
             .add("glTexImage1D")
             .add("glTexImage2D")
             .add("glTexImage3D")
@@ -194,6 +198,8 @@ public final class AngelicaRedirector {
             .add("glCopyTexSubImage2D")
             .add("glPixelStoref")
             .add("glPixelStorei")
+            .add("glPixelTransferf")
+            .add("glPixelTransferi")
             .add("glTexParameter")
             .add("glTexParameterf")
             .add("glTexParameteri")
@@ -206,6 +212,8 @@ public final class AngelicaRedirector {
             .add("glPointSize")
             .add("glPolygonMode")
             .add("glPolygonOffset")
+            .add("glPolygonStipple")
+            .add("glAccum")
             .add("glReadBuffer")
             .add("glSampleCoverage")
             .add("glScissor")
@@ -223,9 +231,22 @@ public final class AngelicaRedirector {
             .add("glVertex3f")
             .add("glVertexPointer")
             .add("glColorPointer")
+            .add("glNormalPointer")
+            .add("glTexCoordPointer")
             .add("glEnableClientState")
             .add("glDisableClientState")
+            .add("glInterleavedArrays")
+            .add("glPushClientAttrib")
+            .add("glPopClientAttrib")
             .add("glViewport")
+            .add("glFeedbackBuffer")
+            .add("glRenderMode")
+            .add("glPassThrough")
+            .add("glSelectBuffer")
+            .add("glInitNames")
+            .add("glPushName")
+            .add("glPopName")
+            .add("glLoadName")
         );
         methodRedirects.put(GL12, RedirectMap.newMap()
             .add("glTexImage3D")
@@ -235,6 +256,10 @@ public final class AngelicaRedirector {
         methodRedirects.put(GL13, RedirectMap.newMap()
             .add("glActiveTexture")
             .add("glSampleCoverage")
+            .add("glClientActiveTexture")
+            .add("glMultiTexCoord2f")
+            .add("glMultiTexCoord2d")
+            .add("glMultiTexCoord2s")
         );
         methodRedirects.put(GL14, RedirectMap.newMap()
             .add("glBlendFuncSeparate", "tryBlendFuncSeparate")
@@ -251,9 +276,40 @@ public final class AngelicaRedirector {
             .add("glStencilMaskSeparate")
             .add("glStencilOpSeparate")
             .add("glUseProgram")
+            .add("glShaderSource")
+            .add("glLinkProgram")
+            .add("glDeleteProgram")
+            .add("glCreateShader")
+            .add("glCompileShader")
+            .add("glCreateProgram")
+            .add("glAttachShader")
+            .add("glDetachShader")
+            .add("glValidateProgram")
+            .add("glGetUniformLocation")
+            .add("glGetAttribLocation")
+            .add("glUniform1f")
+            .add("glUniform2f")
+            .add("glUniform3f")
+            .add("glUniform4f")
+            .add("glUniform1i")
+            .add("glUniform2i")
+            .add("glUniform3i")
+            .add("glUniform4i")
+            .add("glUniform1")
+            .add("glUniform2")
+            .add("glUniform3")
+            .add("glUniform4")
+            .add("glUniformMatrix2")
+            .add("glUniformMatrix3")
+            .add("glUniformMatrix4")
+            .add("glGetActiveUniform")
+            .add("glGetAttachedShaders")
+            .add("glGetShaderSource")
+            .add("glGetUniform")
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
             .add("glBindFramebuffer")
         );
 
@@ -276,8 +332,46 @@ public final class AngelicaRedirector {
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap()
             .add("glActiveTextureARB")
         );
+        methodRedirects.put(ARBShaderObjects, RedirectMap.newMap()
+            .add("glUseProgramObjectARB", "glUseProgram")
+            .add("glShaderSourceARB", "glShaderSource")
+            .add("glLinkProgramARB", "glLinkProgram")
+            .add("glCreateShaderObjectARB", "glCreateShader")
+            .add("glCompileShaderARB", "glCompileShader")
+            .add("glCreateProgramObjectARB", "glCreateProgram")
+            .add("glAttachObjectARB", "glAttachShader")
+            .add("glDetachObjectARB", "glDetachShader")
+            .add("glValidateProgramARB", "glValidateProgram")
+            .add("glGetUniformLocationARB", "glGetUniformLocation")
+            .add("glGetAttribLocationARB", "glGetAttribLocation")
+            .add("glDeleteObjectARB")
+            .add("glGetObjectParameterARB")
+            .add("glGetObjectParameteriARB")
+            .add("glGetInfoLogARB")
+            .add("glGetHandleARB")
+            .add("glUniform1fARB", "glUniform1f")
+            .add("glUniform2fARB", "glUniform2f")
+            .add("glUniform3fARB", "glUniform3f")
+            .add("glUniform4fARB", "glUniform4f")
+            .add("glUniform1iARB", "glUniform1i")
+            .add("glUniform2iARB", "glUniform2i")
+            .add("glUniform3iARB", "glUniform3i")
+            .add("glUniform4iARB", "glUniform4i")
+            .add("glUniform1ARB", "glUniform1")
+            .add("glUniform2ARB", "glUniform2")
+            .add("glUniform3ARB", "glUniform3")
+            .add("glUniform4ARB", "glUniform4")
+            .add("glUniformMatrix2ARB", "glUniformMatrix2")
+            .add("glUniformMatrix3ARB", "glUniformMatrix3")
+            .add("glUniformMatrix4ARB", "glUniformMatrix4")
+            .add("glGetActiveUniformARB", "glGetActiveUniform")
+            .add("glGetAttachedObjectsARB", "glGetAttachedShaders")
+            .add("glGetShaderSourceARB", "glGetShaderSource")
+            .add("glGetUniformARB", "glGetUniform")
+        );
         methodRedirects.put(ARBVertexArrayObject, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
         );
 
 
@@ -289,30 +383,43 @@ public final class AngelicaRedirector {
         // GTNHLib VAO
         methodRedirects.put(UniversalVAO, RedirectMap.newMap()
             .add("bindVertexArray", "glBindVertexArray")
+            .add("deleteVertexArrays", "glDeleteVertexArrays")
         );
 
         // OTHER
-        methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+        methodRedirects.put(Project, RedirectMap.newMap()
+            .add("gluPerspective")
+            .add("gluLookAt")
+            .add("gluPickMatrix")
+        );
+        methodRedirects.put(GLU, RedirectMap.newMap()
+            .add("gluPerspective")
+            .add("gluLookAt")
+            .add("gluOrtho2D")
+            .add("gluPickMatrix")
+        );
 
         // Interface/virtual redirects — callers invoke these on a receiver object
         interfaceRedirects.put(VaoFunctions, RedirectMap.newMap()
             .add("glBindVertexArray")
+            .add("glDeleteVertexArrays")
         );
         interfaceRedirects.put(LWJGLService, RedirectMap.newMap()
             .add("glBindVertexArray")
         );
 
-        cstPoolParser.addString(UniversalVAO);
-        cstPoolParser.addString(VaoFunctions);
-        cstPoolParser.addString(LWJGLService);
-
+        final List<String> stringsToSearch = new ArrayList<>(32);
+        stringsToSearch.add(VaoFunctions);
+        stringsToSearch.add(LWJGLService);
         final String glPrefix = "org/lwjgl/opengl/GL";
         for (var entry : new HashMap<>(methodRedirects).entrySet()) {
+            stringsToSearch.add(entry.getKey());
             if (entry.getKey().startsWith(glPrefix)) {
                 methodRedirects.put(entry.getKey() + "C", entry.getValue());
-                cstPoolParser.addString(entry.getKey() + "C");
+                stringsToSearch.add(entry.getKey() + "C");
             }
         }
+        cstPoolParser = new ClassConstantPoolParser(stringsToSearch.toArray(new String[0]));
     }
 
     public String[] getTransformerExclusions() {
@@ -320,30 +427,27 @@ public final class AngelicaRedirector {
             "org.lwjgl",
             "com.gtnewhorizons.angelica.glsm.",
             "com.gtnewhorizons.angelica.transform",
-            "com.gtnewhorizon.gtnhlib.asm.",
             "me.eigenraven.lwjgl3ify"
         };
     }
 
     public boolean shouldTransform(byte[] basicClass) {
-        return cstPoolParser.find(basicClass, true);
+        return cstPoolParser.find(basicClass);
     }
 
     /** @return Was the class changed? */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if (cn == null) {
-            return false;
-        }
-
         boolean changed = false;
+        final boolean isOpenGlHelper = transformedName.equals("net.minecraft.client.renderer.OpenGlHelper");
+        final boolean isUniversalVAO = transformedName.startsWith(UniversalVAODot);
         for (MethodNode mn : cn.methods) {
-            if (transformedName.equals("net.minecraft.client.renderer.OpenGlHelper") && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
+            if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof MethodInsnNode mNode) {
-                    if ((mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable")) && mNode.desc.equals("(I)V")) {
+                    if (mNode.desc.equals("(I)V") && (mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable"))) {
                         final AbstractInsnNode prevNode = node.getPrevious();
                         String name = null;
                         if (prevNode instanceof LdcInsnNode ldcNode) {
@@ -373,7 +477,7 @@ public final class AngelicaRedirector {
                         }
                         changed = true;
                         redirectInMethod = true;
-                    } else if (mNode.owner.startsWith(Drawable) && mNode.name.equals("makeCurrent")) {
+                    } else if (mNode.name.equals("makeCurrent") && mNode.owner.startsWith(Drawable)) {
                         mNode.setOpcode(Opcodes.INVOKESTATIC);
                         mNode.owner = GLStateManager;
                         mNode.desc = "(L" + Drawable + ";)V";
@@ -387,7 +491,7 @@ public final class AngelicaRedirector {
                         if (redirects != null) {
                             final String glsmName = redirects.get(mNode.name);
                             // Skip VAO method redirects inside UniversalVAO
-                            if (glsmName != null && !(transformedName.startsWith(UniversalVAODot) && UniversalVAOSkippedMethods.contains(glsmName))) {
+                            if (glsmName != null && !(isUniversalVAO && UniversalVAOSkippedMethods.contains(glsmName))) {
                                 if (LOG_SPAM) {
                                     final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                                     LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
@@ -403,7 +507,7 @@ public final class AngelicaRedirector {
                             final Map<String, String> ifaceRedirects = interfaceRedirects.get(mNode.owner);
                             if (ifaceRedirects != null) {
                                 final String glsmName = ifaceRedirects.get(mNode.name);
-                                if (glsmName != null && !(transformedName.startsWith(UniversalVAODot) && UniversalVAOSkippedMethods.contains(glsmName))) {
+                                if (glsmName != null && !(isUniversalVAO && UniversalVAOSkippedMethods.contains(glsmName))) {
                                     if (LOG_SPAM) {
                                         final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
                                         LOGGER.info("Redirecting interface call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, "(I)V");

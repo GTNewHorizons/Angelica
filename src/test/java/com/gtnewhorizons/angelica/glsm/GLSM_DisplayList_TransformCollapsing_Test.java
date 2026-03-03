@@ -14,7 +14,9 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Tests for transform collapsing optimization in display lists. */
 @ExtendWith(AngelicaExtension.class)
@@ -74,7 +76,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         Matrix4f expected = new Matrix4f()
             .translate(1.0f, 2.0f, 3.0f)
@@ -125,7 +127,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Expected: translate(10,0,0) then translate(0,3,0) = translate(10,3,0)
         // The inner push/pop isolates the (5,0,0) translate and rotation
@@ -168,7 +170,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Final state: translate(1,0,0) + translate(5,0,0) = translate(6,0,0)
         // Level 1 and 2 transforms are isolated by push/pop
@@ -223,7 +225,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Build expected: translate(10,0,0) * rotate(90,Y) * translate(100,0,0) * translate(1,0,0)
         // After 90-degree Y rotation, X axis points into -Z, so nested translate goes along -Z
@@ -293,7 +295,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Total translation should be 3.0 (1+2)
         assertEquals(3.0f, actualBuf.get(12), 0.0001f,
@@ -320,7 +322,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         assertEquals(1.0f, actualBuf.get(12), 0.0001f, "X should be 1.0 (LoadIdentity reset)");
         assertEquals(2.0f, actualBuf.get(13), 0.0001f, "Y should be 2.0 (LoadIdentity reset)");
@@ -363,7 +365,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         Matrix4f expected = new Matrix4f()
             .translate(1.0f, 0.0f, 0.0f)
@@ -439,7 +441,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         assertEquals(3.0f, actualBuf.get(12), 0.0001f,
             "X translation should be 3.0 (1+2, inner transform isolated by push/pop)");
@@ -513,7 +515,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         FloatBuffer expectedBuf = BufferUtils.createFloatBuffer(16);
         loadedMatrix.get(expectedBuf);
@@ -551,7 +553,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Expected: loadedMatrix * translate(10,0,0)
         Matrix4f expected = new Matrix4f(loadedMatrix).translate(10.0f, 0.0f, 0.0f);
@@ -595,7 +597,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         assertEquals(1.0f, actualBuf.get(12), 0.0001f, "X should be 1.0");
         assertEquals(2.0f, actualBuf.get(13), 0.0001f, "Y should be 2.0");
@@ -632,7 +634,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         assertEquals(0.0f, actualBuf.get(12), 0.0001f, "X should be 0.0 (from second LoadMatrix)");
         assertEquals(20.0f, actualBuf.get(13), 0.0001f, "Y should be 20.0 (from second LoadMatrix)");
@@ -706,7 +708,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
 
         assertEquals(0.5f, matrixBuf.get(0), 0.0001f, "Scale X");
         assertEquals(0.5f, matrixBuf.get(5), 0.0001f, "Scale Y");
@@ -722,28 +724,28 @@ class GLSM_DisplayList_TransformCollapsing_Test {
     @Test
     void testTransformsAcrossMatrixModeSwitch() {
         // Transforms must not leak across matrix mode boundaries
+        // Compute expected results via GLSM (same path as display list playback)
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
         GLStateManager.glLoadIdentity();
 
-        // Execute directly via GL to get expected results
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glTranslatef(1.0f, 0.0f, 0.0f);
-        GL11.glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
+        GLStateManager.glTranslatef(1.0f, 0.0f, 0.0f);
+        GLStateManager.glRotatef(45.0f, 0.0f, 1.0f, 0.0f);
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glScalef(2.0f, 2.0f, 2.0f);
+        GLStateManager.glScalef(2.0f, 2.0f, 2.0f);
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
-        GL11.glTranslatef(3.0f, 0.0f, 0.0f);
+        GLStateManager.glTranslatef(3.0f, 0.0f, 0.0f);
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glTranslatef(5.0f, 0.0f, 0.0f);
+        GLStateManager.glTranslatef(5.0f, 0.0f, 0.0f);
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
 
         FloatBuffer expectedMV = BufferUtils.createFloatBuffer(16);
         FloatBuffer expectedProj = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, expectedMV);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, expectedMV);
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, expectedProj);
+        GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, expectedProj);
 
         // Reset and test via display list
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
@@ -770,9 +772,9 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
         FloatBuffer actualMV = BufferUtils.createFloatBuffer(16);
         FloatBuffer actualProj = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualMV);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualMV);
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, actualProj);
+        GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, actualProj);
 
         for (int i = 0; i < 16; i++) {
             assertEquals(expectedMV.get(i), actualMV.get(i), 0.0001f, "MODELVIEW[" + i + "]");
@@ -831,7 +833,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
             GLStateManager.glCallList(testList);
 
             FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
-            GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+            GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
             assertEquals(0.5f, matrixBuf.get(0), 0.0001f, "Scale X for mode " + mode);
             assertEquals(0.5f, matrixBuf.get(5), 0.0001f, "Scale Y for mode " + mode);
 
@@ -894,7 +896,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
 
         assertEquals(2.0f, matrixBuf.get(0), 0.0001f, "Scale X after pop");
         assertEquals(2.0f, matrixBuf.get(5), 0.0001f, "Scale Y after pop");
@@ -918,17 +920,17 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         final float angle2 = 30.0f;
         final float tx2 = -1.0f, ty2 = 4.0f, tz2 = 0.5f;
 
-        // Execute directly via GL
+        // Execute directly via GLSM
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glLoadIdentity();
-        GL11.glTranslatef(tx1, ty1, tz1);
-        GL11.glRotatef(angle1, 0.0f, 1.0f, 0.0f);  // Y-axis rotation
-        GL11.glScalef(sx, sy, sz);
-        GL11.glRotatef(angle2, 1.0f, 0.0f, 0.0f);  // X-axis rotation
-        GL11.glTranslatef(tx2, ty2, tz2);
+        GLStateManager.glTranslatef(tx1, ty1, tz1);
+        GLStateManager.glRotatef(angle1, 0.0f, 1.0f, 0.0f);  // Y-axis rotation
+        GLStateManager.glScalef(sx, sy, sz);
+        GLStateManager.glRotatef(angle2, 1.0f, 0.0f, 0.0f);  // X-axis rotation
+        GLStateManager.glTranslatef(tx2, ty2, tz2);
 
         FloatBuffer expectedBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, expectedBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, expectedBuf);
 
         // Reset and execute via display list
         GLStateManager.glLoadIdentity();
@@ -945,7 +947,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         GLStateManager.glCallList(testList);
 
         FloatBuffer actualBuf = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, actualBuf);
 
         // Verify equivalence
         for (int i = 0; i < 16; i++) {

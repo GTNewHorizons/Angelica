@@ -2,26 +2,25 @@ package com.gtnewhorizons.angelica.loading.fml.transformers;
 
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
-import com.gtnewhorizons.angelica.loading.shared.transformers.SodiumBlockTransform;
+import com.gtnewhorizons.angelica.loading.shared.transformers.CeleritasBlockTransform;
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
-public class SodiumBlockTransformer implements IClassTransformer {
+public class CeleritasBlockTransformer implements IClassTransformer {
 
-    private final SodiumBlockTransform inner;
+    private final CeleritasBlockTransform inner;
     private final String[] exclusions;
 
-    public SodiumBlockTransformer() {
-        this.inner = new SodiumBlockTransform(AngelicaTweaker.isObfEnv());
+    public CeleritasBlockTransformer() {
+        this.inner = new CeleritasBlockTransform(AngelicaTweaker.isObfEnv());
         this.exclusions = inner.getTransformerExclusions();
         this.inner.setCeleritasSetting();
     }
 
     /**
-     * Delete the global vanilla bounding box fields off the Block object. {@link AngelicaRedirector}
+     * Delete the global vanilla bounding box fields off the Block object. {@link CeleritasBlockTransform}
      * replaces these with a thread-safe alternative.
      */
     @Override
@@ -31,9 +30,11 @@ public class SodiumBlockTransformer implements IClassTransformer {
             if (transformedName.startsWith(exclusion)) return basicClass;
         }
 
-        if (!inner.shouldTransform(basicClass)) {
-            return basicClass;
-        }
+        // Here could be a `inner.shouldTransform(basicClass)` check to exit early from transforming,
+        // but we also need to call `inner.trackBlockSubclasses` in this case and somehow pass
+        // the name of a class and a superclass, which we can do only after parsing the whole constant pool.
+        // This transformer is merely a fallback when FRB / lwjgl3ify is not present, so we can afford
+        // it being not fully optimized
 
         final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
