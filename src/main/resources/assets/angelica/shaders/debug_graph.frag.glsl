@@ -1,4 +1,4 @@
-#version 120
+#version 330 core
 
 uniform int headIdx;
 uniform float scaleFactor;
@@ -6,6 +6,8 @@ uniform float samples[240];
 uniform float pxPerNs;
 uniform bool left;
 uniform float fbWidth;
+
+out vec4 fragColor;
 
 void main() {
     // Get position - gl_FragCoord starts from the lower left and returns the position of the center of the pixel
@@ -31,5 +33,5 @@ void main() {
     float g = 1.0 - clamp((time - midNs) / midNs, 0.0, 1.0);
     if (dy <= height)
         color = vec4(r, g, 0.0, 1.0);
-    gl_FragColor = color;
+    fragColor = color;
 }

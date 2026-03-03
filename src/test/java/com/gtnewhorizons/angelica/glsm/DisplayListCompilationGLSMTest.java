@@ -10,7 +10,10 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Tests GLSM display list behavior matches OpenGL spec. */
 @ExtendWith(AngelicaExtension.class)
@@ -85,14 +88,14 @@ class DisplayListCompilationGLSMTest {
     @Test
     void glsm_compile_transformNotApplied() {
         FloatBuffer before = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, before);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, before);
 
         testList = GL11.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE);
         GLStateManager.glTranslatef(10, 20, 30);
 
         FloatBuffer during = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, during);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, during);
         assertMatrixEquals(before, during, "During GL_COMPILE: matrix unchanged");
 
         GLStateManager.glEndList();
@@ -102,26 +105,26 @@ class DisplayListCompilationGLSMTest {
     void glsm_compileAndExecute_transformQueuedUntilFlush() {
         // Transforms queue until draw/glEndList (state commands don't flush)
         FloatBuffer identity = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, identity);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, identity);
 
         testList = GL11.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE_AND_EXECUTE);
         GLStateManager.glTranslatef(10, 0, 0);  // Queued
 
         FloatBuffer beforeFlush = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeFlush);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeFlush);
         assertMatrixEquals(identity, beforeFlush, "Before flush: transform queued");
 
         GLStateManager.enableBlend();  // State commands DON'T flush transforms anymore
 
         FloatBuffer afterStateCmd = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterStateCmd);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterStateCmd);
         assertMatrixEquals(identity, afterStateCmd, "After state cmd: transform still queued");
 
         GLStateManager.glEndList();  // glEndList flushes pending transforms
 
         FloatBuffer afterEndList = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterEndList);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterEndList);
         assertEquals(10.0f, afterEndList.get(12), 0.001f, "After glEndList: transform applied");
     }
 
@@ -169,16 +172,16 @@ class DisplayListCompilationGLSMTest {
 
         FloatBuffer proj = BufferUtils.createFloatBuffer(16);
         FloatBuffer mv = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, mv);
+        GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, mv);
         assertEquals(0.0f, proj.get(12), 0.001f, "After GL_COMPILE: PROJECTION unchanged");
         assertEquals(0.0f, mv.get(12), 0.001f, "After GL_COMPILE: MODELVIEW unchanged");
 
         GLStateManager.glCallList(testList);
 
         proj.clear(); mv.clear();
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, mv);
+        GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, mv);
         assertEquals(5.0f, proj.get(12), 0.001f, "After playback: PROJECTION has translate(5)");
         assertEquals(10.0f, mv.get(12), 0.001f, "After playback: MODELVIEW has translate(10)");
     }
@@ -195,13 +198,13 @@ class DisplayListCompilationGLSMTest {
         GLStateManager.glEndList();
 
         FloatBuffer afterCompile = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterCompile);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterCompile);
         assertEquals(100.0f, afterCompile.get(12), 0.001f, "After GL_COMPILE: matrix at base");
 
         GLStateManager.glCallList(testList);
 
         FloatBuffer afterPlay = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterPlay);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterPlay);
         assertEquals(100.0f, afterPlay.get(12), 0.001f, "After playback: matrix at base");
     }
 
@@ -218,17 +221,17 @@ class DisplayListCompilationGLSMTest {
         GLStateManager.glRotatef(45, 0, 1, 0);  // Queued
 
         FloatBuffer beforeMode = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeMode);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeMode);
         assertEquals(0.0f, beforeMode.get(12), 0.001f, "Before MatrixMode: queued");
 
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);  // Barrier - flushes
 
         FloatBuffer afterMode = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterMode);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterMode);
         assertNotEquals(0.0f, afterMode.get(12), "After MatrixMode: flushed to MODELVIEW");
 
         FloatBuffer proj = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
+        GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
         assertEquals(0.0f, proj.get(12), 0.001f, "PROJECTION still identity");
 
         GLStateManager.glEndList();
@@ -247,19 +250,19 @@ class DisplayListCompilationGLSMTest {
         GLStateManager.glTranslatef(10, 0, 0);
 
         FloatBuffer beforeFlush = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeFlush);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeFlush);
         assertEquals(0.0f, beforeFlush.get(12), 0.001f, "Before flush: queued");
 
         GLStateManager.enableBlend();  // NOT a barrier in new model
 
         FloatBuffer afterStateCmd = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterStateCmd);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterStateCmd);
         assertEquals(0.0f, afterStateCmd.get(12), 0.001f, "After state cmd: still queued");
 
         GLStateManager.glPopMatrix();  // Matrix barrier: flushes transform, then pops
 
         FloatBuffer afterPop = BufferUtils.createFloatBuffer(16);
-        GL11.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterPop);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterPop);
         assertEquals(0.0f, afterPop.get(12), 0.001f, "After pop: back to identity (pushed state)");
 
         GLStateManager.glEndList();

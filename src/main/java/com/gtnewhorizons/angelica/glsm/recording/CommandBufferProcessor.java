@@ -67,6 +67,7 @@ public final class CommandBufferProcessor {
 
             // Four int commands
             case GLCommand.VIEWPORT -> out.writeViewport(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
+            case GLCommand.SCISSOR -> out.writeScissor(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
             case GLCommand.BLEND_FUNC -> out.writeBlendFunc(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
             case GLCommand.COLOR_MASK -> out.writeColorMask(raw.readInt() != 0, raw.readInt() != 0, raw.readInt() != 0, raw.readInt() != 0);
             case GLCommand.STENCIL_FUNC_SEPARATE -> out.writeStencilFuncSeparate(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt());
@@ -140,6 +141,16 @@ public final class CommandBufferProcessor {
                 for (int i = 0; i < count; i++) fb.put(raw.readFloat());
                 fb.flip();
                 out.writeMaterial(face, pname, fb);
+            }
+
+            // Clip plane command (4 doubles)
+            case GLCommand.CLIP_PLANE -> {
+                final int plane = raw.readInt();
+                final double a = raw.readDouble();
+                final double b = raw.readDouble();
+                final double c = raw.readDouble();
+                final double d = raw.readDouble();
+                out.writeClipPlane(plane, a, b, c, d);
             }
 
             // Draw/call commands

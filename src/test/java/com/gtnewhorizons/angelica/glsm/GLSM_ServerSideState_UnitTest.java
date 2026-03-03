@@ -457,18 +457,23 @@ public class GLSM_ServerSideState_UnitTest {
 
             assertTrue(GL11.glIsTexture(texId), "Texture should exist before delete");
 
-            // SharedDrawable: delete the texture
+            // SharedDrawable: delete the texture (deferred — name stays valid)
             executeOnSharedDrawable(() -> {
                 GLStateManager.glDeleteTextures(texId);
-                assertFalse(GL11.glIsTexture(texId), "Texture should not exist after SharedDrawable delete");
+                assertTrue(GL11.glIsTexture(texId), "Texture name should still be valid (deferred delete)");
             });
 
-            assertFalse(GL11.glIsTexture(texId), "Texture should not exist on main thread after SharedDrawable delete");
+            assertTrue(GL11.glIsTexture(texId), "Texture name should still be valid on main thread (deferred delete)");
+
+            // glGenTextures flushes deferred deletes
+            int newTexId = GLStateManager.glGenTextures();
+            assertFalse(GL11.glIsTexture(texId), "Texture should be gone after flush via glGenTextures");
+            GL11.glDeleteTextures(newTexId);
 
         } finally {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             if (GL11.glIsTexture(texId)) {
-                GLStateManager.glDeleteTextures(texId);
+                GL11.glDeleteTextures(texId);
             }
         }
     }
