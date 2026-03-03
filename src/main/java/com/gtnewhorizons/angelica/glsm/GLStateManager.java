@@ -180,6 +180,10 @@ public class GLStateManager {
     // Highest texture unit index that has ever had a non-zero binding; limits onDeleteTexture scan range
     private static int maxBoundTextureUnit = 0;
 
+    // Deferred texture deletion: names kept valid until glGenTextures recycles them.
+    // Emulates Mesa/compat-profile behavior where delete-then-bind doesn't error.
+    private static final IntOpenHashSet deferredDeleteTextures = new IntOpenHashSet();
+
     @Getter private static Vendor VENDOR;
 
     // This setting varies depending on driver, so it gets queried at runtime
@@ -1638,6 +1642,11 @@ public class GLStateManager {
                 return;
             }
         }
+        // Rebinding a deferred-delete texture rescues it (Mesa/compat-profile behavior)
+        if (texture != 0) {
+            deferredDeleteTextures.remove(texture);
+        }
+
         if (target != GL11.GL_TEXTURE_2D) {
             // We're only supporting 2D textures for now
             GL11.glBindTexture(target, texture);
@@ -1800,17 +1809,69 @@ public class GLStateManager {
     }
 
     public static void glDeleteTextures(int id) {
+        deferDeleteTexture(id);
         onDeleteTexture(id);
-
-        GL11.glDeleteTextures(id);
     }
 
     public static void glDeleteTextures(IntBuffer ids) {
         for(int i = 0; i < ids.remaining(); i++) {
-            onDeleteTexture(ids.get(i));
+            final int id = ids.get(ids.position() + i);
+            deferDeleteTexture(id);
+            onDeleteTexture(id);
+        }
+    }
+
+    /** Shrink texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid. */
+    private static void deferDeleteTexture(int id) {
+        if (id == 0) return;
+
+        final int savedUnit = GLStateManager.activeTextureUnit.getValue();
+        final int savedBinding = textures.getTextureUnitBindings(savedUnit).getBinding();
+        boolean changedUnit = false;
+
+        // Unbind from all units that have this texture
+        for (int i = 0; i <= maxBoundTextureUnit; i++) {
+            if (textures.getTextureUnitBindings(i).getBinding() == id) {
+                if (i != savedUnit) {
+                    GL13.glActiveTexture(GL13.GL_TEXTURE0 + i);
+                    changedUnit = true;
+                }
+                GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            }
         }
 
-        GL11.glDeleteTextures(ids);
+        // Restore active unit, then shrink the texture via a temporary bind
+        if (changedUnit) {
+            GL13.glActiveTexture(GL13.GL_TEXTURE0 + savedUnit);
+        }
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, id);
+        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, 1, 1, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+
+        // Restore previous binding on active unit
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
+
+        deferredDeleteTextures.add(id);
+    }
+
+    /** Flush deferred deletes so the driver can recycle names. */
+    private static void flushDeferredTextureDeletes() {
+        if (deferredDeleteTextures.isEmpty()) return;
+        final var it = deferredDeleteTextures.iterator();
+        while (it.hasNext()) {
+            GL11.glDeleteTextures(it.nextInt());
+        }
+        deferredDeleteTextures.clear();
+    }
+
+    public static int glGenTextures() {
+        flushDeferredTextureDeletes();
+        return GL11.glGenTextures();
+    }
+
+    public static void glGenTextures(IntBuffer textures) {
+        flushDeferredTextureDeletes();
+        GL11.glGenTextures(textures);
     }
 
     public static void enableTexture() {

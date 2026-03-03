@@ -106,6 +106,7 @@ public final class AngelicaRedirector {
             .add("glColorMaterial")
             .add("glDeleteLists")
             .add("glGenLists")
+            .add("glGenTextures")
             .add("glIsList")
             .add("glDeleteTextures")
             .add("glDepthFunc")
