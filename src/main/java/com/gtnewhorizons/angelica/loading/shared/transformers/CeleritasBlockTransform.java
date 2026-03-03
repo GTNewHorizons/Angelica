@@ -442,17 +442,28 @@ public final class CeleritasBlockTransform {
         int cnt = 0;
 
         int[] caches1 = new int[paramUsedCount.length];
+        final InsnList thisCache = new InsnList(); // In a static method, since there's no `this` parameter, this is actually the first argument, but it won't cause any problems.
         final InsnList initCache = new InsnList();
         for (int i = 0; i < paramUsedCount.length; i++) {
             if (paramUsedCount[i] > 1) {
                 caches1[i] = mn.maxLocals++;
                 mn.localVariables.add(new LocalVariableNode("angelica$blockDataCache" + cnt++, "L" + ThreadedBlockData + ";", null, methodStart, methodEnd, caches1[i]));
-                initCache.add(new VarInsnNode(Opcodes.ALOAD, i));
-                initCache.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
-                initCache.add(new VarInsnNode(Opcodes.ASTORE, caches1[i]));
+                final InsnList cache = i == 0 ? thisCache : initCache;
+                cache.add(new VarInsnNode(Opcodes.ALOAD, i));
+                cache.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
+                cache.add(new VarInsnNode(Opcodes.ASTORE, caches1[i]));
+            }
+        }
+        if ("<init>".equals(mn.name)) {
+            for (AbstractInsnNode node : mn.instructions.toArray()) {
+                if (node.getOpcode() == Opcodes.INVOKESPECIAL && node instanceof MethodInsnNode mNode && "<init>".equals(mNode.name)) {
+                    mn.instructions.insert(node, thisCache);
+                    break;
+                }
             }
         }
         mn.instructions.insertBefore(mn.instructions.getFirst(), initCache);
+        mn.instructions.insertBefore(mn.instructions.getFirst(), thisCache);
 
         Map<VarInsnNode, Integer> caches2 = new HashMap<>();
         for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
