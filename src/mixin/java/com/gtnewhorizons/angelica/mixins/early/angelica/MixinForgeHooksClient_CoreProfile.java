@@ -6,6 +6,7 @@ import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.PixelFormat;
+import org.lwjgl.LWJGLUtil;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -51,9 +52,12 @@ public abstract class MixinForgeHooksClient_CoreProfile {
             throw new RuntimeException("Failed to obtain ContextAttribs version setters", e);
         }
 
+        final int startMajor = 4;
+        final int startMaxMinor = (LWJGLUtil.getPlatform() == LWJGLUtil.PLATFORM_MACOSX) ? 1 : 6;
+
         Exception cur_exception = null;
-        for (int major = 4; major >= 3; --major) {
-            final int maxMinor = (major == 4) ? 6 : 3;
+        for (int major = startMajor; major >= 3; --major) {
+            final int maxMinor = (major == 4) ? startMaxMinor : 3;
             final int minMinor = (major == 3) ? 3 : 0;
             for (int minor = maxMinor; minor >= minMinor; --minor) {
                 try {
@@ -66,6 +70,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
                     Display.create(format, attribs);
                     return;
                 } catch (LWJGLException | RuntimeException e) {
+                    try { Display.destroy(); } catch (Exception ignored) {}
                     cur_exception = e;
                 }
             }
