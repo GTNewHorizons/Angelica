@@ -64,7 +64,6 @@ configurations.all {
 
 dependencies {
     compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:3.0.13:dev")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
 
