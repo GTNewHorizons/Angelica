@@ -33,6 +33,8 @@ public class SodiumGameOptions {
         public boolean useParticleCulling = true;
         public boolean allowDirectMemoryAccess = true;
         public boolean ignoreDriverBlacklist = false;
+        public boolean useMapBufferRange = false;
+        public boolean enableDeferredBatching = true;
     }
 
     public static class PerformanceSettings {
@@ -89,6 +91,10 @@ public class SodiumGameOptions {
             }
         } else {
             config = new SodiumGameOptions();
+            // Lwjgl2 doesn't expose multidraw and actually does individual, so try indirect if available
+            if (isLwjgl2() && !isMacOS()) {
+                config.advanced.multiDrawMode = MultiDrawMode.INDIRECT;
+            }
         }
 
         config.configPath = path;
@@ -98,6 +104,7 @@ public class SodiumGameOptions {
             config.performance.cpuRenderAheadLimit = 0;
         }
 
+        // Downgrade INDIRECT if hardware doesn't support it
         if (config.advanced.multiDrawMode == MultiDrawMode.INDIRECT && (GLStateManager.capabilities == null || (!GLStateManager.capabilities.OpenGL43 && !GLStateManager.capabilities.GL_ARB_multi_draw_indirect))) {
             config.advanced.multiDrawMode = MultiDrawMode.DIRECT;
         }
@@ -110,6 +117,14 @@ public class SodiumGameOptions {
         }
 
         return config;
+    }
+
+    private static boolean isLwjgl2() {
+        return SodiumGameOptions.class.getClassLoader().getResource("org/lwjgl/Sys.class") != null;
+    }
+
+    private static boolean isMacOS() {
+        return System.getProperty("os.name", "").toLowerCase().contains("mac");
     }
 
     public void writeChanges() throws IOException {

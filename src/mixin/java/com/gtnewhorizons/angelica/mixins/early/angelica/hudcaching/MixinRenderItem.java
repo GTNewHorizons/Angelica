@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.hudcaching;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.dummy.DummyTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderItem;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -32,7 +32,7 @@ public class MixinRenderItem {
         )
     )
     private void angelica$neuterGlDisable(int cap) {
-        if (cap == GL_LIGHTING) GL11.glDisable(cap);
+        if (cap == GL_LIGHTING) GLStateManager.glDisable(cap);
     }
 
     @Redirect(

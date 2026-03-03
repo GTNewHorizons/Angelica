@@ -34,8 +34,8 @@ public class ClearPass {
 			color = this.color;
 		}
 
-		GL11.glClearColor(color.x, color.y, color.z, color.w);
-        GL11.glClear(clearFlags);
+		GLStateManager.glClearColor(color.x, color.y, color.z, color.w);
+        GLStateManager.glClear(clearFlags);
         if (Minecraft.isRunningOnMac) {
             GL11.glGetError();
         }

@@ -9,6 +9,7 @@ import org.lwjgl.opengl.GL13;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
@@ -38,15 +39,55 @@ public class GLSMUtil {
         GL11.GL_MAP2_VERTEX_3, GL11.GL_MAP2_VERTEX_4
     };
 
+    private static final Set<Integer> FFP_ONLY_CAPS = Set.of(
+        // Enable/disable caps (BooleanState ffpStateOnly=true)
+        GL11.GL_FOG, GL11.GL_ALPHA_TEST, GL11.GL_LIGHTING,
+        GL12.GL_RESCALE_NORMAL, GL11.GL_NORMALIZE, GL11.GL_COLOR_MATERIAL,
+        GL11.GL_LIGHT0, GL11.GL_LIGHT1, GL11.GL_LIGHT2, GL11.GL_LIGHT3,
+        GL11.GL_LIGHT4, GL11.GL_LIGHT5, GL11.GL_LIGHT6, GL11.GL_LIGHT7,
+        // Texture enable/disable (TextureUnitBooleanStateStack ffpStateOnly=true)
+        GL11.GL_TEXTURE_1D, GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_3D,
+        GL11.GL_TEXTURE_GEN_S, GL11.GL_TEXTURE_GEN_T,
+        GL11.GL_TEXTURE_GEN_R, GL11.GL_TEXTURE_GEN_Q,
+        // Matrix state
+        GL11.GL_MATRIX_MODE, GL11.GL_MODELVIEW_MATRIX,
+        GL11.GL_PROJECTION_MATRIX, GL11.GL_TEXTURE_MATRIX,
+        // Current vertex state
+        GL11.GL_CURRENT_COLOR, GL11.GL_CURRENT_NORMAL, GL11.GL_CURRENT_TEXTURE_COORDS,
+        // Alpha test params
+        GL11.GL_ALPHA_TEST_FUNC, GL11.GL_ALPHA_TEST_REF,
+        // Shade model
+        GL11.GL_SHADE_MODEL,
+        // Color material params
+        GL11.GL_COLOR_MATERIAL_FACE, GL11.GL_COLOR_MATERIAL_PARAMETER,
+        // Light model params
+        GL11.GL_LIGHT_MODEL_AMBIENT, GL11.GL_LIGHT_MODEL_LOCAL_VIEWER,
+        GL11.GL_LIGHT_MODEL_TWO_SIDE, GL12.GL_LIGHT_MODEL_COLOR_CONTROL,
+        // Line stipple params (removed from core profile)
+        GL11.GL_LINE_STIPPLE, GL11.GL_LINE_STIPPLE_PATTERN, GL11.GL_LINE_STIPPLE_REPEAT,
+        // Fog params
+        GL11.GL_FOG_COLOR, GL11.GL_FOG_DENSITY,
+        GL11.GL_FOG_START, GL11.GL_FOG_END,
+        GL11.GL_FOG_MODE, GL11.GL_FOG_INDEX
+    );
+
+    private static boolean isFFPOnly(int glCap) {
+        return FFP_ONLY_CAPS.contains(glCap);
+    }
+
     public static void verifyIsEnabled(int glCap, boolean expected) {
         verifyIsEnabled(glCap, expected, "Is Enabled Mismatch");
     }
 
     public static void verifyIsEnabled(int glCap, boolean expected, String message) {
-        assertAll( message,
-            () -> assertEquals(expected, GL11.glIsEnabled(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glIsEnabled(glCap), "GLSM State Mismatch")
-        );
+        if (isFFPOnly(glCap)) {
+            assertEquals(expected, GLStateManager.glIsEnabled(glCap), message + " - GLSM State Mismatch");
+        } else {
+            assertAll(message,
+                () -> assertEquals(expected, GL11.glIsEnabled(glCap), "GL State Mismatch"),
+                () -> assertEquals(expected, GLStateManager.glIsEnabled(glCap), "GLSM State Mismatch")
+            );
+        }
     }
 
     public static void verifyState(int glCap, boolean expected) {
@@ -54,38 +95,53 @@ public class GLSMUtil {
     }
 
     public static void verifyState(int glCap, boolean expected, String message) {
-        assertAll( message,
-            () -> assertEquals(expected, GL11.glGetBoolean(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glGetBoolean(glCap), "GLSM State Mismatch")
-        );
+        if (isFFPOnly(glCap)) {
+            assertEquals(expected, GLStateManager.glGetBoolean(glCap), message + " - GLSM State Mismatch");
+        } else {
+            assertAll(message,
+                () -> assertEquals(expected, GL11.glGetBoolean(glCap), "GL State Mismatch"),
+                () -> assertEquals(expected, GLStateManager.glGetBoolean(glCap), "GLSM State Mismatch")
+            );
+        }
     }
 
     public static void verifyState(int glCap, int expected) {
         verifyState(glCap, expected, "Int State Mismatch");
     }
     public static void verifyState(int glCap, int expected, String message) {
-        assertAll(message,
-            () -> assertEquals(expected, GL11.glGetInteger(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
-        );
+        if (isFFPOnly(glCap)) {
+            assertEquals(expected, GLStateManager.glGetInteger(glCap), message + " - GLSM State Mismatch");
+        } else {
+            assertAll(message,
+                () -> assertEquals(expected, GL11.glGetInteger(glCap), "GL State Mismatch"),
+                () -> assertEquals(expected, GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
+            );
+        }
     }
 
     public static void verifyState(int glCap, short expected, String message) {
-        // For short state (e.g., line stipple pattern), GL returns it as int, we compare as short
-        assertAll(message,
-            () -> assertEquals(expected, (short) GL11.glGetInteger(glCap), "GL State Mismatch"),
-            () -> assertEquals(expected, (short) GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
-        );
+        if (isFFPOnly(glCap)) {
+            assertEquals(expected, (short) GLStateManager.glGetInteger(glCap), message + " - GLSM State Mismatch");
+        } else {
+            assertAll(message,
+                () -> assertEquals(expected, (short) GL11.glGetInteger(glCap), "GL State Mismatch"),
+                () -> assertEquals(expected, (short) GLStateManager.glGetInteger(glCap), "GLSM State Mismatch")
+            );
+        }
     }
 
     public static void verifyState(int glCap, float expected) {
         verifyState(glCap, expected, "Float State Mismatch");
     }
     public static void verifyState(int glCap, float expected, String message) {
-        assertAll(message,
-            () -> assertEquals(expected, GL11.glGetFloat(glCap), 0.0001f, "GL State Mismatch"),
-            () -> assertEquals(expected, GLStateManager.glGetFloat(glCap), 0.0001f, "GLSM State Mismatch")
-        );
+        if (isFFPOnly(glCap)) {
+            assertEquals(expected, GLStateManager.glGetFloat(glCap), 0.0001f, message + " - GLSM State Mismatch");
+        } else {
+            assertAll(message,
+                () -> assertEquals(expected, GL11.glGetFloat(glCap), 0.0001f, "GL State Mismatch"),
+                () -> assertEquals(expected, GLStateManager.glGetFloat(glCap), 0.0001f, "GLSM State Mismatch")
+            );
+        }
     }
     public static void verifyState(int glCap, int[] expected) {
         verifyState(glCap, expected, "Int State Mismatch");
@@ -95,12 +151,19 @@ public class GLSMUtil {
     static final IntBuffer glsmIntBuffer = BufferUtils.createIntBuffer(16);
 
     public static void verifyState(int glCap, int[] expected, String message) {
-        GL11.glGetInteger(glCap, (IntBuffer) glIntBuffer.clear());
-        GLStateManager.glGetInteger(glCap, (IntBuffer) glsmIntBuffer.clear());
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i], glIntBuffer.get(i), "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i], glsmIntBuffer.get(i), "GLSM State Mismatch: " + i)
-        ));
+        if (isFFPOnly(glCap)) {
+            GLStateManager.glGetInteger(glCap, (IntBuffer) glsmIntBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i ->
+                assertEquals(expected[i], glsmIntBuffer.get(i), message + " - GLSM State Mismatch: " + i)
+            );
+        } else {
+            GL11.glGetInteger(glCap, (IntBuffer) glIntBuffer.clear());
+            GLStateManager.glGetInteger(glCap, (IntBuffer) glsmIntBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i -> assertAll(message,
+                () -> assertEquals(expected[i], glIntBuffer.get(i), "GL State Mismatch: " + i),
+                () -> assertEquals(expected[i], glsmIntBuffer.get(i), "GLSM State Mismatch: " + i)
+            ));
+        }
     }
 
 
@@ -112,21 +175,35 @@ public class GLSMUtil {
     static final FloatBuffer glsmFloatBuffer = BufferUtils.createFloatBuffer(16);
 
     public static void verifyState(int glCap, float[] expected, String message) {
-        GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
-        GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
-        ));
+        if (isFFPOnly(glCap)) {
+            GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i ->
+                assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, message + " - GLSM State Mismatch: " + i)
+            );
+        } else {
+            GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
+            GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i -> assertAll(message,
+                () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
+                () -> assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)
+            ));
+        }
     }
 
     public static void verifyNotDefaultState(int glCap, float[] expected, String message) {
-        GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
-        GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertNotEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
-            () -> assertNotEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
-        ));
+        if (isFFPOnly(glCap)) {
+            GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i ->
+                assertNotEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, message + " - GLSM State Mismatch: " + i)
+            );
+        } else {
+            GL11.glGetFloat(glCap, (FloatBuffer) glFloatBuffer.clear());
+            GLStateManager.glGetFloat(glCap, (FloatBuffer) glsmFloatBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i -> assertAll(message,
+                () -> assertNotEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
+                () -> assertNotEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)
+            ));
+        }
     }
 
     public static void verifyState(int glCap, boolean[] expected) {
@@ -137,32 +214,36 @@ public class GLSMUtil {
     static final ByteBuffer glsmByteBuffer = BufferUtils.createByteBuffer(16);
 
     public static void verifyState(int glCap, boolean[] expected, String message) {
-
-        GL11.glGetBoolean(glCap, (ByteBuffer) glByteBuffer.clear());
-        GLStateManager.glGetBoolean(glCap, (ByteBuffer) glsmByteBuffer.clear());
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmByteBuffer.get(i), "GLSM State Mismatch: " + i)
-        ));
+        if (isFFPOnly(glCap)) {
+            GLStateManager.glGetBoolean(glCap, (ByteBuffer) glsmByteBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i ->
+                assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmByteBuffer.get(i), message + " - GLSM State Mismatch: " + i)
+            );
+        } else {
+            GL11.glGetBoolean(glCap, (ByteBuffer) glByteBuffer.clear());
+            GLStateManager.glGetBoolean(glCap, (ByteBuffer) glsmByteBuffer.clear());
+            IntStream.range(0, expected.length).forEach(i -> assertAll(message,
+                () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glByteBuffer.get(i), "GL State Mismatch: " + i),
+                () -> assertEquals(expected[i] ? GL11.GL_TRUE : GL11.GL_FALSE, glsmByteBuffer.get(i), "GLSM State Mismatch: " + i)
+            ));
+        }
     }
 
 
+    /** Light params are FFP-only — verify GLSM cache only. */
     public static void verifyLightState(int glLight, int pname, float[] expected, String message) {
-        GL11.glGetLight(glLight, pname, (FloatBuffer) glFloatBuffer.clear());
         GLStateManager.glGetLight(glLight, pname, (FloatBuffer) glsmFloatBuffer.clear());
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i], glsmFloatBuffer.get(i),  0.0001f, "GLSM State Mismatch: " + i)
-        ));
+        IntStream.range (0, expected.length).forEach(i ->
+            assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, message + " - GLSM State Mismatch: " + i)
+        );
     }
 
+    /** Material params are FFP-only — verify GLSM cache only. */
     public static void verifyMaterialState(int face, int pname, float[] expected, String message) {
-        GL11.glGetMaterial(face, pname, (FloatBuffer) glFloatBuffer.clear());
         GLStateManager.glGetMaterial(face, pname, (FloatBuffer) glsmFloatBuffer.clear());
-        IntStream.range (0, expected.length).forEach(i -> assertAll(message,
-            () -> assertEquals(expected[i], glFloatBuffer.get(i), 0.0001f, "GL State Mismatch: " + i),
-            () -> assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, "GLSM State Mismatch: " + i)
-        ));
+        IntStream.range (0, expected.length).forEach(i ->
+            assertEquals(expected[i], glsmFloatBuffer.get(i), 0.0001f, message + " - GLSM State Mismatch: " + i)
+        );
     }
 
     /**
@@ -264,7 +345,6 @@ public class GLSMUtil {
 
         // Reset line state
         GLStateManager.glLineWidth(1.0f);
-        GLStateManager.glLineStipple(1, (short) 0xFFFF);
 
         // Reset point state
         GLStateManager.glPointSize(1.0f);
