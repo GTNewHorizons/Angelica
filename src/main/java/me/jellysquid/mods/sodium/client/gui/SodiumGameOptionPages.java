@@ -540,20 +540,4 @@ public class SodiumGameOptionPages {
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
     }
 
-    public static OptionPage debug() {
-        final List<OptionGroup> groups = new ArrayList<>();
-
-        groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                        .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setImpact(OptionImpact.EXTREME)
-                        .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
-                .build());
-
-        return new OptionPage(I18n.format("sodium.options.pages.debug"), ImmutableList.copyOf(groups));
-    }
 }
