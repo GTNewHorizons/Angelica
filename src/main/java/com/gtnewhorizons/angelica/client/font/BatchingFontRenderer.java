@@ -16,22 +16,20 @@ import net.minecraft.util.ResourceLocation;
 import org.apache.commons.io.IOUtils;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Objects;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocInt;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memByteBuffer;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -59,8 +57,7 @@ public class BatchingFontRenderer {
     private final int mvpMatrixLocation;
     private final int fontShaderId;
     private static int fontVAO = 0;
-    private static int vboPositions, vboColors, vboTexCoords, vboTexBounds, vboIndices;
-    private static int capPositions, capColors, capTexCoords, capTexBounds, capIndices;
+    private static int vbo;
 
     final boolean isSGA;
     final boolean isSplash;
@@ -106,9 +103,11 @@ public class BatchingFontRenderer {
         AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
         mvpMatrixLocation = GL20.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
-        texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
         ebo = new IndexBuffer();
-        populateEBO(vertexData.capacity() / 20);
+        if (vbo == 0) {
+            vbo = GL15.glGenBuffers();
+        }
+        populateEBO(vertexData.capacity() / VERTEX_SIZE);
     }
 
     // === Batched rendering
@@ -121,13 +120,11 @@ public class BatchingFontRenderer {
     private static final ResourceLocation DUMMY_RESOURCE_LOCATION = new ResourceLocation("angelica$dummy",
         "this is invalid!");
     // Layout in data:
-    // [v, v, t, t, c, c, c, c]
-    // v and t are floats, c is bytes; 20 bytes total
-    private ByteBuffer vertexData = memAlloc(INITIAL_BATCH_SIZE * 20);
+    // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
+    // v, t and tb are floats, c is bytes; 36 bytes total
+    private static final int VERTEX_SIZE = 36;
+    private ByteBuffer vertexData = memAlloc(INITIAL_BATCH_SIZE * VERTEX_SIZE);
     private long vertexDataAddress = memAddress0(vertexData);
-    // 4 floats = 16 bytes
-    private ByteBuffer shaderTexBounds = memAlloc(INITIAL_BATCH_SIZE * 16);
-    private long shaderTexBoundsAddress = memAddress0(shaderTexBounds);
 
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
@@ -159,19 +156,20 @@ public class BatchingFontRenderer {
         ebo.upload(data);
 
         memFree(data);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertexData.capacity(), GL15.GL_STREAM_DRAW);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+
     }
 
     private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
-        if ((vtxWriterIndex + 1) * 20L > vertexData.capacity()) {
+        if ((vtxWriterIndex + 1) * VERTEX_SIZE > vertexData.capacity()) {
             vertexData = memRealloc(vertexData, vertexData.capacity() * 2);
             vertexDataAddress = memAddress0(vertexData);
 
-            shaderTexBounds = memRealloc(shaderTexBounds, shaderTexBounds.capacity() * 2);
-            shaderTexBoundsAddress = memAddress0(shaderTexBounds);
-
-            populateEBO(vertexData.capacity() / 20);
+            populateEBO(vertexData.capacity() / VERTEX_SIZE);
         }
-        final long ptr = vertexDataAddress + (vtxWriterIndex * 20L);
+        final long ptr = vertexDataAddress + (vtxWriterIndex * VERTEX_SIZE);
 
         // v, v
         memPutFloat(ptr, x);
@@ -188,12 +186,10 @@ public class BatchingFontRenderer {
         memPutByte(ptr + 18, (byte) (rgba & 0xFF));
         memPutByte(ptr + 19, (byte) ((rgba >> 24) & 0xFF));
 
-        final long texPtr = shaderTexBoundsAddress + (vtxWriterIndex * 16L);
-
-        memPutFloat(texPtr, uMin);
-        memPutFloat(texPtr + 4, uMax);
-        memPutFloat(texPtr + 8, vMin);
-        memPutFloat(texPtr + 12, vMax);
+        memPutFloat(ptr + 20, uMin);
+        memPutFloat(ptr + 24, uMax);
+        memPutFloat(ptr + 28, vMin);
+        memPutFloat(ptr + 32, vMax);
         vtxWriterIndex++;
     }
 
@@ -304,22 +300,14 @@ public class BatchingFontRenderer {
         }
     }
 
-    private static int streamUpload(int target, int vbo, long address, int bytes, int cap) {
-        GL15.glBindBuffer(target, vbo);
-        final ByteBuffer data = memByteBuffer(address, bytes);
-        if (bytes > cap) {
-            GL15.glBufferData(target, data, GL15.GL_STREAM_DRAW);
-            return bytes;
-        }
-        GL15.glBufferData(target, cap, GL15.GL_STREAM_DRAW);
-        GL15.glBufferSubData(target, 0, data);
-        return cap;
-    }
-
     private static final Matrix4f scratchMvp = new Matrix4f();
     private int fontAAModeLast = -1;
     private int fontAAStrengthLast = -1;
     private void flushBatch() {
+        if (vtxWriterIndex == 0) {
+            clearBatch();
+            return;
+        }
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         // Sort&Draw
@@ -336,84 +324,56 @@ public class BatchingFontRenderer {
         GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
-        final boolean useFontShader = prevProgram == 0;
-        if (useFontShader) {
-            GLStateManager.glUseProgram(fontShaderId);
-            GL20.glVertexAttribPointer(texBoundAttrLocation, 4, GL11.GL_FLOAT, false, 0, shaderTexBounds);
-            GL20.glEnableVertexAttribArray(texBoundAttrLocation);
-            if (FontConfig.fontAAMode != fontAAModeLast) {
-                fontAAModeLast = FontConfig.fontAAMode;
-                GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
-            }
-            if (FontConfig.fontAAStrength != fontAAStrengthLast) {
-                fontAAStrengthLast = FontConfig.fontAAStrength;
-                GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
-            }
-            try (MemoryStack stack = stackPush()) {
-                final FloatBuffer mvpBuf = stack.mallocFloat(16);
-                GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
-                scratchMvp.get(mvpBuf);
-                GL20.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
-            }
+        GLStateManager.glUseProgram(fontShaderId);
+        if (FontConfig.fontAAMode != fontAAModeLast) {
+            fontAAModeLast = FontConfig.fontAAMode;
+            GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
+        }
+        if (FontConfig.fontAAStrength != fontAAStrengthLast) {
+            fontAAStrengthLast = FontConfig.fontAAStrength;
+            GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+        }
+        try (MemoryStack stack = stackPush()) {
+            final FloatBuffer mvpBuf = stack.mallocFloat(16);
+            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
+            scratchMvp.get(mvpBuf);
+            GL20.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
         }
 
         if (fontVAO == 0) {
-            fontVAO = org.lwjgl.opengl.GL30.glGenVertexArrays();
-            vboPositions = GL15.glGenBuffers();
-            vboColors = GL15.glGenBuffers();
-            vboTexCoords = GL15.glGenBuffers();
-            vboTexBounds = GL15.glGenBuffers();
-            vboIndices = GL15.glGenBuffers();
+            fontVAO = GL30.glGenVertexArrays();
+//            vbo = GL15.glGenBuffers();
+
+            GLStateManager.glBindVertexArray(fontVAO);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+            ebo.bind();
+
+            // position
+            GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 0);
+            GL20.glEnableVertexAttribArray(0);
+
+            // texcoords
+            GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 8);
+            GL20.glEnableVertexAttribArray(1);
+
+            // color
+            GL20.glVertexAttribPointer(2, 4, GL11.GL_UNSIGNED_BYTE, true, VERTEX_SIZE, 16);
+            GL20.glEnableVertexAttribArray(2);
+
+            // tex bounds
+            GL20.glVertexAttribPointer(3, 4, GL11.GL_FLOAT, false, VERTEX_SIZE, 20);
+            GL20.glEnableVertexAttribArray(3);
         }
+
         GLStateManager.glBindVertexArray(fontVAO);
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
-        final int vtxCount = vtxWriterIndex;
-
-        // Location 0: position (vec2, float)
-        batchVtxPositions.position(0).limit(vtxCount * 2);
-        capPositions = streamUpload(GL15.GL_ARRAY_BUFFER, vboPositions, memAddress(batchVtxPositions), batchVtxPositions.remaining() * 4, capPositions);
-        GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 0, 0L);
-        GL20.glEnableVertexAttribArray(0);
-
-        // Location 1: color (vec4, unsigned byte normalized)
-        batchVtxColors.position(0).limit(vtxCount * 4);
-        capColors = streamUpload(GL15.GL_ARRAY_BUFFER, vboColors, memAddress(batchVtxColors), batchVtxColors.remaining(), capColors);
-        GL20.glVertexAttribPointer(1, 4, GL11.GL_UNSIGNED_BYTE, true, 0, 0L);
-        GL20.glEnableVertexAttribArray(1);
-
-        // Location 2: texcoord0 (vec2, float)
-        batchVtxTexCoords.position(0).limit(vtxCount * 2);
-        capTexCoords = streamUpload(GL15.GL_ARRAY_BUFFER, vboTexCoords, memAddress(batchVtxTexCoords), batchVtxTexCoords.remaining() * 4, capTexCoords);
-        GL20.glVertexAttribPointer(2, 2, GL11.GL_FLOAT, false, 0, 0L);
-        GL20.glEnableVertexAttribArray(2);
-
-        GL11.glNormal3f(0.0f, 0.0f, 1.0f);
-
-        GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
-
-
-        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-        GL11.glVertexPointer(2, GL11.GL_FLOAT, 20, vertexData.position(0));
-
-        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glTexCoordPointer(2, GL11.GL_FLOAT, 20, vertexData.position(8));
-
-        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
-        GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 20, vertexData.position(16));
-
-
-        // Location 3: texbounds (vec4, float)
-        batchVtxTexBounds.position(0).limit(vtxCount * 4);
-        capTexBounds = streamUpload(GL15.GL_ARRAY_BUFFER, vboTexBounds, memAddress(batchVtxTexBounds), batchVtxTexBounds.remaining() * 4, capTexBounds);
-        GL20.glVertexAttribPointer(3, 4, GL11.GL_FLOAT, false, 0, 0L);
-        GL20.glEnableVertexAttribArray(3);
-
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-
-        // Stream upload index buffer
-        batchIndices.position(0).limit(idxWriterIndex);
-        capIndices = streamUpload(GL15.GL_ELEMENT_ARRAY_BUFFER, vboIndices, memAddress(batchIndices), batchIndices.remaining() * 4, capIndices);
+        final int dataSize = vtxWriterIndex * VERTEX_SIZE;
+//        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, dataSize, GL15.GL_STREAM_DRAW);
+//        vertexData.limit(dataSize);
+//        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, vertexData);
+        uploadToVBO(vertexDataAddress, dataSize);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
@@ -432,16 +392,13 @@ public class BatchingFontRenderer {
                 }
                 lastTexture = cmd.texture;
             }
-            ebo.bind();
-            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, cmd.startVtx * 2L);
-            ebo.unbind();
-
-            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_INT, (long) cmd.startVtx * 4L);
-        }
-        if (useFontShader) {
-            GLStateManager.glUseProgram(prevProgram);
+            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
         }
 
+
+        GLStateManager.glUseProgram(prevProgram);
+
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindVertexArray(0);
 
         if (isTextureEnabledBefore) {
@@ -451,11 +408,30 @@ public class BatchingFontRenderer {
         	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
         }
 
+        clearBatch();
+    }
+
+    private void clearBatch() {
         // Clear for the next batch
         batchCommandPool.addAll(batchCommands);
         batchCommands.clear();
         vtxWriterIndex = 0;
         idxWriterIndex = 0;
+    }
+
+    public static void uploadToVBO(final long bufferAddress, final int dataSize) {
+        final ByteBuffer buffer = GL30.glMapBufferRange(
+            GL15.GL_ARRAY_BUFFER,
+            0,
+            dataSize,
+            GL30.GL_MAP_WRITE_BIT |
+                GL30.GL_MAP_INVALIDATE_BUFFER_BIT |
+                GL30.GL_MAP_UNSYNCHRONIZED_BIT,
+            null
+        );
+        final long ptr = memAddress0(buffer);
+        memCopy(bufferAddress, ptr, dataSize);
+        GL15.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
     }
 
     // === Actual text mesh generation
