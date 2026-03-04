@@ -382,7 +382,9 @@ public class BatchingFontRenderer {
         GLStateManager.glBindVertexArray(fontVAO);
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
-        uploadToVBO(vertexDataAddress, vertexDataPos);
+//        uploadToVBO(vertexDataAddress, vertexDataPos);
+
+        streamUpload(vertexDataAddress, vertexDataPos);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
@@ -441,6 +443,12 @@ public class BatchingFontRenderer {
         final long ptr = memAddress0(buffer);
         memCopy(bufferAddress, ptr, dataSize);
         GL15.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
+    }
+
+    private static void streamUpload(long address, int bytes) {
+        final ByteBuffer data = memByteBuffer(address, bytes);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bytes, GL15.GL_STREAM_DRAW);
+        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
     }
 
     // === Actual text mesh generation
