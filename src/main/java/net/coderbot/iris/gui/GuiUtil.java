@@ -8,7 +8,6 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
-import org.lwjgl.opengl.GL14;
 
 /**
  * Class serving as abstraction and
@@ -59,7 +58,7 @@ public final class GuiUtil {
         final int vOffset = disabled ? 46 : hovered ? 86 : 66;
 
 		// Sets RenderSystem to use solid white as the tint color for blend mode, and enables blend mode
-		GL14.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+		GLStateManager.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
 		GLStateManager.enableBlend();
 
 		// Sets RenderSystem to be able to use textures when drawing
@@ -194,7 +193,7 @@ public final class GuiUtil {
 		 */
 		public void draw(int x, int y) {
 			// Sets RenderSystem to use solid white as the tint color for blend mode, and enables blend mode
-            GL14.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
+            GLStateManager.glBlendColor(1.0f, 1.0f, 1.0f, 1.0f);
             GLStateManager.enableBlend();
 
 			// Sets RenderSystem to be able to use textures when drawing

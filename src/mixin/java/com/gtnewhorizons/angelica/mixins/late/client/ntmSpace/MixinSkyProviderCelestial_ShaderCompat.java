@@ -238,7 +238,7 @@ public class MixinSkyProviderCelestial_ShaderCompat {
 	@Inject(method = "render", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glRotatef(FFFF)V", ordinal = 2), remap = false)
 	private void iris$renderSky$tiltSun(CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
 		if(pipeline.get() != null) 
-			GL11.glRotatef(pipeline.get().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
+			GLStateManager.glRotatef(pipeline.get().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
 	}
 	
 	@Inject(method = "renderSun", at = @At(value = "FIELD", target = "Lcom/hbm/dim/CelestialBody;texture:Lnet/minecraft/util/ResourceLocation;"), remap = false)

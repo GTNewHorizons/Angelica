@@ -54,7 +54,7 @@ public class GlTexture extends GlObject implements TextureAccess {
 	}
 
 	public static void bindTextureForSetup(int glType, int glId) {
-		GL11.glBindTexture(glType, glId);
+		GLStateManager.glBindTexture(glType, glId);
 	}
 
 	public TextureType getTarget() {

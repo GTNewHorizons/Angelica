@@ -142,6 +142,9 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
                 if (!rfbLoaded) {
                     tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.AngelicaLateTweaker");
+                    if (AngelicaConfig.enableCeleritas) {
+                        tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.CeleritasLateTweaker");
+                    }
                 }
             }
         }

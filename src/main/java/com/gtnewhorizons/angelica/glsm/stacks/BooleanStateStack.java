@@ -22,8 +22,7 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
     protected int savedDepth;
 
     public BooleanStateStack(int glCap) {
-        // Most booleans default to false
-        this(glCap, false);
+        this(glCap, false, false);
     }
 
     /**
@@ -34,7 +33,18 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
      * @param initialState initial enabled state
      */
     public BooleanStateStack(int glCap, boolean initialState) {
-        super(glCap);
+        this(glCap, initialState, false);
+    }
+
+    /**
+     * Create a BooleanStateStack with custom initial state and FFP flag.
+     *
+     * @param glCap GL capability constant
+     * @param initialState initial enabled state
+     * @param ffpStateOnly when true, GL calls are skipped when FFP emulation is active
+     */
+    public BooleanStateStack(int glCap, boolean initialState, boolean ffpStateOnly) {
+        super(glCap, ffpStateOnly);
         this.enabled = initialState;
         stack = new boolean[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
     }

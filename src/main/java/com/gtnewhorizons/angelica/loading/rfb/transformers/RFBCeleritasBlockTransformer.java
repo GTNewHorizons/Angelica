@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.loading.rfb.transformers;
 
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import com.gtnewhorizons.angelica.loading.shared.transformers.SodiumBlockTransform;
+import com.gtnewhorizons.angelica.loading.shared.transformers.CeleritasBlockTransform;
+import com.gtnewhorizons.retrofuturabootstrap.api.ClassHeaderMetadata;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -11,12 +12,12 @@ import org.jetbrains.annotations.Nullable;
 
 import java.util.jar.Manifest;
 
-public class RFBSodiumBlockTransformer implements RfbClassTransformer {
+public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
 
-    private final SodiumBlockTransform inner;
+    private final CeleritasBlockTransform inner;
 
-    public RFBSodiumBlockTransformer(boolean isObf) {
-        inner = new SodiumBlockTransform(isObf);
+    public RFBCeleritasBlockTransformer(boolean isObf) {
+        inner = new CeleritasBlockTransform(isObf);
     }
 
     @Pattern("[a-z0-9-]+")
@@ -47,11 +48,20 @@ public class RFBSodiumBlockTransformer implements RfbClassTransformer {
         if (!classNode.isPresent()) {
             return false;
         }
-        if (!classNode.isOriginal()) {
-            // If a class is already a transformed ClassNode, conservatively continue processing.
+
+        ClassHeaderMetadata metadata = classNode.getOriginalMetadata();
+        if (metadata == null) {
+            return false;
+        }
+
+        if (inner.shouldTransform(classNode.getOriginalBytes())) {
             return true;
         }
-        return inner.shouldTransform(classNode.getOriginalBytes());
+
+        // Track possible block subclasses even if we don't need to transform this class
+        inner.trackBlockSubclasses(metadata.binaryThisName, metadata.binarySuperName);
+
+        return false;
     }
 
     @Override

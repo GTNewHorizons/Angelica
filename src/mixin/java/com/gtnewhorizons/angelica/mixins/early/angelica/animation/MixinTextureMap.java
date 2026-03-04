@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import net.minecraft.client.Minecraft;
@@ -37,7 +38,7 @@ public abstract class MixinTextureMap extends AbstractTexture {
         final boolean renderVisible = AngelicaMod.animationsMode.is(AnimationMode.VISIBLE_ONLY);
 
         mc.mcProfiler.startSection("updateAnimations");
-        GL11.glBindTexture(GL11.GL_TEXTURE_2D, this.getGlTextureId());
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.getGlTextureId());
 
         final int size = listAnimatedSprites.size();
         for (int i = 0; i < size; i++) {

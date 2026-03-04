@@ -1,33 +1,25 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.google.common.base.Stopwatch;
+import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
+import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.shader.ShaderType;
-import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
-import org.antlr.v4.runtime.CommonToken;
-import org.antlr.v4.runtime.tree.ParseTree;
-import org.antlr.v4.runtime.tree.ParseTreeWalker;
-import org.antlr.v4.runtime.tree.TerminalNode;
+import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.taumc.glsl.ShaderParser;
-import org.taumc.glsl.StorageCollector;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
-import org.taumc.glsl.grammar.GLSLParser;
 
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-
-import java.util.ArrayList;
 import java.util.EnumMap;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -37,11 +29,6 @@ import java.util.regex.Pattern;
 
 public class ShaderTransformer {
     private static final Pattern versionPattern = Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
-    private static final Pattern inOutVaryingPattern = Pattern.compile("(?m)^(\\s*(?:(?:flat|smooth|noperspective)\\s+)?)(in|out)(\\s+)");
-    private static final Pattern inPattern = Pattern.compile("(?m)^(\\s*(?:(?:flat|smooth|noperspective)\\s+)?)(in)(\\s+)");
-    private static final Pattern outPattern = Pattern.compile("(?m)^(\\s*(?:(?:flat|smooth|noperspective)\\s+)?)(out)(\\s+)");
-    private static final Pattern texturePattern = Pattern.compile("\\btexture\\s*\\(|(\\btexture\\b)");
-    private static final Pattern unsignedSuffixPattern = Pattern.compile("(\\b(?:\\d+|0[xX][0-9a-fA-F]+))[uU]\\b");
 
     private static final int CACHE_SIZE = 100;
     private static final Object2ObjectLinkedOpenHashMap<TransformKey<?>, Map<PatchShaderType, String>> shaderTransformationCache = new Object2ObjectLinkedOpenHashMap<>();
@@ -57,26 +44,6 @@ public class ShaderTransformer {
         loggedNegotiations.clear();
     }
 
-    private static final Map<Integer, List<String>> versionedReservedWords = new HashMap<>();
-
-    private static String replaceTexture(String input) {
-        final var matcher = texturePattern.matcher(input);
-        final StringBuilder builder = new StringBuilder();
-        while (matcher.find()) {
-            if (matcher.group(1) != null) {
-                matcher.appendReplacement(builder, "iris_renamed_texture");
-            } else {
-                matcher.appendReplacement(builder, Matcher.quoteReplacement(matcher.group(0)));
-            }
-        }
-        matcher.appendTail(builder);
-        return builder.toString();
-    }
-
-    static {
-        // sample was added as a keyword in GLSL 400, many shaders use it
-        versionedReservedWords.put(400, List.of("sample"));
-    }
 
     private record VersionRequirement(String keyword, int minVersion, BooleanSupplier supported) {}
 
@@ -97,68 +64,13 @@ public class ShaderTransformer {
     };
 
 
-    private record DowngradeRule(
-        int fromVersion,
-        int toVersion,
-        BooleanSupplier supported,
-        List<String> extensions,
-        Map<String, String> defines,
-        List<String> preprocessorDefines,
-        boolean convertStorageQualifiers
-    ) {}
-
-    private static final DowngradeRule[] DOWNGRADE_RULES = {
-        new DowngradeRule(130, 120,
-            RenderSystem::supportsGpuShader4,
-            List.of("GL_EXT_gpu_shader4"),
-            Map.of("texture", "texture2D"),
-            List.of(
-                // Preprocessor defines
-                "#define uint int",
-                "#define uvec2 ivec2",
-                "#define uvec3 ivec3",
-                "#define uvec4 ivec4",
-                "#define isnan(x) ((x) != (x))",
-                "#define isinf(x) ((x) == (1.0/0.0) || (x) == (-1.0/0.0))",
-                "#define trunc(x) (sign(x) * floor(abs(x)))",
-                "#define round(x) (floor((x) + 0.5))",
-                "#define texelFetch texelFetch2D",
-                "#define textureSize textureSize2D",
-                "#define modf iris_modf",
-                // Function definitions
-                "GLSL_FUNC:float iris_modf(float x, out float i) { i = sign(x) * floor(abs(x)); return x - i; }",
-                "GLSL_FUNC:vec2 iris_modf(vec2 x, out vec2 i) { i = sign(x) * floor(abs(x)); return x - i; }",
-                "GLSL_FUNC:vec3 iris_modf(vec3 x, out vec3 i) { i = sign(x) * floor(abs(x)); return x - i; }",
-                "GLSL_FUNC:vec4 iris_modf(vec4 x, out vec4 i) { i = sign(x) * floor(abs(x)); return x - i; }",
-                "GLSL_FUNC:vec2 mix(vec2 a, vec2 b, bvec2 sel) { return vec2(sel.x ? b.x : a.x, sel.y ? b.y : a.y); }",
-                "GLSL_FUNC:vec3 mix(vec3 a, vec3 b, bvec3 sel) { return vec3(sel.x ? b.x : a.x, sel.y ? b.y : a.y, sel.z ? b.z : a.z); }",
-                "GLSL_FUNC:vec4 mix(vec4 a, vec4 b, bvec4 sel) { return vec4(sel.x ? b.x : a.x, sel.y ? b.y : a.y, sel.z ? b.z : a.z, sel.w ? b.w : a.w); }",
-                "GLSL_FUNC:bool any(bool b) { return b; }",
-                "GLSL_FUNC:bool all(bool b) { return b; }"
-            ),
-            true
-        )
-    };
-
-    record NegotiationResult(
-        int targetVersion,
-        String profile,
-        List<String> extensions,
-        Map<String, String> defines,
-        List<String> preprocessorDefines,
-        boolean convertStorageQualifiers,
-        String error
-    ) {
-        static NegotiationResult success(int targetVersion, String profile, List<String> extensions, Map<String, String> defines, List<String> preprocessorDefines, boolean convertStorageQualifiers) {
-            return new NegotiationResult(targetVersion, profile, extensions, defines, preprocessorDefines, convertStorageQualifiers, null);
-        }
-
+    record NegotiationResult(int targetVersion, String profile, String error) {
         static NegotiationResult error(String message) {
-            return new NegotiationResult(-1, "", List.of(), Map.of(), List.of(), false, message);
+            return new NegotiationResult(-1, "", message);
         }
 
         static NegotiationResult noop(int version, String profile) {
-            return new NegotiationResult(version, profile, List.of(), Map.of(), List.of(), false, null);
+            return new NegotiationResult(version, profile, null);
         }
 
         boolean isError() { return error != null; }
@@ -168,8 +80,8 @@ public class ShaderTransformer {
         return switch (stage) {
             case COMPUTE -> 330;
             case TESS_CONTROL, TESS_EVAL -> 400;
-            case GEOMETRY -> 150;
-            default -> 110;
+            case GEOMETRY -> 330;
+            default -> 330;
         };
     }
 
@@ -177,17 +89,7 @@ public class ShaderTransformer {
         final int maxGlsl = RenderSystem.getMaxGlslVersion();
 
         if (effectiveVersion <= maxGlsl) {
-            if (effectiveVersion <= 120 && RenderSystem.supportsGpuShader4()) {
-                final String profile = "";
-                for (DowngradeRule rule : DOWNGRADE_RULES) {
-                    if (rule.fromVersion == 130 && rule.toVersion == 120) {
-                        final List<String> definesOnly = rule.preprocessorDefines.stream().filter(d -> !d.startsWith("GLSL_FUNC:")).toList();
-                        return NegotiationResult.success(effectiveVersion, profile, rule.extensions, rule.defines, definesOnly, true);
-                    }
-                }
-                return NegotiationResult.success(effectiveVersion, profile, List.of("GL_EXT_gpu_shader4"), Map.of(), List.of(), true);
-            }
-            return NegotiationResult.noop(effectiveVersion, effectiveVersion >= 150 ? "compatibility" : "");
+            return NegotiationResult.noop(effectiveVersion, effectiveVersion >= 150 ? "core" : "");
         }
 
         final int stageMin = getStageMinimumVersion(stage);
@@ -195,44 +97,7 @@ public class ShaderTransformer {
             return NegotiationResult.error("Hardware GLSL " + maxGlsl + " below stage minimum " + stageMin + " for " + stage.name());
         }
 
-        // Walk downgrade rules from effectiveVersion toward maxGlsl
-        final List<String> accExtensions = new ArrayList<>();
-        final Map<String, String> accDefines = new HashMap<>();
-        final List<String> accPreprocessorDefines = new ArrayList<>();
-        boolean accConvertQualifiers = false;
-        int currentVersion = effectiveVersion;
-
-        while (currentVersion > maxGlsl) {
-            DowngradeRule matched = null;
-            for (DowngradeRule rule : DOWNGRADE_RULES) {
-                if (rule.fromVersion == currentVersion) {
-                    matched = rule;
-                    break;
-                }
-            }
-
-            if (matched == null) {
-                return NegotiationResult.error("No downgrade rule from GLSL " + currentVersion + " (hardware max: " + maxGlsl + ", shader requires: " + effectiveVersion + ")");
-            }
-
-            // Verify rule's required extensions are supported
-            if (!matched.supported.getAsBoolean()) {
-                return NegotiationResult.error("Downgrade from " + matched.fromVersion + " to " + matched.toVersion + " requires extensions " + matched.extensions + " which are not supported");
-            }
-
-            accExtensions.addAll(matched.extensions);
-            accDefines.putAll(matched.defines);
-            accPreprocessorDefines.addAll(matched.preprocessorDefines);
-            accConvertQualifiers |= matched.convertStorageQualifiers;
-            currentVersion = matched.toVersion;
-        }
-
-        if (currentVersion < stageMin) {
-            return NegotiationResult.error("Downgrade reached GLSL " + currentVersion + " which is below stage minimum " + stageMin + " for " + stage.name());
-        }
-
-        final String profile = currentVersion >= 150 ? "compatibility" : "";
-        return NegotiationResult.success(currentVersion, profile, accExtensions, accDefines, accPreprocessorDefines, accConvertQualifiers);
+        return NegotiationResult.error("Shader requires GLSL " + effectiveVersion + " but hardware max is " + maxGlsl);
     }
 
     private static Pattern hoistPattern;
@@ -433,39 +298,26 @@ public class ShaderTransformer {
             versionString = String.valueOf(versionInt);
         }
 
-        String profileString = "#version " + versionString + " core\n";
+        final String profileString = "#version " + versionString + " core\n";
 
-        // Rename reserved words
-        String input = replaceTexture(compute);
-        for (int version : versionedReservedWords.keySet()) {
-            if (versionInt < version) {
-                for (String reservedWord : versionedReservedWords.get(version)) {
-                    final String newName = "iris_renamed_" + reservedWord;
-                    input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
-                }
-            }
-        }
+        // Pre-parse reserved word renaming
+        String input = GlslTransformUtils.replaceTexture(compute);
+        input = GlslTransformUtils.renameReservedWords(input, versionInt);
 
         final var parsedShader = ShaderParser.parseShader(input);
         final var transformer = new Transformer(parsedShader.full());
 
-        doTransform(transformer, patchType, parameters, "core", versionInt);
+        doTransform(transformer, patchType, parameters, versionInt);
 
         // Extract extensions
-        final var extensions = versionPattern.matcher(getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
+        final var extensions = versionPattern.matcher(GlslTransformUtils.getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
 
         final String finalHeader = profileString + (extensions.isEmpty() ? "" : "\n" + extensions);
         final StringBuilder formattedShaderBuilder = new StringBuilder();
 
-        transformer.mutateTree(tree -> {
-            formattedShaderBuilder.append(getFormattedShader(tree, finalHeader));
-        });
+        transformer.mutateTree(tree -> formattedShaderBuilder.append(GlslTransformUtils.getFormattedShader(tree, finalHeader)));
 
-        String formattedShader = formattedShaderBuilder.toString();
-
-        // Restore identifiers that were temporarily renamed
-        formattedShader = formattedShader.replace("iris_renamed_texture", "texture");
-        formattedShader = formattedShader.replace("iris_renamed_sample", "sample");
+        String formattedShader = GlslTransformUtils.restoreReservedWords(formattedShaderBuilder.toString());
 
         result.put(PatchShaderType.COMPUTE, formattedShader);
 
@@ -478,8 +330,6 @@ public class ShaderTransformer {
          final EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
          final EnumMap<PatchShaderType, Transformer> types = new EnumMap<>(PatchShaderType.class);
          final EnumMap<PatchShaderType, String> prepatched = new EnumMap<>(PatchShaderType.class);
-         final EnumMap<PatchShaderType, NegotiationResult> negotiations = new EnumMap<>(PatchShaderType.class);
-         final EnumMap<PatchShaderType, Boolean> needsTextureLodExtension = new EnumMap<>(PatchShaderType.class);
 
         final Stopwatch watch = Stopwatch.createStarted();
 
@@ -501,7 +351,6 @@ public class ShaderTransformer {
                 continue;
             }
 
-            String profile = "";
             int versionInt = Integer.parseInt(versionString);
 
             // Include celeritas header in scan — it's injected post-negotiation but contains uint/uvec3
@@ -513,62 +362,36 @@ public class ShaderTransformer {
                 versionString = String.valueOf(versionInt);
             }
 
-            // Negotiate version downgrade if needed
+            // Ensure minimum version for this stage (330 for most, 400 for tessellation)
+            final int stageMin = getStageMinimumVersion(type);
+            if (versionInt < stageMin) {
+                versionInt = stageMin;
+                versionString = String.valueOf(versionInt);
+            }
+
+            // Negotiate version if needed (error if hardware can't support)
             final NegotiationResult negotiation = negotiateVersion(versionInt, type);
             if (negotiation.isError()) {
                 throw new RuntimeException("Shader version negotiation failed for " + type.name() + ": " + negotiation.error());
             }
 
-            if (negotiation.targetVersion() != versionInt) {
-                String negotiationKey = type.name() + "_" + versionInt + "_" + negotiation.targetVersion();
-                if (loggedNegotiations.add(negotiationKey)) {
-                    Iris.logger.info("Negotiated {} shader from GLSL {} to {} (extensions: {}, polyfills: {})", type.name(), versionInt, negotiation.targetVersion(), negotiation.extensions(), negotiation.preprocessorDefines().size());
-                }
-                versionInt = negotiation.targetVersion();
-                versionString = String.valueOf(versionInt);
-                profile = negotiation.profile();
-            } else {
-                if (versionInt >= 150) {
-                    profile = matcher.group(2);
-                    if (profile == null) {
-                        profile = "compatibility";
-                    }
-                }
-            }
-            negotiations.put(type, negotiation);
+            // All stages >= 330 use core profile
+            final String profile = "core";
+            final String profileString = "#version " + versionString + " " + profile + "\n";
 
-            final String profileString = "#version " + versionString + (profile.isEmpty() ? "" : " " + profile) + "\n";
-
-            input = replaceTexture(input);
-            // The primary reason we rename words here using regex, is because if the words cause invalid
-            // GLSL, regardless of the version being used, it will cause glsl-transformation-lib to fail
-            // so we need to rename them prior to passing the shader input to glsl-transformation-lib.
-            for (int version : versionedReservedWords.keySet()) {
-                if (versionInt < version) {
-                    for (String reservedWord : versionedReservedWords.get(version)) {
-                        final  String newName = "iris_renamed_" + reservedWord;
-                        input = input.replaceAll("\\b" + reservedWord + "\\b", newName);
-                    }
-                }
-            }
+            // Pre-parse reserved word renaming — prevents ANTLR parse failures
+            input = GlslTransformUtils.replaceTexture(input);
+            input = GlslTransformUtils.renameReservedWords(input, versionInt);
+            input = CompatShaderTransformer.fixupQualifiers(input, parameters.type == ShaderType.FRAGMENT);
 
             final var parsedShader = ShaderParser.parseShader(input);
             final var transformer = new Transformer(parsedShader.full());
 
-            if (parameters.type == ShaderType.VERTEX || parameters.type == ShaderType.FRAGMENT) {
-                upgradeStorageQualifiers(transformer, parameters);
-            }
-
-            doTransform(transformer, patchType, parameters, profile, versionInt);
-
-            // Check if we need to patch in texture LOD extension enabling
-            if (versionInt <= 120 && (transformer.containsCall("texture2DLod") || transformer.containsCall("texture3DLod") || transformer.containsCall("texture2DGradARB"))) {
-                needsTextureLodExtension.put(type, true);
-            }
+            doTransform(transformer, patchType, parameters, versionInt);
 
             // Extract extensions from the pre-parsed content (version + extensions before main code)
             // This preserves #extension directives that the shader pack declares
-            final var extensions = versionPattern.matcher(getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
+            final var extensions = versionPattern.matcher(GlslTransformUtils.getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
 
             types.put(type, transformer);
             prepatched.put(type, profileString + (extensions.isEmpty() ? "" : "\n" + extensions));
@@ -578,7 +401,6 @@ public class ShaderTransformer {
             final PatchShaderType shaderType = entry.getKey();
             final Transformer transformer = entry.getValue();
             String header = prepatched.get(shaderType);
-            final NegotiationResult negotiation = negotiations.get(shaderType);
 
             // For Celeritas terrain vertex shaders, inject chunk_vertex.glsl header
             if (patchType == Patch.CELERITAS_TERRAIN && shaderType == PatchShaderType.VERTEX) {
@@ -588,46 +410,9 @@ public class ShaderTransformer {
             final String finalHeader = header;
             final StringBuilder formattedShaderBuilder = new StringBuilder();
 
-            transformer.mutateTree(tree -> {
-                formattedShaderBuilder.append(getFormattedShader(tree, finalHeader));
-            });
+            transformer.mutateTree(tree -> formattedShaderBuilder.append(GlslTransformUtils.getFormattedShader(tree, finalHeader)));
 
-            String formattedShader = formattedShaderBuilder.toString();
-
-            // Restore identifiers that were temporarily renamed to dodge GLSL reserved keywords.
-            formattedShader = formattedShader.replace("iris_renamed_texture", "texture");
-            formattedShader = formattedShader.replace("iris_renamed_sample", "sample");
-
-            // Inject texture LOD extension if needed
-            if (needsTextureLodExtension.containsKey(shaderType)) {
-                final String[] parts = formattedShader.split("\n", 2);
-                parts[1] = "#extension GL_ARB_shader_texture_lod : require\n" + parts[1];
-                formattedShader = parts[0] + "\n" + parts[1];
-            }
-
-            if (negotiation != null && (!negotiation.extensions().isEmpty() || !negotiation.preprocessorDefines().isEmpty())) {
-                formattedShader = injectGlslPreamble(formattedShader, negotiation.extensions(), negotiation.preprocessorDefines());
-            }
-
-            if (negotiation != null && !negotiation.defines().isEmpty()) {
-                for (var defineEntry : negotiation.defines().entrySet()) {
-                    formattedShader = formattedShader.replaceAll("\\b" + Pattern.quote(defineEntry.getKey()) + "\\b", Matcher.quoteReplacement(defineEntry.getValue()));
-                }
-            }
-
-            // Convert storage qualifiers for downgraded shaders or native 120 shaders
-            if (negotiation != null && (negotiation.convertStorageQualifiers() || negotiation.targetVersion() <= 120)) {
-                if (shaderType == PatchShaderType.VERTEX) {
-                    final Matcher inMatcher = inPattern.matcher(formattedShader);
-                    formattedShader = inMatcher.replaceAll("$1attribute$3");
-                    final Matcher outMatcher = outPattern.matcher(formattedShader);
-                    formattedShader = outMatcher.replaceAll("$1varying$3");
-                } else {
-                    final Matcher inOutVaryingMatcher = inOutVaryingPattern.matcher(formattedShader);
-                    formattedShader = inOutVaryingMatcher.replaceAll("$1varying$3");
-                }
-                formattedShader = unsignedSuffixPattern.matcher(formattedShader).replaceAll("$1");
-            }
+            String formattedShader = GlslTransformUtils.restoreReservedWords(formattedShaderBuilder.toString());
 
             result.put(shaderType, formattedShader);
         }
@@ -636,7 +421,7 @@ public class ShaderTransformer {
         return result;
     }
 
-    private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, String profile, int versionInt) {
+    private static void doTransform(Transformer transformer, Patch patchType, Parameters parameters, int versionInt) {
         switch (patchType) {
             case CELERITAS_TERRAIN:
                 CeleritasTransformer.transform(transformer, parameters, versionInt);
@@ -649,7 +434,7 @@ public class ShaderTransformer {
                 CompositeDepthTransformer.transform(transformer, parameters, versionInt);
                 break;
             case ATTRIBUTES:
-                AttributeTransformer.transform(transformer, (AttributeParameters) parameters, profile, versionInt);
+                AttributeTransformer.transform(transformer, (AttributeParameters) parameters, versionInt);
                 break;
             case COMPUTE:
                 ComputeTransformer.transform(transformer, parameters, versionInt);
@@ -729,126 +514,5 @@ public class ShaderTransformer {
         return "\n\n" + chunkVertexHeader + "\n\n";
     }
 
-    /**
-     * Converts GLSL 120 storage qualifiers (varying/attribute) to modern in/out tokens so downstream AST transforms (e.g. CompatibilityTransformer) can find them.
-     * The hacky120Patches regex pass converts them back for the final output.
-     */
-    public static void upgradeStorageQualifiers(Transformer root, Parameters parameters) {
-        final List<TerminalNode> tokens = new ArrayList<>();
-        root.mutateTree(tree -> ParseTreeWalker.DEFAULT.walk(new StorageCollector(tokens), tree));
-
-        for (TerminalNode node : tokens) {
-            if (!(node.getSymbol() instanceof CommonToken token)) {
-                return;
-            }
-            if (token.getType() == GLSLParser.ATTRIBUTE) {
-                token.setType(GLSLParser.IN);
-                token.setText(GLSLParser.VOCABULARY.getLiteralName(GLSLParser.IN).replace("'", ""));
-            } else if (token.getType() == GLSLParser.VARYING) {
-                if (parameters.type == ShaderType.VERTEX) {
-                    token.setType(GLSLParser.OUT);
-                    token.setText(GLSLParser.VOCABULARY.getLiteralName(GLSLParser.OUT).replace("'", ""));
-                } else {
-                    token.setType(GLSLParser.IN);
-                    token.setText(GLSLParser.VOCABULARY.getLiteralName(GLSLParser.IN).replace("'", ""));
-                }
-            }
-        }
-    }
-
-    private static String injectGlslPreamble(String shader, List<String> extensions, List<String> preprocessorDefines) {
-        final StringBuilder extensionBlock = new StringBuilder();
-        final StringBuilder defineBlock = new StringBuilder();
-        final StringBuilder functionBlock = new StringBuilder();
-
-        for (String ext : extensions) {
-            extensionBlock.append("#extension ").append(ext).append(" : require\n");
-        }
-        for (String define : preprocessorDefines) {
-            if (define.startsWith("GLSL_FUNC:")) {
-                functionBlock.append(define.substring(10)).append("\n");
-            } else {
-                defineBlock.append(define).append("\n");
-            }
-        }
-
-        // Find where preprocessor section ends and code begins
-        final String[] lines = shader.split("\n");
-        final StringBuilder shaderResult = new StringBuilder();
-        boolean extensionsInjected = false, definesInjected = false, functionsInjected = false;
-
-        for (String line : lines) {
-            final String trimmed = line.trim();
-            final boolean isPreprocessor = trimmed.startsWith("#");
-            final boolean isExtension = trimmed.startsWith("#extension");
-            final boolean isVersion = trimmed.startsWith("#version");
-
-            // Inject our extensions right after #version
-            if (isVersion) {
-                shaderResult.append(line).append("\n");
-                shaderResult.append(extensionBlock);
-                extensionsInjected = true;
-                continue;
-            }
-
-            // Inject our defines after the last #extension line (before other preprocessor or code)
-            if (!definesInjected && extensionsInjected && !isExtension && !trimmed.isEmpty()) {
-                shaderResult.append(defineBlock);
-                definesInjected = true;
-            }
-
-            // Inject our functions after all preprocessor lines
-            if (!functionsInjected && definesInjected && !isPreprocessor && !trimmed.isEmpty()) {
-                shaderResult.append(functionBlock);
-                functionsInjected = true;
-            }
-
-            shaderResult.append(line).append("\n");
-        }
-
-        if (!definesInjected) shaderResult.append(defineBlock);
-        if (!functionsInjected) shaderResult.append(functionBlock);
-
-        return shaderResult.toString();
-    }
-
-    public static String getFormattedShader(ParseTree tree, String string) {
-        final StringBuilder sb = new StringBuilder(string + "\n");
-        final String[] tabHolder = {""};
-        getFormattedShader(tree, sb, tabHolder);
-        return sb.toString();
-    }
-
-    private static void getFormattedShader(ParseTree tree, StringBuilder stringBuilder, String[] tabHolder) {
-        if (tree instanceof TerminalNode) {
-            final String text = tree.getText();
-            if (text.equals("<EOF>")) {
-                return;
-            }
-            if (text.equals("#")) {
-                stringBuilder.append("\n#");
-                return;
-            }
-            stringBuilder.append(text);
-            if (text.equals("{")) {
-                stringBuilder.append(" \n\t");
-                tabHolder[0] = "\t";
-            }
-
-            if (text.equals("}")) {
-                if (stringBuilder.length() >= 2) {
-                    stringBuilder.deleteCharAt(stringBuilder.length() - 2);
-                }
-                tabHolder[0] = "";
-                stringBuilder.append(" \n");
-            } else {
-                stringBuilder.append(text.equals(";") ? " \n" + tabHolder[0] : " ");
-            }
-        } else {
-            for (int i = 0; i < tree.getChildCount(); ++i) {
-                getFormattedShader(tree.getChild(i), stringBuilder, tabHolder);
-            }
-        }
-    }
 
 }

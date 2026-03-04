@@ -142,6 +142,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final int worldZ = originZ + blockZ;
 
         int stateIdx = 0;
+        int facesAtBaseMaterial = 0;
 
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;
@@ -218,7 +219,17 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
             }
 
-            final Material correctMaterial = selectMaterial(material, sprite, isShaderPackOverride);
+            final int faceBit = 1 << facing.ordinal();
+            final Material correctMaterial;
+            if ((facesAtBaseMaterial & faceBit) != 0) {
+                // Face already has a non-demoted quad — skip selectMaterial entirely
+                correctMaterial = material;
+            } else {
+                correctMaterial = selectMaterial(material, sprite, isShaderPackOverride);
+                if (correctMaterial == material) {
+                    facesAtBaseMaterial |= faceBit;
+                }
+            }
             final var builder = buffers.get(correctMaterial);
 
             if (correctMaterial != material && builder.getEncoder() instanceof IrisExtendedChunkVertexEncoder iris) {

@@ -32,36 +32,41 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
         celeritas$processTransparentImages(this.framesTextureData.get(0)[0], level > 0 && !iconName.contains("leaves"));
     }
 
+    // Ordinals: OPAQUE=0, TRANSPARENT=1, TRANSLUCENT=2
+    @Unique private static final int ORDINAL_OPAQUE = SpriteTransparencyLevel.OPAQUE.ordinal();
+    @Unique private static final int ORDINAL_TRANSPARENT = SpriteTransparencyLevel.TRANSPARENT.ordinal();
+    @Unique private static final int ORDINAL_TRANSLUCENT = SpriteTransparencyLevel.TRANSLUCENT.ordinal();
+    @Unique private static final SpriteTransparencyLevel[] LEVELS_BY_ORDINAL = SpriteTransparencyLevel.values();
+
     @Unique
     private void celeritas$processTransparentImages(int[] nativeImage, boolean shouldRewriteColors) {
         float r = 0.0f, g = 0.0f, b = 0.0f;
         float totalWeight = 0.0f;
-        SpriteTransparencyLevel level = SpriteTransparencyLevel.OPAQUE;
+        // Use primitive int instead of loop-carried enum reference to avoid JDK 25 C2 SuperWord non-convergence bug
+        int maxLevel = ORDINAL_OPAQUE;
 
         for (int y = 0; y < nativeImage.length; y++) {
-            int color = nativeImage[y];
-            int alpha = ColorABGR.unpackAlpha(color);
+            final int color = nativeImage[y];
+            final int alpha = ColorABGR.unpackAlpha(color);
 
             if (alpha > 0) {
                 if (alpha < 255) {
-                    level = level.chooseNextLevel(SpriteTransparencyLevel.TRANSLUCENT);
-                } else {
-                    level = level.chooseNextLevel(SpriteTransparencyLevel.OPAQUE);
+                    maxLevel = Math.max(maxLevel, ORDINAL_TRANSLUCENT);
                 }
 
                 if (shouldRewriteColors) {
-                    float weight = (float) alpha;
+                    final float weight = (float) alpha;
                     r += ColorSRGB.srgbToLinear(ColorABGR.unpackRed(color)) * weight;
                     g += ColorSRGB.srgbToLinear(ColorABGR.unpackGreen(color)) * weight;
                     b += ColorSRGB.srgbToLinear(ColorABGR.unpackBlue(color)) * weight;
                     totalWeight += weight;
                 }
             } else {
-                level = level.chooseNextLevel(SpriteTransparencyLevel.TRANSPARENT);
+                maxLevel = Math.max(maxLevel, ORDINAL_TRANSPARENT);
             }
         }
 
-        this.celeritas$transparencyLevel = level;
+        this.celeritas$transparencyLevel = LEVELS_BY_ORDINAL[maxLevel];
 
         if (!shouldRewriteColors || totalWeight == 0.0f) {
             return;
@@ -71,11 +76,11 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
         g /= totalWeight;
         b /= totalWeight;
 
-        int averageColor = ColorSRGB.linearToSrgb(r, g, b, 0);
+        final int averageColor = ColorSRGB.linearToSrgb(r, g, b, 0);
 
         for (int y = 0; y < nativeImage.length; y++) {
-            int color = nativeImage[y];
-            int alpha = ColorABGR.unpackAlpha(color);
+            final int color = nativeImage[y];
+            final int alpha = ColorABGR.unpackAlpha(color);
             if (alpha == 0) {
                 nativeImage[y] = averageColor;
             }

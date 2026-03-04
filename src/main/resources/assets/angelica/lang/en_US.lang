@@ -232,3 +232,7 @@ sodium.options.multidraw_mode.tooltip=Controls how draw commands are dispatched 
 sodium.options.multidraw_mode.direct=Direct
 sodium.options.multidraw_mode.indirect=Indirect
 sodium.options.multidraw_mode.individual=Individual
+sodium.options.use_map_buffer_range.name=Use MapBufferRange
+sodium.options.use_map_buffer_range.tooltip=Uses glMapBufferRange instead of glBufferSubData for streaming vertex uploads. May improve performance on some drivers.
+sodium.options.enable_deferred_batching.name=Deferred Particle Batching
+sodium.options.enable_deferred_batching.tooltip=Batches particle draw calls into fewer merged draws per layer. Disable if particles render incorrectly.

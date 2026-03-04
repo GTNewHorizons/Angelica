@@ -17,8 +17,17 @@ public class MixinTessellator implements StateAwareTessellator {
     @Unique
     private boolean appliedAo;
 
+    @Unique
+    private boolean celeritasMeshing;
+
+    @Override
+    public void angelica$setCeleritasMeshing(boolean active) {
+        this.celeritasMeshing = active;
+    }
+
     @Inject(method = "addVertex", at = @At("RETURN"))
     private void addElementState(CallbackInfo ci) {
+        if (!celeritasMeshing) return;
         int state = 0;
         if (appliedAo) {
             state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;

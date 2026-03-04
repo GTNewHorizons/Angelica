@@ -7,6 +7,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 
 import net.minecraft.client.gui.Gui;
@@ -40,7 +41,9 @@ public class MixinGuiIngameForge_HUDCaching {
         	ci.cancel();
         }
 
-        HUDCaching.disableHoloInventory();
+        if (AngelicaConfig.hudCachingActive) {
+            HUDCaching.disableHoloInventory();
+        }
     }
 
     @Inject(method = "renderPortal", at = @At("HEAD"), cancellable = true, remap = false)

@@ -5,6 +5,7 @@ import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
+import org.lwjgl.opengl.GL11;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 
@@ -12,6 +13,13 @@ public class IrisInternalUniforms {
     private static final Vector4f FOG_COLOR = new Vector4f();
 
     private IrisInternalUniforms() {
+    }
+
+    private static float getEffectiveAlphaRef() {
+        if (!GLStateManager.getAlphaTest().isEnabled() || GLStateManager.getAlphaState().getFunction() == GL11.GL_ALWAYS) {
+            return -1.0f;
+        }
+        return GLStateManager.getAlphaState().getReference();
     }
 
     public static void addFogUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {
@@ -26,7 +34,7 @@ public class IrisInternalUniforms {
             .uniform1f(PER_FRAME, "iris_FogDensity", () -> Math.max(0.0F, GLStateManager.getFogState().getDensity()));
 
         uniforms
-            .uniform1f(PER_FRAME, "iris_currentAlphaTest", () -> GLStateManager.getAlphaState().getReference())
-            .uniform1f(PER_FRAME, "alphaTestRef", () -> GLStateManager.getAlphaState().getReference());
+            .uniform1f(PER_FRAME, "iris_currentAlphaTest", IrisInternalUniforms::getEffectiveAlphaRef)
+            .uniform1f(PER_FRAME, "alphaTestRef", IrisInternalUniforms::getEffectiveAlphaRef);
     }
 }
