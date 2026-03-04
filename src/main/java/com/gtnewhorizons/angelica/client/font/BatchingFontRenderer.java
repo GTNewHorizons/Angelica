@@ -137,9 +137,6 @@ public class BatchingFontRenderer {
 
     private void allocateBuffers() {
         populateEBO(rawCapacity / VERTEX_SIZE);
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, rawCapacity, GL15.GL_STREAM_DRAW);
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
     }
 
     private void populateEBO(int capacity) {
@@ -325,7 +322,6 @@ public class BatchingFontRenderer {
         // Upload first (to reduce stalls)
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
-//        uploadToVBO(vertexDataAddress, vertexDataPos);
         streamUpload(vertexDataAddress, vertexDataPos);
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
@@ -429,21 +425,6 @@ public class BatchingFontRenderer {
         batchCommands.clear();
         vertexDataPos = 0;
         idxWriterIndex = 0;
-    }
-
-    public static void uploadToVBO(final long bufferAddress, final int dataSize) {
-        final ByteBuffer buffer = GL30.glMapBufferRange(
-            GL15.GL_ARRAY_BUFFER,
-            0,
-            dataSize,
-            GL30.GL_MAP_WRITE_BIT |
-                GL30.GL_MAP_INVALIDATE_BUFFER_BIT |
-                GL30.GL_MAP_UNSYNCHRONIZED_BIT,
-            null
-        );
-        final long ptr = memAddress0(buffer);
-        memCopy(bufferAddress, ptr, dataSize);
-        GL15.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
     }
 
     private static void streamUpload(long address, int bytes) {
