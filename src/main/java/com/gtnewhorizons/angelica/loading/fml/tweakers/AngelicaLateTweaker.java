@@ -23,7 +23,7 @@ public class AngelicaLateTweaker implements ITweaker {
     }
 
     /**
-     * Reduces overly broad transformer exclusions that prevent AngelicaRedirector from doing it's job.
+     * Reduces overly broad transformer exclusions that prevent AngelicaRedirector from doing its job.
      *
      * Looking at you, DragonAPI.
      */
