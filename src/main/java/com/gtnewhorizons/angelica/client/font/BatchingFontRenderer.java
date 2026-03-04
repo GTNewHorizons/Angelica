@@ -321,6 +321,13 @@ public class BatchingFontRenderer {
             clearBatch();
             return;
         }
+
+        // Upload first (to reduce stalls)
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+//        uploadToVBO(vertexDataAddress, vertexDataPos);
+        streamUpload(vertexDataAddress, vertexDataPos);
+
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         // Sort&Draw
@@ -355,7 +362,6 @@ public class BatchingFontRenderer {
 
         if (fontVAO == 0) {
             fontVAO = GL30.glGenVertexArrays();
-//            vbo = GL15.glGenBuffers();
 
             GLStateManager.glBindVertexArray(fontVAO);
             GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
@@ -380,11 +386,6 @@ public class BatchingFontRenderer {
         }
 
         GLStateManager.glBindVertexArray(fontVAO);
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-
-//        uploadToVBO(vertexDataAddress, vertexDataPos);
-
-        streamUpload(vertexDataAddress, vertexDataPos);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
