@@ -54,14 +54,7 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
             return false;
         }
 
-        if (inner.shouldTransform(classNode.getOriginalBytes())) {
-            return true;
-        }
-
-        // Track possible block subclasses even if we don't need to transform this class
-        inner.trackBlockSubclasses(metadata.binaryThisName, metadata.binarySuperName);
-
-        return false;
+        return inner.shouldTransform(classNode.getOriginalBytes());
     }
 
     @Override

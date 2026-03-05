@@ -30,13 +30,11 @@ public class CeleritasBlockTransformer implements IClassTransformer {
             if (transformedName.startsWith(exclusion)) return basicClass;
         }
 
-        final ClassReader classReader = new ClassReader(basicClass);
-
         if (!inner.shouldTransform(basicClass)) {
-            inner.trackBlockSubclasses(classReader.getClassName(), classReader.getSuperName());
             return basicClass;
         }
 
+        final ClassReader classReader = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
         classReader.accept(cn, 0);
 

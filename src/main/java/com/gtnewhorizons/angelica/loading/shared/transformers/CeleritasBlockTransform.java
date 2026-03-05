@@ -6,6 +6,7 @@ import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -50,18 +51,9 @@ public final class CeleritasBlockTransform {
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
-    private static final String BlockPackage = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
-    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
-    private static final String[] VanillaBlockExclusions = {
-        "net/minecraft/block/IGrowable",
-        "net/minecraft/block/ITileEntityProvider",
-        "net/minecraft/block/BlockEventData",
-        "net/minecraft/block/BlockSourceImpl",
-        "net/minecraft/block/material/"
-    };
 
-    private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private static final Map<String, Boolean> moddedBlockSubclasses = new ConcurrentHashMap<>();
     // Block owners we *shouldn't* redirect because they shadow one of our fields
     private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
@@ -87,19 +79,32 @@ public final class CeleritasBlockTransform {
     }
 
     private boolean isVanillaBlockSubclass(String className) {
-        if (className.startsWith(BlockPackage)) {
-            for (String exclusion : VanillaBlockExclusions) {
-                if (className.startsWith(exclusion)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
+        return className.startsWith(BlockClass)
+            && !className.equals("net/minecraft/block/BlockEventData")
+            && !className.equals("net/minecraft/block/BlockSourceImpl");
     }
 
     private boolean isBlockSubclass(String className) {
-        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
+        if (isVanillaBlockSubclass(className)) return true;
+
+        Boolean isModdedBlockSubclass = moddedBlockSubclasses.get(className);
+        if (isModdedBlockSubclass != null) return isModdedBlockSubclass;
+
+        try {
+            final byte[] classBytes = Launch.classLoader.getClassBytes(className);
+            final ClassReader classReader = new ClassReader(classBytes);
+            final String superName = classReader.getSuperName();
+            final boolean isBlockSubclass = superName != null
+                && !superName.equals("java/lang/Object")
+                && !isVanillaBlockSubclass(className)
+                && isBlockSubclass(superName);
+
+            moddedBlockSubclasses.put(className, isBlockSubclass);
+            return isBlockSubclass;
+        } catch (Exception ignored) {
+            moddedBlockSubclasses.put(className, false);
+            return false;
+        }
     }
 
     public String[] getTransformerExclusions() {
@@ -109,12 +114,6 @@ public final class CeleritasBlockTransform {
             "com.gtnewhorizons.angelica.transform",
             "me.eigenraven.lwjgl3ify"
         };
-    }
-
-    public void trackBlockSubclasses(String className, String classSuperName) {
-        if (!isVanillaBlockSubclass(className) && isBlockSubclass(classSuperName)) {
-            moddedBlockSubclasses.add(className);
-        }
     }
 
     public boolean shouldTransform(byte[] classBytes) {
@@ -133,10 +132,8 @@ public final class CeleritasBlockTransform {
             changed = cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
         }
 
-        trackBlockSubclasses(cn.name, cn.superName);
-
         // Check if this class shadows any fields of the parent class
-        if (moddedBlockSubclasses.contains(cn.name)) {
+        if (isBlockSubclass(cn.name) && !isVanillaBlockSubclass(cn.name)) {
             // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
             // superclass
             boolean doWeShadow = false;
@@ -160,7 +157,7 @@ public final class CeleritasBlockTransform {
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
+                    if (isBlockSubclass(fNode.owner) && !blockOwnerExclusions.contains(fNode.owner)) {
                         String fieldRedirect = blockFieldRedirects.get(fNode.name);
                         if (fieldRedirect != null) {
                             if (LOG_SPAM) {
