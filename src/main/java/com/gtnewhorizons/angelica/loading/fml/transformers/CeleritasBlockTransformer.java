@@ -34,10 +34,9 @@ public class CeleritasBlockTransformer implements IClassTransformer {
             return basicClass;
         }
 
-        final ClassReader classReader = new ClassReader(basicClass);
+        final ClassReader cr = new ClassReader(basicClass);
         final ClassNode cn = new ClassNode();
-        classReader.accept(cn, 0);
-
+        cr.accept(cn, 0);
         final boolean changed = inner.transformClassNode(transformedName, cn);
         if (changed) {
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
