@@ -7,6 +7,7 @@ plugins {
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+//    extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
 //    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
 //    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
     //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
