@@ -30,15 +30,16 @@ public class CeleritasBlockTransformer implements IClassTransformer {
             if (transformedName.startsWith(exclusion)) return basicClass;
         }
 
-        // Here could be a `inner.shouldTransform(basicClass)` check to exit early from transforming,
-        // but we also need to call `inner.trackBlockSubclasses` in this case and somehow pass
-        // the name of a class and a superclass, which we can do only after parsing the whole constant pool.
-        // This transformer is merely a fallback when FRB / lwjgl3ify is not present, so we can afford
-        // it being not fully optimized
+        final ClassReader classReader = new ClassReader(basicClass);
 
-        final ClassReader cr = new ClassReader(basicClass);
+        if (!inner.shouldTransform(basicClass)) {
+            inner.trackBlockSubclasses(classReader.getClassName(), classReader.getSuperName());
+            return basicClass;
+        }
+
         final ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
+        classReader.accept(cn, 0);
+
         final boolean changed = inner.transformClassNode(transformedName, cn);
         if (changed) {
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
