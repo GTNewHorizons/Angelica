@@ -239,4 +239,15 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean replaceFFPUploads;
 
+    @Config.Comment("Pinned OpenGL version an integer (e.g. 46, 41, 33). 0 = auto-detect. [33, 46]. (Disable with disableGLVersionPinning=true)")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 46)
+    @Config.RequiresMcRestart
+    public static int pinnedGLVersion;
+
+    @Config.Comment("Disable automatic GL version pinning. When true, always probes from highest on every launch.")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean disableGLVersionPinning;
+
 }

@@ -17,6 +17,10 @@ public class MixinTileEntityRendererDispatcher {
 
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("HEAD"))
     private void iris$setBlockEntityId(TileEntity te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
+        if (te == null) {
+            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
+            return;
+        }
         Block block = te.getBlockType();
         if (block == null) {
             CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
