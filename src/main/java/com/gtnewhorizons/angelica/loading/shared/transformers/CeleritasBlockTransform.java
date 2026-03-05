@@ -26,7 +26,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class CeleritasBlockTransform {
+public final class CeleritasBlockTransform implements Opcodes {
 
     private final ClassConstantPoolParser cstPoolParser;
     private final Map<String, String> blockFieldRedirects = new HashMap<>();
@@ -156,7 +156,7 @@ public final class CeleritasBlockTransform {
 
         for (MethodNode mn : cn.methods) {
             for (AbstractInsnNode node : mn.instructions.toArray()) {
-                if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                if ((node.getOpcode() == GETFIELD || node.getOpcode() == PUTFIELD) && node instanceof FieldInsnNode fNode) {
                     if (isBlockSubclass(fNode.owner) && !blockOwnerExclusions.contains(fNode.owner)) {
                         String fieldRedirect = blockFieldRedirects.get(fNode.name);
                         if (fieldRedirect != null) {
@@ -167,22 +167,22 @@ public final class CeleritasBlockTransform {
                             fNode.name = fieldRedirect; // use unobfuscated name
                             fNode.owner = ThreadedBlockData;
                             // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                            if (node.getOpcode() == Opcodes.GETFIELD) {
+                            final MethodInsnNode getter = new MethodInsnNode(INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
+                            if (node.getOpcode() == GETFIELD) {
                                 mn.instructions.insertBefore(fNode, getter);
-                            } else if (node.getOpcode() == Opcodes.PUTFIELD) {
+                            } else if (node.getOpcode() == PUTFIELD) {
                                 // FIXME: this code assumes doubles
                                 // Stack: Block, double
                                 final InsnList beforePut = new InsnList();
-                                beforePut.add(new InsnNode(Opcodes.DUP2_X1));
+                                beforePut.add(new InsnNode(DUP2_X1));
                                 // Stack: double, Block, double
-                                beforePut.add(new InsnNode(Opcodes.POP2));
+                                beforePut.add(new InsnNode(POP2));
                                 // Stack: double, Block
                                 beforePut.add(getter);
                                 // Stack: double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.DUP_X2));
+                                beforePut.add(new InsnNode(DUP_X2));
                                 // Stack: ThreadedBlockData, double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.POP));
+                                beforePut.add(new InsnNode(POP));
                                 // Stack: ThreadedBlockData, double
                                 mn.instructions.insertBefore(fNode, beforePut);
                             }
