@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.loading.fml.tweakers;
 
+import com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer;
 import cpw.mods.fml.relauncher.FMLRelaunchLog;
+import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
 import net.minecraft.launchwrapper.Launch;
 import net.minecraft.launchwrapper.LaunchClassLoader;
@@ -62,9 +64,20 @@ public class AngelicaLateTweaker implements ITweaker {
     }
 
     @Override
+    @SuppressWarnings("unchecked")
     public String[] getLaunchArguments() {
-        // Run after Mixins, but before LWJGl3ify
-        String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.AngelicaRedirectorTransformer";
+        // Remove the scoped early redirector (no longer needed) and register the full one in its proper position: after mixins
+        try {
+            final Field transformersField = LaunchClassLoader.class.getDeclaredField("transformers");
+            transformersField.setAccessible(true);
+            final List<IClassTransformer> transformers = (List<IClassTransformer>) transformersField.get(Launch.classLoader);
+
+            transformers.removeIf(t -> t instanceof EarlyRedirectorTransformer);
+        } catch (Exception e) {
+            FMLRelaunchLog.warning("[Angelica] Failed to remove EarlyRedirectorTransformer: %s", e.getMessage());
+        }
+
+        final String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.AngelicaRedirectorTransformer";
         FMLRelaunchLog.finer("Registering transformer %s", transformer);
         Launch.classLoader.registerTransformer(transformer);
         return new String[0];

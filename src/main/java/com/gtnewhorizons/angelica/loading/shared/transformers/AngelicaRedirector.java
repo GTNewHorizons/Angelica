@@ -433,6 +433,7 @@ public final class AngelicaRedirector {
     public String[] getTransformerExclusions() {
         return new String[]{
             "org.lwjgl",
+            "com.gtnewhorizon.gtnhlib.asm",
             "com.gtnewhorizons.angelica.glsm.",
             "com.gtnewhorizons.angelica.transform",
             "me.eigenraven.lwjgl3ify"
