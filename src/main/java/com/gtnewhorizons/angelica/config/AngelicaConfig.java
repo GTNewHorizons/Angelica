@@ -48,6 +48,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableMCPatcherForgeFeatures;
 
+    @Config.Comment("Replace main menu panorama with modern equivalent.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enablePanoramaBlurShader;
+
     @Config.Comment("Replace cloud renderer with a VBO version.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
