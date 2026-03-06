@@ -89,8 +89,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         if (FMLLaunchHandler.side().isClient()) {
             final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
             if (!rfbLoaded) {
-                Launch.classLoader.registerTransformer(
-                    "com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer");
+                Launch.classLoader.registerTransformer("com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer");
             }
         }
     }
