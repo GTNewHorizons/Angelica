@@ -16,6 +16,7 @@ import org.objectweb.asm.tree.MethodNode;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.ListIterator;
 import java.util.Map;
 import java.util.Set;
 
@@ -445,10 +446,11 @@ public final class AngelicaRedirector {
                 continue;
             }
             boolean redirectInMethod = false;
-            for (AbstractInsnNode node : mn.instructions.toArray()) {
-                if (node instanceof MethodInsnNode mNode) {
+            ListIterator<AbstractInsnNode> iter = mn.instructions.iterator();
+            while (iter.hasNext()) {
+                if (iter.next() instanceof MethodInsnNode mNode) {
                     if (mNode.desc.equals("(I)V") && (mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable"))) {
-                        final AbstractInsnNode prevNode = node.getPrevious();
+                        final AbstractInsnNode prevNode = mNode.getPrevious();
                         String name = null;
                         if (prevNode instanceof LdcInsnNode ldcNode) {
                             name = glCapRedirects.get(((Integer) ldcNode.cst));
