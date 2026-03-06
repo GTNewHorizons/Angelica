@@ -35,7 +35,7 @@ public class PanoramaRenderer {
 
     private static final int FBO_SIZE = 256;
     private static final int PANORAMA_GRID = 8;
-    private static final float BLUR_RADIUS = 2.0f;
+    private static final float BLUR_RADIUS = 3.0f;
 
     private static final int VERTEX_STRIDE = 24;
     private static final int VERTS_PER_FACE = PANORAMA_GRID * PANORAMA_GRID * 4;
