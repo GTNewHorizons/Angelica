@@ -354,8 +354,10 @@ public enum Mixins implements IMixins {
 
     REPLACE_FFP(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.vbo.MixinFramebuffer")
-        .setApplyIf(() -> AngelicaConfig.replaceFFPUploads)),
+        .setApplyIf(() -> AngelicaConfig.replaceFFPUploads)
+        .addClientMixins(
+            "angelica.vbo.MixinFramebuffer",
+            "angelica.vbo.MixinWavefrontObject")),
 
     //From NotFine
     NOTFINE_BASE_MOD(new MixinBuilder()
