@@ -60,6 +60,9 @@ public class Uniforms {
     private float lastLightmapY = Float.NaN;
     private int lastTexGenGen = -1;
     private int lastClipPlaneGen = -1;
+    private float lastLineWidth = Float.NaN;
+    private int lastViewportWidth = -1;
+    private int lastViewportHeight = -1;
 
     /**
      * Upload all relevant uniforms to the given FFP program based on current GLSM state.
@@ -143,6 +146,11 @@ public class Uniforms {
         if (programChanged || fragGen != lastFragmentGen) {
             uploadFragmentUniforms(program);
             lastFragmentGen = fragGen;
+        }
+
+        // Wide line emulation uniforms
+        if (program.locLineWidth != -1 && program.locViewportSize != -1) {
+            uploadWideLineUniforms(program, programChanged);
         }
     }
 
@@ -447,6 +455,21 @@ public class Uniforms {
             vec4Buf.put(fog.getFogAlpha());
             vec4Buf.flip();
             GL20.glUniform4(program.locFogColor, vec4Buf);
+        }
+    }
+
+    private void uploadWideLineUniforms(Program program, boolean programChanged) {
+        final float lineWidth = GLStateManager.getLineState().getWidth();
+        if (programChanged || lineWidth != lastLineWidth) {
+            GL20.glUniform1f(program.locLineWidth, lineWidth);
+            lastLineWidth = lineWidth;
+        }
+        final int vw = GLStateManager.getViewportState().width;
+        final int vh = GLStateManager.getViewportState().height;
+        if (programChanged || vw != lastViewportWidth || vh != lastViewportHeight) {
+            GL20.glUniform2f(program.locViewportSize, vw, vh);
+            lastViewportWidth = vw;
+            lastViewportHeight = vh;
         }
     }
 

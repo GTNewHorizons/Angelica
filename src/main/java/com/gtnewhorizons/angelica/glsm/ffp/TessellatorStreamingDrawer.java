@@ -234,6 +234,7 @@ public class TessellatorStreamingDrawer {
             firstVertex = orphanBuffers[flags].upload(packed, vertexSize);
         }
 
+        GLStateManager.prepareWideLineEmulation(drawMode);
         ShaderManager.getInstance().preDraw(flags);
         drawWithQuadConversion(drawMode, firstVertex, vertexCount);
         GLStateManager.glBindVertexArray(0);
