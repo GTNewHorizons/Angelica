@@ -29,6 +29,7 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.MixinActiveRenderInfo"
             , "angelica.MixinEntityRenderer"
+            , "angelica.MixinForgeHooksClient_CoreProfile"
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraftServer"
@@ -37,6 +38,7 @@ public enum Mixins implements IMixins {
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             , "angelica.glsm.MixinSplashProgressCaching"
             , "angelica.debug.MixinMinecraft_FPSCap"
+            , "angelica.ffp.MixinTessellator_CoreProfile"
         )
     ),
 
@@ -45,6 +47,13 @@ public enum Mixins implements IMixins {
             .setApplyIf(() -> AngelicaConfig.enableVBOClouds)
             .setPhase(Phase.EARLY)
             .addClientMixins("angelica.vbo.MixinRenderGlobal")
+    ),
+
+    ANGELICA_PANORAMA_BLUR(
+        new MixinBuilder("Replace main menu panorama with modern equivalent")
+            .setPhase(Phase.EARLY)
+            .setApplyIf(() -> AngelicaConfig.enablePanoramaBlurShader)
+            .addClientMixins("angelica.gui.MixinGuiMainMenu")
     ),
 
     ANGELICA_FONT_RENDERER(new MixinBuilder()
@@ -105,6 +114,11 @@ public enum Mixins implements IMixins {
     ANGELICA_OPTIMIZE_GLALLOCATION(new MixinBuilder("Replace HashMap with fastutil Int2IntMap in GLAllocation")
         .setPhase(Phase.EARLY)
         .addClientMixins("angelica.optimizations.MixinGLAllocation")),
+
+    ANGELICA_DEFERRED_TESSELLATOR_BATCH(new MixinBuilder("Deferred tessellator batching for particles to reduce draw calls")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
+        .addClientMixins("angelica.particles.MixinEffectRenderer_DeferredBatch")),
 
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new MixinBuilder()
@@ -275,6 +289,7 @@ public enum Mixins implements IMixins {
     OPTIMIZE_WORLD_UPDATE_LIGHT(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.ARCHAICFIX)
+        .addExcludedMod(TargetedMod.SUPERNOVA)
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
@@ -343,6 +358,13 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addClientMixins("angelica.textures.MixinTextureUtil_OptimizeMipmap")
         .setApplyIf(() -> AngelicaConfig.optimizeTextureLoading)),
+
+    REPLACE_FFP(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.replaceFFPUploads)
+        .addClientMixins(
+            "angelica.vbo.MixinFramebuffer",
+            "angelica.vbo.MixinWavefrontObject")),
 
     //From NotFine
     NOTFINE_BASE_MOD(new MixinBuilder()

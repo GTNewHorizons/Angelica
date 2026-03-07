@@ -1,3 +1,5 @@
+import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
+
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
@@ -5,6 +7,7 @@ plugins {
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+//    extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
 //    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
 //    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
     //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
@@ -44,6 +47,18 @@ tasks.register<Copy>("copyDependencies") {
 }
 
 val embedOnly: Configuration by configurations
+
+// Downgrade embedOnly jars for the tests
+val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
+    inputCollection = embedOnly
+}
+
+tasks.test {
+    dependsOn(downgradeEmbedOnlyForTest)
+    classpath = classpath
+        .minus(embedOnly)
+        .plus(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
+}
 
 tasks.shadowJar {
     from(embedOnly.map(::zipTree))

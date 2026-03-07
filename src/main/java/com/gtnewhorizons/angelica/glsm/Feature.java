@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -87,22 +88,20 @@ public class Feature {
               GLStateManager.alphaTest  // GL_ALPHA_TEST enable bit
             , GLStateManager.alphaState // Alpha test function and reference value
             , GLStateManager.blendMode  // GL_BLEND enable bit
-            , GLStateManager.blendState // Blending source and destination functions
-            // Constant blend color
-            // Blending equation
+            , GLStateManager.blendState // Blending source/destination functions, equation, blend color
             , GLStateManager.colorLogicOpState // GL_COLOR_LOGIC_OP enable bit
             , GLStateManager.ditherState // GL_DITHER enable bit
             , GLStateManager.drawBuffer // GL_DRAW_BUFFER setting
             , GLStateManager.indexLogicOpState // GL_INDEX_LOGIC_OP enable bit
-            // Logic op function
+            , GLStateManager.logicOpMode // Logic op function
             , GLStateManager.colorMask   // Color-mode and index-mode writemasks
             , GLStateManager.clearColor  // Color-mode and index-mode clear values
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
               GLStateManager.color  // Current RGBA color
+            , ShaderManager.getNormalStack()    // Current normal vector
+            , ShaderManager.getTexCoordStack()  // Current texture coordinates
             // Current color index
-            // Current normal vector
-            // Current texture coordinates
             // Current raster position
             // GL_CURRENT_RASTER_POSITION_VALID flag
             // RGBA color associated with current raster position
@@ -300,6 +299,7 @@ public class Feature {
         ));
         final Set<IStateStack<?>> textureAttribs = new HashSet<>(ImmutableSet.of(
             GLStateManager.activeTextureUnit // Active texture unit
+                // GL_TEXTURE_ENV_MODE + GL_TEXTURE_ENV_COLOR — now per-unit in TexEnvState (added below)
                 // Enable bits for the four texture coordinates
 
                 // Border color for each texture image
@@ -307,17 +307,16 @@ public class Feature {
                 // Magnification function for each texture image
                 // Texture coordinates and wrap mode for each texture image
 
-                // Color and mode for each texture environment
                 // Enable bits GL_TEXTURE_GEN_x, x is S, T, R, and Q
                 // GL_TEXTURE_GEN_MODE setting for S, T, R, and Q
                 // glTexGen plane equations for S, T, R, and Q
                 // Current texture bindings (for example, GL_TEXTURE_BINDING_2D) - Below
         ));
 
-        // Current Texture Bindings - GL_TEXTURE_BINDING_2D
+        // Current Texture Bindings - GL_TEXTURE_BINDING_2D + per-unit TexEnvState
         for(int i = 0 ; i < GLStateManager.MAX_TEXTURE_UNITS; i++) {
             textureAttribs.add(GLStateManager.textures.getTextureUnitBindings(i));
-//            textureAttribs.add(GLStateManager.textures.getInfo(i))
+            textureAttribs.add(GLStateManager.textures.getTexEnvState(i));
         }
 
         // Enable bits GL_TEXTURE_GEN_x where x is S, T, R, or Q

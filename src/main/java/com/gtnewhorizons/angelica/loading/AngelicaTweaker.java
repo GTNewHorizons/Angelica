@@ -81,6 +81,17 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             throw new RuntimeException(e);
         }
         verifyDependencies();
+
+        // Register a scoped redirector early so classes prematurely loaded by other coremods during discovery/injectData
+        // (e.g. Mycelium using HookLoader.class.getName()) still get GL calls redirected to GLSM. Only targets specific mod
+        // packages to avoid interfering with mixin delegation on game classes. AngelicaLateTweaker removes this registration once
+        // mixins are setup.
+        if (FMLLaunchHandler.side().isClient()) {
+            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+            if (!rfbLoaded) {
+                Launch.classLoader.registerTransformer("com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer");
+            }
+        }
     }
 
     private static void verifyDependencies() {
@@ -139,7 +150,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
                 // specific IClassTransformers that will run last in the transformer chain.
                 // If we were to register them normally in getASMTransformerClass(),
                 // they would be sorted at index 0 which we do not want.
-                boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+                final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
                 if (!rfbLoaded) {
                     tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.AngelicaLateTweaker");
                     if (AngelicaConfig.enableCeleritas) {
@@ -157,7 +168,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
     @Override
     public String getMixinConfig() {
-        int v = Runtime.version().feature();
+        final int v = Runtime.version().feature();
         if (v >= 21) return "mixins.angelica.early.j21.json";
         if (v >= 17) return "mixins.angelica.early.j17.json";
         return "mixins.angelica.early.json";
@@ -174,7 +185,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
     }
 
     private static void addLwjgl3ifyExclusions() {
-        var handle = SharedConfig.getRfbTransformers().stream()
+        final var handle = SharedConfig.getRfbTransformers().stream()
             .filter(transformer -> transformer.id().equals("lwjgl3ify:redirect"))
             .findFirst()
             .orElse(null);

@@ -283,7 +283,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         }
         if (keyCode == Keyboard.KEY_P) {
             if(isShiftKeyDown()){
-                this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(), SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(), SodiumGameOptionPages.appearance(), SodiumGameOptionPages.debug()));
+                this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(), SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(), SodiumGameOptionPages.appearance()));
             } else if (isCtrlKeyDown()) {
                 this.mc.displayGuiScreen(new SodiumOptionsGUI(this.prevScreen));
             }

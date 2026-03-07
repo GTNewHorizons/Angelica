@@ -172,6 +172,11 @@ public final class CommandRecorder {
         commandCount++;
     }
 
+    public void recordScissor(int x, int y, int width, int height) {
+        buffer.writeScissor(x, y, width, height);
+        commandCount++;
+    }
+
     public void recordPointSize(float size) {
         buffer.writePointSize(size);
         commandCount++;
@@ -284,6 +289,11 @@ public final class CommandRecorder {
 
     public void recordMaterial(int face, int pname, FloatBuffer params) {
         buffer.writeMaterial(face, pname, params);
+        commandCount++;
+    }
+
+    public void recordClipPlane(int plane, double a, double b, double c, double d) {
+        buffer.writeClipPlane(plane, a, b, c, d);
         commandCount++;
     }
 

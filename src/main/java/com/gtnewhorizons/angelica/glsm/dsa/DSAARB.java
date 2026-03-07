@@ -40,6 +40,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameteri(int texture, int target, int pname, int param) {
+        param = GLStateManager.remapTexClamp(pname, param);
         if(!GLStateManager.updateTexParameteriCache(target, texture, pname, param)) return;
 
         ARBDirectStateAccess.glTextureParameteri(texture, pname, param);
@@ -47,6 +48,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameterf(int texture, int target, int pname, float param) {
+        param = GLStateManager.remapTexClamp(pname, param);
         if(!GLStateManager.updateTexParameterfCache(target, texture, pname, param)) return;
 
         ARBDirectStateAccess.glTextureParameterf(texture, pname, param);
@@ -54,6 +56,7 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
+        GLStateManager.remapTexClampBuffer(pname, params);
         ARBDirectStateAccess.glTextureParameter(texture, pname, params);
     }
 

@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -12,18 +14,20 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.apache.commons.io.IOUtils;
+import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.Objects;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 /**
@@ -36,20 +40,18 @@ public class BatchingFontRenderer {
     /** The underlying FontRenderer object that's being accelerated */
     protected FontRenderer underlying;
     /** Array of width of all the characters in default.png */
-    protected int[] charWidth = new int[256];
-    /** Array of the start/end column (in upper/lower nibble) for every glyph in the /font directory. */
-    protected byte[] glyphWidth;
+    protected int[] charWidth;
     /**
      * Array of RGB triplets defining the 16 standard chat colors followed by 16 darker version of the same colors for
      * drop shadows.
      */
-    private int[] colorCode;
+    private final int[] colorCode;
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
 
     private final int AAMode;
     private final int AAStrength;
-    private final int texBoundAttrLocation;
+    private final int mvpMatrixLocation;
     private final int fontShaderId;
 
     final boolean isSGA;
@@ -95,90 +97,129 @@ public class BatchingFontRenderer {
         fontShaderId = FontAAShader.getProgram().getProgramId();
         AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
-        texBoundAttrLocation = GL20.glGetAttribLocation(fontShaderId, "texBounds");
+        mvpMatrixLocation = GL20.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
+        if (ebo == null) {
+            ebo = new IndexBuffer();
+            vbo = GL15.glGenBuffers();
+            allocateBuffers();
+        }
     }
 
     // === Batched rendering
 
-    private int batchDepth = 0;
-
-    private int vtxWriterIndex = 0;
-    private int idxWriterIndex = 0;
-    private static final int INITIAL_BATCH_SIZE = 256;
+    private static final int INITIAL_BATCH_SIZE = 2048;
     private static final ResourceLocation DUMMY_RESOURCE_LOCATION = new ResourceLocation("angelica$dummy",
         "this is invalid!");
-    private FloatBuffer batchVtxPositions = memAllocFloat(INITIAL_BATCH_SIZE * 2);
-    private ByteBuffer batchVtxColors = memAlloc(INITIAL_BATCH_SIZE * 4);
-    private FloatBuffer batchVtxTexCoords = memAllocFloat(INITIAL_BATCH_SIZE * 2);
-    private IntBuffer batchIndices = memAllocInt(INITIAL_BATCH_SIZE / 2 * 3);
-    private FloatBuffer batchVtxTexBounds = memAllocFloat(INITIAL_BATCH_SIZE * 4);
+
+    // Layout in data:
+    // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
+    // v, t and tb are floats, c is bytes; 36 bytes total
+    private static final int VERTEX_SIZE = 36;
+    private static int rawCapacity = INITIAL_BATCH_SIZE * VERTEX_SIZE;
+    private static long vertexDataAddress = nmemAllocChecked(rawCapacity);
+
+    // OpenGL objects (static, can be used between multiple BatchingFontRenderer)
+    private static int fontVAO = 0;
+    private static int vbo;
+    private static IndexBuffer ebo;
+
+    private int batchDepth = 0;
+
+    private int vertexDataPos = 0;
+    private int idxWriterIndex = 0;
+
     private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
-    /**  */
-    private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
-        final int oldCap = batchVtxPositions.capacity() / 2;
-        if (vtxWriterIndex >= oldCap) {
-            final int newCap = oldCap * 2;
-            batchVtxPositions = memRealloc(batchVtxPositions, newCap * 2);
-            batchVtxColors = memRealloc(batchVtxColors, newCap * 4);
-            batchVtxTexCoords = memRealloc(batchVtxTexCoords, newCap * 2);
-            batchVtxTexBounds = memRealloc(batchVtxTexBounds, newCap * 4);
-            final int oldIdxCap = batchIndices.capacity();
-            final int newIdxCap = oldIdxCap * 2;
-            batchIndices = memRealloc(batchIndices, newIdxCap);
+
+    private void allocateBuffers() {
+        populateEBO(rawCapacity / VERTEX_SIZE);
+    }
+
+    private void populateEBO(int capacity) {
+        final int quadCount = capacity * 6;
+        final ByteBuffer data = memAlloc(quadCount * 6 * 2);
+        long ptr = memAddress0(data);
+        for (int i = 0; i < quadCount; i++) {
+            int base = (i * 4);
+
+            // triangle 1
+            memPutShort(ptr, (short) base);
+            memPutShort(ptr + 2, (short) (base + 1));
+            memPutShort(ptr + 4, (short) (base + 2));
+
+            // triangle 2
+            memPutShort(ptr + 6, (short) (base + 2));
+            memPutShort(ptr + 8, (short) (base + 1));
+            memPutShort(ptr + 10, (short) (base + 3));
+            ptr += 12;
         }
-        final int idx = vtxWriterIndex;
-        final int idx2 = idx * 2;
-        final int idx4 = idx * 4;
-        batchVtxPositions.put(idx2, x);
-        batchVtxPositions.put(idx2 + 1, y);
+
+        ebo.upload(data);
+
+        memFree(data);
+
+    }
+
+    private void ensureCapacity() {
+        if (vertexDataPos + (4 * VERTEX_SIZE) > rawCapacity) {
+            rawCapacity *= 2;
+            vertexDataAddress = nmemReallocChecked(vertexDataAddress, rawCapacity);
+
+            allocateBuffers();
+        }
+    }
+
+    private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
+        final long ptr = vertexDataAddress + vertexDataPos;
+
+        // v, v
+        memPutFloat(ptr, x);
+        memPutFloat(ptr + 4, y);
+
+        // t, t
+        memPutFloat(ptr + 8, u);
+        memPutFloat(ptr + 12, v);
+
+        // c, c, c, c
         // 0xAARRGGBB
-        batchVtxColors.put(idx4, (byte) ((rgba >> 16) & 0xFF));
-        batchVtxColors.put(idx4 + 1, (byte) ((rgba >> 8) & 0xFF));
-        batchVtxColors.put(idx4 + 2, (byte) (rgba & 0xFF));
-        batchVtxColors.put(idx4 + 3, (byte) ((rgba >> 24) & 0xFF));
-        batchVtxTexCoords.put(idx2, u);
-        batchVtxTexCoords.put(idx2 + 1, v);
-        batchVtxTexBounds.put(idx4, uMin);
-        batchVtxTexBounds.put(idx4 + 1, uMax);
-        batchVtxTexBounds.put(idx4 + 2, vMin);
-        batchVtxTexBounds.put(idx4 + 3, vMax);
-        vtxWriterIndex++;
+        memPutByte(ptr + 16, (byte) ((rgba >> 16) & 0xFF));
+        memPutByte(ptr + 17, (byte) ((rgba >> 8) & 0xFF));
+        memPutByte(ptr + 18, (byte) (rgba & 0xFF));
+        memPutByte(ptr + 19, (byte) ((rgba >> 24) & 0xFF));
+
+        // tb, tb, tb, tb
+        memPutFloat(ptr + 20, uMin);
+        memPutFloat(ptr + 24, uMax);
+        memPutFloat(ptr + 28, vMin);
+        memPutFloat(ptr + 32, vMax);
+
+        vertexDataPos += VERTEX_SIZE;
     }
 
     private void pushUntexRect(float x, float y, float w, float h, int rgba) {
-        final int vtxId = vtxWriterIndex;
+        ensureCapacity();
         pushVtx(x, y, rgba, 0, 0, 0, 0, 0, 0);
         pushVtx(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
         pushVtx(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
         pushVtx(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
-        pushQuadIdx(vtxId);
+        pushQuadIdx();
     }
 
     private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz) {
-        final int vtxId = vtxWriterIndex;
+        ensureCapacity();
         pushVtx(x + itOff, y, rgba, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x - itOff, y + h, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushQuadIdx(vtxId);
+        pushQuadIdx();
     }
 
-    private int pushQuadIdx(int startV) {
-        final int idx = idxWriterIndex;
-        batchIndices.put(idx, startV);
-        batchIndices.put(idx + 1, startV + 1);
-        batchIndices.put(idx + 2, startV + 2);
-        //
-        batchIndices.put(idx + 3, startV + 2);
-        batchIndices.put(idx + 4, startV + 1);
-        batchIndices.put(idx + 5, startV + 3);
+    private void pushQuadIdx() {
         idxWriterIndex += 6;
-        return idx;
     }
 
     private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture, boolean isUnicode) {
@@ -253,9 +294,6 @@ public class BatchingFontRenderer {
      * allow for easier optimizing of blocks of font rendering code.
      */
     public void beginBatch() {
-        if (batchDepth == Integer.MAX_VALUE) {
-            throw new StackOverflowError("More than Integer.MAX_VALUE nested font rendering batch operations");
-        }
         batchDepth++;
     }
 
@@ -271,10 +309,21 @@ public class BatchingFontRenderer {
         }
     }
 
-    int lastActiveProgram;
-    int fontAAModeLast = -1;
-    int fontAAStrengthLast = -1;
+    private static final Matrix4f scratchMvp = new Matrix4f();
+    private int fontAAModeLast = -1;
+    private int fontAAStrengthLast = -1;
+
     private void flushBatch() {
+        if (vertexDataPos == 0) {
+            clearBatch();
+            return;
+        }
+
+        // Upload first (to reduce stalls)
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+        streamUpload(vertexDataAddress, vertexDataPos);
+
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         // Sort&Draw
@@ -291,33 +340,48 @@ public class BatchingFontRenderer {
         GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
-        final boolean canUseAA = FontConfig.fontAAMode != 0 && prevProgram == 0;
-        if (canUseAA) {
-            GL20.glVertexAttribPointer(texBoundAttrLocation, 4, false, 0, batchVtxTexBounds);
-            GL20.glEnableVertexAttribArray(texBoundAttrLocation);
-            lastActiveProgram = prevProgram;
-            GLStateManager.glUseProgram(fontShaderId);
-            if (FontConfig.fontAAMode != fontAAModeLast) {
-                fontAAModeLast = FontConfig.fontAAMode;
-                GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
-            }
-            if (FontConfig.fontAAStrength != fontAAStrengthLast) {
-                fontAAStrengthLast = FontConfig.fontAAStrength;
-                GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
-            }
+        GLStateManager.glUseProgram(fontShaderId);
+        if (FontConfig.fontAAMode != fontAAModeLast) {
+            fontAAModeLast = FontConfig.fontAAMode;
+            GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
+        }
+        if (FontConfig.fontAAStrength != fontAAStrengthLast) {
+            fontAAStrengthLast = FontConfig.fontAAStrength;
+            GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+        }
+        try (MemoryStack stack = stackPush()) {
+            final FloatBuffer mvpBuf = stack.mallocFloat(16);
+            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
+            scratchMvp.get(mvpBuf);
+            GL20.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
         }
 
-        GL13.glClientActiveTexture(GL13.GL_TEXTURE0);
-        GL11.glTexCoordPointer(2, 0, batchVtxTexCoords);
-        GL11.glEnableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glColorPointer(4, GL11.GL_UNSIGNED_BYTE, 0, batchVtxColors);
-        GL11.glEnableClientState(GL11.GL_COLOR_ARRAY);
-        GL11.glVertexPointer(2, 0, batchVtxPositions);
-        GL11.glEnableClientState(GL11.GL_VERTEX_ARRAY);
-        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        if (fontVAO == 0) {
+            fontVAO = GL30.glGenVertexArrays();
 
-        GL11.glDisableClientState(GL11.GL_NORMAL_ARRAY);
-        GL11.glNormal3f(0.0f, 0.0f, 1.0f);
+            GLStateManager.glBindVertexArray(fontVAO);
+            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+            ebo.bind();
+
+            // position
+            GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 0);
+            GL20.glEnableVertexAttribArray(0);
+
+            // texcoords
+            GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 8);
+            GL20.glEnableVertexAttribArray(1);
+
+            // color
+            GL20.glVertexAttribPointer(2, 4, GL11.GL_UNSIGNED_BYTE, true, VERTEX_SIZE, 16);
+            GL20.glEnableVertexAttribArray(2);
+
+            // tex bounds
+            GL20.glVertexAttribPointer(3, 4, GL11.GL_FLOAT, false, VERTEX_SIZE, 20);
+            GL20.glEnableVertexAttribArray(3);
+        }
+
+        GLStateManager.glBindVertexArray(fontVAO);
 
         // Use plain for loop to avoid allocations
         final FontDrawCmd[] cmdsData = batchCommands.elements();
@@ -336,19 +400,14 @@ public class BatchingFontRenderer {
                 }
                 lastTexture = cmd.texture;
             }
-            batchIndices.limit(cmd.startVtx + cmd.idxCount);
-            batchIndices.position(cmd.startVtx);
-
-            GL11.glDrawElements(GL11.GL_TRIANGLES, batchIndices);
-        }
-        if (canUseAA) {
-            GLStateManager.glUseProgram(lastActiveProgram);
-            GL20.glDisableVertexAttribArray(texBoundAttrLocation);
+            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
         }
 
-        GL11.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-        GL11.glDisableClientState(GL11.GL_COLOR_ARRAY);
-        GL11.glDisableClientState(GL11.GL_VERTEX_ARRAY);
+
+        GLStateManager.glUseProgram(prevProgram);
+
+        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindVertexArray(0);
 
         if (isTextureEnabledBefore) {
         	GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
@@ -357,13 +416,21 @@ public class BatchingFontRenderer {
         	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
         }
 
+        clearBatch();
+    }
+
+    private void clearBatch() {
         // Clear for the next batch
         batchCommandPool.addAll(batchCommands);
         batchCommands.clear();
-        vtxWriterIndex = 0;
+        vertexDataPos = 0;
         idxWriterIndex = 0;
-        batchIndices.limit(batchIndices.capacity());
-        batchIndices.position(0);
+    }
+
+    private static void streamUpload(long address, int bytes) {
+        final ByteBuffer data = memByteBuffer(address, bytes);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bytes, GL15.GL_STREAM_DRAW);
+        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
     }
 
     // === Actual text mesh generation
@@ -429,6 +496,7 @@ public class BatchingFontRenderer {
             boolean curUnderline = false;
 
             float glyphScaleY = getGlyphScaleY();
+            float glyphScaleX = getGlyphScaleX();
             float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
 
             final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
@@ -534,8 +602,8 @@ public class BatchingFontRenderer {
 
                 final float uStart = fontProvider.getUStart(chr);
                 final float vStart = fontProvider.getVStart(chr);
-                final float xAdvance = fontProvider.getXAdvance(chr) * getGlyphScaleX();
-                final float glyphW = fontProvider.getGlyphW(chr) * getGlyphScaleX();
+                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
+                final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
                 final float uSz = fontProvider.getUSize(chr);
                 final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
