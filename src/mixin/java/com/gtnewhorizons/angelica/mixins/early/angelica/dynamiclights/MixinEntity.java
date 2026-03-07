@@ -50,9 +50,9 @@ public abstract class MixinEntity implements IDynamicLightSource {
     @Unique
     private double angelica$prevZ;
     @Unique
-    private LongOpenHashSet angelica$trackedLitChunkPos = new LongOpenHashSet();
+    private LongOpenHashSet angelica$trackedLitChunkPos = null;
     @Unique
-    private LongOpenHashSet angelica$prevTrackedLitChunkPos = new LongOpenHashSet();
+    private LongOpenHashSet angelica$prevTrackedLitChunkPos = null;
 
 
     @Override
@@ -117,6 +117,10 @@ public abstract class MixinEntity implements IDynamicLightSource {
             this.angelica$prevZ = this.posZ;
             this.angelica$lastLuminance = luminance;
 
+            if (this.angelica$prevTrackedLitChunkPos == null) {
+                this.angelica$prevTrackedLitChunkPos = new LongOpenHashSet();
+                this.angelica$trackedLitChunkPos = new LongOpenHashSet();
+            }
             final LongOpenHashSet newPos = this.angelica$prevTrackedLitChunkPos;
             newPos.clear();
 
@@ -161,7 +165,7 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer) {
-        if (this.angelica$trackedLitChunkPos.isEmpty()) {
+        if (this.angelica$trackedLitChunkPos == null || this.angelica$trackedLitChunkPos.isEmpty()) {
             angelica$scheduleRebuildAroundCurrentPosition(renderer);
         } else {
             var iter = this.angelica$trackedLitChunkPos.iterator();
