@@ -29,16 +29,17 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.MixinActiveRenderInfo"
             , "angelica.MixinEntityRenderer"
+            , "angelica.MixinFMLClientHandler"
             , "angelica.MixinForgeHooksClient_CoreProfile"
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraftServer"
-            , "angelica.optimizations.MixinRendererLivingEntity"
-            , "angelica.MixinFMLClientHandler"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
-            , "angelica.glsm.MixinSplashProgressCaching"
             , "angelica.debug.MixinMinecraft_FPSCap"
             , "angelica.ffp.MixinTessellator_CoreProfile"
+            , "angelica.glsm.MixinSplashProgressCaching"
+            , "angelica.gui.MixinGuiOptions"
+            , "angelica.optimizations.MixinRendererLivingEntity"
         )
     ),
 
