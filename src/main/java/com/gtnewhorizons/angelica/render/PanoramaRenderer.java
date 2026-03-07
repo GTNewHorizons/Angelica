@@ -234,6 +234,11 @@ public class PanoramaRenderer {
     public void renderSkybox(int panoramaTimer, float partialTicks, ResourceLocation[] panoramaPaths, Minecraft mc, int screenWidth, int screenHeight, float zLevel) {
         init();
 
+        GLStateManager.glColorMask(true, true, true, true);
+        GLStateManager.disableCull();
+        GLStateManager.disableScissorTest();
+        GLStateManager.disableDepthTest();
+
         mc.getFramebuffer().unbindFramebuffer();
         GL11.glViewport(0, 0, FBO_SIZE, FBO_SIZE);
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fboA);
@@ -272,6 +277,9 @@ public class PanoramaRenderer {
 
         GL30.glBindVertexArray(0);
         blitProgram.unbind();
+
+        GLStateManager.enableDepthTest();
+        GLStateManager.enableCull();
         GLStateManager.enableBlend();
     }
 
