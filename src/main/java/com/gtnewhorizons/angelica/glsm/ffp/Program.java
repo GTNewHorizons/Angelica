@@ -8,12 +8,15 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL40;
+import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.KHRDebug;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
 /**
- * A compiled and linked FFP emulation program (vertex + fragment shader pair). Owns the GL program handle and caches uniform locations.
+ * A compiled and linked FFP emulation program (vertex + fragment + optional geometry shaders). Owns the GL program handle and caches uniform locations.
  */
 public class Program {
 
@@ -81,6 +84,10 @@ public class Program {
 
     // Clip planes
     public int locClipPlanes = -1;
+
+    // Wide line emulation (geometry shader)
+    public int locViewportSize = -1;
+    public int locLineWidth = -1;
 
     // Fragment uniforms
     public final int[] locSampler = { -1, -1, -1, -1 };
@@ -151,6 +158,10 @@ public class Program {
         // Clip planes
         locClipPlanes = loc("u_ClipPlane[0]");
 
+        // Wide line emulation
+        locViewportSize = loc("u_ViewportSize");
+        locLineWidth = loc("u_LineWidth");
+
         // Fragment
         for (int i = 0; i < 4; i++) {
             locSampler[i] = loc("u_Sampler" + i);
@@ -172,50 +183,61 @@ public class Program {
     }
 
     /**
-     * Compile a shader, link it into a program, and return the FFPProgram.
+     * Compile vertex + fragment + optional geometry shaders, link into a program, and return the FFPProgram.
      */
-    static Program create(VertexKey vk, FragmentKey fk, String vertSrc, String fragSrc) {
+    static Program create(VertexKey vk, FragmentKey fk, String vertSrc, String fragSrc, String geomSrc) {
         final int id = PROGRAM_COUNTER.getAndIncrement();
-        final int vs = compileShader(GL20.GL_VERTEX_SHADER, vertSrc, "ffp_v_" + Long.toHexString(vk.pack()));
-        final int fs = compileShader(GL20.GL_FRAGMENT_SHADER, fragSrc, "ffp_f_" + id);
+        final String vkHex = Long.toHexString(vk.pack());
+        final boolean hasGeom = geomSrc != null;
 
-        final int program = GL20.glCreateProgram();
-        GL20.glAttachShader(program, vs);
-        GL20.glAttachShader(program, fs);
-        GL20.glLinkProgram(program);
+        int shaderCount = 0;
+        final int[] shaders = new int[5]; // vertex, fragment, geometry, tess control, tess evaluation
+        int program = 0;
+        try {
+            shaders[shaderCount++] = compileShader(GL20.GL_VERTEX_SHADER, vertSrc, "ffp_v_" + vkHex);
+            shaders[shaderCount++] = compileShader(GL20.GL_FRAGMENT_SHADER, fragSrc, "ffp_f_" + id);
+            if (geomSrc != null) {
+                shaders[shaderCount++] = compileShader(GL32.GL_GEOMETRY_SHADER, geomSrc, "ffp_g_" + id);
+            }
 
-        final String log = RenderSystem.getProgramInfoLog(program);
-        if (!log.isEmpty()) {
-            LOGGER.warn("FFP program link log (vk=0x{}, fk={}): {}", Long.toHexString(vk.pack()), fk, log);
+            program = GL20.glCreateProgram();
+            for (int i = 0; i < shaderCount; i++) GL20.glAttachShader(program, shaders[i]);
+            GL20.glLinkProgram(program);
+
+            final String log = RenderSystem.getProgramInfoLog(program);
+            if (!log.isEmpty()) {
+                LOGGER.warn("FFP program link log (vk=0x{}, fk={}): {}", vkHex, fk, log);
+            }
+
+            if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
+                throw new RuntimeException("FFP shader link failed (vk=0x" + vkHex + ", fk=" + fk + "): " + log);
+            }
+
+            final String debugName = "FFP(v=0x" + vkHex + ",f=" + id + (hasGeom ? ",g" : "") + ")";
+            GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, debugName);
+
+            // Detach and delete individual shaders — they're linked into the program
+            for (int i = 0; i < shaderCount; i++) {
+                GL20.glDetachShader(program, shaders[i]);
+                GL20.glDeleteShader(shaders[i]);
+            }
+            shaderCount = 0;
+
+            final Program ffpProgram = new Program(program, vk, fk);
+
+            final int previousProgram = GLStateManager.getActiveProgram();
+            GL20.glUseProgram(program);
+            for (int i = 0; i < 4; i++) {
+                if (ffpProgram.locSampler[i] != -1) GL20.glUniform1i(ffpProgram.locSampler[i], i);
+            }
+            GL20.glUseProgram(previousProgram);
+
+            return ffpProgram;
+        } catch (RuntimeException e) {
+            if (program != 0) GL20.glDeleteProgram(program);
+            for (int i = 0; i < shaderCount; i++) GL20.glDeleteShader(shaders[i]);
+            throw e;
         }
-
-        final int linkStatus = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
-        if (linkStatus != GL11.GL_TRUE) {
-            GL20.glDeleteProgram(program);
-            GL20.glDeleteShader(vs);
-            GL20.glDeleteShader(fs);
-            throw new RuntimeException("FFP shader link failed (vk=0x" + Long.toHexString(vk.pack()) + ", fk=" + fk + "): " + log);
-        }
-
-        final String debugName = "FFP(v=0x" + Long.toHexString(vk.pack()) + ",f=" + id + ")";
-        GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, debugName);
-
-        // Detach and delete individual shaders — they're linked into the program
-        GL20.glDetachShader(program, vs);
-        GL20.glDetachShader(program, fs);
-        GL20.glDeleteShader(vs);
-        GL20.glDeleteShader(fs);
-
-        final Program ffpProgram = new Program(program, vk, fk);
-
-        final int previousProgram = GLStateManager.getActiveProgram();
-        GL20.glUseProgram(program);
-        for (int i = 0; i < 4; i++) {
-            if (ffpProgram.locSampler[i] != -1) GL20.glUniform1i(ffpProgram.locSampler[i], i);
-        }
-        GL20.glUseProgram(previousProgram);
-
-        return ffpProgram;
     }
 
     private static int compileShader(int type, String src, String name) {
@@ -223,7 +245,15 @@ public class Program {
         GL20.glShaderSource(shader, src);
         GL20.glCompileShader(shader);
 
-        final String typeName = (type == GL20.GL_VERTEX_SHADER) ? "vertex" : "fragment";
+        final String typeName = switch (type) {
+            case GL20.GL_VERTEX_SHADER -> "vertex";
+            case GL20.GL_FRAGMENT_SHADER -> "fragment";
+            case GL32.GL_GEOMETRY_SHADER -> "geometry";
+            case GL40.GL_TESS_CONTROL_SHADER -> "tess_control";
+            case GL40.GL_TESS_EVALUATION_SHADER -> "tess_evaluation";
+            case GL43.GL_COMPUTE_SHADER -> "compute";
+            default -> "unknown(0x" + Integer.toHexString(type) + ")";
+        };
         GLDebug.nameObject(KHRDebug.GL_SHADER, shader, name + "(" + typeName + ")");
 
         final String log = RenderSystem.getShaderInfoLog(shader);

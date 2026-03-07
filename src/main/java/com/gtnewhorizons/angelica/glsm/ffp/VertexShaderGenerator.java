@@ -37,7 +37,15 @@ public final class VertexShaderGenerator {
         }
         sb.append("}\n");
 
-        return sb.toString();
+        String source = sb.toString();
+        if (key.wideLineEmulation()) {
+            source = source.replace("v_SpecularColor", "v_SpecularColor_gs")
+                           .replace("v_TexCoord0", "v_TexCoord0_gs")
+                           .replace("v_TexCoord1", "v_TexCoord1_gs")
+                           .replace("v_FogCoord", "v_FogCoord_gs")
+                           .replace("v_Color", "v_Color_gs");
+        }
+        return source;
     }
 
     private static void emitAttributes(StringBuilder sb, VertexKey key) {
