@@ -117,15 +117,6 @@ public class SodiumGameOptionPages {
                             }
                         }, (opts) -> opts.fullScreen)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
-                    .setName(I18n.format("options.angelica.sleepbeforeswap"))
-                    .setTooltip(I18n.format("options.angelica.sleepbeforeswap.tooltip"))
-                    .setControl(TickBoxControl::new)
-                    .setBinding((opts, value) -> {
-                        AngelicaConfig.sleepBeforeSwap = value;
-                    }, opts -> AngelicaConfig.sleepBeforeSwap)
-                    .setImpact(OptionImpact.VARIES)
-                    .build())
                 .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                         .setName(I18n.format("options.vsync"))
                         .setTooltip(I18n.format("sodium.options.v_sync.tooltip"))
