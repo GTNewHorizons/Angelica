@@ -31,7 +31,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
-import com.gtnewhorizons.angelica.glsm.states.ClientArrayState;
+import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
@@ -285,8 +285,6 @@ public class GLStateManager {
     private static int clientActiveTextureUnit = 0;
     protected static final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
 
-    // Client array state (not push/pop tracked, but needed for display list compilation)
-    @Getter private static final ClientArrayState clientArrayState = new ClientArrayState();
 
     @Getter protected static final TextureUnitArray textures = new TextureUnitArray();
     @Getter protected static final BlendStateStack blendState = new BlendStateStack();
@@ -445,6 +443,7 @@ public class GLStateManager {
         modelViewMatrix.clear();
         projectionMatrix.clear();
         vaoEboMap.clear();
+        VertexAttribState.reset();
     }
 
     /**
@@ -578,6 +577,7 @@ public class GLStateManager {
         defaultVAO = GL30.glGenVertexArrays();
         GL30.glBindVertexArray(defaultVAO);
         boundVAO = defaultVAO;
+        VertexAttribState.init(defaultVAO);
 
         // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
         // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.
@@ -2113,6 +2113,11 @@ public class GLStateManager {
         if (recordMode != RecordMode.NONE) {
             if (isVAOBound()) {
                 DisplayListManager.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
+            } else if (isVBOBound() || VertexAttribState.hasVBOBoundAttrib()) {
+                final DirectTessellator result = ImmediateModeRecorder.processDrawElementsFromVBO(mode, indices_count, type, indices_buffer_offset, boundEBO);
+                if (result != null) {
+                    DisplayListManager.addImmediateModeDraw(result);
+                }
             } else {
                 throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
             }
@@ -2147,11 +2152,7 @@ public class GLStateManager {
 
     public static void glDrawArrays(int mode, int first, int count) {
         if (DisplayListManager.isRecording()) {
-            if (isVAOBound() || isVBOBound()) { // TODO VBO rendering needs to be replaced with proper VAO compilation
-                DisplayListManager.recordDrawArrays(mode, first, count);
-                return;
-            }
-            final DirectTessellator result = ImmediateModeRecorder.processDrawArrays(mode, first, count);
+            final DirectTessellator result = ImmediateModeRecorder.processDrawArraysFromAttribs(mode, first, count);
             if (result != null) {
                 DisplayListManager.addImmediateModeDraw(result);
             }
@@ -2170,9 +2171,6 @@ public class GLStateManager {
         }
     }
 
-    // Client array state interception methods (for glDrawArrays conversion)
-    // State is tracked globally in clientArrayState, which ImmediateModeRecorder reads from directly.
-
     public static void glVertexPointer(int size, int stride, IntBuffer pointer) {
         glVertexPointer(size, GL11.GL_INT, stride, MemoryUtilities.memByteBuffer(pointer));
     }
@@ -2182,32 +2180,36 @@ public class GLStateManager {
     }
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
+        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        GL20.glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
+        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glColorPointer(int size, int stride, DoubleBuffer pointer) {
+        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_DOUBLE, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
+        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
         final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
-        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
+        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        GL20.glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
+        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glNormalPointer(int stride, FloatBuffer pointer) {
@@ -2223,29 +2225,29 @@ public class GLStateManager {
     }
 
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
 
     public static void glNormalPointer(int type, int stride, FloatBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, ShortBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
-        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
-        GL20.glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer);
+        glVertexAttribPointer(loc, size, type, false, stride, pointer);
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
@@ -2263,39 +2265,105 @@ public class GLStateManager {
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        GL20.glVertexAttribPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        GL20.glVertexAttribPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        GL20.glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        GL20.glVertexAttribPointer(loc, size, type, false, stride, pointer_buffer_offset);
+        glVertexAttribPointer(loc, size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
         final int location = clientStateToAttributeLocation(cap);
-        if (location >= 0) GL20.glEnableVertexAttribArray(location);
+        if (location >= 0) glEnableVertexAttribArray(location);
         final int flag = clientStateToVertexFlag(cap);
         if (flag != 0) ShaderManager.getInstance().enableClientVertexFlag(flag);
     }
 
     public static void glDisableClientState(int cap) {
         final int location = clientStateToAttributeLocation(cap);
-        if (location >= 0) GL20.glDisableVertexAttribArray(location);
+        if (location >= 0) glDisableVertexAttribArray(location);
         final int flag = clientStateToVertexFlag(cap);
         if (flag != 0) ShaderManager.getInstance().disableClientVertexFlag(flag);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
+        VertexAttribState.set(index, size, type, normalized, stride, offset, boundVBO);
+        GL20.glVertexAttribPointer(index, size, type, normalized, stride, offset);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
+        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
+        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
+        GL20.glVertexAttribPointer(index, size, type, normalized, stride, bb);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, DoubleBuffer pointer) {
+        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
+        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
+        GL20.glVertexAttribPointer(index, size, type, normalized, stride, bb);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, IntBuffer pointer) {
+        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
+        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
+        GL20.glVertexAttribPointer(index, size, type, normalized, stride, bb);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ShortBuffer pointer) {
+        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
+        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
+        GL20.glVertexAttribPointer(index, size, type, normalized, stride, bb);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
+        VertexAttribState.set(index, size, type, normalized, stride, pointer, boundVBO);
+        GL20.glVertexAttribPointer(index, size, type, normalized, stride, pointer);
+    }
+
+    public static void glVertexAttribIPointer(int index, int size, int type, int stride, long offset) {
+        VertexAttribState.set(index, size, type, false, stride, offset, boundVBO);
+        GL30.glVertexAttribIPointer(index, size, type, stride, offset);
+    }
+
+    public static void glVertexAttribIPointer(int index, int size, int type, int stride, ByteBuffer pointer) {
+        VertexAttribState.set(index, size, type, false, stride, pointer, boundVBO);
+        GL30.glVertexAttribIPointer(index, size, type, stride, pointer);
+    }
+
+    public static void glVertexAttribIPointer(int index, int size, int type, int stride, IntBuffer pointer) {
+        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
+        VertexAttribState.set(index, size, type, false, stride, bb, boundVBO);
+        GL30.glVertexAttribIPointer(index, size, type, stride, bb);
+    }
+
+    public static void glVertexAttribIPointer(int index, int size, int type, int stride, ShortBuffer pointer) {
+        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
+        VertexAttribState.set(index, size, type, false, stride, bb, boundVBO);
+        GL30.glVertexAttribIPointer(index, size, type, stride, bb);
+    }
+
+    public static void glEnableVertexAttribArray(int index) {
+        VertexAttribState.setEnabled(index, true);
+        GL20.glEnableVertexAttribArray(index);
+    }
+
+    public static void glDisableVertexAttribArray(int index) {
+        VertexAttribState.setEnabled(index, false);
+        GL20.glDisableVertexAttribArray(index);
     }
 
     private static int clientStateToAttributeLocation(int cap) {
@@ -4498,6 +4566,30 @@ public class GLStateManager {
         }
     }
 
+    public static void glDeleteBuffers(int buffer) {
+        if (buffer == 0) return;
+        invalidateDeletedBuffer(buffer);
+        GL15.glDeleteBuffers(buffer);
+    }
+
+    public static void glDeleteBuffers(IntBuffer buffers) {
+        for (int i = 0; i < buffers.remaining(); i++) {
+            invalidateDeletedBuffer(buffers.get(buffers.position() + i));
+        }
+        GL15.glDeleteBuffers(buffers);
+    }
+
+    private static void invalidateDeletedBuffer(int buffer) {
+        if (buffer == 0) return;
+        if (boundVBO == buffer) {
+            boundVBO = 0;
+        }
+        if (boundEBO == buffer) {
+            boundEBO = 0;
+            vaoEboMap.put(boundVAO, 0);
+        }
+    }
+
     public static void glBindBuffer(int target, int buffer) {
         if (target == GL15.GL_ARRAY_BUFFER) {
             // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
@@ -4521,6 +4613,7 @@ public class GLStateManager {
         if (boundVAO != array) {
             boundVAO = array;
             boundEBO = vaoEboMap.get(array);
+            VertexAttribState.onBindVertexArray(array);
             UniversalVAO.bindVertexArray(array);
             if (ShaderManager.getInstance().isEnabled()) {
                 ShaderManager.getInstance().onBindVertexArray(array);
@@ -4530,11 +4623,13 @@ public class GLStateManager {
 
     public static void glDeleteVertexArrays(int array) {
         ShaderManager.getInstance().onDeleteVertexArray(array);
+        VertexAttribState.onDeleteVertexArray(array);
         vaoEboMap.remove(array);
         if (array == boundVAO) {
             // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
             boundVAO = defaultVAO;
             boundEBO = vaoEboMap.get(defaultVAO);
+            VertexAttribState.onBindVertexArray(defaultVAO);
             UniversalVAO.bindVertexArray(defaultVAO);
         }
         UniversalVAO.deleteVertexArrays(array);

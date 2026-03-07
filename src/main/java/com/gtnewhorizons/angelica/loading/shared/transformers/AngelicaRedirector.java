@@ -270,6 +270,7 @@ public final class AngelicaRedirector {
         );
         methodRedirects.put(GL15, RedirectMap.newMap()
             .add("glBindBuffer")
+            .add("glDeleteBuffers")
         );
         methodRedirects.put(GL20, RedirectMap.newMap()
             .add("glBlendEquationSeparate")
@@ -308,11 +309,15 @@ public final class AngelicaRedirector {
             .add("glGetAttachedShaders")
             .add("glGetShaderSource")
             .add("glGetUniform")
+            .add("glVertexAttribPointer")
+            .add("glEnableVertexAttribArray")
+            .add("glDisableVertexAttribArray")
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
             .add("glDeleteVertexArrays")
             .add("glBindFramebuffer")
+            .add("glVertexAttribIPointer")
         );
 
         // MINECRAFT

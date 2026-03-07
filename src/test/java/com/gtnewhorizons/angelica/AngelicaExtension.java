@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -45,6 +46,7 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
             setMainThread(Thread.currentThread());
 
             GLStateManager.preInit();
+            VertexAttribState.init(0);
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete();
             GLStateManager.BYPASS_CACHE = false;
@@ -63,13 +65,13 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
     private static void setMainThread(Thread thread) {
         try {
             // Use Unsafe to set final static field - works on all Java versions
-            Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
+            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
             unsafeField.setAccessible(true);
-            Unsafe unsafe = (Unsafe) unsafeField.get(null);
+            final Unsafe unsafe = (Unsafe) unsafeField.get(null);
 
-            Field mainThreadField = GLStateManager.class.getDeclaredField("MainThread");
-            Object base = unsafe.staticFieldBase(mainThreadField);
-            long offset = unsafe.staticFieldOffset(mainThreadField);
+            final Field mainThreadField = GLStateManager.class.getDeclaredField("MainThread");
+            final Object base = unsafe.staticFieldBase(mainThreadField);
+            final long offset = unsafe.staticFieldOffset(mainThreadField);
             unsafe.putObject(base, offset, thread);
         } catch (NoSuchFieldException | IllegalAccessException e) {
             throw new RuntimeException("Failed to set MainThread for tests", e);
@@ -104,19 +106,19 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
 
     @Override
     public void afterEach(ExtensionContext context) throws Exception {
-        int error = GL11.glGetError();
+        final int error = GL11.glGetError();
         assertEquals(GL11.GL_NO_ERROR, error,
             () -> "GL Error: 0x" + Integer.toHexString(error));
 
-        int modelviewDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
-        int projectionDepth = GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH);
+        final int modelviewDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        final int projectionDepth = GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH);
 
         assertEquals(EXPECTED_MODELVIEW_STACK_DEPTH, modelviewDepth,
             "MODELVIEW stack depth mismatch - unbalanced glPushMatrix/glPopMatrix");
         assertEquals(EXPECTED_PROJECTION_STACK_DEPTH, projectionDepth,
             "PROJECTION stack depth mismatch - unbalanced glPushMatrix/glPopMatrix");
 
-        int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
+        final int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
         assertEquals(GL11.GL_MODELVIEW, matrixMode,
             () -> "Matrix mode not reset to MODELVIEW, was: " + GLDebug.getMatrixModeName(matrixMode));
     }
