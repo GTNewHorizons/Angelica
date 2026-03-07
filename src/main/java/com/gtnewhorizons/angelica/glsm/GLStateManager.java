@@ -337,6 +337,10 @@ public class GLStateManager {
     // Line width range queried at init from GL_ALIASED_LINE_WIDTH_RANGE
     static float lineWidthMin = 1.0f;
     static float lineWidthMax = 1.0f;
+    /** True when the driver cannot render wide lines natively (Mesa forward-compat). GS emulation handles widths > 1.0. */
+    public static boolean wideLineEmulationEnabled = false;
+    /** Set per draw call: true when the current draw is a line primitive that needs GS expansion. Read by {@link com.gtnewhorizons.angelica.glsm.ffp.VertexKey}. */
+    public static boolean wideLineEmulationActive = false;
 
     // Point state (GL_POINT_BIT)
     @Getter protected static final PointStateStack pointState = new PointStateStack();
@@ -513,6 +517,35 @@ public class GLStateManager {
         GL11.glGetFloat(GL12.GL_ALIASED_LINE_WIDTH_RANGE, lwRange);
         lineWidthMin = lwRange.get(0);
         lineWidthMax = lwRange.get(1);
+        final float queriedMax = lineWidthMax;
+        // Probe whether the driver actually accepts the queried max (Mesa forward-compat rejects > 1.0)
+        if (lineWidthMax > 1.0f) {
+            while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+            GL11.glLineWidth(lineWidthMax);
+            if (GL11.glGetError() != GL11.GL_NO_ERROR) {
+                // Binary search for the actual accepted max between 1.0 and queriedMax
+                float lo = 1.0f, hi = queriedMax;
+                while (hi - lo > 0.01f) {
+                    final float mid = (lo + hi) * 0.5f;
+                    while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+                    GL11.glLineWidth(mid);
+                    if (GL11.glGetError() == GL11.GL_NO_ERROR) {
+                        lo = mid;
+                    } else {
+                        hi = mid;
+                    }
+                }
+                lineWidthMax = lo;
+            }
+            GL11.glLineWidth(1.0f);
+            while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+        }
+        wideLineEmulationEnabled = lineWidthMax <= 1.0f;
+        if (wideLineEmulationEnabled) {
+            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} rejected, native [{}, {}], GS emulation active for [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax, lineWidthMax, queriedMax);
+        } else {
+            LOGGER.info("GL line width: aliased range [{}, {}], probe at {} accepted, native [{}, {}]", lineWidthMin, queriedMax, queriedMax, lineWidthMin, lineWidthMax);
+        }
 
         // Sync default vertex attribs with GLSM cache initial values.
         GL20.glVertexAttrib4f(1, 1.0f, 1.0f, 1.0f, 1.0f);    // COLOR = white
@@ -2019,6 +2052,7 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
+        prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
         GL11.glDrawElements(mode, indices);
     }
@@ -2031,6 +2065,7 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
+        prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
@@ -2047,6 +2082,7 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
+        prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
@@ -2063,6 +2099,7 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, count, type, indices);
             return;
         }
+        prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(count, type, indices);
@@ -2087,6 +2124,7 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, indices_count, type, indices_buffer_offset);
             return;
         }
+        prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
@@ -2123,6 +2161,7 @@ public class GLStateManager {
             FeedbackManager.processDrawArrays(mode, first, count);
             return;
         }
+        prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(first, count);
@@ -2910,7 +2949,7 @@ public class GLStateManager {
             GL11.glDepthRange(viewportState.depthRangeNear, viewportState.depthRangeFar);
         }
         if ((mask & GL11.GL_LINE_BIT) != 0) {
-            GL11.glLineWidth(lineState.getWidth());
+            GL11.glLineWidth(Math.max(lineWidthMin, Math.min(lineWidthMax, lineState.getWidth())));
         }
         if ((mask & GL11.GL_POINT_BIT) != 0) {
             GL11.glPointSize(pointState.getSize());
@@ -3914,7 +3953,6 @@ public class GLStateManager {
     }
 
     public static void glLineWidth(float width) {
-        width = Math.max(lineWidthMin, Math.min(lineWidthMax, width));
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordLineWidth(width);
@@ -3927,8 +3965,12 @@ public class GLStateManager {
             if (caching) {
                 lineState.setWidth(width);
             }
-            GL11.glLineWidth(width);
+            GL11.glLineWidth(Math.max(lineWidthMin, Math.min(lineWidthMax, width)));
         }
+    }
+
+    public static void prepareWideLineEmulation(int drawMode) {
+        wideLineEmulationActive = wideLineEmulationEnabled && (drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP) && lineState.getWidth() > 1.0f;
     }
 
     public static void glShaderSource(int shader, CharSequence source) {

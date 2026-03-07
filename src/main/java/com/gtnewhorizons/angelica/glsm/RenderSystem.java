@@ -132,7 +132,6 @@ public class RenderSystem {
 			if ((profileMask & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0) {
 				LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
 				ShaderManager.getInstance().enable();
-				GLStateManager.lineWidthMax = 1.0f;
 			}
 		}
 	}
