@@ -177,7 +177,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glDeleteBuffers(int buffer) {
-        GL15.glDeleteBuffers(buffer);
+        GLStateManager.glDeleteBuffers(buffer);
     }
 
     // ===================== TEXTURE OPERATIONS =====================
@@ -189,7 +189,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glGenTextures(int[] textures) {
-        IntBuffer buffer = getIntArrayBuffer(textures.length);
+        final IntBuffer buffer = getIntArrayBuffer(textures.length);
         GL11.glGenTextures(buffer);
         buffer.get(textures);
     }
@@ -201,7 +201,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glDeleteTextures(int[] textures) {
-        IntBuffer buffer = getIntArrayBuffer(textures.length);
+        final IntBuffer buffer = getIntArrayBuffer(textures.length);
         buffer.put(textures);
         buffer.flip();
         GLStateManager.glDeleteTextures(buffer);
@@ -353,7 +353,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void setBoundTexture(int unit, int texture) {
-        int currentUnit = GLStateManager.getActiveTextureUnit();
+        final int currentUnit = GLStateManager.getActiveTextureUnit();
         if (currentUnit != unit) {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + unit);
         }

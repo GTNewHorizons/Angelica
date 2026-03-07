@@ -8,7 +8,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
 import java.nio.FloatBuffer;
@@ -60,17 +59,17 @@ class FeedbackManagerTest {
 
         // Upload 3 vertices to a VBO and draw
         final int vao = GL30.glGenVertexArrays();
-        GL30.glBindVertexArray(vao);
+        GLStateManager.glBindVertexArray(vao);
 
         final float[] verts = { 0f, 0f, 0f, 1f, 0f, 0f, 0f, 1f, 0f };
         final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(9);
         vertBuf.put(verts).flip();
 
         final int vbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GL20.glEnableVertexAttribArray(0);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
 
         FeedbackManager.processDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
@@ -78,10 +77,10 @@ class FeedbackManagerTest {
         assertEquals(-1, result, "Overflow should return -1");
 
         // Cleanup
-        GL20.glDisableVertexAttribArray(0);
-        GL30.glBindVertexArray(0);
+        GLStateManager.glDisableVertexAttribArray(0);
+        GLStateManager.glBindVertexArray(0);
         GL15.glDeleteBuffers(vbo);
-        GL30.glDeleteVertexArrays(vao);
+        GLStateManager.glDeleteVertexArrays(vao);
     }
 
     @Test
@@ -112,7 +111,7 @@ class FeedbackManagerTest {
 
         // Upload 3 vertices forming a triangle
         final int vao = GL30.glGenVertexArrays();
-        GL30.glBindVertexArray(vao);
+        GLStateManager.glBindVertexArray(vao);
 
         // NDC vertices: (0,0,0), (1,0,0), (0,1,0)
         // With identity MVP and viewport 800x600:
@@ -124,10 +123,10 @@ class FeedbackManagerTest {
         vertBuf.put(verts).flip();
 
         final int vbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GL20.glEnableVertexAttribArray(0);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
 
         FeedbackManager.processDrawArrays(GL11.GL_TRIANGLES, 0, 3);
 
@@ -152,10 +151,10 @@ class FeedbackManagerTest {
         assertEquals(600.0f, buf.get(7), 0.01f);
 
         // Cleanup
-        GL20.glDisableVertexAttribArray(0);
-        GL30.glBindVertexArray(0);
+        GLStateManager.glDisableVertexAttribArray(0);
+        GLStateManager.glBindVertexArray(0);
         GL15.glDeleteBuffers(vbo);
-        GL30.glDeleteVertexArrays(vao);
+        GLStateManager.glDeleteVertexArrays(vao);
     }
 
     @Test
@@ -170,7 +169,7 @@ class FeedbackManagerTest {
         GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
 
         final int vao = GL30.glGenVertexArrays();
-        GL30.glBindVertexArray(vao);
+        GLStateManager.glBindVertexArray(vao);
 
         // Single point at NDC origin (0,0,0)
         final float[] verts = { 0f, 0f, 0f };
@@ -178,10 +177,10 @@ class FeedbackManagerTest {
         vertBuf.put(verts).flip();
 
         final int vbo = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
-        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
-        GL20.glEnableVertexAttribArray(0);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
 
         FeedbackManager.processDrawArrays(GL11.GL_POINTS, 0, 1);
 
@@ -196,9 +195,9 @@ class FeedbackManagerTest {
         assertEquals(0.5f, buf.get(3), 0.01f);
 
         // Cleanup
-        GL20.glDisableVertexAttribArray(0);
-        GL30.glBindVertexArray(0);
+        GLStateManager.glDisableVertexAttribArray(0);
+        GLStateManager.glBindVertexArray(0);
         GL15.glDeleteBuffers(vbo);
-        GL30.glDeleteVertexArrays(vao);
+        GLStateManager.glDeleteVertexArrays(vao);
     }
 }

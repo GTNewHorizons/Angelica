@@ -16,7 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 public class MixinTextureManager {
     @Inject(method = "loadTexture", at = @At("RETURN"))
     private void onTextureLoad(ResourceLocation resource, ITextureObject texture, CallbackInfoReturnable<Boolean> cir) {
-        if(texture != null && texture != TextureUtil.missingTexture) {
+        if(texture != null && texture != TextureUtil.missingTexture && !GLStateManager.isRecordingDisplayList()) {
             final int curId = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture.getGlTextureId());
             GLDebug.nameObject(GL11.GL_TEXTURE, texture.getGlTextureId(), resource.toString());
