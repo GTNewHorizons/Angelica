@@ -56,7 +56,7 @@ abstract public class MixinEntityRenderer {
     )
     private float notFine$nearFogDistance(float value) {
         // Extremely high values cause issues, but 15 mebimeters out should be practically infinite
-        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) return 1024 * 1024 * 15;
+        if (!(Boolean) Settings.TERRAIN_FOG.option.getStore()) return 1024 * 1024 * 15;
         return farPlaneDistance * (int) Settings.FOG_NEAR_DISTANCE.option.getStore() * 0.01F - 1F;
     }
 
@@ -70,7 +70,7 @@ abstract public class MixinEntityRenderer {
         )
     )
     private float notFine$replaceFarFogDistance(float value) {
-        if ((Boolean) Settings.FOG_DISABLE.option.getStore()) return 1024 * 1024 * 16;
+        if (!(Boolean) Settings.TERRAIN_FOG.option.getStore()) return 1024 * 1024 * 16;
         return value;
     }
 

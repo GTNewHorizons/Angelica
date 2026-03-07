@@ -77,7 +77,6 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
             this.pages.add(shaderPacks);
         }
 
-        this.pages.add(SodiumGameOptionPages.debug());
     }
 
     public void setPage(OptionPage page) {
@@ -302,7 +301,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         if (keyCode == Keyboard.KEY_P && isShiftKeyDown()) {
             this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(),
                 SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(),
-                SodiumGameOptionPages.appearance(), SodiumGameOptionPages.debug()));
+                SodiumGameOptionPages.appearance()));
         }
     }
 

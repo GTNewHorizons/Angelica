@@ -516,12 +516,12 @@ public class SodiumGameOptionPages {
                 .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
                 .add(Settings.MODE_STARS.option)
                 .add(Settings.TOTAL_STARS.option)
-                .add(Settings.HORIZON_DISABLE.option)
+                .add(Settings.HORIZON.option)
                 .add(Settings.MODE_LIGHT_FLICKER.option)
                 .build());
 
         groups.add(OptionGroup.createBuilder()
-                .add(Settings.FOG_DISABLE.option)
+                .add(Settings.TERRAIN_FOG.option)
                 .add(Settings.FOG_NEAR_DISTANCE.option)
                 .add(Settings.VOID_FOG.option)
                 .build());
@@ -540,20 +540,4 @@ public class SodiumGameOptionPages {
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
     }
 
-    public static OptionPage debug() {
-        final List<OptionGroup> groups = new ArrayList<>();
-
-        groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                        .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setImpact(OptionImpact.EXTREME)
-                        .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
-                .build());
-
-        return new OptionPage(I18n.format("sodium.options.pages.debug"), ImmutableList.copyOf(groups));
-    }
 }

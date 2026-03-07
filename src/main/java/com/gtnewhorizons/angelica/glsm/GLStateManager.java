@@ -1542,6 +1542,7 @@ public class GLStateManager {
             }
         }
         alphaTest.enable();
+        fragmentGeneration++;
     }
 
     public static void disableAlphaTest() {
@@ -1559,6 +1560,7 @@ public class GLStateManager {
             }
         }
         alphaTest.disable();
+        fragmentGeneration++;
     }
 
     public static void glAlphaFunc(int function, float reference) {

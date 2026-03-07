@@ -49,6 +49,13 @@ public enum Mixins implements IMixins {
             .addClientMixins("angelica.vbo.MixinRenderGlobal")
     ),
 
+    ANGELICA_PANORAMA_BLUR(
+        new MixinBuilder("Replace main menu panorama with modern equivalent")
+            .setPhase(Phase.EARLY)
+            .setApplyIf(() -> AngelicaConfig.enablePanoramaBlurShader)
+            .addClientMixins("angelica.gui.MixinGuiMainMenu")
+    ),
+
     ANGELICA_FONT_RENDERER(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableFontRenderer)
@@ -354,8 +361,10 @@ public enum Mixins implements IMixins {
 
     REPLACE_FFP(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.vbo.MixinFramebuffer")
-        .setApplyIf(() -> AngelicaConfig.replaceFFPUploads)),
+        .setApplyIf(() -> AngelicaConfig.replaceFFPUploads)
+        .addClientMixins(
+            "angelica.vbo.MixinFramebuffer",
+            "angelica.vbo.MixinWavefrontObject")),
 
     //From NotFine
     NOTFINE_BASE_MOD(new MixinBuilder()
