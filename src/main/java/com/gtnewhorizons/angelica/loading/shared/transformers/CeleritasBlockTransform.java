@@ -25,10 +25,21 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class CeleritasBlockTransform {
+public final class CeleritasBlockTransform implements Opcodes {
 
+    private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
+    private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
+    private static final String BlockClass = "net/minecraft/block/Block";
+    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
+
+    private final Map<String, String> fieldNameToRedirect = new HashMap<>();
+    private final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    // Block subclass owners we shouldn't redirect because they shadow some fields we want to redirect
+    private final Set<String> blockSubclassExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ClassConstantPoolParser cstPoolParser;
-    private final Map<String, String> blockFieldRedirects = new HashMap<>();
+
+    private final MethodHandle celeritasEnabledGetter;
+    private boolean isCeleritasEnabled;
 
     public CeleritasBlockTransform(boolean isObf) {
         final List<Pair<String, String>> mappings = ImmutableList.of(
@@ -41,65 +52,47 @@ public final class CeleritasBlockTransform {
         );
         for (Pair<String, String> pair : mappings) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
-            this.blockFieldRedirects.put(name, pair.getLeft());
+            this.fieldNameToRedirect.put(name, pair.getLeft());
         }
 
-        this.cstPoolParser = new ClassConstantPoolParser(this.blockFieldRedirects.keySet().toArray(new String[0]));
-    }
+        this.cstPoolParser = new ClassConstantPoolParser(this.fieldNameToRedirect.keySet().toArray(new String[0]));
 
-    private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
-    private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
-    private static final String BlockClass = "net/minecraft/block/Block";
-    private static final String BlockPackage = "net/minecraft/block/Block";
-    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
-    /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
-    private static final String[] VanillaBlockExclusions = {
-        "net/minecraft/block/IGrowable",
-        "net/minecraft/block/ITileEntityProvider",
-        "net/minecraft/block/BlockEventData",
-        "net/minecraft/block/BlockSourceImpl",
-        "net/minecraft/block/material/"
-    };
+        blockSubclasses.add(BlockClass);
 
-    private static final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    // Block owners we *shouldn't* redirect because they shadow one of our fields
-    private static final Set<String> blockOwnerExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
-    private static final MethodHandle angelicaConfigCeleritasEnabledGetter;
-    private static boolean isCeleritasEnabled;
-
-    static {
         try {
+            // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
             final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
-            angelicaConfigCeleritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
+            celeritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private static boolean isCeleritasEnabled() {
+    public void setCeleritasSetting() {
+        isCeleritasEnabled = true;
+    }
+
+    private boolean isCeleritasEnabled() {
         if (isCeleritasEnabled) return true;
         try {
-            return (boolean) angelicaConfigCeleritasEnabledGetter.invokeExact();
+            return (boolean) celeritasEnabledGetter.invokeExact();
         } catch (Throwable e) {
             throw new RuntimeException(e);
         }
     }
 
-    private boolean isVanillaBlockSubclass(String className) {
-        if (className.startsWith(BlockPackage)) {
-            for (String exclusion : VanillaBlockExclusions) {
-                if (className.startsWith(exclusion)) {
-                    return false;
-                }
-            }
-            return true;
-        }
-        return false;
-    }
+    // This method needs to be called for every class, including the ones we don't want to transform
+    public void trackBlockSubclasses(String className, String superClassName) {
+        // It works because the deepest subclasses are always transformed first due to
+        // ForgeEventTransformer recursive superclass loading
+        if (blockSubclasses.contains(superClassName)) {
+            blockSubclasses.add(className);
 
-    private boolean isBlockSubclass(String className) {
-        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
+            if (blockSubclassExclusions.contains(superClassName)) {
+                LOGGER.info("Class {} extends a class with shadowed block bounds fields and will be skipped from redirecting", className);
+                blockSubclassExclusions.add(className);
+            }
+        }
     }
 
     public String[] getTransformerExclusions() {
@@ -111,12 +104,6 @@ public final class CeleritasBlockTransform {
         };
     }
 
-    public void trackBlockSubclasses(String className, String classSuperName) {
-        if (!isVanillaBlockSubclass(className) && isBlockSubclass(classSuperName)) {
-            moddedBlockSubclasses.add(className);
-        }
-    }
-
     public boolean shouldTransform(byte[] classBytes) {
         return cstPoolParser.find(classBytes);
     }
@@ -126,80 +113,66 @@ public final class CeleritasBlockTransform {
         if (!isCeleritasEnabled()) {
             return false;
         }
-
         boolean changed = false;
-
         if ("net.minecraft.block.Block".equals(transformedName)) {
-            changed = cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
+            changed = cn.fields.removeIf(field -> fieldNameToRedirect.containsKey(field.name));
+        } else {
+            trackBlockShadowingFields(cn);
         }
-
-        trackBlockSubclasses(cn.name, cn.superName);
-
-        // Check if this class shadows any fields of the parent class
-        if (moddedBlockSubclasses.contains(cn.name)) {
-            // If a superclass shadows, then so do we, because JVM will resolve a reference on our class to that
-            // superclass
-            boolean doWeShadow = false;
-            if (blockOwnerExclusions.contains(cn.superName)) {
-                doWeShadow = true;
-            } else {
-                // Check if we declare any known field names
-                for (FieldNode field : cn.fields) {
-                    if (blockFieldRedirects.containsKey(field.name)) {
-                        doWeShadow = true;
-                        break;
-                    }
-                }
-            }
-            if (doWeShadow) {
-                LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
-                blockOwnerExclusions.add(cn.name);
-            }
-        }
-
-        for (MethodNode mn : cn.methods) {
-            for (AbstractInsnNode node : mn.instructions.toArray()) {
-                if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    if (!blockOwnerExclusions.contains(fNode.owner) && isBlockSubclass(fNode.owner)) {
-                        String fieldRedirect = blockFieldRedirects.get(fNode.name);
-                        if (fieldRedirect != null) {
-                            if (LOG_SPAM) {
-                                LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
-                            }
-                            // Perform the redirect
-                            fNode.name = fieldRedirect; // use unobfuscated name
-                            fNode.owner = ThreadedBlockData;
-                            // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                            if (node.getOpcode() == Opcodes.GETFIELD) {
-                                mn.instructions.insertBefore(fNode, getter);
-                            } else if (node.getOpcode() == Opcodes.PUTFIELD) {
-                                // FIXME: this code assumes doubles
-                                // Stack: Block, double
-                                final InsnList beforePut = new InsnList();
-                                beforePut.add(new InsnNode(Opcodes.DUP2_X1));
-                                // Stack: double, Block, double
-                                beforePut.add(new InsnNode(Opcodes.POP2));
-                                // Stack: double, Block
-                                beforePut.add(getter);
-                                // Stack: double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.DUP_X2));
-                                // Stack: ThreadedBlockData, double, ThreadedBlockData
-                                beforePut.add(new InsnNode(Opcodes.POP));
-                                // Stack: ThreadedBlockData, double
-                                mn.instructions.insertBefore(fNode, beforePut);
-                            }
-                            changed = true;
-                        }
-                    }
-                }
-            }
-        }
-
+        changed |= redirectBlockBoundFields(cn, transformedName);
         return changed;
     }
 
-    public void setCeleritasSetting() {
-        isCeleritasEnabled = true;
+    private void trackBlockShadowingFields(ClassNode cn) {
+        if (blockSubclasses.contains(cn.name)) {
+            for (FieldNode field : cn.fields) {
+                if (fieldNameToRedirect.containsKey(field.name)) {
+                    LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
+                    blockSubclassExclusions.add(cn.name);
+                    break;
+                }
+            }
+        }
+    }
+
+    private boolean redirectBlockBoundFields(ClassNode cn, String transformedName) {
+        boolean changed = false;
+        for (MethodNode mn : cn.methods) {
+            for (AbstractInsnNode node = mn.instructions.getFirst(); node != null; node = node.getNext()) {
+                if ((node.getOpcode() == GETFIELD || node.getOpcode() == PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                    String newFieldName = fieldNameToRedirect.get(fNode.name);
+                    if (newFieldName != null && blockSubclasses.contains(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
+                        if (LOG_SPAM) {
+                            LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
+                        }
+                        // Perform the redirect
+                        fNode.name = newFieldName; // use unobfuscated name
+                        fNode.owner = ThreadedBlockData;
+                        // Inject getter before the field access, to turn Block -> ThreadedBlockData
+                        final MethodInsnNode getter = new MethodInsnNode(INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
+                        if (node.getOpcode() == GETFIELD) {
+                            mn.instructions.insertBefore(fNode, getter);
+                        } else if (node.getOpcode() == PUTFIELD) {
+                            // FIXME: this code assumes doubles
+                            // Stack: Block, double
+                            final InsnList beforePut = new InsnList();
+                            beforePut.add(new InsnNode(DUP2_X1));
+                            // Stack: double, Block, double
+                            beforePut.add(new InsnNode(POP2));
+                            // Stack: double, Block
+                            beforePut.add(getter);
+                            // Stack: double, ThreadedBlockData
+                            beforePut.add(new InsnNode(DUP_X2));
+                            // Stack: ThreadedBlockData, double, ThreadedBlockData
+                            beforePut.add(new InsnNode(POP));
+                            // Stack: ThreadedBlockData, double
+                            mn.instructions.insertBefore(fNode, beforePut);
+                        }
+                        changed = true;
+                    }
+                }
+            }
+        }
+        return changed;
     }
 }
