@@ -229,12 +229,29 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderGlobal"
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
-            , "shaders.MixinRenderManager"
             , "shaders.MixinRenderNameTag"
             , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
+        )
+    ),
+
+    IRIS_SHADERS_RENDER_MANAGER(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addExcludedMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "shaders.MixinRenderManager"
+        )
+    ),
+
+    IRIS_SHADERS_RENDER_MANAGER_DAPI(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "shaders.MixinRenderManagerDAPI"
         )
     ),
 
