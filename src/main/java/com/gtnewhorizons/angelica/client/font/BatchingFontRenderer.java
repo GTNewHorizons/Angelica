@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import lombok.Setter;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.gui.FontRenderer;
@@ -56,6 +57,10 @@ public class BatchingFontRenderer {
 
     final boolean isSGA;
     final boolean isSplash;
+
+    /** For use with poorly coded mods */
+    @Setter
+    boolean bookMode = false;
 
     private static class FontAAShader {
 
@@ -440,7 +445,7 @@ public class BatchingFontRenderer {
     }
 
     public boolean forceDefaults() {
-        return this.isSGA || this.isSplash;
+        return this.bookMode || this.isSGA || this.isSplash;
     }
 
     public float getGlyphScaleX() {
@@ -596,7 +601,7 @@ public class BatchingFontRenderer {
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-                    curX += 4 * this.getWhitespaceScale();
+                    curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
                     continue;
                 }
 
@@ -646,7 +651,8 @@ public class BatchingFontRenderer {
                 final int vtxCount = 4 * charCount;
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
 
-                curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
+                curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
+                if (bookMode) { curX = (int) curX; }
                 underlineEndX = curX;
                 strikethroughEndX = curX;
             }

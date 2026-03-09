@@ -97,7 +97,7 @@ public final class FontProviderUnicode implements FontProvider {
 
     @Override
     public float getShadowOffset() {
-        return FontConfig.fontShadowOffset;
+        return FontConfig.fontShadowOffset / 2;
     }
 
     @Override
