@@ -58,6 +58,7 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 24, 1);
     SliderClone.Option optCustomFontScale = new SliderClone.Option(0.1f, 3, 0.05f);
+    SliderClone.Option optShadowOffsetUC = new SliderClone.Option(0, 2, 0.05f);
 
     public FontConfigScreen(GuiScreen parent) {
         this.title = I18n.format("options.angelica.fontconfig.title");
@@ -223,6 +224,16 @@ public class FontConfigScreen extends GuiScreen {
             .initialValue(FontConfig.customFontScale)
             .setter(value -> FontConfig.customFontScale = value)
             .langKey("options.angelica.fontconfig.custom_font_scale")
+            .formatString("x%3.2f")
+            .build()
+        );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
+            .option(optShadowOffsetUC)
+            .initialValue(FontConfig.fontShadowOffsetUC)
+            .setter(value -> FontConfig.fontShadowOffsetUC = value)
+            .langKey("options.angelica.fontconfig.shadow_offset_unicode")
             .formatString("x%3.2f")
             .build()
         );
