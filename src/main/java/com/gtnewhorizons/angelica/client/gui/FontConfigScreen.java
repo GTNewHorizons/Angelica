@@ -38,7 +38,7 @@ public class FontConfigScreen extends GuiScreen {
     private ArrayList<Font> displayedFonts;
     private GuiTextField searchBox;
     private GuiTextField testArea;
-    private int sliderPages = 0;
+    private int lastSliderPageIndex = 0;
     private int displayedSliderPage = 0;
     private final int sliderWidth = 160;
     private final int sliderHeight = 20;
@@ -247,11 +247,11 @@ public class FontConfigScreen extends GuiScreen {
         final int y1 = this.height - 65;
         final int y2 = this.height - 65 + sliderHeight + sliderSpacing;
 
-        this.sliderPages = sliders.size() / 6;
-        this.displayedSliderPage = Math.min(this.displayedSliderPage, this.sliderPages);
+        this.lastSliderPageIndex = (sliders.size() - 1) / 6;
+        this.displayedSliderPage = Math.min(this.displayedSliderPage, this.lastSliderPageIndex);
 
         this.backButton.enabled = (this.displayedSliderPage != 0);
-        this.fwdButton.enabled = (this.displayedSliderPage != this.sliderPages);
+        this.fwdButton.enabled = (this.displayedSliderPage != this.lastSliderPageIndex);
 
         final int start = 6 * this.displayedSliderPage;
         final int end = Math.min(6 * (this.displayedSliderPage + 1), sliders.size());
@@ -315,7 +315,7 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private void switchPage(int offset) {
-        this.displayedSliderPage = MathHelper.clamp_int(this.displayedSliderPage + offset, 0, this.sliderPages);
+        this.displayedSliderPage = MathHelper.clamp_int(this.displayedSliderPage + offset, 0, this.lastSliderPageIndex);
         this.buttonList.removeIf(guiButton -> guiButton instanceof SliderClone);
         this.initSliders();
     }
