@@ -58,7 +58,7 @@ public class BatchingFontRenderer {
     final boolean isSGA;
     final boolean isSplash;
 
-    /** For use with modded books. */
+    /** For use with modded books. Affects calculations and forces some defaults. */
     @Setter
     boolean bookMode = false;
 
