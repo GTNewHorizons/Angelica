@@ -2310,6 +2310,10 @@ public class GLStateManager {
         GL20.glVertexAttribPointer(index, size, type, normalized, stride, offset);
     }
 
+    public static void glVertexAttribPointer(int index, int size, boolean normalized, int stride, FloatBuffer pointer) {
+        glVertexAttribPointer(index, size, GL11.GL_FLOAT, normalized, stride, pointer);
+    }
+
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
         final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
         VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
