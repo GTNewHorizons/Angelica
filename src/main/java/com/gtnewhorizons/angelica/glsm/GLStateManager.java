@@ -2032,6 +2032,12 @@ public class GLStateManager {
         }
     }
 
+    public static void glVertex2i(int x, int y) {
+        if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+            ImmediateModeRecorder.vertex((float) x, (float) y, 0.0f);
+        }
+    }
+
     public static void glVertex2d(double x, double y) {
         if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
             ImmediateModeRecorder.vertex((float) x, (float) y, 0.0f);
@@ -2049,6 +2055,13 @@ public class GLStateManager {
             ImmediateModeRecorder.vertex((float) x, (float) y, (float) z);
         }
     }
+
+    public static void glVertex3i(int x, int y, int z) {
+        if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+            ImmediateModeRecorder.vertex((float) x, (float) y, (float) z);
+        }
+    }
+
     public static void glDrawElements(int mode, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
