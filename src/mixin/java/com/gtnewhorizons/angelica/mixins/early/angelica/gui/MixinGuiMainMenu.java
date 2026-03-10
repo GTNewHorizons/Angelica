@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.render.PanoramaRenderer;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.util.ResourceLocation;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -12,14 +13,14 @@ import org.spongepowered.asm.mixin.Shadow;
 public abstract class MixinGuiMainMenu extends GuiScreen {
 
     @Shadow private int panoramaTimer;
-    @Shadow private static ResourceLocation[] titlePanoramaPaths;
+    @Final @Shadow private static ResourceLocation[] titlePanoramaPaths;
 
     /**
      * @author Angelica
      * @reason Replace panorama with modern equivalent
      */
     @Overwrite
-    private void renderSkybox(int mouseX, int mouseY, float partialTicks) {
+    public void renderSkybox(int mouseX, int mouseY, float partialTicks) {
         PanoramaRenderer.getInstance().renderSkybox(this.panoramaTimer, partialTicks, titlePanoramaPaths, this.mc, this.width, this.height, this.zLevel);
     }
 }
