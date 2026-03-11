@@ -12,8 +12,11 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.awt.Font;
+import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -26,13 +29,28 @@ public class FontStrategist {
     private static final Font[] availableFonts;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
+    public static File thelivanFolder = new File("thelivan");
+
     static {
         if (GraphicsEnvironment.isHeadless()) {
             LOGGER.warn("GraphicsEnvironment.isHeadless() returned true! Custom fonts will be unavailable. This is likely a MacOS issue.");
             availableFonts = new Font[0];
         } else {
             // get available fonts without duplicates (250 copies of dialog.plain need not apply)
-            Font[] availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+            Font[] availableFontsDirty = null;
+            try {
+                availableFontsDirty = new Font[] {
+                    Font.createFont(
+                        Font.TRUETYPE_FONT,
+                        new FileInputStream(
+                            new File(thelivanFolder + "/fontfiles", "mikadan.ttf")
+                        )
+                    )
+                };
+            } catch (FontFormatException | IOException e) {
+                throw new RuntimeException(e);
+            }
+
             HashMap<String, Font> fontSet = new HashMap<>();
             HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
 
