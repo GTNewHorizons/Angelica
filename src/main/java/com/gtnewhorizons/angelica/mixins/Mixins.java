@@ -429,7 +429,6 @@ public enum Mixins implements IMixins {
             "MixinBlockCarpet",
             "MixinBlockEnchantmentTable",
             "MixinBlockFarmland",
-            "MixinBlockSlab",
             "MixinBlockSnow",
             "MixinBlockStairs",
             "MixinRenderBlocks"
