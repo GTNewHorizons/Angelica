@@ -530,6 +530,41 @@ class CompatShaderTransformerTest {
     }
 
     @Test
+    void testVersionPatternDoesNotEatNextLine() {
+        String src = "#version 330\nsomeword\n";
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertTrue(result.contains("someword"), "Next-line word must not be eaten by version fixup");
+        assertTrue(result.contains("#version 330 core"), "Version should be upgraded to core");
+    }
+
+    @Test
+    void testModernShaderWithoutCoreKeyword() {
+        String src = """
+            #version 430
+            in vec3 Position;
+            uniform mat4 ModelViewMat;
+            uniform mat4 ProjMat;
+            out vec4 vertexColor;
+            out float fogDistance;
+            void main() {
+                vec4 finalPos = vec4(Position, 1.0);
+                vec4 modelPos = ModelViewMat * finalPos;
+                gl_Position = ProjMat * modelPos;
+                fogDistance = length(modelPos.xz);
+                vertexColor = vec4(1.0);
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertTrue(result.contains("#version 430 core"), "Version should get 'core' profile added");
+        assertTrue(result.contains("in vec3 Position"), "'in' keyword must not be eaten");
+        assertTrue(result.contains("ModelViewMat"), "Shader content must be preserved");
+        assertTrue(result.contains("ProjMat"), "Shader content must be preserved");
+        assertTrue(result.contains("fogDistance"), "Shader content must be preserved");
+    }
+
+    @Test
     void testLegacyQualifierConversion() {
         String vertSrc = """
             #version 120

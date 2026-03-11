@@ -40,7 +40,7 @@ import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 public class CompatShaderTransformer {
 
     private static final Pattern VERSION_PATTERN =
-        Pattern.compile("#version\\s+(\\d+)(?:\\s+(\\w+))?");
+        Pattern.compile("#version[ \\t]+(\\d+)(?:[ \\t]+(\\w+))?");
 
     private static final Pattern DEFINE_PATTERN =
         Pattern.compile("^\\s*#\\s*define\\s+.+$", Pattern.MULTILINE);
