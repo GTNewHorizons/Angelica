@@ -4035,6 +4035,13 @@ public class GLStateManager {
         GL12.glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
     }
 
+    public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
+        if (DisplayListManager.isRecording()) {
+            throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
+        }
+        GL12.glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+    }
+
     public static void glTexSubImage1D(int target, int level, int xoffset, int width, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexSubImage1D in display lists not yet implemented");
