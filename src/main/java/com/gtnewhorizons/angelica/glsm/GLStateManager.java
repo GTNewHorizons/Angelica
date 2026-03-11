@@ -4938,6 +4938,62 @@ public class GLStateManager {
         }
     }
 
+    public static float glGetTexEnvf(int target, int pname) {
+        return (float) glGetTexEnvi(target, pname);
+    }
+
+    public static int glGetTexEnvi(int target, int pname) {
+        if (target != GL11.GL_TEXTURE_ENV) return 0;
+
+        final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+        return switch (pname) {
+            case GL11.GL_TEXTURE_ENV_MODE -> envState.mode;
+            case GL13.GL_COMBINE_RGB -> envState.combineRgb;
+            case GL13.GL_COMBINE_ALPHA -> envState.combineAlpha;
+            case GL13.GL_SOURCE0_RGB -> envState.sourceRgb[0];
+            case GL13.GL_SOURCE1_RGB -> envState.sourceRgb[1];
+            case GL13.GL_SOURCE2_RGB -> envState.sourceRgb[2];
+            case GL13.GL_SOURCE0_ALPHA -> envState.sourceAlpha[0];
+            case GL13.GL_SOURCE1_ALPHA -> envState.sourceAlpha[1];
+            case GL13.GL_SOURCE2_ALPHA -> envState.sourceAlpha[2];
+            case GL13.GL_OPERAND0_RGB -> envState.operandRgb[0];
+            case GL13.GL_OPERAND1_RGB -> envState.operandRgb[1];
+            case GL13.GL_OPERAND2_RGB -> envState.operandRgb[2];
+            case GL13.GL_OPERAND0_ALPHA -> envState.operandAlpha[0];
+            case GL13.GL_OPERAND1_ALPHA -> envState.operandAlpha[1];
+            case GL13.GL_OPERAND2_ALPHA -> envState.operandAlpha[2];
+            case GL13.GL_RGB_SCALE -> (int) envState.scaleRgb;
+            case GL11.GL_ALPHA_SCALE -> (int) envState.scaleAlpha;
+            default -> 0;
+        };
+    }
+
+    public static void glGetTexEnv(int target, int pname, IntBuffer params) {
+        if (target != GL11.GL_TEXTURE_ENV) return;
+        if (pname == GL11.GL_TEXTURE_ENV_COLOR) {
+            final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+            params.put(params.position(), (int) (envState.envColorR * 2147483647.0f));
+            params.put(params.position() + 1, (int) (envState.envColorG * 2147483647.0f));
+            params.put(params.position() + 2, (int) (envState.envColorB * 2147483647.0f));
+            params.put(params.position() + 3, (int) (envState.envColorA * 2147483647.0f));
+        } else {
+            params.put(params.position(), glGetTexEnvi(target, pname));
+        }
+    }
+
+    public static void glGetTexEnv(int target, int pname, FloatBuffer params) {
+        if (target != GL11.GL_TEXTURE_ENV) return;
+        if (pname == GL11.GL_TEXTURE_ENV_COLOR) {
+            final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+            params.put(params.position(), envState.envColorR);
+            params.put(params.position() + 1, envState.envColorG);
+            params.put(params.position() + 2, envState.envColorB);
+            params.put(params.position() + 3, envState.envColorA);
+        } else {
+            params.put(params.position(), (float) glGetTexEnvi(target, pname));
+        }
+    }
+
     // TexGen generation counter for FFP uniform dirty tracking
     public static int texGenGeneration;
 
@@ -5021,6 +5077,65 @@ public class GLStateManager {
             final int unit = activeTextureUnit.getValue();
             textures.getTexGenState(unit).setMode(coord, params.get(params.position()));
             texGenGeneration++;
+        }
+    }
+
+    public static int glGetTexGeni(int coord, int pname) {
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            return textures.getTexGenState(activeTextureUnit.getValue()).getMode(coord);
+        }
+        return 0;
+    }
+
+    public static float glGetTexGenf(int coord, int pname) {
+        return (float) glGetTexGeni(coord, pname);
+    }
+
+    public static double glGetTexGend(int coord, int pname) {
+        return glGetTexGeni(coord, pname);
+    }
+
+    public static void glGetTexGen(int coord, int pname, IntBuffer params) {
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            params.put(params.position(), glGetTexGeni(coord, pname));
+        }
+    }
+
+    public static void glGetTexGen(int coord, int pname, FloatBuffer params) {
+        final var state = textures.getTexGenState(activeTextureUnit.getValue());
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            params.put(params.position(), (float) state.getMode(coord));
+        } else if (pname == GL11.GL_OBJECT_PLANE) {
+            final float[] plane = state.getObjectPlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
+        } else if (pname == GL11.GL_EYE_PLANE) {
+            final float[] plane = state.getEyePlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
+        }
+    }
+
+    public static void glGetTexGen(int coord, int pname, DoubleBuffer params) {
+        final var state = textures.getTexGenState(activeTextureUnit.getValue());
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            params.put(params.position(), state.getMode(coord));
+        } else if (pname == GL11.GL_OBJECT_PLANE) {
+            final float[] plane = state.getObjectPlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
+        } else if (pname == GL11.GL_EYE_PLANE) {
+            final float[] plane = state.getEyePlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
         }
     }
 
