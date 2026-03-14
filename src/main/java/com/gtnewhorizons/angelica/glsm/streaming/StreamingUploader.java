@@ -1,9 +1,7 @@
-package com.gtnewhorizons.angelica.glsm.ffp;
+package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer;
 import me.jellysquid.mods.sodium.client.gui.options.named.NamedState;
-import org.apache.logging.log4j.LogManager;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 
@@ -35,15 +33,12 @@ public final class StreamingUploader {
 
     private static final int MAP_WRITE_INVALIDATE_BUFFER = GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_BUFFER_BIT | GL30.GL_MAP_UNSYNCHRONIZED_BIT;
 
-    private static UploadStrategy getUploadStrategy() {
-        if (AngelicaMod.options() != null) {
-            return AngelicaMod.options().advanced.streamingUploadStrategy;
-        }
-        return UploadStrategy.BUFFER_DATA;
+    public static int upload(ByteBuffer data, int capacity) {
+        return upload(AngelicaMod.options().advanced.streamingUploadStrategy, data, capacity);
     }
 
-    public static int upload(ByteBuffer data, int capacity) {
-        switch (getUploadStrategy()) {
+    public static int upload(UploadStrategy strategy, ByteBuffer data, int capacity) {
+        switch (strategy) {
             case BUFFER_DATA -> {
                 GL15.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
                 return data.remaining();

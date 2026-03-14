@@ -6,7 +6,7 @@ import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.ffp.StreamingUploader;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import net.coderbot.iris.Iris;
@@ -34,7 +34,7 @@ public class SodiumGameOptions {
         public boolean useParticleCulling = true;
         public boolean allowDirectMemoryAccess = true;
         public boolean ignoreDriverBlacklist = false;
-        public StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.BUFFER_DATA;
+        public StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.MAP_BUFFER_RANGE;
         public boolean enableDeferredBatching = true;
     }
 

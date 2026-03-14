@@ -3,7 +3,7 @@ package me.jellysquid.mods.sodium.client.gui;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.ffp.StreamingUploader;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
