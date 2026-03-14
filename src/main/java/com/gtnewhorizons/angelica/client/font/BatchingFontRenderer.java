@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.StreamingUploader;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Setter;
@@ -432,10 +433,11 @@ public class BatchingFontRenderer {
         idxWriterIndex = 0;
     }
 
-    private static void streamUpload(long address, int bytes) {
+    private int capacity;
+
+    private void streamUpload(long address, int bytes) {
         final ByteBuffer data = memByteBuffer(address, bytes);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bytes, GL15.GL_STREAM_DRAW);
-        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
+        capacity = StreamingUploader.upload(data, capacity);
     }
 
     // === Actual text mesh generation

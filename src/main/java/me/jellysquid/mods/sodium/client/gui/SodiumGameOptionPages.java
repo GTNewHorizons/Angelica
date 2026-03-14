@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.gui;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.StreamingUploader;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
@@ -272,14 +273,16 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.VARIES)
                         .setEnabled(GLStateManager.capabilities != null)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_map_buffer_range.name"))
-                        .setTooltip(I18n.format("sodium.options.use_map_buffer_range.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.advanced.useMapBufferRange = value, opts -> opts.advanced.useMapBufferRange)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .setImpact(OptionImpact.VARIES)
-                        .build())
+                .add(OptionImpl.createBuilder(StreamingUploader.UploadStrategy.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.upload_method.name"))
+                    .setTooltip(I18n.format("sodium.options.upload_method.tooltip"))
+                    .setControl(o ->
+                        new CyclingControl<>(o, StreamingUploader.UploadStrategy.class, StreamingUploader.UploadStrategy.values())
+                    )
+                    .setBinding((opts, value) -> opts.advanced.streamingUploadStrategy = value, opts -> opts.advanced.streamingUploadStrategy)
+                    .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                    .setImpact(OptionImpact.VARIES)
+                    .build())
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.enable_deferred_batching.name"))
                         .setTooltip(I18n.format("sodium.options.enable_deferred_batching.tooltip"))
