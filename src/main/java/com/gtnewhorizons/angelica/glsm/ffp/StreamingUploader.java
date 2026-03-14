@@ -46,7 +46,7 @@ public final class StreamingUploader {
         switch (getUploadStrategy()) {
             case BUFFER_DATA -> {
                 GL15.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
-                return capacity;
+                return data.remaining();
             }
             case BUFFER_SUB_DATA -> {
                 if (data.remaining() > capacity) {
