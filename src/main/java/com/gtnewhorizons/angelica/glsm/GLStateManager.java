@@ -8,6 +8,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
+import com.gtnewhorizons.angelica.render.SelectionBoxRenderer;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
@@ -583,6 +584,7 @@ public class GLStateManager {
         GL30.glBindVertexArray(defaultVAO);
         boundVAO = defaultVAO;
         VertexAttribState.init(defaultVAO);
+        SelectionBoxRenderer.init();
 
         // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
         // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.

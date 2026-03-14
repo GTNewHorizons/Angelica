@@ -14,13 +14,10 @@ import net.coderbot.iris.gl.texture.PixelType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
-import org.apache.commons.io.IOUtils;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
-import java.io.IOException;
-import java.nio.charset.StandardCharsets;
-import java.util.Objects;
 import java.util.function.IntSupplier;
 
 public class CenterDepthSampler {
@@ -45,16 +42,9 @@ public class CenterDepthSampler {
 		GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
 
 		this.framebuffer.addColorAttachment(0, texture);
-		ProgramBuilder builder;
-
-		try {
-			String fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.fsh"))), StandardCharsets.UTF_8);
-			String vsh = new String(IOUtils.toByteArray(Objects.requireNonNull(getClass().getResourceAsStream("/centerDepth.vsh"))), StandardCharsets.UTF_8);
-
-			builder = ProgramBuilder.begin("centerDepthSmooth", vsh, null, fsh, ImmutableSet.of(0, 1, 2));
-		} catch (IOException e) {
-			throw new RuntimeException(e);
-		}
+		String vsh = ShaderLoader.getShaderSource("angelica:centerDepth.vsh");
+		String fsh = ShaderLoader.getShaderSource("angelica:centerDepth.fsh");
+		ProgramBuilder builder = ProgramBuilder.begin("centerDepthSmooth", vsh, null, fsh, ImmutableSet.of(0, 1, 2));
 
 		builder.addDynamicSampler(depthSupplier, "depth");
 		builder.addDynamicSampler(() -> altTexture, "altDepth");
