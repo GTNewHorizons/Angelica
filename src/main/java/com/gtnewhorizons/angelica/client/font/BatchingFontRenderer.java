@@ -15,17 +15,17 @@ import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
-import org.apache.commons.io.IOUtils;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
-import java.io.IOException;
+
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
+
 import java.util.Comparator;
 import java.util.Objects;
 
@@ -68,16 +68,9 @@ public class BatchingFontRenderer {
         private static Program fontShader = null;
         public static Program getProgram() {
             if (fontShader == null) {
-                String vsh, fsh;
-                try {
-                    fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/fontFilter.fsh"))), StandardCharsets.UTF_8);
-                    vsh = new String(IOUtils.toByteArray(Objects.requireNonNull(FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/fontFilter.vsh"))), StandardCharsets.UTF_8);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-                ProgramBuilder builder = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0));
-                fontShader = builder.build();
+                final String vsh = ShaderLoader.getShaderSource("angelica:fontFilter.vsh");
+                final String fsh = ShaderLoader.getShaderSource("angelica:fontFilter.fsh");
+                fontShader = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0)).build();
             }
             return fontShader;
         }

@@ -31,7 +31,7 @@ public final class StreamingUploader {
         }
     }
 
-    private static final int MAP_WRITE_INVALIDATE_BUFFER = GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_BUFFER_BIT | GL30.GL_MAP_UNSYNCHRONIZED_BIT;
+    private static final int MAP_WRITE_INVALIDATE_BUFFER = GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_BUFFER_BIT;
 
     public static int upload(ByteBuffer data, int capacity) {
         return upload(AngelicaMod.options().advanced.streamingUploadStrategy, data, capacity);
