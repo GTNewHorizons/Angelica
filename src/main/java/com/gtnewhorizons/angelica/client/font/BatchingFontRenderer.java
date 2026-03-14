@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Setter;
@@ -121,7 +122,10 @@ public class BatchingFontRenderer {
     // v, t and tb are floats, c is bytes; 36 bytes total
     private static final int VERTEX_SIZE = 36;
     private static int rawCapacity = INITIAL_BATCH_SIZE * VERTEX_SIZE;
-    private static long vertexDataAddress = nmemAllocChecked(rawCapacity);
+    private static ByteBuffer vertexData = memAlloc(rawCapacity);
+    private static long vertexDataAddress = memAddress0(vertexData);
+    private static int vboCapacity;
+
 
     // OpenGL objects (static, can be used between multiple BatchingFontRenderer)
     private static int fontVAO = 0;
@@ -172,7 +176,8 @@ public class BatchingFontRenderer {
     private void ensureCapacity() {
         if (vertexDataPos + (4 * VERTEX_SIZE) > rawCapacity) {
             rawCapacity *= 2;
-            vertexDataAddress = nmemReallocChecked(vertexDataAddress, rawCapacity);
+            vertexData = memRealloc(vertexData, rawCapacity);
+            vertexDataAddress = memAddress0(vertexData);
 
             allocateBuffers();
         }
@@ -326,8 +331,8 @@ public class BatchingFontRenderer {
 
         // Upload first (to reduce stalls)
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-
-        streamUpload(vertexDataAddress, vertexDataPos);
+        vertexData.limit(vertexDataPos);
+        vboCapacity = StreamingUploader.upload(vertexData, vboCapacity);
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
@@ -430,12 +435,6 @@ public class BatchingFontRenderer {
         batchCommands.clear();
         vertexDataPos = 0;
         idxWriterIndex = 0;
-    }
-
-    private static void streamUpload(long address, int bytes) {
-        final ByteBuffer data = memByteBuffer(address, bytes);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bytes, GL15.GL_STREAM_DRAW);
-        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
     }
 
     // === Actual text mesh generation
