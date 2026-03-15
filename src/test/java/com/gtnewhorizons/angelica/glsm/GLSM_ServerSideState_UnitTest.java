@@ -100,8 +100,8 @@ public class GLSM_ServerSideState_UnitTest {
                                 backgroundError = t;
                             }
                             pendingCommand = null;
+                            completeLatch.countDown();
                         }
-                        completeLatch.countDown();
                     }
                 }
             } catch (InterruptedException e) {

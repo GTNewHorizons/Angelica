@@ -1,12 +1,13 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
+import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -35,7 +36,6 @@ public class FeedbackManager {
 
     private static ByteBuffer readbackBuf = ByteBuffer.allocateDirect(256 * 1024).order(ByteOrder.nativeOrder());
     private static ByteBuffer indexReadbackBuf = ByteBuffer.allocateDirect(4 * 1024).order(ByteOrder.nativeOrder());
-    private static final IntBuffer attribBuf = ByteBuffer.allocateDirect(16 * 4).order(ByteOrder.nativeOrder()).asIntBuffer();
 
     @FunctionalInterface
     private interface IndexReader {
@@ -58,16 +58,11 @@ public class FeedbackManager {
     }
 
     public static int glRenderMode(int mode) {
-        int result = 0;
-        switch (renderMode) {
-            case GL11.GL_FEEDBACK:
-                result = (feedbackCount > feedbackBufferSize) ? -1 : feedbackCount;
-                break;
-            case GL11.GL_RENDER:
-            case GL11.GL_SELECT:
-                result = 0;
-                break;
-        }
+        int result = switch (renderMode) {
+            case GL11.GL_FEEDBACK -> (feedbackCount > feedbackBufferSize) ? -1 : feedbackCount;
+            case GL11.GL_RENDER, GL11.GL_SELECT -> 0;
+            default -> 0;
+        };
 
         if (mode == GL11.GL_SELECT) {
             AngelicaTweaker.LOGGER.warn("glRenderMode(GL_SELECT): selection mode not emulated");
@@ -130,12 +125,19 @@ public class FeedbackManager {
         feedbackVertex(winX, winY, winZ, winW);
     }
 
+    private static int positionStride() {
+        final int s = VertexAttribState.get(0).effectiveStride();
+        return (s != 0) ? s : 12;
+    }
+
+    private static long positionOffset() {
+        return VertexAttribState.get(0).offset;
+    }
+
     public static void processDrawArrays(int mode, int first, int count) {
         computeMVP();
-        int stride = queryPositionStride();
-        if (stride == 0) stride = 12; // tightly packed 3 floats
-
-        final long posOffset = queryPositionOffset();
+        final int stride = positionStride();
+        final long posOffset = positionOffset();
         final int byteCount = count * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
@@ -146,10 +148,9 @@ public class FeedbackManager {
 
     public static void processDrawElements(int mode, int indexCount, int type, long eboOffset) {
         computeMVP();
-        int stride = queryPositionStride();
-        if (stride == 0) stride = 12;
+        final int stride = positionStride();
 
-        final int elementSize = elementSizeForType(type);
+        final int elementSize = VertexAttribState.Attrib.glTypeSizeBytes(type);
         final int indexByteCount = indexCount * elementSize;
         ensureIndexReadbackCapacity(indexByteCount);
         indexReadbackBuf.clear().limit(indexByteCount);
@@ -158,12 +159,12 @@ public class FeedbackManager {
 
         int minIdx = Integer.MAX_VALUE, maxIdx = Integer.MIN_VALUE;
         for (int i = 0; i < indexCount; i++) {
-            final int idx = readIndex(indexBuf, type, i);
+            final int idx = ImmediateModeRecorder.readIndex(indexBuf, type, 0, i);
             if (idx < minIdx) minIdx = idx;
             if (idx > maxIdx) maxIdx = idx;
         }
 
-        final long posOffset = queryPositionOffset();
+        final long posOffset = positionOffset();
         final int vertexCount = maxIdx - minIdx + 1;
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
@@ -171,7 +172,7 @@ public class FeedbackManager {
         GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
 
         final int base = minIdx;
-        emitAllPrimitives(mode, indexCount, i -> readIndex(indexBuf, type, i) - base, stride);
+        emitAllPrimitives(mode, indexCount, i -> ImmediateModeRecorder.readIndex(indexBuf, type, 0, i) - base, stride);
     }
 
     public static void processDrawElements(int mode, ByteBuffer indices) {
@@ -202,8 +203,7 @@ public class FeedbackManager {
 
     private static void processDrawElementsImpl(int mode, int count, IndexReader reader) {
         computeMVP();
-        int stride = queryPositionStride();
-        if (stride == 0) stride = 12;
+        final int stride = positionStride();
 
         int minIdx = Integer.MAX_VALUE, maxIdx = Integer.MIN_VALUE;
         for (int i = 0; i < count; i++) {
@@ -221,12 +221,6 @@ public class FeedbackManager {
         mvpMatrix.set(GLStateManager.getProjectionMatrix()).mul(GLStateManager.getModelViewMatrix());
     }
 
-    private static int queryPositionStride() {
-        attribBuf.clear();
-        GL20.glGetVertexAttrib(0, GL20.GL_VERTEX_ATTRIB_ARRAY_STRIDE, attribBuf);
-        return attribBuf.get(0);
-    }
-
     private static int computeMask(int type) {
         return switch (type) {
             case GL11.GL_2D -> 0;
@@ -234,24 +228,6 @@ public class FeedbackManager {
             case GL11.GL_3D_COLOR -> FB_3D | FB_COLOR;
             case GL11.GL_3D_COLOR_TEXTURE -> FB_3D | FB_COLOR | FB_TEXTURE;
             case GL11.GL_4D_COLOR_TEXTURE -> FB_3D | FB_4D | FB_COLOR | FB_TEXTURE;
-            default -> 0;
-        };
-    }
-
-    private static int elementSizeForType(int type) {
-        return switch (type) {
-            case GL11.GL_UNSIGNED_BYTE -> 1;
-            case GL11.GL_UNSIGNED_SHORT -> 2;
-            case GL11.GL_UNSIGNED_INT -> 4;
-            default -> 4;
-        };
-    }
-
-    private static int readIndex(ByteBuffer buf, int type, int i) {
-        return switch (type) {
-            case GL11.GL_UNSIGNED_BYTE -> buf.get(i) & 0xFF;
-            case GL11.GL_UNSIGNED_SHORT -> buf.getShort(i * 2) & 0xFFFF;
-            case GL11.GL_UNSIGNED_INT -> buf.getInt(i * 4);
             default -> 0;
         };
     }
@@ -268,13 +244,8 @@ public class FeedbackManager {
         }
     }
 
-    private static long queryPositionOffset() {
-        final ByteBuffer buf = GL20.glGetVertexAttribPointer(0, GL20.GL_VERTEX_ATTRIB_ARRAY_POINTER, 8);
-        return buf == null ? 0L : buf.getLong(0);
-    }
-
     private static void readVerticesFromVBO(int minIdx, int maxIdx, int stride) {
-        final long posOffset = queryPositionOffset();
+        final long posOffset = positionOffset();
         final int vertexCount = maxIdx - minIdx + 1;
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);

@@ -12,6 +12,7 @@ import org.objectweb.asm.tree.IntInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.TypeInsnNode;
 
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -70,6 +71,7 @@ public final class AngelicaRedirector {
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>(32);
     private static final Map<String, Map<String, String>> interfaceRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
+    private static final Map<String, String> gluRedirects = new HashMap<>();
     private static final ClassConstantPoolParser cstPoolParser;
 
     static {
@@ -183,10 +185,17 @@ public final class AngelicaRedirector {
             .add("glTexEnvi")
             .add("glTexEnvf")
             .add("glTexEnv")
+            .add("glGetTexEnv")
+            .add("glGetTexEnvi")
+            .add("glGetTexEnvf")
             .add("glTexGeni")
             .add("glTexGenf")
             .add("glTexGend")
             .add("glTexGen")
+            .add("glGetTexGen")
+            .add("glGetTexGeni")
+            .add("glGetTexGenf")
+            .add("glGetTexGend")
             .add("glTexImage1D")
             .add("glTexImage2D")
             .add("glTexImage3D")
@@ -227,8 +236,10 @@ public final class AngelicaRedirector {
             .add("glTranslatef")
             .add("glVertex2d")
             .add("glVertex2f")
+            .add("glVertex2i")
             .add("glVertex3d")
             .add("glVertex3f")
+            .add("glVertex3i")
             .add("glVertexPointer")
             .add("glColorPointer")
             .add("glNormalPointer")
@@ -268,6 +279,7 @@ public final class AngelicaRedirector {
         );
         methodRedirects.put(GL15, RedirectMap.newMap()
             .add("glBindBuffer")
+            .add("glDeleteBuffers")
         );
         methodRedirects.put(GL20, RedirectMap.newMap()
             .add("glBlendEquationSeparate")
@@ -306,11 +318,15 @@ public final class AngelicaRedirector {
             .add("glGetAttachedShaders")
             .add("glGetShaderSource")
             .add("glGetUniform")
+            .add("glVertexAttribPointer")
+            .add("glEnableVertexAttribArray")
+            .add("glDisableVertexAttribArray")
         );
         methodRedirects.put(GL30, RedirectMap.newMap()
             .add("glBindVertexArray")
             .add("glDeleteVertexArrays")
             .add("glBindFramebuffer")
+            .add("glVertexAttribIPointer")
         );
 
         // MINECRAFT
@@ -408,9 +424,15 @@ public final class AngelicaRedirector {
             .add("glBindVertexArray")
         );
 
+        gluRedirects.put("org/lwjgl/util/glu/Sphere", "com/gtnewhorizons/angelica/glsm/compat/lwjgl/AngelicaSphere");
+        gluRedirects.put("org/lwjgl/util/glu/Cylinder", "com/gtnewhorizons/angelica/glsm/compat/lwjgl/AngelicaCylinder");
+        gluRedirects.put("org/lwjgl/util/glu/Disk", "com/gtnewhorizons/angelica/glsm/compat/lwjgl/AngelicaDisk");
+        gluRedirects.put("org/lwjgl/util/glu/PartialDisk", "com/gtnewhorizons/angelica/glsm/compat/lwjgl/AngelicaPartialDisk");
+
         final List<String> stringsToSearch = new ArrayList<>(32);
         stringsToSearch.add(VaoFunctions);
         stringsToSearch.add(LWJGLService);
+        stringsToSearch.addAll(gluRedirects.keySet());
         final String glPrefix = "org/lwjgl/opengl/GL";
         for (var entry : new HashMap<>(methodRedirects).entrySet()) {
             stringsToSearch.add(entry.getKey());
@@ -425,6 +447,7 @@ public final class AngelicaRedirector {
     public String[] getTransformerExclusions() {
         return new String[]{
             "org.lwjgl",
+            "com.gtnewhorizon.gtnhlib.asm",
             "com.gtnewhorizons.angelica.glsm.",
             "com.gtnewhorizons.angelica.transform",
             "me.eigenraven.lwjgl3ify"
@@ -446,7 +469,19 @@ public final class AngelicaRedirector {
             }
             boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
-                if (node instanceof MethodInsnNode mNode) {
+                if (node instanceof TypeInsnNode tNode) {
+                    // Redirect NEW and CHECKCAST for quadric classes
+                    if (tNode.getOpcode() == Opcodes.NEW || tNode.getOpcode() == Opcodes.CHECKCAST) {
+                        final String redirect = gluRedirects.get(tNode.desc);
+                        if (redirect != null) {
+                            if (LOG_SPAM) {
+                                LOGGER.info("Redirecting {} in {} from {} to {}", tNode.getOpcode() == Opcodes.NEW ? "NEW" : "CHECKCAST", transformedName, tNode.desc, redirect);
+                            }
+                            tNode.desc = redirect;
+                            changed = true;
+                        }
+                    }
+                } else if (node instanceof MethodInsnNode mNode) {
                     if (mNode.desc.equals("(I)V") && (mNode.owner.equals(GL11) || mNode.owner.equals(GL11C)) && (mNode.name.equals("glEnable") || mNode.name.equals("glDisable"))) {
                         final AbstractInsnNode prevNode = node.getPrevious();
                         String name = null;
@@ -525,6 +560,17 @@ public final class AngelicaRedirector {
                                     redirectInMethod = true;
                                 }
                             }
+                        }
+                    }
+                    // Redirect <init> calls for quadric classes
+                    if (mNode.getOpcode() == Opcodes.INVOKESPECIAL && mNode.name.equals("<init>")) {
+                        final String redirect = gluRedirects.get(mNode.owner);
+                        if (redirect != null) {
+                            if (LOG_SPAM) {
+                                LOGGER.info("Redirecting <init> in {} from {} to {}", transformedName, mNode.owner, redirect);
+                            }
+                            mNode.owner = redirect;
+                            changed = true;
                         }
                     }
                 }

@@ -38,7 +38,7 @@ public class FontConfigScreen extends GuiScreen {
     private ArrayList<Font> displayedFonts;
     private GuiTextField searchBox;
     private GuiTextField testArea;
-    private int sliderPages = 0;
+    private int lastSliderPageIndex = 0;
     private int displayedSliderPage = 0;
     private final int sliderWidth = 160;
     private final int sliderHeight = 20;
@@ -58,6 +58,7 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 24, 1);
     SliderClone.Option optCustomFontScale = new SliderClone.Option(0.1f, 3, 0.05f);
+    SliderClone.Option optShadowOffsetUC = new SliderClone.Option(0, 2, 0.05f);
 
     public FontConfigScreen(GuiScreen parent) {
         this.title = I18n.format("options.angelica.fontconfig.title");
@@ -226,6 +227,16 @@ public class FontConfigScreen extends GuiScreen {
             .formatString("x%3.2f")
             .build()
         );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
+            .option(optShadowOffsetUC)
+            .initialValue(FontConfig.fontShadowOffsetUC)
+            .setter(value -> FontConfig.fontShadowOffsetUC = value)
+            .langKey("options.angelica.fontconfig.shadow_offset_unicode")
+            .formatString("x%3.2f")
+            .build()
+        );
 
         final int halfWidth = this.width / 2;
         final int sliderSpacing = 4;
@@ -236,11 +247,11 @@ public class FontConfigScreen extends GuiScreen {
         final int y1 = this.height - 65;
         final int y2 = this.height - 65 + sliderHeight + sliderSpacing;
 
-        this.sliderPages = sliders.size() / 6;
-        this.displayedSliderPage = Math.min(this.displayedSliderPage, this.sliderPages);
+        this.lastSliderPageIndex = (sliders.size() - 1) / 6;
+        this.displayedSliderPage = Math.min(this.displayedSliderPage, this.lastSliderPageIndex);
 
         this.backButton.enabled = (this.displayedSliderPage != 0);
-        this.fwdButton.enabled = (this.displayedSliderPage != this.sliderPages);
+        this.fwdButton.enabled = (this.displayedSliderPage != this.lastSliderPageIndex);
 
         final int start = 6 * this.displayedSliderPage;
         final int end = Math.min(6 * (this.displayedSliderPage + 1), sliders.size());
@@ -304,7 +315,7 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private void switchPage(int offset) {
-        this.displayedSliderPage = MathHelper.clamp_int(this.displayedSliderPage + offset, 0, this.sliderPages);
+        this.displayedSliderPage = MathHelper.clamp_int(this.displayedSliderPage + offset, 0, this.lastSliderPageIndex);
         this.buttonList.removeIf(guiButton -> guiButton instanceof SliderClone);
         this.initSliders();
     }

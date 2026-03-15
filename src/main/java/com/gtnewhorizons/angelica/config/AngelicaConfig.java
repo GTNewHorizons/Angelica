@@ -48,6 +48,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableMCPatcherForgeFeatures;
 
+    @Config.Comment("Replace main menu panorama with modern equivalent.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enablePanoramaBlurShader;
+
     @Config.Comment("Replace cloud renderer with a VBO version.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -238,5 +243,16 @@ public class AngelicaConfig {
     @Config.Comment("Replaces various FFP uploads with statically allocated VBO's.")
     @Config.DefaultBoolean(true)
     public static boolean replaceFFPUploads;
+
+    @Config.Comment("Pinned OpenGL version an integer (e.g. 46, 41, 33). 0 = auto-detect. [33, 46]. (Disable with disableGLVersionPinning=true)")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 46)
+    @Config.RequiresMcRestart
+    public static int pinnedGLVersion;
+
+    @Config.Comment("Disable automatic GL version pinning. When true, always probes from highest on every launch.")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean disableGLVersionPinning;
 
 }

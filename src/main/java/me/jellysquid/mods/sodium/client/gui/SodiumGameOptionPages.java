@@ -3,6 +3,7 @@ package me.jellysquid.mods.sodium.client.gui;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
@@ -117,15 +118,6 @@ public class SodiumGameOptionPages {
                             }
                         }, (opts) -> opts.fullScreen)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
-                    .setName(I18n.format("options.angelica.sleepbeforeswap"))
-                    .setTooltip(I18n.format("options.angelica.sleepbeforeswap.tooltip"))
-                    .setControl(TickBoxControl::new)
-                    .setBinding((opts, value) -> {
-                        AngelicaConfig.sleepBeforeSwap = value;
-                    }, opts -> AngelicaConfig.sleepBeforeSwap)
-                    .setImpact(OptionImpact.VARIES)
-                    .build())
                 .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                         .setName(I18n.format("options.vsync"))
                         .setTooltip(I18n.format("sodium.options.v_sync.tooltip"))
@@ -281,14 +273,16 @@ public class SodiumGameOptionPages {
                         .setImpact(OptionImpact.VARIES)
                         .setEnabled(GLStateManager.capabilities != null)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_map_buffer_range.name"))
-                        .setTooltip(I18n.format("sodium.options.use_map_buffer_range.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> opts.advanced.useMapBufferRange = value, opts -> opts.advanced.useMapBufferRange)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .setImpact(OptionImpact.VARIES)
-                        .build())
+                .add(OptionImpl.createBuilder(StreamingUploader.UploadStrategy.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.upload_method.name"))
+                    .setTooltip(I18n.format("sodium.options.upload_method.tooltip"))
+                    .setControl(o ->
+                        new CyclingControl<>(o, StreamingUploader.UploadStrategy.class, StreamingUploader.UploadStrategy.values())
+                    )
+                    .setBinding((opts, value) -> opts.advanced.streamingUploadStrategy = value, opts -> opts.advanced.streamingUploadStrategy)
+                    .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                    .setImpact(OptionImpact.VARIES)
+                    .build())
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.enable_deferred_batching.name"))
                         .setTooltip(I18n.format("sodium.options.enable_deferred_batching.tooltip"))
@@ -516,12 +510,12 @@ public class SodiumGameOptionPages {
                 .add(Settings.MODE_CLOUD_TRANSLUCENCY.option)
                 .add(Settings.MODE_STARS.option)
                 .add(Settings.TOTAL_STARS.option)
-                .add(Settings.HORIZON_DISABLE.option)
+                .add(Settings.HORIZON.option)
                 .add(Settings.MODE_LIGHT_FLICKER.option)
                 .build());
 
         groups.add(OptionGroup.createBuilder()
-                .add(Settings.FOG_DISABLE.option)
+                .add(Settings.TERRAIN_FOG.option)
                 .add(Settings.FOG_NEAR_DISTANCE.option)
                 .add(Settings.VOID_FOG.option)
                 .build());
@@ -540,20 +534,4 @@ public class SodiumGameOptionPages {
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
     }
 
-    public static OptionPage debug() {
-        final List<OptionGroup> groups = new ArrayList<>();
-
-        groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                        .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                        .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setImpact(OptionImpact.EXTREME)
-                        .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
-                .build());
-
-        return new OptionPage(I18n.format("sodium.options.pages.debug"), ImmutableList.copyOf(groups));
-    }
 }

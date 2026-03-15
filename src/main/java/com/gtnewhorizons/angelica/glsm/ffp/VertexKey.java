@@ -42,6 +42,7 @@ public final class VertexKey {
     private static final int BIT_TEXGEN_Q            = 31;
     // bits 31-33: texGenModeQ (3 bits)
     private static final int BIT_CLIP_PLANES         = 34;
+    private static final int BIT_WIDE_LINE           = 35;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -92,6 +93,8 @@ public final class VertexKey {
     public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
     /** Whether any clip plane is enabled. */
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
+    /** Whether wide line GS emulation is active for this variant. */
+    public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
 
     /** Whether vertex color replaces material ambient in this variant. */
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -223,6 +226,11 @@ public final class VertexKey {
             bits |= (1L << BIT_CLIP_PLANES);
         }
 
+        // Wide line GS emulation
+        if (GLStateManager.wideLineEmulationActive) {
+            bits |= (1L << BIT_WIDE_LINE);
+        }
+
         return bits;
     }
 
@@ -248,10 +256,10 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%09X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b]",
+        return String.format("FFPVertexKey[0x%09X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b]",
             packed, lightingEnabled(), light0Enabled(), light1Enabled(),
             colorMaterialEnabled(), fogEnabled(), textureEnabled(), lightmapEnabled(),
             hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(),
-            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled());
+            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation());
     }
 }
