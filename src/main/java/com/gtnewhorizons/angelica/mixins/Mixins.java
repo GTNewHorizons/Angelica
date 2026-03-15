@@ -35,6 +35,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
+            , "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
             , "angelica.debug.MixinMinecraft_FPSCap"
             , "angelica.ffp.MixinTessellator_CoreProfile"
             , "angelica.glsm.MixinSplashProgressCaching"
