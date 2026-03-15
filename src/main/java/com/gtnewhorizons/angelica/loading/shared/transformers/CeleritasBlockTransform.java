@@ -114,7 +114,7 @@ public final class CeleritasBlockTransform implements Opcodes {
             return false;
         }
         boolean changed = false;
-        if ("net.minecraft.block.Block".equals(transformedName)) {
+        if (BlockClass.equals(cn.name)) {
             changed = cn.fields.removeIf(field -> fieldNameToRedirect.containsKey(field.name));
         } else {
             trackBlockShadowingFields(cn);
