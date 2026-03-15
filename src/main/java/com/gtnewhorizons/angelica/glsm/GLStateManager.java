@@ -81,6 +81,8 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
@@ -184,6 +186,7 @@ public class GLStateManager {
     // Deferred texture deletion: names kept valid until glGenTextures recycles them.
     // Emulates Mesa/compat-profile behavior where delete-then-bind doesn't error.
     private static final IntOpenHashSet deferredDeleteTextures = new IntOpenHashSet();
+    private static long loggedUncachedTextureTargets = 0;
 
     @Getter private static Vendor VENDOR;
 
@@ -1690,9 +1693,9 @@ public class GLStateManager {
         }
 
         if (target != GL11.GL_TEXTURE_2D) {
-            // We're only supporting 2D textures for now
+            // Non-2D targets (e.g. GL_TEXTURE_2D_ARRAY) pass through without caching
+            logUncachedTextureTarget(target);
             GL11.glBindTexture(target, texture);
-            LOGGER.info("SKIPPING glBindTexture for target {}", target);
             return;
         }
 
@@ -1723,6 +1726,23 @@ public class GLStateManager {
             case GL11.GL_ALPHA16 -> internalformat = GL11.GL_RGBA16;
         }
         return internalformat;
+    }
+
+    private static void logUncachedTextureTarget(int target) {
+        final int bit = switch (target) {
+            case GL11.GL_TEXTURE_1D -> 0;
+            case GL30.GL_TEXTURE_2D_ARRAY -> 1;
+            case GL12.GL_TEXTURE_3D -> 2;
+            case GL13.GL_TEXTURE_CUBE_MAP -> 3;
+            case GL31.GL_TEXTURE_RECTANGLE -> 4;
+            case GL32.GL_TEXTURE_2D_MULTISAMPLE -> 5;
+            default -> 6;
+        };
+        final long mask = 1L << bit;
+        if ((loggedUncachedTextureTargets & mask) == 0) {
+            loggedUncachedTextureTargets |= mask;
+            LOGGER.debug("glBindTexture target {} not cached by GLSM, passing through", target);
+        }
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
