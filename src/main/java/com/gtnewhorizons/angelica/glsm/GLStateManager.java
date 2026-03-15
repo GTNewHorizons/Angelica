@@ -1715,7 +1715,18 @@ public class GLStateManager {
         }
     }
 
+    private static int changeFormatIfDeprecated(int internalformat) {
+        switch (internalformat) {
+            case GL11.GL_ALPHA4  -> internalformat = GL11.GL_RGBA4;
+            case GL11.GL_ALPHA8  -> internalformat = GL11.GL_RGBA8;
+            case GL11.GL_ALPHA12 -> internalformat = GL11.GL_RGBA12;
+            case GL11.GL_ALPHA16 -> internalformat = GL11.GL_RGBA16;
+        }
+        return internalformat;
+    }
+
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1734,6 +1745,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1747,6 +1759,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1760,6 +1773,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1778,6 +1792,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage2D with buffer offset in display lists not yet supported");
         }
@@ -4024,6 +4039,7 @@ public class GLStateManager {
 
     // Missing GL commands from Mesa cross-check
     public static void glTexImage1D(int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage1D in display lists not yet implemented");
         }
@@ -4031,6 +4047,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
@@ -4038,6 +4055,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
