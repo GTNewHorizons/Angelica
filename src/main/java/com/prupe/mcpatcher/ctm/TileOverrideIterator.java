@@ -109,6 +109,9 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         currentIcon = origIcon;
         blockOverrides = allBlockOverrides.get(renderBlockState.getBlock());
         tileOverrides = allTileOverrides.get(origIcon.getIconName());
+        if (tileOverrides == null && origIcon.getIconName().contains("decor/")) {
+            tileOverrides = allTileOverrides.get("minecraft:" + origIcon.getIconName() + ".png");
+        }
         blockPos = 0;
         iconPos = 0;
         foundNext = false;
