@@ -8,6 +8,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
+import com.gtnewhorizons.angelica.render.SelectionBoxRenderer;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
@@ -80,6 +81,8 @@ import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
@@ -183,6 +186,7 @@ public class GLStateManager {
     // Deferred texture deletion: names kept valid until glGenTextures recycles them.
     // Emulates Mesa/compat-profile behavior where delete-then-bind doesn't error.
     private static final IntOpenHashSet deferredDeleteTextures = new IntOpenHashSet();
+    private static long loggedUncachedTextureTargets = 0;
 
     @Getter private static Vendor VENDOR;
 
@@ -583,6 +587,7 @@ public class GLStateManager {
         GL30.glBindVertexArray(defaultVAO);
         boundVAO = defaultVAO;
         VertexAttribState.init(defaultVAO);
+        SelectionBoxRenderer.init();
 
         // Drain any pending GL errors from initialization. In core profile, some legacy queries may generate GL_INVALID_ENUM. The splash thread inherits the
         // DrawableGL context and its error state, so stale errors here would cause SplashProgress.checkGLError() to fail.
@@ -1688,9 +1693,9 @@ public class GLStateManager {
         }
 
         if (target != GL11.GL_TEXTURE_2D) {
-            // We're only supporting 2D textures for now
+            // Non-2D targets (e.g. GL_TEXTURE_2D_ARRAY) pass through without caching
+            logUncachedTextureTarget(target);
             GL11.glBindTexture(target, texture);
-            LOGGER.info("SKIPPING glBindTexture for target {}", target);
             return;
         }
 
@@ -1713,7 +1718,35 @@ public class GLStateManager {
         }
     }
 
+    private static int changeFormatIfDeprecated(int internalformat) {
+        switch (internalformat) {
+            case GL11.GL_ALPHA4  -> internalformat = GL11.GL_RGBA4;
+            case GL11.GL_ALPHA8  -> internalformat = GL11.GL_RGBA8;
+            case GL11.GL_ALPHA12 -> internalformat = GL11.GL_RGBA12;
+            case GL11.GL_ALPHA16 -> internalformat = GL11.GL_RGBA16;
+        }
+        return internalformat;
+    }
+
+    private static void logUncachedTextureTarget(int target) {
+        final int bit = switch (target) {
+            case GL11.GL_TEXTURE_1D -> 0;
+            case GL30.GL_TEXTURE_2D_ARRAY -> 1;
+            case GL12.GL_TEXTURE_3D -> 2;
+            case GL13.GL_TEXTURE_CUBE_MAP -> 3;
+            case GL31.GL_TEXTURE_RECTANGLE -> 4;
+            case GL32.GL_TEXTURE_2D_MULTISAMPLE -> 5;
+            default -> 6;
+        };
+        final long mask = 1L << bit;
+        if ((loggedUncachedTextureTargets & mask) == 0) {
+            loggedUncachedTextureTargets |= mask;
+            LOGGER.debug("glBindTexture target {} not cached by GLSM, passing through", target);
+        }
+    }
+
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1732,6 +1765,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1745,6 +1779,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1758,6 +1793,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1776,6 +1812,7 @@ public class GLStateManager {
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage2D with buffer offset in display lists not yet supported");
         }
@@ -2032,6 +2069,12 @@ public class GLStateManager {
         }
     }
 
+    public static void glVertex2i(int x, int y) {
+        if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+            ImmediateModeRecorder.vertex((float) x, (float) y, 0.0f);
+        }
+    }
+
     public static void glVertex2d(double x, double y) {
         if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
             ImmediateModeRecorder.vertex((float) x, (float) y, 0.0f);
@@ -2049,6 +2092,13 @@ public class GLStateManager {
             ImmediateModeRecorder.vertex((float) x, (float) y, (float) z);
         }
     }
+
+    public static void glVertex3i(int x, int y, int z) {
+        if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+            ImmediateModeRecorder.vertex((float) x, (float) y, (float) z);
+        }
+    }
+
     public static void glDrawElements(int mode, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
@@ -2308,6 +2358,10 @@ public class GLStateManager {
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
         VertexAttribState.set(index, size, type, normalized, stride, offset, boundVBO);
         GL20.glVertexAttribPointer(index, size, type, normalized, stride, offset);
+    }
+
+    public static void glVertexAttribPointer(int index, int size, boolean normalized, int stride, FloatBuffer pointer) {
+        glVertexAttribPointer(index, size, GL11.GL_FLOAT, normalized, stride, pointer);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
@@ -4005,6 +4059,7 @@ public class GLStateManager {
 
     // Missing GL commands from Mesa cross-check
     public static void glTexImage1D(int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage1D in display lists not yet implemented");
         }
@@ -4012,6 +4067,15 @@ public class GLStateManager {
     }
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
+        if (DisplayListManager.isRecording()) {
+            throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
+        }
+        GL12.glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+    }
+
+    public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
+        internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
@@ -4921,6 +4985,62 @@ public class GLStateManager {
         }
     }
 
+    public static float glGetTexEnvf(int target, int pname) {
+        return (float) glGetTexEnvi(target, pname);
+    }
+
+    public static int glGetTexEnvi(int target, int pname) {
+        if (target != GL11.GL_TEXTURE_ENV) return 0;
+
+        final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+        return switch (pname) {
+            case GL11.GL_TEXTURE_ENV_MODE -> envState.mode;
+            case GL13.GL_COMBINE_RGB -> envState.combineRgb;
+            case GL13.GL_COMBINE_ALPHA -> envState.combineAlpha;
+            case GL13.GL_SOURCE0_RGB -> envState.sourceRgb[0];
+            case GL13.GL_SOURCE1_RGB -> envState.sourceRgb[1];
+            case GL13.GL_SOURCE2_RGB -> envState.sourceRgb[2];
+            case GL13.GL_SOURCE0_ALPHA -> envState.sourceAlpha[0];
+            case GL13.GL_SOURCE1_ALPHA -> envState.sourceAlpha[1];
+            case GL13.GL_SOURCE2_ALPHA -> envState.sourceAlpha[2];
+            case GL13.GL_OPERAND0_RGB -> envState.operandRgb[0];
+            case GL13.GL_OPERAND1_RGB -> envState.operandRgb[1];
+            case GL13.GL_OPERAND2_RGB -> envState.operandRgb[2];
+            case GL13.GL_OPERAND0_ALPHA -> envState.operandAlpha[0];
+            case GL13.GL_OPERAND1_ALPHA -> envState.operandAlpha[1];
+            case GL13.GL_OPERAND2_ALPHA -> envState.operandAlpha[2];
+            case GL13.GL_RGB_SCALE -> (int) envState.scaleRgb;
+            case GL11.GL_ALPHA_SCALE -> (int) envState.scaleAlpha;
+            default -> 0;
+        };
+    }
+
+    public static void glGetTexEnv(int target, int pname, IntBuffer params) {
+        if (target != GL11.GL_TEXTURE_ENV) return;
+        if (pname == GL11.GL_TEXTURE_ENV_COLOR) {
+            final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+            params.put(params.position(), (int) (envState.envColorR * 2147483647.0f));
+            params.put(params.position() + 1, (int) (envState.envColorG * 2147483647.0f));
+            params.put(params.position() + 2, (int) (envState.envColorB * 2147483647.0f));
+            params.put(params.position() + 3, (int) (envState.envColorA * 2147483647.0f));
+        } else {
+            params.put(params.position(), glGetTexEnvi(target, pname));
+        }
+    }
+
+    public static void glGetTexEnv(int target, int pname, FloatBuffer params) {
+        if (target != GL11.GL_TEXTURE_ENV) return;
+        if (pname == GL11.GL_TEXTURE_ENV_COLOR) {
+            final var envState = textures.getTexEnvState(activeTextureUnit.getValue());
+            params.put(params.position(), envState.envColorR);
+            params.put(params.position() + 1, envState.envColorG);
+            params.put(params.position() + 2, envState.envColorB);
+            params.put(params.position() + 3, envState.envColorA);
+        } else {
+            params.put(params.position(), (float) glGetTexEnvi(target, pname));
+        }
+    }
+
     // TexGen generation counter for FFP uniform dirty tracking
     public static int texGenGeneration;
 
@@ -5004,6 +5124,65 @@ public class GLStateManager {
             final int unit = activeTextureUnit.getValue();
             textures.getTexGenState(unit).setMode(coord, params.get(params.position()));
             texGenGeneration++;
+        }
+    }
+
+    public static int glGetTexGeni(int coord, int pname) {
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            return textures.getTexGenState(activeTextureUnit.getValue()).getMode(coord);
+        }
+        return 0;
+    }
+
+    public static float glGetTexGenf(int coord, int pname) {
+        return (float) glGetTexGeni(coord, pname);
+    }
+
+    public static double glGetTexGend(int coord, int pname) {
+        return glGetTexGeni(coord, pname);
+    }
+
+    public static void glGetTexGen(int coord, int pname, IntBuffer params) {
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            params.put(params.position(), glGetTexGeni(coord, pname));
+        }
+    }
+
+    public static void glGetTexGen(int coord, int pname, FloatBuffer params) {
+        final var state = textures.getTexGenState(activeTextureUnit.getValue());
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            params.put(params.position(), (float) state.getMode(coord));
+        } else if (pname == GL11.GL_OBJECT_PLANE) {
+            final float[] plane = state.getObjectPlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
+        } else if (pname == GL11.GL_EYE_PLANE) {
+            final float[] plane = state.getEyePlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
+        }
+    }
+
+    public static void glGetTexGen(int coord, int pname, DoubleBuffer params) {
+        final var state = textures.getTexGenState(activeTextureUnit.getValue());
+        if (pname == GL11.GL_TEXTURE_GEN_MODE) {
+            params.put(params.position(), state.getMode(coord));
+        } else if (pname == GL11.GL_OBJECT_PLANE) {
+            final float[] plane = state.getObjectPlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
+        } else if (pname == GL11.GL_EYE_PLANE) {
+            final float[] plane = state.getEyePlane(coord);
+            params.put(params.position(), plane[0]);
+            params.put(params.position() + 1, plane[1]);
+            params.put(params.position() + 2, plane[2]);
+            params.put(params.position() + 3, plane[3]);
         }
     }
 

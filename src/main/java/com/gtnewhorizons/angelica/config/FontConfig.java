@@ -71,6 +71,11 @@ public class FontConfig {
     @Config.RangeFloat(min = 0.1F, max = 3F)
     public static float customFontScale;
 
+    @Config.Comment("A shadow offset multiplier applied only to the Unicode font.")
+    @Config.DefaultFloat(0.5F)
+    @Config.RangeFloat(min = 0F, max = 2F)
+    public static float fontShadowOffsetUC;
+
     @Config.Comment({"Mods can provide Angelica with a mapping of special characters to either get replaced with " +
         "different characters or rendered using the default Unicode font. Setting this to false disables the " +
         "replacement, which is useful in cases where custom fonts have direct support for these special characters. ",

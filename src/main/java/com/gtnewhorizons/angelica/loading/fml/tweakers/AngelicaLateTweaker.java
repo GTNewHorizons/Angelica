@@ -54,6 +54,15 @@ public class AngelicaLateTweaker implements ITweaker {
                 exceptions.add("Reika.DragonAPI.ASM.StructureLootHooks");
                 FMLRelaunchLog.info("[Angelica] Narrowed Reika.DragonAPI.ASM transformer exclusion to allow GL redirection of utility classes");
             }
+
+            if (exceptions.remove("xaero.common.core")) {
+                exceptions.add("xaero.common.core.transformer");
+                FMLRelaunchLog.info("[Angelica] Narrowed xaero.common.core transformer exclusion to allow GL redirection");
+            }
+            if (exceptions.remove("xaero.map.core")) {
+                exceptions.add("xaero.map.core.transformer");
+                FMLRelaunchLog.info("[Angelica] Narrowed xaero.map.core transformer exclusion to allow GL redirection");
+            }
         } catch (Exception e) {
             FMLRelaunchLog.warning("[Angelica] Failed to narrow transformer exclusions: %s", e.getMessage());
         }

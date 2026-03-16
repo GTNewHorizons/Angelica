@@ -4,12 +4,10 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer;
-import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer.UploadStrategy;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
@@ -47,7 +45,6 @@ public class TessellatorStreamingDrawer {
     private static int repackCapacity;
 
     private static boolean initialized = false;
-    private static UploadStrategy orphanStrategy = UploadStrategy.BUFFER_SUB_DATA;
 
     static {
         // Initial repack buffer: 64KB
@@ -59,12 +56,6 @@ public class TessellatorStreamingDrawer {
     private static void init() {
         if (initialized) return;
         initialized = true;
-
-        // Select orphan upload strategy from config
-        if (AngelicaMod.options() != null && AngelicaMod.options().advanced.useMapBufferRange) {
-            orphanStrategy = UploadStrategy.MAP_BUFFER_RANGE;
-        }
-        LOGGER.info("Orphan upload strategy: {}", orphanStrategy);
 
         if (RenderSystem.supportsBufferStorage() && !Boolean.getBoolean("angelica.forceOrphanStreaming")) {
             try {
@@ -179,11 +170,6 @@ public class TessellatorStreamingDrawer {
         if (persistentBuffer != null) {
             persistentBuffer.postDraw();
         }
-        for (int i = 0; i < FORMAT_COUNT; i++) {
-            if (orphanBuffers[i] != null) {
-                orphanBuffers[i].postDraw();
-            }
-        }
     }
 
     /**
@@ -231,7 +217,8 @@ public class TessellatorStreamingDrawer {
             GLStateManager.glBindVertexArray(persistentVAOs[flags]);
         } else {
             GLStateManager.glBindVertexArray(orphanVAOs[flags]);
-            firstVertex = orphanBuffers[flags].upload(packed, vertexSize);
+            orphanBuffers[flags].upload(packed);
+            firstVertex = 0;
         }
 
         GLStateManager.prepareWideLineEmulation(drawMode);
@@ -266,7 +253,7 @@ public class TessellatorStreamingDrawer {
         init();
 
         if (orphanVAOs[flags] == 0) {
-            orphanBuffers[flags] = new OrphanStreamingBuffer(orphanStrategy);
+            orphanBuffers[flags] = new OrphanStreamingBuffer();
 
             orphanVAOs[flags] = GL30.glGenVertexArrays();
             GLStateManager.glBindVertexArray(orphanVAOs[flags]);

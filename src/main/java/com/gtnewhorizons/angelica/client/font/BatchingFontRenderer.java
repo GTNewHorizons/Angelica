@@ -6,24 +6,26 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import lombok.Setter;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
-import org.apache.commons.io.IOUtils;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 
-import java.io.IOException;
+
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-import java.nio.charset.StandardCharsets;
+
 import java.util.Comparator;
 import java.util.Objects;
 
@@ -57,21 +59,18 @@ public class BatchingFontRenderer {
     final boolean isSGA;
     final boolean isSplash;
 
+    /** For use with modded books. Affects calculations and forces some defaults. */
+    @Setter
+    boolean bookMode = false;
+
     private static class FontAAShader {
 
         private static Program fontShader = null;
         public static Program getProgram() {
             if (fontShader == null) {
-                String vsh, fsh;
-                try {
-                    fsh = new String(IOUtils.toByteArray(Objects.requireNonNull(FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/fontFilter.fsh"))), StandardCharsets.UTF_8);
-                    vsh = new String(IOUtils.toByteArray(Objects.requireNonNull(FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/fontFilter.vsh"))), StandardCharsets.UTF_8);
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
-                }
-
-                ProgramBuilder builder = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0));
-                fontShader = builder.build();
+                final String vsh = ShaderLoader.getShaderSource("angelica:fontFilter.vsh");
+                final String fsh = ShaderLoader.getShaderSource("angelica:fontFilter.fsh");
+                fontShader = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0)).build();
             }
             return fontShader;
         }
@@ -116,7 +115,10 @@ public class BatchingFontRenderer {
     // v, t and tb are floats, c is bytes; 36 bytes total
     private static final int VERTEX_SIZE = 36;
     private static int rawCapacity = INITIAL_BATCH_SIZE * VERTEX_SIZE;
-    private static long vertexDataAddress = nmemAllocChecked(rawCapacity);
+    private static ByteBuffer vertexData = memAlloc(rawCapacity);
+    private static long vertexDataAddress = memAddress0(vertexData);
+    private static int vboCapacity;
+
 
     // OpenGL objects (static, can be used between multiple BatchingFontRenderer)
     private static int fontVAO = 0;
@@ -167,7 +169,8 @@ public class BatchingFontRenderer {
     private void ensureCapacity() {
         if (vertexDataPos + (4 * VERTEX_SIZE) > rawCapacity) {
             rawCapacity *= 2;
-            vertexDataAddress = nmemReallocChecked(vertexDataAddress, rawCapacity);
+            vertexData = memRealloc(vertexData, rawCapacity);
+            vertexDataAddress = memAddress0(vertexData);
 
             allocateBuffers();
         }
@@ -321,8 +324,8 @@ public class BatchingFontRenderer {
 
         // Upload first (to reduce stalls)
         GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-
-        streamUpload(vertexDataAddress, vertexDataPos);
+        vertexData.limit(vertexDataPos);
+        vboCapacity = StreamingUploader.upload(vertexData, vboCapacity);
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
@@ -427,12 +430,6 @@ public class BatchingFontRenderer {
         idxWriterIndex = 0;
     }
 
-    private static void streamUpload(long address, int bytes) {
-        final ByteBuffer data = memByteBuffer(address, bytes);
-        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, bytes, GL15.GL_STREAM_DRAW);
-        GL15.glBufferSubData(GL15.GL_ARRAY_BUFFER, 0, data);
-    }
-
     // === Actual text mesh generation
 
     public static boolean charInRange(char what, char fromInclusive, char toInclusive) {
@@ -440,7 +437,7 @@ public class BatchingFontRenderer {
     }
 
     public boolean forceDefaults() {
-        return this.isSGA || this.isSplash;
+        return this.bookMode || this.isSGA || this.isSplash;
     }
 
     public float getGlyphScaleX() {
@@ -596,7 +593,7 @@ public class BatchingFontRenderer {
 
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-                    curX += 4 * this.getWhitespaceScale();
+                    curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
                     continue;
                 }
 
@@ -646,7 +643,8 @@ public class BatchingFontRenderer {
                 final int vtxCount = 4 * charCount;
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
 
-                curX += (xAdvance + (curBold ? shadowOffset : 0.0f)) + getGlyphSpacing();
+                curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
+                if (bookMode) { curX = (int) curX; }
                 underlineEndX = curX;
                 strikethroughEndX = curX;
             }

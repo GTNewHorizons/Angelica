@@ -4,6 +4,9 @@
   "package": "com.gtnewhorizons.angelica.mixins.late",
   "refmap": "mixins.angelica.refmap.json",
   "target": "@env(DEFAULT)",
-  "compatibilityLevel": "JAVA_21"
+  "compatibilityLevel": "JAVA_21",
+  "overwrites": {
+    "conformVisibility": true
+  }
 }
 

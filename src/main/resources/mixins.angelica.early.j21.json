@@ -7,6 +7,9 @@
   "injectors":{
     "maxShiftBy": 2
   },
-  "compatibilityLevel": "JAVA_21"
+  "compatibilityLevel": "JAVA_21",
+  "overwrites": {
+    "conformVisibility": true
+  }
 }
 
