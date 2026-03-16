@@ -1,6 +1,7 @@
 package net.coderbot.iris.gl.program;
 
 import net.coderbot.iris.gl.GlResource;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
 import org.lwjgl.opengl.GL20;
 
 public final class Program extends GlResource {
@@ -14,6 +15,8 @@ public final class Program extends GlResource {
 		this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
+
+		DepthColorStorage.registerOwnedProgram(program);
 	}
 
 	public void use() {
@@ -32,6 +35,7 @@ public final class Program extends GlResource {
 
 	@Override
     public void destroyInternal() {
+		DepthColorStorage.unregisterOwnedProgram(getGlId());
 		GL20.glDeleteProgram(getGlId());
 	}
 

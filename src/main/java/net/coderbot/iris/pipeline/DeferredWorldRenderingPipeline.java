@@ -23,6 +23,7 @@ import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.gl.blending.AlphaTestOverride;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
@@ -738,6 +739,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+	public boolean shouldOverrideShaders() {
+		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
+	}
+
+	public int getActivePassProgramId() {
+		if (current == null) return -1;
+		final Program p = current.getProgram();
+		return p != null ? p.getProgramId() : -1;
+	}
+
 	private void matchPass() {
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
 			return;
@@ -947,6 +958,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		public void use() {
+			DepthColorStorage.unlockDepthColor();
+
 			if (isBeforeTranslucent) {
 				framebufferBeforeTranslucents.bind();
 			} else {
@@ -986,6 +999,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		public void stopUsing() {
+			DepthColorStorage.unlockDepthColor();
+
 			if (alphaTestOverride != null) {
 				AlphaTestOverride.restore();
 			}
@@ -1009,6 +1024,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void destroy() {
+		DepthColorStorage.unlockDepthColor();
 		BlendModeOverride.restore();
 		AlphaTestOverride.restore();
 

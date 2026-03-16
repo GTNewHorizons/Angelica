@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizons.angelica.AngelicaExtension;
+import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.util.GLSMUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -18,7 +19,7 @@ public class GLSM_VAO_UnitTest {
 
     @Test
     void testDefaultStates() {
-        verifyState(GL30.GL_VERTEX_ARRAY_BINDING, 0, "GL_VERTEX_ARRAY_BINDING Initial State");
+        verifyState(GL30.GL_VERTEX_ARRAY_BINDING, GLStateManager.getDefaultVAO(), "GL_VERTEX_ARRAY_BINDING Initial State");
         verifyState(GL13.GL_CLIENT_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "GL_CLIENT_ACTIVE_TEXTURE Initial State");
         testClientStates();
     }
@@ -85,7 +86,7 @@ public class GLSM_VAO_UnitTest {
 
         // Check if everything got reset to default
         glBindVertexArray(0);
-        verifyState(GL30.GL_VERTEX_ARRAY_BINDING, 0, "GL_VERTEX_ARRAY_BINDING - Unbound");
+        verifyState(GL30.GL_VERTEX_ARRAY_BINDING, GLStateManager.getDefaultVAO(), "GL_VERTEX_ARRAY_BINDING - Unbound");
         verifyState(GL15.GL_ARRAY_BUFFER_BINDING, 0, "GL_ARRAY_BUFFER_BINDING - Unbound");
 
         verifyState(GL11.GL_VERTEX_ARRAY, defaultVertexEnabled, "GL_VERTEX_ARRAY - Reset");
@@ -131,7 +132,9 @@ public class GLSM_VAO_UnitTest {
     }
 
     private static void glBindVertexArray(int array) {
+        if (array == 0) array = GLStateManager.getDefaultVAO();
         GLStateManager.boundVAO = array;
+        VertexAttribState.onBindVertexArray(array);
         UniversalVAO.bindVertexArray(array);
     }
 }

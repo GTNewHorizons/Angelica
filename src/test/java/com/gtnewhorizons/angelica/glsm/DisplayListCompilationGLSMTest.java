@@ -102,30 +102,28 @@ class DisplayListCompilationGLSMTest {
     }
 
     @Test
-    void glsm_compileAndExecute_transformQueuedUntilFlush() {
-        // Transforms queue until draw/glEndList (state commands don't flush)
-        FloatBuffer identity = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, identity);
-
+    void glsm_compileAndExecute_transformAppliedImmediately() {
+        // COMPILE_AND_EXECUTE: transforms apply to GLSM stack immediately (not deferred). This is required because state commands between transforms and draws
+        // may trigger Iris program activation, which reads the matrix from the GLSM stack.
         testList = GL11.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE_AND_EXECUTE);
-        GLStateManager.glTranslatef(10, 0, 0);  // Queued
+        GLStateManager.glTranslatef(10, 0, 0);  // Applied immediately
 
-        FloatBuffer beforeFlush = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeFlush);
-        assertMatrixEquals(identity, beforeFlush, "Before flush: transform queued");
+        FloatBuffer afterTranslate = BufferUtils.createFloatBuffer(16);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterTranslate);
+        assertEquals(10.0f, afterTranslate.get(12), 0.001f, "After translate: applied immediately");
 
-        GLStateManager.enableBlend();  // State commands DON'T flush transforms anymore
+        GLStateManager.enableBlend();
 
         FloatBuffer afterStateCmd = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterStateCmd);
-        assertMatrixEquals(identity, afterStateCmd, "After state cmd: transform still queued");
+        assertEquals(10.0f, afterStateCmd.get(12), 0.001f, "After state cmd: still applied");
 
-        GLStateManager.glEndList();  // glEndList flushes pending transforms
+        GLStateManager.glEndList();
 
         FloatBuffer afterEndList = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterEndList);
-        assertEquals(10.0f, afterEndList.get(12), 0.001f, "After glEndList: transform applied");
+        assertEquals(10.0f, afterEndList.get(12), 0.001f, "After glEndList: still applied");
     }
 
     @Test
@@ -209,7 +207,7 @@ class DisplayListCompilationGLSMTest {
     }
 
     @Test
-    void glsm_compileAndExecute_matrixModeFlushesTransforms() {
+    void glsm_compileAndExecute_matrixModeWithTransforms() {
         GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
@@ -217,18 +215,14 @@ class DisplayListCompilationGLSMTest {
         testList = GL11.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE_AND_EXECUTE);
 
-        GLStateManager.glTranslatef(10, 0, 0);  // Queued
-        GLStateManager.glRotatef(45, 0, 1, 0);  // Queued
+        GLStateManager.glTranslatef(10, 0, 0);  // Applied immediately
+        GLStateManager.glRotatef(45, 0, 1, 0);  // Applied immediately
 
-        FloatBuffer beforeMode = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeMode);
-        assertEquals(0.0f, beforeMode.get(12), 0.001f, "Before MatrixMode: queued");
+        FloatBuffer afterTransforms = BufferUtils.createFloatBuffer(16);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterTransforms);
+        assertNotEquals(0.0f, afterTransforms.get(12), "After transforms: applied immediately");
 
-        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);  // Barrier - flushes
-
-        FloatBuffer afterMode = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterMode);
-        assertNotEquals(0.0f, afterMode.get(12), "After MatrixMode: flushed to MODELVIEW");
+        GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
 
         FloatBuffer proj = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_PROJECTION_MATRIX, proj);
@@ -241,25 +235,19 @@ class DisplayListCompilationGLSMTest {
     }
 
     @Test
-    void glsm_compileAndExecute_pushPopMatrixQueued() {
-        // State commands don't flush, but push/pop ARE matrix barriers
+    void glsm_compileAndExecute_pushPopMatrix() {
+        // Push/pop work correctly with immediate transform application
         testList = GL11.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE_AND_EXECUTE);
 
         GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(10, 0, 0);
+        GLStateManager.glTranslatef(10, 0, 0);  // Applied immediately
 
-        FloatBuffer beforeFlush = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, beforeFlush);
-        assertEquals(0.0f, beforeFlush.get(12), 0.001f, "Before flush: queued");
+        FloatBuffer afterTranslate = BufferUtils.createFloatBuffer(16);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterTranslate);
+        assertEquals(10.0f, afterTranslate.get(12), 0.001f, "After translate: applied immediately");
 
-        GLStateManager.enableBlend();  // NOT a barrier in new model
-
-        FloatBuffer afterStateCmd = BufferUtils.createFloatBuffer(16);
-        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterStateCmd);
-        assertEquals(0.0f, afterStateCmd.get(12), 0.001f, "After state cmd: still queued");
-
-        GLStateManager.glPopMatrix();  // Matrix barrier: flushes transform, then pops
+        GLStateManager.glPopMatrix();  // Pops back to pre-push state
 
         FloatBuffer afterPop = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterPop);

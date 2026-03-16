@@ -3,6 +3,7 @@ package net.coderbot.iris.gl.program;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.GlResource;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shaderpack.FilledIndirectPointer;
 import org.joml.Vector2f;
@@ -34,6 +35,8 @@ public final class ComputeProgram extends GlResource {
 		this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
+
+		DepthColorStorage.registerOwnedProgram(program);
 	}
 
 	public void setWorkGroupInfo(Vector2f relativeWorkGroups, Vector3i absoluteWorkGroups, FilledIndirectPointer indirectPointer) {
@@ -89,6 +92,7 @@ public final class ComputeProgram extends GlResource {
 
 	@Override
     public void destroyInternal() {
+		DepthColorStorage.unregisterOwnedProgram(getGlId());
 		GL20.glDeleteProgram(getGlId());
 	}
 

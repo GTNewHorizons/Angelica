@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
-import com.gtnewhorizons.angelica.glsm.ThreadedBlockData;
+import com.gtnewhorizons.angelica.client.rendering.ThreadedBlockData;
 import net.minecraft.block.Block;
 import org.spongepowered.asm.mixin.Mixin;
 

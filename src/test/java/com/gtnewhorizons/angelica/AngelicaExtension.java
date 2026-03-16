@@ -2,8 +2,7 @@ package com.gtnewhorizons.angelica;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
@@ -21,6 +20,17 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
 public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
+
+    private static final Unsafe theUnsafe;
+    static {
+        try {
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            theUnsafe = (Unsafe) f.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
 
     private static boolean started = false;
     private static DisplayMode displayMode;
@@ -45,12 +55,12 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
 
             setMainThread(Thread.currentThread());
 
-            GLStateManager.preInit();
-            VertexAttribState.init(0);
+            GLStateManager.initialize(GLSMInitConfig.builder()
+                .displaySize(displayMode.getWidth(), displayMode.getHeight())
+                .build());
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete();
             GLStateManager.BYPASS_CACHE = false;
-            RenderSystem.initRenderer();
             context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
             glRenderer = GL11.glGetString(GL11.GL_RENDERER);
@@ -62,18 +72,24 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
         }
     }
 
+    private static void forceBoundVAO(int value) {
+        try {
+            final Field f = GLStateManager.class.getDeclaredField("boundVAO");
+            final Object base = theUnsafe.staticFieldBase(f);
+            final long offset = theUnsafe.staticFieldOffset(f);
+            theUnsafe.putInt(base, offset, value);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("Failed to force boundVAO", e);
+        }
+    }
+
     private static void setMainThread(Thread thread) {
         try {
-            // Use Unsafe to set final static field - works on all Java versions
-            final Field unsafeField = Unsafe.class.getDeclaredField("theUnsafe");
-            unsafeField.setAccessible(true);
-            final Unsafe unsafe = (Unsafe) unsafeField.get(null);
-
-            final Field mainThreadField = GLStateManager.class.getDeclaredField("MainThread");
-            final Object base = unsafe.staticFieldBase(mainThreadField);
-            final long offset = unsafe.staticFieldOffset(mainThreadField);
-            unsafe.putObject(base, offset, thread);
-        } catch (NoSuchFieldException | IllegalAccessException e) {
+            final Field f = GLStateManager.class.getDeclaredField("MainThread");
+            final Object base = theUnsafe.staticFieldBase(f);
+            final long offset = theUnsafe.staticFieldOffset(f);
+            theUnsafe.putObject(base, offset, thread);
+        } catch (NoSuchFieldException e) {
             throw new RuntimeException("Failed to set MainThread for tests", e);
         }
     }
@@ -86,6 +102,11 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
     @Override
     public void beforeEach(ExtensionContext context) throws Exception {
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+
+        // Force-sync VAO binding. Tests may unbind via raw GL, desynchronizing GLSM's cache.
+        // Invalidate the cache so glBindVertexArray(0) actually issues the GL call.
+        forceBoundVAO(-1);
+        GLStateManager.glBindVertexArray(0);
 
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         while (GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH) > EXPECTED_MODELVIEW_STACK_DEPTH) {

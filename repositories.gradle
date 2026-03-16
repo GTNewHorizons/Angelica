@@ -22,6 +22,13 @@ repositories {
             includeGroup 'org.taumc'
         }
     }
+    maven {
+        name = 'forge'
+        url = 'https://maven.minecraftforge.net/'
+        content {
+            includeGroup 'net.minecraftforge'
+        }
+    }
     ivy {
         name = 'modernsplash-github'
         url = 'https://github.com/MalTeeez/ModernSplash/releases/download/'
