@@ -32,6 +32,9 @@ public abstract class MixinRenderBlocks {
     @Shadow
     public abstract boolean renderStandardBlockWithColorMultiplier(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_);
 
+    @Shadow
+    public abstract IIcon getBlockIcon(Block block);
+
     @Unique
     private static final ObjectOpenHashSet<String> isbrhExceptionCache = new ObjectOpenHashSet<>();
 
@@ -47,6 +50,11 @@ public abstract class MixinRenderBlocks {
     private boolean isRenderingByType = false;
 
     private boolean applyingCeleritasAO = false;
+
+    @Unique
+    private boolean angelica$usesGrassTopAoSemantics(Block block) {
+        return "grass_top".equals(this.getBlockIcon(block).getIconName());
+    }
 
     @Inject(method = "renderBlockByRenderType", at = @At("HEAD"))
     private void renderingByTypeEnable(CallbackInfoReturnable<Boolean> ci) {
@@ -102,6 +110,9 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
+        if (this.angelica$usesGrassTopAoSemantics(block)) {
+            return;
+        }
         if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && AngelicaMod.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             this.applyingCeleritasAO = true;

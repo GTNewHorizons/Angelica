@@ -3,6 +3,7 @@
 uniform sampler2D sampler;
 uniform int aaMode;
 uniform float strength;
+uniform float alphaTestRef;
 
 in vec4 color;
 in vec4 tB;
@@ -68,6 +69,10 @@ void main() {
             res /= totalWt;
             col.a = original_alpha * res;
         }
+    }
+
+    if (col.a <= alphaTestRef) {
+        discard;
     }
 
     fragColor = col;
