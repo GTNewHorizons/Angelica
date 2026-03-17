@@ -9,6 +9,7 @@ public enum TargetedMod implements ITargetMod {
 
     ARCHAICFIX("org.embeddedt.archaicfix.ArchaicCore", "archaicfix"),
     BACKHAND("xonin.backhand.coremod.BackhandLoadingPlugin", "backhand"),
+    BIOMES_O_PLENTY(null, "BiomesOPlenty"),
     CAMPFIRE_BACKPORT(null, "campfirebackport"),
     COFHCORE( "cofh.asm.LoadingPlugin", "CoFHCore"),
     DYNAMIC_SURROUNDINGS_MIST("org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround"),

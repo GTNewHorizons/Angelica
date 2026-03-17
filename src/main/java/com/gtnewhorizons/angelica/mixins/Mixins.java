@@ -335,6 +335,12 @@ public enum Mixins implements IMixins {
             "client.securitycraft.MixinBlockReinforcedIronBars"
         )),
 
+    BIOMES_O_PLENTY_COMPAT(new MixinBuilder("Fix Biomes O' Plenty loamy grass rendering with Celeritas AO")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.BIOMES_O_PLENTY)
+        .setApplyIf(() -> CompatConfig.fixBiomesOPlenty)
+        .addClientMixins("client.biomesoplenty.MixinRenderNewGrass")),
+
     EXTRA_UTILITIES_THREAD_SAFETY(new MixinBuilder("Enable thread safety fixes in Extra Utilities")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.EXTRAUTILS)

@@ -15,6 +15,11 @@ public class CompatConfig {
     @Config.RequiresMcRestart
     public static boolean fixExtraUtils;
 
+    @Config.Comment("Fix Biomes O' Plenty loamy grass rendering with Celeritas AO")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixBiomesOPlenty;
+
     @Config.Comment("Apply fixes to Stacks on Stacks")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -44,17 +49,17 @@ public class CompatConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean fixSecurityCraft;
-    
+
     @Config.Comment("Apply tweaks to NTM:Space")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean tweakNTMSpace;
-    
+
     @Config.Comment("Apply fixes to NTM:Space")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean fixNTMSpace;
-    
+
     @Config.Comment("Disables rendering of the planet below the player at high altitudes [Requires tweakNTMSpace]")
     @Config.DefaultEnum("ShadersOnly")
     public static altitudePlanetRendererState NTMSpace_disableAltitudePlanetRenderer;
