@@ -85,7 +85,7 @@ public final class FragmentShaderGenerator {
 
     private static void emitTexEnvChain(StringBuilder sb, FragmentKey key) {
         if (!key.textureEnabled()) {
-            sb.append("  // No texture — vertex color only\n");
+            sb.append("  // No texture -- vertex color only\n");
             sb.append("  vec4 color = v_Color;\n");
             return;
         }
