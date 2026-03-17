@@ -7,8 +7,6 @@ import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
@@ -24,8 +22,6 @@ import java.nio.FloatBuffer;
  * programs.
  */
 public class CompatUniformManager {
-
-    private static final Logger LOGGER = LogManager.getLogger("GLSM");
 
     // Uniform location indices within the cached array (package-private for tests)
     static final int LOC_MODELVIEW = 0;
@@ -144,7 +140,7 @@ public class CompatUniformManager {
 
         if (hasAny) {
             programLocations.put(program, locs);
-            LOGGER.debug("CompatUniformManager: program {} has compat uniforms", program);
+            GLStateManager.LOGGER.debug("CompatUniformManager: program {} has compat uniforms", program);
         }
     }
 

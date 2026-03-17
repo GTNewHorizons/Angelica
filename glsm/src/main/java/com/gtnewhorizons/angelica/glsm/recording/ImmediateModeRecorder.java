@@ -6,8 +6,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
@@ -19,7 +17,6 @@ import java.util.Arrays;
  * Used both during display list compilation and for live immediate mode emulation in core profile.
  */
 public final class ImmediateModeRecorder {
-    private static final Logger LOGGER = LogManager.getLogger("ImmediateModeRecorder");
     private static final DirectTessellator tessellator = new DirectTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
 
     /** Separate tessellator for the splash thread. Nulled after splash completes. */
@@ -234,7 +231,7 @@ public final class ImmediateModeRecorder {
             final int eboReadOffset = (int) indicesOffset;
             final int eboReadSize = indicesCount * indexSize;
             if (eboReadOffset + eboReadSize > eboSize) {
-                LOGGER.warn("[EBO] Read range {}+{} exceeds buffer size {}", eboReadOffset, eboReadSize, eboSize);
+                GLStateManager.LOGGER.warn("[EBO] Read range {}+{} exceeds buffer size {}", eboReadOffset, eboReadSize, eboSize);
                 GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
                 return null;
             }
@@ -286,7 +283,7 @@ public final class ImmediateModeRecorder {
                     GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
                     final int bufferSize = GL15.glGetBufferParameteri(GL15.GL_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
                     if (bufferSize <= 0) {
-                        LOGGER.warn("[VBO Readback] GL_BUFFER_SIZE={} for VBO {}", bufferSize, a.vboId);
+                        GLStateManager.LOGGER.warn("[VBO Readback] GL_BUFFER_SIZE={} for VBO {}", bufferSize, a.vboId);
                         continue;
                     }
 

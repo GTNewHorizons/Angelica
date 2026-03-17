@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.compat.lwjgl;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.util.glu.PartialDisk;
 
 import static org.lwjgl.opengl.GL11.GL_LINE_STRIP;
@@ -23,8 +21,6 @@ import static org.lwjgl.util.glu.GLU.GLU_SMOOTH;
 @SuppressWarnings("unused")
 public class AngelicaPartialDisk extends PartialDisk {
 
-    private static final Logger LOGGER = LogManager.getLogger("GLSM");
-
     private static final float PI = (float) Math.PI;
     private static final int CACHE_SIZE = 240;
     private final float[] sinCache = new float[CACHE_SIZE];
@@ -38,7 +34,7 @@ public class AngelicaPartialDisk extends PartialDisk {
 
         if (slices >= CACHE_SIZE) slices = CACHE_SIZE - 1;
         if (slices < 2 || loops < 1 || outerRadius <= 0.0f || innerRadius < 0.0f || innerRadius > outerRadius) {
-            LOGGER.warn("PartialDisk: GLU_INVALID_VALUE (slices={}, loops={}, innerRadius={}, outerRadius={})", slices, loops, innerRadius, outerRadius);
+            GLStateManager.LOGGER.warn("PartialDisk: GLU_INVALID_VALUE (slices={}, loops={}, innerRadius={}, outerRadius={})", slices, loops, innerRadius, outerRadius);
             return;
         }
 

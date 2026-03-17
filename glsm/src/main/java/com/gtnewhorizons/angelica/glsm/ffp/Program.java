@@ -4,8 +4,6 @@ import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL32;
@@ -20,7 +18,6 @@ import java.util.concurrent.atomic.AtomicInteger;
  */
 public class Program {
 
-    private static final Logger LOGGER = LogManager.getLogger("FFPProgram");
     private static final AtomicInteger PROGRAM_COUNTER = new AtomicInteger();
 
     @Getter private final int programId;
@@ -206,7 +203,7 @@ public class Program {
 
             final String log = RenderSystem.getProgramInfoLog(program);
             if (!log.isEmpty()) {
-                LOGGER.warn("FFP program link log (vk=0x{}, fk={}): {}", vkHex, fk, log);
+                GLStateManager.LOGGER.warn("FFP program link log (vk=0x{}, fk={}): {}", vkHex, fk, log);
             }
 
             if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
@@ -258,12 +255,12 @@ public class Program {
 
         final String log = RenderSystem.getShaderInfoLog(shader);
         if (!log.isEmpty()) {
-            LOGGER.warn("FFP {} shader compilation log for {}: {}", typeName, name, log);
+            GLStateManager.LOGGER.warn("FFP {} shader compilation log for {}: {}", typeName, name, log);
         }
 
         final int result = GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS);
         if (result != GL11.GL_TRUE) {
-            LOGGER.error("FFP {} shader source:\n{}", typeName, src);
+            GLStateManager.LOGGER.error("FFP {} shader source:\n{}", typeName, src);
             GL20.glDeleteShader(shader);
             throw new RuntimeException("FFP " + typeName + " shader compilation failed for " + name + ": " + log);
         }

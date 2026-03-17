@@ -5,8 +5,6 @@
 
 package com.gtnewhorizons.angelica.glsm;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
 import org.lwjgl.opengl.ARBDebugOutput;
@@ -25,8 +23,6 @@ import static org.lwjgl.opengl.ARBDebugOutput.glDebugMessageCallbackARB;
 
 public final class GLDebug {
 
-    private static final Logger LOGGER = LogManager.getLogger("GLSM");
-
     /**
      * Sets up debug callbacks
      *
@@ -34,7 +30,7 @@ public final class GLDebug {
      */
     public static int setupDebugMessageCallback() {
         if (Thread.currentThread() != GLStateManager.getMainThread()) {
-            LOGGER.warn("setupDebugMessageCallback called from non-main thread!");
+            GLStateManager.LOGGER.warn("setupDebugMessageCallback called from non-main thread!");
             return 0;
         }
         return setupDebugMessageCallbackImpl();
@@ -70,11 +66,11 @@ public final class GLDebug {
         String fullMessage = String.format("[GL] %s %s (0x%X) from %s: %s%s", severity, type, id, source, message, buildStackTrace());
 
         if ("HIGH".equals(severity)) {
-            LOGGER.error(fullMessage);
+            GLStateManager.LOGGER.error(fullMessage);
         } else if ("MEDIUM".equals(severity)) {
-            LOGGER.warn(fullMessage);
+            GLStateManager.LOGGER.warn(fullMessage);
         } else {
-            LOGGER.info(fullMessage);
+            GLStateManager.LOGGER.info(fullMessage);
         }
     }
 
@@ -82,11 +78,11 @@ public final class GLDebug {
         String fullMessage = String.format("[GL] %s %s (0x%X): %s%s", severity, category, id, message, buildStackTrace());
 
         if ("HIGH".equals(severity)) {
-            LOGGER.error(fullMessage);
+            GLStateManager.LOGGER.error(fullMessage);
         } else if ("MEDIUM".equals(severity)) {
-            LOGGER.warn(fullMessage);
+            GLStateManager.LOGGER.warn(fullMessage);
         } else {
-            LOGGER.info(fullMessage);
+            GLStateManager.LOGGER.info(fullMessage);
         }
     }
 
@@ -97,7 +93,7 @@ public final class GLDebug {
      */
     private static int setupDebugMessageCallbackImpl() {
         if (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_KHR_debug) {
-            LOGGER.info("[GL] Using OpenGL 4.3 for error logging.");
+            GLStateManager.LOGGER.info("[GL] Using OpenGL 4.3 for error logging.");
             final KHRDebugCallback proc = new KHRDebugCallback((source, type, id, severity, message) -> {
                 logDebugMessage(id, getDebugSource(source), getDebugType(type), getDebugSeverity(severity), message);
             });
@@ -111,13 +107,13 @@ public final class GLDebug {
             GL11.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
 
             if ((GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & GL43.GL_CONTEXT_FLAG_DEBUG_BIT) == 0) {
-                LOGGER.warn("[GL] Warning: A non-debug context may not produce any debug output.");
+                GLStateManager.LOGGER.warn("[GL] Warning: A non-debug context may not produce any debug output.");
                 GL11.glEnable(GL43.GL_DEBUG_OUTPUT);
                 return 2;
             }
             return 1;
         } else if (GLStateManager.capabilities.GL_ARB_debug_output) {
-            LOGGER.info("[GL] Using ARB_debug_output for error logging.");
+            GLStateManager.LOGGER.info("[GL] Using ARB_debug_output for error logging.");
             final ARBDebugOutputCallback proc = new ARBDebugOutputCallback((source, type, id, severity, message) -> {
                 logDebugMessage(id, getSourceARB(source), getTypeARB(type), getSeverityARB(severity), message);
             });
@@ -131,7 +127,7 @@ public final class GLDebug {
             GL11.glEnable(ARBDebugOutput.GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
             return 1;
         } else if (GLStateManager.capabilities.GL_AMD_debug_output) {
-            LOGGER.info("[GL] Using AMD_debug_output for error logging.");
+            GLStateManager.LOGGER.info("[GL] Using AMD_debug_output for error logging.");
             final AMDDebugOutputCallback proc = new AMDDebugOutputCallback((id, category, severity, message) -> {
                 logDebugMessageAMD(id, getCategoryAMD(category), getSeverityAMD(severity), message);
             });
@@ -142,7 +138,7 @@ public final class GLDebug {
             AMDDebugOutput.glDebugMessageCallbackAMD(proc);
             return 1;
         } else {
-            LOGGER.info("[GL] No debug output implementation is available, cannot return debug info.");
+            GLStateManager.LOGGER.info("[GL] No debug output implementation is available, cannot return debug info.");
             return 0;
         }
     }
@@ -164,7 +160,7 @@ public final class GLDebug {
             AMDDebugOutput.glDebugMessageCallbackAMD(null);
             return 1;
         } else {
-            LOGGER.info("[GL] No debug output implementation is available, cannot disable debug info.");
+            GLStateManager.LOGGER.info("[GL] No debug output implementation is available, cannot disable debug info.");
             return 0;
         }
     }

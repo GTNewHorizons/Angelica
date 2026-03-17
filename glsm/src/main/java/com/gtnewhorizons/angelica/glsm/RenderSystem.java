@@ -7,8 +7,6 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3i;
@@ -43,7 +41,6 @@ import java.util.regex.Pattern;
  * This class is responsible for abstracting calls to OpenGL and asserting that calls are run on the render thread.
  */
 public class RenderSystem {
-    private static final Logger LOGGER = LogManager.getLogger("RenderSystem");
     private static DSAAccess dsaState;
     private static boolean supportsCompute;
     private static boolean supportsImageLoadStore;
@@ -68,7 +65,7 @@ public class RenderSystem {
         try {
             if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = (Runtime.version().feature() > 8 && GLStateManager.capabilities.GL_EXT_direct_state_access) ? new DSAEXT() : new DSACore();
-                LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
+                GLStateManager.LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
 
         } catch (NoSuchFieldError ignored) {
@@ -76,13 +73,13 @@ public class RenderSystem {
         try {
             if (dsaState == null && GLStateManager.capabilities.GL_ARB_direct_state_access) {
                 dsaState = new DSAARB();
-                LOGGER.info("ARB_direct_state_access detected, enabling DSA.");
+                GLStateManager.LOGGER.info("ARB_direct_state_access detected, enabling DSA.");
             }
         } catch (NoSuchFieldError ignored) {
         }
         if (dsaState == null) {
             dsaState = new DSAUnsupported();
-            LOGGER.info("No DSA support detected, falling back to legacy OpenGL.");
+            GLStateManager.LOGGER.info("No DSA support detected, falling back to legacy OpenGL.");
         }
 
         supportsCompute = supportsCompute();
@@ -128,15 +125,15 @@ public class RenderSystem {
         maxGlslVersion = Integer.parseInt(parseGlVersionString(GL11.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION)));
         supportsGpuShader4 = GLStateManager.capabilities.GL_EXT_gpu_shader4;
 
-        LOGGER.info("Max GLSL version: {}, GPU Shader4: {}", maxGlslVersion, supportsGpuShader4);
-        LOGGER.info("Image Load/Store: {}, Max Image Units: {}", supportsImageLoadStore, maxImageUnits);
-        LOGGER.info("SSBO: {}, Max SSBO Bindings: {}", supportsSSBO, maxSSBOBindings);
-        LOGGER.info("Buffer Storage: {}, Clear Texture: {}, Sampler Objects: {}", supportsBufferStorage, supportsClearTexture, supportsSamplerObjects);
+        GLStateManager.LOGGER.info("Max GLSL version: {}, GPU Shader4: {}", maxGlslVersion, supportsGpuShader4);
+        GLStateManager.LOGGER.info("Image Load/Store: {}, Max Image Units: {}", supportsImageLoadStore, maxImageUnits);
+        GLStateManager.LOGGER.info("SSBO: {}, Max SSBO Bindings: {}", supportsSSBO, maxSSBOBindings);
+        GLStateManager.LOGGER.info("Buffer Storage: {}, Clear Texture: {}, Sampler Objects: {}", supportsBufferStorage, supportsClearTexture, supportsSamplerObjects);
 
         if (GLStateManager.capabilities.OpenGL32) {
             final int profileMask = GL11.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK);
             if ((profileMask & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0) {
-                LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
+                GLStateManager.LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
                 ShaderManager.getInstance().enable();
             }
         }

@@ -11,8 +11,6 @@ import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import lombok.Getter;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL20;
@@ -24,8 +22,6 @@ import java.util.Arrays;
  * FFP shader manager
  */
 public class ShaderManager {
-
-    private static final Logger LOGGER = LogManager.getLogger("FFPShaderManager");
 
     private static final class Holder {
 
@@ -73,7 +69,7 @@ public class ShaderManager {
             return false;
         });
 
-        LOGGER.info("FFP shader emulation enabled");
+        GLStateManager.LOGGER.info("FFP shader emulation enabled");
     }
 
     public void disable() {

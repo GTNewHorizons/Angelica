@@ -3,8 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
@@ -20,8 +18,6 @@ import java.nio.ShortBuffer;
  * Software emulation of GL feedback mode
  */
 public class FeedbackManager {
-
-    private static final Logger LOGGER = LogManager.getLogger("GLSM");
 
     private static final int FB_3D = 0x01;
     private static final int FB_4D = 0x02;
@@ -52,7 +48,7 @@ public class FeedbackManager {
 
     public static void glFeedbackBuffer(int type, FloatBuffer buffer) {
         if (renderMode == GL11.GL_FEEDBACK) {
-            LOGGER.error("glFeedbackBuffer called while already in feedback mode");
+            GLStateManager.LOGGER.error("glFeedbackBuffer called while already in feedback mode");
             return;
         }
         feedbackBuffer = buffer;
@@ -69,7 +65,7 @@ public class FeedbackManager {
         };
 
         if (mode == GL11.GL_SELECT) {
-            LOGGER.warn("glRenderMode(GL_SELECT): selection mode not emulated");
+            GLStateManager.LOGGER.warn("glRenderMode(GL_SELECT): selection mode not emulated");
         }
 
         feedbackCount = 0;

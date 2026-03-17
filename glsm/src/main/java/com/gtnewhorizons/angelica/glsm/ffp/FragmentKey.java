@@ -4,8 +4,6 @@ import java.util.Arrays;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexEnvState;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -34,8 +32,6 @@ import org.lwjgl.opengl.GL13;
  *   42-46: arg2 Alpha
  */
 public final class FragmentKey {
-    private static final Logger LOGGER = LogManager.getLogger("FragmentKey");
-
     public static final int TEX_ENV_MODULATE = 0;
     public static final int TEX_ENV_REPLACE  = 1;
     public static final int TEX_ENV_ADD      = 2;
@@ -297,7 +293,7 @@ public final class FragmentKey {
             case GL13.GL_PRIMARY_COLOR -> SRC_PRIMARY_COLOR;
             case GL13.GL_PREVIOUS      -> SRC_PREVIOUS;
             default -> {
-                LOGGER.debug("Unknown TexEnv source 0x{}, falling back to SRC_PREVIOUS", Integer.toHexString(glSource));
+                GLStateManager.LOGGER.debug("Unknown TexEnv source 0x{}, falling back to SRC_PREVIOUS", Integer.toHexString(glSource));
                 yield SRC_PREVIOUS;
             }
         };

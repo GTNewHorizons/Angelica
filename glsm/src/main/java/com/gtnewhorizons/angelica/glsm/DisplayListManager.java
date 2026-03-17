@@ -19,8 +19,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.Getter;
 import lombok.experimental.UtilityClass;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
@@ -49,8 +47,6 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
  */
 @UtilityClass
 public class DisplayListManager {
-    private static final Logger LOGGER = LogManager.getLogger("DisplayListManager");
-
     // -Dangelica.debugDisplayLists: disable transform collapsing and draw merging
     private static final boolean DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debugDisplayLists");
 
@@ -60,7 +56,7 @@ public class DisplayListManager {
     static {
         LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
         if (LOG_DISPLAY_LIST_COMPILATION) {
-            LogManager.getLogger("DisplayListManager").warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
+            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
         }
     }
 
@@ -169,7 +165,7 @@ public class DisplayListManager {
         // Save pending transform ops for logging (before we clear them)
         if (multMatrixSources != null && pendingTransformOps != null) {
             if (pendingTransformOps.isEmpty()) {
-                LOGGER.warn("flushMatrix: non-identity transform with no tracked ops");
+                GLStateManager.LOGGER.warn("flushMatrix: non-identity transform with no tracked ops");
                 multMatrixSources.add(Collections.singletonList("(unknown source)"));
             } else {
                 multMatrixSources.add(new ArrayList<>(pendingTransformOps));
@@ -969,7 +965,7 @@ public class DisplayListManager {
     // ==================== DEBUG LOGGING ====================
 
     public static void logCompiledDisplayList(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {
-        LOGGER.debug(getCompiledDisplayListString(listId, compiled, stackTrace));
+        GLStateManager.LOGGER.debug(getCompiledDisplayListString(listId, compiled, stackTrace));
     }
 
     public static String getCompiledDisplayListString(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {

@@ -1,18 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
-import java.util.ArrayDeque;
-import java.util.Deque;
 
 public final class CommandBufferProcessor {
-    private static final Logger LOGGER = LogManager.getLogger("CommandBufferProcessor");
     private static final Matrix4f tempMatrix = new Matrix4f();
 
     private CommandBufferProcessor() {}
@@ -168,7 +162,7 @@ public final class CommandBufferProcessor {
                 out.writeComplexRef((DisplayListCommand) obj);
             }
 
-            default -> LOGGER.warn("[CommandBufferProcessor] Unknown opcode in buffer copy: {}", opcode);
+            default -> GLStateManager.LOGGER.warn("[CommandBufferProcessor] Unknown opcode in buffer copy: {}", opcode);
         }
     }
 }

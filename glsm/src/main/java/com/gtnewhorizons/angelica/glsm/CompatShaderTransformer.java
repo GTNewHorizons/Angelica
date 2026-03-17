@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 
@@ -37,8 +35,6 @@ import java.util.regex.Pattern;
  * </ul>
  */
 public class CompatShaderTransformer {
-
-    private static final Logger LOGGER = LogManager.getLogger("GLSM");
 
     private static final Pattern VERSION_PATTERN = Pattern.compile("#version[ \\t]+(\\d+)(?:[ \\t]+(\\w+))?");
 
@@ -106,7 +102,7 @@ public class CompatShaderTransformer {
                 result = transformInternal(source, isFragment);
                 cache.put(key, result);
             } catch (Exception e) {
-                LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
+                GLStateManager.LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
                 result = fixupVersion(source);
             }
         }
@@ -349,7 +345,7 @@ public class CompatShaderTransformer {
             Files.writeString(DUMP_DIR.resolve(id + "_original" + suffix), header + original, StandardCharsets.UTF_8);
             Files.writeString(DUMP_DIR.resolve(id + "_transformed" + suffix), header + transformed, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            LOGGER.warn("Failed to dump compat shader: {}", e.getMessage());
+            GLStateManager.LOGGER.warn("Failed to dump compat shader: {}", e.getMessage());
         }
     }
 

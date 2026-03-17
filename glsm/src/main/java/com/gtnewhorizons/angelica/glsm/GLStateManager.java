@@ -112,7 +112,7 @@ import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
 @SuppressWarnings("unused") // Used in ASM
 public class GLStateManager {
 
-    private static final Logger LOGGER = LogManager.getLogger("GLSM");
+    public static final Logger LOGGER = LogManager.getLogger("GLSM");
 
     // Thread Checking - must be early in static init order so isMainThread() works for state initialization
     @Getter private static final Thread MainThread = Thread.currentThread();

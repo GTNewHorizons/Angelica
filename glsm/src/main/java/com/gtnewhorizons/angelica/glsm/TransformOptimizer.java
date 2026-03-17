@@ -2,8 +2,6 @@ package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.MultMatrixCmd;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4f;
 
 import java.util.ArrayDeque;
@@ -20,8 +18,6 @@ import java.util.List;
  * </ul>
  */
 class TransformOptimizer {
-    private static final Logger LOGGER = LogManager.getLogger("TransformOptimizer");
-
     private final Matrix4f accumulated = new Matrix4f();  // Current accumulated transform
     private final Matrix4f lastEmitted = new Matrix4f();  // Last emitted transform
     private final Deque<Matrix4f> stack = new ArrayDeque<>();  // For Push/Pop
@@ -53,7 +49,7 @@ class TransformOptimizer {
             // After Pop, GL state is restored to the pushed value so lastEmitted should also reflect this
             lastEmitted.set(accumulated);
         } else {
-            LOGGER.warn("[TransformOptimizer] list={} Pop with empty stack - resetting to identity", listId);
+            GLStateManager.LOGGER.warn("[TransformOptimizer] list={} Pop with empty stack - resetting to identity", listId);
             accumulated.identity();
             lastEmitted.identity();
         }
