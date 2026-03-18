@@ -1,12 +1,11 @@
 package net.coderbot.iris.compat.dh;
 
 import com.google.common.primitives.Ints;
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.mitchej123.lwjgl.MemoryStack;
 import com.seibel.distanthorizons.api.DhApi;
-import com.seibel.distanthorizons.core.util.RenderUtil;
-import com.seibel.distanthorizons.coreapi.util.math.Vec3f;
+import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.program.ProgramImages;
@@ -14,7 +13,9 @@ import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.gl.shader.GlShader;
 import net.coderbot.iris.gl.shader.ShaderType;
+import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.samplers.IrisSamplers;
@@ -25,7 +26,7 @@ import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL20;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -53,47 +54,47 @@ public class IrisLodRenderProgram {
     private final BufferBlendOverride[] bufferBlendOverrides;
 
     // This will bind  AbstractVertexAttribute
-    private IrisLodRenderProgram(String name, boolean isShadowPass, boolean translucent, BlendModeOverride override, BufferBlendOverride[] bufferBlendOverrides, String vertex, String tessControl, String tessEval, String geometry, String fragment, CustomUniforms customUniforms, NewWorldRenderingPipeline pipeline) {
-        id = GL43C.glCreateProgram();
+    private IrisLodRenderProgram(String name, boolean isShadowPass, boolean translucent, BlendModeOverride override, BufferBlendOverride[] bufferBlendOverrides, String vertex, String tessControl, String tessEval, String geometry, String fragment, CustomUniforms customUniforms, DeferredWorldRenderingPipeline pipeline) {
+        id = GLStateManager.glCreateProgram();
 
-        GL32.glBindAttribLocation(this.id, 0, "vPosition");
-        GL32.glBindAttribLocation(this.id, 1, "iris_color");
-        GL32.glBindAttribLocation(this.id, 2, "irisExtra");
+        GL20.glBindAttribLocation(this.id, 0, "vPosition");
+        GL20.glBindAttribLocation(this.id, 1, "iris_color");
+        GL20.glBindAttribLocation(this.id, 2, "irisExtra");
 
         this.bufferBlendOverrides = bufferBlendOverrides;
 
         GlShader vert = new GlShader(ShaderType.VERTEX, name + ".vsh", vertex);
-        GL43C.glAttachShader(id, vert.getHandle());
+        GL20.glAttachShader(id, vert.getHandle());
 
         GlShader tessCont = null;
         if (tessControl != null) {
             tessCont = new GlShader(ShaderType.TESSELATION_CONTROL, name + ".tcs", tessControl);
-            GL43C.glAttachShader(id, tessCont.getHandle());
+            GL20.glAttachShader(id, tessCont.getHandle());
         }
 
         GlShader tessE = null;
         if (tessEval != null) {
             tessE = new GlShader(ShaderType.TESSELATION_EVAL, name + ".tes", tessEval);
-            GL43C.glAttachShader(id, tessE.getHandle());
+            GL20.glAttachShader(id, tessE.getHandle());
         }
 
         GlShader geom = null;
         if (geometry != null) {
             geom = new GlShader(ShaderType.GEOMETRY, name + ".gsh", geometry);
-            GL43C.glAttachShader(id, geom.getHandle());
+            GL20.glAttachShader(id, geom.getHandle());
         }
 
         GlShader frag = new GlShader(ShaderType.FRAGMENT, name + ".fsh", fragment);
-        GL43C.glAttachShader(id, frag.getHandle());
+        GL20.glAttachShader(id, frag.getHandle());
 
-        GL32.glLinkProgram(this.id);
-        int status = GL32.glGetProgrami(this.id, 35714);
+        GL20.glLinkProgram(this.id);
+        int status = GL20.glGetProgrami(this.id, 35714);
         if (status != 1) {
-            String message = "Shader link error in Iris DH program! Details: " + GL32.glGetProgramInfoLog(this.id);
+            String message = "Shader link error in Iris DH program! Details: " + GL20.glGetProgramInfoLog(this.id, 9999);
             this.free();
             throw new RuntimeException(message);
         } else {
-            GL32.glUseProgram(this.id);
+            GL20.glUseProgram(this.id);
         }
 
         vert.destroy();
@@ -130,7 +131,7 @@ public class IrisLodRenderProgram {
         clipDistanceUniform = tryGetUniformLocation2("clipDistance");
     }
 
-    public static IrisLodRenderProgram createProgram(String name, boolean isShadowPass, boolean translucent, ProgramSource source, CustomUniforms uniforms, NewWorldRenderingPipeline pipeline) {
+    public static IrisLodRenderProgram createProgram(String name, boolean isShadowPass, boolean translucent, ProgramSource source, CustomUniforms uniforms, DeferredWorldRenderingPipeline pipeline) {
         Map<PatchShaderType, String> transformed = TransformPatcher.patchDH(
             name,
             source.getVertexSource().orElseThrow(RuntimeException::new),
@@ -144,10 +145,10 @@ public class IrisLodRenderProgram {
         String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
         String geometry = transformed.get(PatchShaderType.GEOMETRY);
         String fragment = transformed.get(PatchShaderType.FRAGMENT);
-        ShaderPrinter.printProgram(name)
+        /*ShaderPrinter.printProgram(name)
             .addSources(transformed)
             .setName("dh_" + name)
-            .print();
+            .print();*/
 
         List<BufferBlendOverride> bufferOverrides = new ArrayList<>();
 
@@ -164,7 +165,7 @@ public class IrisLodRenderProgram {
     // Noise Uniforms
 
     public int tryGetUniformLocation2(CharSequence name) {
-        int i = GL32.glGetUniformLocation(this.id, name);
+        int i = GL20.glGetUniformLocation(this.id, name);
         if (i == -1) Iris.logger.warn("Couldn't find " + name);
         return i;
     }
@@ -177,7 +178,7 @@ public class IrisLodRenderProgram {
             matrix.get(buffer);
             buffer.rewind();
 
-            RenderSystem.glUniformMatrix4(index, false, buffer);
+            GL20.glUniformMatrix4(index, false, buffer);
         }
     }
 
@@ -189,13 +190,13 @@ public class IrisLodRenderProgram {
             matrix.get(buffer);
             buffer.rewind();
 
-            RenderSystem.glUniformMatrix3(index, false, buffer);
+            GL20.glUniformMatrix3(index, false, buffer);
         }
     }
 
     // Override ShaderProgram.bind()
     public void bind() {
-        GL43C.glUseProgram(id);
+        GL20.glUseProgram(id);
         if (blend != null) blend.apply();
 
         for (BufferBlendOverride override : bufferBlendOverrides) {
@@ -204,18 +205,18 @@ public class IrisLodRenderProgram {
     }
 
     public void unbind() {
-        GL43C.glUseProgram(0);
+        GL20.glUseProgram(0);
         ProgramUniforms.clearActiveUniforms();
         ProgramSamplers.clearActiveSamplers();
         BlendModeOverride.restore();
     }
 
     public void free() {
-        GL43C.glDeleteProgram(id);
+        GL20.glDeleteProgram(id);
     }
 
     public void fillUniformData(Matrix4f projection, Matrix4f modelView, int worldYOffset, float partialTicks) {
-        GL43C.glUseProgram(id);
+        GL20.glUseProgram(id);
 
         Minecraft.getInstance().gameRenderer.lightTexture().turnOnLightLayer();
         IrisRenderSystem.bindTextureToUnit(TextureType.TEXTURE_2D.getGlType(), IrisSamplers.LIGHTMAP_TEXTURE_UNIT, RenderSystem.getShaderTexture(2));
@@ -232,7 +233,7 @@ public class IrisLodRenderProgram {
         if (worldYOffsetUniform != -1) setUniform(worldYOffsetUniform, (float) worldYOffset);
 
         // Fog/Clip Uniforms
-        float dhNearClipDistance = RenderUtil.getNearClipPlaneDistanceInBlocks(partialTicks);
+        float dhNearClipDistance = DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(partialTicks);
         setUniform(clipDistanceUniform, dhNearClipDistance);
 
         samplers.update();
@@ -244,15 +245,15 @@ public class IrisLodRenderProgram {
     }
 
     private void setUniform(int index, float value) {
-        GL43C.glUniform1f(index, value);
+        GL20.glUniform1f(index, value);
     }
 
-    public void setModelPos(Vec3f modelPos) {
+    public void setModelPos(DhApiVec3f modelPos) {
         setUniform(modelOffsetUniform, modelPos);
     }
 
-    private void setUniform(int index, Vec3f pos) {
-        GL43C.glUniform3f(index, pos.x, pos.y, pos.z);
+    private void setUniform(int index, DhApiVec3f pos) {
+        GL20.glUniform3f(index, pos.x, pos.y, pos.z);
     }
 
 }

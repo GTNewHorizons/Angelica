@@ -191,6 +191,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private int currentSpecularTexture;
 	private PackDirectives packDirectives;
 	private final Set<FeatureFlags> activeFeatures;
+    private final ProgramFallbackResolver resolver;
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
@@ -205,7 +206,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				.map(DeferredWorldRenderingPipeline::submitCompositeTransform)
 				.orElse(null);
 
-		final ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
+        resolver = new ProgramFallbackResolver(programs);
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver);
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());

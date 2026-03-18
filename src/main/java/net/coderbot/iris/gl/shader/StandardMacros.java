@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.Loader;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -82,7 +83,7 @@ public class StandardMacros {
             define(standardDefines, "IS_IRIS");
         }
 
-        if (LoadingModList.get().getModFileById("distanthorizons") != null && DHCompat.hasRenderingEnabled()) {
+        if (Loader.isModLoaded("distanthorizons") && DHCompat.hasRenderingEnabled()) {
             define(standardDefines, "DISTANT_HORIZONS");
         }
 

@@ -1,6 +1,8 @@
 package net.coderbot.iris.compat.dh;
 
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.api.DhApi;
+import com.seibel.distanthorizons.api.enums.rendering.EDhApiFogDrawMode;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
 import com.seibel.distanthorizons.api.interfaces.override.IDhApiOverrideable;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiFramebuffer;
@@ -9,6 +11,7 @@ import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiCancelableEventParam;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiEventParam;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
+import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.ShadowRenderer;
@@ -17,6 +20,7 @@ import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.api.v0.IrisApi;
 import org.joml.Matrix4f;
+import org.lwjgl.opengl.GL11;
 
 public class LodRendererEvents {
     private static boolean eventHandlersBound = false;
@@ -68,7 +72,7 @@ public class LodRendererEvents {
             public void beforeRender(DhApiCancelableEventParam<DhApiRenderParam> event) {
 
                 DhApi.Delayed.renderProxy.setDeferTransparentRendering(IrisApi.getInstance().isShaderPackInUse() && getInstance().shouldOverride);
-                DhApi.Delayed.configs.graphics().fog().drawMode().setValue(getInstance().shouldOverride ? EFogDrawMode.FOG_DISABLED : EFogDrawMode.FOG_ENABLED);
+                DhApi.Delayed.configs.graphics().fog().drawMode().setValue(getInstance().shouldOverride ? EDhApiFogDrawMode.FOG_DISABLED : EDhApiFogDrawMode.FOG_ENABLED);
             }
         };
 
@@ -95,16 +99,15 @@ public class LodRendererEvents {
     }
 
     private static void setupCreateDepthTextureEvent() {
-        DhApiScreenResizeEvent beforeRenderEvent = new DhApiScreenResizeEvent() {
+        DhApiColorDepthTextureCreatedEvent beforeRenderEvent = new DhApiColorDepthTextureCreatedEvent() {
             @Override
             public void onResize(DhApiEventParam<EventParam> input) {
                 textureWidth = input.value.newWidth;
                 textureHeight = input.value.newHeight;
-                getInstance().createDepthTex(textureWidth, textureHeight);
             }
         };
 
-        DhApi.events.bind(DhApiScreenResizeEvent.class, beforeRenderEvent);
+        DhApi.events.bind(DhApiColorDepthTextureCreatedEvent.class, beforeRenderEvent);
     }
 
     private static void setupTransparentRendererEventCancling() {
@@ -154,7 +157,7 @@ public class LodRendererEvents {
                     if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                         event.cancelEvent();
                     } else if (getInstance().shouldOverride) {
-                        GL43C.glClear(GL43C.GL_DEPTH_BUFFER_BIT);
+                        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
                         event.cancelEvent();
                     }
                 }
@@ -170,7 +173,7 @@ public class LodRendererEvents {
             public void beforeRender(DhApiEventParam<EventParam> input) {
                 DHCompatInternal instance = getInstance();
                 if (instance.shouldOverride) {
-                    Vec3f modelPos = input.value.modelPos;
+                    DhApiVec3f modelPos = input.value.modelPos;
                     if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                         instance.getShadowShader().bind();
                         instance.getShadowShader().setModelPos(modelPos);
@@ -221,7 +224,7 @@ public class LodRendererEvents {
                 // config overrides
                 if (instance.shouldOverride) {
                     DhApi.Delayed.configs.graphics().ambientOcclusion().enabled().setValue(false);
-                    DhApi.Delayed.configs.graphics().fog().drawMode().setValue(EFogDrawMode.FOG_DISABLED);
+                    DhApi.Delayed.configs.graphics().fog().drawMode().setValue(EDhApiFogDrawMode.FOG_DISABLED);
 
                     if (event.value.renderPass == EDhApiRenderPass.OPAQUE_AND_TRANSPARENT) {
                         Iris.logger.error("Unexpected; somehow the Opaque + Translucent pass ran with shaders on.");
@@ -256,7 +259,7 @@ public class LodRendererEvents {
                                 -1000, //MC.getWrappedClientLevel().getMinHeight(),
                                 partialTicks);
                         } else {
-                            Matrix4f projection = CapturedRenderingState.INSTANCE.getGbufferProjection();
+                            Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();;
                             //float nearClip = DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(partialTicks);
                             //float farClip = (float) ((double) (DHCompatInternal.getDhBlockRenderDistance() + 512) * Math.sqrt(2.0));
 
@@ -265,7 +268,7 @@ public class LodRendererEvents {
 
                             instance.getSolidShader().fillUniformData(
                                 new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
-                                CapturedRenderingState.INSTANCE.getGbufferModelView(),
+                                RenderingState.INSTANCE.getModelViewMatrix(),
                                 -1000, //MC.getWrappedClientLevel().getMinHeight(),
                                 partialTicks);
                         }
@@ -289,16 +292,16 @@ public class LodRendererEvents {
                     if (instance.shouldOverride && instance.getTranslucentFB() != null) {
                         instance.copyTranslucents(textureWidth, textureHeight);
                         instance.getTranslucentShader().bind();
-                        Matrix4f projection = CapturedRenderingState.INSTANCE.getGbufferProjection();
+                        Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();
                         //float nearClip = DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(partialTicks);
                         //float farClip = (float) ((double) (DHCompatInternal.getDhBlockRenderDistance() + 512) * Math.sqrt(2.0));
-                        GL46C.glDisable(GL46C.GL_CULL_FACE);
+                        GL11.glDisable(GL11.GL_CULL_FACE);
                         //Iris.logger.info("event near clip: "+event.value.nearClipPlane+" event far clip: "+event.value.farClipPlane+
                         //	" \niris near clip: "+nearClip+" iris far clip: "+farClip);
 
                         instance.getTranslucentShader().fillUniformData(
                             new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
-                            CapturedRenderingState.INSTANCE.getGbufferModelView(),
+                            RenderingState.INSTANCE.getModelViewMatrix(),
                             -1000, //MC.getWrappedClientLevel().getMinHeight(),
                             partialTicks);
 

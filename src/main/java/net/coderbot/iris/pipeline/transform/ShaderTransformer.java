@@ -440,7 +440,7 @@ public class ShaderTransformer {
                 ComputeTransformer.transform(transformer, parameters, versionInt);
                 break;
             case DH:
-                DHTransformer.transform(transformer, tree, root, parameters);
+                DHTransformer.transform(transformer, parameters, versionInt);
                 break;
             default:
                 throw new IllegalStateException("Unknown patch type: " + patchType.name());

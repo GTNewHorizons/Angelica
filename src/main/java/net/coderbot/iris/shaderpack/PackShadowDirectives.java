@@ -30,6 +30,8 @@ public class PackShadowDirectives {
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
 	@Getter private final ShadowCullState cullingState;
+    private final OptionalBoolean dhShadowEnabled;
+    private float nearPlane, farPlane;
 
 	private final ImmutableList<DepthSamplingSettings> depthSamplingSettings;
 	private final ImmutableList<SamplingSettings> colorSamplingSettings;

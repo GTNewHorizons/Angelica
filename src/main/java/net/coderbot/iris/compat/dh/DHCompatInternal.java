@@ -1,25 +1,24 @@
 package net.coderbot.iris.compat.dh;
 
-import com.mojang.blaze3d.systems.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiFramebuffer;
-import com.seibel.distanthorizons.core.util.RenderUtil;
+import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
-import com.seibel.distanthorizons.coreapi.util.math.Vec3f;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.IrisRenderSystem;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.coderbot.iris.pipeline.newshader.NewWorldRenderingPipeline;
-import net.coderbot.iris.rendertarget.Blaze3dRenderTargetExt;
 import net.coderbot.iris.rendertarget.DepthTexture;
+import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.shaderpack.ProgramSource;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
-import org.lwjgl.opengl.GL20C;
+import org.lwjgl.opengl.GL11;
 
 import java.io.IOException;
 
@@ -42,7 +41,7 @@ public class DHCompatInternal {
     private int storedDepthTex;
     private boolean incompatible = false;
 
-    public DHCompatInternal(NewWorldRenderingPipeline pipeline, boolean dhShadowEnabled) {
+    public DHCompatInternal(DeferredWorldRenderingPipeline pipeline, boolean dhShadowEnabled) {
         this.pipeline = pipeline;
 
         if (pipeline == null || !DhApi.Delayed.configs.graphics().renderingEnabled().getValue()) {
@@ -54,9 +53,9 @@ public class DHCompatInternal {
             incompatible = true;
             return;
         }
-        cachedVersion = ((Blaze3dRenderTargetExt) Minecraft.getInstance().getMainRenderTarget()).iris$getDepthBufferVersion();
+        cachedVersion = ((IRenderTargetExt) Minecraft.getMinecraft().getFramebuffer()).iris$getDepthBufferVersion();
 
-        createDepthTex(Minecraft.getInstance().getMainRenderTarget().width, Minecraft.getInstance().getMainRenderTarget().height);
+        createDepthTex(Minecraft.getMinecraft().getFramebuffer().framebufferWidth, Minecraft.getMinecraft().getFramebuffer().framebufferHeight);
         translucentDepthDirty = true;
 
         ProgramSource terrain = pipeline.getDHTerrainShader().get();
@@ -121,14 +120,14 @@ public class DHCompatInternal {
             return 0;
         }
 
-        return RenderUtil.getNearClipPlaneDistanceInBlocks(CapturedRenderingState.INSTANCE.getRealTickDelta());
+        return DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(CapturedRenderingState.INSTANCE.getTickDelta());
     }
 
     private static int guiScale = -1;
 
     public static boolean checkFrame() {
         if (guiScale == -1) {
-            guiScale = Minecraft.getInstance().options.guiScale().get();
+            guiScale = Minecraft.getMinecraft().gameSettings.guiScale;
         }
 
         // TODO fix early initialization
@@ -136,9 +135,9 @@ public class DHCompatInternal {
             return true;
         }
 
-        if ((dhEnabled != DhApi.Delayed.configs.graphics().renderingEnabled().getValue() || guiScale != Minecraft.getInstance().options.guiScale().get())
+        if ((dhEnabled != DhApi.Delayed.configs.graphics().renderingEnabled().getValue() || guiScale != Minecraft.getMinecraft().gameSettings.guiScale)
             && IrisApi.getInstance().isShaderPackInUse()) {
-            guiScale = Minecraft.getInstance().options.guiScale().get();
+            guiScale = Minecraft.getMinecraft().gameSettings.guiScale;
             dhEnabled = DhApi.Delayed.configs.graphics().renderingEnabled().getValue();
             try {
                 Iris.reload();
@@ -157,9 +156,9 @@ public class DHCompatInternal {
     private int cachedVersion;
 
     public void reconnectDHTextures(int depthTex) {
-        if (((Blaze3dRenderTargetExt) Minecraft.getInstance().getMainRenderTarget()).iris$getDepthBufferVersion() != cachedVersion) {
-            cachedVersion = ((Blaze3dRenderTargetExt) Minecraft.getInstance().getMainRenderTarget()).iris$getDepthBufferVersion();
-            createDepthTex(Minecraft.getInstance().getMainRenderTarget().width, Minecraft.getInstance().getMainRenderTarget().height);
+        if (((IRenderTargetExt) Minecraft.getMinecraft().getFramebuffer()).iris$getDepthBufferVersion() != cachedVersion) {
+            cachedVersion = ((IRenderTargetExt) Minecraft.getMinecraft().getFramebuffer()).iris$getDepthBufferVersion();
+            createDepthTex(Minecraft.getMinecraft().getFramebuffer().framebufferWidth, Minecraft.getMinecraft().getFramebuffer().framebufferHeight);
         }
         if (storedDepthTex != depthTex && dhTerrainFramebuffer != null) {
             storedDepthTex = depthTex;
@@ -228,7 +227,7 @@ public class DHCompatInternal {
         dhShadowFramebufferWrapper = null;
     }
 
-    public void setModelPos(Vec3f modelPos) {
+    public void setModelPos(DhApiVec3f modelPos) {
         solidProgram.bind();
         solidProgram.setModelPos(modelPos);
         translucentProgram.bind();
@@ -274,9 +273,9 @@ public class DHCompatInternal {
     public void copyTranslucents(int width, int height) {
         if (translucentDepthDirty) {
             translucentDepthDirty = false;
-            RenderSystem.bindTexture(depthTexNoTranslucent.getTextureId());
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, depthTexNoTranslucent.getTextureId());
             dhTerrainFramebuffer.bindAsReadBuffer();
-            IrisRenderSystem.copyTexImage2D(GL20C.GL_TEXTURE_2D, 0, DepthBufferFormat.DEPTH32F.getGlInternalFormat(), 0, 0, width, height, 0);
+            GL11.glCopyTexImage2D(GL11.GL_TEXTURE_2D, 0, DepthBufferFormat.DEPTH32F.getGlInternalFormat(), 0, 0, width, height, 0);
         } else {
             DepthCopyStrategy.fastest(false).copy(dhTerrainFramebuffer, storedDepthTex, null, depthTexNoTranslucent.getTextureId(), width, height);
         }

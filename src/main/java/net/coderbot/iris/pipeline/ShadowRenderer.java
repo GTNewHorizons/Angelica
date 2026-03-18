@@ -69,6 +69,8 @@ public class ShadowRenderer {
 	public static final List<TileEntity> globalTileEntities = new ArrayList<>();
 	public static boolean ACTIVE = false;
 
+    public static Frustrum FRUSTUM;
+
 	private static final Comparator<Entity> ENTITY_CLASS_COMPARATOR = Comparator.comparingInt(a -> System.identityHashCode(a.getClass()));
 	private static final NonCullingFrustum NON_CULLING_FRUSTUM = new NonCullingFrustum();
 	private static final CullEverythingFrustum CULL_EVERYTHING_FRUSTUM = new CullEverythingFrustum();
@@ -657,6 +659,7 @@ public class ShadowRenderer {
 		profiler.startSection("initialize frustum");
 
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
+        FRUSTUM = terrainFrustumHolder.getFrustum();
 
 		// Use the player/entity position for shadow rendering
 		final Vector3d entityPos = playerCamera.getEntityPos();
