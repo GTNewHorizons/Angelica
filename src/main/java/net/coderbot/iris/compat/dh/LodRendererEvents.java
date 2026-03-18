@@ -6,6 +6,7 @@ import com.seibel.distanthorizons.api.enums.rendering.EDhApiFogDrawMode;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiRenderPass;
 import com.seibel.distanthorizons.api.interfaces.override.IDhApiOverrideable;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiFramebuffer;
+import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShadowCullingFrustum;
 import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiCancelableEventParam;
@@ -42,8 +43,11 @@ public class LodRendererEvents {
                 public void afterDistantHorizonsInit(DhApiEventParam<Void> event) {
                     Iris.logger.info("DH Ready, binding Iris event handlers...");
 
+                    Iris.loadShaderpackWhenPossible();
+
                     setupSetDeferredBeforeRenderingEvent();
                     setupReconnectDepthTextureEvent();
+                    setupGenericEvent();
                     setupCreateDepthTextureEvent();
                     setupTransparentRendererEventCancling();
                     setupBeforeBufferClearEvent();
@@ -92,6 +96,31 @@ public class LodRendererEvents {
         };
 
         DhApi.events.bind(DhApiBeforeTextureClearEvent.class, beforeRenderEvent);
+    }
+
+    private static void setupGenericEvent() {
+        DhApiBeforeGenericRenderSetupEvent beforeRenderEvent = new DhApiBeforeGenericRenderSetupEvent() {
+            @Override
+            public void beforeSetup(DhApiEventParam<DhApiRenderParam> dhApiEventParam) {
+                if (getInstance().getGenericFB() != null) {
+                    getInstance().getGenericFB().bind();
+                }
+            }
+        };
+
+        DhApiBeforeGenericObjectRenderEvent beforeDrawEvent = new DhApiBeforeGenericObjectRenderEvent() {
+            @Override
+            public void beforeRender(DhApiCancelableEventParam<EventParam> dhApiCancelableEventParam) {
+                if (dhApiCancelableEventParam.value.resourceLocationPath.equalsIgnoreCase("Clouds")) {
+                    if (getInstance().avoidRenderingClouds()) {
+                        dhApiCancelableEventParam.cancelEvent();
+                    }
+                }
+            }
+        };
+
+        DhApi.events.bind(DhApiBeforeGenericRenderSetupEvent.class, beforeRenderEvent);
+        DhApi.events.bind(DhApiBeforeGenericObjectRenderEvent.class, beforeDrawEvent);
     }
 
     private static DHCompatInternal getInstance() {
@@ -200,8 +229,12 @@ public class LodRendererEvents {
                 OverrideInjector.INSTANCE.unbind(IDhApiShadowCullingFrustum.class, (IDhApiOverrideable) ShadowRenderer.FRUSTUM);
                 OverrideInjector.INSTANCE.unbind(IDhApiFramebuffer.class, instance.getShadowFBWrapper());
                 OverrideInjector.INSTANCE.unbind(IDhApiFramebuffer.class, instance.getSolidFBWrapper());
+                OverrideInjector.INSTANCE.unbind(IDhApiGenericObjectShaderProgram.class, instance.getGenericShader());
 
                 if (instance.shouldOverride) {
+                    if (instance.getGenericShader() != null) {
+                        OverrideInjector.INSTANCE.bind(IDhApiGenericObjectShaderProgram.class, instance.getGenericShader());
+                    }
                     if (ShadowRenderingState.areShadowsCurrentlyBeingRendered() && instance.shouldOverrideShadow) {
                         OverrideInjector.INSTANCE.bind(IDhApiFramebuffer.class, instance.getShadowFBWrapper());
                         OverrideInjector.INSTANCE.bind(IDhApiShadowCullingFrustum.class, (IDhApiOverrideable) ShadowRenderer.FRUSTUM);

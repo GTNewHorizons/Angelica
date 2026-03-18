@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.client.registry.ClientRegistry;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -114,6 +115,7 @@ public class Iris {
     // Used in favor of queueDefaultShaderPackOptionValues() for resetting as the
     // behavior is more concrete and therefore is more likely to repair a user's issues
     private static boolean resetShaderPackOptions = false;
+    private static boolean loadShaderPackWhenPossible = false;
 
     private static String IRIS_VERSION;
     @Getter
@@ -121,6 +123,17 @@ public class Iris {
 
     public static boolean loadedIncompatiblePack() {
         return DHCompat.lastPackIncompatible();
+    }
+
+    public static void loadShaderpackWhenPossible() {
+        loadShaderPackWhenPossible = true;
+    }
+
+    private static void tryLoadShaderpackWhenPossible() {
+        if (loadShaderPackWhenPossible) {
+            loadShaderPackWhenPossible = false;
+            loadShaderpack();
+        }
     }
 
     /**
@@ -401,8 +414,19 @@ public class Iris {
 
         PBRTextureManager.INSTANCE.init();
 
-        // Only load the shader pack when we can access OpenGL
-        loadShaderpack();
+        boolean isDHLoaded;
+        try {
+            Class.forName("com.seibel.distanthorizons.DistantHorizonsTweaker");
+            isDHLoaded = true;
+        }
+        catch (Exception e) {
+            isDHLoaded = false;
+        }
+
+        // When DH is present, defer shaderpack loading until its init callback has run.
+        if (!isDHLoaded) {
+            loadShaderpack();
+        }
     }
 
     /**
@@ -414,6 +438,8 @@ public class Iris {
                 + " Trying to avoid a crash but this is an odd state.");
             return;
         }
+
+        tryLoadShaderpackWhenPossible();
 
         // Initialize the pipeline now so that we don't increase world loading time. Just going to guess that
         // the player is in the overworld.
