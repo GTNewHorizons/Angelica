@@ -129,10 +129,14 @@ public class Iris {
         loadShaderPackWhenPossible = true;
     }
 
-    private static void tryLoadShaderpackWhenPossible() {
+    public static void tryLoadShaderpackWhenPossible() {
         if (loadShaderPackWhenPossible) {
             loadShaderPackWhenPossible = false;
-            loadShaderpack();
+            try {
+                reload();
+            } catch (IOException e) {
+                logger.error("Error during deferred shader reload", e);
+            }
         }
     }
 
@@ -438,8 +442,6 @@ public class Iris {
                 + " Trying to avoid a crash but this is an odd state.");
             return;
         }
-
-        tryLoadShaderpackWhenPossible();
 
         // Initialize the pipeline now so that we don't increase world loading time. Just going to guess that
         // the player is in the overworld.
