@@ -176,6 +176,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean oldLighting;
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
+    private final CloudSetting dhCloudSetting;
 
 	private Pass current = null;
 
@@ -228,6 +229,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.shouldRenderWeather = programs.getPackDirectives().shouldRenderWeather();
 		this.shouldRenderWeatherParticles = programs.getPackDirectives().shouldRenderWeatherParticles();
 		this.shouldWriteRainAndSnowToDepthBuffer = programs.getPackDirectives().rainDepth();
+        this.dhCloudSetting = programs.getPackDirectives().getDHCloudSetting();
 		this.shouldRenderParticlesBeforeDeferred = programs.getPackDirectives().getParticleRenderingSettings()
 			.map(s -> s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.BEFORE || s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.MIXED)
 			.orElse(false);
@@ -934,8 +936,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+    public CloudSetting getDHCloudSetting() {
+        return dhCloudSetting;
+    }
+
     public Optional<ProgramSource> getDHTerrainShader() {
         return resolver.resolve(ProgramId.DhTerrain);
+    }
+
+    public Optional<ProgramSource> getDHGenericShader() {
+        return resolver.resolve(ProgramId.DhGeneric);
     }
 
     public Optional<ProgramSource> getDHWaterShader() {

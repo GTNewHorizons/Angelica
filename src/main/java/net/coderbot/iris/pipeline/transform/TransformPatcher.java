@@ -4,11 +4,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
-import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
-import net.coderbot.iris.pipeline.transform.parameter.CeleritasTerrainParameters;
-import net.coderbot.iris.pipeline.transform.parameter.ComputeParameters;
-import net.coderbot.iris.pipeline.transform.parameter.Parameters;
-import net.coderbot.iris.pipeline.transform.parameter.TextureStageParameters;
+import net.coderbot.iris.pipeline.transform.parameter.*;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 
 import java.util.LinkedHashMap;
@@ -128,16 +124,20 @@ public class TransformPatcher {
     }
 
 
-    public static Map<PatchShaderType, String> patchDH(
+    public static Map<PatchShaderType, String> patchDHTerrain(
         String name, String vertex, String tessControl, String tessEval, String geometry, String fragment,
         Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
-        return transform(name, vertex, geometry, tessControl, tessEval, fragment,
-            new Parameters(Patch.DH, textureMap) {
-                @Override
-                public TextureStage getTextureStage() {
-                    return TextureStage.GBUFFERS_AND_SHADOW;
-                }
-            });
+        return transform(vertex, geometry, tessControl, tessEval, fragment,
+            new DHParameters(Patch.DH_TERRAIN, textureMap));
+    }
+
+
+    public static Map<PatchShaderType, String> patchDHGeneric(
+        String name, String vertex, String tessControl, String tessEval, String geometry, String fragment,
+        Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment,
+            new DHParameters(Patch.DH_GENERIC, textureMap));
+
     }
 
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {

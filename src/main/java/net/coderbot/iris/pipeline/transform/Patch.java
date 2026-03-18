@@ -5,5 +5,6 @@ public enum Patch {
 	CELERITAS_TERRAIN,
 	COMPOSITE,
 	COMPUTE,
-    DH
+    DH_TERRAIN,
+    DH_GENERIC
 }
