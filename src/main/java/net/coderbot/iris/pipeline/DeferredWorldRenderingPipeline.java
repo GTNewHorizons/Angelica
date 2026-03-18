@@ -1225,7 +1225,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             main.framebufferHeight, depthBufferFormat, packDirectives);
 
 		if (changed) {
-            dhCompat.onResolutionChanged();
 			beginRenderer.recalculateSizes();
 			prepareRenderer.recalculateSizes();
 			deferredRenderer.recalculateSizes();
