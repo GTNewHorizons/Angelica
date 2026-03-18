@@ -1,6 +1,5 @@
 package net.coderbot.iris.pipeline.transform;
 
-
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
@@ -18,109 +17,90 @@ public class DHTerrainTransformer {
             // See https://github.com/IrisShaders/Iris/issues/1149
             transformer.rename("gl_MultiTexCoord2", "gl_MultiTexCoord1");
 
-            transformer.replaceExpression("gl_MultiTexCoord0",
-                "vec4(0.0, 0.0, 0.0, 1.0)");
+            transformer.replaceExpression("gl_MultiTexCoord0", "vec4(0.0, 0.0, 0.0, 1.0)");
+            transformer.replaceExpression("gl_MultiTexCoord1", "vec4(_vert_tex_light_coord, 0.0, 1.0)");
 
-            transformer.replaceExpression("gl_MultiTexCoord1",
-                "vec4(_vert_tex_light_coord, 0.0, 1.0)");
-
-
-            // gl_MultiTexCoord0 and gl_MultiTexCoord1 are the only valid inputs (with
-            // gl_MultiTexCoord2 and gl_MultiTexCoord3 as aliases), other texture
-            // coordinates are not valid inputs.
-            CommonTransformer.replaceGlMultiTexCoordBounded(t, root, 4, 7);
+            replaceGlMultiTexCoordBounded(transformer, 4, 7);
         }
 
         transformer.rename("gl_Color", "_vert_color");
 
         if (parameters.type == ShaderType.VERTEX) {
             transformer.replaceExpression("gl_Normal", "_vert_normal");
-
         }
 
-        // TODO: Should probably add the normal matrix as a proper uniform that's
-        // computed on the CPU-side of things
-        transformer.replaceExpression("gl_NormalMatrix",
-            "iris_NormalMatrix");
-        transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
+        transformer.replaceExpression("gl_NormalMatrix", "iris_NormalMatrix");
+        addIfNotExists(transformer, "iris_NormalMatrix", "uniform mat3 iris_NormalMatrix;");
+        addIfNotExists(transformer, "iris_ModelViewMatrixInverse", "uniform mat4 iris_ModelViewMatrixInverse;");
+        addIfNotExists(transformer, "iris_ProjectionMatrixInverse", "uniform mat4 iris_ProjectionMatrixInverse;");
 
-        transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
-
-        transformer.injectVariable("uniform mat4 iris_ProjectionMatrixInverse;");
-
-
-        // TODO: All of the transformed variants of the input matrices, preferably
-        // computed on the CPU side...
         transformer.rename("gl_ModelViewMatrix", "iris_ModelViewMatrix");
         transformer.rename("gl_ModelViewMatrixInverse", "iris_ModelViewMatrixInverse");
         transformer.rename("gl_ProjectionMatrixInverse", "iris_ProjectionMatrixInverse");
 
         if (parameters.type == ShaderType.VERTEX) {
-            // TODO: Vaporwave-Shaderpack expects that vertex positions will be aligned to
-            // chunks.
-            if (root.identifierIndex.has("ftransform")) {
-                transformer.injectFunction(
-                    "vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
+            if (transformer.containsCall("ftransform")) {
+                transformer.injectFunction("vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
             }
-            tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-                "uniform mat4 iris_ProjectionMatrix;",
-                "uniform mat4 iris_ModelViewMatrix;",
-                // _draw_translation replaced with Chunks[_draw_id].offset.xyz
-                "vec4 getVertexPosition() { return vec4(modelOffset + _vert_position, 1.0); }");
+
+            addIfNotExists(transformer, "iris_ProjectionMatrix", "uniform mat4 iris_ProjectionMatrix;");
+            addIfNotExists(transformer, "iris_ModelViewMatrix", "uniform mat4 iris_ModelViewMatrix;");
+            transformer.injectFunction("vec4 getVertexPosition() { return vec4(modelOffset + _vert_position, 1.0); }");
             transformer.replaceExpression("gl_Vertex", "getVertexPosition()");
 
-            // inject here so that _vert_position is available to the above. (injections
-            // inject in reverse order if performed piece-wise but in correct order if
-            // performed as an array of injections)
-            injectVertInit(t, tree, root, parameters);
+            injectVertInit(transformer);
         } else {
-            transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
-                transformer.injectVariable("uniform mat4 iris_ProjectionMatrix;");
+            addIfNotExists(transformer, "iris_ModelViewMatrix", "uniform mat4 iris_ModelViewMatrix;");
+            addIfNotExists(transformer, "iris_ProjectionMatrix", "uniform mat4 iris_ProjectionMatrix;");
         }
 
-        root.replaceReferenceExpressions(t, "gl_ModelViewProjectionMatrix",
-            "(iris_ProjectionMatrix * iris_ModelViewMatrix)");
-
-        CommonTransformer.applyIntelHd4000Workaround(root);
+        transformer.replaceExpression("gl_ModelViewProjectionMatrix", "(iris_ProjectionMatrix * iris_ModelViewMatrix)");
+        ShaderTransformer.applyIntelHd4000Workaround(transformer);
     }
 
-    public static void injectVertInit(
-        ASTParser t,
-        TranslationUnit tree,
-        Root root,
-        Parameters parameters) {
-        tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-            // translated from sodium's chunk_vertex.glsl
-            "vec3 _vert_position;",
-            "vec2 _vert_tex_light_coord;",
-            "int dhMaterialId;",
-            "vec4 _vert_color;",
-            "vec3 _vert_normal;",
-            "uniform float mircoOffset;",
-            "uniform vec3 modelOffset;",
-            "const vec3 irisNormals[6] = vec3[](vec3(0,-1,0),vec3(0,1,0),vec3(0,0,-1),vec3(0,0,1),vec3(-1,0,0),vec3(1,0,0));",
-            "void _vert_init() {" +
-                "    uint meta = vPosition.a;\n" +
-                "uint mirco = (meta & 0xFF00u) >> 8u; // mirco offset which is a xyz 2bit value\n" +
-                "    // 0b00 = no offset\n" +
-                "    // 0b01 = positive offset\n" +
-                "    // 0b11 = negative offset\n" +
-                "    // format is: 0b00zzyyxx\n" +
-                "    float mx = (mirco & 1u)!=0u ? mircoOffset : 0.0;\n" +
-                "    mx = (mirco & 2u)!=0u ? -mx : mx;\n" +
-                "    float my = (mirco & 4u)!=0u ? mircoOffset : 0.0;\n" +
-                "    my = (mirco & 8u)!=0u ? -my : my;\n" +
-                "    float mz = (mirco & 16u)!=0u ? mircoOffset : 0.0;\n" +
-                "    mz = (mirco & 32u)!=0u ? -mz : mz;\n" +
-                "        uint lights = meta & 0xFFu;\n" +
-                "_vert_position = (vPosition.xyz + vec3(mx, 0, mz));" +
-                "_vert_normal = irisNormals[irisExtra.y];" +
-                "dhMaterialId = int(irisExtra.x);" +
-                "_vert_tex_light_coord = vec2((float(lights/16u)+0.5) / 16.0, (mod(float(lights), 16.0)+0.5) / 16.0);" +
-                "_vert_color = iris_color; }");
-        addIfNotExists(root, t, tree, "iris_color", Type.F32VEC4, StorageQualifier.StorageType.IN);
-        addIfNotExists(root, t, tree, "vPosition", Type.U32VEC4, StorageQualifier.StorageType.IN);
-        addIfNotExists(root, t, tree, "irisExtra", Type.U32VEC4, StorageQualifier.StorageType.IN);
-        tree.prependMainFunctionBody(t, "_vert_init();");
+    public static void injectVertInit(Transformer transformer) {
+        addIfNotExists(transformer, "_vert_position", "vec3 _vert_position;");
+        addIfNotExists(transformer, "_vert_tex_light_coord", "vec2 _vert_tex_light_coord;");
+        addIfNotExists(transformer, "dhMaterialId", "int dhMaterialId;");
+        addIfNotExists(transformer, "_vert_color", "vec4 _vert_color;");
+        addIfNotExists(transformer, "_vert_normal", "vec3 _vert_normal;");
+        addIfNotExists(transformer, "mircoOffset", "uniform float mircoOffset;");
+        addIfNotExists(transformer, "modelOffset", "uniform vec3 modelOffset;");
+        addIfNotExists(transformer, "iris_color", "in vec4 iris_color;");
+        addIfNotExists(transformer, "vPosition", "in uvec4 vPosition;");
+        addIfNotExists(transformer, "irisExtra", "in uvec4 irisExtra;");
+
+        transformer.injectFunction("const vec3 irisNormals[6] = vec3[](vec3(0,-1,0), vec3(0,1,0), vec3(0,0,-1), vec3(0,0,1), vec3(-1,0,0), vec3(1,0,0));");
+        transformer.injectFunction(
+            "void _vert_init() {"
+                + " uint meta = vPosition.a;"
+                + " uint mirco = (meta & 0xFF00u) >> 8u;"
+                + " float mx = (mirco & 1u) != 0u ? mircoOffset : 0.0;"
+                + " mx = (mirco & 2u) != 0u ? -mx : mx;"
+                + " float my = (mirco & 4u) != 0u ? mircoOffset : 0.0;"
+                + " my = (mirco & 8u) != 0u ? -my : my;"
+                + " float mz = (mirco & 16u) != 0u ? mircoOffset : 0.0;"
+                + " mz = (mirco & 32u) != 0u ? -mz : mz;"
+                + " uint lights = meta & 0xFFu;"
+                + " _vert_position = (vPosition.xyz + vec3(mx, my, mz));"
+                + " _vert_normal = irisNormals[int(irisExtra.y)];"
+                + " dhMaterialId = int(irisExtra.x);"
+                + " _vert_tex_light_coord = vec2((float(lights / 16u) + 0.5) / 16.0, (mod(float(lights), 16.0) + 0.5) / 16.0);"
+                + " _vert_color = iris_color;"
+                + " }"
+        );
+        transformer.prependMain("_vert_init();");
+    }
+
+    private static void addIfNotExists(Transformer transformer, String name, String code) {
+        if (!transformer.hasVariable(name)) {
+            transformer.injectVariable(code);
+        }
+    }
+
+    private static void replaceGlMultiTexCoordBounded(Transformer transformer, int from, int to) {
+        for (int i = from; i <= to; i++) {
+            transformer.replaceExpression("gl_MultiTexCoord" + i, "vec4(0.0, 0.0, 0.0, 1.0)");
+        }
     }
 }

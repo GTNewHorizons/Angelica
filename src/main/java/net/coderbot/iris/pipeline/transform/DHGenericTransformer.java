@@ -1,137 +1,114 @@
 package net.coderbot.iris.pipeline.transform;
 
-
+import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 
-public static void transform(Transformer transformer, Parameters parameters, int glslVersion) {
-    CommonTransformer.transform(transformer, parameters, true, glslVersion);
+public class DHGenericTransformer {
+    public static void transform(Transformer transformer, Parameters parameters, int glslVersion) {
+        CommonTransformer.transform(transformer, parameters, true, glslVersion);
 
+        transformer.replaceExpression("gl_TextureMatrix[0]", "mat4(1.0)");
+        transformer.replaceExpression("gl_TextureMatrix[1]", "mat4(1.0)");
+        transformer.rename("gl_ProjectionMatrix", "iris_ProjectionMatrix");
 
-    transformer.replaceExpression("gl_TextureMatrix[0]", "mat4(1.0)");
-    transformer.replaceExpression("gl_TextureMatrix[1]", "mat4(1.0)");
-        root.rename("gl_ProjectionMatrix", "iris_ProjectionMatrix");
-
-        if (parameters.type.glShaderType == ShaderType.VERTEX) {
+        if (parameters.type == ShaderType.VERTEX) {
             // Alias of gl_MultiTexCoord1 on 1.15+ for OptiFine
             // See https://github.com/IrisShaders/Iris/issues/1149
-            root.rename("gl_MultiTexCoord2", "gl_MultiTexCoord1");
+            transformer.rename("gl_MultiTexCoord2", "gl_MultiTexCoord1");
 
-            root.replaceReferenceExpressions(t, "gl_MultiTexCoord0",
-                "vec4(0.0, 0.0, 0.0, 1.0)");
+            transformer.replaceExpression("gl_MultiTexCoord0", "vec4(0.0, 0.0, 0.0, 1.0)");
+            transformer.replaceExpression("gl_MultiTexCoord1", "vec4(_vert_tex_light_coord, 0.0, 1.0)");
 
-            root.replaceReferenceExpressions(t, "gl_MultiTexCoord1",
-                "vec4(_vert_tex_light_coord, 0.0, 1.0)");
-
-
-            // gl_MultiTexCoord0 and gl_MultiTexCoord1 are the only valid inputs (with
-            // gl_MultiTexCoord2 and gl_MultiTexCoord3 as aliases), other texture
-            // coordinates are not valid inputs.
-            CommonTransformer.replaceGlMultiTexCoordBounded(t, root, 4, 7);
+            replaceGlMultiTexCoordBounded(transformer, 4, 7);
         }
 
-        root.rename("gl_Color", "_vert_color");
+        transformer.rename("gl_Color", "_vert_color");
 
-        if (parameters.type.glShaderType == ShaderType.VERTEX) {
-            root.replaceReferenceExpressions(t, "gl_Normal", "_vert_normal");
-
+        if (parameters.type == ShaderType.VERTEX) {
+            transformer.replaceExpression("gl_Normal", "_vert_normal");
         }
 
-        // TODO: Should probably add the normal matrix as a proper uniform that's
-        // computed on the CPU-side of things
-        root.replaceReferenceExpressions(t, "gl_NormalMatrix",
-            "iris_NormalMatrix");
-        tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-            "uniform mat3 iris_NormalMatrix;");
+        transformer.replaceExpression("gl_NormalMatrix", "iris_NormalMatrix");
+        addIfNotExists(transformer, "iris_NormalMatrix", "uniform mat3 iris_NormalMatrix;");
+        addIfNotExists(transformer, "iris_ModelViewMatrixInverse", "uniform mat4 iris_ModelViewMatrixInverse;");
+        addIfNotExists(transformer, "iris_ProjectionMatrixInverse", "uniform mat4 iris_ProjectionMatrixInverse;");
 
-        tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-            "uniform mat4 iris_ModelViewMatrixInverse;");
+        transformer.rename("gl_ModelViewMatrix", "iris_ModelViewMatrix");
+        transformer.rename("gl_ModelViewMatrixInverse", "iris_ModelViewMatrixInverse");
+        transformer.rename("gl_ProjectionMatrixInverse", "iris_ProjectionMatrixInverse");
 
-        tree.parseAndInjectNode(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-            "uniform mat4 iris_ProjectionMatrixInverse;");
-
-        Iris.logger.warn("Type is " + parameters.type);
-
-        // TODO: All of the transformed variants of the input matrices, preferably
-        // computed on the CPU side...
-        root.rename("gl_ModelViewMatrix", "iris_ModelViewMatrix");
-        root.rename("gl_ModelViewMatrixInverse", "iris_ModelViewMatrixInverse");
-        root.rename("gl_ProjectionMatrixInverse", "iris_ProjectionMatrixInverse");
-
-        if (parameters.type.glShaderType == ShaderType.VERTEX) {
-            // TODO: Vaporwave-Shaderpack expects that vertex positions will be aligned to
-            // chunks.
-            if (root.identifierIndex.has("ftransform")) {
-                tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-                    "vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
+        if (parameters.type == ShaderType.VERTEX) {
+            if (transformer.containsCall("ftransform")) {
+                transformer.injectFunction("vec4 ftransform() { return gl_ModelViewProjectionMatrix * gl_Vertex; }");
             }
-            tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-                "uniform mat4 iris_ProjectionMatrix;",
-                "uniform mat4 iris_ModelViewMatrix;",
-                // _draw_translation replaced with Chunks[_draw_id].offset.xyz
-                "vec4 getVertexPosition() { return vec4(_vert_position, 1.0); }");
-            root.replaceReferenceExpressions(t, "gl_Vertex", "getVertexPosition()");
 
-            // inject here so that _vert_position is available to the above. (injections
-            // inject in reverse order if performed piece-wise but in correct order if
-            // performed as an array of injections)
-            injectVertInit(t, tree, root, parameters);
+            addIfNotExists(transformer, "iris_ProjectionMatrix", "uniform mat4 iris_ProjectionMatrix;");
+            addIfNotExists(transformer, "iris_ModelViewMatrix", "uniform mat4 iris_ModelViewMatrix;");
+            transformer.injectFunction("vec4 getVertexPosition() { return vec4(_vert_position, 1.0); }");
+            transformer.replaceExpression("gl_Vertex", "getVertexPosition()");
+
+            injectVertInit(transformer);
         } else {
-            tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_DECLARATIONS,
-                "uniform mat4 iris_ModelViewMatrix;",
-                "uniform mat4 iris_ProjectionMatrix;");
+            addIfNotExists(transformer, "iris_ModelViewMatrix", "uniform mat4 iris_ModelViewMatrix;");
+            addIfNotExists(transformer, "iris_ProjectionMatrix", "uniform mat4 iris_ProjectionMatrix;");
         }
 
-        root.replaceReferenceExpressions(t, "gl_ModelViewProjectionMatrix",
-            "(iris_ProjectionMatrix * iris_ModelViewMatrix)");
-
-        CommonTransformer.applyIntelHd4000Workaround(root);
+        transformer.replaceExpression("gl_ModelViewProjectionMatrix", "(iris_ProjectionMatrix * iris_ModelViewMatrix)");
+        ShaderTransformer.applyIntelHd4000Workaround(transformer);
     }
 
-    public static void injectVertInit(
-        ASTParser t,
-        TranslationUnit tree,
-        Root root,
-        Parameters parameters) {
-        tree.parseAndInjectNodes(t, ASTInjectionPoint.BEFORE_FUNCTIONS,
-            // translated from sodium's chunk_vertex.glsl
-            "vec3 _vert_position;",
-            "vec2 _vert_tex_light_coord;",
-            "int dhMaterialId;",
-            "vec4 _vert_color;",
-            "vec3 _vert_normal;",
-            "uniform ivec3 uOffsetChunk;",
-            "uniform vec3 uOffsetSubChunk;",
-            "uniform ivec3 uCameraPosChunk;",
-            "uniform vec3 uCameraPosSubChunk;",
-            "uniform int uSkyLight;",
-            "uniform int uBlockLight;",
-            "const vec3 irisNormals[6] = vec3[](vec3(0,0,-1),vec3(0,0,1),vec3(-1,0,0),vec3(1,0,0),vec3(0,-1,0),vec3(0,1,0));",
-            """
-                void _vert_init() {
-                    vec3 trans = (aTranslateChunk + uOffsetChunk - uCameraPosChunk) * 16.0f;
-                    trans += (aTranslateSubChunk + uOffsetSubChunk - uCameraPosSubChunk);
-                    mat4 transform = mat4(
-                         aScale.x, 0.0,      0.0,      0.0,
-                         0.0,      aScale.y, 0.0,      0.0,
-                         0.0,      0.0,      aScale.z, 0.0,
-                         trans.x,  trans.y,  trans.z,  1.0
-                     );
-                     _vert_position = (transform * vec4(vPosition, 1.0)).xyz;
-                    _vert_normal = irisNormals[int(floor(float(gl_VertexID) / 4))];
-                                float blockLight = (float(uBlockLight)+0.5) / 16.0;
-                                float skyLight = (float(uSkyLight)+0.5) / 16.0;
-                     _vert_tex_light_coord = vec2(blockLight, skyLight);
-                     dhMaterialId = aMaterial;
-                     _vert_color = iris_color;
-                     }
-                """);
-        addIfNotExists(root, t, tree, "iris_color", Type.F32VEC4, StorageQualifier.StorageType.IN, 1);
-        addIfNotExists(root, t, tree, "aScale", Type.F32VEC3, StorageQualifier.StorageType.IN, 2);
-        addIfNotExists(root, t, tree, "aTranslateChunk", Type.I32VEC3, StorageQualifier.StorageType.IN, 3);
-        addIfNotExists(root, t, tree, "aTranslateSubChunk", Type.F32VEC3, StorageQualifier.StorageType.IN, 4);
-        addIfNotExists(root, t, tree, "aMaterial", Type.INT32, StorageQualifier.StorageType.IN, 5);
-        addIfNotExists(root, t, tree, "vPosition", Type.F32VEC3, StorageQualifier.StorageType.IN, 0);
-        tree.prependMainFunctionBody(t, "_vert_init();");
+    public static void injectVertInit(Transformer transformer) {
+        addIfNotExists(transformer, "_vert_position", "vec3 _vert_position;");
+        addIfNotExists(transformer, "_vert_tex_light_coord", "vec2 _vert_tex_light_coord;");
+        addIfNotExists(transformer, "dhMaterialId", "int dhMaterialId;");
+        addIfNotExists(transformer, "_vert_color", "vec4 _vert_color;");
+        addIfNotExists(transformer, "_vert_normal", "vec3 _vert_normal;");
+        addIfNotExists(transformer, "uOffsetChunk", "uniform ivec3 uOffsetChunk;");
+        addIfNotExists(transformer, "uOffsetSubChunk", "uniform vec3 uOffsetSubChunk;");
+        addIfNotExists(transformer, "uCameraPosChunk", "uniform ivec3 uCameraPosChunk;");
+        addIfNotExists(transformer, "uCameraPosSubChunk", "uniform vec3 uCameraPosSubChunk;");
+        addIfNotExists(transformer, "uSkyLight", "uniform int uSkyLight;");
+        addIfNotExists(transformer, "uBlockLight", "uniform int uBlockLight;");
+        addIfNotExists(transformer, "iris_color", "in vec4 iris_color;");
+        addIfNotExists(transformer, "aScale", "in vec3 aScale;");
+        addIfNotExists(transformer, "aTranslateChunk", "in ivec3 aTranslateChunk;");
+        addIfNotExists(transformer, "aTranslateSubChunk", "in vec3 aTranslateSubChunk;");
+        addIfNotExists(transformer, "aMaterial", "in int aMaterial;");
+        addIfNotExists(transformer, "vPosition", "in vec3 vPosition;");
+
+        transformer.injectFunction("const vec3 irisNormals[6] = vec3[](vec3(0,0,-1), vec3(0,0,1), vec3(-1,0,0), vec3(1,0,0), vec3(0,-1,0), vec3(0,1,0));");
+        transformer.injectFunction(
+            "void _vert_init() {"
+                + " vec3 trans = vec3(aTranslateChunk + uOffsetChunk - uCameraPosChunk) * 16.0;"
+                + " trans += (aTranslateSubChunk + uOffsetSubChunk - uCameraPosSubChunk);"
+                + " mat4 transform = mat4("
+                + "  aScale.x, 0.0, 0.0, 0.0,"
+                + "  0.0, aScale.y, 0.0, 0.0,"
+                + "  0.0, 0.0, aScale.z, 0.0,"
+                + "  trans.x, trans.y, trans.z, 1.0"
+                + " );"
+                + " _vert_position = (transform * vec4(vPosition, 1.0)).xyz;"
+                + " _vert_normal = irisNormals[int(floor(float(gl_VertexID) / 4.0))];"
+                + " float blockLight = (float(uBlockLight) + 0.5) / 16.0;"
+                + " float skyLight = (float(uSkyLight) + 0.5) / 16.0;"
+                + " _vert_tex_light_coord = vec2(blockLight, skyLight);"
+                + " dhMaterialId = aMaterial;"
+                + " _vert_color = iris_color;"
+                + " }"
+        );
+        transformer.prependMain("_vert_init();");
+    }
+
+    private static void addIfNotExists(Transformer transformer, String name, String code) {
+        if (!transformer.hasVariable(name)) {
+            transformer.injectVariable(code);
+        }
+    }
+
+    private static void replaceGlMultiTexCoordBounded(Transformer transformer, int from, int to) {
+        for (int i = from; i <= to; i++) {
+            transformer.replaceExpression("gl_MultiTexCoord" + i, "vec4(0.0, 0.0, 0.0, 1.0)");
+        }
     }
 }
