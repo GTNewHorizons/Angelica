@@ -11,16 +11,16 @@ public class ShadowMatrices {
 
 	// NB: These matrices are in column-major order, not row-major order like what you'd expect!
 
-	public static Matrix4f createOrthoMatrix(float halfPlaneLength) {
+	public static Matrix4f createOrthoMatrix(float halfPlaneLength, float nearPlane, float farPlane) {
 		return new Matrix4f(
 				// column 1
 				1.0f / halfPlaneLength, 0f, 0f, 0f,
 				// column 2
 				0f, 1.0f / halfPlaneLength, 0f, 0f,
 				// column 3
-				0f, 0f, 2.0f / (NEAR - FAR), 0f,
+				0f, 0f, 2.0f / (nearPlane - farPlane), 0f,
 				// column 4
-				0f, 0f, -(FAR + NEAR) / (FAR - NEAR), 1f
+				0f, 0f, -(nearPlane + farPlane) / (nearPlane - farPlane), 1f
 		);
 	}
 

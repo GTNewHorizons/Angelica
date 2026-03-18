@@ -55,7 +55,9 @@ public class ProgramSet {
 	private final ComputeSource[][] compositeCompute;
 	private final ProgramSource compositeFinal;
 	private final ComputeSource[] finalCompute;
-
+    private final ProgramSource dhTerrain;
+    private final ProgramSource dhWater;
+    private final ProgramSource dhShadow;
 
 	private final ShaderPack pack;
 
@@ -117,6 +119,9 @@ public class ProgramSet {
 		this.gbuffersEntityEyes = readProgramSource(directory, sourceProvider, "gbuffers_spidereyes", this, shaderProperties);
 		this.gbuffersBlock = readProgramSource(directory, sourceProvider, "gbuffers_block", this, shaderProperties);
 		this.gbuffersHand = readProgramSource(directory, sourceProvider, "gbuffers_hand", this, shaderProperties);
+        this.dhTerrain = readProgramSource(directory, sourceProvider, "dh_terrain", this, shaderProperties);
+        this.dhWater = readProgramSource(directory, sourceProvider, "dh_water", this, shaderProperties);
+        this.dhShadow = readProgramSource(directory, sourceProvider, "dh_shadow", this, shaderProperties);
 
 		this.deferred = readProgramArray(directory, sourceProvider, "deferred", shaderProperties);
 		this.deferredCompute = new ComputeSource[deferred.length][];
@@ -217,7 +222,7 @@ public class ProgramSet {
 				gbuffersBasic, gbuffersBeaconBeam, gbuffersTextured, gbuffersTexturedLit, gbuffersTerrain,
 				gbuffersDamagedBlock, gbuffersSkyBasic, gbuffersSkyTextured, gbuffersClouds, gbuffersWeather,
 				gbuffersEntities, gbuffersEntitiesTrans, gbuffersEntitiesGlowing, gbuffersGlint, gbuffersEntityEyes, gbuffersBlock,
-				gbuffersHand
+				gbuffersHand, dhShadow, dhTerrain, dhWater
 		));
 
 		for (ComputeSource[] computeSources : compositeCompute) {
@@ -381,6 +386,18 @@ public class ProgramSet {
 		return gbuffersHand.requireValid();
 	}
 
+    public Optional<ProgramSource> getDhTerrain() {
+        return dhTerrain.requireValid();
+    }
+
+    public Optional<ProgramSource> getDhWater() {
+        return dhWater.requireValid();
+    }
+
+    public Optional<ProgramSource> getDhShadow() {
+        return dhShadow.requireValid();
+    }
+
 	public Optional<ProgramSource> get(ProgramId programId) {
         return switch (programId) {
             case Shadow -> getShadow();
@@ -405,6 +422,9 @@ public class ProgramSet {
             case Water -> getGbuffersWater();
             case HandWater -> getGbuffersHandWater();
             case Final -> getCompositeFinal();
+            case DhTerrain -> getDhTerrain();
+            case DhWater -> getDhWater();
+            case DhShadow -> getDhShadow();
             default -> Optional.empty();
         };
 	}

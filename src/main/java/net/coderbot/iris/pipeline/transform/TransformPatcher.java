@@ -127,6 +127,19 @@ public class TransformPatcher {
         return transform(vertex, geometry, tessControl, tessEval, fragment, new TextureStageParameters(Patch.COMPOSITE, stage, textureMap));
     }
 
+
+    public static Map<PatchShaderType, String> patchDH(
+        String name, String vertex, String tessControl, String tessEval, String geometry, String fragment,
+        Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
+        return transform(name, vertex, geometry, tessControl, tessEval, fragment,
+            new Parameters(Patch.DH, textureMap) {
+                @Override
+                public TextureStage getTextureStage() {
+                    return TextureStage.GBUFFERS_AND_SHADOW;
+                }
+            });
+    }
+
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String fragment, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
         return patchComposite(vertex, geometry, null, null, fragment, stage, textureMap);
     }

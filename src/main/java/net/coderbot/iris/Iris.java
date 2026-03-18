@@ -17,6 +17,7 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -117,6 +118,10 @@ public class Iris {
     private static String IRIS_VERSION;
     @Getter
     private static boolean fallback;
+
+    public static boolean loadedIncompatiblePack() {
+        return DHCompat.lastPackIncompatible();
+    }
 
     /**
      * Lazy executor for parallelizing shader transformations during shader pack loading.
@@ -350,6 +355,7 @@ public class Iris {
      * <p>This is called right before options are loaded, so we can add key bindings here.</p>
      */
     public void onEarlyInitialize() {
+        DHCompat.run();
         try {
             if (!Files.exists(getShaderpacksDirectory())) {
                 Files.createDirectories(getShaderpacksDirectory());
@@ -720,6 +726,13 @@ public class Iris {
             Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
 
             BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
+        }
+
+        if (loadedIncompatiblePack() && Minecraft.getInstance().player != null) {
+            Minecraft.getInstance().gui.setTimes(10, 70, 140);
+            Iris.logger.warn("Incompatible pack for DH!");
+            Minecraft.getInstance().gui.setTitle(Component.literal("This pack doesn't have DH support").withStyle(ChatFormatting.BOLD, ChatFormatting.RED));
+            Minecraft.getInstance().gui.setSubtitle(Component.literal("Distant Horizons (DH) chunks won't show up. This isn't a bug, get another shader.").withStyle(ChatFormatting.RED));
         }
     }
 

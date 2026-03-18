@@ -585,7 +585,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			renderTargets, flippedAfterPrepare, flippedAfterTranslucent,
 			celeritasShadowFb);
 
-		this.dhCompat = new DHCompat();
+		this.dhCompat = new DHCompat(this, shadowDirectives.isDhShadowEnabled().orElse(true));
 	}
 
 	private RenderTargets getRenderTargets() {
@@ -933,6 +933,48 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+    public Optional<ProgramSource> getDHTerrainShader() {
+        return resolver.resolve(ProgramId.DhTerrain);
+    }
+
+    public Optional<ProgramSource> getDHWaterShader() {
+        return resolver.resolve(ProgramId.DhWater);
+    }
+
+    public Optional<ProgramSource> getDHShadowShader() {
+        return resolver.resolve(ProgramId.DhShadow);
+    }
+
+    public CustomUniforms getCustomUniforms() {
+        return customUniforms;
+    }
+
+    public GlFramebuffer createDHFramebuffer(ProgramSource sources, boolean trans) {
+        return renderTargets.createDHFramebuffer(trans ? flippedAfterTranslucent : flippedAfterPrepare,
+            sources.getDirectives().getDrawBuffers());
+    }
+
+    public ImmutableSet<Integer> getFlippedBeforeShadow() {
+        return flippedBeforeShadow;
+    }
+
+    public ImmutableSet<Integer> getFlippedAfterPrepare() {
+        return flippedAfterPrepare;
+    }
+
+    public ImmutableSet<Integer> getFlippedAfterTranslucent() {
+        return flippedAfterTranslucent;
+    }
+
+    public GlFramebuffer createDHFramebufferShadow(ProgramSource sources) {
+
+        return shadowRenderTargets.createDHFramebuffer(ImmutableSet.of(), new int[]{0, 1});
+    }
+
+    public boolean hasShadowRenderTargets() {
+        return shadowRenderTargets != null;
+    }
+
 	private final class Pass {
 		@Nullable
 		private final Program program;
@@ -1077,6 +1119,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// While it's possible to just clear them instead and reuse them, we'd need to investigate whether or not this
 		// would help performance.
 		renderTargets.destroy();
+        dhCompat.clearPipeline();
 
 		// destroy the shadow render targets
 		if (shadowRenderTargets != null) {
@@ -1171,6 +1214,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             main.framebufferHeight, depthBufferFormat, packDirectives);
 
 		if (changed) {
+            dhCompat.onResolutionChanged();
 			beginRenderer.recalculateSizes();
 			prepareRenderer.recalculateSizes();
 			deferredRenderer.recalculateSizes();

@@ -248,6 +248,16 @@ public class RenderTargets {
 		return framebuffer;
 	}
 
+    public GlFramebuffer createDHFramebuffer(ImmutableSet<Integer> stageWritesToAlt, int[] drawBuffers) {
+        if (drawBuffers.length == 0) {
+            return createEmptyFramebuffer();
+        }
+
+        ImmutableSet<Integer> stageWritesToMain = invert(stageWritesToAlt, drawBuffers);
+
+        return createColorFramebuffer(stageWritesToMain, drawBuffers);
+    }
+
 	public GlFramebuffer createGbufferFramebuffer(ImmutableSet<Integer> stageWritesToAlt, int[] drawBuffers) {
 		if (drawBuffers.length == 0) {
 			return createEmptyFramebuffer();
