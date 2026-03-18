@@ -1,9 +1,12 @@
 package net.coderbot.iris.compat.dh;
 
 import com.google.common.primitives.Ints;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.mitchej123.lwjgl.MemoryStack;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
+import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.program.ProgramImages;
@@ -22,9 +25,12 @@ import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL32;
 
@@ -111,7 +117,7 @@ public class IrisLodRenderProgram {
         customUniforms.assignTo(uniformBuilder);
         BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniformBuilder);
         ProgramImages.Builder builder = ProgramImages.builder(id);
-        pipeline.addGbufferOrShadowSamplers(samplerBuilder, builder, isShadowPass ? pipeline::getFlippedBeforeShadow : () -> translucent ? pipeline.getFlippedAfterTranslucent() : pipeline.getFlippedAfterPrepare(), isShadowPass, false, true, false);
+        IrisSamplers.addLevelSamplers(samplerBuilder, pipeline, Minecraft.getMinecraft().getTextureMapBlocks(), new InputAvailability(true, true));
         customUniforms.mapholderToPass(uniformBuilder, this);
         this.uniforms = uniformBuilder.buildUniforms();
         this.customUniforms = customUniforms;
@@ -216,8 +222,9 @@ public class IrisLodRenderProgram {
     public void fillUniformData(Matrix4fc projection, Matrix4fc modelView, int worldYOffset, float partialTicks) {
         GL20.glUseProgram(id);
 
-        Minecraft.getInstance().gameRenderer.lightTexture().turnOnLightLayer();
-        IrisRenderSystem.bindTextureToUnit(TextureType.TEXTURE_2D.getGlType(), IrisSamplers.LIGHTMAP_TEXTURE_UNIT, RenderSystem.getShaderTexture(2).iris$getGlId());
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
+        DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
         setUniform(modelViewUniform, modelView);
         setUniform(modelViewInverseUniform, modelView.invert(new Matrix4f()));
         setUniform(projectionUniform, projection);

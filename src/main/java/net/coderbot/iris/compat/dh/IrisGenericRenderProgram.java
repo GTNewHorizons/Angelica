@@ -2,6 +2,7 @@ package net.coderbot.iris.compat.dh;
 
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.mitchej123.lwjgl.MemoryStack;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
@@ -13,6 +14,7 @@ import com.seibel.distanthorizons.api.objects.math.DhApiVec3i;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBoxGroupShading;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.program.ProgramImages;
@@ -32,6 +34,7 @@ import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.*;
@@ -122,7 +125,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         customUniforms.assignTo(uniformBuilder);
         BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniformBuilder);
         ProgramImages.Builder builder = ProgramImages.builder(id);
-        pipeline.addGbufferOrShadowSamplers(samplerBuilder, builder, isShadowPass ? pipeline::getFlippedBeforeShadow : () -> translucent ? pipeline.getFlippedAfterTranslucent() : pipeline.getFlippedAfterPrepare(), isShadowPass, false, true, false);
+        IrisSamplers.addLevelSamplers(samplerBuilder, pipeline, Minecraft.getMinecraft().getTextureMapBlocks(), new InputAvailability(true, true));
         customUniforms.mapholderToPass(uniformBuilder, this);
         this.uniforms = uniformBuilder.buildUniforms();
         this.customUniforms = customUniforms;
@@ -232,10 +235,11 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         setUniform(modelViewUniform, toJOML(renderParam.dhModelViewMatrix));
         setUniform(modelViewInverseUniform, toJOML(renderParam.dhModelViewMatrix).invert());
         setUniform(projectionUniform, toJOML(renderParam.dhProjectionMatrix));
-        setUniform(projectionInverseUniform, toJOML(renderParam.dhModelViewMatrix).invert());
+        setUniform(projectionInverseUniform, toJOML(renderParam.dhProjectionMatrix).invert());
         setUniform(normalMatrix3fUniform, toJOML(renderParam.dhModelViewMatrix).invert().transpose3x3(new Matrix3f()));
-        Minecraft.getInstance().gameRenderer.lightTexture().turnOnLightLayer();
-        IrisRenderSystem.bindTextureToUnit(TextureType.TEXTURE_2D.getGlType(), IrisSamplers.LIGHTMAP_TEXTURE_UNIT, RenderSystem.getShaderTexture(2).iris$getGlId());
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
+        DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
         this.setUniform(this.instancedShaderProjectionModelViewMatrixUniform, toJOML(renderParam.dhProjectionMatrix).mul(toJOML(renderParam.dhModelViewMatrix)));
 
         samplers.update();
