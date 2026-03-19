@@ -40,6 +40,7 @@ public enum Mixins implements IMixins {
             , "angelica.glsm.MixinSplashProgressCaching"
             , "angelica.gui.MixinGuiOptions"
             , "angelica.optimizations.MixinRendererLivingEntity"
+            , "angelica.gui.MixinGuiIngameForge_ModernF3"
         )
     ),
 
