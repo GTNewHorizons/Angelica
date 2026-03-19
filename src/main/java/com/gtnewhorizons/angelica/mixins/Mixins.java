@@ -41,6 +41,7 @@ public enum Mixins implements IMixins {
             , "angelica.gui.MixinGuiOptions"
             , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.rendering.MixinRenderGlobal_SelectionBox"
+            , "angelica.gui.MixinGuiIngameForge_ModernF3"
         )
     ),
 
