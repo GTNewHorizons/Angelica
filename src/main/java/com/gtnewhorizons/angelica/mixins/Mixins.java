@@ -437,6 +437,12 @@ public enum Mixins implements IMixins {
             "MixinRenderBlocks"
         ))
     ),
+    NOTFINE_BOP_FOG(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .addRequiredMod(TargetedMod.BIOMES_O_PLENTY)
+        .addClientMixins("notfine.toggle.biomesoplenty.MixinFogHandler")
+    ),
     NOTFINE_NO_DYNAMIC_SURROUNDINGS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_MIST)
