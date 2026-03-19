@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
@@ -25,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Different formats produce separate VBOs</li>
  * </ul>
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class GLSM_DisplayList_Batching_Test {
 
     private static int getVBOCount(CompiledDisplayList compiledDisplayList) {

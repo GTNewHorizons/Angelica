@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -13,7 +12,7 @@ import java.nio.FloatBuffer;
 import static org.junit.jupiter.api.Assertions.*;
 
 /** Tests raw GL11 display list behavior (reference for GLSM). */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class DisplayListCompilationRawGLTest {
 
     private int testList = -1;

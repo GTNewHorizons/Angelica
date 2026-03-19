@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.util.GLSMUtil;
 import org.junit.jupiter.api.Assertions;
@@ -14,7 +13,7 @@ import org.lwjgl.opengl.GL30;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 public class GLSM_VAO_UnitTest {
 
     @Test

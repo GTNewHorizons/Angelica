@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
+import com.gtnewhorizons.angelica.glsm.GLSMExtension;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,7 +17,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class StreamingBufferTest {
 
     @ParameterizedTest

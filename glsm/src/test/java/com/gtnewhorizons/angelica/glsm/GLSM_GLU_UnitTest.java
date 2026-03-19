@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 /**
  * Tests that GLStateManager's GLU implementations produce the same matrices as the equivalent JOML operations.
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 public class GLSM_GLU_UnitTest {
 
     private static final FloatBuffer buffer = BufferUtils.createFloatBuffer(16);

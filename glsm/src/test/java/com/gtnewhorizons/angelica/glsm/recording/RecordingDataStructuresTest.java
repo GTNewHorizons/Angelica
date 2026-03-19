@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-import com.gtnewhorizons.angelica.AngelicaExtension;
+import com.gtnewhorizons.angelica.glsm.GLSMExtension;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.AfterEach;
@@ -21,7 +21,7 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for display list recording data structures.
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class RecordingDataStructuresTest {
 
     private int testList = -1;

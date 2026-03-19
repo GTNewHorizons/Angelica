@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -25,7 +24,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * be properly synchronized in the GLSM cache. Client-side state (texture bindings, active unit)
  * is per-context and should NOT be shared.
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 public class GLSM_ServerSideState_UnitTest {
 
     private SharedDrawable sharedDrawable;

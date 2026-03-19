@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +12,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 public class GLSM_MatrixStack_UnitTest {
 
     final static FloatBuffer buffer = BufferUtils.createFloatBuffer(16);

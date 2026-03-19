@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.junit.jupiter.api.Test;
@@ -13,7 +12,7 @@ import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 public class GLSM_TextureInfoCache_UnitTest {
 
     /**

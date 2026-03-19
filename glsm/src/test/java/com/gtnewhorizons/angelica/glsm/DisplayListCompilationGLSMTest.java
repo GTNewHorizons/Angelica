@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -16,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Tests GLSM display list behavior matches OpenGL spec. */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class DisplayListCompilationGLSMTest {
 
     private int testList = -1;

@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica;
+package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -19,7 +19,7 @@ import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
-public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
+public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
 
     private static final Unsafe theUnsafe;
     static {
@@ -61,7 +61,7 @@ public class AngelicaExtension implements BeforeAllCallback, BeforeEachCallback,
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete();
             GLStateManager.BYPASS_CACHE = false;
-            context.getRoot().getStore(GLOBAL).put("AngelicaExtension", this);
+            context.getRoot().getStore(GLOBAL).put("GLSMExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
             glRenderer = GL11.glGetString(GL11.GL_RENDERER);
             glVersion = GL11.glGetString(GL11.GL_VERSION);

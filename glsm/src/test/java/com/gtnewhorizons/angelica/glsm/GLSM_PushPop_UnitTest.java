@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import com.gtnewhorizons.angelica.util.GLBit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -22,7 +21,7 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class GLSM_PushPop_UnitTest {
 
     @BeforeEach

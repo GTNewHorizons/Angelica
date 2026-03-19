@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
+import com.gtnewhorizons.angelica.glsm.GLSMExtension;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexEnvState;
 import org.junit.jupiter.api.AfterEach;
@@ -23,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * Tests for FFP TexEnv COMBINE / multi-unit features:
  * TexEnvState tracking, FragmentKey packing, FragmentShaderGenerator COMBINE codegen, and glMultiTexCoord routing.
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class FFPCombineShaderTest {
 
     private final List<Integer> shadersToDelete = new ArrayList<>();

@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
@@ -11,7 +10,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class VertexAttribDefaultBridgeTest {
 
     private static final int COLOR_ATTRIB = 1;        // VertexFormatElement.Usage.COLOR

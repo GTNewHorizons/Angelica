@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -13,7 +12,7 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
  * Verifies that display lists work correctly with different vertex attribute combinations
  * and that optimal formats are selected.
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class GLSM_DisplayList_FormatOptimization_Test {
 
     private int displayList = -1;

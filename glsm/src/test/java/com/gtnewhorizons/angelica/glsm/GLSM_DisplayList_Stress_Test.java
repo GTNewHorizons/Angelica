@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -24,7 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * need the full Minecraft environment. These tests focus on matrix
  * operations and display list lifecycle which work with raw GL calls.</p>
  */
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class GLSM_DisplayList_Stress_Test {
 
     private final List<Integer> testLists = new ArrayList<>();

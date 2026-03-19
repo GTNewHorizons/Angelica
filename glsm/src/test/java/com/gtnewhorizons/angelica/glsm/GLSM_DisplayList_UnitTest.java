@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -9,7 +8,7 @@ import org.lwjgl.opengl.GL11;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(AngelicaExtension.class)
+@ExtendWith(GLSMExtension.class)
 class GLSM_DisplayList_UnitTest {
 
     @Test
