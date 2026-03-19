@@ -63,13 +63,15 @@ val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
 tasks.test {
     dependsOn(downgradeEmbedOnlyForTest)
     classpath = classpath
-        .minus(embedOnly)
         .plus(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
 }
 
 tasks.shadowJar {
     dependsOn(embedOnly)
     from(embedOnly.map(::zipTree))
+    minimize {
+        exclude(project(":glsm"))
+    }
     relocate("com.mitchej123", "com.mitchej123")
     relocate("org.embeddedt", "org.embeddedt")
 }
