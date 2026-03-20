@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
@@ -86,8 +87,10 @@ public class HUDCaching {
                 framebuffer.clearBindFramebuffer();
             }
             renderingCacheOverride = true;
+            GLSMConfig.hudCacheOverride = true;
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             renderingCacheOverride = false;
+            GLSMConfig.hudCacheOverride = false;
             mc.getFramebuffer().bindFramebuffer(false);
         } else {
             renderer.setupOverlayRendering();

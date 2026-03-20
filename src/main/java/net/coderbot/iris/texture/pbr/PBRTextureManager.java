@@ -1,7 +1,7 @@
 package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
+import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;

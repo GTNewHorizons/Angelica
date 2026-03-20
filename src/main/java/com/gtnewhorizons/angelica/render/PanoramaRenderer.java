@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.render;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.uniform.GlUniformFloat2v;
+import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;

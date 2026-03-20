@@ -14,9 +14,9 @@ import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
+import com.gtnewhorizons.angelica.client.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-
+import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
@@ -127,6 +127,7 @@ public class ClientProxy extends CommonProxy {
             LOGGER.info("Celeritas is disabled, skipping initialization from init()");
         }
         if (AngelicaConfig.enableIris) {
+            IrisGLSMBridge.register();
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
 
             Iris.INSTANCE.fmlInitEvent();
@@ -244,8 +245,8 @@ public class ClientProxy extends CommonProxy {
             for (int i = 0; i < event.left.size() - 3; i++) {
                 /* These checks should not be inefficient as most of the time the first one will already fail */
                 if (!hasReplacedXYZ && Objects.firstNonNull(event.left.get(i), "").startsWith("x:") && Objects.firstNonNull(event.left.get(i + 1), "")
-                    .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
-                    .startsWith("f:")) {
+                        .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
+                        .startsWith("f:")) {
                     hasReplacedXYZ = true;
                     int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
                     String heading_str = switch (heading) {
@@ -261,25 +262,27 @@ public class ClientProxy extends CommonProxy {
                     int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
                     event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", bX, bY, bZ, bX & 15, bY & 15, bZ & 15));
                     event.left.set(i + 2, String.format("Chunk: %d %d %d", bX >> 4, bY >> 4, bZ >> 4));
-                    event.left.set(i + 3, String.format(
-                        "Facing: %s (%s) (%.1f / %.1f)",
-                        Direction.directions[heading].toLowerCase(Locale.ROOT),
-                        heading_str,
-                        MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
-                        MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
+                    event.left.set(
+                            i + 3, String.format(
+                                    "Facing: %s (%s) (%.1f / %.1f)",
+                                    Direction.directions[heading].toLowerCase(Locale.ROOT),
+                                    heading_str,
+                                    MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
+                                    MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
 
                     Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
-                    event.left.set(i + 4, String.format(
-                        "lc: %d b: %s bl: %d sl: %d rl: %d",
-                        chunk.getTopFilledSegment() + 15,
-                        chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
-                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
-                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
-                        chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
+                    event.left.set(
+                            i + 4, String.format(
+                                    "lc: %d b: %s bl: %d sl: %d rl: %d",
+                                    chunk.getTopFilledSegment() + 15,
+                                    chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
+                                    chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                                    chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                                    chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
                 }
             }
             // Draw a frametime graph
-            if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
+            if (((IGameSettingsExt) mc.gameSettings).angelica$showFpsGraph()) {
                 frametimeGraph.render();
                 if (Minecraft.getMinecraft().isSingleplayer()) {
                     tpsGraph.render();
@@ -293,7 +296,7 @@ public class ClientProxy extends CommonProxy {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
         if (!event.isCanceled()) {
-            if (event.gui instanceof GuiMainMenu && gameStartTime == -1 ) {
+            if (event.gui instanceof GuiMainMenu && gameStartTime == -1) {
                 gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
                 LOGGER.info("The game loaded in {} seconds.", gameStartTime);
             }
@@ -305,11 +308,17 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onGuiInit(GuiScreenEvent.InitGuiEvent.Pre event) {
-        if(event.gui instanceof GuiVideoSettings eventGui) {
+        if (event.gui instanceof GuiVideoSettings eventGui) {
             event.setCanceled(true);
-            if(AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, NotFineGameOptionPages.general(), NotFineGameOptionPages.detail(), NotFineGameOptionPages.atmosphere(), NotFineGameOptionPages.particles(), NotFineGameOptionPages.other()));
-            } else if(!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
+            if (AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
+                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(
+                        eventGui.parentGuiScreen,
+                        NotFineGameOptionPages.general(),
+                        NotFineGameOptionPages.detail(),
+                        NotFineGameOptionPages.atmosphere(),
+                        NotFineGameOptionPages.particles(),
+                        NotFineGameOptionPages.other()));
+            } else if (!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
                 Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
             } else {
                 Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));

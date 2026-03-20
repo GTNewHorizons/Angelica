@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.particles;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.ffp.DeferredDrawBatcher;
+import com.gtnewhorizons.angelica.client.rendering.DeferredDrawBatcher;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;

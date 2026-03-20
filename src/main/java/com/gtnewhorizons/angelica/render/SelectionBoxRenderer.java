@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.render;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
-import com.gtnewhorizons.angelica.glsm.uniform.GlUniformFloat2v;
+import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import net.minecraft.util.AxisAlignedBB;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
 import org.embeddedt.embeddium.impl.gl.shader.GlShader;

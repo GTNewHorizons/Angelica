@@ -19,8 +19,7 @@ tasks.test {
         events("passed", "skipped", "failed")
     }
     // On macOS ARM64, use an ARM64-compatible JVM for tests
-    val isMacOsArm64 = System.getProperty("os.name").lowercase().contains("mac") &&
-        System.getProperty("os.arch") == "aarch64"
+    val isMacOsArm64 = System.getProperty("os.name").lowercase().contains("mac") && System.getProperty("os.arch") == "aarch64"
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(8)
         if (isMacOsArm64) {
@@ -48,20 +47,31 @@ tasks.register<Copy>("copyDependencies") {
 
 val embedOnly: Configuration by configurations
 
-// Downgrade embedOnly jars for the tests
+val stripModuleInfoFromEmbeds by tasks.registering(Jar::class) {
+    dependsOn(embedOnly)
+    from(embedOnly.map(::zipTree))
+    exclude("module-info.class")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveClassifier = "embeds-stripped"
+}
+
+// Downgrade embedOnly jars for the tests.
 val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
-    inputCollection = embedOnly
+    inputCollection = files(stripModuleInfoFromEmbeds.map { it.archiveFile })
+    outputs.dir(temporaryDir)
 }
 
 tasks.test {
     dependsOn(downgradeEmbedOnlyForTest)
-    classpath = classpath
-        .minus(embedOnly)
-        .plus(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
+    classpath = classpath.plus(files({ fileTree(downgradeEmbedOnlyForTest.get().temporaryDir) }))
 }
 
 tasks.shadowJar {
+    dependsOn(embedOnly)
     from(embedOnly.map(::zipTree))
+    minimize {
+        exclude(project(":glsm"))
+    }
     relocate("com.mitchej123", "com.mitchej123")
     relocate("org.embeddedt", "org.embeddedt")
 }

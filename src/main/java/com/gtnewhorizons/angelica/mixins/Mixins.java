@@ -237,6 +237,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinTileEntityBeaconRenderer"
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
+            , "shaders.MixinGlProgram"
         )
     ),
 
