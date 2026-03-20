@@ -60,10 +60,11 @@ val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = files(stripModuleInfoFromEmbeds.map { it.archiveFile })
 }
 
+dependencies {
+    testRuntimeOnly(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
+}
 tasks.test {
     dependsOn(downgradeEmbedOnlyForTest)
-    classpath = classpath
-        .plus(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
 }
 
 tasks.shadowJar {
