@@ -46,12 +46,9 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
@@ -205,7 +202,7 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Pre event) {
-        if (event.isCanceled() || !mc.gameSettings.showDebugInfo) return;
+        if (!mc.gameSettings.showDebugInfo) return;
         if (AngelicaConfig.modernizeF3Screen && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) {
             F3Direction.renderWorldDirectionsEvent(mc, event);
             event.setCanceled(true);
@@ -215,7 +212,7 @@ public class ClientProxy extends CommonProxy {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
         Minecraft mc = Minecraft.getMinecraft();
-        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
+        if (!mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
 
         NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
@@ -284,32 +281,6 @@ public class ClientProxy extends CommonProxy {
                                     chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
                 }
             }
-            event.setCanceled(true);
-            // TODO don't cancel the event and render here,
-            //  instead mixin into the vanilla code and add a background to it
-            /* render ourselves for modern background */
-            FontRenderer fontrenderer = mc.fontRenderer;
-            int fontColor = 0xe0e0e0;
-            int rectColor = 0x90505050;
-            for (int x = 0; x < event.left.size(); x++) {
-                String msg = event.left.get(x);
-                if (msg == null) continue;
-                int strX = 2;
-                int strY = 2 + x * fontrenderer.FONT_HEIGHT;
-                Gui.drawRect(1, strY - 1, strX + fontrenderer.getStringWidth(msg) + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
-                fontrenderer.drawString(msg, strX, strY, fontColor);
-            }
-            int width = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaledWidth();
-            for (int x = 0; x < event.right.size(); x++) {
-                String msg = event.right.get(x);
-                if (msg == null) continue;
-                int w = fontrenderer.getStringWidth(msg);
-                int strX = width - w - 2;
-                int strY = 2 + x * fontrenderer.FONT_HEIGHT;
-                Gui.drawRect(strX - 1, strY - 1, strX + w + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
-                fontrenderer.drawString(msg, strX, strY, fontColor);
-            }
-
             // Draw a frametime graph
             if (((IGameSettingsExt) mc.gameSettings).angelica$showFpsGraph()) {
                 frametimeGraph.render();
