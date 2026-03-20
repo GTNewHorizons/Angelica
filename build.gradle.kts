@@ -55,16 +55,15 @@ val stripModuleInfoFromEmbeds by tasks.registering(Jar::class) {
     archiveClassifier = "embeds-stripped"
 }
 
-// Downgrade embedOnly jars for the tests
+// Downgrade embedOnly jars for the tests.
 val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
     inputCollection = files(stripModuleInfoFromEmbeds.map { it.archiveFile })
+    outputs.dir(temporaryDir)
 }
 
-dependencies {
-    testRuntimeOnly(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
-}
 tasks.test {
     dependsOn(downgradeEmbedOnlyForTest)
+    classpath = classpath.plus(files({ fileTree(downgradeEmbedOnlyForTest.get().temporaryDir) }))
 }
 
 tasks.shadowJar {
