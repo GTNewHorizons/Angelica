@@ -76,6 +76,8 @@ dependencies {
     compileOnly("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
     compileOnly("org.lwjgl.lwjgl:lwjgl_util:${property("lwjglVersion")}")
 
+    compileOnly("org.ow2.asm:asm-tree:9.7")
+
     // Our Deps
     api("com.github.GTNewHorizons:GTNHLib:${property("gtnhlibVersion")}:dev")
     api("net.minecraftforge:eventbus:${property("eventbusVersion")}")

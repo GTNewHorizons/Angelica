@@ -7,6 +7,10 @@ import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
@@ -134,7 +138,7 @@ public class CompatUniformManager {
         boolean hasAny = false;
 
         for (int i = 0; i < LOC_COUNT; i++) {
-            locs[i] = GL20.glGetUniformLocation(program, UNIFORM_NAMES[i]);
+            locs[i] = RENDER_BACKEND.getUniformLocation(program, UNIFORM_NAMES[i]);
             if (locs[i] != -1) hasAny = true;
         }
 
@@ -202,10 +206,10 @@ public class CompatUniformManager {
             if (locs[LOC_MODELVIEW] != -1 || locs[LOC_IRIS_MODELVIEW] != -1) {
                 mv.get(mat4Buf);
                 if (locs[LOC_MODELVIEW] != -1) {
-                    GL20.glUniformMatrix4(locs[LOC_MODELVIEW], false, mat4Buf);
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_MODELVIEW], false, mat4Buf);
                 }
                 if (locs[LOC_IRIS_MODELVIEW] != -1) {
-                    GL20.glUniformMatrix4(locs[LOC_IRIS_MODELVIEW], false, mat4Buf);
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_MODELVIEW], false, mat4Buf);
                 }
             }
 
@@ -213,7 +217,7 @@ public class CompatUniformManager {
             if (locs[LOC_MODELVIEW_INVERSE] != -1) {
                 mv.invert(scratchMatrix);
                 scratchMatrix.get(mat4Buf);
-                GL20.glUniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
             }
 
             // Normal Matrix (inverse-transpose of upper-left 3x3 of ModelView)
@@ -221,10 +225,10 @@ public class CompatUniformManager {
                 mv.normal(normalMatrix);
                 normalMatrix.get(mat3Buf);
                 if (locs[LOC_NORMAL] != -1) {
-                    GL20.glUniformMatrix3(locs[LOC_NORMAL], false, mat3Buf);
+                    RENDER_BACKEND.uniformMatrix3(locs[LOC_NORMAL], false, mat3Buf);
                 }
                 if (locs[LOC_IRIS_NORMAL] != -1) {
-                    GL20.glUniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
+                    RENDER_BACKEND.uniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
                 }
             }
         }
@@ -234,10 +238,10 @@ public class CompatUniformManager {
             if (locs[LOC_PROJECTION] != -1 || locs[LOC_IRIS_PROJECTION] != -1) {
                 proj.get(mat4Buf);
                 if (locs[LOC_PROJECTION] != -1) {
-                    GL20.glUniformMatrix4(locs[LOC_PROJECTION], false, mat4Buf);
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_PROJECTION], false, mat4Buf);
                 }
                 if (locs[LOC_IRIS_PROJECTION] != -1) {
-                    GL20.glUniformMatrix4(locs[LOC_IRIS_PROJECTION], false, mat4Buf);
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_PROJECTION], false, mat4Buf);
                 }
             }
 
@@ -245,20 +249,20 @@ public class CompatUniformManager {
             if (locs[LOC_PROJECTION_INVERSE] != -1) {
                 proj.invert(scratchMatrix);
                 scratchMatrix.get(mat4Buf);
-                GL20.glUniformMatrix4(locs[LOC_PROJECTION_INVERSE], false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(locs[LOC_PROJECTION_INVERSE], false, mat4Buf);
             }
         }
 
         if (texMatChanged) {
             // Iris lightmap texture matrix (constant)
             if (locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX] != -1) {
-                GL20.glUniformMatrix4(locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX], false, lightmapMatrixBuf);
+                RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX], false, lightmapMatrixBuf);
             }
 
             // angelica_LightmapTextureMatrix — actual GLSM texture unit 1 matrix (set by enableLightmap())
             if (locs[LOC_LIGHTMAP_TEXTURE_MATRIX] != -1) {
                 GLStateManager.getTextures().getTextureUnitMatrix(1).get(mat4Buf);
-                GL20.glUniformMatrix4(locs[LOC_LIGHTMAP_TEXTURE_MATRIX], false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(locs[LOC_LIGHTMAP_TEXTURE_MATRIX], false, mat4Buf);
             }
         }
     }
@@ -267,19 +271,19 @@ public class CompatUniformManager {
         // Fog uniforms
         FogStateStack fog = GLStateManager.getFogState();
         if (locs[LOC_FOG_DENSITY] != -1) {
-            GL20.glUniform1f(locs[LOC_FOG_DENSITY], Math.max(0.0f, fog.getDensity()));
+            RENDER_BACKEND.uniform1f(locs[LOC_FOG_DENSITY], Math.max(0.0f, fog.getDensity()));
         }
         if (locs[LOC_FOG_START] != -1) {
-            GL20.glUniform1f(locs[LOC_FOG_START], fog.getStart());
+            RENDER_BACKEND.uniform1f(locs[LOC_FOG_START], fog.getStart());
         }
         if (locs[LOC_FOG_END] != -1) {
-            GL20.glUniform1f(locs[LOC_FOG_END], fog.getEnd());
+            RENDER_BACKEND.uniform1f(locs[LOC_FOG_END], fog.getEnd());
         }
         if (locs[LOC_FOG_COLOR] != -1) {
             vec4Buf.clear();
             vec4Buf.put((float) fog.getFogColor().x).put((float) fog.getFogColor().y).put((float) fog.getFogColor().z).put(fog.getFogAlpha());
             vec4Buf.flip();
-            GL20.glUniform4(locs[LOC_FOG_COLOR], vec4Buf);
+            RENDER_BACKEND.uniform4(locs[LOC_FOG_COLOR], vec4Buf);
         }
 
         // Alpha test reference — core profile replacement for GL_ALPHA_TEST
@@ -291,7 +295,7 @@ public class CompatUniformManager {
             } else {
                 ref = GLStateManager.getAlphaState().getReference();
             }
-            GL20.glUniform1f(locs[LOC_ALPHA_TEST_REF], ref);
+            RENDER_BACKEND.uniform1f(locs[LOC_ALPHA_TEST_REF], ref);
         }
     }
 
@@ -307,7 +311,7 @@ public class CompatUniformManager {
                .put(mat.emission.z + mat.ambient.z * lm.ambient.z)
                .put(mat.diffuse.w);
         vec4Buf.flip();
-        GL20.glUniform4(locs[LOC_SCENE_COLOR], vec4Buf);
+        RENDER_BACKEND.uniform4(locs[LOC_SCENE_COLOR], vec4Buf);
     }
 
     private static void uploadLightSources(int[] locs) {
@@ -319,13 +323,13 @@ public class CompatUniformManager {
             final LightState light = lights[li];
 
             if (locs[base + LF_AMBIENT] != -1)
-                GL20.glUniform4f(locs[base + LF_AMBIENT], light.ambient.x, light.ambient.y, light.ambient.z, light.ambient.w);
+                RENDER_BACKEND.uniform4f(locs[base + LF_AMBIENT], light.ambient.x, light.ambient.y, light.ambient.z, light.ambient.w);
             if (locs[base + LF_DIFFUSE] != -1)
-                GL20.glUniform4f(locs[base + LF_DIFFUSE], light.diffuse.x, light.diffuse.y, light.diffuse.z, light.diffuse.w);
+                RENDER_BACKEND.uniform4f(locs[base + LF_DIFFUSE], light.diffuse.x, light.diffuse.y, light.diffuse.z, light.diffuse.w);
             if (locs[base + LF_SPECULAR] != -1)
-                GL20.glUniform4f(locs[base + LF_SPECULAR], light.specular.x, light.specular.y, light.specular.z, light.specular.w);
+                RENDER_BACKEND.uniform4f(locs[base + LF_SPECULAR], light.specular.x, light.specular.y, light.specular.z, light.specular.w);
             if (locs[base + LF_POSITION] != -1)
-                GL20.glUniform4f(locs[base + LF_POSITION], light.position.x, light.position.y, light.position.z, light.position.w);
+                RENDER_BACKEND.uniform4f(locs[base + LF_POSITION], light.position.x, light.position.y, light.position.z, light.position.w);
             if (locs[base + LF_HALF_VECTOR] != -1) {
                 // halfVector = normalize(normalize(position.xyz) + eye), eye=(0,0,1) for infinite viewer
                 float hx, hy, hz;
@@ -345,15 +349,15 @@ public class CompatUniformManager {
                 }
                 final float hlen = (float) Math.sqrt(hx * hx + hy * hy + hz * hz);
                 if (hlen > 0) { hx /= hlen; hy /= hlen; hz /= hlen; }
-                GL20.glUniform4f(locs[base + LF_HALF_VECTOR], hx, hy, hz, 0.0f);
+                RENDER_BACKEND.uniform4f(locs[base + LF_HALF_VECTOR], hx, hy, hz, 0.0f);
             }
-            if (locs[base + LF_SPOT_DIRECTION] != -1) GL20.glUniform3f(locs[base + LF_SPOT_DIRECTION], light.spotDirection.x, light.spotDirection.y, light.spotDirection.z);
-            if (locs[base + LF_SPOT_EXPONENT] != -1) GL20.glUniform1f(locs[base + LF_SPOT_EXPONENT], light.spotExponent);
-            if (locs[base + LF_SPOT_CUTOFF] != -1) GL20.glUniform1f(locs[base + LF_SPOT_CUTOFF], light.spotCutoff);
-            if (locs[base + LF_SPOT_COS_CUTOFF] != -1) GL20.glUniform1f(locs[base + LF_SPOT_COS_CUTOFF], light.spotCosCutoff);
-            if (locs[base + LF_CONSTANT_ATTEN] != -1) GL20.glUniform1f(locs[base + LF_CONSTANT_ATTEN], light.constantAttenuation);
-            if (locs[base + LF_LINEAR_ATTEN] != -1) GL20.glUniform1f(locs[base + LF_LINEAR_ATTEN], light.linearAttenuation);
-            if (locs[base + LF_QUADRATIC_ATTEN] != -1) GL20.glUniform1f(locs[base + LF_QUADRATIC_ATTEN], light.quadraticAttenuation);
+            if (locs[base + LF_SPOT_DIRECTION] != -1) RENDER_BACKEND.uniform3f(locs[base + LF_SPOT_DIRECTION], light.spotDirection.x, light.spotDirection.y, light.spotDirection.z);
+            if (locs[base + LF_SPOT_EXPONENT] != -1) RENDER_BACKEND.uniform1f(locs[base + LF_SPOT_EXPONENT], light.spotExponent);
+            if (locs[base + LF_SPOT_CUTOFF] != -1) RENDER_BACKEND.uniform1f(locs[base + LF_SPOT_CUTOFF], light.spotCutoff);
+            if (locs[base + LF_SPOT_COS_CUTOFF] != -1) RENDER_BACKEND.uniform1f(locs[base + LF_SPOT_COS_CUTOFF], light.spotCosCutoff);
+            if (locs[base + LF_CONSTANT_ATTEN] != -1) RENDER_BACKEND.uniform1f(locs[base + LF_CONSTANT_ATTEN], light.constantAttenuation);
+            if (locs[base + LF_LINEAR_ATTEN] != -1) RENDER_BACKEND.uniform1f(locs[base + LF_LINEAR_ATTEN], light.linearAttenuation);
+            if (locs[base + LF_QUADRATIC_ATTEN] != -1) RENDER_BACKEND.uniform1f(locs[base + LF_QUADRATIC_ATTEN], light.quadraticAttenuation);
         }
     }
 
@@ -362,20 +366,20 @@ public class CompatUniformManager {
         if (locs[LOC_MAT_BASE] == -1) return;
         final MaterialState mat = GLStateManager.getFrontMaterial();
         if (locs[LOC_MAT_BASE + MF_EMISSION] != -1)
-            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_EMISSION], mat.emission.x, mat.emission.y, mat.emission.z, mat.emission.w);
+            RENDER_BACKEND.uniform4f(locs[LOC_MAT_BASE + MF_EMISSION], mat.emission.x, mat.emission.y, mat.emission.z, mat.emission.w);
         if (locs[LOC_MAT_BASE + MF_AMBIENT] != -1)
-            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_AMBIENT], mat.ambient.x, mat.ambient.y, mat.ambient.z, mat.ambient.w);
+            RENDER_BACKEND.uniform4f(locs[LOC_MAT_BASE + MF_AMBIENT], mat.ambient.x, mat.ambient.y, mat.ambient.z, mat.ambient.w);
         if (locs[LOC_MAT_BASE + MF_DIFFUSE] != -1)
-            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_DIFFUSE], mat.diffuse.x, mat.diffuse.y, mat.diffuse.z, mat.diffuse.w);
+            RENDER_BACKEND.uniform4f(locs[LOC_MAT_BASE + MF_DIFFUSE], mat.diffuse.x, mat.diffuse.y, mat.diffuse.z, mat.diffuse.w);
         if (locs[LOC_MAT_BASE + MF_SPECULAR] != -1)
-            GL20.glUniform4f(locs[LOC_MAT_BASE + MF_SPECULAR], mat.specular.x, mat.specular.y, mat.specular.z, mat.specular.w);
+            RENDER_BACKEND.uniform4f(locs[LOC_MAT_BASE + MF_SPECULAR], mat.specular.x, mat.specular.y, mat.specular.z, mat.specular.w);
         if (locs[LOC_MAT_BASE + MF_SHININESS] != -1)
-            GL20.glUniform1f(locs[LOC_MAT_BASE + MF_SHININESS], mat.shininess);
+            RENDER_BACKEND.uniform1f(locs[LOC_MAT_BASE + MF_SHININESS], mat.shininess);
     }
 
     private static void uploadClipPlanes(int[] locs) {
         if (locs[LOC_CLIP_PLANES_ENABLED] != -1) {
-            GL20.glUniform1i(locs[LOC_CLIP_PLANES_ENABLED], GLStateManager.anyClipPlaneEnabled() ? 1 : 0);
+            RENDER_BACKEND.uniform1i(locs[LOC_CLIP_PLANES_ENABLED], GLStateManager.anyClipPlaneEnabled() ? 1 : 0);
         }
         if (locs[LOC_CLIP_PLANES] != -1) {
             final ClipPlaneState cps = GLStateManager.getClipPlaneState();
@@ -384,7 +388,7 @@ public class CompatUniformManager {
                 cps.putEyePlane(i, clipPlaneBuf);
             }
             clipPlaneBuf.flip();
-            GL20.glUniform4(locs[LOC_CLIP_PLANES], clipPlaneBuf);
+            RENDER_BACKEND.uniform4(locs[LOC_CLIP_PLANES], clipPlaneBuf);
         }
     }
 

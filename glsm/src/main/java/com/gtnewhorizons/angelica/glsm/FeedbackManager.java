@@ -9,6 +9,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -140,7 +142,7 @@ public class FeedbackManager {
         final int byteCount = count * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * stride + posOffset, readbackBuf);
+        RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * stride + posOffset, readbackBuf);
 
         emitAllPrimitives(mode, count, i -> i, stride);
     }
@@ -153,7 +155,7 @@ public class FeedbackManager {
         final int indexByteCount = indexCount * elementSize;
         ensureIndexReadbackCapacity(indexByteCount);
         indexReadbackBuf.clear().limit(indexByteCount);
-        GL15.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboOffset, indexReadbackBuf);
+        RENDER_BACKEND.getBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboOffset, indexReadbackBuf);
         final ByteBuffer indexBuf = indexReadbackBuf;
 
         int minIdx = Integer.MAX_VALUE, maxIdx = Integer.MIN_VALUE;
@@ -168,7 +170,7 @@ public class FeedbackManager {
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
+        RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
 
         final int base = minIdx;
         emitAllPrimitives(mode, indexCount, i -> ImmediateModeRecorder.readIndex(indexBuf, type, 0, i) - base, stride);
@@ -249,7 +251,7 @@ public class FeedbackManager {
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
+        RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
     }
 
     private static void emitVertex(int vertexIndex, int stride) {

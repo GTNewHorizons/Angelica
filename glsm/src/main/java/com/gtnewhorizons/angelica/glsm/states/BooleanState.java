@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
+
 public class BooleanState implements ISettableState<BooleanState> {
     protected final int glCap;
     protected final boolean ffpStateOnly;
@@ -41,9 +43,9 @@ public class BooleanState implements ISettableState<BooleanState> {
             }
             if (!ffpStateOnly) {
                 if (enabled) {
-                    GL11.glEnable(this.glCap);
+                    RENDER_BACKEND.enable(this.glCap);
                 } else {
-                    GL11.glDisable(this.glCap);
+                    RENDER_BACKEND.disable(this.glCap);
                 }
             }
         }

@@ -47,12 +47,16 @@ configurations {
     // runtimeClasspath.extendsFrom(transformedMod)
     // testRuntimeClasspath.extendsFrom(transformedMod)
 
+    testRuntimeClasspath.exclude group: "com.github.GTNewHorizons", module: "lwjgl3ify"
+
     // Embed in JAR without relocation (compile only, shadowed into JAR)
     embedOnly
     embedOnly.canBeConsumed = false
     embedOnly.canBeResolved = true
     compileClasspath.extendsFrom(embedOnly)
     testCompileClasspath.extendsFrom(embedOnly)
+    testRuntimeClasspath.extendsFrom(embedOnly)
+
 }
 
 
@@ -65,6 +69,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14:dev")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
+//    runtimeOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:3.0.99")
 
     compileOnly("org.projectlombok:lombok:1.18.42") { transitive = false }
     annotationProcessor("org.projectlombok:lombok:1.18.42")
@@ -73,8 +78,10 @@ dependencies {
     compileOnly('org.jetbrains:annotations:26.0.2')
     api("com.github.GTNewHorizons:GTNHLib:0.9.36:dev")
 
-    embedOnly(project(":glsm")) { transitive = false }
-    embedOnly("net.minecraftforge:eventbus:7.0-beta.15")
+    shadowImplementation(project(":glsm")) { transitive = false }
+    shadowImplementation(project(":lwjgl3-backend")) { transitive = false }
+    shadowImplementation("net.minecraftforge:eventbus:7.0-beta.15")
+
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
     shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-26.g5ee7d96-GTNH") {
         exclude module: "antlr4" // we only want to shadow the runtime module

@@ -1,18 +1,18 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.lwjgl.opengl.ARBDirectStateAccess;
-import org.lwjgl.opengl.GL45;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
+
 public class DSAARB extends DSAUnsupported {
 
     @Override
     public void generateMipmaps(int texture, int target) {
-        ARBDirectStateAccess.glGenerateTextureMipmap(texture);
+        RENDER_BACKEND.generateTextureMipmap(texture);
     }
 
     @Override
@@ -30,12 +30,12 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
-        ARBDirectStateAccess.glTextureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels);
+        RENDER_BACKEND.textureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels);
     }
 
     @Override
     public void textureSubImage2D(int texture, int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
-        ARBDirectStateAccess.glTextureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels);
+        RENDER_BACKEND.textureSubImage2D(texture, level, xoffset, yoffset, width, height, format, type, pixels);
     }
 
     @Override
@@ -43,7 +43,7 @@ public class DSAARB extends DSAUnsupported {
         param = GLStateManager.remapTexClamp(pname, param);
         if(!GLStateManager.updateTexParameteriCache(target, texture, pname, param)) return;
 
-        ARBDirectStateAccess.glTextureParameteri(texture, pname, param);
+        RENDER_BACKEND.textureParameteri(texture, target, pname, param);
     }
 
     @Override
@@ -51,38 +51,38 @@ public class DSAARB extends DSAUnsupported {
         param = GLStateManager.remapTexClamp(pname, param);
         if(!GLStateManager.updateTexParameterfCache(target, texture, pname, param)) return;
 
-        ARBDirectStateAccess.glTextureParameterf(texture, pname, param);
+        RENDER_BACKEND.textureParameterf(texture, target, pname, param);
     }
 
     @Override
     public void texParameteriv(int texture, int target, int pname, IntBuffer params) {
         GLStateManager.remapTexClampBuffer(pname, params);
-        ARBDirectStateAccess.glTextureParameter(texture, pname, params);
+        RENDER_BACKEND.textureParameteriv(texture, target, pname, params);
     }
 
     @Override
     public void readBuffer(int framebuffer, int buffer) {
-        ARBDirectStateAccess.glNamedFramebufferReadBuffer(framebuffer, buffer);
+        RENDER_BACKEND.namedFramebufferReadBuffer(framebuffer, buffer);
     }
 
     @Override
     public void drawBuffers(int framebuffer, IntBuffer buffers) {
-        ARBDirectStateAccess.glNamedFramebufferDrawBuffers(framebuffer, buffers);
+        RENDER_BACKEND.namedFramebufferDrawBuffers(framebuffer, buffers);
     }
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        return GLStateManager.getTexParameterOrDefault(texture, pname, () -> ARBDirectStateAccess.glGetTextureParameteri(texture, pname));
+        return GLStateManager.getTexParameterOrDefault(texture, pname, () -> RENDER_BACKEND.getTextureParameteri(texture, target, pname));
     }
 
     @Override
     public int getTexLevelParameteri(int texture, int level, int pname) {
-        return ARBDirectStateAccess.glGetTextureLevelParameteri(texture, level, pname);
+        return RENDER_BACKEND.getTextureLevelParameteri(texture, level, pname);
     }
 
     @Override
     public void copyTexSubImage2D(int destTexture, int target, int i, int i1, int i2, int i3, int i4, int width, int height) {
-        ARBDirectStateAccess.glCopyTextureSubImage2D(destTexture, i, i1, i2, i3, i4, width, height);
+        RENDER_BACKEND.copyTextureSubImage2D(destTexture, target, i, i1, i2, i3, i4, width, height);
     }
 
     @Override
@@ -92,7 +92,7 @@ public class DSAARB extends DSAUnsupported {
         if (texture == 0) {
             super.bindTextureToUnit(unit, texture);
         } else {
-            ARBDirectStateAccess.glBindTextureUnit(unit, texture);
+            RENDER_BACKEND.bindTextureUnit(unit, texture);
             GLStateManager.getTextures().getTextureUnitBindings(unit).setBinding(texture);
         }
     }
@@ -104,44 +104,44 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
-        final int buffer = GL45.glCreateBuffers();
-        GL45.glNamedBufferData(buffer, data, usage);
+        final int buffer = RENDER_BACKEND.createBuffers();
+        RENDER_BACKEND.namedBufferData(buffer, data, usage);
         return buffer;
     }
 
     @Override
     public void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2,
         int bufferChoice, int filter) {
-        ARBDirectStateAccess.glBlitNamedFramebuffer(source, dest, offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
+        RENDER_BACKEND.blitNamedFramebuffer(source, dest, offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
     }
 
     @Override
     public void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
-        ARBDirectStateAccess.glNamedFramebufferTexture(fb, attachment, texture, levels);
+        RENDER_BACKEND.namedFramebufferTexture(fb, attachment, texture, levels);
     }
 
     @Override
     public int createFramebuffer() {
-        return ARBDirectStateAccess.glCreateFramebuffers();
+        return RENDER_BACKEND.createFramebuffers();
     }
 
     @Override
     public int createTexture(int target) {
-        return ARBDirectStateAccess.glCreateTextures(target);
+        return RENDER_BACKEND.createTextures(target);
     }
 
     @Override
     public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
-        ARBDirectStateAccess.glTextureStorage1D(texture, levels, internalFormat, width);
+        RENDER_BACKEND.textureStorage1D(texture, levels, internalFormat, width);
     }
 
     @Override
     public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
-        ARBDirectStateAccess.glTextureStorage2D(texture, levels, internalFormat, width, height);
+        RENDER_BACKEND.textureStorage2D(texture, levels, internalFormat, width, height);
     }
 
     @Override
     public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
-        ARBDirectStateAccess.glTextureStorage3D(texture, levels, internalFormat, width, height, depth);
+        RENDER_BACKEND.textureStorage3D(texture, levels, internalFormat, width, height, depth);
     }
 }

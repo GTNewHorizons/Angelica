@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 
@@ -16,6 +17,8 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Compat transformation for mod shaders running under core profile.
@@ -129,7 +132,7 @@ public class CompatShaderTransformer {
             declaredVersion = Integer.parseInt(versionMatcher.group(1));
         }
 
-        final int targetVersion = Math.max(declaredVersion, 330);
+        final int targetVersion = Math.max(declaredVersion, RENDER_BACKEND != null ? RENDER_BACKEND.getMinGLSLVersion() : 330);
 
         // Pre-parse reserved word renaming — prevents ANTLR parse failures
         source = GlslTransformUtils.replaceTexture(source);

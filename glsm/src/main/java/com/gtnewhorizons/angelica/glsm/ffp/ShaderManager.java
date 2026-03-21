@@ -13,10 +13,11 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import lombok.Getter;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.GL20;
 
 import java.nio.file.Paths;
 import java.util.Arrays;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * FFP shader manager
@@ -142,7 +143,7 @@ public class ShaderManager {
         System.arraycopy(currentFKScratch, 0, currentFKPacked, 0, fkLen);
         currentFKLen = fkLen;
         currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
-        GL20.glUseProgram(currentProgram.getProgramId());
+        RENDER_BACKEND.useProgram(currentProgram.getProgramId());
     }
 
     private void uploadUniforms() {

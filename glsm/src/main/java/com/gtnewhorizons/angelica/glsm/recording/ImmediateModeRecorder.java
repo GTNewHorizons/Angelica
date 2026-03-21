@@ -12,6 +12,8 @@ import org.lwjgl.opengl.GL15;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
+
 /**
  * Records immediate mode GL calls (glBegin/glEnd/glVertex) via {@link DirectTessellator}.
  * Used both during display list compilation and for live immediate mode emulation in core profile.
@@ -221,7 +223,7 @@ public final class ImmediateModeRecorder {
 
             final int prevEBO = GLStateManager.getBoundEBO();
             GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-            final int eboSize = GL15.glGetBufferParameteri(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
+            final int eboSize = RENDER_BACKEND.getBufferParameteri(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
             if (eboSize <= 0) {
                 GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
                 return null;
@@ -236,7 +238,7 @@ public final class ImmediateModeRecorder {
                 return null;
             }
             final ByteBuffer eboData = MemoryUtilities.memAlloc(eboReadSize);
-            GL15.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboReadOffset, eboData);
+            RENDER_BACKEND.getBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboReadOffset, eboData);
             GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
 
             try {
@@ -281,7 +283,7 @@ public final class ImmediateModeRecorder {
                     scratchAttribBaseOffsets[i] = scratchVBOReadOffsets[existingIdx];
                 } else {
                     GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, a.vboId);
-                    final int bufferSize = GL15.glGetBufferParameteri(GL15.GL_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
+                    final int bufferSize = RENDER_BACKEND.getBufferParameteri(GL15.GL_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
                     if (bufferSize <= 0) {
                         GLStateManager.LOGGER.warn("[VBO Readback] GL_BUFFER_SIZE={} for VBO {}", bufferSize, a.vboId);
                         continue;
@@ -315,7 +317,7 @@ public final class ImmediateModeRecorder {
                     if (readSize <= 0) continue;
 
                     final ByteBuffer buf = MemoryUtilities.memAlloc(readSize);
-                    GL15.glGetBufferSubData(GL15.GL_ARRAY_BUFFER, readOffset, buf);
+                    RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, readOffset, buf);
                     scratchAttribBuffers[i] = buf;
                     scratchAttribBaseOffsets[i] = readOffset;
                     scratchVBOIds[readVBOCount] = a.vboId;

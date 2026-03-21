@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -12,6 +12,8 @@ import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.KHRDebug;
 
 import java.util.concurrent.atomic.AtomicInteger;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * A compiled and linked FFP emulation program (vertex + fragment + optional geometry shaders). Owns the GL program handle and caches uniform locations.
@@ -172,17 +174,18 @@ public class Program {
     }
 
     private int loc(String name) {
-        return GL20.glGetUniformLocation(programId, name);
+        return RENDER_BACKEND.getUniformLocation(programId, name);
     }
 
     public void destroy() {
-        GL20.glDeleteProgram(programId);
+        RENDER_BACKEND.deleteProgram(programId);
     }
 
     /**
      * Compile vertex + fragment + optional geometry shaders, link into a program, and return the FFPProgram.
      */
     static Program create(VertexKey vk, FragmentKey fk, String vertSrc, String fragSrc, String geomSrc) {
+        final RenderBackend backend = RENDER_BACKEND;
         final int id = PROGRAM_COUNTER.getAndIncrement();
         final String vkHex = Long.toHexString(vk.pack());
         final boolean hasGeom = geomSrc != null;
@@ -197,16 +200,16 @@ public class Program {
                 shaders[shaderCount++] = compileShader(GL32.GL_GEOMETRY_SHADER, geomSrc, "ffp_g_" + id);
             }
 
-            program = GL20.glCreateProgram();
-            for (int i = 0; i < shaderCount; i++) GL20.glAttachShader(program, shaders[i]);
-            GL20.glLinkProgram(program);
+            program = backend.createProgram();
+            for (int i = 0; i < shaderCount; i++) backend.attachShader(program, shaders[i]);
+            backend.linkProgram(program);
 
-            final String log = RenderSystem.getProgramInfoLog(program);
+            final String log = backend.getProgramInfoLog(program, backend.getProgrami(program, GL20.GL_INFO_LOG_LENGTH));
             if (!log.isEmpty()) {
                 GLStateManager.LOGGER.warn("FFP program link log (vk=0x{}, fk={}): {}", vkHex, fk, log);
             }
 
-            if (GL20.glGetProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
+            if (backend.getProgrami(program, GL20.GL_LINK_STATUS) != GL11.GL_TRUE) {
                 throw new RuntimeException("FFP shader link failed (vk=0x" + vkHex + ", fk=" + fk + "): " + log);
             }
 
@@ -215,32 +218,33 @@ public class Program {
 
             // Detach and delete individual shaders — they're linked into the program
             for (int i = 0; i < shaderCount; i++) {
-                GL20.glDetachShader(program, shaders[i]);
-                GL20.glDeleteShader(shaders[i]);
+                backend.detachShader(program, shaders[i]);
+                backend.deleteShader(shaders[i]);
             }
             shaderCount = 0;
 
             final Program ffpProgram = new Program(program, vk, fk);
 
             final int previousProgram = GLStateManager.getActiveProgram();
-            GL20.glUseProgram(program);
+            backend.useProgram(program);
             for (int i = 0; i < 4; i++) {
-                if (ffpProgram.locSampler[i] != -1) GL20.glUniform1i(ffpProgram.locSampler[i], i);
+                if (ffpProgram.locSampler[i] != -1) backend.uniform1i(ffpProgram.locSampler[i], i);
             }
-            GL20.glUseProgram(previousProgram);
+            backend.useProgram(previousProgram);
 
             return ffpProgram;
         } catch (RuntimeException e) {
-            if (program != 0) GL20.glDeleteProgram(program);
-            for (int i = 0; i < shaderCount; i++) GL20.glDeleteShader(shaders[i]);
+            if (program != 0) backend.deleteProgram(program);
+            for (int i = 0; i < shaderCount; i++) backend.deleteShader(shaders[i]);
             throw e;
         }
     }
 
     private static int compileShader(int type, String src, String name) {
-        final int shader = GL20.glCreateShader(type);
-        GL20.glShaderSource(shader, src);
-        GL20.glCompileShader(shader);
+        final RenderBackend backend = RENDER_BACKEND;
+        final int shader = backend.createShader(type);
+        backend.shaderSource(shader, src);
+        backend.compileShader(shader);
 
         final String typeName = switch (type) {
             case GL20.GL_VERTEX_SHADER -> "vertex";
@@ -253,15 +257,15 @@ public class Program {
         };
         GLDebug.nameObject(KHRDebug.GL_SHADER, shader, name + "(" + typeName + ")");
 
-        final String log = RenderSystem.getShaderInfoLog(shader);
+        final String log = backend.getShaderInfoLog(shader, backend.getShaderi(shader, GL20.GL_INFO_LOG_LENGTH));
         if (!log.isEmpty()) {
             GLStateManager.LOGGER.warn("FFP {} shader compilation log for {}: {}", typeName, name, log);
         }
 
-        final int result = GL20.glGetShaderi(shader, GL20.GL_COMPILE_STATUS);
+        final int result = backend.getShaderi(shader, GL20.GL_COMPILE_STATUS);
         if (result != GL11.GL_TRUE) {
             GLStateManager.LOGGER.error("FFP {} shader source:\n{}", typeName, src);
-            GL20.glDeleteShader(shader);
+            backend.deleteShader(shader);
             throw new RuntimeException("FFP " + typeName + " shader compilation failed for " + name + ": " + log);
         }
 
