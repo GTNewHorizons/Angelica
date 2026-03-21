@@ -929,6 +929,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public ByteBuffer mapBuffer(int target, int access, long length, ByteBuffer old_buffer) {
+        return GL15.glMapBuffer(target, access, length, old_buffer);
+    }
+
+    @Override
     public boolean unmapBuffer(int target) {
         return GL15.glUnmapBuffer(target);
     }

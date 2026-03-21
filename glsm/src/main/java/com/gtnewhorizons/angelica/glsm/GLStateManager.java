@@ -72,6 +72,7 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
@@ -418,6 +419,8 @@ public class GLStateManager {
     @Getter protected static int boundVBO;
     @Getter protected static int boundEBO;
     @Getter protected static int boundVAO;
+    private static int boundPixelUnpackBuffer;
+    private static int boundPixelPackBuffer;
     private static final Int2IntOpenHashMap vaoEboMap = new Int2IntOpenHashMap();
 
     static {
@@ -1005,6 +1008,8 @@ public class GLStateManager {
 
             case GL15.GL_ARRAY_BUFFER_BINDING -> boundVBO;
             case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> boundEBO;
+            case GL21.GL_PIXEL_UNPACK_BUFFER_BINDING -> boundPixelUnpackBuffer;
+            case GL21.GL_PIXEL_PACK_BUFFER_BINDING -> boundPixelPackBuffer;
 
             case GL20.GL_CURRENT_PROGRAM -> activeProgram;
 
@@ -1789,6 +1794,7 @@ public class GLStateManager {
             }
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        suspendPixelUnpackBuffer();
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture
             RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
@@ -1796,6 +1802,7 @@ public class GLStateManager {
             // Non-main thread or proxy texture - use direct GL call
             RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         }
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
@@ -1808,7 +1815,9 @@ public class GLStateManager {
             }
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
@@ -1821,7 +1830,9 @@ public class GLStateManager {
             }
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
@@ -1834,13 +1845,13 @@ public class GLStateManager {
             }
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : null);
+        suspendPixelUnpackBuffer();
         if (shouldUseDSA(target)) {
-            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
             RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
         } else {
-            // Non-main thread or proxy texture - use direct GL call
             RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         }
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
@@ -3780,12 +3791,32 @@ public class GLStateManager {
         };
     }
 
-    public static void glGetTexImage(int target, int level, int format, int type, java.nio.ByteBuffer pixels) { RENDER_BACKEND.getTexImage(target, level, format, type, pixels); }
-    public static void glGetTexImage(int target, int level, int format, int type, java.nio.IntBuffer pixels) { RENDER_BACKEND.getTexImage(target, level, format, type, pixels); }
+    public static void glGetTexImage(int target, int level, int format, int type, java.nio.ByteBuffer pixels) {
+        suspendPixelPackBuffer();
+        RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
+        restorePixelPackBuffer();
+    }
+    public static void glGetTexImage(int target, int level, int format, int type, java.nio.IntBuffer pixels) {
+        suspendPixelPackBuffer();
+        RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
+        restorePixelPackBuffer();
+    }
 
-    public static void glReadPixels(int x, int y, int width, int height, int format, int type, ByteBuffer pixels) { RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels); }
-    public static void glReadPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels) { RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels); }
-    public static void glReadPixels(int x, int y, int width, int height, int format, int type, IntBuffer pixels) { RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels); }
+    public static void glReadPixels(int x, int y, int width, int height, int format, int type, ByteBuffer pixels) {
+        suspendPixelPackBuffer();
+        RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
+        restorePixelPackBuffer();
+    }
+    public static void glReadPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels) {
+        suspendPixelPackBuffer();
+        RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
+        restorePixelPackBuffer();
+    }
+    public static void glReadPixels(int x, int y, int width, int height, int format, int type, IntBuffer pixels) {
+        suspendPixelPackBuffer();
+        RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
+        restorePixelPackBuffer();
+    }
     public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) { RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height); }
     public static void glClearTexImage(int texture, int level, int format, int type, java.nio.ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
 
@@ -4201,7 +4232,9 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage1D in display lists not yet implemented");
         }
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage1D(target, level, internalformat, width, border, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
@@ -4209,7 +4242,9 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
@@ -4217,14 +4252,18 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexSubImage1D(int target, int level, int xoffset, int width, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexSubImage1D in display lists not yet implemented");
         }
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage1D(target, level, xoffset, width, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glLineWidth(float width) {
@@ -4302,6 +4341,7 @@ public class GLStateManager {
                 return;
             }
         }
+        suspendPixelUnpackBuffer();
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture - keeps GL binding state unchanged
             RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
@@ -4309,6 +4349,7 @@ public class GLStateManager {
             // Non-main thread or proxy texture - use direct GL call
             RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         }
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
@@ -4319,6 +4360,7 @@ public class GLStateManager {
                 return;
             }
         }
+        suspendPixelUnpackBuffer();
         if (shouldUseDSA(target)) {
             // Use DSA to upload directly to the texture
             RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
@@ -4326,6 +4368,7 @@ public class GLStateManager {
             // Non-main thread or proxy texture - use direct GL call
             RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         }
+        restorePixelUnpackBuffer();
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
@@ -4339,7 +4382,9 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexSubImage3D in display lists not yet implemented - if you see this, please report!");
         }
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
+        restorePixelUnpackBuffer();
     }
 
     public static void glCopyTexImage1D(int target, int level, int internalFormat, int x, int y, int width, int border) {
@@ -4816,8 +4861,36 @@ public class GLStateManager {
         } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
             boundEBO = buffer;
             vaoEboMap.put(boundVAO, buffer);
+        } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
+            boundPixelUnpackBuffer = buffer;
+        } else if (target == GL21.GL_PIXEL_PACK_BUFFER) {
+            boundPixelPackBuffer = buffer;
         }
         RENDER_BACKEND.bindBuffer(target, buffer);
+    }
+
+    private static void suspendPixelUnpackBuffer() {
+        if (boundPixelUnpackBuffer != 0) {
+            RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+        }
+    }
+
+    private static void restorePixelUnpackBuffer() {
+        if (boundPixelUnpackBuffer != 0) {
+            RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, boundPixelUnpackBuffer);
+        }
+    }
+
+    private static void suspendPixelPackBuffer() {
+        if (boundPixelPackBuffer != 0) {
+            RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
+        }
+    }
+
+    private static void restorePixelPackBuffer() {
+        if (boundPixelPackBuffer != 0) {
+            RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, boundPixelPackBuffer);
+        }
     }
 
     public static int glGenBuffers() {
@@ -4832,6 +4905,7 @@ public class GLStateManager {
     public static void glBufferData(int target, java.nio.ShortBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferSubData(int target, long offset, java.nio.ByteBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static ByteBuffer glMapBuffer(int target, int access) { return RENDER_BACKEND.mapBuffer(target, access); }
+    public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) { return RENDER_BACKEND.mapBuffer(target, access, length, old_buffer); }
     public static boolean glUnmapBuffer(int target) { return RENDER_BACKEND.unmapBuffer(target); }
     public static void glGetBufferSubData(int target, long offset, java.nio.ByteBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static int glGetBufferParameteri(int target, int pname) { return RENDER_BACKEND.getBufferParameteri(target, pname); }
