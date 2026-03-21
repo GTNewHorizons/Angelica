@@ -894,6 +894,16 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void bufferData(int target, int[] data, int usage) {
+        GL15C.glBufferData(target, data, usage);
+    }
+
+    @Override
+    public void bufferData(int target, float[] data, int usage) {
+        GL15C.glBufferData(target, data, usage);
+    }
+
+    @Override
     public void bufferSubData(int target, long offset, ByteBuffer data) {
         GL15C.glBufferSubData(target, offset, data);
     }

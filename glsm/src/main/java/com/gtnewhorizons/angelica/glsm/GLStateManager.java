@@ -4825,6 +4825,8 @@ public class GLStateManager {
     }
 
     public static void glBufferData(int target, long size, int usage) { RENDER_BACKEND.bufferData(target, size, usage); }
+    public static void glBufferData(int target, int[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, float[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, java.nio.ByteBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, java.nio.FloatBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, java.nio.ShortBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }

@@ -208,6 +208,8 @@ public abstract class RenderBackend {
     public abstract void bufferData(int target, ByteBuffer data, int usage);
     public abstract void bufferData(int target, FloatBuffer data, int usage);
     public abstract void bufferData(int target, ShortBuffer data, int usage);
+    public abstract void bufferData(int target, int[] data, int usage);
+    public abstract void bufferData(int target, float[] data, int usage);
     public abstract void bufferSubData(int target, long offset, ByteBuffer data);
     public abstract ByteBuffer mapBuffer(int target, int access);
     public abstract boolean unmapBuffer(int target);
