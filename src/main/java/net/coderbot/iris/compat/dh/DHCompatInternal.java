@@ -164,12 +164,12 @@ public class DHCompatInternal {
         }
         if (storedDepthTex != depthTex && dhTerrainFramebuffer != null) {
             storedDepthTex = depthTex;
-            dhTerrainFramebuffer.addDepthAttachment(depthTex);
+            dhTerrainFramebuffer.addDepthAttachmentBypass(depthTex);
             if (dhWaterFramebuffer != null) {
-                dhWaterFramebuffer.addDepthAttachment(depthTex);
+                dhWaterFramebuffer.addDepthAttachmentBypass(depthTex);
             }
             if (dhGenericFramebuffer != null) {
-                dhGenericFramebuffer.addDepthAttachment(depthTex);
+                dhGenericFramebuffer.addDepthAttachmentBypass(depthTex);
             }
         }
     }
