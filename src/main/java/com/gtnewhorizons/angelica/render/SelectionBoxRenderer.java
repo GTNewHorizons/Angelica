@@ -15,7 +15,6 @@ import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL30;
 
 public final class SelectionBoxRenderer {
 
@@ -51,7 +50,7 @@ public final class SelectionBoxRenderer {
         fs.destroy();
         if (gs != null) gs.destroy();
 
-        emptyVao = GL30.glGenVertexArrays();
+        emptyVao = GLStateManager.glGenVertexArrays();
     }
 
     public static void draw(AxisAlignedBB aabb, int color) {
@@ -86,7 +85,7 @@ public final class SelectionBoxRenderer {
         }
 
         GLStateManager.glBindVertexArray(emptyVao);
-        GL11.glDrawArrays(GL11.GL_LINES, 0, 24);
+        GLStateManager.glDrawArrays(GL11.GL_LINES, 0, 24);
         GLStateManager.glBindVertexArray(0);
 
         program.unbind();
@@ -98,7 +97,7 @@ public final class SelectionBoxRenderer {
             program = null;
         }
         if (emptyVao != 0) {
-            GL30.glDeleteVertexArrays(emptyVao);
+            GLStateManager.glDeleteVertexArrays(emptyVao);
             emptyVao = 0;
         }
     }

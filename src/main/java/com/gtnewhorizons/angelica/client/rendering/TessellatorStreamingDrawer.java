@@ -15,7 +15,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
 
@@ -236,7 +235,7 @@ public class TessellatorStreamingDrawer {
         if (drawMode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(firstVertex, vertexCount);
         } else {
-            GL11.glDrawArrays(drawMode, firstVertex, vertexCount);
+            GLStateManager.glDrawArrays(drawMode, firstVertex, vertexCount);
         }
     }
 
@@ -260,20 +259,20 @@ public class TessellatorStreamingDrawer {
         if (orphanVAOs[flags] == 0) {
             orphanBuffers[flags] = new OrphanStreamingBuffer();
 
-            orphanVAOs[flags] = GL30.glGenVertexArrays();
+            orphanVAOs[flags] = GLStateManager.glGenVertexArrays();
             GLStateManager.glBindVertexArray(orphanVAOs[flags]);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
             format.setupBufferState(0L);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             GLStateManager.glBindVertexArray(0);
         }
 
         if (persistentBuffer != null && persistentVAOs[flags] == 0) {
-            persistentVAOs[flags] = GL30.glGenVertexArrays();
+            persistentVAOs[flags] = GLStateManager.glGenVertexArrays();
             GLStateManager.glBindVertexArray(persistentVAOs[flags]);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
             format.setupBufferState(0L);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             GLStateManager.glBindVertexArray(0);
         }
     }

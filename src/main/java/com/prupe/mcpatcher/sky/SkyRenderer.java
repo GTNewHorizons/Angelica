@@ -14,6 +14,7 @@ import net.minecraft.world.World;
 
 import org.lwjgl.opengl.GL11;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
@@ -384,42 +385,42 @@ public class SkyRenderer {
             TexturePackAPI.bindTexture(texture);
             setBlendingMethod(brightness);
 
-            GL11.glPushMatrix();
+            GLStateManager.glPushMatrix();
 
             if (rotate) {
-                GL11.glRotatef(celestialAngle * 360.0f * speed, axis[0], axis[1], axis[2]);
+                GLStateManager.glRotatef(celestialAngle * 360.0f * speed, axis[0], axis[1], axis[2]);
             }
 
             // north
-            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
-            GL11.glRotatef(-90.0f, 0.0f, 0.0f, 1.0f);
+            GLStateManager.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+            GLStateManager.glRotatef(-90.0f, 0.0f, 0.0f, 1.0f);
             drawTile(4);
 
             // top
-            GL11.glPushMatrix();
-            GL11.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
+            GLStateManager.glPushMatrix();
+            GLStateManager.glRotatef(90.0f, 1.0f, 0.0f, 0.0f);
             drawTile(1);
-            GL11.glPopMatrix();
+            GLStateManager.glPopMatrix();
 
             // bottom
-            GL11.glPushMatrix();
-            GL11.glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
+            GLStateManager.glPushMatrix();
+            GLStateManager.glRotatef(-90.0f, 1.0f, 0.0f, 0.0f);
             drawTile(0);
-            GL11.glPopMatrix();
+            GLStateManager.glPopMatrix();
 
             // west
-            GL11.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+            GLStateManager.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             drawTile(5);
 
             // south
-            GL11.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+            GLStateManager.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             drawTile(2);
 
             // east
-            GL11.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
+            GLStateManager.glRotatef(90.0f, 0.0f, 0.0f, 1.0f);
             drawTile(3);
 
-            GL11.glPopMatrix();
+            GLStateManager.glPopMatrix();
 
             return true;
         }
@@ -440,14 +441,14 @@ public class SkyRenderer {
             blendMethod.applyFade(brightness);
             blendMethod.applyAlphaTest();
             blendMethod.applyBlending();
-            GL11.glEnable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
         }
 
         static void clearBlendingMethod() {
-            GL11.glDisable(GL11.GL_ALPHA_TEST);
-            GL11.glEnable(GL11.GL_BLEND);
+            GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
+            GLStateManager.glEnable(GL11.GL_BLEND);
             GLAPI.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ONE, GL11.GL_ZERO);
-            GL11.glColor4f(1.0f, 1.0f, 1.0f, rainStrength);
+            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, rainStrength);
         }
     }
 }

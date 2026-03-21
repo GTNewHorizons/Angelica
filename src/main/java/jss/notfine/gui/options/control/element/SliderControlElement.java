@@ -3,9 +3,9 @@ package jss.notfine.gui.options.control.element;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatter;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.MathHelper;
-import org.lwjgl.opengl.GL11;
 
 public class SliderControlElement extends NotFineControlElement<Integer> {
     private final ControlValueFormatter formatter;
@@ -42,7 +42,7 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
             if(mousePressed) {
                 updateSlider(mouseX);
             }
-            GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
+            GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
             drawTexturedModalRect(xPosition + (int)(value * (float)(width - 8)), yPosition, 0, 66, 4, 20);
             drawTexturedModalRect(xPosition + (int)(value * (float)(width - 8)) + 4, yPosition, 196, 66, 4, 20);
         }

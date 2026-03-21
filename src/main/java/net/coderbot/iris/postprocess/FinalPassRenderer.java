@@ -36,7 +36,6 @@ import net.coderbot.iris.uniforms.CommonUniforms;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
@@ -144,7 +143,7 @@ public class FinalPassRenderer {
 
 		this.swapPasses = swapPasses.build();
 
-		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
+		GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
 
 	private static Map<PatchShaderType, String> getTransformed(ProgramSource source, CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture, String stageName) {
@@ -276,7 +275,7 @@ public class FinalPassRenderer {
 			swapPass.from.bind();
 
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
-            GL11.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
+            GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
 		}
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.

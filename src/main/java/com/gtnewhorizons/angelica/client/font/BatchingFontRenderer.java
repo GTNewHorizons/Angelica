@@ -20,7 +20,6 @@ import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 
 
 import java.nio.ByteBuffer;
@@ -94,12 +93,12 @@ public class BatchingFontRenderer {
 
         //noinspection deprecation
         fontShaderId = FontAAShader.getProgram().getProgramId();
-        AAMode = GL20.glGetUniformLocation(fontShaderId, "aaMode");
-        AAStrength = GL20.glGetUniformLocation(fontShaderId, "strength");
-        mvpMatrixLocation = GL20.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
+        AAMode = GLStateManager.glGetUniformLocation(fontShaderId, "aaMode");
+        AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
+        mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
         if (ebo == null) {
             ebo = new IndexBuffer();
-            vbo = GL15.glGenBuffers();
+            vbo = GLStateManager.glGenBuffers();
             allocateBuffers();
         }
     }
@@ -323,7 +322,7 @@ public class BatchingFontRenderer {
         }
 
         // Upload first (to reduce stalls)
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
         vertexData.limit(vertexDataPos);
         vboCapacity = StreamingUploader.upload(vertexData, vboCapacity);
 
@@ -346,42 +345,42 @@ public class BatchingFontRenderer {
         GLStateManager.glUseProgram(fontShaderId);
         if (FontConfig.fontAAMode != fontAAModeLast) {
             fontAAModeLast = FontConfig.fontAAMode;
-            GL20.glUniform1i(AAMode, FontConfig.fontAAMode);
+            GLStateManager.glUniform1i(AAMode, FontConfig.fontAAMode);
         }
         if (FontConfig.fontAAStrength != fontAAStrengthLast) {
             fontAAStrengthLast = FontConfig.fontAAStrength;
-            GL20.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+            GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
         }
         try (MemoryStack stack = stackPush()) {
             final FloatBuffer mvpBuf = stack.mallocFloat(16);
             GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
             scratchMvp.get(mvpBuf);
-            GL20.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+            GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
         }
 
         if (fontVAO == 0) {
-            fontVAO = GL30.glGenVertexArrays();
+            fontVAO = GLStateManager.glGenVertexArrays();
 
             GLStateManager.glBindVertexArray(fontVAO);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
             ebo.bind();
 
             // position
-            GL20.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 0);
-            GL20.glEnableVertexAttribArray(0);
+            GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 0);
+            GLStateManager.glEnableVertexAttribArray(0);
 
             // texcoords
-            GL20.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 8);
-            GL20.glEnableVertexAttribArray(1);
+            GLStateManager.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 8);
+            GLStateManager.glEnableVertexAttribArray(1);
 
             // color
-            GL20.glVertexAttribPointer(2, 4, GL11.GL_UNSIGNED_BYTE, true, VERTEX_SIZE, 16);
-            GL20.glEnableVertexAttribArray(2);
+            GLStateManager.glVertexAttribPointer(2, 4, GL11.GL_UNSIGNED_BYTE, true, VERTEX_SIZE, 16);
+            GLStateManager.glEnableVertexAttribArray(2);
 
             // tex bounds
-            GL20.glVertexAttribPointer(3, 4, GL11.GL_FLOAT, false, VERTEX_SIZE, 20);
-            GL20.glEnableVertexAttribArray(3);
+            GLStateManager.glVertexAttribPointer(3, 4, GL11.GL_FLOAT, false, VERTEX_SIZE, 20);
+            GLStateManager.glEnableVertexAttribArray(3);
         }
 
         GLStateManager.glBindVertexArray(fontVAO);
@@ -403,13 +402,13 @@ public class BatchingFontRenderer {
                 }
                 lastTexture = cmd.texture;
             }
-            GL11.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
+            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
         }
 
 
         GLStateManager.glUseProgram(prevProgram);
 
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindVertexArray(0);
 
         if (isTextureEnabledBefore) {

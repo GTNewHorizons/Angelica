@@ -10,7 +10,6 @@ import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.ScaledResolution;
 
-import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 import java.util.ArrayList;
@@ -57,7 +56,7 @@ public abstract class AbstractFrame extends AbstractWidget implements ParentElem
     public void applyScissor(int x, int y, int width, int height, Runnable action) {
         final double scale = new ScaledResolution(Minecraft.getMinecraft(), Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight).getScaleFactor();
         GLStateManager.enableScissorTest();
-        GL11.glScissor((int) (x * scale), (int) (Minecraft.getMinecraft().getFramebuffer().framebufferHeight - (y + height) * scale), (int) (width * scale), (int) (height * scale));
+        GLStateManager.glScissor((int) (x * scale), (int) (Minecraft.getMinecraft().getFramebuffer().framebufferHeight - (y + height) * scale), (int) (width * scale), (int) (height * scale));
         action.run();
         GLStateManager.disableScissorTest();
     }

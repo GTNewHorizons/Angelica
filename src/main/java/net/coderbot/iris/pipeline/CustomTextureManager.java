@@ -164,7 +164,7 @@ public class CustomTextureManager {
 
 						final TextureFormat textureFormat = TextureFormatLoader.getFormat();
 						if (textureFormat != null) {
-							final int previousBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+							final int previousBinding = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 							GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, pbrTexture.getGlTextureId());
 							textureFormat.setupTextureParameters(pbrType, pbrTexture);
 							GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, previousBinding);

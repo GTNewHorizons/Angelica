@@ -6,6 +6,7 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.input.Keyboard;
 import org.lwjgl.opengl.GL11;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
@@ -124,8 +125,8 @@ public class LineRenderer {
         TexturePackAPI.bindTexture(texture);
         Tessellator tessellator = Tessellator.instance;
         tessellator.startDrawingQuads();
-        GL11.glDisable(GL11.GL_CULL_FACE);
-        GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+        GLStateManager.glDisable(GL11.GL_CULL_FACE);
+        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         dx += sx + plusSX;
         dy += sy + plusSY;
         dz += sz + plusSZ;
@@ -177,7 +178,7 @@ public class LineRenderer {
             u0 = u1;
         }
         tessellator.draw();
-        GL11.glEnable(GL11.GL_CULL_FACE);
+        GLStateManager.glEnable(GL11.GL_CULL_FACE);
         return true;
     }
 

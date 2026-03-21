@@ -4,7 +4,7 @@ import kroppeb.stareval.function.FunctionReturn;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.VectorType;
 import org.joml.Vector2i;
-import org.lwjgl.opengl.GL20;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 import java.util.function.Supplier;
 
@@ -21,7 +21,7 @@ public class Int2VectorCachedUniform extends VectorCachedUniform<Vector2i> {
 
 	@Override
 	public void push(int location) {
-		GL20.glUniform2i(location, this.cached.x, this.cached.y);
+		GLStateManager.glUniform2i(location, this.cached.x, this.cached.y);
 	}
 
 	@Override

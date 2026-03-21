@@ -194,6 +194,8 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
             handle.exclusions().add("org.taumc.celeritas");
             handle.exclusions().add("com.mitchej123.lwjgl.lwjgl3");
             handle.exclusions().add("com.mitchej123.glsm");
+            handle.exclusions().add("com.gtnewhorizons.angelica.lwjgl3");
+            handle.exclusions().add("com.gtnewhorizons.angelica.vulkan");
         }
     }
 
