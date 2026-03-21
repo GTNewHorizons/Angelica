@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraftforge.client.ForgeHooksClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -142,7 +143,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
         LOGGER.error("FATAL: Failed to create OpenGL core profile context.");
         LOGGER.error("Error: {}", e != null ? e.getMessage() : "unknown");
         try {
-            LOGGER.error("GPU: {}, Driver: {}", GL11.glGetString(GL11.GL_RENDERER), GL11.glGetString(GL11.GL_VERSION));
+            LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
         } catch (Exception ignored) {}
     }
 }

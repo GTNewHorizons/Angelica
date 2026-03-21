@@ -1,5 +1,6 @@
 package net.coderbot.iris.gl.buffer;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import net.coderbot.iris.gl.sampler.SamplerLimits;
@@ -36,13 +37,13 @@ public class ShaderStorageBufferHolder {
 			if (bufferInfo.relative()) {
 				buffers[index].resizeIfRelative(width, height);
 			} else {
-				GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, buffer);
+				GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, buffer);
 				RenderSystem.bufferStorage(GL43.GL_SHADER_STORAGE_BUFFER, bufferInfo.size(), 0);
 				RenderSystem.clearBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, GL30.GL_R8, 0, bufferInfo.size(), GL11.GL_RED, GL11.GL_BYTE, new int[]{0});
 				RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, index, buffer);
 			}
 		});
-		GL15.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
+		GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, 0);
 	}
 
 	private static long toMib(long x) {

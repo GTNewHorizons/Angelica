@@ -6,9 +6,6 @@ import com.mitchej123.glsm.GLStateManagerService;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GL15;
-import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 
 import java.nio.IntBuffer;
 
@@ -38,81 +35,81 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public String glGetString(int pname) {
-        return GL11.glGetString(pname);
+        return GLStateManager.glGetString(pname);
     }
 
     // ===================== FRAMEBUFFER OPERATIONS =====================
 
     @Override
     public int glGenFramebuffers() {
-        return GL30.glGenFramebuffers();
+        return GLStateManager.glGenFramebuffers();
     }
 
     @Override
     public void glDeleteFramebuffers(int framebuffer) {
-        GL30.glDeleteFramebuffers(framebuffer);
+        GLStateManager.glDeleteFramebuffers(framebuffer);
     }
 
     @Override
     public void glBindFramebuffer(int target, int framebuffer) {
-        GL30.glBindFramebuffer(target, framebuffer);
+        GLStateManager.glBindFramebuffer(target, framebuffer);
     }
 
     @Override
     public int glCheckFramebufferStatus(int target) {
-        return GL30.glCheckFramebufferStatus(target);
+        return GLStateManager.glCheckFramebufferStatus(target);
     }
 
     @Override
     public void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
-        GL30.glFramebufferTexture2D(target, attachment, textarget, texture, level);
+        GLStateManager.glFramebufferTexture2D(target, attachment, textarget, texture, level);
     }
 
     // ===================== SHADER OPERATIONS =====================
 
     @Override
     public int glCreateShader(int type) {
-        return GL20.glCreateShader(type);
+        return GLStateManager.glCreateShader(type);
     }
 
     @Override
     public void glCompileShader(int shader) {
-        GL20.glCompileShader(shader);
+        GLStateManager.glCompileShader(shader);
     }
 
     @Override
     public int glGetShaderi(int shader, int pname) {
-        return GL20.glGetShaderi(shader, pname);
+        return GLStateManager.glGetShaderi(shader, pname);
     }
 
     @Override
     public String glGetShaderInfoLog(int shader, int maxLength) {
-        return GL20.glGetShaderInfoLog(shader, maxLength);
+        return GLStateManager.glGetShaderInfoLog(shader, maxLength);
     }
 
     @Override
     public void glDeleteShader(int shader) {
-        GL20.glDeleteShader(shader);
+        GLStateManager.glDeleteShader(shader);
     }
 
     @Override
     public int glCreateProgram() {
-        return GL20.glCreateProgram();
+        return GLStateManager.glCreateProgram();
     }
 
     @Override
     public void glAttachShader(int program, int shader) {
-        GL20.glAttachShader(program, shader);
+        GLStateManager.glAttachShader(program, shader);
     }
 
     @Override
     public void glLinkProgram(int program) {
-        GL20.glLinkProgram(program);
+        GLStateManager.glLinkProgram(program);
     }
 
     @Override
     public int glGetProgrami(int program, int pname) {
-        return GL20.glGetProgrami(program, pname);
+        return GLStateManager.glGetProgrami(program, pname);
     }
 
     @Override
@@ -122,29 +119,29 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glDeleteProgram(int program) {
-        GL20.glDeleteProgram(program);
+        GLStateManager.glDeleteProgram(program);
     }
 
     // ===================== UNIFORM/ATTRIBUTE OPERATIONS =====================
 
     @Override
     public int glGetUniformLocation(int program, CharSequence name) {
-        return GL20.glGetUniformLocation(program, name);
+        return GLStateManager.glGetUniformLocation(program, name);
     }
 
     @Override
     public void glUniform1i(int location, int value) {
-        GL20.glUniform1i(location, value);
+        GLStateManager.glUniform1i(location, value);
     }
 
     @Override
     public int glGetAttribLocation(int program, CharSequence name) {
-        return GL20.glGetAttribLocation(program, name);
+        return GLStateManager.glGetAttribLocation(program, name);
     }
 
     @Override
     public void glBindAttribLocation(int program, int index, CharSequence name) {
-        GL20.glBindAttribLocation(program, index, name);
+        GLStateManager.glBindAttribLocation(program, index, name);
     }
 
     // ===================== VAO OPERATIONS =====================
@@ -168,7 +165,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public int glGenBuffers() {
-        return GL15.glGenBuffers();
+        return GLStateManager.glGenBuffers();
     }
 
     @Override
@@ -185,13 +182,13 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public int glGenTextures() {
-        return GL11.glGenTextures();
+        return GLStateManager.glGenTextures();
     }
 
     @Override
     public void glGenTextures(int[] textures) {
         final IntBuffer buffer = getIntArrayBuffer(textures.length);
-        GL11.glGenTextures(buffer);
+        GLStateManager.glGenTextures(buffer);
         buffer.get(textures);
     }
 
@@ -225,7 +222,7 @@ public class AngelicaGLStateManagerService implements GLStateManagerService {
 
     @Override
     public void glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
-        GL11.glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+        GLStateManager.glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
     }
 
     @Override

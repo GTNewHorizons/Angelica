@@ -8,6 +8,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -48,7 +49,7 @@ public abstract class MixinMinecraft {
     @Overwrite
     public static int getGLMaximumTextureSize() {
         if (max_texture_size == -1) {
-            max_texture_size = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
+            max_texture_size = GLStateManager.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
         }
         return max_texture_size;
     }
@@ -58,7 +59,7 @@ public abstract class MixinMinecraft {
         at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
-        GL11.glEnable(GL11.GL_LIGHTING);
+        GLStateManager.glEnable(GL11.GL_LIGHTING);
     }
 
     @Inject(

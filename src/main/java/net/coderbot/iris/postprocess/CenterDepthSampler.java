@@ -31,8 +31,8 @@ public class CenterDepthSampler {
 	private boolean destroyed;
 
 	public CenterDepthSampler(IntSupplier depthSupplier, float halfLife) {
-		this.texture = GL11.glGenTextures();
-		this.altTexture = GL11.glGenTextures();
+		this.texture = GLStateManager.glGenTextures();
+		this.altTexture = GLStateManager.glGenTextures();
 		this.framebuffer = new GlFramebuffer();
 
 		// Fall back to a less precise format if the system doesn't support OpenGL 3

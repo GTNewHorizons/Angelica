@@ -3,6 +3,7 @@ package net.coderbot.iris.gl.framebuffer;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.*;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
@@ -10,7 +11,6 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import java.nio.IntBuffer;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
-import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
@@ -25,8 +25,8 @@ public class GlFramebuffer extends GlResource {
 		super(RenderSystem.createFramebuffer());
 
 		this.attachments = new Int2IntArrayMap();
-		this.maxDrawBuffers = GL11.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
-		this.maxColorAttachments = GL11.glGetInteger(GL30.GL_MAX_COLOR_ATTACHMENTS);
+		this.maxDrawBuffers = GLStateManager.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
+		this.maxColorAttachments = GLStateManager.glGetInteger(GL30.GL_MAX_COLOR_ATTACHMENTS);
 		this.hasDepthAttachment = false;
 	}
 
@@ -91,26 +91,26 @@ public class GlFramebuffer extends GlResource {
 	}
 
 	public void bind() {
-		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_FRAMEBUFFER, getGlId());
+		GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, getGlId());
 	}
 
 	public void bindAsReadBuffer() {
-		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, getGlId());
+		GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, getGlId());
 	}
 
 	public void bindAsDrawBuffer() {
-		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_DRAW_FRAMEBUFFER, getGlId());
+		GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, getGlId());
 	}
 
 	@Override
     protected void destroyInternal() {
-		OpenGlHelper.func_153174_h/*glDeleteFramebuffers*/(getGlId());
+		GLStateManager.glDeleteFramebuffers(getGlId());
 	}
 
 	public boolean isComplete() {
 		bind();
 
-        return OpenGlHelper.func_153167_i/*glCheckFramebufferStatus*/(GL30.GL_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE;
+        return GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER) == GL30.GL_FRAMEBUFFER_COMPLETE;
 	}
 
 	public int getId() {

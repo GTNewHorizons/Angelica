@@ -3,7 +3,7 @@ package net.coderbot.iris.uniforms.custom.cached;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.VectorType;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.GL20;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 import java.util.function.Supplier;
 
@@ -20,7 +20,7 @@ public class Float4VectorCachedUniform extends VectorCachedUniform<Vector4f> {
 
 	@Override
 	public void push(int location) {
-		GL20.glUniform4f(location, this.cached.x, this.cached.y, this.cached.z, this.cached.w);
+		GLStateManager.glUniform4f(location, this.cached.x, this.cached.y, this.cached.z, this.cached.w);
 	}
 
 	@Override

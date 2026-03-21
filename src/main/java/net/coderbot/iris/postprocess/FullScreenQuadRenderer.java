@@ -22,12 +22,12 @@ public class FullScreenQuadRenderer {
 	public static final FullScreenQuadRenderer INSTANCE = new FullScreenQuadRenderer();
 
 	private FullScreenQuadRenderer() {
-		this.vao = org.lwjgl.opengl.GL30.glGenVertexArrays();
+		this.vao = GLStateManager.glGenVertexArrays();
 		GLStateManager.glBindVertexArray(vao);
 		this.quadBuffer = createQuad();
-		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, quadBuffer);
+		GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, quadBuffer);
 		DefaultVertexFormat.POSITION_TEXTURE.setupBufferState(0L);
-		GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+		GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 		GLStateManager.glBindVertexArray(0);
 	}
 
@@ -79,14 +79,14 @@ public class FullScreenQuadRenderer {
 	private static final Int2ObjectOpenHashMap<int[]> compositeLocCache = new Int2ObjectOpenHashMap<>();
 
 	public static void uploadCompositeMatrices() {
-		final int program = GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+		final int program = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 		if (program == 0) return;
 
 		int[] locs = compositeLocCache.get(program);
 		if (locs == null) {
 			locs = new int[] {
-				GL20.glGetUniformLocation(program, "iris_ModelViewMatrix"),
-				GL20.glGetUniformLocation(program, "iris_ProjectionMatrix")
+				GLStateManager.glGetUniformLocation(program, "iris_ModelViewMatrix"),
+				GLStateManager.glGetUniformLocation(program, "iris_ProjectionMatrix")
 			};
 			compositeLocCache.put(program, locs);
 		}
@@ -94,13 +94,13 @@ public class FullScreenQuadRenderer {
 		if (locs[0] != -1) {
 			GLStateManager.getModelViewMatrix().get(matBuf);
 			matBuf.rewind();
-			GL20.glUniformMatrix4(locs[0], false, matBuf);
+			GLStateManager.glUniformMatrix4(locs[0], false, matBuf);
 		}
 
 		if (locs[1] != -1) {
 			GLStateManager.getProjectionMatrix().get(matBuf);
 			matBuf.rewind();
-			GL20.glUniformMatrix4(locs[1], false, matBuf);
+			GLStateManager.glUniformMatrix4(locs[1], false, matBuf);
 		}
 	}
 

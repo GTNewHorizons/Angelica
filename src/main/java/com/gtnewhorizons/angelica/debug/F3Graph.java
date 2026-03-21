@@ -9,25 +9,16 @@ import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL30;
 
 import java.nio.FloatBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
-import static com.gtnewhorizons.angelica.glsm.GLStateManager.glBindBuffer;
 import static org.lwjgl.opengl.GL11.GL_FLOAT;
 import static org.lwjgl.opengl.GL11.GL_ONE_MINUS_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_SRC_ALPHA;
 import static org.lwjgl.opengl.GL11.GL_TRIANGLE_STRIP;
 import static org.lwjgl.opengl.GL15.GL_ARRAY_BUFFER;
 import static org.lwjgl.opengl.GL15.GL_STATIC_DRAW;
-import static org.lwjgl.opengl.GL15.glBufferData;
-import static org.lwjgl.opengl.GL15.glGenBuffers;
-import static org.lwjgl.opengl.GL20.glEnableVertexAttribArray;
-import static org.lwjgl.opengl.GL20.glUniform1;
-import static org.lwjgl.opengl.GL20.glUniform1f;
-import static org.lwjgl.opengl.GL20.glUniform1i;
-import static org.lwjgl.opengl.GL20.glVertexAttribPointer;
 
 public abstract class F3Graph {
     private static final int NUM_SAMPLES = 240;
@@ -119,11 +110,11 @@ public abstract class F3Graph {
         final int uPxPerNs = shader.getUniformLocation("pxPerNs");
         final int uLeft = shader.getUniformLocation("left");
 
-        vao = GL30.glGenVertexArrays();
+        vao = GLStateManager.glGenVertexArrays();
         GLStateManager.glBindVertexArray(vao);
 
-        vertBuf = glGenBuffers();
-        glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
+        vertBuf = GLStateManager.glGenBuffers();
+        GLStateManager.glBindBuffer(GL_ARRAY_BUFFER, vertBuf);
         try (final MemoryStack stack = stackPush()) {
             final FloatBuffer vertices = stack.mallocFloat(VERT_COUNT * VERT_FLOATS);
             // Since we use a triangle strip, we only need 4 vertices. The quad extends to the top of the screen so spikes
@@ -136,27 +127,27 @@ public abstract class F3Graph {
             });
             vertices.rewind();
 
-            glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
+            GLStateManager.glBufferData(GL_ARRAY_BUFFER, vertices, GL_STATIC_DRAW);
         }
 
         // Configure vertex attribute in the VAO
-        glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
-        glEnableVertexAttribArray(aPos);
+        GLStateManager.glVertexAttribPointer(aPos, VERT_FLOATS, GL_FLOAT, false, VERT_FLOATS * 4, 0);
+        GLStateManager.glEnableVertexAttribArray(aPos);
 
-        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindBuffer(GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindVertexArray(0);
 
         final Minecraft mc = Minecraft.getMinecraft();
         final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
 
         // Load initial value for uniforms
-        glUniform1f(uFBWidth, mc.displayWidth);
-        glUniform1f(uFBHeight, mc.displayHeight);
-        glUniform1f(uScaleFactor, sr.getScaleFactor());
-        glUniform1i(uHeadIdx, samplesHead);
-        glUniform1(uSamples, sampleBuf);
-        glUniform1f(uPxPerNs, pxPerNs);
-        glUniform1i(uLeft, left ? 1 : 0); // this is how you load bool uniforms
+        GLStateManager.glUniform1f(uFBWidth, mc.displayWidth);
+        GLStateManager.glUniform1f(uFBHeight, mc.displayHeight);
+        GLStateManager.glUniform1f(uScaleFactor, sr.getScaleFactor());
+        GLStateManager.glUniform1i(uHeadIdx, samplesHead);
+        GLStateManager.glUniform1(uSamples, sampleBuf);
+        GLStateManager.glUniform1f(uPxPerNs, pxPerNs);
+        GLStateManager.glUniform1i(uLeft, left ? 1 : 0); // this is how you load bool uniforms
 
         ShaderProgram.clear();
     }
@@ -205,11 +196,11 @@ public abstract class F3Graph {
         shader.use();
 
         // Load uniforms
-        glUniform1f(uFBWidth, mc.displayWidth);
-        glUniform1f(uFBHeight, mc.displayHeight);
-        glUniform1f(uScaleFactor, sr.getScaleFactor());
-        glUniform1i(uHeadIdx, samplesHead);
-        glUniform1(uSamples, sampleBuf);
+        GLStateManager.glUniform1f(uFBWidth, mc.displayWidth);
+        GLStateManager.glUniform1f(uFBHeight, mc.displayHeight);
+        GLStateManager.glUniform1f(uScaleFactor, sr.getScaleFactor());
+        GLStateManager.glUniform1i(uHeadIdx, samplesHead);
+        GLStateManager.glUniform1(uSamples, sampleBuf);
 
         GLStateManager.glBindVertexArray(vao);
 

@@ -9,7 +9,7 @@ import net.coderbot.iris.shaderpack.FilledIndirectPointer;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL20;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 
@@ -65,7 +65,7 @@ public final class ComputeProgram extends GlResource {
 	}
 
     public void use() {
-        GL20.glUseProgram(getGlId());
+        GLStateManager.glUseProgram(getGlId());
 
         uniforms.update();
         samplers.update();
@@ -87,13 +87,13 @@ public final class ComputeProgram extends GlResource {
 
 	public static void unbind() {
 		ProgramUniforms.clearActiveUniforms();
-		GL20.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 
 	@Override
     public void destroyInternal() {
 		DepthColorStorage.unregisterOwnedProgram(getGlId());
-		GL20.glDeleteProgram(getGlId());
+		GLStateManager.glDeleteProgram(getGlId());
 	}
 
 	/**

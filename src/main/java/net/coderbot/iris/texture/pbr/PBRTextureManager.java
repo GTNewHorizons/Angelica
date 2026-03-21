@@ -77,7 +77,7 @@ public class PBRTextureManager {
 			Class<? extends AbstractTexture> clazz = texture.getClass();
 			PBRTextureLoader loader = PBRTextureLoaderRegistry.INSTANCE.getLoader(clazz);
 			if (loader != null) {
-				int previousTextureBinding = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+				int previousTextureBinding = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 				consumer.clear();
 				try {
 					loader.load(texture, Minecraft.getMinecraft().getResourceManager(), consumer);

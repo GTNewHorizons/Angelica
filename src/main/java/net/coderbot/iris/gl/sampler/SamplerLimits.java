@@ -1,5 +1,6 @@
 package net.coderbot.iris.gl.sampler;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -12,9 +13,9 @@ public class SamplerLimits {
 	private final int maxShaderStorageUnits;
 
 	private SamplerLimits() {
-		this.maxTextureUnits = GL11.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
-		this.maxDrawBuffers = GL11.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
-		this.maxShaderStorageUnits = RenderSystem.supportsSSBO() ? GL11.glGetInteger(GL43.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS) : 0;
+		this.maxTextureUnits = GLStateManager.glGetInteger(GL20.GL_MAX_TEXTURE_IMAGE_UNITS);
+		this.maxDrawBuffers = GLStateManager.glGetInteger(GL20.GL_MAX_DRAW_BUFFERS);
+		this.maxShaderStorageUnits = RenderSystem.supportsSSBO() ? GLStateManager.glGetInteger(GL43.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS) : 0;
 	}
 
 	public static SamplerLimits get() {

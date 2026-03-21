@@ -1134,7 +1134,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				shadowRenderTargets.getDepthSourceFb().bind();
                 GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
                 if (Minecraft.isRunningOnMac) {
-                    GL11.glGetError();
+                    GLStateManager.glGetError();
                 }
 
 

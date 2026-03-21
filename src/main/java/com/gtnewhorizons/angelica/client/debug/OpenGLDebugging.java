@@ -537,7 +537,7 @@ public class OpenGLDebugging {
 
         // Check per-unit texture state
         for (int i = 0; i < textureUnits.textureMatricies.length; i++) {
-            GL13.glActiveTexture(GL13.GL_TEXTURE0 + i);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
 
             // Check GL_TEXTURE_2D enabled
             final boolean cachedEnabled = textureUnits.getTextureUnitStates(i).isEnabled();
@@ -565,7 +565,7 @@ public class OpenGLDebugging {
                 }
             }
         }
-        GL13.glActiveTexture(GL13.GL_TEXTURE0 + currentActiveTexture);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + currentActiveTexture);
 
         // Add stack trace if requested
         if (mismatch && logStacktrace) {

@@ -33,8 +33,8 @@ public abstract class AbstractWidget implements Drawable, Element {
     }
 
     protected void drawQuads(Consumer<Tessellator> consumer) {
-        GL11.glEnable(GL11.GL_BLEND);
-        GL11.glDisable(GL11.GL_TEXTURE_2D);
+        GLStateManager.glEnable(GL11.GL_BLEND);
+        GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
         GLStateManager.defaultBlendFunc();
 
         final Tessellator tessellator = Tessellator.instance;
@@ -42,8 +42,8 @@ public abstract class AbstractWidget implements Drawable, Element {
         consumer.accept(tessellator);
         tessellator.draw();
 
-        GL11.glEnable(GL11.GL_TEXTURE_2D);
-        GL11.glDisable(GL11.GL_BLEND);
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLStateManager.glDisable(GL11.GL_BLEND);
     }
 
     protected static void addQuad(Tessellator consumer, double x1, double y1, double x2, double y2, float a, float r, float g, float b) {
