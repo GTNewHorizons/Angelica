@@ -4937,6 +4937,10 @@ public class GLStateManager {
         return RENDER_BACKEND.checkFramebufferStatus(target);
     }
 
+    public static int glGetFramebufferAttachmentParameteri(int target, int attachment, int pname) {
+        return RENDER_BACKEND.getFramebufferAttachmentParameteri(target, attachment, pname);
+    }
+
     public static void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
         RENDER_BACKEND.framebufferTexture2D(target, attachment, textarget, texture, level);
     }
