@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
 import org.lwjgl.opengl.ARBClearTexture;
@@ -39,12 +40,30 @@ import static com.mitchej123.lwjgl.LWJGLServiceProvider.LWJGL;
  */
 public final class Lwjgl2GLRenderBackend extends RenderBackend {
     private ContextCapabilities caps;
+    private IntBuffer intArrayBuffer = BufferUtils.createIntBuffer(16);
+    private FloatBuffer floatArrayBuffer = BufferUtils.createFloatBuffer(16);
 
     // Debug output state: 0=none, 1=GL43/KHR, 2=ARB, 3=AMD
     private int activeDebugExtension;
     private KHRDebugCallback khrCallback;
     private ARBDebugOutputCallback arbCallback;
     private AMDDebugOutputCallback amdCallback;
+
+    private IntBuffer getIntArrayBuffer(int size) {
+        if (intArrayBuffer.capacity() < size) {
+            intArrayBuffer = BufferUtils.createIntBuffer(size);
+        }
+        intArrayBuffer.clear();
+        return intArrayBuffer;
+    }
+
+    private FloatBuffer getFloatArrayBuffer(int size) {
+        if (floatArrayBuffer.capacity() < size) {
+            floatArrayBuffer = BufferUtils.createFloatBuffer(size);
+        }
+        floatArrayBuffer.clear();
+        return floatArrayBuffer;
+    }
 
     @Override
     public void init() {
@@ -881,6 +900,22 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public void bufferData(int target, ShortBuffer data, int usage) {
         GL15.glBufferData(target, data, usage);
+    }
+
+    @Override
+    public void bufferData(int target, int[] data, int usage) {
+        final IntBuffer buffer = getIntArrayBuffer(data.length);
+        buffer.put(data);
+        buffer.flip();
+        GL15.glBufferData(target, buffer, usage);
+    }
+
+    @Override
+    public void bufferData(int target, float[] data, int usage) {
+        final FloatBuffer buffer = getFloatArrayBuffer(data.length);
+        buffer.put(data);
+        buffer.flip();
+        GL15.glBufferData(target, buffer, usage);
     }
 
     @Override
