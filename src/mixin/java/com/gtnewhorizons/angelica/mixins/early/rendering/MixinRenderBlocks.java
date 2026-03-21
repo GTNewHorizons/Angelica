@@ -12,9 +12,11 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.objectweb.asm.Opcodes;
@@ -111,6 +113,18 @@ public abstract class MixinRenderBlocks {
                 this.applyingCeleritasAO = false;
             }
         }
+    }
+
+    /**
+     * Widen the grass identity check ({@code block != Blocks.grass}) to cover any BlockGrass subclass
+     * (e.g. BOP's loamy/sandy/silty grass). When the block being rendered IS a BlockGrass, we return
+     * it in place of {@code Blocks.grass} so the reference comparison evaluates to {@code false},
+     * giving it the same "no color multiplier on sides/bottom" treatment as vanilla grass.
+     */
+    @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier",
+        at = @At(value = "FIELD", target = "Lnet/minecraft/init/Blocks;grass:Lnet/minecraft/block/BlockGrass;", opcode = Opcodes.GETSTATIC))
+    private BlockGrass angelica$widenGrassCheck(BlockGrass grassBlock, @Local(argsOnly = true, ordinal = 0) Block block) {
+        return (block instanceof BlockGrass bg) ? bg : grassBlock;
     }
 
     /* Disable diffuse when celeritas AO is in use */

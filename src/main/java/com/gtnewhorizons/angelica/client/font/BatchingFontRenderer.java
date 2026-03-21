@@ -52,6 +52,7 @@ public class BatchingFontRenderer {
 
     private final int AAMode;
     private final int AAStrength;
+    private final int alphaTestRefLocation;
     private final int mvpMatrixLocation;
     private final int fontShaderId;
 
@@ -95,6 +96,7 @@ public class BatchingFontRenderer {
         fontShaderId = FontAAShader.getProgram().getProgramId();
         AAMode = GLStateManager.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
+        alphaTestRefLocation = GLStateManager.glGetUniformLocation(fontShaderId, "alphaTestRef");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
         if (ebo == null) {
             ebo = new IndexBuffer();
@@ -351,6 +353,7 @@ public class BatchingFontRenderer {
             fontAAStrengthLast = FontConfig.fontAAStrength;
             GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
         }
+        GLStateManager.glUniform1f(alphaTestRefLocation, GLStateManager.getAlphaState().getReference());
         try (MemoryStack stack = stackPush()) {
             final FloatBuffer mvpBuf = stack.mallocFloat(16);
             GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
