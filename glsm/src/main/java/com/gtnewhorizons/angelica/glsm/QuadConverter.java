@@ -9,6 +9,7 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetByte;
@@ -47,7 +48,7 @@ public final class QuadConverter {
         }
 
         if (eboId == 0) {
-            eboId = GL15.glGenBuffers();
+            eboId = RENDER_BACKEND.genBuffers();
         }
 
         // Generate index data: 6 ints per quad
@@ -67,8 +68,8 @@ public final class QuadConverter {
             ptr += 24;
         }
 
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indexData, GL15.GL_STATIC_DRAW);
+        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        RENDER_BACKEND.bufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indexData, GL15.GL_STATIC_DRAW);
 
         memFree(indexData);
         maxQuads = newMaxQuads;
@@ -87,11 +88,11 @@ public final class QuadConverter {
         final int quadCount = vertexCount / 4;
         final int prevEbo = GLStateManager.getBoundEBO();
         ensureCapacity(first / 4 + quadCount);
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
         // Index offset: first vertex / 4 quads * 6 indices * 4 bytes per int
         final long indexOffset = (long) (first / 4) * 6 * 4;
-        GL11.glDrawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
+        RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
+        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
     }
 
     /**
@@ -109,23 +110,23 @@ public final class QuadConverter {
         final int prevEbo = GLStateManager.getBoundEBO();
 
         if (scratchEboId == 0) {
-            scratchEboId = GL15.glGenBuffers();
+            scratchEboId = RENDER_BACKEND.genBuffers();
         }
 
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, scratchEboId);
+        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, scratchEboId);
 
         if (needed > scratchEboCapacity) {
             // Power-of-2 growth — allocate full capacity, upload actual data
             int newCap = Math.max(4096, scratchEboCapacity);
             while (newCap < needed) newCap *= 2;
-            GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, newCap, GL15.GL_STREAM_DRAW);
+            RENDER_BACKEND.bufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, newCap, GL15.GL_STREAM_DRAW);
             scratchEboCapacity = newCap;
         }
-        GL15.glBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, 0, dst);
+        RENDER_BACKEND.bufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, 0, dst);
 
-        GL11.glDrawElements(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L);
+        RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L);
 
-        GL15.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
+        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
         memFree(dst);
     }
 
@@ -147,7 +148,7 @@ public final class QuadConverter {
 
         // Read source indices from caller's EBO
         final ByteBuffer src = memAlloc(indexCount * bytesPerIndex);
-        GL15.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, offset, src);
+        RENDER_BACKEND.getBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, offset, src);
         final long srcAddr = memAddress0(src);
 
         // Allocate output as GL_UNSIGNED_INT
@@ -281,12 +282,12 @@ public final class QuadConverter {
      */
     public static void destroy() {
         if (eboId != 0) {
-            GL15.glDeleteBuffers(eboId);
+            RENDER_BACKEND.deleteBuffers(eboId);
             eboId = 0;
             maxQuads = 0;
         }
         if (scratchEboId != 0) {
-            GL15.glDeleteBuffers(scratchEboId);
+            RENDER_BACKEND.deleteBuffers(scratchEboId);
             scratchEboId = 0;
             scratchEboCapacity = 0;
         }

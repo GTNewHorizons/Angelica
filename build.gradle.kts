@@ -7,6 +7,8 @@ plugins {
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+//     extraRunJvmArguments.add("-Dangelica.useVulkan=true")
+//     extraRunJvmArguments.add("-Dangelica.vulkanDebug=true")
 //    extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
 //    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
 //    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
@@ -46,33 +48,49 @@ tasks.register<Copy>("copyDependencies") {
 }
 
 val embedOnly: Configuration by configurations
+val shadowImplementation: Configuration by configurations
 
-val stripModuleInfoFromEmbeds by tasks.registering(Jar::class) {
-    dependsOn(embedOnly)
-    from(embedOnly.map(::zipTree))
-    exclude("module-info.class")
-    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
-    archiveClassifier = "embeds-stripped"
+val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
+    inputCollection = embedOnly
 }
 
-// Downgrade embedOnly jars for the tests.
-val downgradeEmbedOnlyForTest by tasks.registering(DowngradeFiles::class) {
-    inputCollection = files(stripModuleInfoFromEmbeds.map { it.archiveFile })
+val stripModuleInfoFromShadow by tasks.registering(Jar::class) {
+    dependsOn(shadowImplementation)
+    from(shadowImplementation.map(::zipTree))
+    exclude("module-info.class")
+    duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+    archiveClassifier = "shadow-stripped"
+}
+
+val downgradeShadowImplForTest by tasks.registering(DowngradeFiles::class) {
+    inputCollection = files(stripModuleInfoFromShadow.map { it.archiveFile })
     outputs.dir(temporaryDir)
 }
 
 tasks.test {
-    dependsOn(downgradeEmbedOnlyForTest)
-    classpath = classpath.plus(files({ fileTree(downgradeEmbedOnlyForTest.get().temporaryDir) }))
+    dependsOn(downgradeEmbedOnlyForTest, downgradeShadowImplForTest)
+    classpath = classpath
+        .minus(embedOnly)
+        .plus(files(downgradeEmbedOnlyForTest.map { it.outputCollection }))
+        .minus(shadowImplementation)
+        .plus(files({ fileTree(downgradeShadowImplForTest.get().temporaryDir) }))
 }
 
 tasks.shadowJar {
     dependsOn(embedOnly)
     from(embedOnly.map(::zipTree))
+
+    duplicatesStrategy = DuplicatesStrategy.INCLUDE
+    mergeServiceFiles()
+
     minimize {
         exclude(project(":glsm"))
+        exclude(project(":lwjgl3-backend"))
     }
+
     relocate("com.mitchej123", "com.mitchej123")
     relocate("org.embeddedt", "org.embeddedt")
+    relocate("com.gtnewhorizons.angelica.glsm", "com.gtnewhorizons.angelica.glsm")
+    relocate("com.gtnewhorizons.angelica.lwjgl3", "com.gtnewhorizons.angelica.lwjgl3")
 }
 

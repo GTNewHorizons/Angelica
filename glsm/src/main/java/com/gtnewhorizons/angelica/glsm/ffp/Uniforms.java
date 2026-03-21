@@ -10,12 +10,12 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
-import org.lwjgl.opengl.GL20;
 
 import java.nio.FloatBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Uploads GLSM cached state to the active FFP program's uniforms.
@@ -162,7 +162,7 @@ public class Uniforms {
         if (mvChanged) {
             if (program.locModelViewMatrix != -1) {
                 mv.get(mat4Buf);
-                GL20.glUniformMatrix4(program.locModelViewMatrix, false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(program.locModelViewMatrix, false, mat4Buf);
             }
 
             // Normal matrix = inverse transpose of upper-left 3x3 of ModelView
@@ -171,14 +171,14 @@ public class Uniforms {
             }
             if (program.locNormalMatrix != -1) {
                 normalMatrix.get(mat3Buf);
-                GL20.glUniformMatrix3(program.locNormalMatrix, false, mat3Buf);
+                RENDER_BACKEND.uniformMatrix3(program.locNormalMatrix, false, mat3Buf);
             }
 
             // Normal scale (for GL_RESCALE_NORMAL without GL_NORMALIZE)
             if (program.locNormalScale != -1) {
                 // Scale factor = 1/length of first column of normal matrix
                 final float scale = 1.0f / normalMatrix.getColumn(0, tempVec3).length();
-                GL20.glUniform1f(program.locNormalScale, scale);
+                RENDER_BACKEND.uniform1f(program.locNormalScale, scale);
             }
         }
 
@@ -186,7 +186,7 @@ public class Uniforms {
         if (projChanged) {
             if (program.locProjectionMatrix != -1) {
                 proj.get(mat4Buf);
-                GL20.glUniformMatrix4(program.locProjectionMatrix, false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(program.locProjectionMatrix, false, mat4Buf);
             }
         }
 
@@ -194,7 +194,7 @@ public class Uniforms {
         if ((mvChanged || projChanged) && program.locMVPMatrix != -1) {
             proj.mul(mv, mvpMatrix);
             mvpMatrix.get(mat4Buf);
-            GL20.glUniformMatrix4(program.locMVPMatrix, false, mat4Buf);
+            RENDER_BACKEND.uniformMatrix4(program.locMVPMatrix, false, mat4Buf);
         }
 
         // Texture matrices
@@ -203,14 +203,14 @@ public class Uniforms {
             if (program.locTextureMatrix0 != -1) {
                 final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
                 texMat.get(mat4Buf);
-                GL20.glUniformMatrix4(program.locTextureMatrix0, false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(program.locTextureMatrix0, false, mat4Buf);
             }
 
             // Texture matrix unit 1 (lightmap)
             if (program.locLightmapTextureMatrix != -1) {
                 final Matrix4f lmTexMat = GLStateManager.getTextures().getTextureUnitMatrix(1);
                 lmTexMat.get(mat4Buf);
-                GL20.glUniformMatrix4(program.locLightmapTextureMatrix, false, mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(program.locLightmapTextureMatrix, false, mat4Buf);
             }
         }
     }
@@ -238,7 +238,7 @@ public class Uniforms {
         uploadVec4(program.locMaterialDiffuse, mat.diffuse);
         uploadVec4(program.locMaterialSpecular, mat.specular);
         if (program.locMaterialShininess != -1) {
-            GL20.glUniform1f(program.locMaterialShininess, mat.shininess);
+            RENDER_BACKEND.uniform1f(program.locMaterialShininess, mat.shininess);
         }
 
         if (vk.light0Enabled()) {
@@ -277,7 +277,7 @@ public class Uniforms {
         }
 
         if (program.locMaterialShininess != -1) {
-            GL20.glUniform1f(program.locMaterialShininess, mat.shininess);
+            RENDER_BACKEND.uniform1f(program.locMaterialShininess, mat.shininess);
         }
 
         // Per-light products
@@ -307,7 +307,7 @@ public class Uniforms {
         vec3Buf.put(lightVal.y * materialVal.y);
         vec3Buf.put(lightVal.z * materialVal.z);
         vec3Buf.flip();
-        GL20.glUniform3(loc, vec3Buf);
+        RENDER_BACKEND.uniform3(loc, vec3Buf);
     }
 
     private void uploadCurrentColor(Program program) {
@@ -320,7 +320,7 @@ public class Uniforms {
         vec4Buf.put(color.getBlue());
         vec4Buf.put(color.getAlpha());
         vec4Buf.flip();
-        GL20.glUniform4(program.locCurrentColor, vec4Buf);
+        RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
 
     private void uploadCurrentTexCoord(Program program) {
@@ -331,7 +331,7 @@ public class Uniforms {
 
     private void uploadCurrentLightmapCoord(Program program) {
         if (program.locCurrentLightmapCoord == -1) return;
-        GL20.glUniform2f(program.locCurrentLightmapCoord,
+        RENDER_BACKEND.uniform2f(program.locCurrentLightmapCoord,
             GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY);
     }
 
@@ -344,7 +344,7 @@ public class Uniforms {
         vec3Buf.put(normal.y);
         vec3Buf.put(normal.z);
         vec3Buf.flip();
-        GL20.glUniform3(program.locCurrentNormal, vec3Buf);
+        RENDER_BACKEND.uniform3(program.locCurrentNormal, vec3Buf);
     }
 
     private void uploadTexGen(Program program) {
@@ -384,7 +384,7 @@ public class Uniforms {
         vec4Buf.put(plane[2]);
         vec4Buf.put(plane[3]);
         vec4Buf.flip();
-        GL20.glUniform4(loc, vec4Buf);
+        RENDER_BACKEND.uniform4(loc, vec4Buf);
     }
 
     private void uploadClipPlanes(Program program) {
@@ -395,7 +395,7 @@ public class Uniforms {
             cps.putEyePlane(i, clipPlaneBuf);
         }
         clipPlaneBuf.flip();
-        GL20.glUniform4(program.locClipPlanes, clipPlaneBuf);
+        RENDER_BACKEND.uniform4(program.locClipPlanes, clipPlaneBuf);
     }
 
     private void uploadFragmentUniforms(Program program) {
@@ -403,7 +403,7 @@ public class Uniforms {
 
         // Alpha test reference
         if (fk.alphaTestEnabled() && program.locAlphaRef != -1) {
-            GL20.glUniform1f(program.locAlphaRef, GLStateManager.getAlphaState().getReference());
+            RENDER_BACKEND.uniform1f(program.locAlphaRef, GLStateManager.getAlphaState().getReference());
         }
 
         // Per-unit tex env color
@@ -416,7 +416,7 @@ public class Uniforms {
                 vec4Buf.put(envState.envColorB);
                 vec4Buf.put(envState.envColorA);
                 vec4Buf.flip();
-                GL20.glUniform4(program.locTexEnvColor[i], vec4Buf);
+                RENDER_BACKEND.uniform4(program.locTexEnvColor[i], vec4Buf);
             }
         }
 
@@ -444,7 +444,7 @@ public class Uniforms {
             vec4Buf.put((float)(density / LN2));        // [2]: density/ln(2)
             vec4Buf.put((float)(density / SQRT_LN2));  // [3]: density/sqrt(ln(2))
             vec4Buf.flip();
-            GL20.glUniform4(program.locFogParams, vec4Buf);
+            RENDER_BACKEND.uniform4(program.locFogParams, vec4Buf);
         }
 
         if (program.locFogColor != -1) {
@@ -454,20 +454,20 @@ public class Uniforms {
             vec4Buf.put((float) fog.getFogColor().z);
             vec4Buf.put(fog.getFogAlpha());
             vec4Buf.flip();
-            GL20.glUniform4(program.locFogColor, vec4Buf);
+            RENDER_BACKEND.uniform4(program.locFogColor, vec4Buf);
         }
     }
 
     private void uploadWideLineUniforms(Program program, boolean programChanged) {
         final float lineWidth = GLStateManager.getLineState().getWidth();
         if (programChanged || lineWidth != lastLineWidth) {
-            GL20.glUniform1f(program.locLineWidth, lineWidth);
+            RENDER_BACKEND.uniform1f(program.locLineWidth, lineWidth);
             lastLineWidth = lineWidth;
         }
         final int vw = GLStateManager.getViewportState().width;
         final int vh = GLStateManager.getViewportState().height;
         if (programChanged || vw != lastViewportWidth || vh != lastViewportHeight) {
-            GL20.glUniform2f(program.locViewportSize, vw, vh);
+            RENDER_BACKEND.uniform2f(program.locViewportSize, vw, vh);
             lastViewportWidth = vw;
             lastViewportHeight = vh;
         }
@@ -481,7 +481,7 @@ public class Uniforms {
         vec4Buf.put(v.z);
         vec4Buf.put(v.w);
         vec4Buf.flip();
-        GL20.glUniform4(loc, vec4Buf);
+        RENDER_BACKEND.uniform4(loc, vec4Buf);
     }
 
     public void destroy() {

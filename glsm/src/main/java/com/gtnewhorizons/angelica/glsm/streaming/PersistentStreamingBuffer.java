@@ -11,8 +11,9 @@ import org.lwjgl.opengl.GL44;
 import java.nio.ByteBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
-import static com.mitchej123.lwjgl.LWJGLServiceProvider.LWJGL;
+
 
 /**
  * Persistent-mapped ring buffer for streaming vertex data on GL4.4+
@@ -39,19 +40,19 @@ public class PersistentStreamingBuffer implements StreamingBuffer {
         this.capacity = capacity;
         this.remaining = capacity;
 
-        this.bufferId = GL15.glGenBuffers();
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
+        this.bufferId = RENDER_BACKEND.genBuffers();
+        RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
 
         final int storageFlags = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT | GL44.GL_CLIENT_STORAGE_BIT;
         RenderSystem.bufferStorage(GL15.GL_ARRAY_BUFFER, capacity, storageFlags);
 
         final int mapFlags = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT;
-        this.mappedBuffer = LWJGL.glMapBufferRange(GL15.GL_ARRAY_BUFFER, 0, capacity, mapFlags);
+        this.mappedBuffer = RENDER_BACKEND.mapBufferRange(GL15.GL_ARRAY_BUFFER, 0, capacity, mapFlags);
 
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         if (this.mappedBuffer == null) {
-            GL15.glDeleteBuffers(bufferId);
+            RENDER_BACKEND.deleteBuffers(bufferId);
             bufferId = 0;
             throw new RuntimeException("Failed to persistently map streaming buffer");
         }
@@ -131,7 +132,7 @@ public class PersistentStreamingBuffer implements StreamingBuffer {
     @Override
     public void postDraw() {
         if (pendingBytes > 0) {
-            final long fenceId = LWJGL.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
+            final long fenceId = RENDER_BACKEND.fenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
             fenceQueue.enqueue(new FencedRegion(new GlFence(fenceId), pendingBytes));
             pendingBytes = 0;
         }
@@ -143,10 +144,10 @@ public class PersistentStreamingBuffer implements StreamingBuffer {
             fenceQueue.dequeue().fence.delete();
         }
         if (bufferId != 0) {
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
-            GL15.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
-            GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GL15.glDeleteBuffers(bufferId);
+            RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
+            RENDER_BACKEND.unmapBuffer(GL15.GL_ARRAY_BUFFER);
+            RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            RENDER_BACKEND.deleteBuffers(bufferId);
             bufferId = 0;
         }
     }

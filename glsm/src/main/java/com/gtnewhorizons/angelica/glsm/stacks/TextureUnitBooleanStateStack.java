@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import org.lwjgl.opengl.GL11;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import org.lwjgl.opengl.GL13;
 
 /**
@@ -45,9 +45,9 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
                 final int currentUnit = GLStateManager.getActiveTextureUnit();
                 final boolean needsSwitch = currentUnit != unitIndex;
 
-                if (needsSwitch) GL13.glActiveTexture(GL13.GL_TEXTURE0 + unitIndex);
-                if (enabled) GL11.glEnable(glCap); else GL11.glDisable(glCap);
-                if (needsSwitch) GL13.glActiveTexture(GL13.GL_TEXTURE0 + currentUnit);
+                if (needsSwitch) BackendManager.RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + unitIndex);
+                if (enabled) BackendManager.RENDER_BACKEND.enable(glCap); else BackendManager.RENDER_BACKEND.disable(glCap);
+                if (needsSwitch) BackendManager.RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + currentUnit);
             }
         }
     }

@@ -4,8 +4,7 @@
 /.vs/
 /.vscode/
 /run/
-/build/
-/glsm/build/
+build/
 /eclipse/
 .classpath
 .project

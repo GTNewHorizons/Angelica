@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
 import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
@@ -11,23 +12,14 @@ import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.ARBBufferStorage;
-import org.lwjgl.opengl.ARBClearBufferObject;
-import org.lwjgl.opengl.ARBClearTexture;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.ARBShaderStorageBufferObject;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
-import org.lwjgl.opengl.GL33;
-import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
-import org.lwjgl.opengl.GL44;
 import org.lwjgl.opengl.NVXGpuMemoryInfo;
 
 import java.nio.ByteBuffer;
@@ -36,6 +28,8 @@ import java.nio.IntBuffer;
 import java.util.Objects;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * This class is responsible for abstracting calls to OpenGL and asserting that calls are run on the render thread.
@@ -61,7 +55,11 @@ public class RenderSystem {
 
     private RenderSystem() {}
 
+    private static boolean rendererInitialized;
+
     public static void initRenderer() {
+        if (rendererInitialized) return;
+        rendererInitialized = true;
         try {
             if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = (Runtime.version().feature() > 8 && GLStateManager.capabilities.GL_EXT_direct_state_access) ? new DSAEXT() : new DSACore();
@@ -82,6 +80,8 @@ public class RenderSystem {
             GLStateManager.LOGGER.info("No DSA support detected, falling back to legacy OpenGL.");
         }
 
+        BackendManager.init();
+
         supportsCompute = supportsCompute();
         supportsTesselation = GLStateManager.capabilities.GL_ARB_tessellation_shader || GLStateManager.capabilities.OpenGL40;
 
@@ -95,11 +95,11 @@ public class RenderSystem {
         // Cache maximum image units
         if (supportsImageLoadStore) {
             if (GLStateManager.capabilities.OpenGL42) {
-                maxImageUnits = GL11.glGetInteger(GL42.GL_MAX_IMAGE_UNITS);
+                maxImageUnits = RENDER_BACKEND.getInteger(GL42.GL_MAX_IMAGE_UNITS);
             } else if (GLStateManager.capabilities.GL_ARB_shader_image_load_store) {
-                maxImageUnits = GL11.glGetInteger(ARBShaderImageLoadStore.GL_MAX_IMAGE_UNITS);
+                maxImageUnits = RENDER_BACKEND.getInteger(ARBShaderImageLoadStore.GL_MAX_IMAGE_UNITS);
             } else {
-                maxImageUnits = GL11.glGetInteger(EXTShaderImageLoadStore.GL_MAX_IMAGE_UNITS_EXT);
+                maxImageUnits = RENDER_BACKEND.getInteger(EXTShaderImageLoadStore.GL_MAX_IMAGE_UNITS_EXT);
             }
         } else {
             maxImageUnits = 0;
@@ -108,9 +108,9 @@ public class RenderSystem {
         // Cache maximum SSBO bindings
         if (supportsSSBO) {
             if (GLStateManager.capabilities.OpenGL43) {
-                maxSSBOBindings = GL11.glGetInteger(GL43.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
+                maxSSBOBindings = RENDER_BACKEND.getInteger(GL43.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
             } else {
-                maxSSBOBindings = GL11.glGetInteger(ARBShaderStorageBufferObject.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
+                maxSSBOBindings = RENDER_BACKEND.getInteger(ARBShaderStorageBufferObject.GL_MAX_SHADER_STORAGE_BUFFER_BINDINGS);
             }
         } else {
             maxSSBOBindings = 0;
@@ -119,10 +119,10 @@ public class RenderSystem {
         // Check for sampler objects support (GL 3.3+ or ARB extension)
         supportsSamplerObjects = GLStateManager.capabilities.OpenGL33 || GLStateManager.capabilities.GL_ARB_sampler_objects;
         if (supportsSamplerObjects) {
-            samplers = new int[GL11.glGetInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS)];
+            samplers = new int[RENDER_BACKEND.getInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS)];
         }
 
-        maxGlslVersion = Integer.parseInt(parseGlVersionString(GL11.glGetString(GL20.GL_SHADING_LANGUAGE_VERSION)));
+        maxGlslVersion = Integer.parseInt(parseGlVersionString(RENDER_BACKEND.getString(GL20.GL_SHADING_LANGUAGE_VERSION)));
         supportsGpuShader4 = GLStateManager.capabilities.GL_EXT_gpu_shader4;
 
         GLStateManager.LOGGER.info("Max GLSL version: {}, GPU Shader4: {}", maxGlslVersion, supportsGpuShader4);
@@ -131,7 +131,7 @@ public class RenderSystem {
         GLStateManager.LOGGER.info("Buffer Storage: {}, Clear Texture: {}, Sampler Objects: {}", supportsBufferStorage, supportsClearTexture, supportsSamplerObjects);
 
         if (GLStateManager.capabilities.OpenGL32) {
-            final int profileMask = GL11.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK);
+            final int profileMask = RENDER_BACKEND.getInteger(GL32.GL_CONTEXT_PROFILE_MASK);
             if ((profileMask & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0) {
                 GLStateManager.LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
                 ShaderManager.getInstance().enable();
@@ -144,19 +144,19 @@ public class RenderSystem {
     }
 
     public static void bindAttributeLocation(int program, int index, CharSequence name) {
-        GL20.glBindAttribLocation(program, index, name);
+        RENDER_BACKEND.bindAttribLocation(program, index, name);
     }
 
     public static void texImage2D(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
         GLStateManager.glBindTexture(target, texture);
-        GL11.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         if (target == GL11.GL_TEXTURE_2D && level == 0) {
             TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         }
     }
 
     public static void uniformMatrix4fv(int location, boolean transpose, FloatBuffer matrix) {
-        GL20.glUniformMatrix4(location, transpose, matrix);
+        RENDER_BACKEND.uniformMatrix4(location, transpose, matrix);
     }
 
     public static void copyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
@@ -164,41 +164,41 @@ public class RenderSystem {
     }
 
     public static void uniform1f(int location, float v0) {
-        GL20.glUniform1f(location, v0);
+        RENDER_BACKEND.uniform1f(location, v0);
     }
 
     public static void uniform1i(int location, int v0) {
-        GL20.glUniform1i(location, v0);
+        RENDER_BACKEND.uniform1i(location, v0);
     }
 
     public static void uniform2f(int location, float v0, float v1) {
-        GL20.glUniform2f(location, v0, v1);
+        RENDER_BACKEND.uniform2f(location, v0, v1);
     }
 
     public static void uniform2i(int location, int v0, int v1) {
-        GL20.glUniform2i(location, v0, v1);
+        RENDER_BACKEND.uniform2i(location, v0, v1);
     }
 
     public static void uniform3f(int location, float v0, float v1, float v2) {
-        GL20.glUniform3f(location, v0, v1, v2);
+        RENDER_BACKEND.uniform3f(location, v0, v1, v2);
     }
 
-    public static void uniform3i(int location, int v0, int v1, int v2) {GL20.glUniform3i(location, v0, v1, v2);}
+    public static void uniform3i(int location, int v0, int v1, int v2) {RENDER_BACKEND.uniform3i(location, v0, v1, v2);}
 
     public static void uniform4f(int location, float v0, float v1, float v2, float v3) {
-        GL20.glUniform4f(location, v0, v1, v2, v3);
+        RENDER_BACKEND.uniform4f(location, v0, v1, v2, v3);
     }
 
     public static void uniform4i(int location, int v0, int v1, int v2, int v3) {
-        GL20.glUniform4i(location, v0, v1, v2, v3);
+        RENDER_BACKEND.uniform4i(location, v0, v1, v2, v3);
     }
 
     public static int getAttribLocation(int programId, String name) {
-        return GL20.glGetAttribLocation(programId, name);
+        return RENDER_BACKEND.getAttribLocation(programId, name);
     }
 
     public static int getUniformLocation(int programId, String name) {
-        return GL20.glGetUniformLocation(programId, name);
+        return RENDER_BACKEND.getUniformLocation(programId, name);
     }
 
     public static void texParameteriv(int texture, int target, int pname, IntBuffer params) {
@@ -234,21 +234,21 @@ public class RenderSystem {
     }
 
     public static void texImage1D(int texture, int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
-        GL11.glBindTexture(target, texture);
-        GL11.glTexImage1D(target, level, internalformat, width, border, format, type, pixels);
+        RENDER_BACKEND.bindTexture(target, texture);
+        RENDER_BACKEND.texImage1D(target, level, internalformat, width, border, format, type, pixels);
     }
 
     public static void texImage3D(int texture, int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
-        GL11.glBindTexture(target, texture);
-        GL12.glTexImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
+        RENDER_BACKEND.bindTexture(target, texture);
+        RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
     }
 
     public static String getProgramInfoLog(int program) {
-        return GL20.glGetProgramInfoLog(program, GL20.glGetProgrami(program, GL20.GL_INFO_LOG_LENGTH));
+        return RENDER_BACKEND.getProgramInfoLog(program, RENDER_BACKEND.getProgrami(program, GL20.GL_INFO_LOG_LENGTH));
     }
 
     public static String getShaderInfoLog(int shader) {
-        return GL20.glGetShaderInfoLog(shader, GL20.glGetShaderi(shader, GL20.GL_INFO_LOG_LENGTH));
+        return RENDER_BACKEND.getShaderInfoLog(shader, RENDER_BACKEND.getShaderi(shader, GL20.GL_INFO_LOG_LENGTH));
     }
 
     public static void drawBuffers(int framebuffer, IntBuffer buffers) {
@@ -260,15 +260,15 @@ public class RenderSystem {
     }
 
     public static String getActiveUniform(int program, int index, int maxLength, IntBuffer sizeType) {
-        return GL20.glGetActiveUniform(program, index, maxLength, sizeType);
+        return RENDER_BACKEND.getActiveUniform(program, index, maxLength, sizeType);
     }
 
     public static void readPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels) {
-        GL11.glReadPixels(x, y, width, height, format, type, pixels);
+        RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
     }
 
     public static void bufferData(int target, FloatBuffer data, int usage) {
-        GL15.glBufferData(target, data, usage);
+        RENDER_BACKEND.bufferData(target, data, usage);
     }
 
     public static int bufferStorage(int target, FloatBuffer data, int usage) {
@@ -276,11 +276,11 @@ public class RenderSystem {
     }
 
     public static void vertexAttrib4f(int index, float v0, float v1, float v2, float v3) {
-        GL20.glVertexAttrib4f(index, v0, v1, v2, v3);
+        RENDER_BACKEND.vertexAttrib4f(index, v0, v1, v2, v3);
     }
 
     public static void detachShader(int program, int shader) {
-        GL20.glDetachShader(program, shader);
+        RENDER_BACKEND.detachShader(program, shader);
     }
 
     public static void framebufferTexture2D(int fb, int fbtarget, int attachment, int target, int texture, int levels) {
@@ -296,11 +296,7 @@ public class RenderSystem {
     }
 
     public static void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
-        if (GLStateManager.capabilities.OpenGL42) {
-            GL42.glBindImageTexture(unit, texture, level, layered, layer, access, format);
-        } else {
-            EXTShaderImageLoadStore.glBindImageTextureEXT(unit, texture, level, layered, layer, access, format);
-        }
+        RENDER_BACKEND.bindImageTexture(unit, texture, level, layered, layer, access, format);
     }
 
     public static int getMaxImageUnits() {
@@ -328,19 +324,19 @@ public class RenderSystem {
     }
 
     public static void getProgramiv(int program, int value, IntBuffer storage) {
-        GL20.glGetProgram(program, value, storage);
+        RENDER_BACKEND.getProgramiv(program, value, storage);
     }
 
     public static void dispatchCompute(int workX, int workY, int workZ) {
-        GL43.glDispatchCompute(workX, workY, workZ);
+        RENDER_BACKEND.dispatchCompute(workX, workY, workZ);
     }
 
     public static void dispatchCompute(Vector3i workGroups) {
-        GL43.glDispatchCompute(workGroups.x, workGroups.y, workGroups.z);
+        RENDER_BACKEND.dispatchCompute(workGroups.x, workGroups.y, workGroups.z);
     }
 
     public static void dispatchComputeIndirect(long offset) {
-        GL43.glDispatchComputeIndirect(offset);
+        RENDER_BACKEND.dispatchComputeIndirect(offset);
     }
 
     public static void bindBuffer(int target, int buffer) {
@@ -349,7 +345,7 @@ public class RenderSystem {
 
     public static void memoryBarrier(int barriers) {
         if (supportsCompute) {
-            GL42.glMemoryBarrier(barriers);
+            RENDER_BACKEND.memoryBarrier(barriers);
         }
     }
 
@@ -358,17 +354,17 @@ public class RenderSystem {
     }
 
     public static void disableBufferBlend(int buffer) {
-        GL30.glDisablei(GL11.GL_BLEND, buffer);
+        RENDER_BACKEND.disablei(GL11.GL_BLEND, buffer);
         GLStateManager.getBlendMode().setUnknownState();
     }
 
     public static void enableBufferBlend(int buffer) {
-        GL30.glEnablei(GL11.GL_BLEND, buffer);
+        RENDER_BACKEND.enablei(GL11.GL_BLEND, buffer);
         GLStateManager.getBlendMode().setUnknownState();
     }
 
     public static void blendFuncSeparatei(int buffer, int srcRGB, int dstRGB, int srcAlpha, int dstAlpha) {
-        GL40.glBlendFuncSeparatei(buffer, srcRGB, dstRGB, srcAlpha, dstAlpha);
+        RENDER_BACKEND.blendFuncSeparatei(buffer, srcRGB, dstRGB, srcAlpha, dstAlpha);
     }
 
     public static void bindTextureToUnit(int unit, int texture) {
@@ -418,41 +414,30 @@ public class RenderSystem {
     }
 
     public static int createBuffers() {
-        return GL15.glGenBuffers();
+        return RENDER_BACKEND.genBuffers();
     }
 
     public static void bindBufferBase(int target, int index, int buffer) {
-        GL30.glBindBufferBase(target, index, buffer);
+        RENDER_BACKEND.bindBufferBase(target, index, buffer);
     }
 
     public static void bufferStorage(int target, long size, int flags) {
-        if (GLStateManager.capabilities.OpenGL44) {
-            GL44.glBufferStorage(target, size, flags);
-        } else if (GLStateManager.capabilities.GL_ARB_buffer_storage) {
-            ARBBufferStorage.glBufferStorage(target, size, flags);
-        } else {
-            // Fallback: use mutable storage
-            GL15.glBufferData(target, size, GL15.GL_DYNAMIC_DRAW);
-        }
+        RENDER_BACKEND.bufferStorage(target, size, flags);
     }
 
     public static void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, int[] data) {
         final ByteBuffer buf = BufferUtils.createByteBuffer(data.length * 4);
         buf.asIntBuffer().put(data);
-        if (GLStateManager.capabilities.OpenGL43) {
-            GL43.glClearBufferSubData(target, internalFormat, offset, size, format, type, buf);
-        } else if (GLStateManager.capabilities.GL_ARB_clear_buffer_object) {
-            ARBClearBufferObject.glClearBufferSubData(target, internalFormat, offset, size, format, type, buf);
-        }
+        RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, buf);
     }
 
     public static void deleteBuffers(int buffer) {
-        GL15.glDeleteBuffers(buffer);
+        RENDER_BACKEND.deleteBuffers(buffer);
     }
 
     public static long getVRAM() {
         if (GLStateManager.capabilities.GL_NVX_gpu_memory_info) {
-            return GL11.glGetInteger(NVXGpuMemoryInfo.GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1024L;
+            return RENDER_BACKEND.getInteger(NVXGpuMemoryInfo.GL_GPU_MEMORY_INFO_CURRENT_AVAILABLE_VIDMEM_NVX) * 1024L;
         } else {
             // Default to 4GB if we can't query VRAM
             return 4294967296L;
@@ -460,11 +445,7 @@ public class RenderSystem {
     }
 
     public static void clearTexImage(int texture, int target, int level, int format, int type) {
-        if (GLStateManager.capabilities.OpenGL44) {
-            GL44.glClearTexImage(texture, level, format, type, (ByteBuffer) null);
-        } else {
-            ARBClearTexture.glClearTexImage(texture, level, format, type, (ByteBuffer) null);
-        }
+        RENDER_BACKEND.clearTexImage(texture, level, format, type);
     }
 
     public static void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
@@ -505,23 +486,23 @@ public class RenderSystem {
 
     public static int genSampler() {
         if (!supportsSamplerObjects) return 0;
-        return GL33.glGenSamplers();
+        return RENDER_BACKEND.genSamplers();
     }
 
     public static void destroySampler(int sampler) {
         if (!supportsSamplerObjects || sampler == 0) return;
-        GL33.glDeleteSamplers(sampler);
+        RENDER_BACKEND.deleteSamplers(sampler);
     }
 
     public static void samplerParameteri(int sampler, int pname, int param) {
         if (!supportsSamplerObjects || sampler == 0) return;
-        GL33.glSamplerParameteri(sampler, pname, param);
+        RENDER_BACKEND.samplerParameteri(sampler, pname, param);
     }
 
     public static void bindSamplerToUnit(int unit, int sampler) {
         if (!supportsSamplerObjects) return;
         if (samplers[unit] == sampler) return;
-        GL33.glBindSampler(unit, sampler);
+        RENDER_BACKEND.bindSampler(unit, sampler);
         samplers[unit] = sampler;
     }
 
@@ -529,7 +510,7 @@ public class RenderSystem {
         if (!supportsSamplerObjects) return;
         for (int i = 0; i < samplers.length; i++) {
             if (samplers[i] != 0) {
-                GL33.glBindSampler(i, 0);
+                RENDER_BACKEND.bindSampler(i, 0);
                 samplers[i] = 0;
             }
         }

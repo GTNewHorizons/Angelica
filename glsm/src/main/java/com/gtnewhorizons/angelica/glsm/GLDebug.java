@@ -5,10 +5,7 @@
 
 package com.gtnewhorizons.angelica.glsm;
 
-import org.lwjgl.opengl.AMDDebugOutput;
-import org.lwjgl.opengl.AMDDebugOutputCallback;
-import org.lwjgl.opengl.ARBDebugOutput;
-import org.lwjgl.opengl.ARBDebugOutputCallback;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import org.lwjgl.opengl.EXTBlendColor;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -16,10 +13,6 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL43;
-import org.lwjgl.opengl.KHRDebug;
-import org.lwjgl.opengl.KHRDebugCallback;
-
-import static org.lwjgl.opengl.ARBDebugOutput.glDebugMessageCallbackARB;
 
 public final class GLDebug {
 
@@ -37,8 +30,8 @@ public final class GLDebug {
     }
 
     public static Throwable filterStackTrace(Throwable throwable, int offset) {
-        StackTraceElement[] elems = throwable.getStackTrace();
-        StackTraceElement[] filtered = new StackTraceElement[elems.length];
+        final StackTraceElement[] elems = throwable.getStackTrace();
+        final StackTraceElement[] filtered = new StackTraceElement[elems.length];
         int j = 0;
         for (int i = offset; i < elems.length; i++) {
             String className = elems[i].getClassName();
@@ -47,15 +40,15 @@ public final class GLDebug {
             }
             filtered[j++] = elems[i];
         }
-        StackTraceElement[] newElems = new StackTraceElement[j];
+        final StackTraceElement[] newElems = new StackTraceElement[j];
         System.arraycopy(filtered, 0, newElems, 0, j);
         throwable.setStackTrace(newElems);
         return throwable;
     }
 
     private static String buildStackTrace() {
-        StackTraceElement[] elems = filterStackTrace(new Throwable(), 4).getStackTrace();
-        StringBuilder sb = new StringBuilder();
+        final StackTraceElement[] elems = filterStackTrace(new Throwable(), 4).getStackTrace();
+        final StringBuilder sb = new StringBuilder();
         for (StackTraceElement elem : elems) {
             sb.append("\n\t").append(elem.toString());
         }
@@ -63,7 +56,7 @@ public final class GLDebug {
     }
 
     private static void logDebugMessage(int id, String source, String type, String severity, String message) {
-        String fullMessage = String.format("[GL] %s %s (0x%X) from %s: %s%s", severity, type, id, source, message, buildStackTrace());
+        final String fullMessage = String.format("[GL] %s %s (0x%X) from %s: %s%s", severity, type, id, source, message, buildStackTrace());
 
         if ("HIGH".equals(severity)) {
             GLStateManager.LOGGER.error(fullMessage);
@@ -74,95 +67,15 @@ public final class GLDebug {
         }
     }
 
-    private static void logDebugMessageAMD(int id, String category, String severity, String message) {
-        String fullMessage = String.format("[GL] %s %s (0x%X): %s%s", severity, category, id, message, buildStackTrace());
-
-        if ("HIGH".equals(severity)) {
-            GLStateManager.LOGGER.error(fullMessage);
-        } else if ("MEDIUM".equals(severity)) {
-            GLStateManager.LOGGER.warn(fullMessage);
-        } else {
-            GLStateManager.LOGGER.info(fullMessage);
-        }
-    }
-
-    /**
-     * Sets up debug callbacks
-     *
-     * @return 0 for failure, 1 for success, 2 for restart required.
-     */
     private static int setupDebugMessageCallbackImpl() {
-        if (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_KHR_debug) {
-            GLStateManager.LOGGER.info("[GL] Using OpenGL 4.3 for error logging.");
-            final KHRDebugCallback proc = new KHRDebugCallback((source, type, id, severity, message) -> {
-                logDebugMessage(id, getDebugSource(source), getDebugType(type), getDebugSeverity(severity), message);
-            });
-            GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
-            GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
-            GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_LOW, null, false);
-            GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
-            GL43.glDebugMessageCallback(proc);
-
-            // Enable synchronous debug output so errors are reported immediately with accurate stack traces
-            GL11.glEnable(GL43.GL_DEBUG_OUTPUT_SYNCHRONOUS);
-
-            if ((GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & GL43.GL_CONTEXT_FLAG_DEBUG_BIT) == 0) {
-                GLStateManager.LOGGER.warn("[GL] Warning: A non-debug context may not produce any debug output.");
-                GL11.glEnable(GL43.GL_DEBUG_OUTPUT);
-                return 2;
-            }
-            return 1;
-        } else if (GLStateManager.capabilities.GL_ARB_debug_output) {
-            GLStateManager.LOGGER.info("[GL] Using ARB_debug_output for error logging.");
-            final ARBDebugOutputCallback proc = new ARBDebugOutputCallback((source, type, id, severity, message) -> {
-                logDebugMessage(id, getSourceARB(source), getTypeARB(type), getSeverityARB(severity), message);
-            });
-            ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
-            ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
-            ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_LOW, null, false);
-            ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
-            ARBDebugOutput.glDebugMessageCallbackARB(proc);
-
-            // Enable synchronous debug output so errors are reported immediately with accurate stack traces
-            GL11.glEnable(ARBDebugOutput.GL_DEBUG_OUTPUT_SYNCHRONOUS_ARB);
-            return 1;
-        } else if (GLStateManager.capabilities.GL_AMD_debug_output) {
-            GLStateManager.LOGGER.info("[GL] Using AMD_debug_output for error logging.");
-            final AMDDebugOutputCallback proc = new AMDDebugOutputCallback((id, category, severity, message) -> {
-                logDebugMessageAMD(id, getCategoryAMD(category), getSeverityAMD(severity), message);
-            });
-            AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
-            AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
-            AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_LOW, null, false);
-            AMDDebugOutput.glDebugMessageEnableAMD(0, GL43.GL_DEBUG_SEVERITY_NOTIFICATION, null, false);
-            AMDDebugOutput.glDebugMessageCallbackAMD(proc);
-            return 1;
-        } else {
-            GLStateManager.LOGGER.info("[GL] No debug output implementation is available, cannot return debug info.");
-            return 0;
-        }
+        return BackendManager.RENDER_BACKEND.setupDebugOutput(
+            (source, type, id, severity, message) ->
+                logDebugMessage(id, getDebugSource(source), getDebugType(type), getDebugSeverity(severity), message)
+        );
     }
 
     public static int disableDebugMessages() {
-        if (GLStateManager.capabilities.OpenGL43) {
-            GL43.glDebugMessageCallback(null);
-            return 1;
-        } else if (GLStateManager.capabilities.GL_KHR_debug) {
-            KHRDebug.glDebugMessageCallback(null);
-            if (GLStateManager.capabilities.OpenGL30 && (GL11.glGetInteger(GL30.GL_CONTEXT_FLAGS) & 2) == 0) {
-                GL11.glDisable(GL43.GL_DEBUG_OUTPUT);
-            }
-            return 1;
-        } else if (GLStateManager.capabilities.GL_ARB_debug_output) {
-            glDebugMessageCallbackARB(null);
-            return 1;
-        } else if (GLStateManager.capabilities.GL_AMD_debug_output) {
-            AMDDebugOutput.glDebugMessageCallbackAMD(null);
-            return 1;
-        } else {
-            GLStateManager.LOGGER.info("[GL] No debug output implementation is available, cannot disable debug info.");
-            return 0;
-        }
+        return BackendManager.RENDER_BACKEND.disableDebugOutput();
     }
 
     private static String getDebugSource(int source) {
@@ -196,62 +109,6 @@ public final class GLDebug {
             case GL43.GL_DEBUG_SEVERITY_HIGH -> "HIGH";
             case GL43.GL_DEBUG_SEVERITY_MEDIUM -> "MEDIUM";
             case GL43.GL_DEBUG_SEVERITY_LOW -> "LOW";
-            default -> String.format("Unknown [0x%X]", severity);
-        };
-    }
-
-    private static String getSourceARB(int source) {
-        return switch (source) {
-            case ARBDebugOutput.GL_DEBUG_SOURCE_API_ARB -> "API";
-            case ARBDebugOutput.GL_DEBUG_SOURCE_WINDOW_SYSTEM_ARB -> "WINDOW SYSTEM";
-            case ARBDebugOutput.GL_DEBUG_SOURCE_SHADER_COMPILER_ARB -> "SHADER COMPILER";
-            case ARBDebugOutput.GL_DEBUG_SOURCE_THIRD_PARTY_ARB -> "THIRD PARTY";
-            case ARBDebugOutput.GL_DEBUG_SOURCE_APPLICATION_ARB -> "APPLICATION";
-            case ARBDebugOutput.GL_DEBUG_SOURCE_OTHER_ARB -> "OTHER";
-            default -> String.format("Unknown [0x%X]", source);
-        };
-    }
-
-    private static String getTypeARB(int type) {
-        return switch (type) {
-            case ARBDebugOutput.GL_DEBUG_TYPE_ERROR_ARB -> "ERROR";
-            case ARBDebugOutput.GL_DEBUG_TYPE_DEPRECATED_BEHAVIOR_ARB -> "DEPRECATED BEHAVIOR";
-            case ARBDebugOutput.GL_DEBUG_TYPE_UNDEFINED_BEHAVIOR_ARB -> "UNDEFINED BEHAVIOR";
-            case ARBDebugOutput.GL_DEBUG_TYPE_PORTABILITY_ARB -> "PORTABILITY";
-            case ARBDebugOutput.GL_DEBUG_TYPE_PERFORMANCE_ARB -> "PERFORMANCE";
-            case ARBDebugOutput.GL_DEBUG_TYPE_OTHER_ARB -> "OTHER";
-            default -> String.format("Unknown [0x%X]", type);
-        };
-    }
-
-    private static String getSeverityARB(int severity) {
-        return switch (severity) {
-            case ARBDebugOutput.GL_DEBUG_SEVERITY_HIGH_ARB -> "HIGH";
-            case ARBDebugOutput.GL_DEBUG_SEVERITY_MEDIUM_ARB -> "MEDIUM";
-            case ARBDebugOutput.GL_DEBUG_SEVERITY_LOW_ARB -> "LOW";
-            default -> String.format("Unknown [0x%X]", severity);
-        };
-    }
-
-    private static String getCategoryAMD(int category) {
-        return switch (category) {
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_API_ERROR_AMD -> "API ERROR";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_WINDOW_SYSTEM_AMD -> "WINDOW SYSTEM";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_DEPRECATION_AMD -> "DEPRECATION";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_UNDEFINED_BEHAVIOR_AMD -> "UNDEFINED BEHAVIOR";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_PERFORMANCE_AMD -> "PERFORMANCE";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_SHADER_COMPILER_AMD -> "SHADER COMPILER";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_APPLICATION_AMD -> "APPLICATION";
-            case AMDDebugOutput.GL_DEBUG_CATEGORY_OTHER_AMD -> "OTHER";
-            default -> String.format("Unknown [0x%X]", category);
-        };
-    }
-
-    private static String getSeverityAMD(int severity) {
-        return switch (severity) {
-            case AMDDebugOutput.GL_DEBUG_SEVERITY_HIGH_AMD -> "HIGH";
-            case AMDDebugOutput.GL_DEBUG_SEVERITY_MEDIUM_AMD -> "MEDIUM";
-            case AMDDebugOutput.GL_DEBUG_SEVERITY_LOW_AMD -> "LOW";
             default -> String.format("Unknown [0x%X]", severity);
         };
     }
@@ -624,13 +481,12 @@ public final class GLDebug {
 
         private static final int ID = 0;
         private int depth = 0;
-        private static final int maxDepth = GL11.glGetInteger(KHRDebug.GL_MAX_DEBUG_GROUP_STACK_DEPTH);
-        private static final int maxNameLength = GL11.glGetInteger(KHRDebug.GL_MAX_LABEL_LENGTH);
+        private static final int maxDepth = BackendManager.RENDER_BACKEND.getInteger(GL43.GL_MAX_DEBUG_GROUP_STACK_DEPTH);
         private final String[] groupStack = new String[maxDepth + 1];
 
         @Override
         public void nameObject(int id, int object, String name) {
-            KHRDebug.glObjectLabel(id, object, name);
+            BackendManager.RENDER_BACKEND.objectLabel(id, object, name);
         }
 
         @Override
@@ -645,7 +501,7 @@ public final class GLDebug {
                 throw new RuntimeException(sb.toString());
             }
             groupStack[depth] = name;
-            KHRDebug.glPushDebugGroup(KHRDebug.GL_DEBUG_SOURCE_APPLICATION, ID, name);
+            BackendManager.RENDER_BACKEND.pushDebugGroup(GL43.GL_DEBUG_SOURCE_APPLICATION, ID, name);
             depth++;
         }
 
@@ -654,18 +510,18 @@ public final class GLDebug {
             if (depth - 1 < 0) {
                 throw new RuntimeException("Stack underflow");
             }
-            KHRDebug.glPopDebugGroup();
+            BackendManager.RENDER_BACKEND.popDebugGroup();
             depth--;
             groupStack[depth] = null;
         }
 
         @Override
         public void debugMessage(String message) {
-            KHRDebug.glDebugMessageInsert(
-                    KHRDebug.GL_DEBUG_SOURCE_APPLICATION,
-                    KHRDebug.GL_DEBUG_TYPE_MARKER,
+            BackendManager.RENDER_BACKEND.debugMessageInsert(
+                    GL43.GL_DEBUG_SOURCE_APPLICATION,
+                    GL43.GL_DEBUG_TYPE_MARKER,
                     ID,
-                    KHRDebug.GL_DEBUG_SEVERITY_NOTIFICATION,
+                    GL43.GL_DEBUG_SEVERITY_NOTIFICATION,
                     message);
         }
 
@@ -673,7 +529,7 @@ public final class GLDebug {
         public String getObjectLabel(int glProgram, int program) {
             if (program == 0) return "";
 
-            return KHRDebug.glGetObjectLabel(glProgram, program, maxNameLength);
+            return BackendManager.RENDER_BACKEND.getObjectLabel(glProgram, program);
         }
     }
 
@@ -703,7 +559,7 @@ public final class GLDebug {
     }
 
     public static void initDebugState() {
-        if (GLStateManager.capabilities.GL_KHR_debug || GLStateManager.capabilities.OpenGL43) {
+        if (BackendManager.RENDER_BACKEND.supportsDebugOutput()) {
             debugState = new KHRDebugState();
         } else {
             debugState = new UnsupportedDebugState();
