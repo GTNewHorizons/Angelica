@@ -5,8 +5,6 @@ import com.mitchej123.glsm.RenderSystemService;
 import org.joml.Matrix4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL20;
-
 import java.nio.FloatBuffer;
 
 public class AngelicaRenderSystemService implements RenderSystemService {
@@ -115,17 +113,17 @@ public class AngelicaRenderSystemService implements RenderSystemService {
 
     @Override
     public void glUniform1i(int location, int value) {
-        GL20.glUniform1i(location, value);
+        GLStateManager.glUniform1i(location, value);
     }
 
     @Override
     public void glUniformMatrix3(int location, boolean transpose, FloatBuffer value) {
-        GL20.glUniformMatrix3(location, transpose, value);
+        GLStateManager.glUniformMatrix3(location, transpose, value);
     }
 
     @Override
     public void glUniformMatrix4(int location, boolean transpose, FloatBuffer value) {
-        GL20.glUniformMatrix4(location, transpose, value);
+        GLStateManager.glUniformMatrix4(location, transpose, value);
     }
 
     // ===================== THREAD ASSERTIONS =====================

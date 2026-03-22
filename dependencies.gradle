@@ -146,6 +146,8 @@ dependencies {
             testImplementation('org.junit.platform:junit-platform-engine')
             testImplementation('org.junit.platform:junit-platform-reporting')
             testImplementation('org.junit.platform:junit-platform-launcher')
+
+            testImplementation('com.tngtech.archunit:archunit-junit5:1.4.1')
         }
     }
 

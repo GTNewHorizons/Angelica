@@ -14,7 +14,6 @@ import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.client.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
@@ -27,7 +26,6 @@ import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistr
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
 import com.gtnewhorizons.angelica.zoom.Zoom;
-import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -53,8 +51,6 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
-import net.minecraft.client.settings.GameSettings;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
@@ -114,8 +110,6 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    private static KeyBinding glsmKeyBinding;
-
     @Override
     public void init(FMLInitializationEvent event) {
         super.init(event);
@@ -144,8 +138,6 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica");
-        ClientRegistry.registerKeyBinding(glsmKeyBinding);
 
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
@@ -163,18 +155,6 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    private boolean wasGLSMKeyPressed;
-
-    @SubscribeEvent
-    public void onKeypress(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END) return;
-
-        final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && GameSettings.isKeyDown(glsmKeyBinding);
-        if (isPressed && !wasGLSMKeyPressed) {
-            OpenGLDebugging.checkGLSM();
-        }
-        wasGLSMKeyPressed = isPressed;
-    }
 
     @Override
     public void postInit(FMLPostInitializationEvent event) {
