@@ -367,6 +367,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				null, ProgramId.Clouds, ProgramId.Clouds,
 				null, ProgramId.DamagedBlock, ProgramId.DamagedBlock,
 				ProgramId.Block, ProgramId.Block, ProgramId.Block,
+				ProgramId.BlockTrans, ProgramId.BlockTrans, ProgramId.BlockTrans,
 				ProgramId.BeaconBeam, ProgramId.BeaconBeam, ProgramId.BeaconBeam,
 				ProgramId.Entities, ProgramId.Entities, ProgramId.Entities,
 				ProgramId.EntitiesTrans, ProgramId.EntitiesTrans, ProgramId.EntitiesTrans,
@@ -719,6 +720,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					return RenderCondition.ENTITIES;
 				}
 			case BLOCK_ENTITIES:
+				if (GLStateManager.getBlendState().getSrcRgb() == SRC_ALPHA &&
+					GLStateManager.getBlendState().getDstRgb() == ONE_MINUS_SRC_ALPHA) {
+					return RenderCondition.BLOCK_ENTITIES_TRANSLUCENT;
+				}
 				return RenderCondition.BLOCK_ENTITIES;
 			case DESTROY:
 				return RenderCondition.DESTROY;
