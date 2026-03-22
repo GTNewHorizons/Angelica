@@ -20,7 +20,7 @@ public class ShadowMatrices {
 				// column 3
 				0f, 0f, 2.0f / (nearPlane - farPlane), 0f,
 				// column 4
-				0f, 0f, -(nearPlane + farPlane) / (nearPlane - farPlane), 1f
+				0f, 0f, -(farPlane + nearPlane) / (farPlane - nearPlane), 1f
 		);
 	}
 
