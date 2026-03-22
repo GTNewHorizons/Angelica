@@ -224,7 +224,6 @@ public class ShaderProperties {
 			handleBooleanDirective(key, value, "occlusion.culling", bool -> occlusionCulling = bool);
 			handleBooleanDirective(key, value, "shadow.enabled", bool -> shadowEnabled = bool);
 			handleBooleanDirective(key, value, "dhShadow.enabled", bool -> dhShadowEnabled = bool);
-			handleBooleanDirective(key, value, "dhShadow.enabled", bool -> dhShadowEnabled = bool);
 			handleBooleanDirective(key, value, "particles.before.deferred", bool -> {
 				if (bool.orElse(false) && particleRenderingSettings.isEmpty()) {
 					particleRenderingSettings = Optional.of(ParticleRenderingSettings.BEFORE);

@@ -101,7 +101,7 @@ public class DHCompatInternal {
     public static int getDhBlockRenderDistance() {
         if (DhApi.Delayed.configs == null || !dhEnabled) {
             // Called before DH has finished setup
-            return Minecraft.getMinecraft().gameSettings.renderDistanceChunks;
+            return Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16;
         }
 
         return DhApi.Delayed.configs.graphics().chunkRenderDistance().getValue() * 16;
@@ -261,7 +261,7 @@ public class DHCompatInternal {
             translucentDepthDirty = false;
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, depthTexNoTranslucent.getTextureId());
             dhTerrainFramebuffer.bindAsReadBuffer();
-            GL11.glCopyTexImage2D(GL11.GL_TEXTURE_2D, 0, DepthBufferFormat.DEPTH32F.getGlInternalFormat(), 0, 0, width, height, 0);
+            GLStateManager.glCopyTexImage2D(GL11.GL_TEXTURE_2D, 0, DepthBufferFormat.DEPTH32F.getGlInternalFormat(), 0, 0, width, height, 0);
         } else {
             DepthCopyStrategy.fastest(false).copy(dhTerrainFramebuffer, storedDepthTex, null, depthTexNoTranslucent.getTextureId(), width, height);
         }

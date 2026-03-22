@@ -56,6 +56,7 @@ public class ProgramSet {
 	private final ProgramSource compositeFinal;
 	private final ComputeSource[] finalCompute;
 	private final ProgramSource dhTerrain;
+	private final ProgramSource dhGeneric;
 	private final ProgramSource dhWater;
 	private final ProgramSource dhShadow;
 
@@ -120,6 +121,7 @@ public class ProgramSet {
 		this.gbuffersBlock = readProgramSource(directory, sourceProvider, "gbuffers_block", this, shaderProperties);
 		this.gbuffersHand = readProgramSource(directory, sourceProvider, "gbuffers_hand", this, shaderProperties);
 		this.dhTerrain = readProgramSource(directory, sourceProvider, "dh_terrain", this, shaderProperties);
+		this.dhGeneric = readProgramSource(directory, sourceProvider, "dh_generic", this, shaderProperties);
 		this.dhWater = readProgramSource(directory, sourceProvider, "dh_water", this, shaderProperties);
 		this.dhShadow = readProgramSource(directory, sourceProvider, "dh_shadow", this, shaderProperties);
 
@@ -222,7 +224,7 @@ public class ProgramSet {
 				gbuffersBasic, gbuffersBeaconBeam, gbuffersTextured, gbuffersTexturedLit, gbuffersTerrain,
 				gbuffersDamagedBlock, gbuffersSkyBasic, gbuffersSkyTextured, gbuffersClouds, gbuffersWeather,
 				gbuffersEntities, gbuffersEntitiesTrans, gbuffersEntitiesGlowing, gbuffersGlint, gbuffersEntityEyes, gbuffersBlock,
-				gbuffersHand, dhShadow, dhTerrain, dhWater
+				gbuffersHand, dhShadow, dhTerrain, dhGeneric, dhWater
 		));
 
 		for (ComputeSource[] computeSources : compositeCompute) {
@@ -390,6 +392,10 @@ public class ProgramSet {
 		return dhTerrain.requireValid();
 	}
 
+	public Optional<ProgramSource> getDhGeneric() {
+		return dhGeneric.requireValid();
+	}
+
 	public Optional<ProgramSource> getDhWater() {
 		return dhWater.requireValid();
 	}
@@ -423,6 +429,7 @@ public class ProgramSet {
 			case HandWater -> getGbuffersHandWater();
 			case Final -> getCompositeFinal();
 			case DhTerrain -> getDhTerrain();
+			case DhGeneric -> getDhGeneric();
 			case DhWater -> getDhWater();
 			case DhShadow -> getDhShadow();
 			default -> Optional.empty();
