@@ -113,7 +113,7 @@ public class DHCompat {
     }
 
     public static int getRenderDistance() {
-        if (!dhPresent) return Minecraft.getMinecraft().gameSettings.renderDistanceChunks;
+        if (!dhPresent) return Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16;
 
         try {
             return (int) getRenderDistance.invoke();
