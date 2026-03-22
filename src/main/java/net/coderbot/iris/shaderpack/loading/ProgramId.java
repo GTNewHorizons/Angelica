@@ -31,6 +31,7 @@ public enum ProgramId {
 	DamagedBlock(ProgramGroup.Gbuffers, "damagedblock", Terrain),
 
 	Block(ProgramGroup.Gbuffers, "block", Terrain),
+	BlockTrans(ProgramGroup.Gbuffers, "block_translucent", Block, BlendModeOverride.OFF),
 	BeaconBeam(ProgramGroup.Gbuffers, "beaconbeam", Textured),
 	Item(ProgramGroup.Gbuffers, "item", TexturedLit),
 
