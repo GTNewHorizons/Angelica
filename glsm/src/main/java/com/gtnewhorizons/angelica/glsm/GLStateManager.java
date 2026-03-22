@@ -4901,13 +4901,23 @@ public class GLStateManager {
     public static void glBufferData(int target, int[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, float[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, java.nio.ByteBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, java.nio.FloatBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, java.nio.ShortBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, java.nio.IntBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, java.nio.FloatBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, java.nio.DoubleBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferSubData(int target, long offset, java.nio.ByteBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, java.nio.ShortBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, java.nio.IntBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, java.nio.FloatBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, java.nio.DoubleBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static ByteBuffer glMapBuffer(int target, int access) { return RENDER_BACKEND.mapBuffer(target, access); }
     public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) { return RENDER_BACKEND.mapBuffer(target, access, length, old_buffer); }
     public static boolean glUnmapBuffer(int target) { return RENDER_BACKEND.unmapBuffer(target); }
     public static void glGetBufferSubData(int target, long offset, java.nio.ByteBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, java.nio.ShortBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, java.nio.IntBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, java.nio.FloatBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, java.nio.DoubleBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static int glGetBufferParameteri(int target, int pname) { return RENDER_BACKEND.getBufferParameteri(target, pname); }
     public static void glBufferStorage(int target, java.nio.ByteBuffer data, int flags) { RENDER_BACKEND.bufferStorage(target, data, flags); }
     public static void glBufferStorage(int target, long size, int flags) { RENDER_BACKEND.bufferStorage(target, size, flags); }

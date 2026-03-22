@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraftforge.client.ForgeHooksClient;
@@ -45,7 +46,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
         final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
 
-        final ContextAttribs attribs = new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true);
+        final ContextAttribs attribs = new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true).withDebug(AngelicaMod.lwjglDebug);
         final MethodHandle setMajor, setMinor;
         try {
             final Field majorField = ContextAttribs.class.getDeclaredField("majorVersion");
