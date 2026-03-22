@@ -46,9 +46,12 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.client.settings.KeyBinding;
@@ -164,6 +167,8 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onKeypress(TickEvent.ClientTickEvent event) {
+        if (event.phase != TickEvent.Phase.END) return;
+
         final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && GameSettings.isKeyDown(glsmKeyBinding);
         if (isPressed && !wasGLSMKeyPressed) {
             OpenGLDebugging.checkGLSM();
@@ -177,7 +182,7 @@ public class ClientProxy extends CommonProxy {
 
         if (ModStatus.isLotrLoaded && AngelicaConfig.enableCeleritas && CompatConfig.fixLotr) {
             try {
-                Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
+                final Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockTable");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "cachedNaturalBlocks");
@@ -192,9 +197,9 @@ public class ClientProxy extends CommonProxy {
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {
         if (FMLCommonHandler.instance().getSide().isClient() && event.phase == TickEvent.Phase.END) {
-            IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
+            final IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
             if (srv != null) {
-                long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
+                final long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
                 lastIntegratedTickTime = lastIntegratedTickTime * 0.8F + (float) currentTickTime / 1000000.0F * 0.2F;
             } else lastIntegratedTickTime = 0;
         }
@@ -211,30 +216,30 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
-        Minecraft mc = Minecraft.getMinecraft();
-        if (!mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
+        final Minecraft mc = Minecraft.getMinecraft();
+        if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
 
-        NetHandlerPlayClient cl = mc.getNetHandler();
+        final NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
-            IntegratedServer srv = mc.getIntegratedServer();
+            final IntegratedServer srv = mc.getIntegratedServer();
 
             if (srv != null) {
-                String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
+                final String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
                 event.left.add(Math.min(event.left.size(), 1), s);
             }
         }
 
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
             if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
-            Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
-            int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
+            final Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
+            final int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
         }
 
         if (DynamicLights.isEnabled()) {
-            var builder = new StringBuilder("Dynamic Light Sources: ");
-            DynamicLights dl = DynamicLights.get();
+            final var builder = new StringBuilder("Dynamic Light Sources: ");
+            final DynamicLights dl = DynamicLights.get();
             builder.append(dl.getLightSourcesCount()).append(" (U: ").append(dl.getLastUpdateCount()).append(')');
 
             event.right.add(builder.toString());
@@ -248,8 +253,8 @@ public class ClientProxy extends CommonProxy {
                         .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
                         .startsWith("f:")) {
                     hasReplacedXYZ = true;
-                    int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
-                    String heading_str = switch (heading) {
+                    final int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
+                    final String heading_str = switch (heading) {
                         case 0 -> "Towards positive Z";
                         case 1 -> "Towards negative X";
                         case 2 -> "Towards negative Z";
@@ -257,9 +262,9 @@ public class ClientProxy extends CommonProxy {
                         default -> throw new RuntimeException();
                     };
                     event.left.set(i, String.format("XYZ: %.3f / %.5f / %.3f", mc.thePlayer.posX, mc.thePlayer.boundingBox.minY, mc.thePlayer.posZ));
-                    int bX = MathHelper.floor_double(mc.thePlayer.posX);
-                    int bY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
-                    int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
+                    final int bX = MathHelper.floor_double(mc.thePlayer.posX);
+                    final int bY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
+                    final int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
                     event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", bX, bY, bZ, bX & 15, bY & 15, bZ & 15));
                     event.left.set(i + 2, String.format("Chunk: %d %d %d", bX >> 4, bY >> 4, bZ >> 4));
                     event.left.set(
@@ -270,15 +275,14 @@ public class ClientProxy extends CommonProxy {
                                     MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
                                     MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
 
-                    Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
-                    event.left.set(
-                            i + 4, String.format(
-                                    "lc: %d b: %s bl: %d sl: %d rl: %d",
-                                    chunk.getTopFilledSegment() + 15,
-                                    chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
-                                    chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
-                                    chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
-                                    chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
+                    final Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
+                    event.left.set(i + 4, String.format(
+                        "lc: %d b: %s bl: %d sl: %d rl: %d",
+                        chunk.getTopFilledSegment() + 15,
+                        chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
+                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
+                        chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
                 }
             }
             // Draw a frametime graph
