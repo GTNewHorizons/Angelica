@@ -903,6 +903,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void bufferData(int target, IntBuffer data, int usage) {
+        GL15.glBufferData(target, data, usage);
+    }
+
+    @Override
+    public void bufferData(int target, DoubleBuffer data, int usage) {
+        GL15.glBufferData(target, data, usage);
+    }
+
+    @Override
     public void bufferData(int target, int[] data, int usage) {
         final IntBuffer buffer = getIntArrayBuffer(data.length);
         buffer.put(data);
@@ -920,6 +930,26 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void bufferSubData(int target, long offset, ByteBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, ShortBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, IntBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, FloatBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, DoubleBuffer data) {
         GL15.glBufferSubData(target, offset, data);
     }
 
@@ -950,6 +980,26 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void getBufferSubData(int target, long offset, ByteBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, ShortBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, IntBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, FloatBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, DoubleBuffer data) {
         GL15.glGetBufferSubData(target, offset, data);
     }
 
