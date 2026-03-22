@@ -55,6 +55,8 @@ public class PackShadowDirectives {
 		// shadowRenderDistanceMul to a nonzero value, since having a high shadow render distance will impact
 		// performance quite heavily on most systems.
 		this.distance = 160.0f;
+		this.nearPlane = 0.05f;
+		this.farPlane = 256.0f;
 		this.voxelDistance = 0.0f;
 
 		// By default, shadows are not culled based on distance from the player. However, pack authors may
@@ -100,8 +102,8 @@ public class PackShadowDirectives {
 		this.resolution = shadowDirectives.resolution;
 		this.fov = shadowDirectives.fov;
 		this.distance = shadowDirectives.distance;
-        this.nearPlane = shadowDirectives.nearPlane;
-        this.farPlane = shadowDirectives.farPlane;
+		this.nearPlane = shadowDirectives.nearPlane;
+		this.farPlane = shadowDirectives.farPlane;
 		this.voxelDistance = shadowDirectives.voxelDistance;
 		this.distanceRenderMul = shadowDirectives.distanceRenderMul;
 		this.entityShadowDistanceMul = shadowDirectives.entityShadowDistanceMul;
