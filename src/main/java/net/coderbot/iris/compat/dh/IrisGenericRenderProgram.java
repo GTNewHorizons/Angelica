@@ -36,7 +36,11 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.lwjgl.opengl.*;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.nio.FloatBuffer;
 import java.util.ArrayList;
@@ -58,6 +62,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     private final ProgramImages images;
     private final BlendModeOverride blend;
     private final BufferBlendOverride[] bufferBlendOverrides;
+    private final Matrix3f tempMat3 = new Matrix3f();
 
     private final int instancedShaderOffsetChunkUniform;
     private final int instancedShaderOffsetSubChunkUniform;
@@ -70,44 +75,44 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
     // This will bind  AbstractVertexAttribute
     private IrisGenericRenderProgram(String name, boolean isShadowPass, boolean translucent, BlendModeOverride override, BufferBlendOverride[] bufferBlendOverrides, String vertex, String tessControl, String tessEval, String geometry, String fragment, CustomUniforms customUniforms, DeferredWorldRenderingPipeline pipeline) {
-        id = GL20.glCreateProgram();
+        id = GLStateManager.glCreateProgram();
 
-        GL20.glBindAttribLocation(this.id, 0, "vPosition");
+        GLStateManager.glBindAttribLocation(this.id, 0, "vPosition");
 
         this.bufferBlendOverrides = bufferBlendOverrides;
 
         GlShader vert = new GlShader(ShaderType.VERTEX, name + ".vsh", vertex);
-        GL20.glAttachShader(id, vert.getHandle());
+        GLStateManager.glAttachShader(id, vert.getHandle());
 
         GlShader tessCont = null;
         if (tessControl != null) {
             tessCont = new GlShader(ShaderType.TESSELATION_CONTROL, name + ".tcs", tessControl);
-            GL20.glAttachShader(id, tessCont.getHandle());
+            GLStateManager.glAttachShader(id, tessCont.getHandle());
         }
 
         GlShader tessE = null;
         if (tessEval != null) {
             tessE = new GlShader(ShaderType.TESSELATION_EVAL, name + ".tes", tessEval);
-            GL20.glAttachShader(id, tessE.getHandle());
+            GLStateManager.glAttachShader(id, tessE.getHandle());
         }
 
         GlShader geom = null;
         if (geometry != null) {
             geom = new GlShader(ShaderType.GEOMETRY, name + ".gsh", geometry);
-            GL20.glAttachShader(id, geom.getHandle());
+            GLStateManager.glAttachShader(id, geom.getHandle());
         }
 
         GlShader frag = new GlShader(ShaderType.FRAGMENT, name + ".fsh", fragment);
-        GL20.glAttachShader(id, frag.getHandle());
+        GLStateManager.glAttachShader(id, frag.getHandle());
 
-        GL20.glLinkProgram(this.id);
-        int status = GL20.glGetProgrami(this.id, 35714);
+        GLStateManager.glLinkProgram(this.id);
+        int status = GLStateManager.glGetProgrami(this.id, GL20.GL_LINK_STATUS);
         if (status != 1) {
-            String message = "Shader link error in Iris DH program! Details: " + GL20.glGetProgramInfoLog(this.id, 9999);
+            String message = "Shader link error in Iris DH program! Details: " + GLStateManager.glGetProgramInfoLog(this.id, 9999);
             this.free();
             throw new RuntimeException(message);
         } else {
-            GL20.glUseProgram(this.id);
+            GLStateManager.glUseProgram(this.id);
         }
 
         vert.destroy();
@@ -133,10 +138,10 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         samplers = samplerBuilder.build();
         images = builder.build();
 
-        this.va = GL30.glGenVertexArrays();
-        GL30.glBindVertexArray(va);
-        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 0, 0);
-        GL20.glEnableVertexAttribArray(0);
+        this.va = GLStateManager.glGenVertexArrays();
+        GLStateManager.glBindVertexArray(va);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 0, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
 
         projectionUniform = tryGetUniformLocation2("iris_ProjectionMatrix");
         projectionInverseUniform = tryGetUniformLocation2("iris_ProjectionMatrixInverse");
@@ -196,7 +201,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     public int tryGetUniformLocation2(CharSequence name) {
-        return GL20.glGetUniformLocation(this.id, name);
+        return GLStateManager.glGetUniformLocation(this.id, name);
     }
 
     public void setUniform(int index, Matrix4f matrix) {
@@ -207,7 +212,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
             matrix.get(buffer);
             buffer.rewind();
 
-            GL20.glUniformMatrix4(index, false, buffer);
+            GLStateManager.glUniformMatrix4(index, false, buffer);
         }
     }
 
@@ -219,14 +224,14 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
             matrix.get(buffer);
             buffer.rewind();
 
-            GL20.glUniformMatrix3(index, false, buffer);
+            GLStateManager.glUniformMatrix3(index, false, buffer);
         }
     }
 
     // Override ShaderProgram.bind()
     public void bind(DhApiRenderParam renderParam) {
-        GL30.glBindVertexArray(va);
-        GL20.glUseProgram(id);
+        GLStateManager.glBindVertexArray(va);
+        GLStateManager.glUseProgram(id);
         if (blend != null) blend.apply();
 
         for (BufferBlendOverride override : bufferBlendOverrides) {
@@ -237,7 +242,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         setUniform(modelViewInverseUniform, toJOML(renderParam.dhModelViewMatrix).invert());
         setUniform(projectionUniform, toJOML(renderParam.dhProjectionMatrix));
         setUniform(projectionInverseUniform, toJOML(renderParam.dhProjectionMatrix).invert());
-        setUniform(normalMatrix3fUniform, toJOML(renderParam.dhModelViewMatrix).invert().transpose3x3(new Matrix3f()));
+        setUniform(normalMatrix3fUniform, toJOML(renderParam.dhModelViewMatrix).invert().transpose3x3(tempMat3));
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
         DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
@@ -253,7 +258,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
     public void unbind() {
         GLStateManager.glBindVertexArray(0);
-        GL20.glUseProgram(0);
+        GLStateManager.glUseProgram(0);
         ProgramUniforms.clearActiveUniforms();
         ProgramSamplers.clearActiveSamplers();
         BlendModeOverride.restore();
@@ -261,8 +266,8 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
     @Override
     public void bindVertexBuffer(int i) {
-        GL15.glBindBuffer(GL15.GL_ARRAY_BUFFER, i);
-        GL20.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, i);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
     }
 
     @Override
@@ -276,7 +281,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     public void free() {
-        GL20.glDeleteProgram(id);
+        GLStateManager.glDeleteProgram(id);
     }
 
     public void fillIndirectUniformData(DhApiRenderParam dhApiRenderParam, DhApiRenderableBoxGroupShading dhApiRenderableBoxGroupShading, IDhApiRenderableBoxGroup boxGroup, DhApiVec3d camPos) {
@@ -330,19 +335,19 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     private void setUniform(int index, int value) {
-        GL20.glUniform1i(index, value);
+        GLStateManager.glUniform1i(index, value);
     }
 
     private void setUniform(int index, float value) {
-        GL20.glUniform1f(index, value);
+        GLStateManager.glUniform1f(index, value);
     }
 
     private void setUniform(int index, DhApiVec3f pos) {
-        GL20.glUniform3f(index, pos.x, pos.y, pos.z);
+        GLStateManager.glUniform3f(index, pos.x, pos.y, pos.z);
     }
 
     private void setUniform(int index, DhApiVec3i pos) {
-        GL20.glUniform3i(index, pos.x, pos.y, pos.z);
+        GLStateManager.glUniform3i(index, pos.x, pos.y, pos.z);
     }
 
 }

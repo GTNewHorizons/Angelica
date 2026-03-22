@@ -83,7 +83,7 @@ public class StandardMacros {
 			define(standardDefines, "IS_IRIS");
 		}
 
-		if (Loader.isModLoaded("distanthorizons") && DHCompat.hasRenderingEnabled()) {
+		if (DHCompat.hasRenderingEnabled()) {
 			define(standardDefines, "DISTANT_HORIZONS");
 		}
 

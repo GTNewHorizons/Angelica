@@ -4,7 +4,12 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
-import net.coderbot.iris.pipeline.transform.parameter.*;
+import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
+import net.coderbot.iris.pipeline.transform.parameter.CeleritasTerrainParameters;
+import net.coderbot.iris.pipeline.transform.parameter.ComputeParameters;
+import net.coderbot.iris.pipeline.transform.parameter.DHParameters;
+import net.coderbot.iris.pipeline.transform.parameter.Parameters;
+import net.coderbot.iris.pipeline.transform.parameter.TextureStageParameters;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 
 import java.util.LinkedHashMap;

@@ -153,7 +153,7 @@ public class DHCompat {
     }
 
     public int getDepthTex() {
-        if (compatInternalInstance == null) return 0;
+        if (compatInternalInstance == null) return -1;
 
         try {
             return (int) getDepthTex.invoke(compatInternalInstance);
@@ -163,7 +163,7 @@ public class DHCompat {
     }
 
     public int getDepthTexNoTranslucent() {
-        if (compatInternalInstance == null) return 0;
+        if (compatInternalInstance == null) return -1;
 
         try {
             return (int) getDepthTexNoTranslucent.invoke(compatInternalInstance);

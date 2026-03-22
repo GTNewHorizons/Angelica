@@ -1,5 +1,6 @@
 package net.coderbot.iris.compat.dh;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.enums.rendering.EDhApiFogDrawMode;
@@ -8,7 +9,18 @@ import com.seibel.distanthorizons.api.interfaces.override.IDhApiOverrideable;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiFramebuffer;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShadowCullingFrustum;
-import com.seibel.distanthorizons.api.methods.events.abstractEvents.*;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiAfterDhInitEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeApplyShaderRenderEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeBufferRenderEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeDeferredRenderEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeGenericObjectRenderEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeGenericRenderSetupEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderCleanupEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderPassEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeRenderSetupEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiBeforeTextureClearEvent;
+import com.seibel.distanthorizons.api.methods.events.abstractEvents.DhApiColorDepthTextureCreatedEvent;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiCancelableEventParam;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiEventParam;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
@@ -24,6 +36,9 @@ import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 public class LodRendererEvents {
+    // TODO: Query actual world min height for Cubic Chunks compatibility
+    private static final int WORLD_MIN_Y = 0;
+
     private static boolean eventHandlersBound = false;
 
     private static boolean atTranslucent = false;
@@ -170,6 +185,9 @@ public class LodRendererEvents {
                         getInstance().getShadowShader().unbind();
                     } else {
                         getInstance().getSolidShader().unbind();
+                        if (atTranslucent) {
+                            GLStateManager.enableCull();
+                        }
                     }
                 }
             }
@@ -186,7 +204,7 @@ public class LodRendererEvents {
                     if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                         event.cancelEvent();
                     } else if (getInstance().shouldOverride) {
-                        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+                        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
                         event.cancelEvent();
                     }
                 }
@@ -289,7 +307,7 @@ public class LodRendererEvents {
                         if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                             instance.getShadowShader().fillUniformData(
                                 ShadowRenderer.PROJECTION, ShadowRenderer.MODELVIEW,
-                                -1000, //MC.getWrappedClientLevel().getMinHeight(),
+                                WORLD_MIN_Y,
                                 partialTicks);
                         } else {
                             Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();;
@@ -302,7 +320,7 @@ public class LodRendererEvents {
                             instance.getSolidShader().fillUniformData(
                                 new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
                                 RenderingState.INSTANCE.getModelViewMatrix(),
-                                -1000, //MC.getWrappedClientLevel().getMinHeight(),
+                                WORLD_MIN_Y,
                                 partialTicks);
                         }
                     }
@@ -328,14 +346,14 @@ public class LodRendererEvents {
                         Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();
                         //float nearClip = DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(partialTicks);
                         //float farClip = (float) ((double) (DHCompatInternal.getDhBlockRenderDistance() + 512) * Math.sqrt(2.0));
-                        GL11.glDisable(GL11.GL_CULL_FACE);
+                        GLStateManager.disableCull();
                         //Iris.logger.info("event near clip: "+event.value.nearClipPlane+" event far clip: "+event.value.farClipPlane+
                         //	" \niris near clip: "+nearClip+" iris far clip: "+farClip);
 
                         instance.getTranslucentShader().fillUniformData(
                             new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
                             RenderingState.INSTANCE.getModelViewMatrix(),
-                            -1000, //MC.getWrappedClientLevel().getMinHeight(),
+                            WORLD_MIN_Y,
                             partialTicks);
 
                         instance.getTranslucentFB().bind();
