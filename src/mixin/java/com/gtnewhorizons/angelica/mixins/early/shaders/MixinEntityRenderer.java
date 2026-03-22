@@ -7,6 +7,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -35,6 +36,9 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/ClippingHelperImpl;getInstance()Lnet/minecraft/client/renderer/culling/ClippingHelper;", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V")
     private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        DHCompat.checkFrame();
+        Iris.tryLoadShaderpackWhenPossible();
+
         CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
         SystemTimeUniforms.COUNTER.beginFrame();
         SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());

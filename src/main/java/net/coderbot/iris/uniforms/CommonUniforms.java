@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -137,7 +138,10 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "rainStrength", CommonUniforms::getRainStrength)
 			.uniform1f(PER_TICK, "wetness", new SmoothedFloat(directives.getWetnessHalfLife(), directives.getDrynessHalfLife(), CommonUniforms::getRainStrength, updateNotifier))
 			.uniform3d(PER_FRAME, "skyColor", CommonUniforms::getSkyColor)
-			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor);
+			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor)
+			.uniform1f(PER_FRAME, "dhFarPlane", DHCompat::getFarPlane)
+			.uniform1f(PER_FRAME, "dhNearPlane", DHCompat::getNearPlane)
+			.uniform1i(PER_FRAME, "dhRenderDistance", DHCompat::getRenderDistance);
 	}
 
     private static boolean isOnGround() {
