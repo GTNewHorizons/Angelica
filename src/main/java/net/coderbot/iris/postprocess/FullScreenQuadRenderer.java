@@ -78,6 +78,11 @@ public class FullScreenQuadRenderer {
 	/** Per-program cached uniform locations: [mvLoc, projLoc]. Populated on first miss. */
 	private static final Int2ObjectOpenHashMap<int[]> compositeLocCache = new Int2ObjectOpenHashMap<>();
 
+	/** Clear cached uniform locations. Must be called when composite programs are destroyed (e.g. shader reload). */
+	public static void clearLocCache() {
+		compositeLocCache.clear();
+	}
+
 	public static void uploadCompositeMatrices() {
 		final int program = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 		if (program == 0) return;
