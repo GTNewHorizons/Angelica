@@ -69,7 +69,7 @@ public class ShadowRenderer {
 	public static final List<TileEntity> globalTileEntities = new ArrayList<>();
 	public static boolean ACTIVE = false;
 
-    public static Frustrum FRUSTUM;
+	public static Frustrum FRUSTUM;
 
 	private static final Comparator<Entity> ENTITY_CLASS_COMPARATOR = Comparator.comparingInt(a -> System.identityHashCode(a.getClass()));
 	private static final NonCullingFrustum NON_CULLING_FRUSTUM = new NonCullingFrustum();
@@ -114,16 +114,16 @@ public class ShadowRenderer {
 	private double lastBoxCullerDistance = -1;
 	private double lastAdvancedBoxCullerDistance = -1;
 	private double lastTileEntityCullerDistance = -1;
-    private final boolean shouldRenderDH;
-    private final float nearPlane, farPlane;
+	private final boolean shouldRenderDH;
+	private final float nearPlane, farPlane;
 
 	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets, ShadowCompositeRenderer compositeRenderer) {
 
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
 		final PackShadowDirectives shadowDirectives = directives.getShadowDirectives();
-        this.nearPlane = shadowDirectives.getNearPlane();
-        this.farPlane = shadowDirectives.getFarPlane();
+		this.nearPlane = shadowDirectives.getNearPlane();
+		this.farPlane = shadowDirectives.getFarPlane();
 
 		this.halfPlaneLength = shadowDirectives.getDistance();
 		this.voxelDistance = shadowDirectives.getVoxelDistance();
@@ -136,7 +136,7 @@ public class ShadowRenderer {
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities();
 		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer();
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities();
-        this.shouldRenderDH = shadowDirectives.isDhShadowEnabled().orElse(false);
+		this.shouldRenderDH = shadowDirectives.isDhShadowEnabled().orElse(false);
 
 		this.compositeRenderer = compositeRenderer;
 
@@ -356,7 +356,7 @@ public class ShadowRenderer {
 			shadowLightVectorCache.set(shadowLightPosition.x(), shadowLightPosition.y(), shadowLightPosition.z());
 			shadowLightVectorCache.normalize();
 
-            Matrix4f projView = ((shouldRenderDH && DHCompat.hasRenderingEnabled()) ? DHCompat.getProjection() : RenderingState.INSTANCE.getProjectionMatrix());
+			Matrix4f projView = ((shouldRenderDH && DHCompat.hasRenderingEnabled()) ? DHCompat.getProjection() : RenderingState.INSTANCE.getProjectionMatrix());
 
 			if (hasSafeZone) {
 				BoxCuller distanceCuller = new BoxCuller(halfPlaneLength * renderMultiplier);
@@ -640,12 +640,12 @@ public class ShadowRenderer {
 		final MatrixStack modelView = getShadowModelView();
 		MODELVIEW.set(modelView.peek().getModel());
 
-        final Matrix4f shadowProjection;
+		final Matrix4f shadowProjection;
 		if (this.fov != null) {
 			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
-            shadowProjection = ShadowMatrices.createPerspectiveMatrix(this.fov);
+			shadowProjection = ShadowMatrices.createPerspectiveMatrix(this.fov);
 		} else {
-            shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength, nearPlane < 0 ? -DHCompat.getRenderDistance() : nearPlane, farPlane < 0 ? DHCompat.getRenderDistance() : farPlane);
+			shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength, nearPlane < 0 ? -DHCompat.getRenderDistance() : nearPlane, farPlane < 0 ? DHCompat.getRenderDistance() : farPlane);
 		}
 
 		PROJECTION.set(shadowProjection);
@@ -659,7 +659,7 @@ public class ShadowRenderer {
 		profiler.startSection("initialize frustum");
 
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
-        FRUSTUM = terrainFrustumHolder.getFrustum();
+		FRUSTUM = terrainFrustumHolder.getFrustum();
 
 		// Use the player/entity position for shadow rendering
 		final Vector3d entityPos = playerCamera.getEntityPos();

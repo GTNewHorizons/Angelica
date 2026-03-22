@@ -30,8 +30,8 @@ public class PackShadowDirectives {
 	private final boolean shouldRenderPlayer;
 	private final boolean shouldRenderBlockEntities;
 	@Getter private final ShadowCullState cullingState;
-    private final OptionalBoolean dhShadowEnabled;
-    private float nearPlane, farPlane;
+	private final OptionalBoolean dhShadowEnabled;
+	private float nearPlane, farPlane;
 
 	private final ImmutableList<DepthSamplingSettings> depthSamplingSettings;
 	private final ImmutableList<SamplingSettings> colorSamplingSettings;
@@ -85,7 +85,7 @@ public class PackShadowDirectives {
 		this.shouldRenderBlockEntities = properties.getShadowBlockEntities().orElse(true);
 		this.cullingState = properties.getShadowCulling();
 		this.shadowEnabled = properties.getShadowEnabled();
-        this.dhShadowEnabled = properties.getDhShadowEnabled();
+		this.dhShadowEnabled = properties.getDhShadowEnabled();
 
 		this.depthSamplingSettings = ImmutableList.of(new DepthSamplingSettings(), new DepthSamplingSettings());
 
@@ -118,7 +118,7 @@ public class PackShadowDirectives {
 		this.depthSamplingSettings = shadowDirectives.depthSamplingSettings;
 		this.colorSamplingSettings = shadowDirectives.colorSamplingSettings;
 		this.shadowEnabled = shadowDirectives.shadowEnabled;
-        this.dhShadowEnabled = shadowDirectives.dhShadowEnabled;
+		this.dhShadowEnabled = shadowDirectives.dhShadowEnabled;
 	}
 
 	public int getResolution() {
@@ -133,17 +133,17 @@ public class PackShadowDirectives {
 		return distance;
 	}
 
-    public float getNearPlane() {
-        return nearPlane;
-    }
+	public float getNearPlane() {
+		return nearPlane;
+	}
 
-    public float getFarPlane() {
-        return farPlane;
-    }
+	public float getFarPlane() {
+		return farPlane;
+	}
 
-    public OptionalBoolean isDhShadowEnabled() {
-        return dhShadowEnabled;
-    }
+	public OptionalBoolean isDhShadowEnabled() {
+		return dhShadowEnabled;
+	}
 
 	public float getVoxelDistance() {
 		return voxelDistance;
@@ -206,8 +206,8 @@ public class PackShadowDirectives {
 
 		directives.acceptCommentFloatDirective("SHADOWHPL", distance -> this.distance = distance);
 		directives.acceptConstFloatDirective("shadowDistance", distance -> this.distance = distance);
-        directives.acceptConstFloatDirective("shadowNearPlane", nearPlane -> this.nearPlane = nearPlane);
-        directives.acceptConstFloatDirective("shadowFarPlane", farPlane -> this.farPlane = farPlane);
+		directives.acceptConstFloatDirective("shadowNearPlane", nearPlane -> this.nearPlane = nearPlane);
+		directives.acceptConstFloatDirective("shadowFarPlane", farPlane -> this.farPlane = farPlane);
 		directives.acceptConstFloatDirective("entityShadowDistanceMul", distance -> this.entityShadowDistanceMul = distance);
 
 		directives.acceptConstFloatDirective("shadowDistanceRenderMul", distanceRenderMul -> {

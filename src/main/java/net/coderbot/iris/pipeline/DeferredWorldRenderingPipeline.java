@@ -176,7 +176,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean oldLighting;
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
-    private final CloudSetting dhCloudSetting;
+	private final CloudSetting dhCloudSetting;
 
 	private Pass current = null;
 
@@ -192,7 +192,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private int currentSpecularTexture;
 	private PackDirectives packDirectives;
 	private final Set<FeatureFlags> activeFeatures;
-    private final ProgramFallbackResolver resolver;
+	private final ProgramFallbackResolver resolver;
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
@@ -207,7 +207,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				.map(DeferredWorldRenderingPipeline::submitCompositeTransform)
 				.orElse(null);
 
-        resolver = new ProgramFallbackResolver(programs);
+		resolver = new ProgramFallbackResolver(programs);
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver);
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
@@ -229,7 +229,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.shouldRenderWeather = programs.getPackDirectives().shouldRenderWeather();
 		this.shouldRenderWeatherParticles = programs.getPackDirectives().shouldRenderWeatherParticles();
 		this.shouldWriteRainAndSnowToDepthBuffer = programs.getPackDirectives().rainDepth();
-        this.dhCloudSetting = programs.getPackDirectives().getDHCloudSetting();
+		this.dhCloudSetting = programs.getPackDirectives().getDHCloudSetting();
 		this.shouldRenderParticlesBeforeDeferred = programs.getPackDirectives().getParticleRenderingSettings()
 			.map(s -> s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.BEFORE || s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.MIXED)
 			.orElse(false);
@@ -936,55 +936,55 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
-    public CloudSetting getDHCloudSetting() {
-        return dhCloudSetting;
-    }
+	public CloudSetting getDHCloudSetting() {
+		return dhCloudSetting;
+	}
 
-    public Optional<ProgramSource> getDHTerrainShader() {
-        return resolver.resolve(ProgramId.DhTerrain);
-    }
+	public Optional<ProgramSource> getDHTerrainShader() {
+		return resolver.resolve(ProgramId.DhTerrain);
+	}
 
-    public Optional<ProgramSource> getDHGenericShader() {
-        return resolver.resolve(ProgramId.DhGeneric);
-    }
+	public Optional<ProgramSource> getDHGenericShader() {
+		return resolver.resolve(ProgramId.DhGeneric);
+	}
 
-    public Optional<ProgramSource> getDHWaterShader() {
-        return resolver.resolve(ProgramId.DhWater);
-    }
+	public Optional<ProgramSource> getDHWaterShader() {
+		return resolver.resolve(ProgramId.DhWater);
+	}
 
-    public Optional<ProgramSource> getDHShadowShader() {
-        return resolver.resolve(ProgramId.DhShadow);
-    }
+	public Optional<ProgramSource> getDHShadowShader() {
+		return resolver.resolve(ProgramId.DhShadow);
+	}
 
-    public CustomUniforms getCustomUniforms() {
-        return customUniforms;
-    }
+	public CustomUniforms getCustomUniforms() {
+		return customUniforms;
+	}
 
-    public GlFramebuffer createDHFramebuffer(ProgramSource sources, boolean trans) {
-        return renderTargets.createDHFramebuffer(trans ? flippedAfterTranslucent : flippedAfterPrepare,
-            sources.getDirectives().getDrawBuffers());
-    }
+	public GlFramebuffer createDHFramebuffer(ProgramSource sources, boolean trans) {
+		return renderTargets.createDHFramebuffer(trans ? flippedAfterTranslucent : flippedAfterPrepare,
+			sources.getDirectives().getDrawBuffers());
+	}
 
-    public ImmutableSet<Integer> getFlippedBeforeShadow() {
-        return flippedBeforeShadow;
-    }
+	public ImmutableSet<Integer> getFlippedBeforeShadow() {
+		return flippedBeforeShadow;
+	}
 
-    public ImmutableSet<Integer> getFlippedAfterPrepare() {
-        return flippedAfterPrepare;
-    }
+	public ImmutableSet<Integer> getFlippedAfterPrepare() {
+		return flippedAfterPrepare;
+	}
 
-    public ImmutableSet<Integer> getFlippedAfterTranslucent() {
-        return flippedAfterTranslucent;
-    }
+	public ImmutableSet<Integer> getFlippedAfterTranslucent() {
+		return flippedAfterTranslucent;
+	}
 
-    public GlFramebuffer createDHFramebufferShadow(ProgramSource sources) {
+	public GlFramebuffer createDHFramebufferShadow(ProgramSource sources) {
 
-        return shadowRenderTargets.createDHFramebuffer(ImmutableSet.of(), new int[]{0, 1});
-    }
+		return shadowRenderTargets.createDHFramebuffer(ImmutableSet.of(), new int[]{0, 1});
+	}
 
-    public boolean hasShadowRenderTargets() {
-        return shadowRenderTargets != null;
-    }
+	public boolean hasShadowRenderTargets() {
+		return shadowRenderTargets != null;
+	}
 
 	private final class Pass {
 		@Nullable
@@ -1130,7 +1130,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// While it's possible to just clear them instead and reuse them, we'd need to investigate whether or not this
 		// would help performance.
 		renderTargets.destroy();
-        dhCompat.clearPipeline();
+		dhCompat.clearPipeline();
 
 		// destroy the shadow render targets
 		if (shadowRenderTargets != null) {

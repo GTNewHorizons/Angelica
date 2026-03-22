@@ -139,9 +139,9 @@ public final class CommonUniforms {
 			.uniform1f(PER_TICK, "wetness", new SmoothedFloat(directives.getWetnessHalfLife(), directives.getDrynessHalfLife(), CommonUniforms::getRainStrength, updateNotifier))
 			.uniform3d(PER_FRAME, "skyColor", CommonUniforms::getSkyColor)
 			.uniform3d(PER_FRAME, "fogColor", GLStateManager::getFogColor)
-            .uniform1f(PER_FRAME, "dhFarPlane", DHCompat::getFarPlane)
-            .uniform1f(PER_FRAME, "dhNearPlane", DHCompat::getNearPlane)
-            .uniform1i(PER_FRAME, "dhRenderDistance", DHCompat::getRenderDistance);
+			.uniform1f(PER_FRAME, "dhFarPlane", DHCompat::getFarPlane)
+			.uniform1f(PER_FRAME, "dhNearPlane", DHCompat::getNearPlane)
+			.uniform1i(PER_FRAME, "dhRenderDistance", DHCompat::getRenderDistance);
 	}
 
     private static boolean isOnGround() {

@@ -83,8 +83,8 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 
 	private final BaseClippingPlanes baseClippingPlanes = new BaseClippingPlanes();
 	private final boolean[] isBackArray = new boolean[6];
-    private int worldMinYDH;
-    private int worldMaxYDH;
+	private int worldMinYDH;
+	private int worldMaxYDH;
 
 	public AdvancedShadowCullingFrustum() {
 		for (int i = 0; i < MAX_CLIPPING_PLANES; i++) {
@@ -305,16 +305,16 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 		return true;
 	}
 
-    @Optional.Method(modid = "distanthorizons")
-    @Override
-    public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
-        this.worldMinYDH = worldMinBlockY;
-        this.worldMaxYDH = worldMaxBlockY;
-    }
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
+		this.worldMinYDH = worldMinBlockY;
+		this.worldMaxYDH = worldMaxBlockY;
+	}
 
-    @Optional.Method(modid = "distanthorizons")
-    @Override
-    public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
-        return this.isVisible(lodBlockPosMinX, this.worldMinYDH, lodBlockPosMinZ, lodBlockPosMinX + lodBlockWidth, this.worldMaxYDH, lodBlockPosMinZ + lodBlockWidth);
-    }
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
+		return this.isVisible(lodBlockPosMinX, this.worldMinYDH, lodBlockPosMinZ, lodBlockPosMinX + lodBlockWidth, this.worldMaxYDH, lodBlockPosMinZ + lodBlockWidth);
+	}
 }

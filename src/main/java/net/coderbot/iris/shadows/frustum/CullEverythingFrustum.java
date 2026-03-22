@@ -29,15 +29,15 @@ public class CullEverythingFrustum extends Frustrum implements ViewportProvider,
 		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
 	}
 
-    @Optional.Method(modid = "distanthorizons")
-    @Override
-    public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
 
-    }
+	}
 
-    @Optional.Method(modid = "distanthorizons")
-    @Override
-    public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
-        return false;
-    }
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
+		return false;
+	}
 }

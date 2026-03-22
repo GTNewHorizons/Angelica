@@ -29,16 +29,16 @@ public class NonCullingFrustum extends Frustrum implements ViewportProvider, Fru
 		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
 	}
 
-    @Optional.Method(modid = "distanthorizons")
-    @Override
-    public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
 
-    }
+	}
 
-    @Optional.Method(modid = "distanthorizons")
-    @Override
-    public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
-        return true;
-    }
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
+		return true;
+	}
 
 }

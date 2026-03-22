@@ -138,7 +138,6 @@ dependencies {
 
     // Distant Horizons
     compileOnly(files("libs/DistantHorizonsApi-5.1.0.jar"))
-    runtimeOnlyNonPublishable("com.seibel.distanthorizons:DistantHorizons:9.9.9:dev")
 
     afterEvaluate {
         dependencies {

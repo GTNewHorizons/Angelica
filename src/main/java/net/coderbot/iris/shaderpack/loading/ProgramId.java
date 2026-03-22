@@ -39,10 +39,10 @@ public enum ProgramId {
 	Weather(ProgramGroup.Gbuffers, "weather", TexturedLit),
 	Water(ProgramGroup.Gbuffers, "water", Terrain),
 	HandWater(ProgramGroup.Gbuffers, "hand_water", Hand),
-    DhTerrain(ProgramGroup.Dh, "terrain"),
-    DhWater(ProgramGroup.Dh, "water", DhTerrain),
-    DhGeneric(ProgramGroup.Dh, "generic", DhTerrain),
-    DhShadow(ProgramGroup.Dh, "shadow"),
+	DhTerrain(ProgramGroup.Dh, "terrain"),
+	DhWater(ProgramGroup.Dh, "water", DhTerrain),
+	DhGeneric(ProgramGroup.Dh, "generic", DhTerrain),
+	DhShadow(ProgramGroup.Dh, "shadow"),
 
 	Final(ProgramGroup.Final, ""),
 	;

@@ -92,7 +92,7 @@ public class ShaderProperties {
 	@Getter private OptionalBoolean occlusionCulling = OptionalBoolean.DEFAULT;
 	@Getter private ShadowCullState shadowCulling = ShadowCullState.DEFAULT;
 	@Getter private OptionalBoolean shadowEnabled = OptionalBoolean.DEFAULT;
-    @Getter private OptionalBoolean dhShadowEnabled = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean dhShadowEnabled = OptionalBoolean.DEFAULT;
 	private Optional<ParticleRenderingSettings> particleRenderingSettings = Optional.empty();
 	@Getter private OptionalBoolean prepareBeforeShadow = OptionalBoolean.DEFAULT;
 	@Getter private List<String> sliderOptions = new ArrayList<>();
@@ -223,7 +223,7 @@ public class ShaderProperties {
 			handleBooleanDirective(key, value, "frustum.culling", bool -> frustumCulling = bool);
 			handleBooleanDirective(key, value, "occlusion.culling", bool -> occlusionCulling = bool);
 			handleBooleanDirective(key, value, "shadow.enabled", bool -> shadowEnabled = bool);
-            handleBooleanDirective(key, value, "dhShadow.enabled", bool -> dhShadowEnabled = bool);
+			handleBooleanDirective(key, value, "dhShadow.enabled", bool -> dhShadowEnabled = bool);
 			handleBooleanDirective(key, value, "dhShadow.enabled", bool -> dhShadowEnabled = bool);
 			handleBooleanDirective(key, value, "particles.before.deferred", bool -> {
 				if (bool.orElse(false) && particleRenderingSettings.isEmpty()) {
@@ -495,15 +495,15 @@ public class ShaderProperties {
                 customUniforms.addVariable(parts[0], parts[1], value, false);
             });
 
-            handlePassDirective("uniform.", key, value, pass -> {
-               String[] parts = pass.split("\\.");
-               if (parts.length != 2) {
-                   Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
-                   return;
-               }
+			handlePassDirective("uniform.", key, value, pass -> {
+				String[] parts = pass.split("\\.");
+				if (parts.length != 2) {
+					Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
+					return;
+				}
 
-               customUniforms.addVariable(parts[0], parts[1], value, true);
-            });
+				customUniforms.addVariable(parts[0], parts[1], value, true);
+			});
 
 			// TODO: Buffer size directives
 			// TODO: Conditional program enabling directives

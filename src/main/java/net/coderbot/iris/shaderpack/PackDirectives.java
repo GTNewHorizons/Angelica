@@ -181,9 +181,9 @@ public class PackDirectives {
 		return concurrentCompute;
 	}
 
-    public CloudSetting getDHCloudSetting() {
-        return dhCloudSetting;
-    }
+	public CloudSetting getDHCloudSetting() {
+		return dhCloudSetting;
+	}
 
     private static float clamp(float val, float lo, float hi) {
 		return Math.max(lo, Math.min(hi, val));
