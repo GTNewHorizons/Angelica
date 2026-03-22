@@ -29,12 +29,14 @@ import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.image.GlImage;
+import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.image.ImageInformation;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
+import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
@@ -903,6 +905,38 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         this.customUniforms.mapholderToPass(builder, pass);
 
 		return pass;
+	}
+
+	public void addGbufferOrShadowSamplers(SamplerHolder samplers, ImageHolder images, Supplier<ImmutableSet<Integer>> flipped,
+										   boolean isShadowPass, boolean hasTexture, boolean hasLightmap, boolean hasOverlay) {
+		TextureStage textureStage = TextureStage.GBUFFERS_AND_SHADOW;
+
+		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor =
+			ProgramSamplers.customTextureSamplerInterceptor(samplers, customTextureManager.getCustomTextureIdMap(textureStage));
+
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
+		IrisImages.addRenderTargetImages(images, flipped, renderTargets);
+
+		if (!shouldBindPBR) {
+			shouldBindPBR = IrisSamplers.hasPBRSamplers(customTextureSamplerInterceptor);
+		}
+
+		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(hasTexture, hasLightmap));
+		if (!isShadowPass) {
+			IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets);
+		}
+		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
+		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
+		IrisImages.addCustomImages(images, customImages);
+
+		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
+			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, true);
+		}
+
+		if (isShadowPass || IrisImages.hasShadowImages(images)) {
+			IrisImages.addShadowColorImages(images, shadowTargetsSupplier.get(), null);
+		}
 	}
 
 	private boolean isPostChain;

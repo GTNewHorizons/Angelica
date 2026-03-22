@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.mitchej123.lwjgl.MemoryStack;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
-import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.program.ProgramImages;
@@ -117,7 +116,9 @@ public class IrisLodRenderProgram {
         customUniforms.assignTo(uniformBuilder);
         BuiltinReplacementUniforms.addBuiltinReplacementUniforms(uniformBuilder);
         ProgramImages.Builder builder = ProgramImages.builder(id);
-        IrisSamplers.addLevelSamplers(samplerBuilder, pipeline, Minecraft.getMinecraft().getTextureMapBlocks(), new InputAvailability(true, true));
+        pipeline.addGbufferOrShadowSamplers(samplerBuilder, builder,
+            isShadowPass ? pipeline::getFlippedBeforeShadow : () -> translucent ? pipeline.getFlippedAfterTranslucent() : pipeline.getFlippedAfterPrepare(),
+            isShadowPass, true, true, false);
         customUniforms.mapholderToPass(uniformBuilder, this);
         this.uniforms = uniformBuilder.buildUniforms();
         this.customUniforms = customUniforms;
