@@ -224,6 +224,13 @@ public class AngelicaConfig {
     })
     public static String[] blockCrackFixRenderPassWhitelist__;
 
+    @Config.Comment({"List of sprites which should always be treated as translucent.",
+                     "Sprites added to this list will always be considered translucent,",
+                     "",
+                     "Requires texture reload (F3+T) to take effect."})
+    @Config.DefaultStringList({"jewelrycraft2:blockCrystal"})
+    public static String[] alwaysTranslucentSprites;
+
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
