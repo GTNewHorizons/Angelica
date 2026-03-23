@@ -135,12 +135,23 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         return null;
     }
 
+    /** Publish a transformer-narrowing toggle to the blackboard; read by AngelicaLateTweaker.narrowEnabled(). */
+    private static void narrowTransformerConfig(String mod, boolean enabled) {
+        Launch.blackboard.put("angelica.narrow." + mod, enabled);
+    }
+
     @Override
     public void injectData(Map<String, Object> data) {
         OBF_ENV = (Boolean) data.get("runtimeDeobfuscationEnabled");
         // Directly add this to the MixinServiceLaunchWrapper tweaker's list of Tweak Classes
         final List<String> tweaks = GlobalProperties.get(MixinServiceLaunchWrapper.BLACKBOARD_KEY_TWEAKCLASSES);
         if (tweaks != null) {
+            // Bridge transformer compat config to blackboard for AngelicaLateTweaker
+            narrowTransformerConfig("DragonAPI", AngelicaConfig.transformerCompat.narrowDragonAPI);
+            narrowTransformerConfig("Xaeros", AngelicaConfig.transformerCompat.narrowXaeros);
+            narrowTransformerConfig("AdvancedLightsabers", AngelicaConfig.transformerCompat.narrowAdvancedLightsabers);
+            narrowTransformerConfig("Alfheim", AngelicaConfig.transformerCompat.narrowAlfheim);
+
             tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.IncompatibleModsDisablerTweaker");
             if (AngelicaConfig.enableHudCaching) {
                 tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.XaerosTransformerDisablerTweaker");
