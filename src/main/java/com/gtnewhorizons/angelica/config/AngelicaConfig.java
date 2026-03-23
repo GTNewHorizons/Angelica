@@ -239,6 +239,31 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean defineIsIris;
 
+    @Config.Comment("ASM transformer exclusion narrowing for mod compatibility. Disable per-mod if narrowing causes class loading issues.")
+    public static TransformerCompat transformerCompat = new TransformerCompat();
+
+    public static class TransformerCompat {
+        @Config.Comment("Narrow DragonAPI transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowDragonAPI;
+
+        @Config.Comment("Narrow Xaeros Minimap/Worldmap transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowXaeros;
+
+        @Config.Comment("Narrow AdvancedLightsabers transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowAdvancedLightsabers;
+
+        @Config.Comment("Narrow Alfheim transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowAlfheim;
+    }
+
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
     @Config.DefaultBoolean(false)
     public static boolean useVanillaChunkTracking;
