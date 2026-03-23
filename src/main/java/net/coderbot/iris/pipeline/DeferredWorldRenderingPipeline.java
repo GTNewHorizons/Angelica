@@ -47,6 +47,7 @@ import net.coderbot.iris.postprocess.BufferFlipper;
 import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
+import net.coderbot.iris.postprocess.FullScreenQuadRenderer;
 import net.coderbot.iris.postprocess.ProgramBuildContext;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
@@ -1115,6 +1116,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		BlendModeOverride.restore();
 		AlphaTestOverride.restore();
 
+		FullScreenQuadRenderer.clearLocCache();
 		destroyPasses(table);
 
 		// Destroy the composite rendering pipeline

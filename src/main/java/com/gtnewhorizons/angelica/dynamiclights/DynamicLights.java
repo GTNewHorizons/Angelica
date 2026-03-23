@@ -4,6 +4,7 @@ import baubles.common.lib.PlayerHandler;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
+import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.api.IDynamicLightProducer;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
@@ -52,11 +53,17 @@ public class DynamicLights {
     private static final double MAX_RADIUS = 7.75;
     private static final double MAX_RADIUS_SQUARED = MAX_RADIUS * MAX_RADIUS;
     private final Set<IDynamicLightSource> dynamicLightSources = new ObjectOpenHashSet<>();
+    private IDynamicLightSource[] lightSourceArray = new IDynamicLightSource[0];
     private final ReentrantReadWriteLock lightSourcesLock = new ReentrantReadWriteLock();
     private volatile int lightSourceCount = 0;
     private final ChunkRebuildManager chunkRebuildManager = new ChunkRebuildManager();
     private long lastUpdate = System.currentTimeMillis();
     private int lastUpdateCount = 0;
+
+    /** Must be called under write lock. */
+    private void rebuildLightSourceArray() {
+        this.lightSourceArray = this.dynamicLightSources.toArray(new IDynamicLightSource[0]);
+    }
 
     public static DynamicLights get() {
         if (instance == null)
@@ -93,7 +100,7 @@ public class DynamicLights {
         if (!isEnabled())
             return;
 
-        long now = System.currentTimeMillis();
+        final long now = System.currentTimeMillis();
         if (now >= this.lastUpdate + Mode.getDelay()) {
             this.lastUpdate = now;
             this.lastUpdateCount = 0;
@@ -104,7 +111,7 @@ public class DynamicLights {
             int worldTick = 0;
 
             if (AdaptiveTickingEnabled) {
-                Minecraft mc = Minecraft.getMinecraft();
+                final Minecraft mc = Minecraft.getMinecraft();
                 if (mc.theWorld != null && mc.renderViewEntity != null) {
                     cameraX = mc.renderViewEntity.posX;
                     cameraY = mc.renderViewEntity.posY + mc.renderViewEntity.getEyeHeight();
@@ -112,15 +119,15 @@ public class DynamicLights {
                     worldTick = (int) (mc.theWorld.getTotalWorldTime() & 0x7FFFFFFF);
 
                     // Calculate look direction from yaw (normalized horizontal direction)
-                    float yaw = mc.renderViewEntity.rotationYaw;
-                    double yawRad = Math.toRadians(yaw);
+                    final float yaw = mc.renderViewEntity.rotationYaw;
+                    final double yawRad = Math.toRadians(yaw);
                     lookDirX = -Math.sin(yawRad);
                     lookDirZ = Math.cos(yawRad);
                 }
             }
 
             this.lightSourcesLock.readLock().lock();
-            for (var lightSource : this.dynamicLightSources) {
+            for (var lightSource : this.lightSourceArray) {
                 // Entity type filter
                 if (!EntityLightConfig.isEntityTypeEnabled(lightSource)) {
                     continue;
@@ -128,7 +135,7 @@ public class DynamicLights {
 
                 // Adaptive ticking filter
                 if (AdaptiveTickingEnabled) {
-                    AdaptiveTickMode mode = AdaptiveTickCalculator.calculate(
+                    final AdaptiveTickMode mode = AdaptiveTickCalculator.calculate(
                         lightSource, cameraX, cameraY, cameraZ, lookDirX, lookDirZ);
                     if (!mode.shouldTickThisFrame(worldTick, lightSource.hashCode())) {
                         continue;
@@ -150,6 +157,7 @@ public class DynamicLights {
         this.lightSourcesLock.writeLock().lock();
         if (this.dynamicLightSources.add(lightSource)) {
             this.lightSourceCount = this.dynamicLightSources.size();
+            rebuildLightSourceArray();
         }
         this.lightSourcesLock.writeLock().unlock();
     }
@@ -162,17 +170,11 @@ public class DynamicLights {
     public void removeLightSource(@NotNull IDynamicLightSource lightSource) {
         this.lightSourcesLock.writeLock().lock();
 
-        var dynamicLightSources = this.dynamicLightSources.iterator();
-        IDynamicLightSource it;
-        while (dynamicLightSources.hasNext()) {
-            it = dynamicLightSources.next();
-            if (it.equals(lightSource)) {
-                dynamicLightSources.remove();
-                this.lightSourceCount = this.dynamicLightSources.size();
-                if (activeRenderer != null)
-                    lightSource.angelica$scheduleTrackedChunksRebuild(activeRenderer);
-                break;
-            }
+        if (this.dynamicLightSources.remove(lightSource)) {
+            this.lightSourceCount = this.dynamicLightSources.size();
+            rebuildLightSourceArray();
+            if (activeRenderer != null)
+                lightSource.angelica$scheduleTrackedChunksRebuild(activeRenderer);
         }
 
         this.lightSourcesLock.writeLock().unlock();
@@ -186,13 +188,14 @@ public class DynamicLights {
     public void removeLightSources(@NotNull Predicate<IDynamicLightSource> filter) {
         this.lightSourcesLock.writeLock().lock();
 
-        var dynamicLightSources = this.dynamicLightSources.iterator();
+        final var dynamicLightSources = this.dynamicLightSources.iterator();
         IDynamicLightSource it;
+        boolean changed = false;
         while (dynamicLightSources.hasNext()) {
             it = dynamicLightSources.next();
             if (filter.test(it)) {
                 dynamicLightSources.remove();
-                this.lightSourceCount = this.dynamicLightSources.size();
+                changed = true;
                 if (activeRenderer != null) {
                     if (it.angelica$getLuminance() > 0)
                         it.angelica$resetDynamicLight();
@@ -200,6 +203,10 @@ public class DynamicLights {
                 }
                 break;
             }
+        }
+        if (changed) {
+            this.lightSourceCount = this.dynamicLightSources.size();
+            rebuildLightSourceArray();
         }
 
         this.lightSourcesLock.writeLock().unlock();
@@ -211,7 +218,7 @@ public class DynamicLights {
     public void clearLightSources() {
         this.lightSourcesLock.writeLock().lock();
 
-        var dynamicLightSources = this.dynamicLightSources.iterator();
+        final var dynamicLightSources = this.dynamicLightSources.iterator();
         IDynamicLightSource it;
         while (dynamicLightSources.hasNext()) {
             it = dynamicLightSources.next();
@@ -223,6 +230,7 @@ public class DynamicLights {
             }
         }
         this.lightSourceCount = 0;
+        this.lightSourceArray = new IDynamicLightSource[0];
 
         this.lightSourcesLock.writeLock().unlock();
     }
@@ -234,7 +242,7 @@ public class DynamicLights {
      * @return {@code true} if the light source is tracked, else {@code false}
      */
     public boolean containsLightSource(@NotNull IDynamicLightSource lightSource) {
-        boolean result;
+        final boolean result;
         this.lightSourcesLock.readLock().lock();
         result = this.dynamicLightSources.contains(lightSource);
         this.lightSourcesLock.readLock().unlock();
@@ -247,7 +255,7 @@ public class DynamicLights {
      * @return the number of dynamic light sources emitting light
      */
     public int getLightSourcesCount() {
-        int result;
+        final int result;
 
         this.lightSourcesLock.readLock().lock();
         result = this.dynamicLightSources.size();
@@ -259,7 +267,7 @@ public class DynamicLights {
     public double getDynamicLightLevel(int x, int y, int z) {
         double result = 0;
         this.lightSourcesLock.readLock().lock();
-        for (var lightSource : this.dynamicLightSources) {
+        for (var lightSource : this.lightSourceArray) {
             result = maxDynamicLightLevel(x, y, z, lightSource, result);
         }
         this.lightSourcesLock.readLock().unlock();
@@ -273,7 +281,7 @@ public class DynamicLights {
     public double getDynamicLightLevel(double x, double y, double z) {
         double result = 0;
         this.lightSourcesLock.readLock().lock();
-        for (var lightSource : this.dynamicLightSources) {
+        for (var lightSource : this.lightSourceArray) {
             result = maxDynamicLightLevelExact(x, y, z, lightSource, result);
         }
         this.lightSourcesLock.readLock().unlock();
@@ -286,19 +294,19 @@ public class DynamicLights {
     }
 
     public static double maxDynamicLightLevel(int x, int y, int z, @NotNull IDynamicLightSource lightSource, double currentLightLevel) {
-        int luminance = lightSource.angelica$getLuminance();
+        final int luminance = lightSource.angelica$getLuminance();
         if (luminance > 0) {
             // Can't use Entity#squaredDistanceTo because of eye Y coordinate.
-            double dx = x - lightSource.angelica$getDynamicLightX() + 0.5;
-            double dy = y - lightSource.angelica$getDynamicLightY() + 0.5;
-            double dz = z - lightSource.angelica$getDynamicLightZ() + 0.5;
+            final double dx = x - lightSource.angelica$getDynamicLightX() + 0.5;
+            final double dy = y - lightSource.angelica$getDynamicLightY() + 0.5;
+            final double dz = z - lightSource.angelica$getDynamicLightZ() + 0.5;
 
-            double distanceSquared = dx * dx + dy * dy + dz * dz;
+            final double distanceSquared = dx * dx + dy * dy + dz * dz;
             // 7.75 because else we would have to update more chunks and that's not a good idea.
             // 15 (max range for blocks) would be too much and a bit cheaty.
             if (distanceSquared <= MAX_RADIUS_SQUARED) {
-                double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
-                double lightLevel = multiplier * (double) luminance;
+                final double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
+                final double lightLevel = multiplier * (double) luminance;
                 if (lightLevel > currentLightLevel) {
                     return lightLevel;
                 }
@@ -312,16 +320,16 @@ public class DynamicLights {
      * Used for smooth per-vertex lighting.
      */
     public static double maxDynamicLightLevelExact(double x, double y, double z, @NotNull IDynamicLightSource lightSource, double currentLightLevel) {
-        int luminance = lightSource.angelica$getLuminance();
+        final int luminance = lightSource.angelica$getLuminance();
         if (luminance > 0) {
-            double dx = x - lightSource.angelica$getDynamicLightX();
-            double dy = y - lightSource.angelica$getDynamicLightY();
-            double dz = z - lightSource.angelica$getDynamicLightZ();
+            final double dx = x - lightSource.angelica$getDynamicLightX();
+            final double dy = y - lightSource.angelica$getDynamicLightY();
+            final double dz = z - lightSource.angelica$getDynamicLightZ();
 
-            double distanceSquared = dx * dx + dy * dy + dz * dz;
+            final double distanceSquared = dx * dx + dy * dy + dz * dz;
             if (distanceSquared <= MAX_RADIUS_SQUARED) {
-                double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
-                double lightLevel = multiplier * (double) luminance;
+                final double multiplier = 1.0 - Math.sqrt(distanceSquared) / MAX_RADIUS;
+                final double lightLevel = multiplier * (double) luminance;
                 if (lightLevel > currentLightLevel) {
                     return lightLevel;
                 }
@@ -360,11 +368,11 @@ public class DynamicLights {
 
         this.lightSourcesLock.readLock().lock();
         try {
-            for (IDynamicLightSource source : this.dynamicLightSources) {
-                double dx = source.angelica$getDynamicLightX() - centerX;
-                double dy = source.angelica$getDynamicLightY() - centerY;
-                double dz = source.angelica$getDynamicLightZ() - centerZ;
-                double distSq = dx * dx + dy * dy + dz * dz;
+            for (var source : this.lightSourceArray) {
+                final double dx = source.angelica$getDynamicLightX() - centerX;
+                final double dy = source.angelica$getDynamicLightY() - centerY;
+                final double dz = source.angelica$getDynamicLightZ() - centerZ;
+                final double distSq = dx * dx + dy * dy + dz * dz;
 
                 if (distSq <= searchRadiusSq) {
                     if (result == null) {
@@ -378,6 +386,53 @@ public class DynamicLights {
         }
 
         return result != null ? result : Collections.emptyList();
+    }
+
+    public int getDynamicLightRGB(double x, double y, double z) {
+        int accum = 0;
+        this.lightSourcesLock.readLock().lock();
+        try {
+            for (var lightSource : this.lightSourceArray) {
+                accum = accumulateSourceRGB(x, y, z, lightSource, accum);
+            }
+        } finally {
+            this.lightSourcesLock.readLock().unlock();
+        }
+        return accum;
+    }
+
+    public int getDynamicLightRGBFromSources(double x, double y, double z, List<IDynamicLightSource> sources) {
+        if (sources == null || sources.isEmpty()) return 0;
+        int accum = 0;
+        for (int i = 0, size = sources.size(); i < size; i++) {
+            accum = accumulateSourceRGB(x, y, z, sources.get(i), accum);
+        }
+        return accum;
+    }
+
+    private static int accumulateSourceRGB(double x, double y, double z, IDynamicLightSource source, int accum) {
+        final int luminance = source.angelica$getLuminance();
+        if (luminance <= 0) return accum;
+
+        final int rgb = source.angelica$getLuminanceRGB();
+        if (rgb == 0) return accum;
+
+        final double dx = x - source.angelica$getDynamicLightX();
+        final double dy = y - source.angelica$getDynamicLightY();
+        final double dz = z - source.angelica$getDynamicLightZ();
+        final double distSq = dx * dx + dy * dy + dz * dz;
+
+        if (distSq > MAX_RADIUS_SQUARED) return accum;
+
+        final double multiplier = 1.0 - Math.sqrt(distSq) / MAX_RADIUS;
+        final int r = (int) (BlockLightProvider.unpackR(rgb) * multiplier);
+        final int g = (int) (BlockLightProvider.unpackG(rgb) * multiplier);
+        final int b = (int) (BlockLightProvider.unpackB(rgb) * multiplier);
+
+        return BlockLightProvider.packRGB(
+            Math.max(BlockLightProvider.unpackR(accum), r),
+            Math.max(BlockLightProvider.unpackG(accum), g),
+            Math.max(BlockLightProvider.unpackB(accum), b));
     }
 
     public double getDynamicLightLevelFromSources(double x, double y, double z, List<IDynamicLightSource> sources) {
@@ -403,10 +458,10 @@ public class DynamicLights {
             // lightmap is (skyLevel << 20 | blockLevel << 4)
 
             // Get vanilla block light level.
-            int blockLevel = (lightmap & 0xFFFF) >> 4;
+            final int blockLevel = (lightmap & 0xFFFF) >> 4;
             if (dynamicLightLevel > blockLevel) {
                 // Equivalent to a << 4 bitshift with a little quirk: this one ensure more precision (more decimals are saved).
-                int luminance = (int) (dynamicLightLevel * 16.0);
+                final int luminance = (int) (dynamicLightLevel * 16.0);
                 lightmap &= 0xfff00000;
                 lightmap |= luminance & 0x000fffff;
             }
@@ -485,8 +540,8 @@ public class DynamicLights {
      * @param lightSource the light source
      */
     public static void updateTracking(@NotNull IDynamicLightSource lightSource) {
-        boolean enabled = lightSource.angelica$isDynamicLightEnabled();
-        int luminance = lightSource.angelica$getLuminance();
+        final boolean enabled = lightSource.angelica$isDynamicLightEnabled();
+        final int luminance = lightSource.angelica$getLuminance();
 
         if (!enabled && luminance > 0) {
             lightSource.angelica$setDynamicLightEnabled(true);
@@ -503,9 +558,9 @@ public class DynamicLights {
      * @return the luminance of the item
      */
     public static int getLuminanceFromItemStack(@NotNull ItemStack stack) {
-        Item item = stack.getItem();
+        final Item item = stack.getItem();
         if (item instanceof ItemBlock itemBlock) {
-            Block block = itemBlock.field_150939_a;
+            final Block block = itemBlock.field_150939_a;
             if (block != null) {
                 return block.getLightValue();
             }
@@ -522,7 +577,7 @@ public class DynamicLights {
 
         if (entity.isBurning()) return 15;
 
-        boolean inWater = entity.isInsideOfMaterial(Material.water);
+        final boolean inWater = entity.isInsideOfMaterial(Material.water);
 
         // TODO only have certain items not glow in water?
         if (inWater) return 0;
@@ -547,23 +602,23 @@ public class DynamicLights {
                     player instanceof IBattlePlayer battlePlayer &&
                     battlePlayer.battlegear2$isBattlemode()
                 ) {
-                    ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
+                    final ItemStack offhand = Battlegear2Compat.getBattlegear2Offhand(player);
                     if (offhand != null) {
                         luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
                     }
                 }
                 else if (ModStatus.isBackhandLoaded){
-                    ItemStack offhand = BackhandReflectionCompat.getOffhandItem(player);
+                    final ItemStack offhand = BackhandReflectionCompat.getOffhandItem(player);
                     if (offhand != null) {
                         luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
                     }
                 }
 
                 if (ModStatus.isBaublesLoaded){
-                    var playerBaubles = PlayerHandler.getPlayerBaubles(player);
+                    final var playerBaubles = PlayerHandler.getPlayerBaubles(player);
                     if (playerBaubles != null){
                         for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
-                            var stack = playerBaubles.getStackInSlot(i);
+                            final var stack = playerBaubles.getStackInSlot(i);
                             if (stack != null){
                                 luminance = Math.max(luminance, getLuminanceFromItemStack(stack));
                             }

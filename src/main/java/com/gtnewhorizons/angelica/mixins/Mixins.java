@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import jss.notfine.config.MCPatcherForgeConfig;
@@ -211,6 +212,22 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockLiquid"
             , "celeritas.threading.MixinForgeHooksClient"
             , "celeritas.terrain.MixinChunk"
+        )
+    ),
+
+    CELERITAS_COLORED_LIGHT(new MixinBuilder("Colored light infrastructure for celeritas light pipeline")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> {
+            BlockLightProvider.freezeMixinConfig();
+            return AngelicaConfig.enableCeleritas && BlockLightProvider.coloredLightEnabled();
+        })
+        .addClientMixins(
+            "celeritas.light.MixinQuadLightData",
+            "celeritas.light.MixinLightDataAccess",
+            "celeritas.light.MixinLightDataCache",
+            "celeritas.light.MixinAoFaceData",
+            "celeritas.light.MixinSmoothLightPipeline",
+            "celeritas.light.MixinFlatLightPipeline"
         )
     ),
 
@@ -698,7 +715,7 @@ public enum Mixins implements IMixins {
     private final MixinBuilder builder;
 
     private static String[] addPrefix(String prefix, String... values) {
-        List<String> list = new ArrayList<>(values.length);
+        final List<String> list = new ArrayList<>(values.length);
         for (String s : values) {
             list.add(prefix + s);
         }

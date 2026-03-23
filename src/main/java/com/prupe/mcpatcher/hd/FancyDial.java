@@ -26,7 +26,6 @@ import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GLContext;
 import org.lwjgl.util.glu.GLU;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -47,8 +46,8 @@ public class FancyDial {
     private static final double ANGLE_UNSET = Double.MAX_VALUE;
     private static final int NUM_SCRATCH_TEXTURES = 3;
 
-    private static final boolean fboSupported = GLContext.getCapabilities().GL_EXT_framebuffer_object;
-    private static final boolean gl13Supported = GLContext.getCapabilities().OpenGL13;
+    private static final boolean fboSupported = GLStateManager.capabilities.GL_EXT_framebuffer_object;
+    private static final boolean gl13Supported = GLStateManager.capabilities.OpenGL13;
     private static final boolean enableCompass = MCPatcherForgeConfig.ExtendedHD.fancyCompass;
     private static final boolean enableClock = MCPatcherForgeConfig.ExtendedHD.fancyClock;
     private static final boolean useGL13 = gl13Supported && MCPatcherForgeConfig.ExtendedHD.useGL13;
@@ -148,7 +147,7 @@ public class FancyDial {
             FancyDial instance = getInstance(icon);
             return instance != null && instance.render(itemFrameRenderer);
         } finally {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, oldFB);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, oldFB);
             GLAPI.glBindTexture(oldTexture);
         }
     }
@@ -603,13 +602,13 @@ public class FancyDial {
             this.width = width;
             this.height = height;
 
-            frameBuffer = EXTFramebufferObject.glGenFramebuffersEXT();
+            frameBuffer = GLStateManager.glGenFramebuffers();
             if (frameBuffer < 0) {
                 throw new RuntimeException("could not get framebuffer object");
             }
             GLAPI.glBindTexture(texture);
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
-            EXTFramebufferObject.glFramebufferTexture2DEXT(
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
+            GLStateManager.glFramebufferTexture2D(
                 EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
                 EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
                 GL11.GL_TEXTURE_2D,
@@ -618,7 +617,7 @@ public class FancyDial {
         }
 
         void bind() {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
 
             GLStateManager.glPushAttrib(glAttributes);
             GLStateManager.glViewport(x0, y0, width, height);
@@ -674,11 +673,11 @@ public class FancyDial {
             GLStateManager.glEnable(GL11.GL_BLEND);
             GLAPI.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, 0);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, 0);
         }
 
         void read(ByteBuffer buffer) {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
             buffer.position(0);
             GLStateManager.glReadPixels(x0, y0, width, height, MipmapHelper.TEX_FORMAT, MipmapHelper.TEX_DATA_TYPE, buffer);
         }
@@ -704,7 +703,7 @@ public class FancyDial {
                 if (ownTexture) {
                     GLStateManager.glDeleteTextures(texture);
                 }
-                EXTFramebufferObject.glDeleteFramebuffersEXT(frameBuffer);
+                GLStateManager.glDeleteFramebuffers(frameBuffer);
             }
         }
 
