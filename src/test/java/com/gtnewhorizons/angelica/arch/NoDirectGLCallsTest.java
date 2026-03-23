@@ -40,7 +40,7 @@ class NoDirectGLCallsTest {
         .should().callMethodWhere(
             target(owner(nameMatching(GL_COMMAND_CLASSES)))
         )
-        .because("GL calls must go through GLStateManager/RENDER_BACKEND, not directly to LWJGL");
+        .because("GL calls must go through GLStateManager, not directly to LWJGL or the RENDER_BACKEND");
 
     @Test
     void noDirectGLCalls() {
