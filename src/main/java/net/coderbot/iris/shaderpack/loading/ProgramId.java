@@ -1,6 +1,11 @@
 package net.coderbot.iris.shaderpack.loading;
 
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
+import net.coderbot.iris.gl.blending.AlphaTest;
+import net.coderbot.iris.gl.blending.AlphaTestFunction;
+import net.coderbot.iris.gl.blending.AlphaTestOverride;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
+import org.lwjgl.opengl.GL11;
 
 import java.util.Objects;
 import java.util.Optional;
@@ -33,7 +38,9 @@ public enum ProgramId {
 	EntitiesTrans(ProgramGroup.Gbuffers, "entities_translucent", Entities),
 	EntitiesGlowing(ProgramGroup.Gbuffers, "entities_glowing", Entities),
 	ArmorGlint(ProgramGroup.Gbuffers, "armor_glint", Textured),
-	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured),
+	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured,
+		new BlendModeOverride(new BlendState(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE)),
+		new AlphaTestOverride(new AlphaTest(AlphaTestFunction.GREATER, 0.0001F))),
 
 	Hand(ProgramGroup.Gbuffers, "hand", TexturedLit),
 	Weather(ProgramGroup.Gbuffers, "weather", TexturedLit),
@@ -47,12 +54,14 @@ public enum ProgramId {
 	private final String sourceName;
 	private final ProgramId fallback;
 	private final BlendModeOverride defaultBlendOverride;
+	private final AlphaTestOverride defaultAlphaTestOverride;
 
 	ProgramId(ProgramGroup group, String name) {
 		this.group = group;
 		this.sourceName = name.isEmpty() ? group.getBaseName() : group.getBaseName() + "_" + name;
 		this.fallback = null;
 		this.defaultBlendOverride = null;
+		this.defaultAlphaTestOverride = null;
 	}
 
 	ProgramId(ProgramGroup group, String name, ProgramId fallback) {
@@ -60,6 +69,7 @@ public enum ProgramId {
 		this.sourceName = name.isEmpty() ? group.getBaseName() : group.getBaseName() + "_" + name;
 		this.fallback = Objects.requireNonNull(fallback);
 		this.defaultBlendOverride = null;
+		this.defaultAlphaTestOverride = null;
 	}
 
 	ProgramId(ProgramGroup group, String name, ProgramId fallback, BlendModeOverride defaultBlendOverride) {
@@ -67,6 +77,15 @@ public enum ProgramId {
 		this.sourceName = name.isEmpty() ? group.getBaseName() : group.getBaseName() + "_" + name;
 		this.fallback = Objects.requireNonNull(fallback);
 		this.defaultBlendOverride = defaultBlendOverride;
+		this.defaultAlphaTestOverride = null;
+	}
+
+	ProgramId(ProgramGroup group, String name, ProgramId fallback, BlendModeOverride defaultBlendOverride, AlphaTestOverride defaultAlphaTestOverride) {
+		this.group = group;
+		this.sourceName = name.isEmpty() ? group.getBaseName() : group.getBaseName() + "_" + name;
+		this.fallback = Objects.requireNonNull(fallback);
+		this.defaultBlendOverride = defaultBlendOverride;
+		this.defaultAlphaTestOverride = defaultAlphaTestOverride;
 	}
 
 	public ProgramGroup getGroup() {
@@ -83,5 +102,9 @@ public enum ProgramId {
 
 	public BlendModeOverride getBlendModeOverride() {
 		return defaultBlendOverride;
+	}
+
+	public AlphaTestOverride getDefaultAlphaTestOverride() {
+		return defaultAlphaTestOverride;
 	}
 }
