@@ -37,11 +37,10 @@ final class Enchantment extends OverrideBase {
         GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
         GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.01f);
         GLStateManager.glEnable(GL11.GL_BLEND);
+        GLStateManager.glDepthFunc(GL11.GL_EQUAL);
         GLStateManager.glDepthMask(false);
         GLStateManager.glDisable(GL11.GL_LIGHTING);
         GLStateManager.glMatrixMode(GL11.GL_TEXTURE);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
-        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
     }
 
     static void endOuter2D() {
@@ -69,6 +68,7 @@ final class Enchantment extends OverrideBase {
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         GLStateManager.glDepthMask(true);
+        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
         if (lightingWasEnabled) {
             GLStateManager.glEnable(GL11.GL_LIGHTING);
         }

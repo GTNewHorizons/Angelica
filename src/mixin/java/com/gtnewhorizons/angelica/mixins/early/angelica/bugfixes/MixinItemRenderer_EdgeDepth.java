@@ -56,6 +56,7 @@ public class MixinItemRenderer_EdgeDepth {
     )
     private void angelica$stencilWriteEnd(CallbackInfo ci) {
         GLStateManager.glStencilMask(0x00);
+        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
     }
 
     // Glint section: replace GL_EQUAL with stencil-based masking
@@ -67,6 +68,7 @@ public class MixinItemRenderer_EdgeDepth {
     )
     private void angelica$glintStart(int func) {
         angelica$glintMode = true;
+        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
         GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
     }
