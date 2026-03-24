@@ -884,7 +884,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		builder.bindAttributeLocation(13, "at_tangent");
 		builder.bindAttributeLocation(14, "at_midBlock");
 
-		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride().orElse(null);
+		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride()
+			.orElse(id.getDefaultAlphaTestOverride());
 
 		List<BufferBlendOverride> bufferOverrides = new ArrayList<>();
 
@@ -974,12 +975,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				GLStateManager.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 			}
 
-			if (program != null) {
-				program.use();
-			}
-
-			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
-
+			// Apply state overrides before program.use() so that uniforms (e.g. iris_currentAlphaTest)
+			// read the correct GLSM state during upload, not the stale vanilla state.
 			if (alphaTestOverride != null) {
 				alphaTestOverride.apply();
 			} else {
@@ -997,6 +994,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (bufferBlendOverrides != null && !bufferBlendOverrides.isEmpty()) {
 				bufferBlendOverrides.forEach(BufferBlendOverride::apply);
 			}
+
+			if (program != null) {
+				program.use();
+			}
+
+			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 		}
 
 		public void stopUsing() {
