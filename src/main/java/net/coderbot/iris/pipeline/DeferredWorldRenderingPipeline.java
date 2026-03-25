@@ -29,12 +29,14 @@ import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.image.GlImage;
+import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.image.ImageInformation;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
+import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
@@ -177,6 +179,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean oldLighting;
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
+	private final CloudSetting dhCloudSetting;
 
 	private Pass current = null;
 
@@ -192,6 +195,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private int currentSpecularTexture;
 	private PackDirectives packDirectives;
 	private final Set<FeatureFlags> activeFeatures;
+	private final ProgramFallbackResolver resolver;
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
@@ -206,7 +210,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				.map(DeferredWorldRenderingPipeline::submitCompositeTransform)
 				.orElse(null);
 
-		final ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
+		resolver = new ProgramFallbackResolver(programs);
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver);
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
@@ -228,6 +232,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.shouldRenderWeather = programs.getPackDirectives().shouldRenderWeather();
 		this.shouldRenderWeatherParticles = programs.getPackDirectives().shouldRenderWeatherParticles();
 		this.shouldWriteRainAndSnowToDepthBuffer = programs.getPackDirectives().rainDepth();
+		this.dhCloudSetting = programs.getPackDirectives().getDHCloudSetting();
 		this.shouldRenderParticlesBeforeDeferred = programs.getPackDirectives().getParticleRenderingSettings()
 			.map(s -> s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.BEFORE || s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.MIXED)
 			.orElse(false);
@@ -587,7 +592,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			renderTargets, flippedAfterPrepare, flippedAfterTranslucent,
 			celeritasShadowFb);
 
-		this.dhCompat = new DHCompat();
+		this.dhCompat = new DHCompat(this, shadowDirectives.isDhShadowEnabled().orElse(true));
 	}
 
 	private RenderTargets getRenderTargets() {
@@ -916,6 +921,38 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return pass;
 	}
 
+	public void addGbufferOrShadowSamplers(SamplerHolder samplers, ImageHolder images, Supplier<ImmutableSet<Integer>> flipped,
+										   boolean isShadowPass, boolean hasTexture, boolean hasLightmap, boolean hasOverlay) {
+		TextureStage textureStage = TextureStage.GBUFFERS_AND_SHADOW;
+
+		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor =
+			ProgramSamplers.customTextureSamplerInterceptor(samplers, customTextureManager.getCustomTextureIdMap(textureStage));
+
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
+		IrisImages.addRenderTargetImages(images, flipped, renderTargets);
+
+		if (!shouldBindPBR) {
+			shouldBindPBR = IrisSamplers.hasPBRSamplers(customTextureSamplerInterceptor);
+		}
+
+		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(hasTexture, hasLightmap));
+		if (!isShadowPass) {
+			IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets);
+		}
+		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
+		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
+		IrisImages.addCustomImages(images, customImages);
+
+		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
+			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, true);
+		}
+
+		if (isShadowPass || IrisImages.hasShadowImages(images)) {
+			IrisImages.addShadowColorImages(images, shadowTargetsSupplier.get(), null);
+		}
+	}
+
 	private boolean isPostChain;
 	private boolean isMainBound = true;
 
@@ -945,6 +982,56 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		} else {
 			beginPass(null);
 		}
+	}
+
+	public CloudSetting getDHCloudSetting() {
+		return dhCloudSetting;
+	}
+
+	public Optional<ProgramSource> getDHTerrainShader() {
+		return resolver.resolve(ProgramId.DhTerrain);
+	}
+
+	public Optional<ProgramSource> getDHGenericShader() {
+		return resolver.resolve(ProgramId.DhGeneric);
+	}
+
+	public Optional<ProgramSource> getDHWaterShader() {
+		return resolver.resolve(ProgramId.DhWater);
+	}
+
+	public Optional<ProgramSource> getDHShadowShader() {
+		return resolver.resolve(ProgramId.DhShadow);
+	}
+
+	public CustomUniforms getCustomUniforms() {
+		return customUniforms;
+	}
+
+	public GlFramebuffer createDHFramebuffer(ProgramSource sources, boolean trans) {
+		return renderTargets.createDHFramebuffer(trans ? flippedAfterTranslucent : flippedAfterPrepare,
+			sources.getDirectives().getDrawBuffers());
+	}
+
+	public ImmutableSet<Integer> getFlippedBeforeShadow() {
+		return flippedBeforeShadow;
+	}
+
+	public ImmutableSet<Integer> getFlippedAfterPrepare() {
+		return flippedAfterPrepare;
+	}
+
+	public ImmutableSet<Integer> getFlippedAfterTranslucent() {
+		return flippedAfterTranslucent;
+	}
+
+	public GlFramebuffer createDHFramebufferShadow(ProgramSource sources) {
+
+		return shadowRenderTargets.createDHFramebuffer(ImmutableSet.of(), new int[]{0, 1});
+	}
+
+	public boolean hasShadowRenderTargets() {
+		return shadowRenderTargets != null;
 	}
 
 	private final class Pass {
@@ -1094,6 +1181,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// While it's possible to just clear them instead and reuse them, we'd need to investigate whether or not this
 		// would help performance.
 		renderTargets.destroy();
+		dhCompat.clearPipeline();
 
 		// destroy the shadow render targets
 		if (shadowRenderTargets != null) {

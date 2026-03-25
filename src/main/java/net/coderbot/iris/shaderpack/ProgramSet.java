@@ -56,7 +56,10 @@ public class ProgramSet {
 	private final ComputeSource[][] compositeCompute;
 	private final ProgramSource compositeFinal;
 	private final ComputeSource[] finalCompute;
-
+	private final ProgramSource dhTerrain;
+	private final ProgramSource dhGeneric;
+	private final ProgramSource dhWater;
+	private final ProgramSource dhShadow;
 
 	private final ShaderPack pack;
 
@@ -119,6 +122,10 @@ public class ProgramSet {
 		this.gbuffersBlock = readProgramSource(directory, sourceProvider, "gbuffers_block", this, shaderProperties);
 		this.gbuffersBlockTrans = readProgramSource(directory, sourceProvider, "gbuffers_block_translucent", this, shaderProperties);
 		this.gbuffersHand = readProgramSource(directory, sourceProvider, "gbuffers_hand", this, shaderProperties);
+		this.dhTerrain = readProgramSource(directory, sourceProvider, "dh_terrain", this, shaderProperties);
+		this.dhGeneric = readProgramSource(directory, sourceProvider, "dh_generic", this, shaderProperties);
+		this.dhWater = readProgramSource(directory, sourceProvider, "dh_water", this, shaderProperties);
+		this.dhShadow = readProgramSource(directory, sourceProvider, "dh_shadow", this, shaderProperties);
 
 		this.deferred = readProgramArray(directory, sourceProvider, "deferred", shaderProperties);
 		this.deferredCompute = new ComputeSource[deferred.length][];
@@ -219,7 +226,7 @@ public class ProgramSet {
 				gbuffersBasic, gbuffersBeaconBeam, gbuffersTextured, gbuffersTexturedLit, gbuffersTerrain,
 				gbuffersDamagedBlock, gbuffersSkyBasic, gbuffersSkyTextured, gbuffersClouds, gbuffersWeather,
 				gbuffersEntities, gbuffersEntitiesTrans, gbuffersEntitiesGlowing, gbuffersGlint, gbuffersEntityEyes, gbuffersBlock, gbuffersBlockTrans,
-				gbuffersHand
+				gbuffersHand, dhShadow, dhTerrain, dhGeneric, dhWater
 		));
 
 		for (ComputeSource[] computeSources : compositeCompute) {
@@ -387,33 +394,53 @@ public class ProgramSet {
 		return gbuffersHand.requireValid();
 	}
 
+	public Optional<ProgramSource> getDhTerrain() {
+		return dhTerrain.requireValid();
+	}
+
+	public Optional<ProgramSource> getDhGeneric() {
+		return dhGeneric.requireValid();
+	}
+
+	public Optional<ProgramSource> getDhWater() {
+		return dhWater.requireValid();
+	}
+
+	public Optional<ProgramSource> getDhShadow() {
+		return dhShadow.requireValid();
+	}
+
 	public Optional<ProgramSource> get(ProgramId programId) {
-        return switch (programId) {
-            case Shadow -> getShadow();
-            case Basic -> getGbuffersBasic();
-            case Line -> gbuffersLine.requireValid();
-            case Textured -> getGbuffersTextured();
-            case TexturedLit -> getGbuffersTexturedLit();
-            case SkyBasic -> getGbuffersSkyBasic();
-            case SkyTextured -> getGbuffersSkyTextured();
-            case Clouds -> getGbuffersClouds();
-            case Terrain -> getGbuffersTerrain();
-            case DamagedBlock -> getGbuffersDamagedBlock();
-            case Block -> getGbuffersBlock();
+		return switch (programId) {
+			case Shadow -> getShadow();
+			case Basic -> getGbuffersBasic();
+			case Line -> gbuffersLine.requireValid();
+			case Textured -> getGbuffersTextured();
+			case TexturedLit -> getGbuffersTexturedLit();
+			case SkyBasic -> getGbuffersSkyBasic();
+			case SkyTextured -> getGbuffersSkyTextured();
+			case Clouds -> getGbuffersClouds();
+			case Terrain -> getGbuffersTerrain();
+			case DamagedBlock -> getGbuffersDamagedBlock();
+			case Block -> getGbuffersBlock();
             case BlockTrans -> getGbuffersBlockTrans();
-            case BeaconBeam -> getGbuffersBeaconBeam();
-            case Entities -> getGbuffersEntities();
-            case EntitiesTrans -> getGbuffersEntitiesTrans();
-            case EntitiesGlowing -> getGbuffersEntitiesGlowing();
-            case ArmorGlint -> getGbuffersGlint();
-            case SpiderEyes -> getGbuffersEntityEyes();
-            case Hand -> getGbuffersHand();
-            case Weather -> getGbuffersWeather();
-            case Water -> getGbuffersWater();
-            case HandWater -> getGbuffersHandWater();
-            case Final -> getCompositeFinal();
-            default -> Optional.empty();
-        };
+			case BeaconBeam -> getGbuffersBeaconBeam();
+			case Entities -> getGbuffersEntities();
+			case EntitiesTrans -> getGbuffersEntitiesTrans();
+			case EntitiesGlowing -> getGbuffersEntitiesGlowing();
+			case ArmorGlint -> getGbuffersGlint();
+			case SpiderEyes -> getGbuffersEntityEyes();
+			case Hand -> getGbuffersHand();
+			case Weather -> getGbuffersWeather();
+			case Water -> getGbuffersWater();
+			case HandWater -> getGbuffersHandWater();
+			case Final -> getCompositeFinal();
+			case DhTerrain -> getDhTerrain();
+			case DhGeneric -> getDhGeneric();
+			case DhWater -> getDhWater();
+			case DhShadow -> getDhShadow();
+			default -> Optional.empty();
+		};
 	}
 
 	public ProgramSource[] getDeferred() {

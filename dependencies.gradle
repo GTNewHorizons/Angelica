@@ -136,6 +136,9 @@ dependencies {
     // Better Crashes
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.1-GTNH:dev")
 
+    // Distant Horizons
+    compileOnly("maven.modrinth:DistantHorizonsApi:5.1.0")
+
     afterEvaluate {
         dependencies {
             testImplementation(platform('org.junit:junit-bom:5.14.1'))

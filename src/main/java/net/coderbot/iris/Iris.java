@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.client.registry.ClientRegistry;
+import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -17,6 +18,7 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.config.IrisConfig;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
@@ -113,10 +115,30 @@ public class Iris {
     // Used in favor of queueDefaultShaderPackOptionValues() for resetting as the
     // behavior is more concrete and therefore is more likely to repair a user's issues
     private static boolean resetShaderPackOptions = false;
+    private static boolean loadShaderPackWhenPossible = false;
 
     private static String IRIS_VERSION;
     @Getter
     private static boolean fallback;
+
+    public static boolean loadedIncompatiblePack() {
+        return DHCompat.lastPackIncompatible();
+    }
+
+    public static void loadShaderpackWhenPossible() {
+        loadShaderPackWhenPossible = true;
+    }
+
+    public static void tryLoadShaderpackWhenPossible() {
+        if (loadShaderPackWhenPossible) {
+            loadShaderPackWhenPossible = false;
+            try {
+                reload();
+            } catch (IOException e) {
+                logger.error("Error during deferred shader reload", e);
+            }
+        }
+    }
 
     /**
      * Lazy executor for parallelizing shader transformations during shader pack loading.
@@ -350,6 +372,7 @@ public class Iris {
      * <p>This is called right before options are loaded, so we can add key bindings here.</p>
      */
     public void onEarlyInitialize() {
+        DHCompat.run();
         try {
             if (!Files.exists(getShaderpacksDirectory())) {
                 Files.createDirectories(getShaderpacksDirectory());
@@ -395,8 +418,19 @@ public class Iris {
 
         PBRTextureManager.INSTANCE.init();
 
-        // Only load the shader pack when we can access OpenGL
-        loadShaderpack();
+        boolean isDHLoaded;
+        try {
+            Class.forName("com.seibel.distanthorizons.DistantHorizonsTweaker");
+            isDHLoaded = true;
+        }
+        catch (Exception e) {
+            isDHLoaded = false;
+        }
+
+        // When DH is present, defer shaderpack loading until its init callback has run.
+        if (!isDHLoaded) {
+            loadShaderpack();
+        }
     }
 
     /**
@@ -720,6 +754,12 @@ public class Iris {
             Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
 
             BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
+        }
+
+        if (loadedIncompatiblePack() && Minecraft.getMinecraft().thePlayer != null) {
+            Iris.logger.warn("Incompatible pack for DH!");
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.BOLD.toString() + EnumChatFormatting.RED + "This pack doesn't have DH support."));
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Distant Horizons (DH) chunks won't show up. This isn't a bug, get another shader."));
         }
     }
 
