@@ -24,6 +24,7 @@ import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
+import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.samplers.IrisSamplers;
@@ -175,10 +176,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
         String geometry = transformed.get(PatchShaderType.GEOMETRY);
         String fragment = transformed.get(PatchShaderType.FRAGMENT);
-        /*ShaderPrinter.printProgram(name + "_g")
-            .addSources(transformed)
-            .setName("dh_" + name + "_g")
-            .print();*/
+        PatchedShaderPrinter.debugPatchedShaders(source.getName() + "_g", vertex, geometry, tessControl, tessEval, fragment);
 
         List<BufferBlendOverride> bufferOverrides = new ArrayList<>();
 
