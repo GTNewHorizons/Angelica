@@ -9,11 +9,8 @@ import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
 import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3d;
-import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
-import com.seibel.distanthorizons.api.objects.math.DhApiVec3i;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBox;
 import com.seibel.distanthorizons.api.objects.render.DhApiRenderableBoxGroupShading;
-import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.program.ProgramImages;
@@ -22,7 +19,6 @@ import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.gl.shader.GlShader;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.gl.state.FogMode;
-import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
@@ -295,30 +291,26 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         GLStateManager.enableDepthTest();
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         this.setUniform(this.instancedShaderOffsetChunkUniform,
-            new DhApiVec3i(
-                getChunkPosFromDouble(boxGroup.getOriginBlockPos().x),
-                getChunkPosFromDouble(boxGroup.getOriginBlockPos().y),
-                getChunkPosFromDouble(boxGroup.getOriginBlockPos().z)
-            ));
+            getChunkPosFromDouble(boxGroup.getOriginBlockPos().x),
+            getChunkPosFromDouble(boxGroup.getOriginBlockPos().y),
+            getChunkPosFromDouble(boxGroup.getOriginBlockPos().z)
+        );
         this.setUniform(this.instancedShaderOffsetSubChunkUniform,
-            new DhApiVec3f(
-                getSubChunkPosFromDouble(boxGroup.getOriginBlockPos().x),
-                getSubChunkPosFromDouble(boxGroup.getOriginBlockPos().y),
-                getSubChunkPosFromDouble(boxGroup.getOriginBlockPos().z)
-            ));
+            getSubChunkPosFromDouble(boxGroup.getOriginBlockPos().x),
+            getSubChunkPosFromDouble(boxGroup.getOriginBlockPos().y),
+            getSubChunkPosFromDouble(boxGroup.getOriginBlockPos().z)
+        );
 
         this.setUniform(this.instancedShaderCameraChunkPosUniform,
-            new DhApiVec3i(
-                getChunkPosFromDouble(camPos.x),
-                getChunkPosFromDouble(camPos.y),
-                getChunkPosFromDouble(camPos.z)
-            ));
+            getChunkPosFromDouble(camPos.x),
+            getChunkPosFromDouble(camPos.y),
+            getChunkPosFromDouble(camPos.z)
+        );
         this.setUniform(this.instancedShaderCameraSubChunkPosUniform,
-            new DhApiVec3f(
-                getSubChunkPosFromDouble(camPos.x),
-                getSubChunkPosFromDouble(camPos.y),
-                getSubChunkPosFromDouble(camPos.z)
-            ));
+            getSubChunkPosFromDouble(camPos.x),
+            getSubChunkPosFromDouble(camPos.y),
+            getSubChunkPosFromDouble(camPos.z)
+        );
         this.setUniform(this.uBlockLight,
             boxGroup.getBlockLight());
         this.setUniform(this.uSkyLight,
@@ -348,12 +340,12 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         GLStateManager.glUniform1f(index, value);
     }
 
-    private void setUniform(int index, DhApiVec3f pos) {
-        GLStateManager.glUniform3f(index, pos.x, pos.y, pos.z);
+    private void setUniform(int index, float x, float y, float z) {
+        GLStateManager.glUniform3f(index, x, y, z);
     }
 
-    private void setUniform(int index, DhApiVec3i pos) {
-        GLStateManager.glUniform3i(index, pos.x, pos.y, pos.z);
+    private void setUniform(int index, int x, int y, int z) {
+        GLStateManager.glUniform3i(index, x, y, z);
     }
 
 }
