@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic;
 
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
@@ -59,7 +60,7 @@ public class TileEntityNullGuardTransformer {
             AbstractInsnNode in = mn.instructions.get(i);
             if (in instanceof MethodInsnNode min) {
                 if (min.getOpcode() == Opcodes.INVOKEINTERFACE
-                    && min.name.equals(AngelicaTweaker.obf("getTileEntity", "func_147438_o"))
+                    && min.name.equals(AngelicaClientTweaker.obf("getTileEntity", "func_147438_o"))
                     && min.owner.equals("net/minecraft/world/IBlockAccess")) {
                     AbstractInsnNode castNodeAbstract = min.getNext();
                     if (castNodeAbstract instanceof TypeInsnNode castNodeType) {

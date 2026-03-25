@@ -16,7 +16,7 @@ import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
@@ -44,12 +44,9 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
@@ -65,7 +62,6 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
-import org.lwjgl.input.Keyboard;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
@@ -150,7 +146,7 @@ public class ClientProxy extends CommonProxy {
         }
 
         // Register debug commands in dev environment only
-        if (!AngelicaTweaker.isObfEnv()) {
+        if (!AngelicaClientTweaker.isObfEnv()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
         }
     }
