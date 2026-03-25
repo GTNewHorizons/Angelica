@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
@@ -108,7 +109,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("HEAD"))
     private void celeritas$renderAheadStartFrame(CallbackInfo ci) {
-        final int limit = AngelicaMod.options().performance.cpuRenderAheadLimit;
+        final int limit = ClientProxy.options().performance.cpuRenderAheadLimit;
         if (limit > 0) {
             celeritas$renderAheadManager.startFrame(limit);
         }
@@ -116,7 +117,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("RETURN"))
     private void celeritas$renderAheadEndFrame(CallbackInfo ci) {
-        if (AngelicaMod.options().performance.cpuRenderAheadLimit > 0) {
+        if (ClientProxy.options().performance.cpuRenderAheadLimit > 0) {
             celeritas$renderAheadManager.endFrame();
         }
     }

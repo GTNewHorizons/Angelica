@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.particles;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.DeferredDrawBatcher;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -20,7 +20,7 @@ public class MixinEffectRenderer_DeferredBatch {
             target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V",
             shift = At.Shift.AFTER))
     private void angelica$enterDeferredMode(Entity player, float partialTickTime, CallbackInfo ci) {
-        if (AngelicaMod.options() != null && AngelicaMod.options().advanced.enableDeferredBatching) {
+        if (ClientProxy.options() != null && ClientProxy.options().advanced.enableDeferredBatching) {
             DeferredDrawBatcher.enter();
         }
     }

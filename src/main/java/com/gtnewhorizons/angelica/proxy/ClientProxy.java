@@ -4,10 +4,12 @@ import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
+import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
@@ -16,7 +18,7 @@ import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
@@ -25,6 +27,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
+import com.gtnewhorizons.angelica.utils.AnimationMode;
+import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -39,17 +43,15 @@ import jss.notfine.core.Settings;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
@@ -65,29 +67,40 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
-import org.lwjgl.input.Keyboard;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
-public class ClientProxy extends CommonProxy {
+public final class ClientProxy extends CommonProxy {
 
-    final Minecraft mc = Minecraft.getMinecraft();
-    final FrametimeGraph frametimeGraph = new FrametimeGraph();
-    final TPSGraph tpsGraph = new TPSGraph();
+    public static BlockError blockError;
+    public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
+    private static final Logger LOGGER = LogManager.getLogger("Angelica");
+    private static SodiumGameOptions CONFIG;
+    private final Minecraft mc = Minecraft.getMinecraft();
+    private final FrametimeGraph frametimeGraph = new FrametimeGraph();
+    private final TPSGraph tpsGraph = new TPSGraph();
+
+    public static SodiumGameOptions options() {
+        if (CONFIG == null) {
+            CONFIG = SodiumGameOptions.load(ConfigMigrator.handleConfigMigration("angelica-options.json"));
+        }
+        return CONFIG;
+    }
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
+        ModStatus.preInit();
         super.preInit(event);
-
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-
         ModelRegistry.registerModid(MOD_ID);
+        blockError = new BlockError();
     }
 
     @SubscribeEvent
@@ -138,7 +151,6 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
         }
@@ -150,7 +162,7 @@ public class ClientProxy extends CommonProxy {
         }
 
         // Register debug commands in dev environment only
-        if (!AngelicaTweaker.isObfEnv()) {
+        if (!AngelicaClientTweaker.isObfEnv()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
         }
     }

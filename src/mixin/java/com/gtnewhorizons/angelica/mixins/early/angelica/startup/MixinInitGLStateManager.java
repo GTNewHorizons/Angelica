@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.render.SelectionBoxRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -27,7 +28,7 @@ public class MixinInitGLStateManager {
         GLStateManager.initialize(GLSMInitConfig.builder()
             .displaySize(mc.displayWidth, mc.displayHeight)
             .lwjglDebug(AngelicaMod.lwjglDebug)
-            .streamingUploadStrategy(AngelicaMod.options().advanced.streamingUploadStrategy)
+            .streamingUploadStrategy(ClientProxy.options().advanced.streamingUploadStrategy)
             .framebufferSupported(OpenGlHelper.framebufferSupported)
             .fboEnabled(mc.gameSettings.fboEnable)
             .directDrawer(TessellatorStreamingDrawer::drawDirect)
