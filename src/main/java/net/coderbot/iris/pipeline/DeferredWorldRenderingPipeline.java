@@ -755,6 +755,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return p != null ? p.getProgramId() : -1;
 	}
 
+	/**
+	 * Called when a mod overrides the GL program away from the active Iris pass
+	 */
+	public void onModProgramOverride() {
+		current = null;
+	}
+
 	private void matchPass() {
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
 			return;

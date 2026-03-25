@@ -25,6 +25,7 @@ import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
 
@@ -68,6 +69,12 @@ public class HUDCaching {
             // this used to be called by asming into renderGameOverlay, but we removed it
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
         }
+
+        GLStateManager.disableLighting();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.disableTexture();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.enableTexture();
 
         if (!AngelicaConfig.hudCachingActive || !GLStateManager.isFramebufferEnabled()) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
