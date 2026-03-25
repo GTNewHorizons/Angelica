@@ -22,7 +22,6 @@ import java.util.Set;
 @IFMLLoadingPlugin.MCVersion("1.7.10")
 public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
-    public static final Logger LOGGER = LogManager.getLogger("Angelica");
     private final IFMLLoadingPlugin loadingPlugin;
     private final IEarlyMixinLoader mixinLoader;
 

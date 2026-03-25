@@ -1,9 +1,9 @@
 package jss.notfine.asm.mappings;
 
-import java.util.ArrayList;
-
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import net.minecraft.launchwrapper.Launch;
+
+import java.util.ArrayList;
 
 /**
  * This class und inherited classes are adapted from
@@ -48,7 +48,7 @@ public class Namer {
 
     public static void initNames() {
         final boolean obfuscated = !(Boolean) Launch.blackboard.get("fml.deobfuscatedEnvironment");
-        AngelicaTweaker.LOGGER.info("Environment obfuscated: {}", obfuscated);
+        AngelicaClientTweaker.LOGGER.info("Environment obfuscated: {}", obfuscated);
         if (obfuscated) {
             new NamerObf().setNames();
         } else {

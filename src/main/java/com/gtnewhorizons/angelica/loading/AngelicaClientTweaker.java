@@ -20,6 +20,7 @@ import jss.notfine.config.NotFineConfig;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.logging.log4j.Level;
 import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.apache.logging.log4j.core.LoggerContext;
 import org.apache.logging.log4j.core.config.Configuration;
 import org.apache.logging.log4j.core.config.LoggerConfig;
@@ -37,6 +38,7 @@ import java.util.Set;
 // exclusions manually in the constructor
 public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
+    public static final Logger LOGGER = LogManager.getLogger("Angelica");
     private static Boolean OBF_ENV;
     private String[] transformerClasses;
 

@@ -62,16 +62,18 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
 public class ClientProxy extends CommonProxy {
 
+    private static final Logger LOGGER = LogManager.getLogger("Angelica");
     final Minecraft mc = Minecraft.getMinecraft();
     final FrametimeGraph frametimeGraph = new FrametimeGraph();
     final TPSGraph tpsGraph = new TPSGraph();
@@ -133,7 +135,6 @@ public class ClientProxy extends CommonProxy {
 
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-
 
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
