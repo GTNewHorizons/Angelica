@@ -23,6 +23,7 @@ public class DHCompat {
     private static MethodHandle checkFrame;
     private static MethodHandle getRenderDistance;
     private Object compatInternalInstance;
+    private final static Matrix4f tempProj = new Matrix4f();
 
     public DHCompat(DeferredWorldRenderingPipeline pipeline, boolean renderDHShadow) {
         if (pipeline == null) {
@@ -45,12 +46,12 @@ public class DHCompat {
     }
 
     public static Matrix4f getProjection() {
+        Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();
         if (!dhPresent) {
-            return new Matrix4f(RenderingState.INSTANCE.getProjectionMatrix());
+            return projection;
         }
 
-        Matrix4f projection = new Matrix4f(RenderingState.INSTANCE.getProjectionMatrix());
-        return new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), DHCompat.getNearPlane(), DHCompat.getFarPlane());
+        return tempProj.setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), DHCompat.getNearPlane(), DHCompat.getFarPlane());
     }
 
     public static void run() {
