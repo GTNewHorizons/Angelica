@@ -40,9 +40,8 @@ public abstract class MixinForgeHooksClient_CoreProfile {
     @Overwrite
     public static void createDisplay() throws LWJGLException {
         ImageIO.setUseCache(false);
-        // Preserve vanilla Forge stencil support -- enabled via -Dforge.forceDisplayStencil=true by users/modpacks
-        final boolean wantStencil = Boolean.parseBoolean(System.getProperty("forge.forceDisplayStencil", "false"));
-        stencilBits = wantStencil ? 8 : 0;
+        // Always enable 8-bit stencil, was an option before "-Dforge.forceDisplayStencil=true"
+        stencilBits = 8;
 
         final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
 
