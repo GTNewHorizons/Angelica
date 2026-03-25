@@ -312,11 +312,6 @@ public class LodRendererEvents {
                                 partialTicks);
                         } else {
                             Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();;
-                            //float nearClip = DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(partialTicks);
-                            //float farClip = (float) ((double) (DHCompatInternal.getDhBlockRenderDistance() + 512) * Math.sqrt(2.0));
-
-                            //Iris.logger.info("event near clip: "+event.value.nearClipPlane+" event far clip: "+event.value.farClipPlane+
-                            //	" \niris near clip: "+nearClip+" iris far clip: "+farClip);
 
                             instance.getSolidShader().fillUniformData(
                                 tempMat4.setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
@@ -345,11 +340,7 @@ public class LodRendererEvents {
                         instance.copyTranslucents(textureWidth, textureHeight);
                         instance.getTranslucentShader().bind();
                         Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();
-                        //float nearClip = DhApi.Delayed.renderProxy.getNearClipPlaneDistanceInBlocks(partialTicks);
-                        //float farClip = (float) ((double) (DHCompatInternal.getDhBlockRenderDistance() + 512) * Math.sqrt(2.0));
                         GLStateManager.disableCull();
-                        //Iris.logger.info("event near clip: "+event.value.nearClipPlane+" event far clip: "+event.value.farClipPlane+
-                        //	" \niris near clip: "+nearClip+" iris far clip: "+farClip);
 
                         instance.getTranslucentShader().fillUniformData(
                             new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
