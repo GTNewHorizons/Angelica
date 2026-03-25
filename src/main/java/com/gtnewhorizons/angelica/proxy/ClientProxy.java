@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
@@ -39,6 +40,7 @@ import jss.notfine.core.Settings;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
@@ -71,20 +73,27 @@ import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
-public class ClientProxy extends CommonProxy {
+public final class ClientProxy extends CommonProxy {
 
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
+    private static SodiumGameOptions CONFIG;
     final Minecraft mc = Minecraft.getMinecraft();
     final FrametimeGraph frametimeGraph = new FrametimeGraph();
     final TPSGraph tpsGraph = new TPSGraph();
 
+    public static SodiumGameOptions options() {
+        if (CONFIG == null) {
+            CONFIG = SodiumGameOptions.load(ConfigMigrator.handleConfigMigration("angelica-options.json"));
+        }
+        return CONFIG;
+    }
+
     @Override
     public void preInit(FMLPreInitializationEvent event) {
+        ModStatus.preInit();
         super.preInit(event);
-
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-
         ModelRegistry.registerModid(MOD_ID);
     }
 

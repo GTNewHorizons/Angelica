@@ -33,7 +33,7 @@ public class AngelicaTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
         } else {
             loadingPlugin = null;
             mixinLoader = null;
-            LogManager.getLogger("Angelica").info("Trying to get more FPS on your server :kekw:");
+            LogManager.getLogger("Angelica").info("Trying to get more FPS on your server ? :kekw:");
         }
     }
 

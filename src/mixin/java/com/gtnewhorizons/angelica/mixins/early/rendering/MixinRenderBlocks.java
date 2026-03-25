@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.rendering;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -103,7 +104,7 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && AngelicaMod.options().quality.useCeleritasSmoothLighting) ||
+        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             this.applyingCeleritasAO = true;
             try {

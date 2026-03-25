@@ -1,11 +1,11 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.api.ExtQuadLightData;
 import com.gtnewhorizons.angelica.api.TintComputer;
 import com.gtnewhorizons.angelica.api.TintRegistry;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
@@ -99,7 +99,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride) {
         // Don't apply transparency-based optimization when shader pack explicitly overrides the material
-        if (!AngelicaMod.options().performance.useRenderPassOptimization || isShaderPackOverride) {
+        if (!ClientProxy.options().performance.useRenderPassOptimization || isShaderPackOverride) {
             return material;
         }
         if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
@@ -129,7 +129,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
         final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
         final boolean separateAo = BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
-        final boolean celeritasSmoothLighting = AngelicaMod.options().quality.useCeleritasSmoothLighting;
+        final boolean celeritasSmoothLighting = ClientProxy.options().quality.useCeleritasSmoothLighting;
         final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
         final boolean shouldApplyDiffuse = !BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();

@@ -32,30 +32,21 @@ import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
         acceptableRemoteVersions = "*",
         guiFactory = "com.gtnewhorizons.angelica.config.AngelicaGuiConfigFactory")
 public class AngelicaMod {
+
     public static final String MOD_ID = "angelica";
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
-    private static SodiumGameOptions CONFIG;
-
-    public static SodiumGameOptions options() {
-        if (CONFIG == null) {
-            CONFIG = SodiumGameOptions.load(ConfigMigrator.handleConfigMigration("angelica-options.json"));
-        }
-        return CONFIG;
-    }
-
-    @SidedProxy(clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy", serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
+    @SidedProxy(
+        clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy",
+        serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
 
     public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
-
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
-
     public static BlockError blockError;
 
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
-        ModStatus.preInit();
         proxy.preInit(event);
         blockError = new BlockError();
     }
