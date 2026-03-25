@@ -1,17 +1,11 @@
 package com.gtnewhorizons.angelica;
 
-import com.gtnewhorizons.angelica.common.BlockError;
-import com.gtnewhorizons.angelica.compat.ModStatus;
-import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
-import com.gtnewhorizons.angelica.utils.AnimationMode;
-import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
 import cpw.mods.fml.common.event.FMLPreInitializationEvent;
-import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -35,20 +29,16 @@ public class AngelicaMod {
 
     public static final String MOD_ID = "angelica";
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
+    public static final boolean lwjglDebug = Boolean.getBoolean("org.lwjgl.util.Debug");
 
     @SidedProxy(
         clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy",
         serverSide = "com.gtnewhorizons.angelica.proxy.CommonProxy")
     public static CommonProxy proxy;
 
-    public static final boolean lwjglDebug = Boolean.parseBoolean(System.getProperty("org.lwjgl.util.Debug", "false"));
-    public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
-    public static BlockError blockError;
-
     @Mod.EventHandler
     public void preInit(FMLPreInitializationEvent event) {
         proxy.preInit(event);
-        blockError = new BlockError();
     }
 
     @Mod.EventHandler

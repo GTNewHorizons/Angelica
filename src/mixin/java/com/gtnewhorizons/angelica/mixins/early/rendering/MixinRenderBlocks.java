@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -151,7 +150,7 @@ public abstract class MixinRenderBlocks {
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
             rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
-            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
+            rb.renderStandardBlock(ClientProxy.blockError, x, y, z);
             rb.overrideBlockTexture = null;
 
             // Check if we've already caught the exception for this block and log it if we haven't

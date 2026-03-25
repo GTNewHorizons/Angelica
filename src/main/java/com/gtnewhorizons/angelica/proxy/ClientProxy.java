@@ -4,6 +4,7 @@ import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
+import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -26,6 +27,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
+import com.gtnewhorizons.angelica.utils.AnimationMode;
+import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
@@ -75,11 +78,13 @@ import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
 public final class ClientProxy extends CommonProxy {
 
+    public static BlockError blockError;
+    public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
     private static SodiumGameOptions CONFIG;
-    final Minecraft mc = Minecraft.getMinecraft();
-    final FrametimeGraph frametimeGraph = new FrametimeGraph();
-    final TPSGraph tpsGraph = new TPSGraph();
+    private final Minecraft mc = Minecraft.getMinecraft();
+    private final FrametimeGraph frametimeGraph = new FrametimeGraph();
+    private final TPSGraph tpsGraph = new TPSGraph();
 
     public static SodiumGameOptions options() {
         if (CONFIG == null) {
@@ -95,6 +100,7 @@ public final class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
         ModelRegistry.registerModid(MOD_ID);
+        blockError = new BlockError();
     }
 
     @SubscribeEvent

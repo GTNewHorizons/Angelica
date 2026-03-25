@@ -1,7 +1,7 @@
 package net.coderbot.iris.client;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.coderbot.iris.Iris;
@@ -47,7 +47,7 @@ public class IrisDebugScreenHandler {
                 event.right.add("[" + Iris.MODNAME + "] Shaders are disabled");
             }
             if (AngelicaConfig.speedupAnimations) {
-                event.right.add(Math.min(event.right.size(), 9), "animationsMode: " + AngelicaMod.animationsMode);
+                event.right.add(Math.min(event.right.size(), 9), "animationsMode: " + ClientProxy.animationsMode);
             }
 
             Iris.getPipelineManager().getPipeline().ifPresent(pipeline -> pipeline.addDebugText(event.left));
