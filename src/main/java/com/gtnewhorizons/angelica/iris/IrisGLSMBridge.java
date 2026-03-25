@@ -117,7 +117,7 @@ public class IrisGLSMBridge {
             if (DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 DepthColorStorage.unlockDepthColor();
             } else {
-                DepthColorStorage.disableDepthColor();
+                drp.onModProgramOverride();
             }
         });
     }
