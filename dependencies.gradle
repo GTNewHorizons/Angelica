@@ -137,7 +137,7 @@ dependencies {
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.1-GTNH:dev")
 
     // Distant Horizons
-    compileOnly(files("libs/DistantHorizonsApi-5.1.0.jar"))
+    compileOnly("maven.modrinth:DistantHorizonsApi:5.1.0")
 
     afterEvaluate {
         dependencies {
