@@ -25,6 +25,7 @@ import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 import org.joml.Vector3i;
 import org.joml.Vector4f;
 
@@ -116,7 +117,7 @@ public class CustomUniformFixedInputUniformsHolder {
 		}
 
 		@Override
-		public Builder uniform3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3f> value) {
+		public Builder uniform3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3fc> value) {
 			return this.put(name, new Float3VectorCachedUniform(name, updateFrequency, value));
 		}
 

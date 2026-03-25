@@ -4,9 +4,10 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import lombok.Getter;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
+import org.joml.Matrix3f;
 import org.joml.Vector3d;
-import org.joml.Vector3dc;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 import org.joml.Vector3i;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
@@ -17,6 +18,7 @@ import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
  */
 public class CameraUniforms {
 	private static final Minecraft client = Minecraft.getMinecraft();
+	private static final Vector3f tempVec3f = new Vector3f();
 
 	private CameraUniforms() {
 	}
@@ -36,8 +38,8 @@ public class CameraUniforms {
 			.uniform3f(PER_FRAME, "previousCameraPositionFract", () -> getCameraPositionFract(tracker.getPreviousCameraPositionUnshifted()));
 	}
 
-	public static Vector3f getCameraPositionFract(Vector3d originalPos) {
-		return new Vector3f(
+	public static Vector3fc getCameraPositionFract(Vector3d originalPos) {
+		return tempVec3f.set(
 			(float) (originalPos.x - Math.floor(originalPos.x)),
 			(float) (originalPos.y - Math.floor(originalPos.y)),
 			(float) (originalPos.z - Math.floor(originalPos.z))
