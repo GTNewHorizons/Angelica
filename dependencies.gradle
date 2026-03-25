@@ -119,7 +119,7 @@ dependencies {
 
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.10:dev")
 
-    compileOnly(rfg.deobf("maven.modrinth:ntmspace:X5593_H261"))
+    compileOnly(rfg.deobf("maven.modrinth:ntmspace:X5634_H261"))
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
