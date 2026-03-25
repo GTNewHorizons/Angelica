@@ -11,6 +11,7 @@ import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.embeddedt.embeddium.impl.render.viewport.frustum.Frustum;
 import org.joml.Math;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -92,7 +93,7 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 		}
 	}
 
-	public void init(Matrix4f playerView, Matrix4f playerProjection, Vector3f shadowLightVector, BoxCuller boxCuller) {
+	public void init(Matrix4fc playerView, Matrix4fc playerProjection, Vector3f shadowLightVector, BoxCuller boxCuller) {
 		this.shadowLightVectorFromOrigin.set(shadowLightVector);
 		this.boxCuller = boxCuller;
 		this.planeCount = 0;

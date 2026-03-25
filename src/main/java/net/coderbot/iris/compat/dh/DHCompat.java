@@ -5,6 +5,7 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
@@ -45,7 +46,7 @@ public class DHCompat {
 
     }
 
-    public static Matrix4f getProjection() {
+    public static Matrix4fc getProjection() {
         Matrix4f projection = RenderingState.INSTANCE.getProjectionMatrix();
         if (!dhPresent) {
             return projection;

@@ -172,7 +172,7 @@ public class CustomUniformFixedInputUniformsHolder {
 
 		@Override
 		public UniformHolder uniformMatrix(
-			UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4f> value) {
+			UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4fc> value) {
 			return this.put(name, new Float4MatrixCachedUniform(name, updateFrequency, value));
 		}
 

@@ -1,6 +1,7 @@
 package net.coderbot.iris.shadows.frustum.advanced;
 
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 
 public class BaseClippingPlanes {
@@ -13,7 +14,7 @@ public class BaseClippingPlanes {
 		}
 	}
 
-	public void init(Matrix4f view, Matrix4f projection) {
+	public void init(Matrix4fc view, Matrix4fc projection) {
 		// Transform = Transpose(Projection x View)
 		transformScratch.set(projection);
 		transformScratch.mul(view);
