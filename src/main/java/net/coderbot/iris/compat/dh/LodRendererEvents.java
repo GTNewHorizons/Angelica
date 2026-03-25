@@ -44,6 +44,7 @@ public class LodRendererEvents {
     private static boolean atTranslucent = false;
     private static int textureWidth;
     private static int textureHeight;
+    private static final Matrix4f tempMat4 = new Matrix4f();
 
 
     // constructor //
@@ -318,7 +319,7 @@ public class LodRendererEvents {
                             //	" \niris near clip: "+nearClip+" iris far clip: "+farClip);
 
                             instance.getSolidShader().fillUniformData(
-                                new Matrix4f().setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
+                                tempMat4.setPerspective(projection.perspectiveFov(), projection.m11() / projection.m00(), event.value.nearClipPlane, event.value.farClipPlane),
                                 RenderingState.INSTANCE.getModelViewMatrix(),
                                 WORLD_MIN_Y,
                                 partialTicks);
