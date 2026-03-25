@@ -62,6 +62,9 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     private final ProgramImages images;
     private final BlendModeOverride blend;
     private final BufferBlendOverride[] bufferBlendOverrides;
+    private final Matrix4f tempModel = new Matrix4f();
+    private final Matrix4f tempProj = new Matrix4f();
+    private final Matrix4f tempMat4 = new Matrix4f();
     private final Matrix3f tempMat3 = new Matrix3f();
 
     private final int instancedShaderOffsetChunkUniform;
@@ -238,15 +241,20 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
             override.apply();
         }
 
-        setUniform(modelViewUniform, toJOML(renderParam.dhModelViewMatrix));
-        setUniform(modelViewInverseUniform, toJOML(renderParam.dhModelViewMatrix).invert());
-        setUniform(projectionUniform, toJOML(renderParam.dhProjectionMatrix));
-        setUniform(projectionInverseUniform, toJOML(renderParam.dhProjectionMatrix).invert());
-        setUniform(normalMatrix3fUniform, toJOML(renderParam.dhModelViewMatrix).invert().transpose3x3(tempMat3));
+        toJOML(tempModel, renderParam.dhModelViewMatrix);
+        toJOML(tempProj, renderParam.dhProjectionMatrix);
+
+        setUniform(modelViewUniform, tempModel);
+        setUniform(projectionUniform, tempProj);
+        this.setUniform(this.instancedShaderProjectionModelViewMatrixUniform, tempMat4.set(tempProj).mul(tempModel));
+        tempModel.invert();
+        tempProj.invert();
+        setUniform(modelViewInverseUniform, tempModel);
+        setUniform(projectionInverseUniform, tempProj);
+        setUniform(normalMatrix3fUniform, tempModel.transpose3x3(tempMat3));
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
         DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
-        this.setUniform(this.instancedShaderProjectionModelViewMatrixUniform, toJOML(renderParam.dhProjectionMatrix).mul(toJOML(renderParam.dhModelViewMatrix)));
 
         samplers.update();
         uniforms.update();
@@ -330,8 +338,8 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         throw new IllegalStateException("Only indirect is supported with Iris.");
     }
 
-    private Matrix4f toJOML(DhApiMat4f mat4f) {
-        return new Matrix4f().setTransposed(mat4f.getValuesAsArray());
+    private void toJOML(Matrix4f target, DhApiMat4f mat4f) {
+        target.setTransposed(mat4f.getValuesAsArray());
     }
 
     private void setUniform(int index, int value) {
