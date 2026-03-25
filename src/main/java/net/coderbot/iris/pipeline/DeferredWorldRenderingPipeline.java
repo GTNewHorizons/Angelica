@@ -373,6 +373,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				null, ProgramId.Clouds, ProgramId.Clouds,
 				null, ProgramId.DamagedBlock, ProgramId.DamagedBlock,
 				ProgramId.Block, ProgramId.Block, ProgramId.Block,
+				ProgramId.BlockTrans, ProgramId.BlockTrans, ProgramId.BlockTrans,
 				ProgramId.BeaconBeam, ProgramId.BeaconBeam, ProgramId.BeaconBeam,
 				ProgramId.Entities, ProgramId.Entities, ProgramId.Entities,
 				ProgramId.EntitiesTrans, ProgramId.EntitiesTrans, ProgramId.EntitiesTrans,
@@ -725,6 +726,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					return RenderCondition.ENTITIES;
 				}
 			case BLOCK_ENTITIES:
+				if (GLStateManager.getBlendState().getSrcRgb() == SRC_ALPHA &&
+					GLStateManager.getBlendState().getDstRgb() == ONE_MINUS_SRC_ALPHA) {
+					return RenderCondition.BLOCK_ENTITIES_TRANSLUCENT;
+				}
 				return RenderCondition.BLOCK_ENTITIES;
 			case DESTROY:
 				return RenderCondition.DESTROY;
@@ -753,6 +758,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (current == null) return -1;
 		final Program p = current.getProgram();
 		return p != null ? p.getProgramId() : -1;
+	}
+
+	/**
+	 * Called when a mod overrides the GL program away from the active Iris pass
+	 */
+	public void onModProgramOverride() {
+		current = null;
 	}
 
 	private void matchPass() {
@@ -889,7 +901,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		builder.bindAttributeLocation(13, "at_tangent");
 		builder.bindAttributeLocation(14, "at_midBlock");
 
-		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride().orElse(null);
+		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride()
+			.orElse(id.getDefaultAlphaTestOverride());
 
 		List<BufferBlendOverride> bufferOverrides = new ArrayList<>();
 
@@ -1061,12 +1074,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				GLStateManager.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 			}
 
-			if (program != null) {
-				program.use();
-			}
-
-			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
-
+			// Apply state overrides before program.use() so that uniforms (e.g. iris_currentAlphaTest)
+			// read the correct GLSM state during upload, not the stale vanilla state.
 			if (alphaTestOverride != null) {
 				alphaTestOverride.apply();
 			} else {
@@ -1084,6 +1093,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (bufferBlendOverrides != null && !bufferBlendOverrides.isEmpty()) {
 				bufferBlendOverrides.forEach(BufferBlendOverride::apply);
 			}
+
+			if (program != null) {
+				program.use();
+			}
+
+			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 		}
 
 		public void stopUsing() {

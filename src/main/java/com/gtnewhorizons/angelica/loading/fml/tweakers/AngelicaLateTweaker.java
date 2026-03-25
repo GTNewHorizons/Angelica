@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.loading.fml.tweakers;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
@@ -38,7 +37,7 @@ public class AngelicaLateTweaker implements ITweaker {
             exceptionsField.setAccessible(true);
             final Set<String> exceptions = (Set<String>) exceptionsField.get(classLoader);
 
-            if (AngelicaConfig.transformerCompat.narrowDragonAPI && exceptions.remove("Reika.DragonAPI.ASM")) {
+            if (narrowEnabled("DragonAPI") && exceptions.remove("Reika.DragonAPI.ASM")) {
                 // Re-add non-GL classes; ASMCallsClient and utility classes with GL calls are left exposed
                 exceptions.add("Reika.DragonAPI.ASM.Patchers");
                 exceptions.add("Reika.DragonAPI.ASM.Profiling");
@@ -54,7 +53,7 @@ public class AngelicaLateTweaker implements ITweaker {
                 FMLRelaunchLog.info("[Angelica] Narrowed Reika.DragonAPI.ASM transformer exclusion to allow GL redirection");
             }
 
-            if (AngelicaConfig.transformerCompat.narrowXaeros) {
+            if (narrowEnabled("Xaeros")) {
                 if (exceptions.remove("xaero.common.core")) {
                     exceptions.add("xaero.common.core.transformer");
                     FMLRelaunchLog.info("[Angelica] Narrowed xaero.common.core transformer exclusion to allow GL redirection");
@@ -65,14 +64,14 @@ public class AngelicaLateTweaker implements ITweaker {
                 }
             }
 
-            if (AngelicaConfig.transformerCompat.narrowAdvancedLightsabers && exceptions.remove("com.fiskmods.lightsabers.asm")) {
+            if (narrowEnabled("AdvancedLightsabers") && exceptions.remove("com.fiskmods.lightsabers.asm")) {
                 exceptions.add("com.fiskmods.lightsabers.asm.ALLoadingPlugin");
                 exceptions.add("com.fiskmods.lightsabers.asm.ASMHooks");
                 exceptions.add("com.fiskmods.lightsabers.asm.transformers");
                 FMLRelaunchLog.info("[Angelica] Narrowed com.fiskmods.lightsabers.asm transformer exclusion to allow GL redirection");
             }
 
-            if (AngelicaConfig.transformerCompat.narrowAlfheim && exceptions.remove("alfheim.common.core.asm.hook")) {
+            if (narrowEnabled("Alfheim") && exceptions.remove("alfheim.common.core.asm.hook")) {
                 exceptions.add("alfheim.common.core.asm.hook.AlfheimFieldHookHandler");
                 exceptions.add("alfheim.common.core.asm.hook.AlfheimHPHooks");
                 exceptions.add("alfheim.common.core.asm.hook.Botania18AndUpBackport");
@@ -99,6 +98,10 @@ public class AngelicaLateTweaker implements ITweaker {
         } catch (Exception e) {
             FMLRelaunchLog.warning("[Angelica] Failed to narrow transformer exclusions: %s", e.getMessage());
         }
+    }
+
+    private static boolean narrowEnabled(String mod) {
+        return !Boolean.FALSE.equals(Launch.blackboard.get("angelica.narrow." + mod));
     }
 
     @Override
