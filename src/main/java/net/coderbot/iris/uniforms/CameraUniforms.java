@@ -9,6 +9,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.joml.Vector3i;
+import org.joml.Vector3ic;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
@@ -19,6 +20,7 @@ import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 public class CameraUniforms {
 	private static final Minecraft client = Minecraft.getMinecraft();
 	private static final Vector3f tempVec3f = new Vector3f();
+	private static final Vector3i tempVec3i = new Vector3i();
 
 	private CameraUniforms() {
 	}
@@ -46,8 +48,8 @@ public class CameraUniforms {
 		);
 	}
 
-	public static Vector3i getCameraPositionInt(Vector3d originalPos) {
-		return new Vector3i(
+	public static Vector3ic getCameraPositionInt(Vector3d originalPos) {
+		return tempVec3i.set(
 			(int) Math.floor(originalPos.x),
 			(int) Math.floor(originalPos.y),
 			(int) Math.floor(originalPos.z)

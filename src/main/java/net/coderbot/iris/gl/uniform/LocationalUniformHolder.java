@@ -9,6 +9,7 @@ import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.joml.Vector3i;
+import org.joml.Vector3ic;
 import org.joml.Vector4f;
 
 import java.util.OptionalInt;
@@ -79,7 +80,7 @@ public interface LocationalUniformHolder extends UniformHolder {
 	}
 
     @Override
-    default LocationalUniformHolder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3i> value) {
+    default LocationalUniformHolder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3ic> value) {
         location(name, UniformType.VEC3I).ifPresent(id -> addUniform(updateFrequency, new Vector3IntegerJomlUniform(id, value)));
 
         return this;
