@@ -13,17 +13,9 @@ import java.lang.invoke.MethodType;
 import java.lang.reflect.InvocationTargetException;
 
 public class DHCompat {
-    private static boolean dhPresent = true;
+    private static boolean dhPresent;
     private static boolean lastIncompatible;
-    private static MethodHandle deletePipeline;
-    private static MethodHandle incompatible;
-    private static MethodHandle getDepthTex;
-    private static MethodHandle getFarPlane;
-    private static MethodHandle getNearPlane;
-    private static MethodHandle getDepthTexNoTranslucent;
-    private static MethodHandle checkFrame;
-    private static MethodHandle getRenderDistance;
-    private Object compatInternalInstance;
+    private DHCompatInternal compatInternalInstance;
     private final static Matrix4f tempProj = new Matrix4f();
 
     public DHCompat(DeferredWorldRenderingPipeline pipeline, boolean renderDHShadow) {
@@ -32,8 +24,8 @@ public class DHCompat {
         }
         try {
             if (dhPresent) {
-                compatInternalInstance = Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal").getDeclaredConstructor(pipeline.getClass(), boolean.class).newInstance(pipeline, renderDHShadow);
-                lastIncompatible = (boolean) incompatible.invoke(compatInternalInstance);
+                compatInternalInstance = new DHCompatInternal(pipeline, renderDHShadow);
+                lastIncompatible = compatInternalInstance.incompatiblePack();
             }
         } catch (Throwable e) {
             lastIncompatible = false;
@@ -56,29 +48,16 @@ public class DHCompat {
     }
 
     public static void run() {
-        boolean isDHLoaded;
         try {
             Class.forName("com.seibel.distanthorizons.DistantHorizonsTweaker");
-            isDHLoaded = true;
+            dhPresent = true;
         }
         catch (Exception e) {
-            isDHLoaded = false;
+            dhPresent = false;
         }
         try {
-            if (isDHLoaded) {
-                deletePipeline = MethodHandles.lookup().findVirtual(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "clear", MethodType.methodType(void.class));
-                MethodHandle setupEventHandlers = MethodHandles.lookup().findStatic(Class.forName("net.coderbot.iris.compat.dh.LodRendererEvents"), "setupEventHandlers", MethodType.methodType(void.class));
-                getDepthTex = MethodHandles.lookup().findVirtual(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "getStoredDepthTex", MethodType.methodType(int.class));
-                getRenderDistance = MethodHandles.lookup().findStatic(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "getRenderDistance", MethodType.methodType(int.class));
-                incompatible = MethodHandles.lookup().findVirtual(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "incompatiblePack", MethodType.methodType(boolean.class));
-                getFarPlane = MethodHandles.lookup().findStatic(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "getFarPlane", MethodType.methodType(float.class));
-                getNearPlane = MethodHandles.lookup().findStatic(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "getNearPlane", MethodType.methodType(float.class));
-                getDepthTexNoTranslucent = MethodHandles.lookup().findVirtual(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "getDepthTexNoTranslucent", MethodType.methodType(int.class));
-                checkFrame = MethodHandles.lookup().findStatic(Class.forName("net.coderbot.iris.compat.dh.DHCompatInternal"), "checkFrame", MethodType.methodType(boolean.class));
-
-                setupEventHandlers.invoke();
-            } else {
-                dhPresent = false;
+            if (dhPresent) {
+                LodRendererEvents.setupEventHandlers();
             }
         } catch (Throwable e) {
             dhPresent = false;
@@ -96,32 +75,18 @@ public class DHCompat {
 
     public static float getFarPlane() {
         if (!dhPresent) return 0.01f;
-
-        try {
-            return (float) getFarPlane.invoke();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return DHCompatInternal.getFarPlane();
     }
 
     public static float getNearPlane() {
         if (!dhPresent) return 0.01f;
-
-        try {
-            return (float) getNearPlane.invoke();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return DHCompatInternal.getNearPlane();
     }
 
     public static int getRenderDistance() {
         if (!dhPresent) return Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16;
 
-        try {
-            return (int) getRenderDistance.invoke();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return DHCompatInternal.getRenderDistance();
     }
 
     public static boolean checkFrame() {
@@ -129,11 +94,7 @@ public class DHCompat {
             return false;
         }
 
-        try {
-            return (boolean) checkFrame.invoke();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return DHCompatInternal.checkFrame();
     }
 
     public static boolean hasRenderingEnabled() {
@@ -147,34 +108,22 @@ public class DHCompat {
     public void clearPipeline() {
         if (compatInternalInstance == null) return;
 
-        try {
-            deletePipeline.invoke(compatInternalInstance);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        compatInternalInstance.clear();
     }
 
     public int getDepthTex() {
         if (compatInternalInstance == null) return -1;
 
-        try {
-            return (int) getDepthTex.invoke(compatInternalInstance);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return compatInternalInstance.getStoredDepthTex();
     }
 
     public int getDepthTexNoTranslucent() {
         if (compatInternalInstance == null) return -1;
 
-        try {
-            return (int) getDepthTexNoTranslucent.invoke(compatInternalInstance);
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
-        }
+        return compatInternalInstance.getDepthTexNoTranslucent();
     }
 
-    public Object getInstance() {
+    public DHCompatInternal getInstance() {
         return compatInternalInstance;
     }
 }

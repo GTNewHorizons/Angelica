@@ -140,7 +140,7 @@ public class LodRendererEvents {
     }
 
     private static DHCompatInternal getInstance() {
-        return (DHCompatInternal) Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::getDHCompat).map(DHCompat::getInstance).orElse(DHCompatInternal.SHADERLESS);
+        return Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::getDHCompat).map(DHCompat::getInstance).orElse(DHCompatInternal.SHADERLESS);
     }
 
     private static void setupCreateDepthTextureEvent() {
