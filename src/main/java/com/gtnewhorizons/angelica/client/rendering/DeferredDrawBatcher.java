@@ -99,10 +99,14 @@ public class DeferredDrawBatcher {
                 totalBytes += e.byteLength();
                 totalVertices += e.vertexCount();
                 subEnd++;
+
+                // Don't try to merge strips, fans, loops or polygons
+                if (drawMode == GL11.GL_TRIANGLE_STRIP || drawMode == GL11.GL_TRIANGLE_FAN || drawMode == GL11.GL_LINE_STRIP ||
+                        drawMode == GL11.GL_LINE_LOOP || drawMode == GL11.GL_QUAD_STRIP || drawMode == GL11.GL_POLYGON)
+                    break;
             }
 
-            TessellatorStreamingDrawer.drawPackedBatch(
-                batchTessellator, ranges, i, subEnd, totalBytes, totalVertices, drawMode, flags);
+            TessellatorStreamingDrawer.drawPackedBatch(batchTessellator, ranges, i, subEnd, totalBytes, totalVertices, drawMode, flags);
 
             i = subEnd;
         }
