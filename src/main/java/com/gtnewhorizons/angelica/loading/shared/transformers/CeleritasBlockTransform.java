@@ -155,6 +155,12 @@ public final class CeleritasBlockTransform {
         };
     }
 
+    public void trackBlockSubclasses(String className, String classSuperName) {
+        if (!isVanillaBlockSubclass(className) && isBlockSubclass(classSuperName)) {
+            moddedBlockSubclasses.add(className);
+        }
+    }
+
     private void trackBlockShadowingFields(ClassNode cn) {
         // Check if this class shadows any fields of the parent class
         if (moddedBlockSubclasses.contains(cn.name)) {
