@@ -14,6 +14,7 @@ import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.coderbot.iris.vertices.ImmediateState;
 
 public class IrisGLSMBridge {
 
@@ -114,7 +115,7 @@ public class IrisGLSMBridge {
             if (!drp.shouldOverrideShaders()) return;
             if (drp.getActivePassProgramId() == -1) return;
 
-            if (DepthColorStorage.isOwnedProgram(event.newProgram)) {
+            if (!ImmediateState.isRenderingLevel || DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 DepthColorStorage.unlockDepthColor();
             } else {
                 drp.onModProgramOverride();

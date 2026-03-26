@@ -1,12 +1,13 @@
 package net.coderbot.iris.gl.uniform;
 
 import net.minecraft.util.Vec3;
-import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector2f;
 import org.joml.Vector2i;
 import org.joml.Vector3d;
-import org.joml.Vector3f;
+import org.joml.Vector3fc;
 import org.joml.Vector3i;
+import org.joml.Vector3ic;
 import org.joml.Vector4f;
 
 import java.util.function.BooleanSupplier;
@@ -29,9 +30,9 @@ public interface UniformHolder {
 
 	UniformHolder uniform2i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector2i> value);
 
-	UniformHolder uniform3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3f> value);
+	UniformHolder uniform3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3fc> value);
 
-    UniformHolder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3i> value);
+    UniformHolder uniform3i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector3ic> value);
 
 	UniformHolder uniformVanilla3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vec3> value);
 
@@ -43,7 +44,7 @@ public interface UniformHolder {
 
     UniformHolder uniform4fArray(UniformUpdateFrequency updateFrequency, String name, Supplier<float[]> value);
 
-	UniformHolder uniformMatrix(UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4f> value);
+	UniformHolder uniformMatrix(UniformUpdateFrequency updateFrequency, String name, Supplier<Matrix4fc> value);
 
 	UniformHolder uniformMatrixFromArray(UniformUpdateFrequency updateFrequency, String name, Supplier<float[]> value);
 

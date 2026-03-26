@@ -495,15 +495,15 @@ public class ShaderProperties {
                 customUniforms.addVariable(parts[0], parts[1], value, false);
             });
 
-            handlePassDirective("uniform.", key, value, pass -> {
-               String[] parts = pass.split("\\.");
-               if (parts.length != 2) {
-                   Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
-                   return;
-               }
+			handlePassDirective("uniform.", key, value, pass -> {
+				String[] parts = pass.split("\\.");
+				if (parts.length != 2) {
+					Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
+					return;
+				}
 
-               customUniforms.addVariable(parts[0], parts[1], value, true);
-            });
+				customUniforms.addVariable(parts[0], parts[1], value, true);
+			});
 
 			// TODO: Buffer size directives
 			// TODO: Conditional program enabling directives

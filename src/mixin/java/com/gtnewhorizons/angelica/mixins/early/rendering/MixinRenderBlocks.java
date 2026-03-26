@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -16,7 +16,6 @@ import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.objectweb.asm.Opcodes;
@@ -104,7 +103,7 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && AngelicaMod.options().quality.useCeleritasSmoothLighting) ||
+        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             this.applyingCeleritasAO = true;
             try {
@@ -151,13 +150,13 @@ public abstract class MixinRenderBlocks {
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
             rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
-            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
+            rb.renderStandardBlock(ClientProxy.blockError, x, y, z);
             rb.overrideBlockTexture = null;
 
             // Check if we've already caught the exception for this block and log it if we haven't
             String key = block.getUnlocalizedName() + ":" + meta;
             if (isbrhExceptionCache.add(key)) {
-                AngelicaTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
+                AngelicaClientTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
             }
         }
         return false;

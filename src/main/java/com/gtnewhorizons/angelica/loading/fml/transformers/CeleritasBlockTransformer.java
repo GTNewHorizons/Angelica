@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.transformers;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.loading.shared.transformers.CeleritasBlockTransform;
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -14,7 +14,7 @@ public class CeleritasBlockTransformer implements IClassTransformer {
     private final String[] exclusions;
 
     public CeleritasBlockTransformer() {
-        this.inner = new CeleritasBlockTransform(AngelicaTweaker.isObfEnv());
+        this.inner = new CeleritasBlockTransform(AngelicaClientTweaker.isObfEnv());
         this.exclusions = inner.getTransformerExclusions();
         this.inner.setCeleritasSetting();
     }

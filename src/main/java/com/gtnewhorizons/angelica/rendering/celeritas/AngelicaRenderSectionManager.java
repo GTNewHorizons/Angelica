@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskProvider;
@@ -87,7 +87,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected AsyncOcclusionMode getAsyncOcclusionMode() {
-        return AngelicaMod.options().performance.asyncOcclusionMode;
+        return ClientProxy.options().performance.asyncOcclusionMode;
     }
 
     @Override
@@ -97,7 +97,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean useFogOcclusion() {
-        return AngelicaMod.options().performance.useFogOcclusion && !IrisShaderProviderHolder.isActive();
+        return ClientProxy.options().performance.useFogOcclusion && !IrisShaderProviderHolder.isActive();
     }
 
     @Override
@@ -113,7 +113,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
                 return false;
             }
         }
-        return AngelicaMod.options().performance.useOcclusionCulling;
+        return ClientProxy.options().performance.useOcclusionCulling;
     }
 
     @Override
@@ -152,7 +152,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean allowImportantRebuilds() {
-        return !AngelicaMod.options().performance.alwaysDeferChunkUpdates;
+        return !ClientProxy.options().performance.alwaysDeferChunkUpdates;
     }
 
     @Override

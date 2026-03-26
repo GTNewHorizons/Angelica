@@ -28,7 +28,7 @@ public class PackDirectives {
 	@Getter private float eyeBrightnessHalfLife;
 	@Getter private float centerDepthHalfLife;
 	@Getter private CloudSetting cloudSetting;
-	@Getter private CloudSetting dhCloudSetting;
+	private CloudSetting dhCloudSetting;
 	private boolean underwaterOverlay;
 	private boolean vignette;
 	private boolean sun;
@@ -179,6 +179,10 @@ public class PackDirectives {
 
 	public boolean getConcurrentCompute() {
 		return concurrentCompute;
+	}
+
+	public CloudSetting getDHCloudSetting() {
+		return dhCloudSetting;
 	}
 
     private static float clamp(float val, float lo, float hi) {

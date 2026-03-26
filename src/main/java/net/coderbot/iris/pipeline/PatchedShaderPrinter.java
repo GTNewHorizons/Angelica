@@ -39,6 +39,9 @@ public class PatchedShaderPrinter {
 	}
 
 	public static void debugPatchedShaders(String name, String vertex, String geometry, String tessControl, String tessEval, String fragment, String compute) {
+		if (!Iris.getIrisConfig().areDebugOptionsEnabled()) {
+			return;
+		}
 		if (prettyPrintShaders) {
 			final Path debugOutDir = Minecraft.getMinecraft().mcDataDir.toPath().resolve("patched_shaders");
 			if (!outputLocationCleared) {
