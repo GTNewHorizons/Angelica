@@ -46,25 +46,27 @@ public abstract class MixinRenderBlocks_CrossedSquaresNormal {
         final double z1 = z + 0.5D + d7;
         final double yTop = y + (double) scale;
 
-        tess.setNormal(1.0F, 0.0F, -1.0F);
+        final float inv_sqrt_2 = (float) (1.0 / Math.sqrt(2.0));
+
+        tess.setNormal(inv_sqrt_2, 0.0F, -inv_sqrt_2);
         tess.addVertexWithUV(x0, yTop, z0, minU, minV);
         tess.addVertexWithUV(x0, y,    z0, minU, maxV);
         tess.addVertexWithUV(x1, y,    z1, maxU, maxV);
         tess.addVertexWithUV(x1, yTop, z1, maxU, minV);
 
-        tess.setNormal(-1.0F, 0.0F, 1.0F);
+        tess.setNormal(-inv_sqrt_2, 0.0F, inv_sqrt_2);
         tess.addVertexWithUV(x1, yTop, z1, minU, minV);
         tess.addVertexWithUV(x1, y,    z1, minU, maxV);
         tess.addVertexWithUV(x0, y,    z0, maxU, maxV);
         tess.addVertexWithUV(x0, yTop, z0, maxU, minV);
 
-        tess.setNormal(-1.0F, 0.0F, -1.0F);
+        tess.setNormal(-inv_sqrt_2, 0.0F, -inv_sqrt_2);
         tess.addVertexWithUV(x0, yTop, z1, minU, minV);
         tess.addVertexWithUV(x0, y,    z1, minU, maxV);
         tess.addVertexWithUV(x1, y,    z0, maxU, maxV);
         tess.addVertexWithUV(x1, yTop, z0, maxU, minV);
 
-        tess.setNormal(1.0F, 0.0F, 1.0F);
+        tess.setNormal(inv_sqrt_2, 0.0F, inv_sqrt_2);
         tess.addVertexWithUV(x1, yTop, z0, minU, minV);
         tess.addVertexWithUV(x1, y,    z0, minU, maxV);
         tess.addVertexWithUV(x0, y,    z1, maxU, maxV);
