@@ -1,6 +1,7 @@
 package net.coderbot.iris.rendertarget;
 
 import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.lwjgl.opengl.GL11;
 
@@ -28,8 +29,8 @@ public class NativeImageBackedNoiseTexture extends DynamicTexture {
 
 	@Override
     public void updateDynamicTexture() {
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
         super.updateDynamicTexture();
     }
 

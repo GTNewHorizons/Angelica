@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -12,6 +12,7 @@ import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -102,7 +103,7 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && AngelicaMod.options().quality.useCeleritasSmoothLighting) ||
+        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             this.applyingCeleritasAO = true;
             try {
@@ -111,6 +112,18 @@ public abstract class MixinRenderBlocks {
                 this.applyingCeleritasAO = false;
             }
         }
+    }
+
+    /**
+     * Widen the grass identity check ({@code block != Blocks.grass}) to cover any BlockGrass subclass
+     * (e.g. BOP's loamy/sandy/silty grass). When the block being rendered IS a BlockGrass, we return
+     * it in place of {@code Blocks.grass} so the reference comparison evaluates to {@code false},
+     * giving it the same "no color multiplier on sides/bottom" treatment as vanilla grass.
+     */
+    @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier",
+        at = @At(value = "FIELD", target = "Lnet/minecraft/init/Blocks;grass:Lnet/minecraft/block/BlockGrass;", opcode = Opcodes.GETSTATIC))
+    private BlockGrass angelica$widenGrassCheck(BlockGrass grassBlock, @Local(argsOnly = true, ordinal = 0) Block block) {
+        return (block instanceof BlockGrass bg) ? bg : grassBlock;
     }
 
     /* Disable diffuse when celeritas AO is in use */
@@ -137,13 +150,13 @@ public abstract class MixinRenderBlocks {
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
             rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
-            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
+            rb.renderStandardBlock(ClientProxy.blockError, x, y, z);
             rb.overrideBlockTexture = null;
 
             // Check if we've already caught the exception for this block and log it if we haven't
             String key = block.getUnlocalizedName() + ":" + meta;
             if (isbrhExceptionCache.add(key)) {
-                AngelicaTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
+                AngelicaClientTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
             }
         }
         return false;

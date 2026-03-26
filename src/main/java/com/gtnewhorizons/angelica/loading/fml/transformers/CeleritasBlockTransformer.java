@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.transformers;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.loading.shared.transformers.CeleritasBlockTransform;
 import net.minecraft.launchwrapper.IClassTransformer;
@@ -14,7 +14,7 @@ public class CeleritasBlockTransformer implements IClassTransformer {
     private final String[] exclusions;
 
     public CeleritasBlockTransformer() {
-        this.inner = new CeleritasBlockTransform(AngelicaTweaker.isObfEnv());
+        this.inner = new CeleritasBlockTransform(AngelicaClientTweaker.isObfEnv());
         this.exclusions = inner.getTransformerExclusions();
         this.inner.setCeleritasSetting();
     }
@@ -30,13 +30,13 @@ public class CeleritasBlockTransformer implements IClassTransformer {
             if (transformedName.startsWith(exclusion)) return basicClass;
         }
 
-        // Here could be a `inner.shouldTransform(basicClass)` check to exit early from transforming,
-        // but we also need to call `inner.trackBlockSubclasses` in this case and somehow pass
-        // the name of a class and a superclass, which we can do only after parsing the whole constant pool.
-        // This transformer is merely a fallback when FRB / lwjgl3ify is not present, so we can afford
-        // it being not fully optimized
-
         final ClassReader cr = new ClassReader(basicClass);
+        inner.trackBlockSubclasses(cr.getClassName(), cr.getSuperName());
+
+        if (!inner.shouldTransform(basicClass)) {
+            return basicClass;
+        }
+
         final ClassNode cn = new ClassNode();
         cr.accept(cn, 0);
         final boolean changed = inner.transformClassNode(transformedName, cn);

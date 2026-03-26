@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.utils;
 
-import com.gtnewhorizons.angelica.AngelicaExtension;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.nio.FloatBuffer;
 
@@ -13,7 +11,6 @@ import static org.junit.jupiter.api.Assertions.*;
 /**
  * Unit tests for BufferUtil.
  */
-@ExtendWith(AngelicaExtension.class)
 class BufferUtilTest {
 
     @Test

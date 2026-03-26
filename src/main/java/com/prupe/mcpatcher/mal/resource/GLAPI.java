@@ -1,24 +1,23 @@
 package com.prupe.mcpatcher.mal.resource;
 
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL14;
-import org.lwjgl.opengl.GLContext;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 public class GLAPI {
 
-    private static final boolean useGlBlendFuncSeparate = GLContext.getCapabilities().OpenGL14;
+    private static final boolean useGlBlendFuncSeparate = GLStateManager.capabilities.OpenGL14;
 
     public static void glBindTexture(int texture) {
         if (texture >= 0) {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         }
     }
 
     public static void glBlendFuncSeparate(int src, int dst, int srcAlpha, int dstAlpha) {
         if (useGlBlendFuncSeparate) {
-            GL14.glBlendFuncSeparate(src, dst, srcAlpha, dstAlpha);
+            GLStateManager.glBlendFuncSeparate(src, dst, srcAlpha, dstAlpha);
         } else {
-            GL11.glBlendFunc(src, dst);
+            GLStateManager.glBlendFunc(src, dst);
         }
     }
 }

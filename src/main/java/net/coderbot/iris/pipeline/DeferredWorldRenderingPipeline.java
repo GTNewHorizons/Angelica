@@ -23,17 +23,20 @@ import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.gl.blending.AlphaTestOverride;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.blending.BufferBlendOverride;
 import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
 import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.image.GlImage;
+import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.image.ImageInformation;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
+import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
@@ -44,6 +47,7 @@ import net.coderbot.iris.postprocess.BufferFlipper;
 import net.coderbot.iris.postprocess.CenterDepthSampler;
 import net.coderbot.iris.postprocess.CompositeRenderer;
 import net.coderbot.iris.postprocess.FinalPassRenderer;
+import net.coderbot.iris.postprocess.FullScreenQuadRenderer;
 import net.coderbot.iris.postprocess.ProgramBuildContext;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
@@ -175,6 +179,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean oldLighting;
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
+	private final CloudSetting dhCloudSetting;
 
 	private Pass current = null;
 
@@ -190,6 +195,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private int currentSpecularTexture;
 	private PackDirectives packDirectives;
 	private final Set<FeatureFlags> activeFeatures;
+	private final ProgramFallbackResolver resolver;
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
@@ -204,7 +210,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				.map(DeferredWorldRenderingPipeline::submitCompositeTransform)
 				.orElse(null);
 
-		final ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
+		resolver = new ProgramFallbackResolver(programs);
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver);
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
@@ -226,6 +232,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.shouldRenderWeather = programs.getPackDirectives().shouldRenderWeather();
 		this.shouldRenderWeatherParticles = programs.getPackDirectives().shouldRenderWeatherParticles();
 		this.shouldWriteRainAndSnowToDepthBuffer = programs.getPackDirectives().rainDepth();
+		this.dhCloudSetting = programs.getPackDirectives().getDHCloudSetting();
 		this.shouldRenderParticlesBeforeDeferred = programs.getPackDirectives().getParticleRenderingSettings()
 			.map(s -> s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.BEFORE || s == net.coderbot.iris.shaderpack.ParticleRenderingSettings.MIXED)
 			.orElse(false);
@@ -366,6 +373,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				null, ProgramId.Clouds, ProgramId.Clouds,
 				null, ProgramId.DamagedBlock, ProgramId.DamagedBlock,
 				ProgramId.Block, ProgramId.Block, ProgramId.Block,
+				ProgramId.BlockTrans, ProgramId.BlockTrans, ProgramId.BlockTrans,
 				ProgramId.BeaconBeam, ProgramId.BeaconBeam, ProgramId.BeaconBeam,
 				ProgramId.Entities, ProgramId.Entities, ProgramId.Entities,
 				ProgramId.EntitiesTrans, ProgramId.EntitiesTrans, ProgramId.EntitiesTrans,
@@ -584,7 +592,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			renderTargets, flippedAfterPrepare, flippedAfterTranslucent,
 			celeritasShadowFb);
 
-		this.dhCompat = new DHCompat();
+		this.dhCompat = new DHCompat(this, shadowDirectives.isDhShadowEnabled().orElse(true));
 	}
 
 	private RenderTargets getRenderTargets() {
@@ -718,6 +726,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					return RenderCondition.ENTITIES;
 				}
 			case BLOCK_ENTITIES:
+				if (GLStateManager.getBlendState().getSrcRgb() == SRC_ALPHA &&
+					GLStateManager.getBlendState().getDstRgb() == ONE_MINUS_SRC_ALPHA) {
+					return RenderCondition.BLOCK_ENTITIES_TRANSLUCENT;
+				}
 				return RenderCondition.BLOCK_ENTITIES;
 			case DESTROY:
 				return RenderCondition.DESTROY;
@@ -736,6 +748,23 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			default:
 				throw new IllegalStateException("Unknown render phase " + phase);
 		}
+	}
+
+	public boolean shouldOverrideShaders() {
+		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
+	}
+
+	public int getActivePassProgramId() {
+		if (current == null) return -1;
+		final Program p = current.getProgram();
+		return p != null ? p.getProgramId() : -1;
+	}
+
+	/**
+	 * Called when a mod overrides the GL program away from the active Iris pass
+	 */
+	public void onModProgramOverride() {
+		current = null;
 	}
 
 	private void matchPass() {
@@ -872,7 +901,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		builder.bindAttributeLocation(13, "at_tangent");
 		builder.bindAttributeLocation(14, "at_midBlock");
 
-		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride().orElse(null);
+		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride()
+			.orElse(id.getDefaultAlphaTestOverride());
 
 		List<BufferBlendOverride> bufferOverrides = new ArrayList<>();
 
@@ -889,6 +919,38 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         this.customUniforms.mapholderToPass(builder, pass);
 
 		return pass;
+	}
+
+	public void addGbufferOrShadowSamplers(SamplerHolder samplers, ImageHolder images, Supplier<ImmutableSet<Integer>> flipped,
+										   boolean isShadowPass, boolean hasTexture, boolean hasLightmap, boolean hasOverlay) {
+		TextureStage textureStage = TextureStage.GBUFFERS_AND_SHADOW;
+
+		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor =
+			ProgramSamplers.customTextureSamplerInterceptor(samplers, customTextureManager.getCustomTextureIdMap(textureStage));
+
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
+		IrisImages.addRenderTargetImages(images, flipped, renderTargets);
+
+		if (!shouldBindPBR) {
+			shouldBindPBR = IrisSamplers.hasPBRSamplers(customTextureSamplerInterceptor);
+		}
+
+		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(hasTexture, hasLightmap));
+		if (!isShadowPass) {
+			IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets);
+		}
+		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
+		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
+		IrisImages.addCustomImages(images, customImages);
+
+		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
+			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, true);
+		}
+
+		if (isShadowPass || IrisImages.hasShadowImages(images)) {
+			IrisImages.addShadowColorImages(images, shadowTargetsSupplier.get(), null);
+		}
 	}
 
 	private boolean isPostChain;
@@ -922,6 +984,56 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+	public CloudSetting getDHCloudSetting() {
+		return dhCloudSetting;
+	}
+
+	public Optional<ProgramSource> getDHTerrainShader() {
+		return resolver.resolve(ProgramId.DhTerrain);
+	}
+
+	public Optional<ProgramSource> getDHGenericShader() {
+		return resolver.resolve(ProgramId.DhGeneric);
+	}
+
+	public Optional<ProgramSource> getDHWaterShader() {
+		return resolver.resolve(ProgramId.DhWater);
+	}
+
+	public Optional<ProgramSource> getDHShadowShader() {
+		return resolver.resolve(ProgramId.DhShadow);
+	}
+
+	public CustomUniforms getCustomUniforms() {
+		return customUniforms;
+	}
+
+	public GlFramebuffer createDHFramebuffer(ProgramSource sources, boolean trans) {
+		return renderTargets.createDHFramebuffer(trans ? flippedAfterTranslucent : flippedAfterPrepare,
+			sources.getDirectives().getDrawBuffers());
+	}
+
+	public ImmutableSet<Integer> getFlippedBeforeShadow() {
+		return flippedBeforeShadow;
+	}
+
+	public ImmutableSet<Integer> getFlippedAfterPrepare() {
+		return flippedAfterPrepare;
+	}
+
+	public ImmutableSet<Integer> getFlippedAfterTranslucent() {
+		return flippedAfterTranslucent;
+	}
+
+	public GlFramebuffer createDHFramebufferShadow(ProgramSource sources) {
+
+		return shadowRenderTargets.createDHFramebuffer(ImmutableSet.of(), new int[]{0, 1});
+	}
+
+	public boolean hasShadowRenderTargets() {
+		return shadowRenderTargets != null;
+	}
+
 	private final class Pass {
 		@Nullable
 		private final Program program;
@@ -947,6 +1059,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		public void use() {
+			DepthColorStorage.unlockDepthColor();
+
 			if (isBeforeTranslucent) {
 				framebufferBeforeTranslucents.bind();
 			} else {
@@ -960,12 +1074,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				GLStateManager.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
 			}
 
-			if (program != null) {
-				program.use();
-			}
-
-			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
-
+			// Apply state overrides before program.use() so that uniforms (e.g. iris_currentAlphaTest)
+			// read the correct GLSM state during upload, not the stale vanilla state.
 			if (alphaTestOverride != null) {
 				alphaTestOverride.apply();
 			} else {
@@ -983,9 +1093,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (bufferBlendOverrides != null && !bufferBlendOverrides.isEmpty()) {
 				bufferBlendOverrides.forEach(BufferBlendOverride::apply);
 			}
+
+			if (program != null) {
+				program.use();
+			}
+
+			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 		}
 
 		public void stopUsing() {
+			DepthColorStorage.unlockDepthColor();
+
 			if (alphaTestOverride != null) {
 				AlphaTestOverride.restore();
 			}
@@ -1009,9 +1127,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void destroy() {
+		DepthColorStorage.unlockDepthColor();
 		BlendModeOverride.restore();
 		AlphaTestOverride.restore();
 
+		FullScreenQuadRenderer.clearLocCache();
 		destroyPasses(table);
 
 		// Destroy the composite rendering pipeline
@@ -1061,6 +1181,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		// While it's possible to just clear them instead and reuse them, we'd need to investigate whether or not this
 		// would help performance.
 		renderTargets.destroy();
+		dhCompat.clearPipeline();
 
 		// destroy the shadow render targets
 		if (shadowRenderTargets != null) {
@@ -1118,7 +1239,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				shadowRenderTargets.getDepthSourceFb().bind();
                 GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
                 if (Minecraft.isRunningOnMac) {
-                    GL11.glGetError();
+                    GLStateManager.glGetError();
                 }
 
 

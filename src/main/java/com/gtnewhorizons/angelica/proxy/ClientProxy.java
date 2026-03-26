@@ -4,19 +4,21 @@ import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
+import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
+import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.debug.OpenGLDebugging;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
@@ -25,8 +27,9 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
+import com.gtnewhorizons.angelica.utils.AnimationMode;
+import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
-import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -40,20 +43,16 @@ import jss.notfine.core.Settings;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
-import net.minecraft.client.settings.GameSettings;
-import net.minecraft.client.settings.KeyBinding;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
 import net.minecraft.util.MathHelper;
@@ -68,29 +67,40 @@ import net.minecraftforge.client.event.GuiScreenEvent;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import net.minecraftforge.common.MinecraftForge;
 import net.minecraftforge.event.world.WorldEvent;
-import org.lwjgl.input.Keyboard;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
-import static com.gtnewhorizons.angelica.loading.AngelicaTweaker.LOGGER;
 
-public class ClientProxy extends CommonProxy {
+public final class ClientProxy extends CommonProxy {
 
-    final Minecraft mc = Minecraft.getMinecraft();
-    final FrametimeGraph frametimeGraph = new FrametimeGraph();
-    final TPSGraph tpsGraph = new TPSGraph();
+    public static BlockError blockError;
+    public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
+    private static final Logger LOGGER = LogManager.getLogger("Angelica");
+    private static SodiumGameOptions CONFIG;
+    private final Minecraft mc = Minecraft.getMinecraft();
+    private final FrametimeGraph frametimeGraph = new FrametimeGraph();
+    private final TPSGraph tpsGraph = new TPSGraph();
+
+    public static SodiumGameOptions options() {
+        if (CONFIG == null) {
+            CONFIG = SodiumGameOptions.load(ConfigMigrator.handleConfigMigration("angelica-options.json"));
+        }
+        return CONFIG;
+    }
 
     @Override
     public void preInit(FMLPreInitializationEvent event) {
+        ModStatus.preInit();
         super.preInit(event);
-
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
-
         ModelRegistry.registerModid(MOD_ID);
+        blockError = new BlockError();
     }
 
     @SubscribeEvent
@@ -113,8 +123,6 @@ public class ClientProxy extends CommonProxy {
         }
     }
 
-    private static KeyBinding glsmKeyBinding;
-
     @Override
     public void init(FMLInitializationEvent event) {
         super.init(event);
@@ -129,6 +137,7 @@ public class ClientProxy extends CommonProxy {
             LOGGER.info("Celeritas is disabled, skipping initialization from init()");
         }
         if (AngelicaConfig.enableIris) {
+            IrisGLSMBridge.register();
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
 
             Iris.INSTANCE.fmlInitEvent();
@@ -142,9 +151,6 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        glsmKeyBinding = new KeyBinding("Print GLSM Debug", Keyboard.KEY_NONE, "Angelica");
-        ClientRegistry.registerKeyBinding(glsmKeyBinding);
-
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
         }
@@ -156,21 +162,11 @@ public class ClientProxy extends CommonProxy {
         }
 
         // Register debug commands in dev environment only
-        if (!AngelicaTweaker.isObfEnv()) {
+        if (!AngelicaClientTweaker.isObfEnv()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
         }
     }
 
-    private boolean wasGLSMKeyPressed;
-
-    @SubscribeEvent
-    public void onKeypress(TickEvent.ClientTickEvent event) {
-        final boolean isPressed = glsmKeyBinding.getKeyCode() != 0 && GameSettings.isKeyDown(glsmKeyBinding);
-        if (isPressed && !wasGLSMKeyPressed) {
-            OpenGLDebugging.checkGLSM();
-        }
-        wasGLSMKeyPressed = isPressed;
-    }
 
     @Override
     public void postInit(FMLPostInitializationEvent event) {
@@ -178,7 +174,7 @@ public class ClientProxy extends CommonProxy {
 
         if (ModStatus.isLotrLoaded && AngelicaConfig.enableCeleritas && CompatConfig.fixLotr) {
             try {
-                Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
+                final Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockTable");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "cachedNaturalBlocks");
@@ -193,9 +189,9 @@ public class ClientProxy extends CommonProxy {
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {
         if (FMLCommonHandler.instance().getSide().isClient() && event.phase == TickEvent.Phase.END) {
-            IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
+            final IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
             if (srv != null) {
-                long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
+                final long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
                 lastIntegratedTickTime = lastIntegratedTickTime * 0.8F + (float) currentTickTime / 1000000.0F * 0.2F;
             } else lastIntegratedTickTime = 0;
         }
@@ -203,7 +199,7 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Pre event) {
-        if (event.isCanceled() || !mc.gameSettings.showDebugInfo) return;
+        if (!mc.gameSettings.showDebugInfo) return;
         if (AngelicaConfig.modernizeF3Screen && event.type == RenderGameOverlayEvent.ElementType.CROSSHAIRS) {
             F3Direction.renderWorldDirectionsEvent(mc, event);
             event.setCanceled(true);
@@ -212,30 +208,30 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onRenderOverlay(RenderGameOverlayEvent.Text event) {
-        Minecraft mc = Minecraft.getMinecraft();
+        final Minecraft mc = Minecraft.getMinecraft();
         if (event.isCanceled() || !mc.gameSettings.showDebugInfo || event.left.isEmpty()) return;
 
-        NetHandlerPlayClient cl = mc.getNetHandler();
+        final NetHandlerPlayClient cl = mc.getNetHandler();
         if (cl != null) {
-            IntegratedServer srv = mc.getIntegratedServer();
+            final IntegratedServer srv = mc.getIntegratedServer();
 
             if (srv != null) {
-                String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
+                final String s = String.format("Integrated server @ %.0f ms ticks", lastIntegratedTickTime);
                 event.left.add(Math.min(event.left.size(), 1), s);
             }
         }
 
         if (AngelicaConfig.showBlockDebugInfo && mc.objectMouseOver != null && mc.objectMouseOver.typeOfHit == MovingObjectPosition.MovingObjectType.BLOCK) {
             if (!event.right.isEmpty() && !Objects.firstNonNull(event.right.get(event.right.size() - 1), "").isEmpty()) event.right.add("");
-            Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
-            int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
+            final Block block = mc.theWorld.getBlock(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
+            final int meta = mc.theWorld.getBlockMetadata(mc.objectMouseOver.blockX, mc.objectMouseOver.blockY, mc.objectMouseOver.blockZ);
             event.right.add(Block.blockRegistry.getNameForObject(block));
             event.right.add("meta: " + meta);
         }
 
         if (DynamicLights.isEnabled()) {
-            var builder = new StringBuilder("Dynamic Light Sources: ");
-            DynamicLights dl = DynamicLights.get();
+            final var builder = new StringBuilder("Dynamic Light Sources: ");
+            final DynamicLights dl = DynamicLights.get();
             builder.append(dl.getLightSourcesCount()).append(" (U: ").append(dl.getLastUpdateCount()).append(')');
 
             event.right.add(builder.toString());
@@ -246,11 +242,11 @@ public class ClientProxy extends CommonProxy {
             for (int i = 0; i < event.left.size() - 3; i++) {
                 /* These checks should not be inefficient as most of the time the first one will already fail */
                 if (!hasReplacedXYZ && Objects.firstNonNull(event.left.get(i), "").startsWith("x:") && Objects.firstNonNull(event.left.get(i + 1), "")
-                    .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
-                    .startsWith("f:")) {
+                        .startsWith("y:") && Objects.firstNonNull(event.left.get(i + 2), "").startsWith("z:") && Objects.firstNonNull(event.left.get(i + 3), "")
+                        .startsWith("f:")) {
                     hasReplacedXYZ = true;
-                    int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
-                    String heading_str = switch (heading) {
+                    final int heading = MathHelper.floor_double((double) (mc.thePlayer.rotationYaw * 4.0F / 360.0F) + 0.5D) & 3;
+                    final String heading_str = switch (heading) {
                         case 0 -> "Towards positive Z";
                         case 1 -> "Towards negative X";
                         case 2 -> "Towards negative Z";
@@ -258,19 +254,20 @@ public class ClientProxy extends CommonProxy {
                         default -> throw new RuntimeException();
                     };
                     event.left.set(i, String.format("XYZ: %.3f / %.5f / %.3f", mc.thePlayer.posX, mc.thePlayer.boundingBox.minY, mc.thePlayer.posZ));
-                    int bX = MathHelper.floor_double(mc.thePlayer.posX);
-                    int bY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
-                    int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
+                    final int bX = MathHelper.floor_double(mc.thePlayer.posX);
+                    final int bY = MathHelper.floor_double(mc.thePlayer.boundingBox.minY);
+                    final int bZ = MathHelper.floor_double(mc.thePlayer.posZ);
                     event.left.set(i + 1, String.format("Block: %d %d %d [%d %d %d]", bX, bY, bZ, bX & 15, bY & 15, bZ & 15));
                     event.left.set(i + 2, String.format("Chunk: %d %d %d", bX >> 4, bY >> 4, bZ >> 4));
-                    event.left.set(i + 3, String.format(
-                        "Facing: %s (%s) (%.1f / %.1f)",
-                        Direction.directions[heading].toLowerCase(Locale.ROOT),
-                        heading_str,
-                        MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
-                        MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
+                    event.left.set(
+                            i + 3, String.format(
+                                    "Facing: %s (%s) (%.1f / %.1f)",
+                                    Direction.directions[heading].toLowerCase(Locale.ROOT),
+                                    heading_str,
+                                    MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationYaw),
+                                    MathHelper.wrapAngleTo180_float(mc.thePlayer.rotationPitch)));
 
-                    Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
+                    final Chunk chunk = this.mc.theWorld.getChunkFromBlockCoords(bX, bZ);
                     event.left.set(i + 4, String.format(
                         "lc: %d b: %s bl: %d sl: %d rl: %d",
                         chunk.getTopFilledSegment() + 15,
@@ -280,34 +277,8 @@ public class ClientProxy extends CommonProxy {
                         chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
                 }
             }
-            event.setCanceled(true);
-            // TODO don't cancel the event and render here,
-            //  instead mixin into the vanilla code and add a background to it
-            /* render ourselves for modern background */
-            FontRenderer fontrenderer = mc.fontRenderer;
-            int fontColor = 0xe0e0e0;
-            int rectColor = 0x90505050;
-            for (int x = 0; x < event.left.size(); x++) {
-                String msg = event.left.get(x);
-                if (msg == null) continue;
-                int strX = 2;
-                int strY = 2 + x * fontrenderer.FONT_HEIGHT;
-                Gui.drawRect(1, strY - 1, strX + fontrenderer.getStringWidth(msg) + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
-                fontrenderer.drawString(msg, strX, strY, fontColor);
-            }
-            int width = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaledWidth();
-            for (int x = 0; x < event.right.size(); x++) {
-                String msg = event.right.get(x);
-                if (msg == null) continue;
-                int w = fontrenderer.getStringWidth(msg);
-                int strX = width - w - 2;
-                int strY = 2 + x * fontrenderer.FONT_HEIGHT;
-                Gui.drawRect(strX - 1, strY - 1, strX + w + 1, strY + fontrenderer.FONT_HEIGHT - 1, rectColor);
-                fontrenderer.drawString(msg, strX, strY, fontColor);
-            }
-
             // Draw a frametime graph
-            if (((IGameSettingsExt)mc.gameSettings).angelica$showFpsGraph()) {
+            if (((IGameSettingsExt) mc.gameSettings).angelica$showFpsGraph()) {
                 frametimeGraph.render();
                 if (Minecraft.getMinecraft().isSingleplayer()) {
                     tpsGraph.render();
@@ -321,7 +292,7 @@ public class ClientProxy extends CommonProxy {
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
         if (!event.isCanceled()) {
-            if (event.gui instanceof GuiMainMenu && gameStartTime == -1 ) {
+            if (event.gui instanceof GuiMainMenu && gameStartTime == -1) {
                 gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
                 LOGGER.info("The game loaded in {} seconds.", gameStartTime);
             }
@@ -333,11 +304,17 @@ public class ClientProxy extends CommonProxy {
 
     @SubscribeEvent
     public void onGuiInit(GuiScreenEvent.InitGuiEvent.Pre event) {
-        if(event.gui instanceof GuiVideoSettings eventGui) {
+        if (event.gui instanceof GuiVideoSettings eventGui) {
             event.setCanceled(true);
-            if(AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(eventGui.parentGuiScreen, NotFineGameOptionPages.general(), NotFineGameOptionPages.detail(), NotFineGameOptionPages.atmosphere(), NotFineGameOptionPages.particles(), NotFineGameOptionPages.other()));
-            } else if(!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
+            if (AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
+                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(
+                        eventGui.parentGuiScreen,
+                        NotFineGameOptionPages.general(),
+                        NotFineGameOptionPages.detail(),
+                        NotFineGameOptionPages.atmosphere(),
+                        NotFineGameOptionPages.particles(),
+                        NotFineGameOptionPages.other()));
+            } else if (!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
                 Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
             } else {
                 Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));

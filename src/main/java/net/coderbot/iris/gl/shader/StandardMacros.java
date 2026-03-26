@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.Loader;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -12,6 +13,7 @@ import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
 import net.coderbot.iris.uniforms.VanillaBiomeList;
 import net.minecraft.world.biome.BiomeGenBase;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -76,10 +78,32 @@ public class StandardMacros {
 		define(standardDefines, "MC_SPECULAR_MAP");
 		define(standardDefines, "MC_RENDER_QUALITY", "1.0");
 		define(standardDefines, "MC_SHADOW_QUALITY", "1.0");
-        define(standardDefines, "IS_ANGELICA");
-        if (AngelicaConfig.defineIsIris) {
-            define(standardDefines, "IS_IRIS");
-        }
+		define(standardDefines, "IS_ANGELICA");
+		if (AngelicaConfig.defineIsIris) {
+			define(standardDefines, "IS_IRIS");
+		}
+
+		if (DHCompat.hasRenderingEnabled()) {
+			define(standardDefines, "DISTANT_HORIZONS");
+		}
+
+		define(standardDefines, "DH_BLOCK_UNKNOWN", String.valueOf(0));
+		define(standardDefines, "DH_BLOCK_LEAVES", String.valueOf(1));
+		define(standardDefines, "DH_BLOCK_STONE", String.valueOf(2));
+		define(standardDefines, "DH_BLOCK_WOOD", String.valueOf(3));
+		define(standardDefines, "DH_BLOCK_METAL", String.valueOf(4));
+		define(standardDefines, "DH_BLOCK_DIRT", String.valueOf(5));
+		define(standardDefines, "DH_BLOCK_LAVA", String.valueOf(6));
+		define(standardDefines, "DH_BLOCK_DEEPSLATE", String.valueOf(7));
+		define(standardDefines, "DH_BLOCK_SNOW", String.valueOf(8));
+		define(standardDefines, "DH_BLOCK_SAND", String.valueOf(9));
+		define(standardDefines, "DH_BLOCK_TERRACOTTA", String.valueOf(10));
+		define(standardDefines, "DH_BLOCK_NETHER_STONE", String.valueOf(11));
+		define(standardDefines, "DH_BLOCK_WATER", String.valueOf(12));
+		define(standardDefines, "DH_BLOCK_GRASS", String.valueOf(13));
+		define(standardDefines, "DH_BLOCK_AIR", String.valueOf(14));
+		define(standardDefines, "DH_BLOCK_ILLUMINATED", String.valueOf(15));
+
         define(standardDefines, "ANGELICA_VERSION", makeAngelicaVersion());
 		define(standardDefines, "MC_HAND_DEPTH", Float.toString(HandRenderer.DEPTH));
 
@@ -146,7 +170,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L705-L707">Optifine Doc for GLSL Version</a>
 	 */
 	public static String getGlVersion(int name) {
-		final String info = GL11.glGetString(name);
+		final String info = GLStateManager.glGetString(name);
 
 		Matcher matcher = SEMVER_PATTERN.matcher(Objects.requireNonNull(info));
 
@@ -208,7 +232,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L716-L723">Optifine Doc</a>
 	 */
 	public static String getVendor() {
-		String vendor = Objects.requireNonNull(GL11.glGetString(GL11.GL_VENDOR)).toLowerCase(Locale.ROOT);
+		String vendor = Objects.requireNonNull(GLStateManager.glGetString(GL11.GL_VENDOR)).toLowerCase(Locale.ROOT);
 		if (vendor.startsWith("ati")) {
 			return "MC_GL_VENDOR_ATI";
 		} else if (vendor.startsWith("intel")) {
@@ -230,7 +254,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L725-L733">Optifine Doc</a>
 	 */
 	public static String getRenderer() {
-		String renderer = Objects.requireNonNull(GL11.glGetString(GL11.GL_RENDERER)).toLowerCase(Locale.ROOT);
+		String renderer = Objects.requireNonNull(GLStateManager.glGetString(GL11.GL_RENDERER)).toLowerCase(Locale.ROOT);
 		if (renderer.startsWith("amd")) {
 			return "MC_GL_RENDERER_RADEON";
 		} else if (renderer.startsWith("ati")) {
@@ -263,10 +287,10 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L735-L738">Optifine Doc</a>
 	 */
 	public static Set<String> getGlExtensions() {
-		int numExtensions = GL11.glGetInteger(GL30.GL_NUM_EXTENSIONS);
+		int numExtensions = GLStateManager.glGetInteger(GL30.GL_NUM_EXTENSIONS);
 		String[] extensions = new String[numExtensions];
 		for (int i = 0; i < numExtensions; i++) {
-			extensions[i] = GL30.glGetStringi(GL11.GL_EXTENSIONS, i);
+			extensions[i] = GLStateManager.glGetStringi(GL11.GL_EXTENSIONS, i);
 		}
 
 		// TODO note that we do not add extensions based on if the shader uses them and if they are supported

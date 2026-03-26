@@ -3,15 +3,16 @@ package net.coderbot.iris.gl.uniform;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
+import org.joml.Vector3fc;
 import org.joml.Vector4f;
 
 import java.util.function.Supplier;
 
 public class Vector3Uniform extends Uniform {
 	private final Vector3f cachedValue;
-	private final Supplier<Vector3f> value;
+	private final Supplier<Vector3fc> value;
 
-	Vector3Uniform(int location, Supplier<Vector3f> value) {
+	Vector3Uniform(int location, Supplier<Vector3fc> value) {
 		super(location);
 
 		this.cachedValue = new Vector3f();
@@ -44,7 +45,7 @@ public class Vector3Uniform extends Uniform {
 
 	@Override
 	public void update() {
-		Vector3f newValue = value.get();
+		Vector3fc newValue = value.get();
 
 		if (!newValue.equals(cachedValue)) {
 			cachedValue.set(newValue.x(), newValue.y(), newValue.z());

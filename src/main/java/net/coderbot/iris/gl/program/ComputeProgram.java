@@ -3,12 +3,13 @@ package net.coderbot.iris.gl.program;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.GlResource;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shaderpack.FilledIndirectPointer;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL20;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
 
@@ -34,6 +35,8 @@ public final class ComputeProgram extends GlResource {
 		this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
+
+		DepthColorStorage.registerOwnedProgram(program);
 	}
 
 	public void setWorkGroupInfo(Vector2f relativeWorkGroups, Vector3i absoluteWorkGroups, FilledIndirectPointer indirectPointer) {
@@ -62,7 +65,7 @@ public final class ComputeProgram extends GlResource {
 	}
 
     public void use() {
-        GL20.glUseProgram(getGlId());
+        GLStateManager.glUseProgram(getGlId());
 
         uniforms.update();
         samplers.update();
@@ -84,12 +87,13 @@ public final class ComputeProgram extends GlResource {
 
 	public static void unbind() {
 		ProgramUniforms.clearActiveUniforms();
-		GL20.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 
 	@Override
     public void destroyInternal() {
-		GL20.glDeleteProgram(getGlId());
+		DepthColorStorage.unregisterOwnedProgram(getGlId());
+		GLStateManager.glDeleteProgram(getGlId());
 	}
 
 	/**

@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
@@ -127,7 +127,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             }
         }
 
-        if (AngelicaMod.options().performance.useCompactVertexFormat) {
+        if (ClientProxy.options().performance.useCompactVertexFormat) {
             return ChunkMeshFormats.COMPACT;
         }
         return ChunkMeshFormats.VANILLA_LIKE;
@@ -155,7 +155,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         renderSectionManager.setCameraPosition(transform.x, transform.y, transform.z);
 
-        this.useEntityCulling = AngelicaMod.options().performance.useEntityCulling;
+        this.useEntityCulling = ClientProxy.options().performance.useEntityCulling;
 
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 
@@ -216,13 +216,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     @Override
     public void drawChunkLayer(BlockRenderLayer renderLayer, double x, double y, double z) {
         if (DEBUG_WIREFRAME_MODE) {
-            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
         }
 
         super.drawChunkLayer(renderLayer, x, y, z);
 
         if (DEBUG_WIREFRAME_MODE) {
-            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
         }
 
         GLStateManager.glColor4f(1, 1, 1, 1);
@@ -313,7 +313,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     public int renderBlockEntities(float partialTicks) {
         final int pass = MinecraftForgeClient.getRenderPass();
         teRenderContext.set(partialTicks, pass);
-        if (pass == 0 || !AngelicaMod.options().performance.translucencySorting) {
+        if (pass == 0 || !ClientProxy.options().performance.translucencySorting) {
             return super.renderBlockEntities(teRenderContext);
         }
         int count = 0;

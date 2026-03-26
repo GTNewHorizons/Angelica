@@ -26,7 +26,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.uniform.GlUniformFloat2v;
+import com.gtnewhorizons.angelica.client.rendering.GlUniformFloat2v;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
@@ -464,11 +464,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         }
 
         if (WIREFRAME) {
-            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
             GLStateManager.glLineWidth(2.0F);
             GLStateManager.glDepthMask(false);
             vao.draw();
-            GL11.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
             GLStateManager.glDepthMask(true);
         }
 
@@ -488,8 +488,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private void reloadTextures() {
         if (mc.renderEngine != null) {
             mc.renderEngine.bindTexture(texture);
-            texW = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-            texH = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+            texW = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+            texH = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
         }
     }
 

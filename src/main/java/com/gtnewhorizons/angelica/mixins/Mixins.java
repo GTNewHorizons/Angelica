@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import jss.notfine.config.MCPatcherForgeConfig;
@@ -29,16 +30,23 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.MixinActiveRenderInfo"
             , "angelica.MixinEntityRenderer"
+            , "angelica.MixinFMLClientHandler"
             , "angelica.MixinForgeHooksClient_CoreProfile"
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
+            , "angelica.MixinMinecraft_FrameHook"
             , "angelica.MixinMinecraftServer"
-            , "angelica.optimizations.MixinRendererLivingEntity"
-            , "angelica.MixinFMLClientHandler"
+            , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
+            , "angelica.bugfixes.MixinRenderBlocks_CrossedSquaresNormal"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
-            , "angelica.glsm.MixinSplashProgressCaching"
+            , "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
             , "angelica.debug.MixinMinecraft_FPSCap"
             , "angelica.ffp.MixinTessellator_CoreProfile"
+            , "angelica.glsm.MixinSplashProgressCaching"
+            , "angelica.gui.MixinGuiOptions"
+            , "angelica.optimizations.MixinRendererLivingEntity"
+            , "angelica.rendering.MixinRenderGlobal_SelectionBox"
+            , "angelica.gui.MixinGuiIngameForge_ModernF3"
         )
     ),
 
@@ -47,6 +55,13 @@ public enum Mixins implements IMixins {
             .setApplyIf(() -> AngelicaConfig.enableVBOClouds)
             .setPhase(Phase.EARLY)
             .addClientMixins("angelica.vbo.MixinRenderGlobal")
+    ),
+
+    ANGELICA_PANORAMA_BLUR(
+        new MixinBuilder("Replace main menu panorama with modern equivalent")
+            .setPhase(Phase.EARLY)
+            .setApplyIf(() -> AngelicaConfig.enablePanoramaBlurShader)
+            .addClientMixins("angelica.gui.MixinGuiMainMenu")
     ),
 
     ANGELICA_FONT_RENDERER(new MixinBuilder()
@@ -202,6 +217,22 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    CELERITAS_COLORED_LIGHT(new MixinBuilder("Colored light infrastructure for celeritas light pipeline")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> {
+            BlockLightProvider.freezeMixinConfig();
+            return AngelicaConfig.enableCeleritas && BlockLightProvider.coloredLightEnabled();
+        })
+        .addClientMixins(
+            "celeritas.light.MixinQuadLightData",
+            "celeritas.light.MixinLightDataAccess",
+            "celeritas.light.MixinLightDataCache",
+            "celeritas.light.MixinAoFaceData",
+            "celeritas.light.MixinSmoothLightPipeline",
+            "celeritas.light.MixinFlatLightPipeline"
+        )
+    ),
+
     IRIS_SHADERS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
@@ -221,12 +252,30 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderGlobal"
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
-            , "shaders.MixinRenderManager"
             , "shaders.MixinRenderNameTag"
             , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
+            , "shaders.MixinGlProgram"
+        )
+    ),
+
+    IRIS_SHADERS_RENDER_MANAGER(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addExcludedMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "shaders.MixinRenderManager"
+        )
+    ),
+
+    IRIS_SHADERS_RENDER_MANAGER_DAPI(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "shaders.MixinRenderManagerDAPI"
         )
     ),
 
@@ -409,6 +458,12 @@ public enum Mixins implements IMixins {
             "MixinBlockStairs",
             "MixinRenderBlocks"
         ))
+    ),
+    NOTFINE_BOP_FOG(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableNotFineFeatures)
+        .addRequiredMod(TargetedMod.BIOMES_O_PLENTY)
+        .addClientMixins("notfine.toggle.biomesoplenty.MixinFogHandler")
     ),
     NOTFINE_NO_DYNAMIC_SURROUNDINGS(new MixinBuilder()
         .setPhase(Phase.EARLY)
@@ -662,7 +717,7 @@ public enum Mixins implements IMixins {
     private final MixinBuilder builder;
 
     private static String[] addPrefix(String prefix, String... values) {
-        List<String> list = new ArrayList<>(values.length);
+        final List<String> list = new ArrayList<>(values.length);
         for (String s : values) {
             list.add(prefix + s);
         }

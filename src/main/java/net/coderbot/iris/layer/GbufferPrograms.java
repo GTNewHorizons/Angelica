@@ -2,10 +2,10 @@ package net.coderbot.iris.layer;
 
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import org.lwjgl.opengl.GL20;
 
 public class GbufferPrograms {
 	private static boolean entities;
@@ -67,10 +67,10 @@ public class GbufferPrograms {
 	}
 
 	public static void setBlockEntityDefaults() {
-		GL20.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
-		GL20.glVertexAttrib2f(ProgramCreator.MC_MID_TEX_COORD, 0.5f, 0.5f);
-		GL20.glVertexAttrib4f(ProgramCreator.AT_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
-		GL20.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
+		GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
+		GLStateManager.glVertexAttrib2f(ProgramCreator.MC_MID_TEX_COORD, 0.5f, 0.5f);
+		GLStateManager.glVertexAttrib4f(ProgramCreator.AT_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+		GLStateManager.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 
 	public static WorldRenderingPhase getCurrentPhase() {

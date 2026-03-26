@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
+import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import org.jetbrains.annotations.ApiStatus;
 import org.jetbrains.annotations.NotNull;
 
@@ -78,4 +79,13 @@ public interface IDynamicLightSource {
     boolean angelica$updateDynamicLight(@NotNull IDynamicLightWorldRenderer renderer);
 
     void angelica$scheduleTrackedChunksRebuild(@NotNull IDynamicLightWorldRenderer renderer);
+
+    /**
+     * Returns the RGB luminance of the light source. Each channel 0-15, packed as {@code (r << 8) | (g << 4) | b}.
+     * Default implementation returns white light at the scalar luminance level.
+     */
+    default int angelica$getLuminanceRGB() {
+        final int l = angelica$getLuminance();
+        return BlockLightProvider.packRGB(l, l, l);
+    }
 }

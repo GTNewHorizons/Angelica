@@ -1,8 +1,11 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.api.ExtQuadLightData;
+import com.gtnewhorizons.angelica.api.TintComputer;
+import com.gtnewhorizons.angelica.api.TintRegistry;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexEncoder;
@@ -17,8 +20,8 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.IBlockAccess;
+import org.embeddedt.embeddium.api.util.ColorABGR;
 import org.embeddedt.embeddium.impl.model.light.LightPipeline;
-import org.embeddedt.embeddium.impl.model.light.data.LightDataAccess;
 import org.embeddedt.embeddium.impl.model.light.data.QuadLightData;
 import org.embeddedt.embeddium.impl.model.light.flat.FlatLightPipeline;
 import org.embeddedt.embeddium.impl.model.light.smooth.SmoothLightPipeline;
@@ -33,7 +36,6 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexEncoder;
 import org.embeddedt.embeddium.impl.util.QuadUtil;
 
-import java.util.Arrays;
 import java.util.List;
 
 public class AngelicaChunkBuildContext extends ChunkBuildContext {
@@ -56,7 +58,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final VertexArrayQuadView quadView;
     private boolean lightPipelineReady = false;
     private int originX, originY, originZ;
-    private IBlockAccess blockAccess;
+    private float cachedSkylightSubtracted;
+    private final boolean hasColoredLight;
 
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
@@ -65,6 +68,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         this.smoothLightPipeline = new SmoothLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
         this.flatLightPipeline = new FlatLightPipeline(lightDataCache, VanillaDiffuseProvider.INSTANCE, false);
         this.quadView = new VertexArrayQuadView(vertices);
+        this.hasColoredLight = quadLightData instanceof ExtQuadLightData;
     }
 
     public void setupLightPipeline(int minBlockX, int minBlockY, int minBlockZ) {
@@ -72,7 +76,6 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     }
 
     public void setupLightPipeline(IBlockAccess blockAccess, int minBlockX, int minBlockY, int minBlockZ) {
-        this.blockAccess = blockAccess;
         this.originX = minBlockX;
         this.originY = minBlockY;
         this.originZ = minBlockZ;
@@ -81,6 +84,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         smoothLightPipeline.reset();
         flatLightPipeline.reset();
         lightPipelineReady = true;
+        cachedSkylightSubtracted = Minecraft.getMinecraft().theWorld.skylightSubtracted;
     }
 
     public void setupDynamicLights(int chunkOriginX, int chunkOriginY, int chunkOriginZ) {
@@ -95,7 +99,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride) {
         // Don't apply transparency-based optimization when shader pack explicitly overrides the material
-        if (!AngelicaMod.options().performance.useRenderPassOptimization || isShaderPackOverride) {
+        if (!ClientProxy.options().performance.useRenderPassOptimization || isShaderPackOverride) {
             return material;
         }
         if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
@@ -125,7 +129,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
         final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
         final boolean separateAo = BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
-        final boolean celeritasSmoothLighting = AngelicaMod.options().quality.useCeleritasSmoothLighting;
+        final boolean celeritasSmoothLighting = ClientProxy.options().quality.useCeleritasSmoothLighting;
         final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
         final boolean shouldApplyDiffuse = !BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
@@ -219,10 +223,13 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
             }
 
+            // Apply RGB block light tint from provider
+            applyBlockLightTint(worldX, worldY, worldZ, vertices);
+
             final int faceBit = 1 << facing.ordinal();
             final Material correctMaterial;
             if ((facesAtBaseMaterial & faceBit) != 0) {
-                // Face already has a non-demoted quad — skip selectMaterial entirely
+                // Face already has a non-demoted quad, skip selectMaterial entirely
                 correctMaterial = material;
             } else {
                 correctMaterial = selectMaterial(material, sprite, isShaderPackOverride);
@@ -237,6 +244,52 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             }
 
             builder.getVertexBuffer(facing).push(vertices, correctMaterial);
+        }
+    }
+
+    private final float[] tintResult = new float[3];
+
+    private void applyBlockLightTint(int x, int y, int z, ChunkVertexEncoder.Vertex[] vertices) {
+        if (!hasColoredLight) return;
+        final ExtQuadLightData ext = (ExtQuadLightData) quadLightData;
+        final boolean hasBlock = ext.angelica$isRGBValid();
+        final boolean hasSky = ext.angelica$isSkyRGBValid();
+        if (!hasBlock && !hasSky) return;
+        if (hasBlock) ext.angelica$setRGBValid(false);
+        if (hasSky) ext.angelica$setSkyRGBValid(false);
+
+        final float[] blockR = hasBlock ? ext.angelica$getR() : null;
+        final float[] blockG = hasBlock ? ext.angelica$getG() : null;
+        final float[] blockB = hasBlock ? ext.angelica$getB() : null;
+        final float[] skyR = hasSky ? ext.angelica$getSkyR() : null;
+        final float[] skyG = hasSky ? ext.angelica$getSkyG() : null;
+        final float[] skyB = hasSky ? ext.angelica$getSkyB() : null;
+
+        final float sub = cachedSkylightSubtracted;
+        final TintComputer tintComputer = TintRegistry.getCurrent();
+
+        for (int i = 0; i < 4; i++) {
+            final float br = hasBlock ? blockR[i] : 0;
+            final float bg = hasBlock ? blockG[i] : 0;
+            final float bb = hasBlock ? blockB[i] : 0;
+            final float sr = hasSky ? Math.max(0, skyR[i] - sub) : 0;
+            final float sg = hasSky ? Math.max(0, skyG[i] - sub) : 0;
+            final float sb = hasSky ? Math.max(0, skyB[i] - sub) : 0;
+
+            // Fast-path: full white sky with no block light, no tint needed
+            if (br == 0 && bg == 0 && bb == 0 && sr >= 15f && sg >= 15f && sb >= 15f) continue;
+
+            tintComputer.computeTint(br, bg, bb, sr, sg, sb, tintResult);
+            final float rTint = tintResult[0];
+            final float gTint = tintResult[1];
+            final float bTint = tintResult[2];
+            if (rTint >= 1.0f && gTint >= 1.0f && bTint >= 1.0f) continue;
+
+            final int color = vertices[i].color;
+            final int vr = Math.min(255, (int) (ColorABGR.unpackRed(color) * rTint));
+            final int vg = Math.min(255, (int) (ColorABGR.unpackGreen(color) * gTint));
+            final int vb = Math.min(255, (int) (ColorABGR.unpackBlue(color) * bTint));
+            vertices[i].color = ColorABGR.pack(vr, vg, vb, ColorABGR.unpackAlpha(color));
         }
     }
 }

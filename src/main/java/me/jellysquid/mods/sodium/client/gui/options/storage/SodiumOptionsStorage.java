@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui.options.storage;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 
 import java.io.IOException;
@@ -9,7 +10,7 @@ public class SodiumOptionsStorage implements OptionStorage<SodiumGameOptions> {
     private final SodiumGameOptions options;
 
     public SodiumOptionsStorage() {
-        this.options = AngelicaMod.options();
+        this.options = ClientProxy.options();
     }
 
     @Override

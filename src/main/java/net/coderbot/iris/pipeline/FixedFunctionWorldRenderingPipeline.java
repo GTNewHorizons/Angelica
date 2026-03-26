@@ -130,7 +130,7 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 		return new FrameUpdateNotifier();
 	}
 
-	private static final DHCompat DH_COMPAT = new DHCompat();
+	private static final DHCompat DH_COMPAT = new DHCompat(null, false);
 
 	@Override
 	public DHCompat getDHCompat() {

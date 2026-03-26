@@ -439,6 +439,12 @@ public class ShaderTransformer {
             case COMPUTE:
                 ComputeTransformer.transform(transformer, parameters, versionInt);
                 break;
+            case DH_TERRAIN:
+                DHTerrainTransformer.transform(transformer, parameters, versionInt);
+                break;
+            case DH_GENERIC:
+                DHGenericTransformer.transform(transformer, parameters, versionInt);
+                break;
             default:
                 throw new IllegalStateException("Unknown patch type: " + patchType.name());
         }

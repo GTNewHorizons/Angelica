@@ -3,6 +3,7 @@ package net.coderbot.iris.gl.uniform;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import org.joml.Vector2i;
 import org.joml.Vector3i;
+import org.joml.Vector3ic;
 import org.joml.Vector4f;
 import org.joml.Vector4i;
 
@@ -43,7 +44,7 @@ public interface DynamicLocationalUniformHolder extends LocationalUniformHolder,
 		return this;
 	}
 
-    default DynamicUniformHolder uniform3i(String name, Supplier<Vector3i> value, ValueUpdateNotifier notifier) {
+    default DynamicUniformHolder uniform3i(String name, Supplier<Vector3ic> value, ValueUpdateNotifier notifier) {
         location(name, UniformType.VEC3I).ifPresent(id -> addDynamicUniform(new Vector3IntegerJomlUniform(id, value, notifier), notifier));
 
         return this;

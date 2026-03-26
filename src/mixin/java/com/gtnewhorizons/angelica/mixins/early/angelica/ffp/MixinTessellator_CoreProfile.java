@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
+import com.gtnewhorizons.angelica.client.rendering.TessellatorStreamingDrawer;
 import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;

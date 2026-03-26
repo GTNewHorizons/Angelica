@@ -3,7 +3,7 @@ package net.coderbot.iris.uniforms.custom.cached;
 import kroppeb.stareval.function.FunctionReturn;
 import kroppeb.stareval.function.Type;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
-import org.lwjgl.opengl.GL20;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 import java.util.function.IntSupplier;
 
@@ -26,7 +26,7 @@ public class IntCachedUniform extends CachedUniform {
 
 	@Override
 	public void push(int location) {
-		GL20.glUniform1i(location, this.cached);
+		GLStateManager.glUniform1i(location, this.cached);
 	}
 
 	@Override

@@ -4,8 +4,9 @@ import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
-import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
+import com.gtnewhorizons.angelica.client.rendering.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -42,7 +43,7 @@ public class CeleritasDebugScreenHandler {
         }
 
         event.right.add("");
-        event.right.add(EnumChatFormatting.GREEN + "Angelica " + Tags.VERSION + " [Celeritas Renderer]");
+        event.right.add(EnumChatFormatting.GREEN + "Angelica " + Tags.VERSION + " [Celeritas Renderer] [" + RENDER_BACKEND.getName() + "]");
         event.right.addAll(renderer.getDebugStrings());
         final ShaderManager sm = ShaderManager.getInstance();
         if (sm != null) {

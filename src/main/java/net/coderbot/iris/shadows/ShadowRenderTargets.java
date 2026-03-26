@@ -206,6 +206,20 @@ public class ShadowRenderTargets {
 		return framebuffer;
 	}
 
+	public GlFramebuffer createDHFramebuffer(ImmutableSet<Integer> stageWritesToAlt, int[] drawBuffers) {
+		if (drawBuffers.length == 0) {
+			return createEmptyFramebuffer();
+		}
+
+		ImmutableSet<Integer> stageWritesToMain = invert(stageWritesToAlt, drawBuffers);
+
+		GlFramebuffer framebuffer = createColorFramebuffer(stageWritesToMain, drawBuffers);
+
+		framebuffer.addDepthAttachment(mainDepth.getTextureId());
+
+		return framebuffer;
+	}
+
 	public GlFramebuffer createShadowFramebuffer(ImmutableSet<Integer> stageWritesToAlt, int[] drawBuffers) {
 		if (drawBuffers.length == 0) {
 			return createEmptyFramebuffer();

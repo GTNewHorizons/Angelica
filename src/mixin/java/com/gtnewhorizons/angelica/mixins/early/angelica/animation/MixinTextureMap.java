@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
@@ -13,7 +13,6 @@ import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
-import org.spongepowered.asm.mixin.Unique;
 
 import java.util.List;
 
@@ -25,19 +24,16 @@ public abstract class MixinTextureMap extends AbstractTexture {
     @Final
     private List<TextureAtlasSprite> listAnimatedSprites;
 
-    @Unique
-    private static final Minecraft mc = Minecraft.getMinecraft();
-
     /**
      * @author laetansky, jss2a98aj
      * @reason Only update visible animations; use UV auto-marking via IPatchedTextureAtlasSprite
      */
     @Overwrite
     public void updateAnimations() {
-        final boolean renderAll = AngelicaMod.animationsMode.is(AnimationMode.ALL);
-        final boolean renderVisible = AngelicaMod.animationsMode.is(AnimationMode.VISIBLE_ONLY);
+        final boolean renderAll = ClientProxy.animationsMode.is(AnimationMode.ALL);
+        final boolean renderVisible = ClientProxy.animationsMode.is(AnimationMode.VISIBLE_ONLY);
 
-        mc.mcProfiler.startSection("updateAnimations");
+        Minecraft.getMinecraft().mcProfiler.startSection("updateAnimations");
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.getGlTextureId());
 
         final int size = listAnimatedSprites.size();
@@ -53,6 +49,6 @@ public abstract class MixinTextureMap extends AbstractTexture {
                 patched.updateAnimationsDryRun();
             }
         }
-        mc.mcProfiler.endSection();
+        Minecraft.getMinecraft().mcProfiler.endSection();
     }
 }

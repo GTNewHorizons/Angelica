@@ -45,7 +45,7 @@ public class RenderTarget {
 
         try (MemoryStack stack = stackPush()) {
             IntBuffer textures = stack.mallocInt(2);
-            GL11.glGenTextures(textures);
+            GLStateManager.glGenTextures(textures);
 
             this.mainTexture = textures.get(0);
             this.altTexture = textures.get(1);

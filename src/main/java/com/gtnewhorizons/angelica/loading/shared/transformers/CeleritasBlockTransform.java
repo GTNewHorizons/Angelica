@@ -44,7 +44,7 @@ public final class CeleritasBlockTransform {
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String BlockPackage = "net/minecraft/block/Block";
-    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
+    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/client/rendering/ThreadedBlockData";
     /** All classes in <tt>net.minecraft.block.*</tt> are the block subclasses save for these. */
     private static final String[] VanillaBlockExclusions = {
         "net/minecraft/block/IGrowable",
@@ -153,12 +153,6 @@ public final class CeleritasBlockTransform {
             "com.gtnewhorizons.angelica.transform",
             "me.eigenraven.lwjgl3ify"
         };
-    }
-
-    public void trackBlockSubclasses(String className, String classSuperName) {
-        if (!isVanillaBlockSubclass(className) && isBlockSubclass(classSuperName)) {
-            moddedBlockSubclasses.add(className);
-        }
     }
 
     private void trackBlockShadowingFields(ClassNode cn) {

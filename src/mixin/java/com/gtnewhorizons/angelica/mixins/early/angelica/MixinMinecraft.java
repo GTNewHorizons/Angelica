@@ -1,15 +1,15 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
+import com.gtnewhorizons.angelica.client.rendering.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -34,7 +34,10 @@ public abstract class MixinMinecraft {
     private static int max_texture_size;
 
     @Unique
-    private long angelica$lastFrameTime = 0;
+    private static long angelica$lastFrameTime = 0;
+
+    @Unique
+    private static long angelica$fpsLimitOverhead = 0;
 
     @Unique
     private final RenderAheadManager celeritas$renderAheadManager = new RenderAheadManager();
@@ -47,7 +50,7 @@ public abstract class MixinMinecraft {
     @Overwrite
     public static int getGLMaximumTextureSize() {
         if (max_texture_size == -1) {
-            max_texture_size = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
+            max_texture_size = GLStateManager.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
         }
         return max_texture_size;
     }
@@ -57,39 +60,46 @@ public abstract class MixinMinecraft {
         at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
-        GL11.glEnable(GL11.GL_LIGHTING);
+        GLStateManager.glEnable(GL11.GL_LIGHTING);
     }
 
     @Inject(
         method = "func_147120_f",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;update()V", shift = At.Shift.BEFORE, remap = false)
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;update()V", remap = false)
     )
     private void angelica$limitFPS(CallbackInfo ci) {
-        if (!AngelicaConfig.sleepBeforeSwap) return;
-        if (isFramerateLimitBelowMax()) {
-            final long target = angelica$lastFrameTime + (long) (1.0 / getLimitFramerate() * 1_000_000) * 1_000;
-            while (target - System.nanoTime() > 100) {
-                Thread.yield();
-            }
-        }
-    }
-
-    @Inject(
-        method = "func_147120_f",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;update()V", shift = At.Shift.AFTER, remap = false)
-    )
-    private void angelica$trackFrametimes(CallbackInfo ci) {
         if (AngelicaMod.proxy == null) return;
+
+        if (isFramerateLimitBelowMax() && !gameSettings.enableVsync) {
+            final long time = System.nanoTime();
+            final long lastWorkTime = time - angelica$lastFrameTime;
+            final long targetNanos = (long) (1.0 / getLimitFramerate() * 1_000_000_000L);
+
+            // Account for overhead, so the average FPS remains stable.
+            final long sleepNanos = targetNanos - lastWorkTime - angelica$fpsLimitOverhead;
+            if (sleepNanos > 0) {
+                try {
+                    Thread.sleep(sleepNanos / 1_000_000, (int) sleepNanos % 1_000_000);
+                } catch (InterruptedException e) {
+                    throw new RuntimeException(e);
+                }
+            }
+
+            // Record overhead, capping it to prevent outsized spikes from affecting framerates for too long.
+            // In testing, spikes were followed by 1-frame dips, which I think is acceptable.
+            long overhead = System.nanoTime() - time - sleepNanos;
+            if (overhead < 0 || overhead > targetNanos / 2) overhead = 0;
+            angelica$fpsLimitOverhead = overhead;
+        }
 
         final long time = System.nanoTime();
         AngelicaMod.proxy.putFrametime(time - angelica$lastFrameTime);
         angelica$lastFrameTime = time;
     }
 
-    @WrapOperation(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
-    private void angelica$noopFPSLimiter(int fps, Operation<Void> original) {
-        if (AngelicaConfig.sleepBeforeSwap) return;
-        original.call(fps);
+    @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
+    private boolean angelica$noopFPSLimiter(int fps) {
+        return false;
     }
 
     @Inject(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;isShiftKeyDown()Z", shift = At.Shift.AFTER))
@@ -99,7 +109,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("HEAD"))
     private void celeritas$renderAheadStartFrame(CallbackInfo ci) {
-        final int limit = AngelicaMod.options().performance.cpuRenderAheadLimit;
+        final int limit = ClientProxy.options().performance.cpuRenderAheadLimit;
         if (limit > 0) {
             celeritas$renderAheadManager.startFrame(limit);
         }
@@ -107,7 +117,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("RETURN"))
     private void celeritas$renderAheadEndFrame(CallbackInfo ci) {
-        if (AngelicaMod.options().performance.cpuRenderAheadLimit > 0) {
+        if (ClientProxy.options().performance.cpuRenderAheadLimit > 0) {
             celeritas$renderAheadManager.endFrame();
         }
     }
