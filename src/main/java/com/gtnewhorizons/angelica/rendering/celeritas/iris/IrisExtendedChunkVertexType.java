@@ -13,7 +13,7 @@ import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
  *   mc_midTexCoord  ushort[2]  - quad center UV (average of 4 vertices)
  *   at_tangent      byte[4]    - tangent vector, normalized
  *   iris_Normal     byte[3]+1  - face normal, normalized
- *   mc_Entity       short[2]   - (blockId, renderType)
+ *   mc_Entity       uint       - packed as ((blockId + 1) << 1) | (renderType & 1)
  *   at_midBlock     byte[4]    - (xyz offset from block center, lightValue)
  */
 public class IrisExtendedChunkVertexType implements ChunkVertexType {
@@ -25,7 +25,7 @@ public class IrisExtendedChunkVertexType implements ChunkVertexType {
         .addElement("mc_midTexCoord", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.UNSIGNED_SHORT, 2, false, false)
         .addElement("at_tangent", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.BYTE, 4, true, false)
         .addElement("iris_Normal", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.BYTE, 3, true, false)
-        .addElement("mc_Entity", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.SHORT, 2, false, false)
+        .addElement("mc_Entity", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.UNSIGNED_INT, 1, false, true)
         .addElement("at_midBlock", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.BYTE, 4, false, false)
         .build();
 
