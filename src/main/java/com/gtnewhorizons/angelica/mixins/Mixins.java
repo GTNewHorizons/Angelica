@@ -37,6 +37,8 @@ public enum Mixins implements IMixins {
             , "angelica.MixinMinecraft_FrameHook"
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
+            , "angelica.bugfixes.MixinModelWither_ArmorCentering"
+            , "angelica.bugfixes.MixinRenderWither_ArmorCentering"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             , "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
             , "angelica.debug.MixinMinecraft_FPSCap"
