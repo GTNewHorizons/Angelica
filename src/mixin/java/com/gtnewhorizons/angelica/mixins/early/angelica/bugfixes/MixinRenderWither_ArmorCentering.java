@@ -42,7 +42,7 @@ public class MixinRenderWither_ArmorCentering {
     @Redirect(
         method = "shouldRenderPass(Lnet/minecraft/entity/boss/EntityWither;IF)I",
         at = @At(value = "INVOKE",
-            target = "Lorg/lwjgl/opengl/GL11;glTranslatef(FFF)V", remap = false)
+            target = "Lorg/lwjgl/opengl/GL11;glTranslatef(FFF)V", ordinal = 1, remap = false)
     )
     private void angelica$skipTranslate(float x, float y, float z) {
     }
