@@ -273,21 +273,23 @@ public final class FragmentShaderGenerator {
         sb.append("  // Alpha test\n");
         final int func = FragmentKey.decodeAlphaFunc(key.alphaTestFunc());
 
+        sb.append("  float qa = round(color.a * 255.0);\n");
+        sb.append("  float qr = round(u_AlphaRef * 255.0);\n");
         switch (func) {
             case GL11.GL_NEVER ->
                 sb.append("  discard;\n");
             case GL11.GL_LESS ->
-                sb.append("  if (color.a >= u_AlphaRef) discard;\n");
+                sb.append("  if (qa >= qr) discard;\n");
             case GL11.GL_EQUAL ->
-                sb.append("  if (color.a != u_AlphaRef) discard;\n");
+                sb.append("  if (qa != qr) discard;\n");
             case GL11.GL_LEQUAL ->
-                sb.append("  if (color.a > u_AlphaRef) discard;\n");
+                sb.append("  if (qa > qr) discard;\n");
             case GL11.GL_GREATER ->
-                sb.append("  if (color.a <= u_AlphaRef) discard;\n");
+                sb.append("  if (qa <= qr) discard;\n");
             case GL11.GL_NOTEQUAL ->
-                sb.append("  if (color.a == u_AlphaRef) discard;\n");
+                sb.append("  if (qa == qr) discard;\n");
             case GL11.GL_GEQUAL ->
-                sb.append("  if (color.a < u_AlphaRef) discard;\n");
+                sb.append("  if (qa < qr) discard;\n");
             case GL11.GL_ALWAYS -> {}
         }
     }
