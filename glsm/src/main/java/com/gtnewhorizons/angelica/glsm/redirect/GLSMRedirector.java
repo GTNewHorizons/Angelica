@@ -14,6 +14,7 @@ import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +80,9 @@ public class GLSMRedirector {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST, "ScissorTest");
 
         final var gl11 = RedirectMap.newMap()
+            // glEnable/Disable - Special cased in GLSMRedirector, but included here for the external API
+            .add("glEnable")
+            .add("glDisable")
             .add("glAlphaFunc")
             .add("glBegin")
             .add("glBindTexture")
@@ -493,6 +497,22 @@ public class GLSMRedirector {
     /** Core exclusions that GLSM always requires. */
     public String[] getCoreExclusions() {
         return CORE_EXCLUSIONS.clone();
+    }
+
+    /** The internal-name prefix used to match GL version classes (e.g., {@code "org/lwjgl/opengl/GL"}). */
+    public static String getGLPrefix() { return GL_PREFIX; }
+
+    /** The internal name of the redirect target class. */
+    public static String getTargetClassName() { return GLStateManager; }
+
+    /** Method redirects for GL-prefix classes. Key: original method name, Value: GLStateManager method name. */
+    public static Map<String, String> getGLPrefixMethodRedirects() {
+        return Collections.unmodifiableMap(glMethodRedirects);
+    }
+
+    /** Method redirects for named (non-GL-prefix) classes. Key: internal class name, Value: per-method redirect map. */
+    public static Map<String, Map<String, String>> getNamedClassMethodRedirects() {
+        return Collections.unmodifiableMap(methodRedirects);
     }
 
     public boolean shouldTransform(byte[] basicClass) {
