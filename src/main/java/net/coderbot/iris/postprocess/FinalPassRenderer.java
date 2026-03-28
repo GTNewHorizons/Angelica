@@ -146,7 +146,7 @@ public class FinalPassRenderer {
 		GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
 
-	private static Map<PatchShaderType, String> getTransformed(ProgramSource source, CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture, String stageName) {
+	private Map<PatchShaderType, String> getTransformed(ProgramSource source, CompletableFuture<Map<PatchShaderType, String>> precomputedTransformFuture, String stageName) {
 		if (precomputedTransformFuture != null) {
 			try {
 				final Map<PatchShaderType, String> result = precomputedTransformFuture.join();
@@ -157,7 +157,14 @@ public class FinalPassRenderer {
 				throw new RuntimeException("Shader transformation failed for '" + source.getName() + "' in stage '" + stageName + "'", e.getCause() != null ? e.getCause() : e);
 			}
 		}
-		return TransformPatcher.patchComposite(source.getVertexSource().orElseThrow(NullPointerException::new), source.getGeometrySource().orElse(null), source.getTessControlSource().orElse(null), source.getTessEvalSource().orElse(null), source.getFragmentSource().orElseThrow(NullPointerException::new));
+		return TransformPatcher.patchComposite(
+			source.getVertexSource().orElseThrow(NullPointerException::new),
+			source.getGeometrySource().orElse(null),
+			source.getTessControlSource().orElse(null),
+			source.getTessEvalSource().orElse(null),
+			source.getFragmentSource().orElseThrow(NullPointerException::new),
+			TextureStage.COMPOSITE_AND_FINAL,
+			pipeline != null ? pipeline.getTextureMap() : null);
 	}
 
 	private static final class Pass {
