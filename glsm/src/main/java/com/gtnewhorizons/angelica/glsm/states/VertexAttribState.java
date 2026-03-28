@@ -92,6 +92,18 @@ public class VertexAttribState {
         return false;
     }
 
+    /**
+     * Returns true if any currently enabled vertex attribute was registered without a VBO
+     * (i.e. as a client-side pointer). In core profile, such attribs are treated as null
+     * offsets into a non-existent buffer, causing a native crash at draw time.
+     */
+    public static boolean hasAnyClientSideEnabledAttrib() {
+        for (int i = 0; i < MAX_ATTRIBS; i++) {
+            if (current[i].enabled && current[i].vboId == 0 && current[i].clientPointer != null) return true;
+        }
+        return false;
+    }
+
     public static class Attrib {
         public boolean enabled;
         public int size;
