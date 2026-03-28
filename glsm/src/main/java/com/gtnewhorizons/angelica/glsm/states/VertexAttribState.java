@@ -16,16 +16,19 @@ public class VertexAttribState {
     private static final Int2ObjectOpenHashMap<Attrib[]> vaoAttribs = new Int2ObjectOpenHashMap<>();
     private static Attrib[] current;
     private static final ArrayDeque<Attrib[]> pool = new ArrayDeque<>();
+    private static int clientSideEnabledCount;
 
     public static void init(int defaultVAO) {
         vaoAttribs.clear();
         pool.clear();
         current = allocAttribArray();
         vaoAttribs.put(defaultVAO, current);
+        clientSideEnabledCount = 0;
     }
 
     public static void onBindVertexArray(int newVAO) {
         current = vaoAttribs.computeIfAbsent(newVAO, k -> allocAttribArray());
+        recomputeClientSideCount();
     }
 
     public static void onDeleteVertexArray(int vaoId) {
@@ -39,6 +42,7 @@ public class VertexAttribState {
         vaoAttribs.clear();
         pool.clear();
         current = null;
+        clientSideEnabledCount = 0;
     }
 
     private static Attrib[] allocAttribArray() {
@@ -55,6 +59,7 @@ public class VertexAttribState {
     public static void set(int index, int size, int type, boolean normalized, int stride, long offset, int vboId) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = current[index];
+        final boolean was = a.isClientSide();
         a.size = size;
         a.type = type;
         a.normalized = normalized;
@@ -62,11 +67,13 @@ public class VertexAttribState {
         a.offset = offset;
         a.vboId = vboId;
         a.clientPointer = null;
+        if (was) clientSideEnabledCount--;
     }
 
     public static void set(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer, int vboId) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = current[index];
+        final boolean was = a.isClientSide();
         a.size = size;
         a.type = type;
         a.normalized = normalized;
@@ -74,15 +81,31 @@ public class VertexAttribState {
         a.offset = 0;
         a.vboId = vboId;
         a.clientPointer = (vboId == 0) ? pointer : null;
+        final boolean now = a.isClientSide();
+        if (was != now) clientSideEnabledCount += now ? 1 : -1;
     }
 
     public static void setEnabled(int index, boolean enabled) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
-        current[index].enabled = enabled;
+        final Attrib a = current[index];
+        if (a.clientPointer != null && a.enabled != enabled) {
+            clientSideEnabledCount += enabled ? 1 : -1;
+        }
+        a.enabled = enabled;
     }
 
     public static Attrib get(int index) {
         return current[index];
+    }
+
+
+
+    private static void recomputeClientSideCount() {
+        int count = 0;
+        for (int i = 0; i < MAX_ATTRIBS; i++) {
+            if (current[i].isClientSide()) count++;
+        }
+        clientSideEnabledCount = count;
     }
 
     public static boolean hasVBOBoundAttrib() {
@@ -98,12 +121,8 @@ public class VertexAttribState {
      * offsets into a non-existent buffer, causing a native crash at draw time.
      */
     public static boolean hasAnyClientSideEnabledAttrib() {
-        for (int i = 0; i < MAX_ATTRIBS; i++) {
-            if (current[i].enabled && current[i].vboId == 0 && current[i].clientPointer != null) return true;
-        }
-        return false;
+        return clientSideEnabledCount > 0;
     }
-
     public static class Attrib {
         public boolean enabled;
         public int size;
@@ -113,6 +132,10 @@ public class VertexAttribState {
         public long offset;
         public int vboId;
         public ByteBuffer clientPointer;
+
+        public boolean isClientSide() {
+            return enabled && clientPointer != null;
+        }
 
         public void reset() {
             enabled = false;
