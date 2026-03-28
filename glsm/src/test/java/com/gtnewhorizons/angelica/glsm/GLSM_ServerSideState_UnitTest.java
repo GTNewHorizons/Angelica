@@ -392,7 +392,6 @@ public class GLSM_ServerSideState_UnitTest {
     /**
      * Test glTexImage2D: SharedDrawable uploads texture data, verify dimensions cached correctly.
      */
-	@org.junit.jupiter.api.Disabled("Fix for glGetTexImage compatibility")
     @Test
     void testTexImage2DFromSharedDrawable() throws InterruptedException {
         int texId = GL11.glGenTextures();
