@@ -41,6 +41,7 @@ import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.postprocess.BufferFlipper;
@@ -774,10 +775,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
 			return;
 		}
-
+		
 		final RenderCondition condition = getCondition(getPhase());
 		final Pass matched = table.match(condition, inputs);
-
+		
 		beginPass(matched);
 	}
 
@@ -1656,12 +1657,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void setOverridePhase(WorldRenderingPhase phase) {
 		this.overridePhase = phase;
 		matchPass();
+		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override
 	public void setPhase(WorldRenderingPhase phase) {
 		this.phase = phase;
 		matchPass();
+		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override

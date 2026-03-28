@@ -6,4 +6,5 @@ package net.coderbot.iris.gl.state;
 public class StateUpdateNotifiers {
 	public static ValueUpdateNotifier normalTextureChangeNotifier;
 	public static ValueUpdateNotifier specularTextureChangeNotifier;
+	public static ValueUpdateNotifier phaseChangeNotifier;
 }
