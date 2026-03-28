@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.ModifyArg;
 public class MixinModelCreeper_AuraBodyInflate {
 
     /**
-     * Slightly reduce the body inflate so the aura body doesn't intersect the base model's head.
+     * Reduce the body inflate by 2^20 ULPs so the aura body doesn't intersect the base model's head.
      * Only applies when inflate > 0 (the aura model), leaving the base model untouched.
      * The body addBox is the 3rd call (ordinal 2) in the constructor, and inflate is parameter index 6.
      */
@@ -19,7 +19,7 @@ public class MixinModelCreeper_AuraBodyInflate {
     )
     private float angelica$shrinkAuraBody(float inflate) {
         if (inflate > 0.0F) {
-            return Float.intBitsToFloat(Float.floatToIntBits(inflate) - 16384);
+            return Float.intBitsToFloat(Float.floatToIntBits(inflate) - 1048576);
         }
         return inflate;
     }

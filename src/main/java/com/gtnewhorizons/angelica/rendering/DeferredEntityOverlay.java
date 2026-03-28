@@ -6,7 +6,7 @@ import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
-import net.minecraft.entity.monster.EntityCreeper;
+import net.minecraft.entity.EntityLivingBase;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -15,43 +15,45 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Defers charged creeper aura rendering to after all entities have been drawn.
- * This fixes z-fighting in multiple places. Mainly the aura with itself (4 legs and body),
- * and aura intersecting the head.
+ * Defers entity overlay rendering (auras, armor effects, etc) to after all entities have been drawn.
+ * This lets us fix z-fighting between overlay's own coplanar faces by disabling the depth mask,
+ * and ensures the overlay composites correctly on top of all opaque geometry.
+ *
+ * Used by both the charged creeper aura and the Wither armor overlay.
  *
  * The deferred render replays shouldRenderPass on the original renderer instance so that any
  * mod mixins targeting that method still fire during the deferred pass.
  */
-public class DeferredCreeperAura {
+public class DeferredEntityOverlay {
 
     @FunctionalInterface
     public interface ShouldRenderPassFn {
-        int invoke(EntityCreeper entity, int pass, float partialTick);
+        int invoke(EntityLivingBase entity, int pass, float partialTick);
     }
 
     private static final List<DeferredEntry> deferred = new ArrayList<>();
     private static final FloatBuffer MATRIX_BUF = BufferUtils.createFloatBuffer(16);
 
-    /** Set by the shouldRenderPass inject, consumed by the doRender WrapOperation. */
+    // Set by the shouldRenderPass inject, consumed by the doRender WrapOperation.
     @Getter
-    private static boolean auraPassActive = false;
+    private static boolean overlayPassActive = false;
 
-    /** Set during deferred flush to prevent re-deferring when shouldRenderPass is replayed. */
+    // Set during deferred flush to prevent re-deferring when shouldRenderPass is replayed.
     @Getter
     private static boolean replaying = false;
 
-    /** Pending context from the shouldRenderPass inject, consumed by deferRender. */
+    // Pending context from the shouldRenderPass inject, consumed by deferRender.
     private static ShouldRenderPassFn pendingShouldRenderPass;
     private static RendererLivingEntity pendingRenderer;
-    private static EntityCreeper pendingCreeper;
+    private static EntityLivingBase pendingEntity;
     private static float pendingPartialTick;
 
-    public static void markAuraPass(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
-                                    EntityCreeper creeper, float partialTick) {
-        auraPassActive = true;
+    public static void markOverlayPass(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
+                                    EntityLivingBase entity, float partialTick) {
+        overlayPassActive = true;
         pendingShouldRenderPass = shouldRenderPass;
         pendingRenderer = renderer;
-        pendingCreeper = creeper;
+        pendingEntity = entity;
         pendingPartialTick = partialTick;
     }
 
@@ -61,7 +63,7 @@ public class DeferredCreeperAura {
      */
     public static void deferRender(float limbSwing, float limbSwingAmount, float ageInTicks,
                                    float headYaw, float headPitch, float scale) {
-        auraPassActive = false;
+        overlayPassActive = false;
 
         float[] matrix = new float[16];
         MATRIX_BUF.clear();
@@ -69,25 +71,25 @@ public class DeferredCreeperAura {
         MATRIX_BUF.get(matrix);
 
         deferred.add(new DeferredEntry(
-            pendingShouldRenderPass, pendingRenderer, pendingCreeper, pendingPartialTick, matrix,
+            pendingShouldRenderPass, pendingRenderer, pendingEntity, pendingPartialTick, matrix,
             limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale
         ));
     }
 
     public static void clear() {
         deferred.clear();
-        auraPassActive = false;
+        overlayPassActive = false;
     }
 
     public static void renderAll() {
         if (deferred.isEmpty()) return;
 
         for (DeferredEntry entry : deferred) {
-            int entityId = EntityIdHelper.getEntityId(entry.creeper);
+            int entityId = EntityIdHelper.getEntityId(entry.entity);
             CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
             GbufferPrograms.beginEntities();
             try {
-                renderAura(entry);
+                renderOverlay(entry);
             } finally {
                 CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
                 GbufferPrograms.endEntities();
@@ -96,8 +98,8 @@ public class DeferredCreeperAura {
         deferred.clear();
     }
 
-    private static void renderAura(DeferredEntry entry) {
-        EntityCreeper creeper = entry.creeper;
+    private static void renderOverlay(DeferredEntry entry) {
+        EntityLivingBase entity = entry.entity;
 
         // Restore the saved modelview matrix
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
@@ -109,33 +111,32 @@ public class DeferredCreeperAura {
 
         // Replay shouldRenderPass pass 1
         replaying = true;
-        int result = entry.shouldRenderPass.invoke(creeper, 1, entry.partialTick);
+        int result = entry.shouldRenderPass.invoke(entity, 1, entry.partialTick);
 
         if (result > 0) {
-            // Disable depth writes so coplanar aura faces don't z-fight each other
+            // Disable depth writes so coplanar faces don't z-fight each other
             GLStateManager.glDepthMask(false);
 
             // Render using the model set by shouldRenderPass
-            entry.renderer.renderPassModel.setLivingAnimations(creeper,
+            entry.renderer.renderPassModel.setLivingAnimations(entity,
                 entry.limbSwing, entry.limbSwingAmount, entry.partialTick);
 
-            entry.renderer.renderPassModel.render(creeper,
+            entry.renderer.renderPassModel.render(entity,
                 entry.limbSwing, entry.limbSwingAmount, entry.ageInTicks,
                 entry.headYaw, entry.headPitch, entry.scale);
         }
 
         // Replay shouldRenderPass pass 2
-        entry.shouldRenderPass.invoke(creeper, 2, entry.partialTick);
+        entry.shouldRenderPass.invoke(entity, 2, entry.partialTick);
         replaying = false;
 
         // Restore depth writes
         GLStateManager.glDepthMask(true);
-
         GLStateManager.glPopMatrix();
     }
 
     private record DeferredEntry(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
-                                 EntityCreeper creeper, float partialTick, float[] matrix, float limbSwing,
+                                 EntityLivingBase entity, float partialTick, float[] matrix, float limbSwing,
                                  float limbSwingAmount, float ageInTicks, float headYaw, float headPitch, float scale) {
     }
 }
