@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.rendering;
 
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import net.minecraft.block.Block;
 import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -13,6 +15,16 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinTessellator implements StateAwareTessellator {
     @Unique
     private final IntArrayList vertexStates = new IntArrayList();
+
+    @Unique
+    private final ObjectArrayList<Block> shaderOverridesBlock = new ObjectArrayList<>();
+
+    @Unique
+    private final IntArrayList shaderOverridesMeta = new IntArrayList();
+
+    @Unique Block currentShaderOverrideBlock;
+
+    @Unique int currentShaderOverrideMeta;
 
     @Unique
     private boolean appliedAo;
@@ -33,11 +45,15 @@ public class MixinTessellator implements StateAwareTessellator {
             state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;
         }
         this.vertexStates.add(state);
+        this.shaderOverridesMeta.add(currentShaderOverrideMeta);
+        this.shaderOverridesBlock.add(currentShaderOverrideBlock);
     }
 
     @Inject(method = "reset", at = @At("RETURN"))
     private void resetVertexStates(CallbackInfo ci) {
         this.vertexStates.clear();
+        this.shaderOverridesBlock.clear();
+        this.shaderOverridesMeta.clear();
     }
 
     @Override
@@ -48,5 +64,21 @@ public class MixinTessellator implements StateAwareTessellator {
     @Override
     public int[] angelica$getVertexStates() {
         return this.vertexStates.elements();
+    }
+
+    @Override
+    public Object[] angelica$getShaderOverridesBlock() {
+        return this.shaderOverridesBlock.elements();
+    }
+
+    @Override
+    public int[] angelica$getShaderOverridesMeta() {
+        return this.shaderOverridesMeta.elements();
+    }
+
+    @Override
+    public void angelica$setShaderOverride(Block block, int meta) {
+        currentShaderOverrideBlock = block;
+        currentShaderOverrideMeta = meta;
     }
 }

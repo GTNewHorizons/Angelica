@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import net.minecraft.block.Block;
+
 public interface StateAwareTessellator {
     /**
      * True if the vertex originated from a RenderBlocks method call with the enableAO flag set.
@@ -16,4 +18,10 @@ public interface StateAwareTessellator {
     void angelica$setCeleritasMeshing(boolean active);
 
     int[] angelica$getVertexStates();
+
+    Object[] angelica$getShaderOverridesBlock();
+
+    int[] angelica$getShaderOverridesMeta();
+
+    void angelica$setShaderOverride(Block block, int meta);
 }

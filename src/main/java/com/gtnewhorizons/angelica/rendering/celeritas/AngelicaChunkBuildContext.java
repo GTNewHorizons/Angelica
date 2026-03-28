@@ -12,9 +12,13 @@ import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVert
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
+import lombok.Setter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.irisshaders.iris.api.v0.IrisApi;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -115,6 +119,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     @SuppressWarnings("unchecked")
     public void copyRawBuffer(int[] rawBuffer, int vertexCount, int[] vertexStates,
+                              Object[] shaderOverridesBlock, int[] shaderOverridesMeta,
                               ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride,
                               boolean blockAllowsSmoothLighting) {
         if (vertexCount == 0) {
@@ -238,6 +243,15 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
             }
             final var builder = buffers.get(correctMaterial);
+
+            // First vertex sets shader override, ignore the others
+            Block shaderOverrideBlock = (Block)shaderOverridesBlock[quadIdx * 4];
+            if (shaderOverrideBlock != null) {
+                int shaderOverrideMeta = shaderOverridesMeta[quadIdx * 4];
+                Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+                Int2IntMap metaMap = blockMetaMatches != null ? blockMetaMatches.get(shaderOverrideBlock) : null;
+                blockRenderContext.blockId = (short) (metaMap != null ? metaMap.get(shaderOverrideMeta) : -1);
+            }
 
             if (correctMaterial != material && builder.getEncoder() instanceof IrisExtendedChunkVertexEncoder iris) {
                 iris.setContext(blockRenderContext);
