@@ -120,10 +120,6 @@ public class TransformPatcher {
         return patchComposite(vertex, geometry, null, null, fragment, TextureStage.COMPOSITE_AND_FINAL, null);
     }
 
-    public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String tessControl, String tessEval, String fragment) {
-        return patchComposite(vertex, geometry, tessControl, tessEval, fragment, TextureStage.COMPOSITE_AND_FINAL, null);
-    }
-
     public static Map<PatchShaderType, String> patchComposite(String vertex, String geometry, String tessControl, String tessEval, String fragment, TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
         return transform(vertex, geometry, tessControl, tessEval, fragment, new TextureStageParameters(Patch.COMPOSITE, stage, textureMap));
     }
