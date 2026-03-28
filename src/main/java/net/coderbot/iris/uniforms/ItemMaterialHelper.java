@@ -2,8 +2,6 @@ package net.coderbot.iris.uniforms;
 
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -22,8 +20,6 @@ import net.minecraft.util.ResourceLocation;
 public class ItemMaterialHelper {
     private static final Reference2ObjectMap<Item, Int2IntMap> MATERIAL_CACHE = new Reference2ObjectOpenHashMap<>();
     private static final int CACHE_MISS_SENTINEL = Integer.MIN_VALUE;
-    public static final IntSet WARNED_UNKNOWN_ARMOR_INDICES = new IntOpenHashSet();
-
     /**
      * Get the material ID for an ItemStack.
      * For ItemBlock: checks block.properties first, then item.properties.
@@ -114,6 +110,5 @@ public class ItemMaterialHelper {
      */
     public static void clearCache() {
         MATERIAL_CACHE.clear();
-        WARNED_UNKNOWN_ARMOR_INDICES.clear();
     }
 }
