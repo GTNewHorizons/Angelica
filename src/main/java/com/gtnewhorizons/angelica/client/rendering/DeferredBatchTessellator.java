@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.client.rendering;
 
 import com.github.bsideup.jabel.Desugar;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.ITessellatorInstance;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -33,8 +34,28 @@ class DeferredBatchTessellator extends DirectTessellator {
     private final Vector3f scratch = new Vector3f();
     private Matrix4fc currentTransform;
 
+    private Tessellator parentTessellator;
+    private boolean inIntercept;
+
     DeferredBatchTessellator(ByteBuffer buffer) {
         super(buffer, false); // deleteAfter=false: keep buffer across resets for reuse
+    }
+
+    void setParentTessellator(Tessellator parent) {
+        this.parentTessellator = parent;
+    }
+
+    @Override
+    public int draw() {
+        if (!inIntercept) {
+            final Tessellator parent = parentTessellator;
+            if (parent != null && parent.isDrawing) {
+                interceptDraw(parent);
+                ((ITessellatorInstance) parent).discard();
+            }
+        }
+        isDrawing = false;
+        return 0;
     }
 
     @Override
@@ -53,27 +74,32 @@ class DeferredBatchTessellator extends DirectTessellator {
 
     @Override
     protected int interceptDraw(Tessellator tess) {
-        // Compute delta: if current MV differs from default, pre-transform vertices
-        final Matrix4f currentMV = GLStateManager.getModelViewMatrix();
-        if (!currentMV.equals(defaultModelview)) {
-            defaultModelviewInverse.mul(currentMV, deltaMatrix);
-            this.currentTransform = deltaMatrix;
-        } else {
-            this.currentTransform = null;
+        inIntercept = true;
+        try {
+            // Compute delta: if current MV differs from default, pre-transform vertices
+            final Matrix4f currentMV = GLStateManager.getModelViewMatrix();
+            if (!currentMV.equals(defaultModelview)) {
+                defaultModelviewInverse.mul(currentMV, deltaMatrix);
+                this.currentTransform = deltaMatrix;
+            } else {
+                this.currentTransform = null;
+            }
+
+            final int byteOffsetBefore = bufferLimit();
+            final int vertCount = tess.vertexCount;
+            final int drawMode = tess.drawMode;
+            final int flags = VertexFlags.convertToFlags(tess.hasTexture, tess.hasColor, tess.hasNormals, tess.hasBrightness);
+            final long stateKey = DeferredDrawBatcher.captureStateKey();
+
+            final int result = super.interceptDraw(tess); // repacks int[] -> ByteBuffer + transforms if vertexTransform set
+
+            final int byteOffsetAfter = bufferLimit();
+            ranges.add(new DrawRange(stateKey, byteOffsetBefore, byteOffsetAfter - byteOffsetBefore, vertCount, drawMode, flags));
+            this.currentTransform = null; // clear for next draw
+            return result;
+        } finally {
+            inIntercept = false;
         }
-
-        final int byteOffsetBefore = bufferLimit();
-        final int vertCount = tess.vertexCount;
-        final int drawMode = tess.drawMode;
-        final int flags = VertexFlags.convertToFlags(tess.hasTexture, tess.hasColor, tess.hasNormals, tess.hasBrightness);
-        final long stateKey = DeferredDrawBatcher.captureStateKey();
-
-        final int result = super.interceptDraw(tess); // repacks int[] → ByteBuffer + transforms if vertexTransform set
-
-        final int byteOffsetAfter = bufferLimit();
-        ranges.add(new DrawRange(stateKey, byteOffsetBefore, byteOffsetAfter - byteOffsetBefore, vertCount, drawMode, flags));
-        this.currentTransform = null; // clear for next draw
-        return result;
     }
 
     List<DrawRange> getRanges() { return ranges; }
@@ -86,6 +112,7 @@ class DeferredBatchTessellator extends DirectTessellator {
 
     @Override
     protected void onRemovedFromStack() {
+        parentTessellator = null;
         clearRanges();
         super.onRemovedFromStack(); // calls reset(), keeps baseBuffer (deleteAfter=false)
     }

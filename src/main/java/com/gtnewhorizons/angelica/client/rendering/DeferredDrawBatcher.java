@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.rendering;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
+import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
 
 import java.util.Comparator;
@@ -37,6 +38,7 @@ public class DeferredDrawBatcher {
             batchTessellator = new DeferredBatchTessellator(memAlloc(INITIAL_BUFFER_SIZE));
         }
         batchTessellator.clearRanges();
+        batchTessellator.setParentTessellator(Tessellator.instance);
         batchTessellator.snapshotDefaultModelview();
         TessellatorManager.startCapturingDirect(batchTessellator);
     }

@@ -5814,5 +5814,7 @@ public class GLStateManager {
     public static void glGetUniform(int program, int location, IntBuffer params) {
         RENDER_BACKEND.getUniformiv(program, location, params);
     }
-
+    public static void glGetTexImage(int target, int level, int format, int type, long pixels) {
+        GL11.glGetTexImage(target, level, format, type, pixels);
+    }
 }
