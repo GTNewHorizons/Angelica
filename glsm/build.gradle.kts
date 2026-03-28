@@ -100,6 +100,7 @@ dependencies {
     testImplementation(sourceSets["stubs"].output)
     testImplementation(platform("org.junit:junit-bom:${property("junitBomVersion")}"))
     testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation("org.ow2.asm:asm-tree:9.7")
     testImplementation("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
     testRuntimeOnly("org.junit.platform:junit-platform-launcher")
     testRuntimeOnly("org.apache.logging.log4j:log4j-core:${property("log4jVersion")}")
