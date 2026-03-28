@@ -79,6 +79,7 @@ public class DeferredEntityOverlay {
     public static void clear() {
         deferred.clear();
         overlayPassActive = false;
+        replaying = false;
     }
 
     public static void renderAll() {
@@ -104,35 +105,36 @@ public class DeferredEntityOverlay {
         // Restore the saved modelview matrix
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glPushMatrix();
-        MATRIX_BUF.clear();
-        MATRIX_BUF.put(entry.matrix);
-        MATRIX_BUF.flip();
-        GLStateManager.glLoadMatrix(MATRIX_BUF);
+        try {
+            MATRIX_BUF.clear();
+            MATRIX_BUF.put(entry.matrix);
+            MATRIX_BUF.flip();
+            GLStateManager.glLoadMatrix(MATRIX_BUF);
 
-        // Replay shouldRenderPass pass 1
-        replaying = true;
-        int result = entry.shouldRenderPass.invoke(entity, 1, entry.partialTick);
+            // Replay shouldRenderPass pass 1
+            replaying = true;
+            int result = entry.shouldRenderPass.invoke(entity, 1, entry.partialTick);
 
-        if (result > 0) {
-            // Disable depth writes so coplanar faces don't z-fight each other
-            GLStateManager.glDepthMask(false);
+            if (result > 0) {
+                // Disable depth writes so coplanar faces don't z-fight each other
+                GLStateManager.glDepthMask(false);
 
-            // Render using the model set by shouldRenderPass
-            entry.renderer.renderPassModel.setLivingAnimations(entity,
-                entry.limbSwing, entry.limbSwingAmount, entry.partialTick);
+                // Render using the model set by shouldRenderPass
+                entry.renderer.renderPassModel.setLivingAnimations(entity,
+                    entry.limbSwing, entry.limbSwingAmount, entry.partialTick);
 
-            entry.renderer.renderPassModel.render(entity,
-                entry.limbSwing, entry.limbSwingAmount, entry.ageInTicks,
-                entry.headYaw, entry.headPitch, entry.scale);
+                entry.renderer.renderPassModel.render(entity,
+                    entry.limbSwing, entry.limbSwingAmount, entry.ageInTicks,
+                    entry.headYaw, entry.headPitch, entry.scale);
+            }
+
+            // Replay shouldRenderPass pass 2
+            entry.shouldRenderPass.invoke(entity, 2, entry.partialTick);
+        } finally {
+            replaying = false;
+            GLStateManager.glDepthMask(true);
+            GLStateManager.glPopMatrix();
         }
-
-        // Replay shouldRenderPass pass 2
-        entry.shouldRenderPass.invoke(entity, 2, entry.partialTick);
-        replaying = false;
-
-        // Restore depth writes
-        GLStateManager.glDepthMask(true);
-        GLStateManager.glPopMatrix();
     }
 
     private record DeferredEntry(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
