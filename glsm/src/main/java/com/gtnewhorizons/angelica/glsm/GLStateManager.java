@@ -419,6 +419,8 @@ public class GLStateManager {
     @Getter protected static int boundVBO;
     @Getter protected static int boundEBO;
     @Getter protected static int boundVAO;
+    private static int clientArraysVBO = 0;
+    private static int clientArraysVBOCapacity = 0;
     private static int boundPixelUnpackBuffer;
     private static int boundPixelPackBuffer;
     private static final Int2IntOpenHashMap vaoEboMap = new Int2IntOpenHashMap();
@@ -2260,6 +2262,39 @@ public class GLStateManager {
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) { RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount); }
 
+    private static void uploadClientArraysToVBO() {
+        final int[] vboOffsets = new int[VertexAttribState.MAX_ATTRIBS];
+        int totalBytes = 0;
+        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
+            vboOffsets[i] = -1;
+            final VertexAttribState.Attrib a = VertexAttribState.get(i);
+            if (!a.enabled || a.clientPointer == null) continue;
+            vboOffsets[i] = totalBytes;
+            totalBytes += a.clientPointer.remaining();
+        }
+        if (totalBytes == 0) return;
+
+        if (clientArraysVBO == 0) {
+            clientArraysVBO = RENDER_BACKEND.genBuffers();
+        }
+        glBindBuffer(GL15.GL_ARRAY_BUFFER, clientArraysVBO);
+        if (totalBytes > clientArraysVBOCapacity) {
+            int newCap = Math.max(4096, clientArraysVBOCapacity);
+            while (newCap < totalBytes) newCap *= 2;
+            RENDER_BACKEND.bufferData(GL15.GL_ARRAY_BUFFER, newCap, GL15.GL_STREAM_DRAW);
+            clientArraysVBOCapacity = newCap;
+        }
+
+        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
+            if (vboOffsets[i] < 0) continue;
+            final VertexAttribState.Attrib a = VertexAttribState.get(i);
+            RENDER_BACKEND.bufferSubData(GL15.GL_ARRAY_BUFFER, vboOffsets[i], a.clientPointer.duplicate());
+            RENDER_BACKEND.vertexAttribPointer(i, a.size, a.type, a.normalized, a.stride, (long) vboOffsets[i]);
+        }
+
+        glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+    }
+
     public static void glDrawArrays(int mode, int first, int count) {
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
@@ -2278,6 +2313,10 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+
+        if (ShaderManager.getInstance().isEnabled() && VertexAttribState.hasAnyClientSideEnabledAttrib()) {
+            uploadClientArraysToVBO();
+        }
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(first, count);
         } else {
