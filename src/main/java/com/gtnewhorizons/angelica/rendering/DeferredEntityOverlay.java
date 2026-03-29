@@ -48,6 +48,11 @@ public class DeferredEntityOverlay {
     private static EntityLivingBase pendingEntity;
     private static float pendingPartialTick;
 
+    /**
+     * Called from shouldRenderPass HEAD injects. Marks that the upcoming renderPassModel.render()
+     * should be deferred. If a previous mark was not consumed (shouldRenderPass returned <= 0,
+     * so render() was never called).
+     */
     public static void markOverlayPass(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
                                     EntityLivingBase entity, float partialTick) {
         overlayPassActive = true;
@@ -55,6 +60,10 @@ public class DeferredEntityOverlay {
         pendingRenderer = renderer;
         pendingEntity = entity;
         pendingPartialTick = partialTick;
+    }
+
+    public static void clearStaleOverlayFlag() {
+        overlayPassActive = false;
     }
 
     /**
@@ -74,6 +83,10 @@ public class DeferredEntityOverlay {
             pendingShouldRenderPass, pendingRenderer, pendingEntity, pendingPartialTick, matrix,
             limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale
         ));
+
+        pendingShouldRenderPass = null;
+        pendingRenderer = null;
+        pendingEntity = null;
     }
 
     public static void clear() {
@@ -105,6 +118,7 @@ public class DeferredEntityOverlay {
         // Restore the saved modelview matrix
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glPushMatrix();
+        boolean depthMaskDisabled = false;
         try {
             MATRIX_BUF.clear();
             MATRIX_BUF.put(entry.matrix);
@@ -114,10 +128,10 @@ public class DeferredEntityOverlay {
             // Replay shouldRenderPass pass 1
             replaying = true;
             int result = entry.shouldRenderPass.invoke(entity, 1, entry.partialTick);
-
             if (result > 0) {
                 // Disable depth writes so coplanar faces don't z-fight each other
                 GLStateManager.glDepthMask(false);
+                depthMaskDisabled = true;
 
                 // Render using the model set by shouldRenderPass
                 entry.renderer.renderPassModel.setLivingAnimations(entity,
@@ -132,7 +146,9 @@ public class DeferredEntityOverlay {
             entry.shouldRenderPass.invoke(entity, 2, entry.partialTick);
         } finally {
             replaying = false;
-            GLStateManager.glDepthMask(true);
+            if (depthMaskDisabled) {
+                GLStateManager.glDepthMask(true);
+            }
             GLStateManager.glPopMatrix();
         }
     }

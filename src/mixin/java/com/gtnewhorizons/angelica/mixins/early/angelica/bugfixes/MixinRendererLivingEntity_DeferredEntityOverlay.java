@@ -8,6 +8,8 @@ import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = RendererLivingEntity.class, priority = 1200)
 public class MixinRendererLivingEntity_DeferredEntityOverlay {
@@ -30,5 +32,19 @@ public class MixinRendererLivingEntity_DeferredEntityOverlay {
         } else {
             original.call(model, entity, limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale);
         }
+    }
+
+    /**
+     * Clear a stale overlayPassActive flag after the shouldRenderPass loop.
+     * Handles the case where markOverlayPass fired but shouldRenderPass returned <= 0,
+     * so renderPassModel.render() was never called and deferRender never consumed the flag.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
+    )
+    private void angelica$clearStaleOverlayFlag(CallbackInfo ci) {
+        DeferredEntityOverlay.clearStaleOverlayFlag();
     }
 }
