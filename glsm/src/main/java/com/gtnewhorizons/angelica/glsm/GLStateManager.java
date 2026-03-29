@@ -2361,6 +2361,10 @@ public class GLStateManager {
         glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
+    public static void glVertexPointer(int size, int stride, DoubleBuffer pointer) {
+        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
         glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
     }
@@ -2402,6 +2406,10 @@ public class GLStateManager {
         glNormalPointer(GL11.GL_INT, stride, pointer);
     }
 
+    public static void glNormalPointer(int stride, DoubleBuffer pointer) {
+        glNormalPointer(GL11.GL_DOUBLE, stride, pointer);
+    }
+
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
         glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
@@ -2416,6 +2424,10 @@ public class GLStateManager {
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
         glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glNormalPointer(int type, int stride, DoubleBuffer pointer) {
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_DOUBLE, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
@@ -2440,6 +2452,10 @@ public class GLStateManager {
         glTexCoordPointer(size, GL11.GL_SHORT, stride, pointer);
     }
 
+    public static void glTexCoordPointer(int size, int stride, DoubleBuffer pointer) {
+        glTexCoordPointer(size, GL11.GL_DOUBLE, stride, pointer);
+    }
+
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
@@ -2456,6 +2472,12 @@ public class GLStateManager {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, DoubleBuffer pointer) {
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        glVertexAttribPointer(loc, size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
