@@ -6,6 +6,7 @@ import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.monster.EntityCreeper;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -15,6 +16,9 @@ public abstract class MixinRenderCreeper_AuraDepth {
 
     @Shadow
     protected abstract int shouldRenderPass(EntityCreeper entity, int pass, float partialTick);
+
+    @Unique
+    private DeferredEntityOverlay.ShouldRenderPassFn angelica$cachedPassFn;
 
     /**
      * Mark that a charged creeper aura pass is about to execute. The method runs normally
@@ -26,8 +30,11 @@ public abstract class MixinRenderCreeper_AuraDepth {
         at = @At("HEAD"))
     private void angelica$markOverlayPass(EntityCreeper creeper, int pass, float partialTick, CallbackInfoReturnable<Integer> cir) {
         if (pass == 1 && creeper.getPowered() && !DeferredEntityOverlay.isReplaying()) {
+            if (angelica$cachedPassFn == null) {
+                angelica$cachedPassFn = (entity, pass2, tick) -> this.shouldRenderPass((EntityCreeper) entity, pass2, tick);
+            }
             DeferredEntityOverlay.markOverlayPass(
-                (entity, pass2, tick) -> this.shouldRenderPass((EntityCreeper) entity, pass2, tick),
+                angelica$cachedPassFn,
                 (RendererLivingEntity) (Object) this,
                 creeper, partialTick
             );

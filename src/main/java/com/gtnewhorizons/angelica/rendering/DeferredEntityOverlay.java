@@ -15,7 +15,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * Defers entity overlay rendering (auras, armor effects, etc) to after all entities have been drawn.
+ * Defers entity overlay rendering (auras, armor effects, etc.) to after all entities have been drawn.
  * This lets us fix z-fighting between overlay's own coplanar faces by disabling the depth mask,
  * and ensures the overlay composites correctly on top of all opaque geometry.
  *
@@ -31,7 +31,10 @@ public class DeferredEntityOverlay {
         int invoke(EntityLivingBase entity, int pass, float partialTick);
     }
 
-    private static final List<DeferredEntry> deferred = new ArrayList<>();
+    private static final int INITIAL_CAPACITY = 4;
+    private static final List<DeferredEntry> deferred = new ArrayList<>(INITIAL_CAPACITY);
+    private static final List<DeferredEntry> pool = new ArrayList<>(INITIAL_CAPACITY);
+
     private static final FloatBuffer MATRIX_BUF = BufferUtils.createFloatBuffer(16);
 
     // Set by the shouldRenderPass inject, consumed by the doRender WrapOperation.
@@ -74,23 +77,41 @@ public class DeferredEntityOverlay {
                                    float headYaw, float headPitch, float scale) {
         overlayPassActive = false;
 
-        float[] matrix = new float[16];
+        DeferredEntry entry = acquireEntry();
+        entry.set(pendingShouldRenderPass, pendingRenderer, pendingEntity, pendingPartialTick,
+            limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale);
+
         MATRIX_BUF.clear();
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, MATRIX_BUF);
-        MATRIX_BUF.get(matrix);
+        MATRIX_BUF.get(entry.matrix);
 
-        deferred.add(new DeferredEntry(
-            pendingShouldRenderPass, pendingRenderer, pendingEntity, pendingPartialTick, matrix,
-            limbSwing, limbSwingAmount, ageInTicks, headYaw, headPitch, scale
-        ));
+        deferred.add(entry);
 
         pendingShouldRenderPass = null;
         pendingRenderer = null;
         pendingEntity = null;
     }
 
-    public static void clear() {
+    private static DeferredEntry acquireEntry() {
+        int size = pool.size();
+        if (size > 0) {
+            return pool.remove(size - 1);
+        }
+        return new DeferredEntry();
+    }
+
+    private static void recycle() {
+        for (DeferredEntry entry : deferred) {
+            entry.shouldRenderPass = null;
+            entry.renderer = null;
+            entry.entity = null;
+            pool.add(entry);
+        }
         deferred.clear();
+    }
+
+    public static void clear() {
+        recycle();
         overlayPassActive = false;
         replaying = false;
     }
@@ -98,18 +119,17 @@ public class DeferredEntityOverlay {
     public static void renderAll() {
         if (deferred.isEmpty()) return;
 
-        for (DeferredEntry entry : deferred) {
-            int entityId = EntityIdHelper.getEntityId(entry.entity);
-            CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
-            GbufferPrograms.beginEntities();
-            try {
+        GbufferPrograms.beginEntities();
+        try {
+            for (DeferredEntry entry : deferred) {
+                CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entry.entity));
                 renderOverlay(entry);
-            } finally {
-                CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
-                GbufferPrograms.endEntities();
             }
+        } finally {
+            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
+            GbufferPrograms.endEntities();
         }
-        deferred.clear();
+        recycle();
     }
 
     private static void renderOverlay(DeferredEntry entry) {
@@ -157,8 +177,33 @@ public class DeferredEntityOverlay {
         }
     }
 
-    private record DeferredEntry(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
-                                 EntityLivingBase entity, float partialTick, float[] matrix, float limbSwing,
-                                 float limbSwingAmount, float ageInTicks, float headYaw, float headPitch, float scale) {
+    private static class DeferredEntry {
+        final float[] matrix = new float[16];
+        ShouldRenderPassFn shouldRenderPass;
+        RendererLivingEntity renderer;
+        EntityLivingBase entity;
+        float partialTick;
+        float limbSwing;
+        float limbSwingAmount;
+        float ageInTicks;
+        float headYaw;
+        float headPitch;
+        float scale;
+
+        void set(ShouldRenderPassFn shouldRenderPass, RendererLivingEntity renderer,
+                 EntityLivingBase entity, float partialTick,
+                 float limbSwing, float limbSwingAmount, float ageInTicks,
+                 float headYaw, float headPitch, float scale) {
+            this.shouldRenderPass = shouldRenderPass;
+            this.renderer = renderer;
+            this.entity = entity;
+            this.partialTick = partialTick;
+            this.limbSwing = limbSwing;
+            this.limbSwingAmount = limbSwingAmount;
+            this.ageInTicks = ageInTicks;
+            this.headYaw = headYaw;
+            this.headPitch = headPitch;
+            this.scale = scale;
+        }
     }
 }

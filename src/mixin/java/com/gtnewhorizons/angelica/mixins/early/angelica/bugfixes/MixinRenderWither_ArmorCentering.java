@@ -30,6 +30,9 @@ public abstract class MixinRenderWither_ArmorCentering {
     @Unique
     private ModelWither angelica$armorModel;
 
+    @Unique
+    private DeferredEntityOverlay.ShouldRenderPassFn angelica$cachedPassFn;
+
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$createArmorModel(CallbackInfo ci) {
         WitherArmorState.pendingInflate = true;
@@ -69,8 +72,11 @@ public abstract class MixinRenderWither_ArmorCentering {
         at = @At("HEAD"))
     private void angelica$markArmorPass(EntityWither wither, int pass, float partialTick, CallbackInfoReturnable<Integer> cir) {
         if (pass == 1 && wither.isArmored() && !DeferredEntityOverlay.isReplaying()) {
+            if (angelica$cachedPassFn == null) {
+                angelica$cachedPassFn = (entity, pass2, tick) -> this.shouldRenderPass((EntityWither) entity, pass2, tick);
+            }
             DeferredEntityOverlay.markOverlayPass(
-                (entity, pass2, tick) -> this.shouldRenderPass((EntityWither) entity, pass2, tick),
+                angelica$cachedPassFn,
                 (RendererLivingEntity) (Object) this,
                 wither, partialTick
             );
