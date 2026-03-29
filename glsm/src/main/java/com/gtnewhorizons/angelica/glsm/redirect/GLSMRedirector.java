@@ -526,7 +526,7 @@ public class GLSMRedirector {
         boolean changed = false;
         final boolean isOpenGlHelper = transformedName.equals("net.minecraft.client.renderer.OpenGlHelper");
 
-        for (MethodNode mn : cn.methods) {
+        for (MethodNode mn : (List<MethodNode>) cn.methods) {
             if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
@@ -624,7 +624,7 @@ public class GLSMRedirector {
                             final String shortOwner = handle.getOwner().substring(handle.getOwner().lastIndexOf("/") + 1);
                             LOGGER.info("Redirecting invokedynamic handle in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, handle.getName(), handle.getDesc(), glsmName, handle.getDesc());
                         }
-                        dynNode.bsmArgs[i] = new Handle(handle.getTag(), GLStateManager, glsmName, handle.getDesc(), handle.isInterface());
+                        dynNode.bsmArgs[i] = new Handle(handle.getTag(), GLStateManager, glsmName, handle.getDesc());
                         changed = true;
                         redirectInMethod = true;
                     }
