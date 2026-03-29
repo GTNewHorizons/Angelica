@@ -133,6 +133,9 @@ public class DeferredEntityOverlay {
                 GLStateManager.glDepthMask(false);
                 depthMaskDisabled = true;
 
+                // Disable backface culling so both sides of the overlay shell are visible
+                GLStateManager.glDisable(GL11.GL_CULL_FACE);
+
                 // Render using the model set by shouldRenderPass
                 entry.renderer.renderPassModel.setLivingAnimations(entity,
                     entry.limbSwing, entry.limbSwingAmount, entry.partialTick);
@@ -148,6 +151,7 @@ public class DeferredEntityOverlay {
             replaying = false;
             if (depthMaskDisabled) {
                 GLStateManager.glDepthMask(true);
+                GLStateManager.glEnable(GL11.GL_CULL_FACE);
             }
             GLStateManager.glPopMatrix();
         }
