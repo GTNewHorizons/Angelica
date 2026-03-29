@@ -41,8 +41,11 @@ import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.ONCE;
 public final class CommonUniforms {
 	private static final Minecraft client = Minecraft.getMinecraft();
 	private static final Vector2i ZERO_VECTOR_2i = new Vector2i();
-	private static final Vector4i ZERO_VECTOR_4i = new Vector4i(0, 0, 0, 0);
 	private static final Vector3d ZERO_VECTOR_3d = new Vector3d();
+
+	// Scratch vectors for push-notified suppliers -- GL thread only, never escapes
+	private static final Vector2i scratch2i = new Vector2i();
+	private static final Vector4i scratch4i = new Vector4i();
 
 	private CommonUniforms() {
 		// no construction allowed
@@ -79,26 +82,26 @@ public final class CommonUniforms {
 			final AbstractTexture texture = TextureTracker.INSTANCE.getTexture(glId);
 			if (texture instanceof TextureMap) {
 				final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
-				return new Vector2i(info.getWidth(), info.getHeight());
+				return scratch2i.set(info.getWidth(), info.getHeight());
 			}
 
-			return ZERO_VECTOR_2i;
+			return scratch2i.set(0, 0);
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform2i("gtextureSize", () -> {
 			final int glId = GLStateManager.getBoundTextureForServerState(0);
 
 			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
-			return new Vector2i(info.getWidth(), info.getHeight());
+			return scratch2i.set(info.getWidth(), info.getHeight());
 
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
             if(GLStateManager.getBlendMode().isEnabled()) {
                 final BlendState blend = GLStateManager.getBlendState();
-                return new Vector4i(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
+                return scratch4i.set(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
             }
-            return ZERO_VECTOR_4i;
+            return scratch4i.set(0, 0, 0, 0);
 		}, StateUpdateNotifiers.blendFuncNotifier);
 
 		uniforms.uniform1i("renderStage", () -> GbufferPrograms.getCurrentPhase().ordinal(), StateUpdateNotifiers.phaseChangeNotifier);
