@@ -20,6 +20,7 @@ import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.IBlockAccess;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
@@ -139,7 +140,20 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
-                                (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity) ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);
+                                final boolean isGlobal;
+                                if (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity)) {
+                                    isGlobal = true;
+                                } else {
+                                    final AxisAlignedBB aabb = tileEntity.getRenderBoundingBox();
+                                    if (aabb != null) {
+                                        final int secMinX = x & ~15, secMinY = y & ~15, secMinZ = z & ~15;
+                                        isGlobal = aabb.minX < secMinX || aabb.minY < secMinY || aabb.minZ < secMinZ
+                                            || aabb.maxX > secMinX + 16 || aabb.maxY > secMinY + 16 || aabb.maxZ > secMinZ + 16;
+                                    } else {
+                                        isGlobal = false;
+                                    }
+                                }
+                                (isGlobal ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);
                             }
                         }
 
