@@ -83,7 +83,7 @@ public final class CommonUniforms {
 			}
 
 			return ZERO_VECTOR_2i;
-		}, ValueUpdateNotifier.NONE);
+		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform2i("gtextureSize", () -> {
 			final int glId = GLStateManager.getBoundTextureForServerState(0);
@@ -91,7 +91,7 @@ public final class CommonUniforms {
 			final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(glId);
 			return new Vector2i(info.getWidth(), info.getHeight());
 
-		}, ValueUpdateNotifier.NONE);
+		}, StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform4i("blendFunc", () -> {
             if(GLStateManager.getBlendMode().isEnabled()) {
@@ -99,7 +99,7 @@ public final class CommonUniforms {
                 return new Vector4i(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
             }
             return ZERO_VECTOR_4i;
-		}, ValueUpdateNotifier.NONE);
+		}, StateUpdateNotifiers.blendFuncNotifier);
 
 		uniforms.uniform1i("renderStage", () -> GbufferPrograms.getCurrentPhase().ordinal(), StateUpdateNotifiers.phaseChangeNotifier);
 
