@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
+import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLivingBase;
@@ -124,6 +125,7 @@ public class DeferredEntityOverlay {
         try {
             for (DeferredEntry entry : deferred) {
                 CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entry.entity));
+                ItemIdManager.resetItemId();
                 renderOverlay(entry);
             }
         } finally {
