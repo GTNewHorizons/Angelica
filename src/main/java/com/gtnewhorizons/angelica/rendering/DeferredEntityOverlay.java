@@ -5,6 +5,7 @@ import lombok.Getter;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
+import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.EntityLivingBase;
 import org.lwjgl.BufferUtils;
@@ -134,6 +135,11 @@ public class DeferredEntityOverlay {
 
     private static void renderOverlay(DeferredEntry entry) {
         EntityLivingBase entity = entry.entity;
+
+        // Restore the entity's lightmap coords
+        int brightness = entity.getBrightnessForRender(entry.partialTick);
+        OpenGlHelper.setLightmapTextureCoords(OpenGlHelper.lightmapTexUnit,
+            brightness % 65536, (float) brightness / 65536);
 
         // Restore the saved modelview matrix
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
