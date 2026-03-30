@@ -252,6 +252,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
+            , "shaders.AccessorEntityHorse"
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
             , "shaders.MixinRenderNameTag"
