@@ -2526,32 +2526,23 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, DoubleBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, IntBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ShortBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, pointer, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, pointer);
+        VertexAttribState.set(index, size, type, normalized, stride, pointer, 0);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, long offset) {
@@ -2560,20 +2551,15 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ByteBuffer pointer) {
-        VertexAttribState.set(index, size, type, false, stride, pointer, boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, pointer);
+        VertexAttribState.set(index, size, type, false, stride, pointer, 0);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, IntBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, false, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, bb);
+        VertexAttribState.set(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ShortBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, false, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, bb);
+        VertexAttribState.set(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribDivisor(int index, int divisor) { RENDER_BACKEND.vertexAttribDivisor(index, divisor); }
