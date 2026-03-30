@@ -41,6 +41,7 @@ import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.postprocess.BufferFlipper;
@@ -200,14 +201,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
 
-		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> prepareTransformFutures = submitCompositeTransforms(programs.getPrepare());
-		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> deferredTransformFutures = submitCompositeTransforms(programs.getDeferred());
-		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> compositeTransformFutures = submitCompositeTransforms(programs.getComposite());
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> prepareTransformFutures =
+			submitCompositeTransforms(programs.getPrepare(), TextureStage.PREPARE, programs.getPackDirectives().getTextureMap());
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> deferredTransformFutures =
+			submitCompositeTransforms(programs.getDeferred(), TextureStage.DEFERRED, programs.getPackDirectives().getTextureMap());
+		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> compositeTransformFutures =
+			submitCompositeTransforms(programs.getComposite(), TextureStage.COMPOSITE_AND_FINAL, programs.getPackDirectives().getTextureMap());
 
 		final CompletableFuture<Map<PatchShaderType, String>> finalTransformFuture =
 			programs.getCompositeFinal()
 				.filter(ProgramSource::isValid)
-				.map(DeferredWorldRenderingPipeline::submitCompositeTransform)
+				.map(source -> submitCompositeTransform(source, TextureStage.COMPOSITE_AND_FINAL, programs.getPackDirectives().getTextureMap()))
 				.orElse(null);
 
 		resolver = new ProgramFallbackResolver(programs);
@@ -771,10 +775,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
 			return;
 		}
-
+		
 		final RenderCondition condition = getCondition(getPhase());
 		final Pass matched = table.match(condition, inputs);
-
+		
 		beginPass(matched);
 	}
 
@@ -1653,12 +1657,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void setOverridePhase(WorldRenderingPhase phase) {
 		this.overridePhase = phase;
 		matchPass();
+		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override
 	public void setPhase(WorldRenderingPhase phase) {
 		this.phase = phase;
 		matchPass();
+		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override
@@ -1710,11 +1716,20 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private static final InputAvailability INPUT_TEXTURE_LIGHTMAP = new InputAvailability(true, true);
 	private static final InputAvailability[] INPUT_AVAILABILITIES = { INPUT_NONE, INPUT_TEXTURE, INPUT_TEXTURE_LIGHTMAP };
 
-	private static CompletableFuture<Map<PatchShaderType, String>> submitCompositeTransform(ProgramSource source) {
-		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchComposite(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getTessControlSource().orElse(null), source.getTessEvalSource().orElse(null), source.getFragmentSource().orElse(null)));
+	private static CompletableFuture<Map<PatchShaderType, String>> submitCompositeTransform(ProgramSource source, TextureStage stage,
+		Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
+		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchComposite(
+			source.getVertexSource().orElse(null),
+			source.getGeometrySource().orElse(null),
+			source.getTessControlSource().orElse(null),
+			source.getTessEvalSource().orElse(null),
+			source.getFragmentSource().orElse(null),
+			stage,
+			textureMap));
 	}
 
-	private static Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> submitCompositeTransforms(ProgramSource[] sources) {
+	private static Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> submitCompositeTransforms(ProgramSource[] sources,
+		TextureStage stage, Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
 		// Count valid sources for initial capacity
 		int count = 0;
 		for (ProgramSource source : sources) {
@@ -1723,7 +1738,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>(count);
 		for (int i = 0; i < sources.length; i++) {
 			if (sources[i] != null && sources[i].isValid()) {
-				futures.put(i, submitCompositeTransform(sources[i]));
+				futures.put(i, submitCompositeTransform(sources[i], stage, textureMap));
 			}
 		}
 		return futures;

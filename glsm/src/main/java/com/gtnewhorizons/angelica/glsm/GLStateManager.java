@@ -419,6 +419,9 @@ public class GLStateManager {
     @Getter protected static int boundVBO;
     @Getter protected static int boundEBO;
     @Getter protected static int boundVAO;
+    private static int clientArraysVBO = 0;
+    private static int clientArraysVBOCapacity = 0;
+    private static final int[] clientArraysVBOOffsets = new int[VertexAttribState.MAX_ATTRIBS];
     private static int boundPixelUnpackBuffer;
     private static int boundPixelPackBuffer;
     private static final Int2IntOpenHashMap vaoEboMap = new Int2IntOpenHashMap();
@@ -2145,6 +2148,7 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         RENDER_BACKEND.drawElements(mode, indices);
     }
 
@@ -2158,6 +2162,7 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
         } else {
@@ -2175,6 +2180,7 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
         } else {
@@ -2192,6 +2198,7 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(count, type, indices);
         } else {
@@ -2223,6 +2230,7 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
         } else {
@@ -2245,20 +2253,72 @@ public class GLStateManager {
 
     public static void glMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         RENDER_BACKEND.multiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
 
     public static void glMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         RENDER_BACKEND.multiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
     }
 
     public static void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) {
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         RENDER_BACKEND.drawElementsBaseVertex(mode, count, type, indices, basevertex);
     }
 
-    public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) { RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount); }
+    public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+        ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
+        RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount);
+    }
+
+    private static void prepareClientArrays() {
+        if (ShaderManager.getInstance().isEnabled() && VertexAttribState.hasAnyClientSideEnabledAttrib()) {
+            uploadClientArraysToVBO();
+        }
+    }
+
+    /**
+     * If any enabled vertex attribute uses a client-side pointer (no VBO), upload all such
+     * attribs into a shared stream VBO so the draw succeeds under core profile.
+     */
+    private static void uploadClientArraysToVBO() {
+        int totalBytes = 0;
+        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
+            clientArraysVBOOffsets[i] = -1;
+            final VertexAttribState.Attrib a = VertexAttribState.get(i);
+            if (!a.enabled || a.clientPointer == null) continue;
+            clientArraysVBOOffsets[i] = totalBytes;
+            totalBytes += a.clientPointer.remaining();
+        }
+        if (totalBytes == 0) return;
+
+        if (clientArraysVBO == 0) {
+            clientArraysVBO = RENDER_BACKEND.genBuffers();
+        }
+
+        final int savedVBO = boundVBO;
+        glBindBuffer(GL15.GL_ARRAY_BUFFER, clientArraysVBO);
+
+        if (totalBytes > clientArraysVBOCapacity) {
+            int newCap = Math.max(4096, clientArraysVBOCapacity);
+            while (newCap < totalBytes) newCap *= 2;
+            clientArraysVBOCapacity = newCap;
+        }
+        RENDER_BACKEND.bufferData(GL15.GL_ARRAY_BUFFER, clientArraysVBOCapacity, GL15.GL_STREAM_DRAW);
+
+        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
+            if (clientArraysVBOOffsets[i] < 0) continue;
+            final VertexAttribState.Attrib a = VertexAttribState.get(i);
+            RENDER_BACKEND.bufferSubData(GL15.GL_ARRAY_BUFFER, clientArraysVBOOffsets[i], a.clientPointer.duplicate());
+            RENDER_BACKEND.vertexAttribPointer(i, a.size, a.type, a.normalized, a.stride, (long) clientArraysVBOOffsets[i]);
+        }
+
+        glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
+    }
 
     public static void glDrawArrays(int mode, int first, int count) {
         CommandRecorder savedRecorder = null;
@@ -2278,8 +2338,11 @@ public class GLStateManager {
         }
         prepareWideLineEmulation(mode);
         ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(first, count);
+        } else if (mode == GL11.GL_POLYGON) {
+            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
         } else {
             RENDER_BACKEND.drawArrays(mode, first, count);
         }
@@ -2296,6 +2359,10 @@ public class GLStateManager {
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
         glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glVertexPointer(int size, int stride, DoubleBuffer pointer) {
+        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
@@ -2339,6 +2406,10 @@ public class GLStateManager {
         glNormalPointer(GL11.GL_INT, stride, pointer);
     }
 
+    public static void glNormalPointer(int stride, DoubleBuffer pointer) {
+        glNormalPointer(GL11.GL_DOUBLE, stride, pointer);
+    }
+
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
         glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
@@ -2353,6 +2424,10 @@ public class GLStateManager {
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
         glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glNormalPointer(int type, int stride, DoubleBuffer pointer) {
+        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_DOUBLE, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
@@ -2377,6 +2452,10 @@ public class GLStateManager {
         glTexCoordPointer(size, GL11.GL_SHORT, stride, pointer);
     }
 
+    public static void glTexCoordPointer(int size, int stride, DoubleBuffer pointer) {
+        glTexCoordPointer(size, GL11.GL_DOUBLE, stride, pointer);
+    }
+
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
@@ -2393,6 +2472,12 @@ public class GLStateManager {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
         glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+    }
+
+    public static void glTexCoordPointer(int size, int type, int stride, DoubleBuffer pointer) {
+        final int loc = texCoordAttributeLocation();
+        if (loc < 0) return;
+        glVertexAttribPointer(loc, size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
@@ -2441,32 +2526,23 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, DoubleBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, IntBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ShortBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, normalized, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, bb);
+        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, pointer, boundVBO);
-        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, pointer);
+        VertexAttribState.set(index, size, type, normalized, stride, pointer, 0);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, long offset) {
@@ -2475,20 +2551,15 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ByteBuffer pointer) {
-        VertexAttribState.set(index, size, type, false, stride, pointer, boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, pointer);
+        VertexAttribState.set(index, size, type, false, stride, pointer, 0);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, IntBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, false, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, bb);
+        VertexAttribState.set(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ShortBuffer pointer) {
-        final ByteBuffer bb = MemoryUtilities.memByteBuffer(pointer);
-        VertexAttribState.set(index, size, type, false, stride, bb, boundVBO);
-        RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, bb);
+        VertexAttribState.set(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer), 0);
     }
 
     public static void glVertexAttribDivisor(int index, int divisor) { RENDER_BACKEND.vertexAttribDivisor(index, divisor); }
@@ -5814,5 +5885,7 @@ public class GLStateManager {
     public static void glGetUniform(int program, int location, IntBuffer params) {
         RENDER_BACKEND.getUniformiv(program, location, params);
     }
-
+    public static void glGetTexImage(int target, int level, int format, int type, long pixels) {
+        GL11.glGetTexImage(target, level, format, type, pixels);
+    }
 }
