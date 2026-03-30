@@ -76,7 +76,7 @@ dependencies {
     compileOnly("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
     compileOnly("org.lwjgl.lwjgl:lwjgl_util:${property("lwjglVersion")}")
 
-    compileOnly("org.ow2.asm:asm-tree:9.7")
+    compileOnly("org.ow2.asm:asm-tree:5.0.3")
 
     // Our Deps
     api("com.github.GTNewHorizons:GTNHLib:${property("gtnhlibVersion")}:dev")

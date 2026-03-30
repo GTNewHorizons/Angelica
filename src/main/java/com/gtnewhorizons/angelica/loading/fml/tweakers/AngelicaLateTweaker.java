@@ -71,6 +71,12 @@ public class AngelicaLateTweaker implements ITweaker {
                 FMLRelaunchLog.info("[Angelica] Narrowed com.fiskmods.lightsabers.asm transformer exclusion to allow GL redirection");
             }
 
+            if (narrowEnabled("Ears") && exceptions.remove("com.unascribed.ears")) {
+                exceptions.add("com.unascribed.ears.asm");
+                exceptions.add("com.unascribed.ears.common.agent");
+                FMLRelaunchLog.info("[Angelica] Narrowed com.unascribed.ears transformer exclusion to allow GL redirection");
+            }
+
             if (narrowEnabled("Alfheim") && exceptions.remove("alfheim.common.core.asm.hook")) {
                 exceptions.add("alfheim.common.core.asm.hook.AlfheimFieldHookHandler");
                 exceptions.add("alfheim.common.core.asm.hook.AlfheimHPHooks");
