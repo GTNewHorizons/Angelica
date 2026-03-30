@@ -83,7 +83,7 @@ dependencies {
     shadowImplementation("net.minecraftforge:eventbus:7.0-beta.15")
 
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
-    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-26.g5ee7d96-GTNH") {
+    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-32.g7dd88a4-GTNH") {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
     shadowImplementation("org.antlr:antlr4-runtime:4.13.2")
