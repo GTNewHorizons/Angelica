@@ -20,6 +20,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+
 import java.util.HashMap;
 import java.util.Map;
 
@@ -44,7 +46,7 @@ public abstract class MixinRenderHorse {
      * Automatically picks up modded armor that hooks into the vanilla's system. (I hope)
      */
     @Unique
-    private static Map<Integer, Item> angelica$armorIndexToItem;
+    private static Int2ObjectOpenHashMap<Item> angelica$armorIndexToItem;
 
     @Unique
     private static final Map<String, ResourceLocation> angelica$armorTextureCache = new HashMap<>();
@@ -117,7 +119,7 @@ public abstract class MixinRenderHorse {
     @Unique
     private static Item angelica$getArmorItem(EntityHorse horse, int armorIndex) {
         if (angelica$armorIndexToItem == null) {
-            angelica$armorIndexToItem = new HashMap<>();
+            angelica$armorIndexToItem = new Int2ObjectOpenHashMap<>();
             AccessorEntityHorse accessor = (AccessorEntityHorse) horse;
             for (Object obj : Item.itemRegistry) {
                 Item item = (Item) obj;
