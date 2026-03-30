@@ -152,6 +152,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             narrowTransformerConfig("Xaeros", AngelicaConfig.transformerCompat.narrowXaeros);
             narrowTransformerConfig("AdvancedLightsabers", AngelicaConfig.transformerCompat.narrowAdvancedLightsabers);
             narrowTransformerConfig("Alfheim", AngelicaConfig.transformerCompat.narrowAlfheim);
+            narrowTransformerConfig("Ears", AngelicaConfig.transformerCompat.narrowEars);
 
             tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.IncompatibleModsDisablerTweaker");
             if (AngelicaConfig.enableHudCaching) {
