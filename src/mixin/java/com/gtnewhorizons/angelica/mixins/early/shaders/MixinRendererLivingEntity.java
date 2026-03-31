@@ -22,13 +22,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RendererLivingEntity.class)
 public class MixinRendererLivingEntity {
     /**
-     * Reset currentRenderedItemId at the start of rendering each living entity.
+     * Reset ID before damage overlay renders, otherwise you get random shiny zombies
      */
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At("HEAD")
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V", shift = At.Shift.AFTER)
     )
-    private void iris$resetItemIdAtStart(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+    private void iris$resetItemIdAfterEquipped(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         ItemIdManager.resetItemId();
     }
 
@@ -79,7 +79,6 @@ public class MixinRendererLivingEntity {
         remap = false
     )
     private void iris$glintStart(CallbackInfo ci) {
-        ItemIdManager.resetItemId();
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
     }
 

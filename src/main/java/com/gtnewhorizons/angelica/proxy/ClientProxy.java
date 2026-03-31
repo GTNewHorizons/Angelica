@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import biomesoplenty.api.content.BOPCBlocks;
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
@@ -85,6 +86,7 @@ public final class ClientProxy extends CommonProxy {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final FrametimeGraph frametimeGraph = new FrametimeGraph();
     private final TPSGraph tpsGraph = new TPSGraph();
+    public static Block bopGrass;
 
     public static SodiumGameOptions options() {
         if (CONFIG == null) {
@@ -181,6 +183,9 @@ public final class ClientProxy extends CommonProxy {
             } catch (ClassNotFoundException e) {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
+        }
+        if(ModStatus.isBOPLoaded) {
+            bopGrass = BOPCBlocks.newBopGrass;
         }
     }
 

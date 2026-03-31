@@ -4,7 +4,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
-import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
@@ -26,7 +25,6 @@ public class MixinRenderManager {
     private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
         int entityId = EntityIdHelper.getEntityId(entity);
         CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
-        ItemIdManager.resetItemId();
         original.call(render, entity, x, y, z, entityYaw, partialTicks);
         CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
     }

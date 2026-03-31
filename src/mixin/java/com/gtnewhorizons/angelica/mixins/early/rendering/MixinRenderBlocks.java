@@ -123,7 +123,7 @@ public abstract class MixinRenderBlocks {
     @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier",
         at = @At(value = "FIELD", target = "Lnet/minecraft/init/Blocks;grass:Lnet/minecraft/block/BlockGrass;", opcode = Opcodes.GETSTATIC))
     private BlockGrass angelica$widenGrassCheck(BlockGrass grassBlock, @Local(argsOnly = true, ordinal = 0) Block block) {
-        return (block instanceof BlockGrass bg) ? bg : grassBlock;
+        return (block instanceof BlockGrass bg && block == ClientProxy.bopGrass) ? bg : grassBlock;
     }
 
     /* Disable diffuse when celeritas AO is in use */
