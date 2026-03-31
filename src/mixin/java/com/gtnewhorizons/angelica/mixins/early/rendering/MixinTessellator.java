@@ -2,8 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.rendering;
 
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import net.minecraft.block.Block;
 import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -17,14 +15,10 @@ public class MixinTessellator implements StateAwareTessellator {
     private final IntArrayList vertexStates = new IntArrayList();
 
     @Unique
-    private final ObjectArrayList<Block> shaderOverridesBlock = new ObjectArrayList<>();
+    private final IntArrayList shaderOverrideBlockIds = new IntArrayList();
 
     @Unique
-    private final IntArrayList shaderOverridesMeta = new IntArrayList();
-
-    @Unique Block currentShaderOverrideBlock;
-
-    @Unique int currentShaderOverrideMeta;
+    private short currentShaderOverrideBlockId = -1;
 
     @Unique
     private boolean appliedAo;
@@ -45,15 +39,14 @@ public class MixinTessellator implements StateAwareTessellator {
             state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;
         }
         this.vertexStates.add(state);
-        this.shaderOverridesMeta.add(currentShaderOverrideMeta);
-        this.shaderOverridesBlock.add(currentShaderOverrideBlock);
+        this.shaderOverrideBlockIds.add(currentShaderOverrideBlockId);
     }
 
     @Inject(method = "reset", at = @At("RETURN"))
     private void resetVertexStates(CallbackInfo ci) {
         this.vertexStates.clear();
-        this.shaderOverridesBlock.clear();
-        this.shaderOverridesMeta.clear();
+        this.shaderOverrideBlockIds.clear();
+        this.currentShaderOverrideBlockId = -1;
     }
 
     @Override
@@ -67,18 +60,12 @@ public class MixinTessellator implements StateAwareTessellator {
     }
 
     @Override
-    public Object[] angelica$getShaderOverridesBlock() {
-        return this.shaderOverridesBlock.elements();
+    public int[] angelica$getShaderOverrideBlockIds() {
+        return this.shaderOverrideBlockIds.elements();
     }
 
     @Override
-    public int[] angelica$getShaderOverridesMeta() {
-        return this.shaderOverridesMeta.elements();
-    }
-
-    @Override
-    public void angelica$setShaderOverride(Block block, int meta) {
-        currentShaderOverrideBlock = block;
-        currentShaderOverrideMeta = meta;
+    public void angelica$setShaderOverrideBlockId(short blockId) {
+        this.currentShaderOverrideBlockId = blockId;
     }
 }

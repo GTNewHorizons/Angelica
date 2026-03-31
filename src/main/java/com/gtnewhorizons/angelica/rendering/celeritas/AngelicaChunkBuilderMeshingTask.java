@@ -270,8 +270,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             && block.getLightValue() == 0; // does not emit real block light
         buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,
             ((StateAwareTessellator)tessellator).angelica$getVertexStates(),
-            ((StateAwareTessellator)tessellator).angelica$getShaderOverridesBlock(),
-            ((StateAwareTessellator)tessellator).angelica$getShaderOverridesMeta(),
+            ((StateAwareTessellator)tessellator).angelica$getShaderOverrideBlockIds(),
             buffers, passMaterial, isShaderPackOverride, blockAllowsSmoothLighting);
         tessellator.reset();
         tessellator.isDrawing = false;

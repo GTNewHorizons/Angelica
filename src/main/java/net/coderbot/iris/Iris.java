@@ -1,8 +1,6 @@
 package net.coderbot.iris;
 
 import com.google.common.base.Throwables;
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.LocalTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -15,7 +13,6 @@ import cpw.mods.fml.common.gameevent.InputEvent;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
-import net.coderbot.iris.block_context.BlockContextHolder;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
 import net.coderbot.iris.compat.dh.DHCompat;
@@ -921,14 +918,21 @@ public class Iris {
         if (!enabled)
             return;
 
+        final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+        if (blockMetaMatches == null)
+            return;
+
+        final Int2IntMap metaMap = blockMetaMatches.get(block);
+        final int blockId = metaMap != null ? metaMap.get(meta) : -1;
+
         if (TessellatorManager.get() instanceof StateAwareTessellator tess)
-            tess.angelica$setShaderOverride(block, meta);
+            tess.angelica$setShaderOverrideBlockId((short) blockId);
     }
 
     public static void resetShaderMaterialOverride() {
         if (!enabled)
             return;
         if (TessellatorManager.get() instanceof StateAwareTessellator tess)
-            tess.angelica$setShaderOverride(null, -1);
+            tess.angelica$setShaderOverrideBlockId((short) -1);
     }
 }
