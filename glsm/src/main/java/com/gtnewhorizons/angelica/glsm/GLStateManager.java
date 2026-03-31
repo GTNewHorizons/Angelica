@@ -2341,6 +2341,8 @@ public class GLStateManager {
         prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(first, count);
+        } else if (mode == GL11.GL_QUAD_STRIP) {
+            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
         } else if (mode == GL11.GL_POLYGON) {
             RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
         } else {
