@@ -67,6 +67,23 @@ public class IdMap {
 			blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
 		});
 
+		// if no block properties were found, try again with higher version.
+		if (blockPropertiesMap == null || blockPropertiesMap.isEmpty()) {
+			ArrayList<StringPair> filteredEnvironmentDefines = new ArrayList<>();
+			for (StringPair define : environmentDefines) {
+				if (!"MC_VERSION".equals(define.getKey())) {
+					filteredEnvironmentDefines.add(define);
+				}
+			}
+
+			filteredEnvironmentDefines.add(new StringPair("MC_VERSION", "13100"));
+
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, filteredEnvironmentDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockPropertiesMap = LegacyIdMap.convertModernBlockEntries(blockPropertiesMap);
+			});
+		}
+
 		// TODO: Properly override block render layers
 
 		if (blockPropertiesMap == null) {
