@@ -136,8 +136,10 @@ public class IrisCeleritasChunkProgramOverrides {
             if (celeritasPipeline != null && !celeritasPipeline.hasShadowPass()) {
                 throw new IllegalStateException("Shadow program requested, but shader pack has no shadow pass");
             }
-            return programs.get(pass.supportsFragmentDiscard() ?
-                IrisTerrainPass.SHADOW_CUTOUT : IrisTerrainPass.SHADOW);
+            if (pass.isReverseOrder()) {
+                return programs.get(IrisTerrainPass.SHADOW_TRANSLUCENT);
+            }
+            return programs.get(pass.supportsFragmentDiscard() ? IrisTerrainPass.SHADOW_CUTOUT : IrisTerrainPass.SHADOW);
         } else {
             if (pass.supportsFragmentDiscard()) {
                 return programs.get(IrisTerrainPass.GBUFFER_CUTOUT);
