@@ -31,17 +31,6 @@ public class MixinRenderItem {
     }
 
     /**
-     * Reset the item ID after rendering dropped items.
-     */
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
-        at = @At("RETURN")
-    )
-    private void iris$resetItemIdAfterRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        ItemIdManager.resetItemId();
-    }
-
-    /**
      * Activate GLINT shader before rendering enchantment glint on dropped items.
      */
     @Inject(
