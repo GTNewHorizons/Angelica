@@ -19,6 +19,9 @@ public abstract class RenderBackend {
     public abstract boolean isAvailable();
     public abstract String getName();
 
+    /** Returns true if the current thread has a valid render context. Safe to call from any thread. */
+    public abstract boolean hasContext();
+
     /** Higher priority backends are preferred. */
     public int getPriority() { return 0; }
 
