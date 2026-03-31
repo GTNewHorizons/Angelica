@@ -69,6 +69,16 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean hasContext() {
+        try {
+            GL.getCapabilities();
+            return true;
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    }
+
+    @Override
     public int getPriority() { return 50; }
 
     @Override
