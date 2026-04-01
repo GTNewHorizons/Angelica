@@ -104,6 +104,8 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
     }
 
     public TileOverride go(RenderBlockState renderBlockState, IIcon origIcon) {
+        CTMUtils.clearCurrentCompact();
+
         this.renderBlockState = renderBlockState;
         renderBlockState.setFilter(null);
         currentIcon = origIcon;
@@ -119,6 +121,9 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         pass: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
             while (hasNext()) {
                 TileOverride override = next();
+                if (override instanceof TileOverrideImpl.CTMCompact compact) {
+                    CTMUtils.setCurrentCompact(compact);
+                }
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
                 if (newIcon != null) {
                     lastMatchedOverride = override;
