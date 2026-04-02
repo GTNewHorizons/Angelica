@@ -7,8 +7,10 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.EntityFlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
@@ -55,7 +57,8 @@ public class IdMap {
 	/**
 	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
 	 */
-	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+	@Getter
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
 		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
@@ -63,8 +66,8 @@ public class IdMap {
 		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
 
 		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
-			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
-			blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+			blockPropertiesMap = parseBlockMap(blockProperties);
+			blockRenderTypeMap = parseRenderTypeMap(blockProperties);
 		});
 
 		// TODO: Properly override block render layers
@@ -112,7 +115,7 @@ public class IdMap {
 	private static String readProperties(Path shaderPath, String name) {
 		try {
 			// ID maps should be encoded in ISO_8859_1.
-			return new String(Files.readAllBytes(shaderPath.resolve(name)), StandardCharsets.ISO_8859_1);
+			return Files.readString(shaderPath.resolve(name), StandardCharsets.ISO_8859_1);
 		} catch (NoSuchFileException e) {
 			Iris.logger.debug("An " + name + " file was not found in the current shaderpack");
 
@@ -129,7 +132,24 @@ public class IdMap {
 	}
 
 	private static Object2IntMap<NamespacedId> parseEntityIdMap(Properties properties) {
-		return parseIdMap(properties, "entity.", "entity.properties");
+		Object2IntMap<NamespacedId> idMap = parseIdMap(properties, "entity.", "entity.properties");
+
+		// For modern shader packs: translate modern entity names to 1.7.10 names
+		// so runtime lookups match EntityList's registered names directly.
+		Object2IntMap<NamespacedId> augmented = new Object2IntOpenHashMap<>(idMap);
+		augmented.defaultReturnValue(-1);
+
+		for (Object2IntMap.Entry<NamespacedId> entry : idMap.object2IntEntrySet()) {
+			NamespacedId id = entry.getKey();
+			if ("minecraft".equals(id.getNamespace())) {
+				String legacyName = EntityFlatteningMap.toLegacy(id.getName());
+				if (legacyName != null) {
+					augmented.putIfAbsent(new NamespacedId(legacyName), entry.getIntValue());
+				}
+			}
+		}
+
+		return Object2IntMaps.unmodifiable(augmented);
 	}
 
     /**
@@ -181,7 +201,7 @@ public class IdMap {
 			} else if (c == '"') {
 				inQuotes = !inQuotes;
 			} else if (Character.isWhitespace(c) && !inQuotes) {
-				if (current.length() > 0) {
+				if (!current.isEmpty()) {
 					result.add(current.toString());
 					current.setLength(0);
 				}
@@ -201,7 +221,7 @@ public class IdMap {
 		}
 
 		// Add final token
-		if (current.length() > 0) {
+		if (!current.isEmpty()) {
 			result.add(current.toString());
 		}
 
@@ -251,14 +271,14 @@ public class IdMap {
 		return Object2IntMaps.unmodifiable(idMap);
 	}
 
-	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
+	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties) {
 		Int2ObjectMap<List<BlockEntry>> entriesById = new Int2ObjectOpenHashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
 			final String key = (String) keyObject;
 			StringBuilder value = new StringBuilder((String) valueObject);
 
-			if (!key.startsWith(keyPrefix)) {
+			if (!key.startsWith("block.")) {
 				// Not a valid line, ignore it
 				return;
 			}
@@ -266,10 +286,10 @@ public class IdMap {
 			final int intId;
 
 			try {
-				intId = Integer.parseInt(key.substring(keyPrefix.length()));
+				intId = Integer.parseInt(key.substring("block.".length()));
 			} catch (NumberFormatException e) {
 				// Not a valid property line
-				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid key " + key);
+				Iris.logger.warn("Failed to parse line in " + "block.properties" + ": invalid key " + key);
 				return;
 			}
 
@@ -286,7 +306,7 @@ public class IdMap {
 			}
 
 			// Parse identifiers
-			for (String part : parseIdentifierList(value.toString(), fileName, key)) {
+			for (String part : parseIdentifierList(value.toString(), "block.properties", key)) {
 				if (part.isEmpty()) {
 					continue;
 				}
@@ -294,7 +314,7 @@ public class IdMap {
 				try {
 					entries.add(BlockEntry.parse(part));
 				} catch (Exception e) {
-					Iris.logger.warn("Unexpected error while parsing an entry from " + fileName + " for the key " + key + ":", e);
+					Iris.logger.warn("Unexpected error while parsing an entry from " + "block.properties" + " for the key " + key + ":", e);
 				}
 			}
 
@@ -309,29 +329,29 @@ public class IdMap {
 	 *
 	 * This feature is used by Chocapic v9 and Wisdom Shaders. Otherwise, it is a rarely-used feature.
 	 */
-	private static Map<NamespacedId, BlockRenderType> parseRenderTypeMap(Properties properties, String keyPrefix, String fileName) {
+	private static Map<NamespacedId, BlockRenderType> parseRenderTypeMap(Properties properties) {
 		Map<NamespacedId, BlockRenderType> overrides = new HashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
 			String key = (String) keyObject;
 			String value = (String) valueObject;
 
-			if (!key.startsWith(keyPrefix)) {
+			if (!key.startsWith("layer.")) {
 				// Not a valid line, ignore it
 				return;
 			}
 
 			// Note: We have to remove the prefix "layer." because fromString expects "cutout", not "layer.cutout".
-			String keyWithoutPrefix = key.substring(keyPrefix.length());
+			String keyWithoutPrefix = key.substring("layer.".length());
 
 			BlockRenderType renderType = BlockRenderType.fromString(keyWithoutPrefix).orElse(null);
 
 			if (renderType == null) {
-				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid block render type: " + key);
+				Iris.logger.warn("Failed to parse line in " + "block.properties" + ": invalid block render type: " + key);
 				return;
 			}
 
-			for (String part : parseIdentifierList(value, fileName, key)) {
+			for (String part : parseIdentifierList(value, "block.properties", key)) {
 				// Note: NamespacedId performs no validation on the content. That will need to be done by whatever is
 				//       converting these things to ResourceLocations.
 				overrides.put(new NamespacedId(part), renderType);
@@ -353,11 +373,7 @@ public class IdMap {
 		return entityIdMap;
 	}
 
-	public Map<NamespacedId, BlockRenderType> getBlockRenderTypeMap() {
-		return blockRenderTypeMap;
-	}
-
-	@Override
+    @Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;
