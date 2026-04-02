@@ -208,6 +208,57 @@ class FeedbackManagerTest {
     }
 
     @Test
+    void testQuadStripFeedback_GL2D() {
+        final FloatBuffer buf = BufferUtils.createFloatBuffer(128);
+        FeedbackManager.glFeedbackBuffer(GL11.GL_2D, buf);
+        FeedbackManager.glRenderMode(GL11.GL_FEEDBACK);
+
+        GLStateManager.getModelViewMatrix().identity();
+        GLStateManager.getProjectionMatrix().identity();
+        GLStateManager.getViewportState().setViewPort(0, 0, 800, 600);
+        GLStateManager.getViewportState().setDepthRange(0.0, 1.0);
+
+        final int vao = GL30.glGenVertexArrays();
+        GLStateManager.glBindVertexArray(vao);
+
+        final float[] verts = {
+            0f, 0f, 0f,
+            0f, 1f, 0f,
+            1f, 0f, 0f,
+            1f, 1f, 0f
+        };
+        final FloatBuffer vertBuf = BufferUtils.createFloatBuffer(verts.length);
+        vertBuf.put(verts).flip();
+
+        final int vbo = GL15.glGenBuffers();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GL15.glBufferData(GL15.GL_ARRAY_BUFFER, vertBuf, GL15.GL_STATIC_DRAW);
+        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 12, 0);
+        GLStateManager.glEnableVertexAttribArray(0);
+
+        FeedbackManager.processDrawArrays(GL11.GL_QUAD_STRIP, 0, 4);
+
+        final int count = FeedbackManager.glRenderMode(GL11.GL_RENDER);
+
+        assertEquals(10, count, "Quad strip in GL_2D should produce 10 floats");
+        assertEquals(GL11.GL_POLYGON_TOKEN, buf.get(0), 0.001f);
+        assertEquals(4.0f, buf.get(1), 0.001f);
+        assertEquals(400.0f, buf.get(2), 0.01f);
+        assertEquals(300.0f, buf.get(3), 0.01f);
+        assertEquals(400.0f, buf.get(4), 0.01f);
+        assertEquals(600.0f, buf.get(5), 0.01f);
+        assertEquals(800.0f, buf.get(6), 0.01f);
+        assertEquals(600.0f, buf.get(7), 0.01f);
+        assertEquals(800.0f, buf.get(8), 0.01f);
+        assertEquals(300.0f, buf.get(9), 0.01f);
+
+        GLStateManager.glDisableVertexAttribArray(0);
+        GLStateManager.glBindVertexArray(0);
+        GL15.glDeleteBuffers(vbo);
+        GLStateManager.glDeleteVertexArrays(vao);
+    }
+
+    @Test
     void testIdentityTransform_viewportMapping() {
         final FloatBuffer buf = BufferUtils.createFloatBuffer(64);
         FeedbackManager.glFeedbackBuffer(GL11.GL_3D, buf);
