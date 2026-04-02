@@ -172,14 +172,19 @@ public final class CompactCtmQuadProcessor {
     }
 
     private void renderFace(RenderBlocks rb, Block block, int x, int y, int z, int face, IIcon icon) {
-        switch (face) {
-            case 0: rb.renderFaceYNeg(block, x, y, z, icon); break;
-            case 1: rb.renderFaceYPos(block, x, y, z, icon); break;
-            case 2: rb.renderFaceZNeg(block, x, y, z, icon); break;
-            case 3: rb.renderFaceZPos(block, x, y, z, icon); break;
-            case 4: rb.renderFaceXNeg(block, x, y, z, icon); break;
-            case 5: rb.renderFaceXPos(block, x, y, z, icon); break;
-            default: break;
+        boolean originalFlip = rb.field_152631_f;
+        rb.field_152631_f = (face == 2 || face == 5);
+        try {
+            switch (face) {
+                case 0 -> rb.renderFaceYNeg(block, x, y, z, icon);
+                case 1 -> rb.renderFaceYPos(block, x, y, z, icon);
+                case 2 -> rb.renderFaceZNeg(block, x, y, z, icon);
+                case 3 -> rb.renderFaceZPos(block, x, y, z, icon);
+                case 4 -> rb.renderFaceXNeg(block, x, y, z, icon);
+                case 5 -> rb.renderFaceXPos(block, x, y, z, icon);
+            }
+        } finally {
+            rb.field_152631_f = originalFlip;
         }
     }
 
