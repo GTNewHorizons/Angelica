@@ -28,7 +28,7 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 
-abstract class TileOverride implements Comparable<TileOverride> {
+public abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
@@ -80,6 +80,7 @@ abstract class TileOverride implements Comparable<TileOverride> {
                 tileLoader);
             case "sandstone", "top" -> override = new TileOverrideImpl.Top(properties, tileLoader);
             case "repeat", "pattern" -> override = new TileOverrideImpl.Repeat(properties, tileLoader);
+            case "ctm_compact", "compact" -> override = new TileOverrideImpl.CTMCompact(properties, tileLoader);
             default -> properties.error("unknown method \"%s\"", method);
         }
 
