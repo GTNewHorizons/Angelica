@@ -498,7 +498,7 @@ public class TileOverrideImpl {
 
         @Override
         String checkTileMap() {
-            return getNumberOfTiles() != 5 ? null : "requires exactly 5 tiles";
+            return getNumberOfTiles() == 5 ? null : "requires exactly 5 tiles";
         }
 
         @Override

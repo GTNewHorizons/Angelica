@@ -21,6 +21,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -227,7 +228,9 @@ public abstract class MixinRenderBlocks {
             boolean handled = processor.processFace(
                 (RenderBlocks)(Object)this,
                 this.blockAccess,
-                (int) x, (int) y, (int) z,
+                MathHelper.floor_double(x),
+                MathHelper.floor_double(y),
+                MathHelper.floor_double(z),
                 face,
                 icon
             );
