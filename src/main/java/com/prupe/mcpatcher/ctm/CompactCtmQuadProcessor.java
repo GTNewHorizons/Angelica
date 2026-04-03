@@ -79,7 +79,7 @@ public final class CompactCtmQuadProcessor {
     private final IIcon[] sprites;
     private final CompactConnectingCtmProperties props;
 
-    public CompactCtmQuadProcessor(IIcon[] sprites, CompactConnectingCtmProperties props) {
+    CompactCtmQuadProcessor(IIcon[] sprites, CompactConnectingCtmProperties props) {
         this.sprites = new IIcon[5];
         if (sprites != null) {
             System.arraycopy(sprites, 0, this.sprites, 0, Math.min(sprites.length, this.sprites.length));
@@ -93,14 +93,15 @@ public final class CompactCtmQuadProcessor {
         int ctmIndex = CTM_47_BY_CONNECTIONS[connections & 0xFF];
         IIcon replacement = getReplacementIcon(ctmIndex);
         if (replacement != null) {
-            rb.overrideBlockTexture = replacement;
-            return false;
+            renderWholeFace(rb, world, x, y, z, face, replacement);
+            return true;
         }
 
         if (connections == 0 || connections == 0xFF) {
             IIcon sprite = sprites[getCompactSpriteIndex(connections)];
             if (sprite != null) {
-                rb.overrideBlockTexture = sprite;
+                renderWholeFace(rb, world, x, y, z, face, sprite);
+                return true;
             }
             return false;
         }
@@ -169,6 +170,17 @@ public final class CompactCtmQuadProcessor {
 
         rb.overrideBlockTexture = null;
         rb.setRenderBounds(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    private void renderWholeFace(RenderBlocks rb, IBlockAccess world, int x, int y, int z, int face, IIcon icon) {
+        Block block = world.getBlock(x, y, z);
+        IIcon saved = rb.overrideBlockTexture;
+        rb.overrideBlockTexture = icon;
+        try {
+            renderFace(rb, block, x, y, z, face, icon);
+        } finally {
+            rb.overrideBlockTexture = saved;
+        }
     }
 
     private void renderFace(RenderBlocks rb, Block block, int x, int y, int z, int face, IIcon icon) {

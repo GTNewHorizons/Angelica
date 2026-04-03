@@ -8,7 +8,6 @@ import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.prupe.mcpatcher.ctm.CTMUtils;
 import com.prupe.mcpatcher.ctm.CompactCtmQuadProcessor;
-import com.prupe.mcpatcher.ctm.TileOverride;
 import com.prupe.mcpatcher.ctm.TileOverrideImpl;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -32,7 +31,6 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.callback.LocalCapture;
 
 @Mixin(RenderBlocks.class)
 public abstract class MixinRenderBlocks {
@@ -191,21 +189,12 @@ public abstract class MixinRenderBlocks {
     private boolean compactCtmRendering = false;
 
     @Unique
-    private CompactCtmQuadProcessor compactCtmProcessor;
-
-    @Unique
     private CompactCtmQuadProcessor getCompactProcessor() {
         TileOverrideImpl.CTMCompact compact = CTMUtils.getCurrentCompact();
         if (compact == null) {
             return null;
         }
-        if (this.compactCtmProcessor == null) {
-            this.compactCtmProcessor = new CompactCtmQuadProcessor(
-                compact.getIcons(),
-                compact.getCtmProperties()
-            );
-        }
-        return this.compactCtmProcessor;
+        return compact.getProcessor();
     }
 
     private void handleCompactCtmFace(int face, Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
@@ -275,7 +264,6 @@ public abstract class MixinRenderBlocks {
 
     @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
     private void compactCtm_resetAfterBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
-        this.compactCtmProcessor = null;
         CTMUtils.clearCurrentCompact();
     }
 }

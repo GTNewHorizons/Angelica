@@ -485,6 +485,7 @@ public class TileOverrideImpl {
     final public static class CTMCompact extends TileOverride {
 
         private final CompactConnectingCtmProperties properties;
+        private volatile CompactCtmQuadProcessor processor;
 
         CTMCompact(PropertiesFile propertiesFile, TileLoader tileLoader) {
             super(propertiesFile, tileLoader);
@@ -516,12 +517,13 @@ public class TileOverrideImpl {
             return icons.length > 0 ? icons[0] : origIcon;
         }
 
-        public CompactConnectingCtmProperties getCtmProperties() {
-            return properties;
-        }
-
-        public IIcon[] getIcons() {
-            return icons;
+        public CompactCtmQuadProcessor getProcessor() {
+            CompactCtmQuadProcessor p = this.processor;
+            if (p == null) {
+                p = new CompactCtmQuadProcessor(icons, properties);
+                this.processor = p;
+            }
+            return p;
         }
     }
 }
