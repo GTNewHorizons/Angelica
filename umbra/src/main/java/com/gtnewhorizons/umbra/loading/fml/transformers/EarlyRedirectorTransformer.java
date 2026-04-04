@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.loading.fml.transformers;
+package com.gtnewhorizons.umbra.loading.fml.transformers;
 
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.glsm.redirect.GLSMRedirector;
@@ -15,10 +15,10 @@ import java.util.List;
  * A scoped redirector that only transforms classes from known-misbehaving (core)mod packages.
  * <p>
  * Some mods prematurely load classes that call GL functions during coremod discovery/injectData.
- * Those classes get missed by the late-registered {@link AngelicaRedirectorTransformer}, so their
+ * Those classes get missed by the late-registered {@link UmbraRedirectorTransformer}, so their
  * GL calls permanently bypass GLSM.
  * <p>
- * Registered in {@code AngelicaClientTweaker} constructor. Removed by {@code AngelicaLateTweaker}
+ * Registered in {@code UmbraClientTweaker} constructor. Removed by {@code UmbraLateTweaker}
  * once the full redirector is in its proper post-mixin position.
  *
  * @see EcosystemNarrowRules#EARLY_REDIRECTOR_TARGETS
@@ -30,8 +30,7 @@ public class EarlyRedirectorTransformer implements IClassTransformer {
 
     public EarlyRedirectorTransformer() {
         final List<String> excl = new ArrayList<>(Arrays.asList(core.getCoreExclusions()));
-        excl.add("com.gtnewhorizons.angelica.lwjgl3.");
-        excl.add("com.gtnewhorizons.angelica.transform");
+        excl.add("com.gtnewhorizons.umbra.loading");
         exclusions = excl.toArray(new String[0]);
     }
 

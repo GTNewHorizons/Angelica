@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.mixins.early.angelica.ffp;
+package com.gtnewhorizons.umbra.mixins.early.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.ITessellatorData;
@@ -11,8 +11,9 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 /**
- * Intercepts Tessellator.draw() to use streaming VBO+VAO for core profile rendering,
- * except when GTNHLib needs to intercept (display list compilation, DirectTessellator capture).
+ * Intercepts Tessellator.draw() to use streaming VBO+VAO for core profile rendering.
+ * Implements ITessellatorData so TessellatorStreamingDrawer can access Tessellator fields
+ * without depending on Minecraft classes.
  */
 @Mixin(Tessellator.class)
 public class MixinTessellator_CoreProfile implements ITessellatorData {
@@ -31,8 +32,7 @@ public class MixinTessellator_CoreProfile implements ITessellatorData {
     @Shadow public void reset() {}
 
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
-    private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
-        // Let GTNHLib handle display list compilation and DirectTessellator capture
+    private void umbra$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
         if (TessellatorManager.shouldInterceptDraw((Tessellator)(Object)this)) return;
         cir.setReturnValue(TessellatorStreamingDrawer.draw((ITessellatorData) this));
     }
