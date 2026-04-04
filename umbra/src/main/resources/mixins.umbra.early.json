@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8.3-GTNH",
+  "refmap": "mixins.umbra.refmap.json",
+  "target": "@env(DEFAULT)",
+  "compatibilityLevel": "JAVA_8",
+  "package": "com.gtnewhorizons.umbra.mixins",
+  "overwrites": {
+    "conformVisibility": true
+  }
+}

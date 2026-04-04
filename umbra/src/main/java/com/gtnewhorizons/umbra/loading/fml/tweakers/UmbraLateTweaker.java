@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.loading.fml.tweakers;
+package com.gtnewhorizons.umbra.loading.fml.tweakers;
 
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.glsm.loading.TransformerNarrower;
@@ -13,13 +13,18 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Set;
 
-public class AngelicaLateTweaker implements ITweaker {
+/**
+ * Late tweaker that:
+ * 1. Narrows overly-broad transformer exclusions from other coremods
+ * 2. Removes the scoped early redirector
+ * 3. Registers the full redirector in its proper post-mixin position
+ */
+public class UmbraLateTweaker implements ITweaker {
 
-    private static final String EARLY_REDIRECTOR_CLASS = "com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer";
+    private static final String EARLY_REDIRECTOR_CLASS = "com.gtnewhorizons.umbra.loading.fml.transformers.EarlyRedirectorTransformer";
 
     @Override
     public void acceptOptions(List<String> args, File gameDir, File assetsDir, String profile) {
-        // no-op
     }
 
     @Override
@@ -27,9 +32,6 @@ public class AngelicaLateTweaker implements ITweaker {
         narrowTransformerExclusions(classLoader);
     }
 
-    /**
-     * Reduces overly broad transformer exclusions that prevent AngelicaRedirector from doing its job.
-     */
     @SuppressWarnings("unchecked")
     private static void narrowTransformerExclusions(LaunchClassLoader classLoader) {
         try {
@@ -37,11 +39,11 @@ public class AngelicaLateTweaker implements ITweaker {
             exceptionsField.setAccessible(true);
             final Set<String> exceptions = (Set<String>) exceptionsField.get(classLoader);
 
-            TransformerNarrower.narrow(exceptions, Launch.blackboard, "angelica", "Angelica",
+            TransformerNarrower.narrow(exceptions, Launch.blackboard, "umbra", "Umbra",
                 EcosystemNarrowRules.ALL);
 
         } catch (Exception e) {
-            FMLRelaunchLog.warning("[Angelica] Failed to narrow transformer exclusions: %s", e.getMessage());
+            FMLRelaunchLog.warning("[Umbra] Failed to narrow transformer exclusions: %s", e.getMessage());
         }
     }
 
@@ -53,19 +55,20 @@ public class AngelicaLateTweaker implements ITweaker {
     @Override
     @SuppressWarnings("unchecked")
     public String[] getLaunchArguments() {
-        // Remove the scoped early redirector (no longer needed) and register the full one in its proper position: after mixins
+        // Remove the scoped early redirector and register the full one after mixins
         try {
             final Field transformersField = Launch.classLoader.getClass().getDeclaredField("transformers");
             transformersField.setAccessible(true);
-            final List<IClassTransformer> transformers = (List<IClassTransformer>) transformersField.get(Launch.classLoader);
-
+            final List<IClassTransformer> transformers =
+                (List<IClassTransformer>) transformersField.get(Launch.classLoader);
             transformers.removeIf(t -> t.getClass().getName().equals(EARLY_REDIRECTOR_CLASS));
         } catch (Exception e) {
-            FMLRelaunchLog.warning("[Angelica] Failed to remove EarlyRedirectorTransformer: %s", e.getMessage());
+            FMLRelaunchLog.warning("[Umbra] Failed to remove EarlyRedirectorTransformer: %s", e.getMessage());
         }
 
-        final String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.AngelicaRedirectorTransformer";
-        FMLRelaunchLog.finer("Registering transformer %s", transformer);
+        final String transformer =
+            "com.gtnewhorizons.umbra.loading.fml.transformers.UmbraRedirectorTransformer";
+        FMLRelaunchLog.finer("[Umbra] Registering transformer %s", transformer);
         Launch.classLoader.registerTransformer(transformer);
         return new String[0];
     }
