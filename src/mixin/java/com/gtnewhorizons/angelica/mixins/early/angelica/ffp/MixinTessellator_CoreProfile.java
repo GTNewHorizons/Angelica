@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.ITessellatorData;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.minecraft.client.renderer.Tessellator;
+import org.spongepowered.asm.mixin.Intrinsic;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -28,7 +29,8 @@ public class MixinTessellator_CoreProfile implements ITessellatorData {
     @Shadow public boolean hasNormals;
     @Shadow public boolean hasBrightness;
 
-    @Shadow public void reset() {}
+    @Intrinsic
+    @Override public void reset() {}
 
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
     private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
