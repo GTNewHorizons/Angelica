@@ -93,6 +93,10 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
     private void iris$clouds(EntityRenderer instance, RenderGlobal rg, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        if (IrisApi.getInstance().isShaderPackInUse()) {
+            return;
+        }
+
         pipeline.get().setPhase(WorldRenderingPhase.CLOUDS);
         original.call(instance, rg, partialTicks);
         pipeline.get().setPhase(WorldRenderingPhase.NONE);
