@@ -26,7 +26,9 @@ import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -79,6 +81,12 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private int iris$alwaysRenderSky(GameSettings instance) {
         return Math.max(instance.renderDistanceChunks, 4);
     }
+
+    @ModifyConstant(method = "renderWorld(FJ)V", constant = @Constant(doubleValue = 128.0D), expect = 2)
+    private double iris$alwaysRenderCloudsLate(double cloudHeightCheck) {
+        return IrisApi.getInstance().isShaderPackInUse() ? Double.NEGATIVE_INFINITY : cloudHeightCheck;
+    }
+
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V"))
     private void iris$beginSky(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // Use CUSTOM_SKY until levelFogColor is called as a heuristic to catch FabricSkyboxes.
