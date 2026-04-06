@@ -75,7 +75,7 @@ public class HandRenderer {
 
         return mc.entityRenderer.debugViewDirection <= 0 &&
                mc.gameSettings.thirdPersonView == 0 &&
-               !camera.getEntity().isPlayerSleeping() &&
+               !camera.isSleeping() &&
                !mc.gameSettings.hideGUI &&
                !GameModeUtil.isSpectator() &&
                !mc.playerController.enableEverythingIsScrewedUpMode();
