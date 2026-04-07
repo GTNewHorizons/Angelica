@@ -9,6 +9,7 @@ import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -174,20 +175,48 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         return tileLoader.preloadTile(resource, renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS);
     }
 
+    protected int[][] getSingleSheetLayout() {
+        return null;
+    }
+
     private void loadIcons() {
         tileNames.clear();
         String tileList = properties.getString("tiles", "");
         ResourceLocation blankResource = RenderPassAPI.instance.getBlankResource(renderPass);
+        boolean singleImage = properties.getBoolean("singleImage", false);
+
+        if (singleImage) {
+            int[][] layout = getSingleSheetLayout();
+            if (layout == null) {
+                properties.error("method=%s does not support singleImage=true", getMethod());
+            } else {
+                String resourcePath = properties.getResource().getResourcePath();
+                String sheetPath = resourcePath.replaceFirst("\\.properties$", ".png");
+
+                ResourceLocation sheetResource = new ResourceLocation(
+                    properties.getResource().getResourceDomain(),
+                    sheetPath
+                );
+
+                String virtualPrefix = sheetPath.replaceFirst("\\.png$", "");
+
+                Map<Integer, ResourceLocation> parsedTiles = SingleSheetParser.parse(
+                    sheetResource,
+                    layout,
+                    virtualPrefix
+                );
+
+                if (parsedTiles == null) {
+                    properties.error("could not load single sheet %s", sheetResource);
+                }
+            }
+        }
+
         if (tileList.isEmpty()) {
-            for (int i = 0;; i++) {
-                ResourceLocation resource = TileLoader
-                    .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-                if (!TexturePackAPI.hasResource(resource)) {
-                    break;
-                }
-                if (!addIcon(resource)) {
-                    break;
-                }
+            for (int i = 0; ; i++) {
+                ResourceLocation resource = TileLoader.parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
+                if (!TexturePackAPI.hasResource(resource)) break;
+                if (!addIcon(resource)) break;
             }
         } else {
             Pattern range = Pattern.compile("(\\d+)-(\\d+)");

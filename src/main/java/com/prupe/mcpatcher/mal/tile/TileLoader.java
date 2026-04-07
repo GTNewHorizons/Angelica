@@ -275,7 +275,7 @@ public class TileLoader {
         int width = image.getWidth();
         int height = image.getHeight();
         long currentSize = getTextureSize(map.values());
-        long newSize = 4 * width * width;
+        long newSize = 4L * width * height;
         if (newSize + currentSize > MAX_TILESHEET_SIZE) {
             float sizeMB = (float) currentSize / 1048576.0f;
             if (currentSize <= 0) {

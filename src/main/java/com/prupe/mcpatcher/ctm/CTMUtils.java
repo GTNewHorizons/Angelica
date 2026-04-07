@@ -94,6 +94,8 @@ public class CTMUtils {
             public void beforeChange() {
                 long stamp = lock.writeLock();
                 try {
+                    SingleSheetVirtualResources.clear();
+                    SingleSheetParser.clearCache();
                     RenderPassAPI.instance.clear();
                     try {
                         GlassPaneRenderer.clear();

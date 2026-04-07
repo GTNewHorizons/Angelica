@@ -1,6 +1,8 @@
 package com.prupe.mcpatcher.mal.resource;
 
 import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
@@ -15,6 +17,7 @@ import java.util.regex.Pattern;
 
 import javax.imageio.ImageIO;
 
+import com.prupe.mcpatcher.ctm.SingleSheetVirtualResources;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ThreadDownloadImageData;
 import net.minecraft.client.renderer.texture.AbstractTexture;
@@ -83,6 +86,18 @@ public class TexturePackAPI {
     }
 
     public static InputStream getInputStream(ResourceLocation resource) {
+        BufferedImage virtual = SingleSheetVirtualResources.get(resource);
+        if (virtual != null) {
+            try {
+                BufferedImage safe = new BufferedImage(virtual.getWidth(), virtual.getHeight(), BufferedImage.TYPE_INT_ARGB);
+                safe.getGraphics().drawImage(virtual, 0, 0, null);
+                ByteArrayOutputStream baos = new ByteArrayOutputStream(virtual.getWidth() * virtual.getHeight() * 4);
+                ImageIO.write(safe, "PNG", baos);
+                return new ByteArrayInputStream(baos.toByteArray());
+            } catch (IOException e) {
+                logger.error("could not encode virtual image %s as PNG stream: %s", resource, e.getMessage());
+            }
+        }
         try {
             if (resource instanceof ResourceLocationWithSource resourceLocationWithSource) {
                 try {
@@ -101,6 +116,9 @@ public class TexturePackAPI {
     }
 
     public static boolean hasResource(ResourceLocation resource) {
+        if (SingleSheetVirtualResources.has(resource)) {
+            return true;
+        }
         if (resource == null) {
             return false;
         } else if (resource.getResourcePath()
@@ -137,6 +155,10 @@ public class TexturePackAPI {
     }
 
     public static BufferedImage getImage(ResourceLocation resource) {
+        BufferedImage virtual = SingleSheetVirtualResources.get(resource);
+        if (virtual != null) {
+            return virtual;
+        }
         if (resource == null) {
             return null;
         }
