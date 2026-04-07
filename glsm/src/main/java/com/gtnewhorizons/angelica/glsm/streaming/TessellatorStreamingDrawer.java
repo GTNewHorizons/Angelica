@@ -79,7 +79,7 @@ public class TessellatorStreamingDrawer {
         final int vertexCount = tess.getVertexCount();
         if (vertexCount == 0) {
             final int result = tess.getRawBufferIndex() * 4;
-            tess.reset();
+            tess.angelica$reset();
             return result;
         }
 
@@ -104,7 +104,7 @@ public class TessellatorStreamingDrawer {
         }
 
         final int result = tess.getRawBufferIndex() * 4;
-        tess.reset();
+        tess.angelica$reset();
         return result;
     }
 

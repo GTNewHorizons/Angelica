@@ -18,5 +18,5 @@ public interface ITessellatorData {
     boolean hasColor();
     boolean hasNormals();
     boolean hasBrightness();
-    void reset();
+    void angelica$reset();
 }

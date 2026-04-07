@@ -29,8 +29,11 @@ public class MixinTessellator_CoreProfile implements ITessellatorData {
     @Shadow public boolean hasNormals;
     @Shadow public boolean hasBrightness;
 
-    @Intrinsic
-    @Override public void reset() {}
+    @Shadow public void reset() {}
+
+    public void angelica$reset() {
+        reset();
+    }
 
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
     private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
