@@ -1,8 +1,8 @@
 package net.coderbot.iris.vertices;
 
 public final class ExtendedDataHelper {
-	// TODO: Resolve render types for normal blocks?
-	public static final short BLOCK_RENDER_TYPE = -1;
+	// Packed mc_Entity only preserves one terrain/fluid bit, so normal blocks must encode as 0.
+	public static final short BLOCK_RENDER_TYPE = 0;
 	/** All fluids have a ShadersMod render type of 1, to match behavior of Minecraft 1.7 and earlier. */
 	public static final short FLUID_RENDER_TYPE = 1;
 

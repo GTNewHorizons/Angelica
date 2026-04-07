@@ -122,7 +122,7 @@ public class IrisLodRenderProgram {
         ProgramImages.Builder builder = ProgramImages.builder(id);
         pipeline.addGbufferOrShadowSamplers(samplerBuilder, builder,
             isShadowPass ? pipeline::getFlippedBeforeShadow : () -> translucent ? pipeline.getFlippedAfterTranslucent() : pipeline.getFlippedAfterPrepare(),
-            isShadowPass, true, true, false);
+            isShadowPass, false, true, false);
         customUniforms.mapholderToPass(uniformBuilder, this);
         this.uniforms = uniformBuilder.buildUniforms();
         this.customUniforms = customUniforms;

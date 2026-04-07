@@ -949,10 +949,11 @@ public class GLStateManager {
 
         switch (pname) {
             case GL11.GL_COLOR_WRITEMASK -> {
-                params.put((byte) (colorMask.red ? GL11.GL_TRUE : GL11.GL_FALSE));
-                params.put((byte) (colorMask.green ? GL11.GL_TRUE : GL11.GL_FALSE));
-                params.put((byte) (colorMask.blue ? GL11.GL_TRUE : GL11.GL_FALSE));
-                params.put((byte) (colorMask.alpha ? GL11.GL_TRUE : GL11.GL_FALSE));
+                final int pos = params.position();
+                params.put(pos, (byte) (colorMask.red ? GL11.GL_TRUE : GL11.GL_FALSE));
+                params.put(pos + 1, (byte) (colorMask.green ? GL11.GL_TRUE : GL11.GL_FALSE));
+                params.put(pos + 2, (byte) (colorMask.blue ? GL11.GL_TRUE : GL11.GL_FALSE));
+                params.put(pos + 3, (byte) (colorMask.alpha ? GL11.GL_TRUE : GL11.GL_FALSE));
             }
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
@@ -1063,7 +1064,7 @@ public class GLStateManager {
             case GL11.GL_DIFFUSE -> state.diffuse.get(0, params);
             case GL11.GL_SPECULAR -> state.specular.get(0, params);
             case GL11.GL_EMISSION -> state.emission.get(0, params);
-            case GL11.GL_SHININESS -> params.put(state.shininess);
+            case GL11.GL_SHININESS -> params.put(params.position(), state.shininess);
             case GL11.GL_COLOR_INDEXES -> state.colorIndexes.get(0, params);
             default -> {
             }
@@ -1078,11 +1079,11 @@ public class GLStateManager {
             case GL11.GL_SPECULAR -> state.specular.get(0, params);
             case GL11.GL_POSITION -> state.position.get(0, params);
             case GL11.GL_SPOT_DIRECTION -> state.spotDirection.get(0, params);
-            case GL11.GL_SPOT_EXPONENT -> params.put(state.spotExponent);
-            case GL11.GL_SPOT_CUTOFF -> params.put(state.spotCutoff);
-            case GL11.GL_CONSTANT_ATTENUATION -> params.put(state.constantAttenuation);
-            case GL11.GL_LINEAR_ATTENUATION -> params.put(state.linearAttenuation);
-            case GL11.GL_QUADRATIC_ATTENUATION -> params.put(state.quadraticAttenuation);
+            case GL11.GL_SPOT_EXPONENT -> params.put(params.position(), state.spotExponent);
+            case GL11.GL_SPOT_CUTOFF -> params.put(params.position(), state.spotCutoff);
+            case GL11.GL_CONSTANT_ATTENUATION -> params.put(params.position(), state.constantAttenuation);
+            case GL11.GL_LINEAR_ATTENUATION -> params.put(params.position(), state.linearAttenuation);
+            case GL11.GL_QUADRATIC_ATTENUATION -> params.put(params.position(), state.quadraticAttenuation);
             default -> {
             }
         }
@@ -1101,21 +1102,39 @@ public class GLStateManager {
             case GL11.GL_COLOR_CLEAR_VALUE -> clearColor.get(params);
             case GL11.GL_CURRENT_COLOR -> color.get(params);
             case GL11.GL_DEPTH_RANGE -> {
-                params.put((float) viewportState.depthRangeNear);
-                params.put((float) viewportState.depthRangeFar);
+                final int pos = params.position();
+                params.put(pos, (float) viewportState.depthRangeNear);
+                params.put(pos + 1, (float) viewportState.depthRangeFar);
             }
-            case GL14.GL_BLEND_COLOR -> params.put(blendState.getBlendColorR()).put(blendState.getBlendColorG()).put(blendState.getBlendColorB()).put(blendState.getBlendColorA());
+            case GL14.GL_BLEND_COLOR -> {
+                final int pos = params.position();
+                params.put(pos, blendState.getBlendColorR());
+                params.put(pos + 1, blendState.getBlendColorG());
+                params.put(pos + 2, blendState.getBlendColorB());
+                params.put(pos + 3, blendState.getBlendColorA());
+            }
             case GL11.GL_CURRENT_NORMAL -> {
                 final Vector3f normal = ShaderManager.getCurrentNormal();
-                params.put(normal.x).put(normal.y).put(normal.z);
+                final int pos = params.position();
+                params.put(pos, normal.x);
+                params.put(pos + 1, normal.y);
+                params.put(pos + 2, normal.z);
             }
             case GL11.GL_CURRENT_TEXTURE_COORDS -> {
                 final Vector4f tc = ShaderManager.getCurrentTexCoord();
-                params.put(tc.x).put(tc.y).put(tc.z).put(tc.w);
+                final int pos = params.position();
+                params.put(pos, tc.x);
+                params.put(pos + 1, tc.y);
+                params.put(pos + 2, tc.z);
+                params.put(pos + 3, tc.w);
             }
             case GL11.GL_FOG_COLOR -> {
                 final FloatBuffer fogBuf = fogState.getFogColorBuffer();
-                params.put(fogBuf.get(0)).put(fogBuf.get(1)).put(fogBuf.get(2)).put(fogBuf.get(3));
+                final int pos = params.position();
+                params.put(pos, fogBuf.get(0));
+                params.put(pos + 1, fogBuf.get(1));
+                params.put(pos + 2, fogBuf.get(2));
+                params.put(pos + 3, fogBuf.get(3));
             }
             case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.ambient.get(0, params);
             default -> {
@@ -2341,6 +2360,8 @@ public class GLStateManager {
         prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(first, count);
+        } else if (mode == GL11.GL_QUAD_STRIP) {
+            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
         } else if (mode == GL11.GL_POLYGON) {
             RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
         } else {
@@ -4368,9 +4389,20 @@ public class GLStateManager {
         RENDER_BACKEND.finish();
     }
 
-    public static int glGetError() { return RENDER_BACKEND.getError(); }
-    public static String glGetString(int pname) { return RENDER_BACKEND.getString(pname); }
-    public static String glGetStringi(int name, int index) { return RENDER_BACKEND.getStringi(name, index); }
+    public static int glGetError() {
+        if (!RENDER_BACKEND.hasContext()) return 0;
+        return RENDER_BACKEND.getError();
+    }
+
+    public static String glGetString(int pname) {
+        if (!RENDER_BACKEND.hasContext()) return "no valid GL/render context";
+        return RENDER_BACKEND.getString(pname);
+    }
+
+    public static String glGetStringi(int name, int index) {
+        if (!RENDER_BACKEND.hasContext()) return "no valid GL/render context";
+        return RENDER_BACKEND.getStringi(name, index);
+    }
 
     public static void glShaderSource(int shader, CharSequence source) {
         String src = source.toString();

@@ -596,4 +596,21 @@ class CompatShaderTransformerTest {
         assertFalse(fragResult.contains("varying"), "no 'varying' keyword in fragment");
         assertTrue(fragResult.contains("in vec2 v_TexCoord"), "varying → in in fragment");
     }
+
+    @Test
+    void testReservedWordNewIsRenamed() {
+        String src = """
+            #version 120
+            uniform sampler2D tex;
+            void main() {
+                vec4 color = texture2D(tex, vec2(0.5));
+                float new = color.r > 0.5 ? 1.0 : 0.0;
+                gl_FragColor = vec4(new, new, new, 1.0);
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, true);
+        assertFalse(result.matches("(?s).*\\bnew\\b(?!\\s*\\().*"), "'new' as identifier must be renamed in core profile output\n\n" + result);
+        assertTrue(result.contains("angelica_renamed_new"), "'new' should be renamed to angelica_renamed_new\n\n" + result);
+    }
 }

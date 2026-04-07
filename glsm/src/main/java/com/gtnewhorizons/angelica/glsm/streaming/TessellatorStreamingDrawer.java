@@ -1,16 +1,14 @@
-package com.gtnewhorizons.angelica.client.rendering;
+package com.gtnewhorizons.angelica.glsm.streaming;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ITessellatorData;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
-import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer;
-import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
-import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
@@ -71,42 +69,42 @@ public class TessellatorStreamingDrawer {
     /**
      * Draw the vanilla Tessellator's data using streaming VBO+VAO instead of FFP client arrays.
      */
-    public static int draw(Tessellator tess) {
-        if (!tess.isDrawing) {
+    public static int draw(ITessellatorData tess) {
+        if (!tess.isDrawing()) {
             throw new IllegalStateException("Not tesselating!");
         }
 
-        tess.isDrawing = false;
+        tess.setDrawing(false);
 
-        final int vertexCount = tess.vertexCount;
+        final int vertexCount = tess.getVertexCount();
         if (vertexCount == 0) {
-            final int result = tess.rawBufferIndex * 4;
-            tess.reset();
+            final int result = tess.getRawBufferIndex() * 4;
+            tess.angelica$reset();
             return result;
         }
 
         // Determine the optimal vertex format from the tessellator's flags
-        final int flags = VertexFlags.convertToFlags(tess.hasTexture, tess.hasColor, tess.hasNormals, tess.hasBrightness);
+        final int flags = VertexFlags.convertToFlags(tess.hasTexture(), tess.hasColor(), tess.hasNormals(), tess.hasBrightness());
         final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
         final int vertexSize = format.getVertexSize();
 
         final int requiredBytes = vertexCount * vertexSize;
         ensureRepackCapacity(requiredBytes);
 
-        final long writePtr = format.writeToBuffer0(repackAddress, tess.rawBuffer, tess.rawBufferIndex);
+        final long writePtr = format.writeToBuffer0(repackAddress, tess.getRawBuffer(), tess.getRawBufferIndex());
         repackBuffer.position(0);
         repackBuffer.limit((int)(writePtr - repackAddress));
 
-        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
+        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.getDrawMode(), vertexCount);
 
         // Shrink rawBuffer if oversized
-        if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
-            tess.rawBufferSize = 0x10000;
-            tess.rawBuffer = new int[tess.rawBufferSize];
+        if (tess.getRawBufferSize() > 0x20000 && tess.getRawBufferIndex() < (tess.getRawBufferSize() << 3)) {
+            tess.setRawBufferSize(0x10000);
+            tess.setRawBuffer(new int[tess.getRawBufferSize()]);
         }
 
-        final int result = tess.rawBufferIndex * 4;
-        tess.reset();
+        final int result = tess.getRawBufferIndex() * 4;
+        tess.angelica$reset();
         return result;
     }
 
@@ -126,6 +124,19 @@ public class TessellatorStreamingDrawer {
         final int vertexSize = format.getVertexSize();
 
         uploadAndDraw(buffer, flags, format, vertexSize, drawMode, vertexCount);
+    }
+
+    /**
+     * Upload pre-packed vertex data and draw. Public API for external batch systems.
+     * @param packedData  buffer positioned at 0 with limit set to total bytes
+     * @param drawMode    GL draw mode (GL_QUADS, GL_TRIANGLES, etc.)
+     * @param flags       vertex format flags (from VertexFlags)
+     * @param vertexCount number of vertices
+     */
+    public static void drawPacked(ByteBuffer packedData, int drawMode, int flags, int vertexCount) {
+        final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
+        final int vertexSize = format.getVertexSize();
+        uploadAndDraw(packedData, flags, format, vertexSize, drawMode, vertexCount);
     }
 
     private static String cachedDebugInfo = "Stream: not initialized";
@@ -173,34 +184,6 @@ public class TessellatorStreamingDrawer {
     }
 
     /**
-     * Draw a merged batch of pre-packed vertex data from a DeferredBatchTessellator.
-     * Copies byte ranges into repackBuffer, then uploads and draws.
-     */
-    static void drawPackedBatch(DeferredBatchTessellator source,
-                                java.util.List<DeferredBatchTessellator.DrawRange> ranges,
-                                int from, int to,
-                                int totalBytes, int totalVertices,
-                                int drawMode, int flags) {
-        if (totalVertices == 0) return;
-
-        final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
-        final int vertexSize = format.getVertexSize();
-
-        ensureRepackCapacity(totalBytes);
-
-        long writePos = repackAddress;
-        for (int j = from; j < to; j++) {
-            final DeferredBatchTessellator.DrawRange r = ranges.get(j);
-            source.copyRange(r.byteOffset(), r.byteLength(), writePos);
-            writePos += r.byteLength();
-        }
-        repackBuffer.position(0);
-        repackBuffer.limit(totalBytes);
-
-        uploadAndDraw(repackBuffer, flags, format, vertexSize, drawMode, totalVertices);
-    }
-
-    /**
      * Upload packed vertex data to a streaming buffer and issue the draw call.
      * Tries the persistent ring buffer first, falls back to orphan buffer on overflow.
      */
@@ -239,7 +222,11 @@ public class TessellatorStreamingDrawer {
         }
     }
 
-    private static void ensureRepackCapacity(int requiredBytes) {
+    /**
+     * Ensure the repack buffer is large enough for the given byte count.
+     * Public for use by external batch systems that need to pack data before calling {@link #drawPacked}.
+     */
+    public static void ensureRepackCapacity(int requiredBytes) {
         if (requiredBytes <= repackCapacity) return;
 
         int newCapacity = repackCapacity;
@@ -251,6 +238,16 @@ public class TessellatorStreamingDrawer {
         repackBuffer = memAlloc(newCapacity);
         repackAddress = memAddress0(repackBuffer);
         repackCapacity = newCapacity;
+    }
+
+    /** Get the repack buffer's native address. Valid until next {@link #ensureRepackCapacity} call. */
+    public static long getRepackAddress() {
+        return repackAddress;
+    }
+
+    /** Get the repack ByteBuffer. Caller must set position/limit before passing to {@link #drawPacked}. */
+    public static ByteBuffer getRepackBuffer() {
+        return repackBuffer;
     }
 
     private static void ensureVAO(int flags, VertexFormat format) {

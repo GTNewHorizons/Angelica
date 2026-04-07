@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.client.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import lombok.Getter;
 import net.minecraft.client.renderer.Tessellator;
 import org.lwjgl.opengl.GL11;
@@ -108,10 +109,31 @@ public class DeferredDrawBatcher {
                     break;
             }
 
-            TessellatorStreamingDrawer.drawPackedBatch(batchTessellator, ranges, i, subEnd, totalBytes, totalVertices, drawMode, flags);
+            drawPackedBatch(batchTessellator, ranges, i, subEnd, totalBytes, totalVertices, drawMode, flags);
 
             i = subEnd;
         }
+    }
+
+    /**
+     * Pack ranges from a DeferredBatchTessellator into the streaming drawer's repack buffer
+     * and issue a single draw call for the merged batch.
+     */
+    private static void drawPackedBatch(DeferredBatchTessellator source, List<DeferredBatchTessellator.DrawRange> ranges, int from, int to, int totalBytes, int totalVertices, int drawMode, int flags) {
+        if (totalVertices == 0) return;
+
+        TessellatorStreamingDrawer.ensureRepackCapacity(totalBytes);
+        long writePos = TessellatorStreamingDrawer.getRepackAddress();
+        for (int j = from; j < to; j++) {
+            final DeferredBatchTessellator.DrawRange r = ranges.get(j);
+            source.copyRange(r.byteOffset(), r.byteLength(), writePos);
+            writePos += r.byteLength();
+        }
+        final java.nio.ByteBuffer buf = TessellatorStreamingDrawer.getRepackBuffer();
+        buf.position(0);
+        buf.limit(totalBytes);
+
+        TessellatorStreamingDrawer.drawPacked(buf, drawMode, flags, totalVertices);
     }
 
     /**
