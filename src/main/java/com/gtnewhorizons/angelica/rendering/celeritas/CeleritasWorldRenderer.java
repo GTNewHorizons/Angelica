@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.cardinalstar.cubicchunks.world.ICubicWorld;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -106,11 +107,17 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     @Override
     public int getMinimumBuildHeight() {
+        if (this.world instanceof ICubicWorld cubicWorld) {
+            return cubicWorld.getMinHeight();
+        }
         return 0;
     }
 
     @Override
     public int getMaximumBuildHeight() {
+        if (this.world instanceof ICubicWorld cubicWorld) {
+            return cubicWorld.getMaxHeight();
+        }
         return 256;
     }
 

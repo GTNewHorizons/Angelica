@@ -1,12 +1,14 @@
 package com.gtnewhorizons.angelica.compat;
 
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksDelegate;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
 public class ModStatus {
     public static final Logger LOGGER = LogManager.getLogger("ModCompat");
@@ -26,6 +28,7 @@ public class ModStatus {
     public static boolean isBaublesLoaded;
     public static boolean isCosmeticArmorReworkedLoaded;
     public static boolean isFluidLoggedLoaded;
+    public static boolean isCubicChunksLoaded;
     public static boolean isBOPLoaded;
 
     public static void preInit() {
@@ -46,6 +49,7 @@ public class ModStatus {
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isCosmeticArmorReworkedLoaded = Loader.isModLoaded("cosmeticarmorreworked");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
+        isCubicChunksLoaded = Loader.isModLoaded("cubicchunks");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBOPLoaded = Loader.isModLoaded("BiomesOPlenty");
@@ -64,6 +68,10 @@ public class ModStatus {
             if (majorVersion >= 2) {
                 isNEIDMetadataExtended = true;
             }
+        }
+
+        if (isCubicChunksLoaded) {
+            CubicChunksDelegate.init();
         }
     }
 }

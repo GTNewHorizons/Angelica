@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
@@ -53,7 +54,13 @@ public class ClonedChunkSection {
             throw new RuntimeException("Couldn't retrieve chunk at " + pos.toChunkPos());
         }
 
-        ExtendedBlockStorage section = getChunkSection(chunk, pos);
+        ExtendedBlockStorage section;
+
+        if (ModStatus.isCubicChunksLoaded) {
+            section = CubicChunksAPI.getCubeStorage(world, pos.x, pos.y, pos.z);
+        } else {
+            section = getChunkSection(chunk, pos);
+        }
 
         if (section == null) {
             section = EMPTY_SECTION;
@@ -168,12 +175,15 @@ public class ClonedChunkSection {
         this.lastUsedTimestamp = timestamp;
     }
 
-    public static boolean isOutOfBuildLimitVertically(int y) {
+    public static boolean isOutOfBuildLimitVertically(World world, int y) {
+        if (ModStatus.isCubicChunksLoaded) {
+            return y < CubicChunksAPI.getMinHeight(world) || y >= CubicChunksAPI.getMaxHeight(world);
+        }
         return y < 0 || y >= 256;
     }
 
-    private static ExtendedBlockStorage getChunkSection(Chunk chunk, ChunkSectionPos pos) {
-        if (!isOutOfBuildLimitVertically(ChunkSectionPos.getBlockCoord(pos.y))) {
+    private ExtendedBlockStorage getChunkSection(Chunk chunk, ChunkSectionPos pos) {
+        if (!isOutOfBuildLimitVertically(this.world, ChunkSectionPos.getBlockCoord(pos.y))) {
             return chunk.getBlockStorageArray()[pos.y];
         }
         return null;

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas.world;
 import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -111,7 +112,13 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     public static ChunkRenderContext prepare(World world, ChunkSectionPos origin, ClonedChunkSectionCache sectionCache) {
         final Chunk chunk = world.getChunkFromChunkCoords(origin.x, origin.z);
-        final ExtendedBlockStorage section = chunk.getBlockStorageArray()[origin.y];
+        final ExtendedBlockStorage section;
+
+        if (ModStatus.isCubicChunksLoaded) {
+            section = CubicChunksAPI.getCubeStorage(world, origin.x, origin.y, origin.z);
+        } else {
+            section = chunk.getBlockStorageArray()[origin.y];
+        }
 
         // If the chunk section is absent or empty, terminate early
         if (section == null || section.isEmpty()) {
@@ -241,7 +248,10 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     @Override
     public int getLightBrightnessForSkyBlocks(int x, int y, int z, int min) {
-        if (y < 0 || y >= 256 || x < -30_000_000 || z < -30_000_000 || x >= 30_000_000 || z >= 30_000_000) {
+        final int minHeight = ModStatus.isCubicChunksLoaded ? CubicChunksAPI.getMinHeight(this.world) : 0;
+        final int maxHeight = ModStatus.isCubicChunksLoaded ? CubicChunksAPI.getMaxHeight(this.world) : 256;
+
+        if (y < minHeight || y >= maxHeight || x < -30_000_000 || z < -30_000_000 || x >= 30_000_000 || z >= 30_000_000) {
             // skyBrightness = 15, blockBrightness = min
             return (15 << 20) | (min << 4);
         }

@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import net.minecraftforge.common.util.ForgeDirection;
-
 import java.util.BitSet;
 import java.util.Set;
+
+import net.minecraftforge.common.util.ForgeDirection;
 
 public class ChunkOcclusionData {
     private static final int DIRECTION_COUNT = ForgeDirection.values().length;
