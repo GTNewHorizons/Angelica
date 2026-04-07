@@ -235,6 +235,11 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
 
+    @Config.Comment("Override MC_VERSION for shader pack macros. 0 for auto-detect")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0)
+    public static int overrideMcVersion;
+
     @Config.Comment("Define IS_IRIS in shader macros.")
     @Config.DefaultBoolean(true)
     public static boolean defineIsIris;

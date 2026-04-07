@@ -63,7 +63,7 @@ public class StandardMacros {
 	public static Iterable<StringPair> createStandardEnvironmentDefines() {
 		ArrayList<StringPair> standardDefines = new ArrayList<>();
 
-		define(standardDefines, "MC_VERSION", getMcVersion());
+		define(standardDefines, "MC_VERSION", AngelicaConfig.overrideMcVersion > 0 ? String.valueOf(AngelicaConfig.overrideMcVersion) : getMcVersion());
 		define(standardDefines, "MC_GL_VERSION", getGlVersion(GL11.GL_VERSION));
 		define(standardDefines, "MC_GLSL_VERSION", getGlVersion(GL20.GL_SHADING_LANGUAGE_VERSION));
 		define(standardDefines, getOsString());

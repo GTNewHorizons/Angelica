@@ -62,12 +62,26 @@ public class IdMap {
 
 		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
 
-		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
+		// Check if block.properties has a dedicated 1.7.10 section; if so, prefer it
+		String rawBlockProperties = readProperties(shaderPath, "block.properties");
+		Iterable<StringPair> blockDefines = environmentDefines;
+		if (rawBlockProperties != null && rawBlockProperties.contains("MC_VERSION") && rawBlockProperties.contains("10710")) {
+			ArrayList<StringPair> legacyDefines = new ArrayList<>();
+			for (StringPair define : environmentDefines) {
+				if (!"MC_VERSION".equals(define.getKey())) {
+					legacyDefines.add(define);
+				}
+			}
+			legacyDefines.add(new StringPair("MC_VERSION", "10710"));
+			blockDefines = legacyDefines;
+		}
+
+		loadProperties(shaderPath, "block.properties", shaderPackOptions, blockDefines).ifPresent(blockProperties -> {
 			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
 			blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
 		});
 
-		// if no block properties were found, try again with higher version.
+		// if no block properties were found, try again with a modern version and convert entries
 		if (blockPropertiesMap == null || blockPropertiesMap.isEmpty()) {
 			ArrayList<StringPair> filteredEnvironmentDefines = new ArrayList<>();
 			for (StringPair define : environmentDefines) {
@@ -76,7 +90,7 @@ public class IdMap {
 				}
 			}
 
-			filteredEnvironmentDefines.add(new StringPair("MC_VERSION", "13100"));
+			filteredEnvironmentDefines.add(new StringPair("MC_VERSION", "260101"));
 
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, filteredEnvironmentDefines).ifPresent(blockProperties -> {
 				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
