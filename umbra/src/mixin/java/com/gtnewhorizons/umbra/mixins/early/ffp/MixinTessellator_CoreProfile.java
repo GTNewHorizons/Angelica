@@ -31,6 +31,10 @@ public class MixinTessellator_CoreProfile implements ITessellatorData {
 
     @Shadow public void reset() {}
 
+    public void angelica$reset() {
+        reset();
+    }
+
     @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
     private void umbra$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
         if (TessellatorManager.shouldInterceptDraw((Tessellator)(Object)this)) return;
