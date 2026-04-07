@@ -26,6 +26,8 @@ import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.fluids.Fluid;
 
+import java.util.Map;
+
 public class ClonedChunkSection {
 
     private static final ExtendedBlockStorage EMPTY_SECTION = new ExtendedBlockStorage(0, false);
@@ -93,28 +95,45 @@ public class ClonedChunkSection {
     private void copyBlockEntities(Chunk chunk, ChunkSectionPos pos) {
         this.tileEntities.clear();
 
-        final ConcurrentTileEntityMap map = ((IChunkTileEntityMapHolder) chunk).angelica$getConcurrentTEMap();
+        final Map<ChunkPosition, TileEntity> map = ((IChunkTileEntityMapHolder) chunk).angelica$getChunkTileEntityMap();
 
-        map.withReadLock(() -> {
-            final Object2ObjectOpenHashMap<ChunkPosition, TileEntity> delegate = map.getDelegate();
-
-            if (delegate.isEmpty()) return;
-
-            final int minY = pos.getMinY();
-            final int maxY = pos.getMaxY();
-
-            for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(delegate)) {
-                final ChunkPosition tePos = entry.getKey();
-                if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
-
-                final TileEntity te = entry.getValue();
-                if (te != null && !te.isInvalid()) {
-                    this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
-                }
-            }
-        });
+        if (map instanceof ConcurrentTileEntityMap concurrentMap) {
+            concurrentMap.withReadLock(() -> copyBlockEntitiesFromMap(concurrentMap.getDelegate(), pos));
+        } else {
+            copyBlockEntitiesFromMap(map, pos);
+        }
 
         this.tileEntities.trim();
+    }
+
+    private void copyBlockEntitiesFromMap(Map<ChunkPosition, TileEntity> map, ChunkSectionPos pos) {
+        if (map.isEmpty()) {
+            return;
+        }
+
+        final int minY = pos.getMinY();
+        final int maxY = pos.getMaxY();
+
+        if (map instanceof Object2ObjectOpenHashMap<ChunkPosition, TileEntity> fastMap) {
+            for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(fastMap)) {
+                copyBlockEntityEntry(entry.getKey(), entry.getValue(), minY, maxY);
+            }
+            return;
+        }
+
+        for (Map.Entry<ChunkPosition, TileEntity> entry : map.entrySet()) {
+            copyBlockEntityEntry(entry.getKey(), entry.getValue(), minY, maxY);
+        }
+    }
+
+    private void copyBlockEntityEntry(ChunkPosition tePos, TileEntity te, int minY, int maxY) {
+        if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) {
+            return;
+        }
+
+        if (te != null && !te.isInvalid()) {
+            this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
+        }
     }
 
     public Block getBlock(int x, int y, int z) {

@@ -7,11 +7,15 @@ import net.minecraft.client.renderer.RenderGlobal;
 import com.cardinalstar.cubicchunks.modcompat.angelica.AngelicaInterop;
 import com.cardinalstar.cubicchunks.modcompat.angelica.IAngelicaDelegate;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
+import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.embeddedt.embeddium.impl.render.chunk.map.ChunkStatus;
 import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTrackerHolder;
 
 public class CubicChunksDelegate implements IAngelicaDelegate {
+    private static final Logger LOGGER = LogManager.getLogger("Angelica|CubicChunks");
 
     public static final CubicChunksDelegate INSTANCE = new CubicChunksDelegate();
 
@@ -27,6 +31,14 @@ public class CubicChunksDelegate implements IAngelicaDelegate {
         return Minecraft.getMinecraft().renderGlobal;
     }
 
+    private static CeleritasWorldRenderer getRendererIfReady() {
+        CeleritasWorldRenderer renderer = CeleritasWorldRenderer.peekInstance();
+        if (renderer == null || !renderer.isActive() || renderer.getRenderSectionManager() == null) {
+            return null;
+        }
+        return renderer;
+    }
+
     private static void scheduleTerrainUpdate() {
         RenderGlobal renderGlobal = getRenderGlobal();
         if (renderGlobal instanceof IRenderGlobalExt ext) {
@@ -34,48 +46,76 @@ public class CubicChunksDelegate implements IAngelicaDelegate {
         }
     }
 
+    private static void enqueueChunkGraphUpdate(Runnable runnable) {
+        AngelicaRenderQueue.submit(() -> {
+            try {
+                runnable.run();
+            } catch (Throwable t) {
+                LOGGER.error("Deferred Cubic Chunks render update failed", t);
+            }
+        });
+    }
+
     @Override
     public void onColumnLoaded(int chunkX, int chunkZ) {
-        WorldClient world = getWorld();
-        if (world != null) {
-            ChunkTrackerHolder.get(world).onChunkStatusAdded(chunkX, chunkZ, ChunkStatus.FLAG_ALL);
+        try {
+            WorldClient world = getWorld();
+            if (world != null) {
+                ChunkTrackerHolder.get(world).onChunkStatusAdded(chunkX, chunkZ, ChunkStatus.FLAG_ALL);
 
-            CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstance();
-            if (renderer.isActive()) {
-                for (int cubeY : CubicChunksAPI.getLoadedCubeLevelsInColumn(world, chunkX, chunkZ)) {
-                    renderer.getRenderSectionManager().onSectionAdded(chunkX, cubeY, chunkZ);
-                    renderer.scheduleRebuildForChunk(chunkX, cubeY, chunkZ, true);
+                CeleritasWorldRenderer renderer = getRendererIfReady();
+                if (renderer != null) {
+                    for (int cubeY : CubicChunksAPI.getLoadedCubeLevelsInColumn(world, chunkX, chunkZ)) {
+                        final int loadedCubeY = cubeY;
+                        enqueueChunkGraphUpdate(() -> {
+                            CeleritasWorldRenderer queuedRenderer = getRendererIfReady();
+                            if (queuedRenderer != null) {
+                                queuedRenderer.scheduleRebuildForChunk(chunkX, loadedCubeY, chunkZ, true);
+                            }
+                        });
+                    }
                 }
             }
+            scheduleTerrainUpdate();
+        } catch (Throwable t) {
+            LOGGER.error("Failed handling Cubic Chunks column load at {}, {}", chunkX, chunkZ, t);
         }
-        scheduleTerrainUpdate();
     }
 
     @Override
     public void onColumnUnloaded(int chunkX, int chunkZ) {
-        WorldClient world = getWorld();
-        if (world != null) {
-            ChunkTrackerHolder.get(world).onChunkStatusRemoved(chunkX, chunkZ, ChunkStatus.FLAG_ALL);
+        try {
+            WorldClient world = getWorld();
+            if (world != null) {
+                ChunkTrackerHolder.get(world).onChunkStatusRemoved(chunkX, chunkZ, ChunkStatus.FLAG_ALL);
+            }
+            scheduleTerrainUpdate();
+        } catch (Throwable t) {
+            LOGGER.error("Failed handling Cubic Chunks column unload at {}, {}", chunkX, chunkZ, t);
         }
-        scheduleTerrainUpdate();
     }
 
     @Override
     public void onCubeLoaded(int cubeX, int cubeY, int cubeZ) {
-        CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstance();
-        if (renderer.isActive()) {
-            renderer.getRenderSectionManager().onSectionAdded(cubeX, cubeY, cubeZ);
-            renderer.scheduleRebuildForChunk(cubeX, cubeY, cubeZ, true);
+        try {
+            enqueueChunkGraphUpdate(() -> {
+                CeleritasWorldRenderer renderer = getRendererIfReady();
+                if (renderer != null) {
+                    renderer.scheduleRebuildForChunk(cubeX, cubeY, cubeZ, true);
+                }
+            });
+            scheduleTerrainUpdate();
+        } catch (Throwable t) {
+            LOGGER.error("Failed handling Cubic Chunks cube load at {}, {}, {}", cubeX, cubeY, cubeZ, t);
         }
-        scheduleTerrainUpdate();
     }
 
     @Override
     public void onCubeUnloaded(int cubeX, int cubeY, int cubeZ) {
-        CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstance();
-        if (renderer.isActive()) {
-            renderer.getRenderSectionManager().onSectionRemoved(cubeX, cubeY, cubeZ);
+        try {
+            scheduleTerrainUpdate();
+        } catch (Throwable t) {
+            LOGGER.error("Failed handling Cubic Chunks cube unload at {}, {}, {}", cubeX, cubeY, cubeZ, t);
         }
-        scheduleTerrainUpdate();
     }
 }

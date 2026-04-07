@@ -32,8 +32,8 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
     @Shadow public abstract void addTileEntity(TileEntity te);
 
     @Override
-    public ConcurrentTileEntityMap angelica$getConcurrentTEMap() {
-        return (ConcurrentTileEntityMap) this.chunkTileEntityMap;
+    public Map<ChunkPosition, TileEntity> angelica$getChunkTileEntityMap() {
+        return this.chunkTileEntityMap;
     }
 
     @Redirect(method = "getTileEntityUnsafe", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"), remap = false)
@@ -73,13 +73,15 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
 
     private Object angelica$deferRemoveImpl(Map<ChunkPosition, TileEntity> map, Object key) {
         if (!RenderThreadContext.hasWorldSlice()) return map.remove(key);
-        ((ConcurrentTileEntityMap) map).queueInvalidation((ChunkPosition) key);
+        if (map instanceof ConcurrentTileEntityMap concurrentMap) {
+            concurrentMap.queueInvalidation((ChunkPosition) key);
+        }
         return null;
     }
 
     @Inject(method = "fillChunk", at = @At("RETURN"))
     private void angelica$createTileEntities(byte[] data, int primaryBitMask, int addBitMask, boolean groundUp, CallbackInfo ci) {
-        ((ConcurrentTileEntityMap) this.chunkTileEntityMap).withWriteLock(() -> {
+        Runnable action = () -> {
             final boolean hasExistingTEs = !this.chunkTileEntityMap.isEmpty();
 
             for (int sectionY = 0; sectionY < this.storageArrays.length; sectionY++) {
@@ -114,6 +116,12 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
                     }
                 }
             }
-        });
+        };
+
+        if (this.chunkTileEntityMap instanceof ConcurrentTileEntityMap concurrentMap) {
+            concurrentMap.withWriteLock(action);
+        } else {
+            action.run();
+        }
     }
 }

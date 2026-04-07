@@ -45,6 +45,11 @@ public class AngelicaRenderQueue {
         return EXECUTOR;
     }
 
+    public static void submit(Runnable runnable) {
+        TASKS.add(runnable);
+        LockSupport.unpark(MAIN_THREAD);
+    }
+
     public static int processTasks(int max) {
         int tasksRun = 0;
         while(tasksRun < max) {
