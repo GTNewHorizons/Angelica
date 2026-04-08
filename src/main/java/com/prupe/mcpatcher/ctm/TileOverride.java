@@ -45,9 +45,21 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final boolean innerSeams;
     private final BitSet biomes;
     private final BitSet height;
+    private boolean singleSheet = false;
+    private ResourceLocation singleSheetResource = null;
 
     private final List<ResourceLocation> tileNames = new ArrayList<>();
     protected IIcon[] icons;
+
+    protected static int[][] horizontalLayout(int count) {
+        int[][] layout = new int[1][count];
+        for (int i = 0; i < count; i++) layout[0][i] = i;
+        return layout;
+    }
+
+    protected int[][] getSingleSheetLayout() {
+        return null;
+    }
 
     static TileOverride create(ResourceLocation propertiesFile, TileLoader tileLoader) {
         if (propertiesFile == null) {
@@ -311,6 +323,17 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     }
 
     protected int getNumberOfTiles() {
+        if (singleSheet) {
+            int[][] layout = getSingleSheetLayout();
+            if (layout == null) return 0;
+            int count = 0;
+            for (int[] row : layout) {
+                for (int idx : row) {
+                    if (idx >= 0) count++;
+                }
+            }
+            return count;
+        }
         return tileNames.size();
     }
 
@@ -328,6 +351,45 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     }
 
     public final void registerIcons() {
+        if (singleSheet) {
+            IIcon sheet = tileLoader.getIcon(singleSheetResource);
+            int[][] layout = getSingleSheetLayout();
+
+            if (sheet == null) {
+                properties.error("tiles=single: spritesheet icon failed to load");
+                icons = new IIcon[0];
+                return;
+            }
+            if (layout == null) {
+                properties.error(
+                    "tiles=single is not supported for method=%s", getMethod());
+                icons = new IIcon[0];
+                return;
+            }
+
+            int rows = layout.length;
+            int cols = layout[0].length;
+
+            int maxIndex = -1;
+            for (int[] row : layout) {
+                for (int idx : row) {
+                    if (idx > maxIndex) maxIndex = idx;
+                }
+            }
+
+            icons = new IIcon[maxIndex + 1];
+
+            for (int r = 0; r < rows; r++) {
+                for (int c = 0; c < cols; c++) {
+                    int tileIdx = layout[r][c];
+                    if (tileIdx >= 0) {
+                        icons[tileIdx] = new SpriteSheetIcon(sheet, cols, rows, c, r);
+                    }
+                }
+            }
+            return;
+        }
+
         icons = new IIcon[tileNames.size()];
         for (int i = 0; i < icons.length; i++) {
             icons[i] = tileLoader.getIcon(tileNames.get(i));
