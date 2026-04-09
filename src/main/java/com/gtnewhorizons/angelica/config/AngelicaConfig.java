@@ -235,10 +235,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
 
-    @Config.Comment("Override MC_VERSION for shader pack macros. 0 for auto-detect")
+    @Config.Comment("Modern MC_VERSION to try if shader pack has no 1.7.10 section. 0 = default (260101)")
     @Config.DefaultInt(0)
     @Config.RangeInt(min = 0)
-    public static int overrideMcVersion;
+    public static int modernFallbackMcVersion;
 
     @Config.Comment("Define IS_IRIS in shader macros.")
     @Config.DefaultBoolean(true)
