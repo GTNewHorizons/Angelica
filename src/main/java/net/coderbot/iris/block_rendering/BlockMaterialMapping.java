@@ -31,17 +31,17 @@ public class BlockMaterialMapping {
 		// Detect modern shader packs by looking for block names that only exist post-flattening.
 		// This determines how to handle ambiguous names like "grass" (block in 1.7.10, plant in 1.13+).
 		boolean isModernPack = false;
+		detection:
 		for (List<BlockEntry> entries : blockPropertiesMap.values()) {
 			for (BlockEntry entry : entries) {
 				if ("minecraft".equals(entry.getId().getNamespace())) {
 					String name = entry.getId().getName();
 					if ("grass_block".equals(name) || "short_grass".equals(name)) {
 						isModernPack = true;
-						break;
+						break detection;
 					}
 				}
 			}
-			if (isModernPack) break;
 		}
 
 		if (isModernPack) {

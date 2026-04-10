@@ -1,9 +1,10 @@
 package net.coderbot.iris.shaderpack.materialmap;
 
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,9 +41,9 @@ public class FlatteningMap {
 	};
 
 	static {
-		// ==========================================
-		// Simple renames (no metadata difference)
-		// ==========================================
+		// ==============
+		// Simple renames
+		// ==============
 
 		// === Grass block (ID 2) ===
 		rename("grass_block", "grass");
@@ -143,109 +144,109 @@ public class FlatteningMap {
 
 		// === Signs (IDs 63, 68) ===
 		// In 1.7.10 only one sign type exists. In 1.14+ signs got wood variants.
-		rename("oak_sign", "standing_sign");
-		rename("oak_wall_sign", "wall_sign");
-		rename("spruce_sign", "standing_sign");
-		rename("spruce_wall_sign", "wall_sign");
-		rename("birch_sign", "standing_sign");
-		rename("birch_wall_sign", "wall_sign");
-		rename("jungle_sign", "standing_sign");
-		rename("jungle_wall_sign", "wall_sign");
-		rename("acacia_sign", "standing_sign");
-		rename("acacia_wall_sign", "wall_sign");
-		rename("dark_oak_sign", "standing_sign");
-		rename("dark_oak_wall_sign", "wall_sign");
+		rename("oak_sign",              "standing_sign");
+		rename("oak_wall_sign",         "wall_sign");
+		rename("spruce_sign",           "standing_sign");
+		rename("spruce_wall_sign",      "wall_sign");
+		rename("birch_sign",            "standing_sign");
+		rename("birch_wall_sign",       "wall_sign");
+		rename("jungle_sign",           "standing_sign");
+		rename("jungle_wall_sign",      "wall_sign");
+		rename("acacia_sign",           "standing_sign");
+		rename("acacia_wall_sign",      "wall_sign");
+		rename("dark_oak_sign",         "standing_sign");
+		rename("dark_oak_wall_sign",    "wall_sign");
 
 		// === Skull / Head blocks (ID 144) ===
 		// In 1.7.10, skull type is stored in tile entity, not metadata.
 		// All modern skull blocks map to the same 1.7.10 block.
-		rename("skeleton_skull", "skull");
-		rename("skeleton_wall_skull", "skull");
-		rename("wither_skeleton_skull", "skull");
-		rename("wither_skeleton_wall_skull", "skull");
-		rename("zombie_head", "skull");
-		rename("zombie_wall_head", "skull");
-		rename("player_head", "skull");
-		rename("player_wall_head", "skull");
-		rename("creeper_head", "skull");
-		rename("creeper_wall_head", "skull");
+		rename("skeleton_skull",                "skull");
+		rename("skeleton_wall_skull",           "skull");
+		rename("wither_skeleton_skull",         "skull");
+		rename("wither_skeleton_wall_skull",    "skull");
+		rename("zombie_head",                   "skull");
+		rename("zombie_wall_head",              "skull");
+		rename("player_head",                   "skull");
+		rename("player_wall_head",              "skull");
+		rename("creeper_head",                  "skull");
+		rename("creeper_wall_head",             "skull");
 
 		// ==========================================
 		// Metadata variants (block split by flattening)
 		// ==========================================
 
 		// === Stone variants (ID 1) ===
-		meta("granite", "stone", 1);
-		meta("polished_granite", "stone", 2);
-		meta("diorite", "stone", 3);
-		meta("polished_diorite", "stone", 4);
-		meta("andesite", "stone", 5);
-		meta("polished_andesite", "stone", 6);
+		meta("granite",             "stone", 1);
+		meta("polished_granite",    "stone", 2);
+		meta("diorite",             "stone", 3);
+		meta("polished_diorite",    "stone", 4);
+		meta("andesite",            "stone", 5);
+		meta("polished_andesite",   "stone", 6);
 
 		// === Dirt variants (ID 3) ===
 		meta("coarse_dirt", "dirt", 1);
-		meta("podzol", "dirt", 2);
+		meta("podzol",      "dirt", 2);
 
 		// === Planks (ID 5) ===
-		meta("oak_planks", "planks", 0);
-		meta("spruce_planks", "planks", 1);
-		meta("birch_planks", "planks", 2);
-		meta("jungle_planks", "planks", 3);
-		meta("acacia_planks", "planks", 4);
+		meta("oak_planks",      "planks", 0);
+		meta("spruce_planks",   "planks", 1);
+		meta("birch_planks",    "planks", 2);
+		meta("jungle_planks",   "planks", 3);
+		meta("acacia_planks",   "planks", 4);
 		meta("dark_oak_planks", "planks", 5);
 
 		// === Saplings (ID 6) ===
 		// Bit 3 = growth stage, include both stage 0 and stage 1 for each type
-		metas("oak_sapling", "sapling", 0, 8);
-		metas("spruce_sapling", "sapling", 1, 9);
-		metas("birch_sapling", "sapling", 2, 10);
-		metas("jungle_sapling", "sapling", 3, 11);
-		metas("acacia_sapling", "sapling", 4, 12);
-		metas("dark_oak_sapling", "sapling", 5, 13);
+		metas("oak_sapling",        "sapling", 0, 8);
+		metas("spruce_sapling",     "sapling", 1, 9);
+		metas("birch_sapling",      "sapling", 2, 10);
+		metas("jungle_sapling",     "sapling", 3, 11);
+		metas("acacia_sapling",     "sapling", 4, 12);
+		metas("dark_oak_sapling",   "sapling", 5, 13);
 
 		// === Sand (ID 12) ===
 		meta("red_sand", "sand", 1);
 
 		// === Logs (ID 17) ===
 		// Metadata: bits 0-1 = wood type, bits 2-3 = axis (0=Y, 1=X, 2=Z, 3=bark)
-		logVariants("oak_log", "oak_wood", 0);
-		logVariants("spruce_log", "spruce_wood", 1);
-		logVariants("birch_log", "birch_wood", 2);
-		logVariants("jungle_log", "jungle_wood", 3);
+		logVariants("oak_log",      "oak_wood",     0);
+		logVariants("spruce_log",   "spruce_wood",  1);
+		logVariants("birch_log",    "birch_wood",   2);
+		logVariants("jungle_log",   "jungle_wood",  3);
 
 		// === Stripped logs (1.13+) ===
 		// Don't exist in 1.7.10, map to regular for compatibility
-		logVariants("stripped_oak_log", "stripped_oak_wood", 0);
-		logVariants("stripped_spruce_log", "stripped_spruce_wood", 1);
-		logVariants("stripped_birch_log", "stripped_birch_wood", 2);
-		logVariants("stripped_jungle_log", "stripped_jungle_wood", 3);
+		logVariants("stripped_oak_log",     "stripped_oak_wood",    0);
+		logVariants("stripped_spruce_log",  "stripped_spruce_wood", 1);
+		logVariants("stripped_birch_log",   "stripped_birch_wood",  2);
+		logVariants("stripped_jungle_log",  "stripped_jungle_wood", 3);
 
 		// === Logs2 (ID 162) ===
 		// log2 only has 2 real types (acacia=0, dark_oak=1), but types 2 and 3 exist
 		// in the world and render as acacia/dark_oak respectively. Include them all.
-		log2Variants("acacia_log", "acacia_wood", 0);
-		log2Variants("dark_oak_log", "dark_oak_wood", 1);
-		log2Variants("stripped_acacia_log", "stripped_acacia_wood", 0);
-		log2Variants("stripped_dark_oak_log", "stripped_dark_oak_wood", 1);
+		log2Variants("acacia_log",              "acacia_wood",              0);
+		log2Variants("dark_oak_log",            "dark_oak_wood",            1);
+		log2Variants("stripped_acacia_log",     "stripped_acacia_wood",     0);
+		log2Variants("stripped_dark_oak_log",   "stripped_dark_oak_wood",   1);
 
 		// === Leaves (ID 18) ===
 		// Metadata: bits 0-1 = type, bit 2 = no_decay, bit 3 = check_decay
-		leafVariants("oak_leaves", "leaves", 0);
-		leafVariants("spruce_leaves", "leaves", 1);
-		leafVariants("birch_leaves", "leaves", 2);
-		leafVariants("jungle_leaves", "leaves", 3);
+		leafVariants("oak_leaves",      "leaves", 0);
+		leafVariants("spruce_leaves",   "leaves", 1);
+		leafVariants("birch_leaves",    "leaves", 2);
+		leafVariants("jungle_leaves",   "leaves", 3);
 
 		// === Leaves2 (ID 161) ===
-		leafVariants("acacia_leaves", "leaves2", 0);
+		leafVariants("acacia_leaves",   "leaves2", 0);
 		leafVariants("dark_oak_leaves", "leaves2", 1);
 
 		// === Sponge (ID 19) ===
 		meta("wet_sponge", "sponge", 1);
 
 		// === Sandstone variants (ID 24) ===
-		meta("chiseled_sandstone", "sandstone", 1);
-		meta("cut_sandstone", "sandstone", 2);
-		meta("smooth_sandstone", "sandstone", 2);
+		meta("chiseled_sandstone",  "sandstone", 1);
+		meta("cut_sandstone",       "sandstone", 2);
+		meta("smooth_sandstone",    "sandstone", 2);
 
 		// === Beds (ID 26) ===
 		// In 1.7.10, bed is one block. Metadata encodes facing/occupied/part, NOT color.
@@ -257,64 +258,62 @@ public class FlatteningMap {
 		// === Tall grass / fern (ID 31) ===
 		// tallgrass: 0 = shrub, 1 = grass, 2 = fern
 		meta("short_grass", "tallgrass", 1);   // 1.20.3+ name
-		meta("fern", "tallgrass", 2);
+		meta("fern",        "tallgrass", 2);
 
 		// === Wool (ID 35) ===
 		colorVariants("wool", "wool");
 
-		// === Flowers (ID 38: red_flower) ===
-		meta("poppy", "red_flower", 0);
-		meta("blue_orchid", "red_flower", 1);
-		meta("allium", "red_flower", 2);
-		meta("azure_bluet", "red_flower", 3);
-		meta("red_tulip", "red_flower", 4);
-		meta("orange_tulip", "red_flower", 5);
-		meta("white_tulip", "red_flower", 6);
-		meta("pink_tulip", "red_flower", 7);
-		meta("oxeye_daisy", "red_flower", 8);
+		// === Flowers (ID 38) ===
+		meta("poppy",           "red_flower", 0);
+		meta("blue_orchid",     "red_flower", 1);
+		meta("allium",          "red_flower", 2);
+		meta("azure_bluet",     "red_flower", 3);
+		meta("red_tulip",       "red_flower", 4);
+		meta("orange_tulip",    "red_flower", 5);
+		meta("white_tulip",     "red_flower", 6);
+		meta("pink_tulip",      "red_flower", 7);
+		meta("oxeye_daisy",     "red_flower", 8);
 
 		// === Stone slabs (ID 44) ===
 		// Bit 3 = top half, bits 0-2 = slab type
-		slabVariants("stone_slab", "stone_slab", 0);
-		slabVariants("sandstone_slab", "stone_slab", 1);
-		slabVariants("petrified_oak_slab", "stone_slab", 2);  // Legacy wooden slab in the stone slab block
-		slabVariants("cobblestone_slab", "stone_slab", 3);
-		slabVariants("brick_slab", "stone_slab", 4);
-		slabVariants("stone_brick_slab", "stone_slab", 5);
-		slabVariants("nether_brick_slab", "stone_slab", 6);
-		slabVariants("quartz_slab", "stone_slab", 7);
+		slabVariants("stone_slab",          "stone_slab", 0);
+		slabVariants("sandstone_slab",      "stone_slab", 1);
+		slabVariants("petrified_oak_slab",  "stone_slab", 2);  // Legacy wooden slab in the stone slab block
+		slabVariants("cobblestone_slab",    "stone_slab", 3);
+		slabVariants("brick_slab",          "stone_slab", 4);
+		slabVariants("stone_brick_slab",    "stone_slab", 5);
+		slabVariants("nether_brick_slab",   "stone_slab", 6);
+		slabVariants("quartz_slab",         "stone_slab", 7);
 
 		// === Wooden slabs (ID 126) ===
-		slabVariants("oak_slab", "wooden_slab", 0);
-		slabVariants("spruce_slab", "wooden_slab", 1);
-		slabVariants("birch_slab", "wooden_slab", 2);
-		slabVariants("jungle_slab", "wooden_slab", 3);
-		slabVariants("acacia_slab", "wooden_slab", 4);
-		slabVariants("dark_oak_slab", "wooden_slab", 5);
+		slabVariants("oak_slab",        "wooden_slab", 0);
+		slabVariants("spruce_slab",     "wooden_slab", 1);
+		slabVariants("birch_slab",      "wooden_slab", 2);
+		slabVariants("jungle_slab",     "wooden_slab", 3);
+		slabVariants("acacia_slab",     "wooden_slab", 4);
+		slabVariants("dark_oak_slab",   "wooden_slab", 5);
 
 		// === Stained glass (ID 95) ===
 		colorVariants("stained_glass", "stained_glass");
 
 		// === Monster egg / Infested blocks (ID 97) ===
-		meta("infested_stone", "monster_egg", 0);
-		meta("infested_cobblestone", "monster_egg", 1);
-		meta("infested_stone_bricks", "monster_egg", 2);
-		meta("infested_mossy_stone_bricks", "monster_egg", 3);
-		meta("infested_cracked_stone_bricks", "monster_egg", 4);
-		meta("infested_chiseled_stone_bricks", "monster_egg", 5);
+		meta("infested_stone",                  "monster_egg", 0);
+		meta("infested_cobblestone",            "monster_egg", 1);
+		meta("infested_stone_bricks",           "monster_egg", 2);
+		meta("infested_mossy_stone_bricks",     "monster_egg", 3);
+		meta("infested_cracked_stone_bricks",   "monster_egg", 4);
+		meta("infested_chiseled_stone_bricks",  "monster_egg", 5);
 
 		// === Stone bricks (ID 98) ===
-		meta("stone_bricks", "stonebrick", 0);
-		meta("mossy_stone_bricks", "stonebrick", 1);
-		meta("cracked_stone_bricks", "stonebrick", 2);
-		meta("chiseled_stone_bricks", "stonebrick", 3);
+		meta("stone_bricks",            "stonebrick", 0);
+		meta("mossy_stone_bricks",      "stonebrick", 1);
+		meta("cracked_stone_bricks",    "stonebrick", 2);
+		meta("chiseled_stone_bricks",   "stonebrick", 3);
 
         // === Cauldron variants (ID 118) ===
         // In 1.17+, cauldron was split by contents. In 1.7.10: meta 0 = empty, 1-3 = water fill levels.
-        meta("cauldron", "cauldron", 0);
-        metas("water_cauldron", "cauldron", 1, 2, 3);
-        meta("lava_cauldron", "cauldron", 0);
-        meta("powder_snow_cauldron", "cauldron", 0);
+        meta("cauldron",            "cauldron", 0);
+        metas("water_cauldron",     "cauldron", 1, 2, 3);
 
 		// === Cobblestone wall variants (ID 139) ===
 		// cobblestone_wall:0 resolves directly, only need the mossy variant
@@ -323,41 +322,41 @@ public class FlatteningMap {
 		// === Flower pot (ID 140) ===
 		// In 1.7.10, flower pot contents are in the tile entity.
 		// In 1.13+, each potted plant is a separate block.
-		rename("potted_oak_sapling", "flower_pot");
-		rename("potted_spruce_sapling", "flower_pot");
-		rename("potted_birch_sapling", "flower_pot");
-		rename("potted_jungle_sapling", "flower_pot");
-		rename("potted_acacia_sapling", "flower_pot");
-		rename("potted_dark_oak_sapling", "flower_pot");
-		rename("potted_fern", "flower_pot");
-		rename("potted_dandelion", "flower_pot");
-		rename("potted_poppy", "flower_pot");
-		rename("potted_blue_orchid", "flower_pot");
-		rename("potted_allium", "flower_pot");
-		rename("potted_azure_bluet", "flower_pot");
-		rename("potted_red_tulip", "flower_pot");
-		rename("potted_orange_tulip", "flower_pot");
-		rename("potted_white_tulip", "flower_pot");
-		rename("potted_pink_tulip", "flower_pot");
-		rename("potted_oxeye_daisy", "flower_pot");
-		rename("potted_red_mushroom", "flower_pot");
-		rename("potted_brown_mushroom", "flower_pot");
-		rename("potted_dead_bush", "flower_pot");
-		rename("potted_cactus", "flower_pot");
+		rename("potted_oak_sapling",        "flower_pot");
+		rename("potted_spruce_sapling",     "flower_pot");
+		rename("potted_birch_sapling",      "flower_pot");
+		rename("potted_jungle_sapling",     "flower_pot");
+		rename("potted_acacia_sapling",     "flower_pot");
+		rename("potted_dark_oak_sapling",   "flower_pot");
+		rename("potted_fern",               "flower_pot");
+		rename("potted_dandelion",          "flower_pot");
+		rename("potted_poppy",              "flower_pot");
+		rename("potted_blue_orchid",        "flower_pot");
+		rename("potted_allium",             "flower_pot");
+		rename("potted_azure_bluet",        "flower_pot");
+		rename("potted_red_tulip",          "flower_pot");
+		rename("potted_orange_tulip",       "flower_pot");
+		rename("potted_white_tulip",        "flower_pot");
+		rename("potted_pink_tulip",         "flower_pot");
+		rename("potted_oxeye_daisy",        "flower_pot");
+		rename("potted_red_mushroom",       "flower_pot");
+		rename("potted_brown_mushroom",     "flower_pot");
+		rename("potted_dead_bush",          "flower_pot");
+		rename("potted_cactus",             "flower_pot");
 
 		// === Anvil (ID 145) ===
 		// Bits 0-1 = facing, bits 2-3 = damage level
-		metas("anvil", "anvil", 0, 1, 2, 3);
-		metas("chipped_anvil", "anvil", 4, 5, 6, 7);
-		metas("damaged_anvil", "anvil", 8, 9, 10, 11);
+		metas("anvil",          "anvil", 0, 1, 2, 3);
+		metas("chipped_anvil",  "anvil", 4, 5, 6, 7);
+		metas("damaged_anvil",  "anvil", 8, 9, 10, 11);
 
 		// === Quartz block (ID 155) ===
 		// :0 = default, :1 = chiseled, :2 = pillar (Y), :3 = pillar (X), :4 = pillar (Z)
-		meta("chiseled_quartz_block", "quartz_block", 1);
-		metas("quartz_pillar", "quartz_block", 2, 3, 4);
+		meta("chiseled_quartz_block",   "quartz_block", 1);
+		metas("quartz_pillar",          "quartz_block", 2, 3, 4);
 		// === Smooth quartz (1.14+) ===
 		// No 1.7.10 equivalent; map to base quartz for compat
-		meta("smooth_quartz", "quartz_block", 0);
+		meta("smooth_quartz",           "quartz_block", 0);
 
 		// === Smooth stone (1.14+) ===
 		// No 1.7.10 equivalent; closest visual match is double_stone_slab meta 8
@@ -374,18 +373,22 @@ public class FlatteningMap {
 
 		// === Double plant (ID 175) ===
 		// Bottom half has type in meta 0-5; top half is always meta 8 (shared by all types).
-		meta("sunflower", "double_plant", 0);
-		meta("lilac", "double_plant", 1);
-		meta("tall_grass", "double_plant", 2);
-		meta("large_fern", "double_plant", 3);
-		meta("rose_bush", "double_plant", 4);
-		meta("peony", "double_plant", 5);
+		meta("sunflower",   "double_plant", 0);
+		meta("lilac",       "double_plant", 1);
+		meta("tall_grass",  "double_plant", 2);
+		meta("large_fern",  "double_plant", 3);
+		meta("rose_bush",   "double_plant", 4);
+		meta("peony",       "double_plant", 5);
 
 		// === Water / Lava (IDs 8-11) ===
 		// In 1.13+, water/lava are single blocks. In 1.7.10, flowing variants are separate.
 		// Map modern names to both still and flowing for full coverage.
-		multi("water", entry("water"), entry("flowing_water"));
-		multi("lava", entry("lava"), entry("flowing_lava"));
+		multi("water",
+            entry("water"),
+            entry("flowing_water"));
+		multi("lava",
+            entry("lava"),
+            entry("flowing_lava"));
 
 		// ==========================================
 		// Blockstate property mappings
@@ -393,34 +396,34 @@ public class FlatteningMap {
 		// ==========================================
 
 		// === Furnace (IDs 61, 62) ===
-		state("furnace", "lit", "false", entry("furnace"));
-		state("furnace", "lit", "true", entry("lit_furnace"));
+		state("furnace", "lit", "false",    entry("furnace"));
+		state("furnace", "lit", "true",     entry("lit_furnace"));
 
 		// === Redstone ore (IDs 73, 74) ===
-		state("redstone_ore", "lit", "false", entry("redstone_ore"));
-		state("redstone_ore", "lit", "true", entry("lit_redstone_ore"));
+		state("redstone_ore", "lit", "false",   entry("redstone_ore"));
+		state("redstone_ore", "lit", "true",    entry("lit_redstone_ore"));
 
 		// === Redstone lamp (IDs 123, 124) ===
-		state("redstone_lamp", "lit", "false", entry("redstone_lamp"));
-		state("redstone_lamp", "lit", "true", entry("lit_redstone_lamp"));
+		state("redstone_lamp", "lit", "false",  entry("redstone_lamp"));
+		state("redstone_lamp", "lit", "true",   entry("lit_redstone_lamp"));
 
 		// === Redstone torch (IDs 75, 76) ===
-		state("redstone_torch", "lit", "true", entry("redstone_torch"));
-		state("redstone_torch", "lit", "false", entry("unlit_redstone_torch"));
-		state("redstone_wall_torch", "lit", "true", entryMetas("redstone_torch", 1, 2, 3, 4));
-		state("redstone_wall_torch", "lit", "false", entryMetas("unlit_redstone_torch", 1, 2, 3, 4));
+		state("redstone_torch",         "lit", "true",  entry("redstone_torch"));
+		state("redstone_torch",         "lit", "false", entry("unlit_redstone_torch"));
+		state("redstone_wall_torch",    "lit", "true",  entryMetas("redstone_torch",        1, 2, 3, 4));
+		state("redstone_wall_torch",    "lit", "false", entryMetas("unlit_redstone_torch",  1, 2, 3, 4));
 
 		// === Daylight detector (IDs 151, 178) ===
 		state("daylight_detector", "inverted", "false", entry("daylight_detector"));
-		state("daylight_detector", "inverted", "true", entry("daylight_detector_inverted"));
+		state("daylight_detector", "inverted", "true",  entry("daylight_detector_inverted"));
 
 		// === Repeater (IDs 93, 94) ===
-		state("repeater", "powered", "false", entry("unpowered_repeater"));
-		state("repeater", "powered", "true", entry("powered_repeater"));
+		state("repeater", "powered", "false",   entry("unpowered_repeater"));
+		state("repeater", "powered", "true",    entry("powered_repeater"));
 
 		// === Comparator (IDs 149, 150) ===
 		state("comparator", "powered", "false", entry("unpowered_comparator"));
-		state("comparator", "powered", "true", entry("powered_comparator"));
+		state("comparator", "powered", "true",  entry("powered_comparator"));
 
 		// === Redstone wire (ID 55) ===
 		// Modern: power=0-15. 1.7.10: meta 0-15 (same values, different syntax)
@@ -430,8 +433,8 @@ public class FlatteningMap {
 
 		// === End portal frame (ID 120) ===
 		// Modern: eye=true/false. 1.7.10: bit 2 of metadata (metas 4-7 have eye)
-		state("end_portal_frame", "eye", "true", entryMetas("end_portal_frame", 4, 5, 6, 7));
-		state("end_portal_frame", "eye", "false", entryMetas("end_portal_frame", 0, 1, 2, 3));
+		state("end_portal_frame", "eye", "true",    entryMetas("end_portal_frame", 4, 5, 6, 7));
+		state("end_portal_frame", "eye", "false",   entryMetas("end_portal_frame", 0, 1, 2, 3));
 
 		// === Snow layers (ID 78) ===
 		// Modern: snow:layers=1 through layers=8
@@ -460,63 +463,63 @@ public class FlatteningMap {
 
 		// === Slabs: type=bottom/top/double (IDs 44, 126, 43, 125, 181, 182) ===
 		// Bit 3 = top half for regular slabs. Double slabs are separate blocks.
-		slabStates("stone_slab", "stone_slab", 0, "double_stone_slab", 0);
-		slabStates("sandstone_slab", "stone_slab", 1, "double_stone_slab", 1);
-		slabStates("petrified_oak_slab", "stone_slab", 2, "double_stone_slab", 2);
-		slabStates("cobblestone_slab", "stone_slab", 3, "double_stone_slab", 3);
-		slabStates("brick_slab", "stone_slab", 4, "double_stone_slab", 4);
-		slabStates("stone_brick_slab", "stone_slab", 5, "double_stone_slab", 5);
-		slabStates("nether_brick_slab", "stone_slab", 6, "double_stone_slab", 6);
-		slabStates("quartz_slab", "stone_slab", 7, "double_stone_slab", 7);
-		slabStates("oak_slab", "wooden_slab", 0, "double_wooden_slab", 0);
-		slabStates("spruce_slab", "wooden_slab", 1, "double_wooden_slab", 1);
-		slabStates("birch_slab", "wooden_slab", 2, "double_wooden_slab", 2);
-		slabStates("jungle_slab", "wooden_slab", 3, "double_wooden_slab", 3);
-		slabStates("acacia_slab", "wooden_slab", 4, "double_wooden_slab", 4);
-		slabStates("dark_oak_slab", "wooden_slab", 5, "double_wooden_slab", 5);
+		slabStates("stone_slab",            "stone_slab", 0,  "double_stone_slab", 0);
+		slabStates("sandstone_slab",        "stone_slab", 1,  "double_stone_slab", 1);
+		slabStates("petrified_oak_slab",    "stone_slab", 2,  "double_stone_slab", 2);
+		slabStates("cobblestone_slab",      "stone_slab", 3,  "double_stone_slab", 3);
+		slabStates("brick_slab",            "stone_slab", 4,  "double_stone_slab", 4);
+		slabStates("stone_brick_slab",      "stone_slab", 5,  "double_stone_slab", 5);
+		slabStates("nether_brick_slab",     "stone_slab", 6,  "double_stone_slab", 6);
+		slabStates("quartz_slab",           "stone_slab", 7,  "double_stone_slab", 7);
+		slabStates("oak_slab",              "wooden_slab", 0, "double_wooden_slab", 0);
+		slabStates("spruce_slab",           "wooden_slab", 1, "double_wooden_slab", 1);
+		slabStates("birch_slab",            "wooden_slab", 2, "double_wooden_slab", 2);
+		slabStates("jungle_slab",           "wooden_slab", 3, "double_wooden_slab", 3);
+		slabStates("acacia_slab",           "wooden_slab", 4, "double_wooden_slab", 4);
+		slabStates("dark_oak_slab",         "wooden_slab", 5, "double_wooden_slab", 5);
 
 		// === Mushroom blocks (IDs 99, 100) ===
 		// In modern MC, mushroom_stem is separate.
 		// In 1.7.10, metas 10,15 of both mushroom blocks are stem.
 		// Cap metas are 0-9,11-14. We need these so modern "brown_mushroom_block"
 		// doesn't claim stem metas that belong to "mushroom_stem".
-		metas("brown_mushroom_block", "brown_mushroom_block", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14);
-		metas("red_mushroom_block", "red_mushroom_block", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14);
+		metas("brown_mushroom_block",   "brown_mushroom_block", 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14);
+		metas("red_mushroom_block",     "red_mushroom_block",   0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 11, 12, 13, 14);
 
 		// === Mushroom stem (IDs 99, 100) ===
 		multi("mushroom_stem",
-			entryMetas("brown_mushroom_block", 10, 15),
-			entryMetas("red_mushroom_block", 10, 15));
+			entryMetas("brown_mushroom_block",  10, 15),
+			entryMetas("red_mushroom_block",    10, 15));
 
 		// === Log axis (IDs 17, 162) ===
 		// 1.7.10: bits 0-1=type, bits 2-3=axis (0=Y, 1=X, 2=Z)
-		logAxisStates("oak_log", 0);
-		logAxisStates("spruce_log", 1);
-		logAxisStates("birch_log", 2);
-		logAxisStates("jungle_log", 3);
-		logAxisStates("stripped_oak_log", 0);
-		logAxisStates("stripped_spruce_log", 1);
-		logAxisStates("stripped_birch_log", 2);
-		logAxisStates("stripped_jungle_log", 3);
-		log2AxisStates("acacia_log", 0);
-		log2AxisStates("dark_oak_log", 1);
-		log2AxisStates("stripped_acacia_log", 0);
+		logAxisStates("oak_log",                0);
+		logAxisStates("spruce_log",             1);
+		logAxisStates("birch_log",              2);
+		logAxisStates("jungle_log",             3);
+		logAxisStates("stripped_oak_log",       0);
+		logAxisStates("stripped_spruce_log",    1);
+		logAxisStates("stripped_birch_log",     2);
+		logAxisStates("stripped_jungle_log",    3);
+		log2AxisStates("acacia_log",            0);
+		log2AxisStates("dark_oak_log",          1);
+		log2AxisStates("stripped_acacia_log",   0);
 		log2AxisStates("stripped_dark_oak_log", 1);
 
 		// === Wood / bark blocks (IDs 17, 162) ===
 		// All axes map to same meta (1.7.10 bark is all-sided)
-		woodAxisStates("oak_wood", 12);
-		woodAxisStates("spruce_wood", 13);
-		woodAxisStates("birch_wood", 14);
-		woodAxisStates("jungle_wood", 15);
-		woodAxisStates("stripped_oak_wood", 12);
-		woodAxisStates("stripped_spruce_wood", 13);
-		woodAxisStates("stripped_birch_wood", 14);
-		woodAxisStates("stripped_jungle_wood", 15);
-		wood2AxisStates("acacia_wood", 12, 14);
-		wood2AxisStates("dark_oak_wood", 13, 15);
-		wood2AxisStates("stripped_acacia_wood", 12, 14);
-		wood2AxisStates("stripped_dark_oak_wood", 13, 15);
+		woodAxisStates("oak_wood",                  12);
+		woodAxisStates("spruce_wood",               13);
+		woodAxisStates("birch_wood",                14);
+		woodAxisStates("jungle_wood",               15);
+		woodAxisStates("stripped_oak_wood",         12);
+		woodAxisStates("stripped_spruce_wood",      13);
+		woodAxisStates("stripped_birch_wood",       14);
+		woodAxisStates("stripped_jungle_wood",      15);
+		wood2AxisStates("acacia_wood",              12, 14);
+		wood2AxisStates("dark_oak_wood",            13, 15);
+		wood2AxisStates("stripped_acacia_wood",     12, 14);
+		wood2AxisStates("stripped_dark_oak_wood",   13, 15);
 
 		// === Hay block axis (ID 170) ===
 		state("hay_block", "axis", "y", entryMetas("hay_block", 0));
@@ -530,23 +533,23 @@ public class FlatteningMap {
 
 		// === Stairs (various IDs) ===
 		// 1.7.10: bits 0-1=facing (0=E,1=W,2=S,3=N), bit 2=upside_down
-		stairStates("oak_stairs", "oak_stairs");
-		stairStates("cobblestone_stairs", "stone_stairs");
-		stairStates("brick_stairs", "brick_stairs");
-		stairStates("stone_brick_stairs", "stone_brick_stairs");
-		stairStates("nether_brick_stairs", "nether_brick_stairs");
-		stairStates("sandstone_stairs", "sandstone_stairs");
-		stairStates("spruce_stairs", "spruce_stairs");
-		stairStates("birch_stairs", "birch_stairs");
-		stairStates("jungle_stairs", "jungle_stairs");
-		stairStates("quartz_stairs", "quartz_stairs");
-		stairStates("acacia_stairs", "acacia_stairs");
-		stairStates("dark_oak_stairs", "dark_oak_stairs");
+		stairStates("oak_stairs",           "oak_stairs");
+		stairStates("cobblestone_stairs",   "stone_stairs");
+		stairStates("brick_stairs",         "brick_stairs");
+		stairStates("stone_brick_stairs",   "stone_brick_stairs");
+		stairStates("nether_brick_stairs",  "nether_brick_stairs");
+		stairStates("sandstone_stairs",     "sandstone_stairs");
+		stairStates("spruce_stairs",        "spruce_stairs");
+		stairStates("birch_stairs",         "birch_stairs");
+		stairStates("jungle_stairs",        "jungle_stairs");
+		stairStates("quartz_stairs",        "quartz_stairs");
+		stairStates("acacia_stairs",        "acacia_stairs");
+		stairStates("dark_oak_stairs",      "dark_oak_stairs");
 
 		// === Doors (IDs 64, 71) ===
 		// Lower half (meta 0-7): bits 0-1=facing (0=E,1=S,2=W,3=N), bit 2=open
 		// Upper half (meta 8-11): bit 0=hinge, bit 1=powered
-		doorStates("oak_door", "wooden_door");
+		doorStates("oak_door",  "wooden_door");
 		doorStates("iron_door", "iron_door");
 
 		// === Trapdoor (ID 96) ===
@@ -559,8 +562,8 @@ public class FlatteningMap {
 
 		// === Pistons (IDs 29, 33) ===
 		// 1.7.10: bits 0-2=facing (0=D,1=U,2=N,3=S,4=W,5=E), bit 3=extended
-		sixDirectionalStates("piston", "piston", "extended", "false", "true");
-		sixDirectionalStates("sticky_piston", "sticky_piston", "extended", "false", "true");
+		sixDirectionalStates("piston",          "piston",           "extended", "false", "true");
+		sixDirectionalStates("sticky_piston",   "sticky_piston",    "extended", "false", "true");
 
 		// === Piston head (ID 34) ===
 		// 1.7.10: bits 0-2=facing, bit 3=type (0=normal, 1=sticky)
@@ -568,31 +571,31 @@ public class FlatteningMap {
 
 		// === Dispenser (ID 23), Dropper (ID 158) ===
 		// 1.7.10: bits 0-2=facing, bit 3=triggered
-		sixDirectionalStates("dispenser", "dispenser", "triggered", "false", "true");
-		sixDirectionalStates("dropper", "dropper", "triggered", "false", "true");
+		sixDirectionalStates("dispenser",   "dispenser",    "triggered", "false", "true");
+		sixDirectionalStates("dropper",     "dropper",      "triggered", "false", "true");
 
 		// === Hopper (ID 154) ===
 		// 1.7.10: bits 0-2=facing (0=D,2=N,3=S,4=W,5=E; no up), bit 3=disabled(!enabled)
-		state("hopper", "facing", "down", entryMetas("hopper", 0, 8));
-		state("hopper", "facing", "north", entryMetas("hopper", 2, 10));
-		state("hopper", "facing", "south", entryMetas("hopper", 3, 11));
-		state("hopper", "facing", "west", entryMetas("hopper", 4, 12));
-		state("hopper", "facing", "east", entryMetas("hopper", 5, 13));
-		state("hopper", "enabled", "true", entryMetas("hopper", 0, 2, 3, 4, 5));
+		state("hopper", "facing",  "down",  entryMetas("hopper", 0, 8));
+		state("hopper", "facing",  "north", entryMetas("hopper", 2, 10));
+		state("hopper", "facing",  "south", entryMetas("hopper", 3, 11));
+		state("hopper", "facing",  "west",  entryMetas("hopper", 4, 12));
+		state("hopper", "facing",  "east",  entryMetas("hopper", 5, 13));
+		state("hopper", "enabled", "true",  entryMetas("hopper", 0, 2, 3, 4, 5));
 		state("hopper", "enabled", "false", entryMetas("hopper", 8, 10, 11, 12, 13));
 
 		// === Furnace facing (IDs 61, 62) ===
 		// 1.7.10: meta 2=N, 3=S, 4=W, 5=E (same encoding for both furnace and lit_furnace)
 		state("furnace", "facing", "north", entryMetas("furnace", 2), entryMetas("lit_furnace", 2));
 		state("furnace", "facing", "south", entryMetas("furnace", 3), entryMetas("lit_furnace", 3));
-		state("furnace", "facing", "west", entryMetas("furnace", 4), entryMetas("lit_furnace", 4));
-		state("furnace", "facing", "east", entryMetas("furnace", 5), entryMetas("lit_furnace", 5));
+		state("furnace", "facing", "west",  entryMetas("furnace", 4), entryMetas("lit_furnace", 4));
+		state("furnace", "facing", "east",  entryMetas("furnace", 5), entryMetas("lit_furnace", 5));
 
 		// === Chest (ID 54), Trapped chest (ID 146), Ender chest (ID 130) ===
 		// 1.7.10: meta 2=N, 3=S, 4=W, 5=E
-		containerFacingStates("chest", "chest");
-		containerFacingStates("trapped_chest", "trapped_chest");
-		containerFacingStates("ender_chest", "ender_chest");
+		containerFacingStates("chest",          "chest");
+		containerFacingStates("trapped_chest",  "trapped_chest");
+		containerFacingStates("ender_chest",    "ender_chest");
 
 		// === Ladder (ID 65) ===
 		containerFacingStates("ladder", "ladder");
@@ -600,25 +603,25 @@ public class FlatteningMap {
 		// === Lever (ID 69) ===
 		// 1.7.10: 0=ceiling_EW, 1=wall_E, 2=wall_W, 3=wall_S, 4=wall_N,
 		//         5=floor_NS, 6=floor_EW, 7=ceiling_NS; +8=powered
-		state("lever", "face", "floor", entryMetas("lever", 5, 6, 13, 14));
-		state("lever", "face", "wall", entryMetas("lever", 1, 2, 3, 4, 9, 10, 11, 12));
-		state("lever", "face", "ceiling", entryMetas("lever", 0, 7, 8, 15));
-		state("lever", "powered", "false", entryMetas("lever", 0, 1, 2, 3, 4, 5, 6, 7));
-		state("lever", "powered", "true", entryMetas("lever", 8, 9, 10, 11, 12, 13, 14, 15));
-		state("lever", "facing", "east", entryMetas("lever", 1, 6, 0, 9, 14, 8));
-		state("lever", "facing", "west", entryMetas("lever", 2, 6, 0, 10, 14, 8));
-		state("lever", "facing", "south", entryMetas("lever", 3, 5, 7, 11, 13, 15));
-		state("lever", "facing", "north", entryMetas("lever", 4, 5, 7, 12, 13, 15));
+		state("lever", "face",      "floor",    entryMetas("lever", 5, 6, 13, 14));
+		state("lever", "face",      "wall",     entryMetas("lever", 1, 2, 3, 4, 9, 10, 11, 12));
+		state("lever", "face",      "ceiling",  entryMetas("lever", 0, 7, 8, 15));
+		state("lever", "powered",   "false",    entryMetas("lever", 0, 1, 2, 3, 4, 5, 6, 7));
+		state("lever", "powered",   "true",     entryMetas("lever", 8, 9, 10, 11, 12, 13, 14, 15));
+		state("lever", "facing",    "east",     entryMetas("lever", 1, 6, 0, 9, 14, 8));
+		state("lever", "facing",    "west",     entryMetas("lever", 2, 6, 0, 10, 14, 8));
+		state("lever", "facing",    "south",    entryMetas("lever", 3, 5, 7, 11, 13, 15));
+		state("lever", "facing",    "north",    entryMetas("lever", 4, 5, 7, 12, 13, 15));
 
 		// === Buttons (IDs 77, 143) ===
 		// 1.7.10: 0=ceiling, 1=wall_E, 2=wall_W, 3=wall_S, 4=wall_N, 5=floor; +8=powered
-		buttonStates("stone_button", "stone_button");
-		buttonStates("oak_button", "wooden_button");
+		buttonStates("stone_button",    "stone_button");
+		buttonStates("oak_button",      "wooden_button");
 
 		// === Torch wall facing (ID 50) ===
 		// 1.7.10: 1=E, 2=W, 3=S, 4=N, 5=floor
-		state("wall_torch", "facing", "east", entryMetas("torch", 1));
-		state("wall_torch", "facing", "west", entryMetas("torch", 2));
+		state("wall_torch", "facing", "east",  entryMetas("torch", 1));
+		state("wall_torch", "facing", "west",  entryMetas("torch", 2));
 		state("wall_torch", "facing", "south", entryMetas("torch", 3));
 		state("wall_torch", "facing", "north", entryMetas("torch", 4));
 
@@ -671,9 +674,9 @@ public class FlatteningMap {
 		// === End portal frame facing (ID 120) ===
 		// Already has eye state; adding facing: bits 0-1 (0=S, 1=W, 2=N, 3=E)
 		state("end_portal_frame", "facing", "south", entryMetas("end_portal_frame", 0, 4));
-		state("end_portal_frame", "facing", "west", entryMetas("end_portal_frame", 1, 5));
+		state("end_portal_frame", "facing", "west",  entryMetas("end_portal_frame", 1, 5));
 		state("end_portal_frame", "facing", "north", entryMetas("end_portal_frame", 2, 6));
-		state("end_portal_frame", "facing", "east", entryMetas("end_portal_frame", 3, 7));
+		state("end_portal_frame", "facing", "east",  entryMetas("end_portal_frame", 3, 7));
 
 		// === Beds (ID 26) ===
 		// 1.7.10: bits 0-1=facing (0=S,1=W,2=N,3=E), bit 2=occupied, bit 3=head part
@@ -683,20 +686,20 @@ public class FlatteningMap {
 
 		// === Rails ===
 		// Normal rail (ID 66): shape 0-9 (flat, ascending, curved)
-		state("rail", "shape", "north_south", entryMetas("rail", 0));
-		state("rail", "shape", "east_west", entryMetas("rail", 1));
-		state("rail", "shape", "ascending_east", entryMetas("rail", 2));
-		state("rail", "shape", "ascending_west", entryMetas("rail", 3));
-		state("rail", "shape", "ascending_north", entryMetas("rail", 4));
-		state("rail", "shape", "ascending_south", entryMetas("rail", 5));
-		state("rail", "shape", "north_east", entryMetas("rail", 6));
-		state("rail", "shape", "south_east", entryMetas("rail", 7));
-		state("rail", "shape", "south_west", entryMetas("rail", 8));
-		state("rail", "shape", "north_west", entryMetas("rail", 9));
+		state("rail", "shape", "north_south",       entryMetas("rail", 0));
+		state("rail", "shape", "east_west",         entryMetas("rail", 1));
+		state("rail", "shape", "ascending_east",    entryMetas("rail", 2));
+		state("rail", "shape", "ascending_west",    entryMetas("rail", 3));
+		state("rail", "shape", "ascending_north",   entryMetas("rail", 4));
+		state("rail", "shape", "ascending_south",   entryMetas("rail", 5));
+		state("rail", "shape", "north_east",        entryMetas("rail", 6));
+		state("rail", "shape", "south_east",        entryMetas("rail", 7));
+		state("rail", "shape", "south_west",        entryMetas("rail", 8));
+		state("rail", "shape", "north_west",        entryMetas("rail", 9));
 
 		// === Powered rail (ID 27), Detector rail (ID 28), Activator rail (ID 157) ===
-		poweredRailStates("powered_rail", "golden_rail");
-		poweredRailStates("detector_rail", "detector_rail");
+		poweredRailStates("powered_rail",   "golden_rail");
+		poweredRailStates("detector_rail",  "detector_rail");
 		poweredRailStates("activator_rail", "activator_rail");
 
 		// === Carved pumpkin / Jack-o-lantern facing (IDs 86, 91) ===
@@ -706,9 +709,9 @@ public class FlatteningMap {
 
 		// === Anvil facing (ID 145) ===
 		// 1.7.10: bits 0-1=facing (0=S,1=W,2=N,3=E), bits 2-3=damage
-		anvilFacingStates("anvil", 0);
-		anvilFacingStates("chipped_anvil", 4);
-		anvilFacingStates("damaged_anvil", 8);
+		anvilFacingStates("anvil",          0);
+		anvilFacingStates("chipped_anvil",  4);
+		anvilFacingStates("damaged_anvil",  8);
 
 		// === Standing signs (ID 63) ===
 		// 1.7.10: meta 0-15 = rotation
@@ -736,27 +739,27 @@ public class FlatteningMap {
 		// === Crops: wheat (ID 59), carrots (ID 141), potatoes (ID 142) ===
 		// 1.7.10: meta 0-7 = growth stage
 		for (int i = 0; i <= 7; i++) {
-			state("wheat", "age", String.valueOf(i), entryMetas("wheat", i));
-			state("carrots", "age", String.valueOf(i), entryMetas("carrots", i));
-			state("potatoes", "age", String.valueOf(i), entryMetas("potatoes", i));
+			state("wheat",      "age", String.valueOf(i), entryMetas("wheat", i));
+			state("carrots",    "age", String.valueOf(i), entryMetas("carrots", i));
+			state("potatoes",   "age", String.valueOf(i), entryMetas("potatoes", i));
 		}
 
 		// === Pumpkin stem (ID 104), Melon stem (ID 105) ===
 		// 1.7.10: meta 0-7 = growth stage
 		for (int i = 0; i <= 7; i++) {
-			state("pumpkin_stem", "age", String.valueOf(i), entryMetas("pumpkin_stem", i));
-			state("melon_stem", "age", String.valueOf(i), entryMetas("melon_stem", i));
+			state("pumpkin_stem",   "age", String.valueOf(i), entryMetas("pumpkin_stem", i));
+			state("melon_stem",     "age", String.valueOf(i), entryMetas("melon_stem", i));
 		}
 
 		// === Cocoa (ID 127) ===
 		// 1.7.10: bits 0-1=facing (0=S,1=W,2=N,3=E), bits 2-3=age (0-2)
-		state("cocoa", "facing", "south", entryMetas("cocoa", 0, 4, 8));
-		state("cocoa", "facing", "west", entryMetas("cocoa", 1, 5, 9));
-		state("cocoa", "facing", "north", entryMetas("cocoa", 2, 6, 10));
-		state("cocoa", "facing", "east", entryMetas("cocoa", 3, 7, 11));
-		state("cocoa", "age", "0", entryMetas("cocoa", 0, 1, 2, 3));
-		state("cocoa", "age", "1", entryMetas("cocoa", 4, 5, 6, 7));
-		state("cocoa", "age", "2", entryMetas("cocoa", 8, 9, 10, 11));
+		state("cocoa", "facing",    "south",    entryMetas("cocoa", 0, 4, 8));
+		state("cocoa", "facing",    "west",     entryMetas("cocoa", 1, 5, 9));
+		state("cocoa", "facing",    "north",    entryMetas("cocoa", 2, 6, 10));
+		state("cocoa", "facing",    "east",     entryMetas("cocoa", 3, 7, 11));
+		state("cocoa", "age",       "0",        entryMetas("cocoa", 0, 1, 2, 3));
+		state("cocoa", "age",       "1",        entryMetas("cocoa", 4, 5, 6, 7));
+		state("cocoa", "age",       "2",        entryMetas("cocoa", 8, 9, 10, 11));
 
 		// === Nether wart (ID 115) ===
 		// 1.7.10: meta 0-3 = age
@@ -790,60 +793,60 @@ public class FlatteningMap {
 
 		// === Vines (ID 106) ===
 		// 1.7.10: bitmask — bit 0=south, bit 1=west, bit 2=north, bit 3=east
-		state("vine", "south", "true", entryMetas("vine", 1, 3, 5, 7, 9, 11, 13, 15));
-		state("vine", "south", "false", entryMetas("vine", 0, 2, 4, 6, 8, 10, 12, 14));
-		state("vine", "west", "true", entryMetas("vine", 2, 3, 6, 7, 10, 11, 14, 15));
-		state("vine", "west", "false", entryMetas("vine", 0, 1, 4, 5, 8, 9, 12, 13));
-		state("vine", "north", "true", entryMetas("vine", 4, 5, 6, 7, 12, 13, 14, 15));
-		state("vine", "north", "false", entryMetas("vine", 0, 1, 2, 3, 8, 9, 10, 11));
-		state("vine", "east", "true", entryMetas("vine", 8, 9, 10, 11, 12, 13, 14, 15));
-		state("vine", "east", "false", entryMetas("vine", 0, 1, 2, 3, 4, 5, 6, 7));
+		state("vine", "south",  "true",     entryMetas("vine", 1, 3, 5, 7, 9, 11, 13, 15));
+		state("vine", "south",  "false",    entryMetas("vine", 0, 2, 4, 6, 8, 10, 12, 14));
+		state("vine", "west",   "true",     entryMetas("vine", 2, 3, 6, 7, 10, 11, 14, 15));
+		state("vine", "west",   "false",    entryMetas("vine", 0, 1, 4, 5, 8, 9, 12, 13));
+		state("vine", "north",  "true",     entryMetas("vine", 4, 5, 6, 7, 12, 13, 14, 15));
+		state("vine", "north",  "false",    entryMetas("vine", 0, 1, 2, 3, 8, 9, 10, 11));
+		state("vine", "east",   "true",     entryMetas("vine", 8, 9, 10, 11, 12, 13, 14, 15));
+		state("vine", "east",   "false",    entryMetas("vine", 0, 1, 2, 3, 4, 5, 6, 7));
 
 		// === Tripwire hook (ID 131) ===
 		// 1.7.10: bits 0-1=facing (0=S,1=W,2=N,3=E), bit 2=connected, bit 3=powered
-		state("tripwire_hook", "facing", "south", entryMetas("tripwire_hook", 0, 4, 8, 12));
-		state("tripwire_hook", "facing", "west", entryMetas("tripwire_hook", 1, 5, 9, 13));
-		state("tripwire_hook", "facing", "north", entryMetas("tripwire_hook", 2, 6, 10, 14));
-		state("tripwire_hook", "facing", "east", entryMetas("tripwire_hook", 3, 7, 11, 15));
-		state("tripwire_hook", "attached", "false", entryMetas("tripwire_hook", 0, 1, 2, 3, 8, 9, 10, 11));
-		state("tripwire_hook", "attached", "true", entryMetas("tripwire_hook", 4, 5, 6, 7, 12, 13, 14, 15));
-		state("tripwire_hook", "powered", "false", entryMetas("tripwire_hook", 0, 1, 2, 3, 4, 5, 6, 7));
-		state("tripwire_hook", "powered", "true", entryMetas("tripwire_hook", 8, 9, 10, 11, 12, 13, 14, 15));
+		state("tripwire_hook", "facing",    "south",    entryMetas("tripwire_hook", 0, 4, 8, 12));
+		state("tripwire_hook", "facing",    "west",     entryMetas("tripwire_hook", 1, 5, 9, 13));
+		state("tripwire_hook", "facing",    "north",    entryMetas("tripwire_hook", 2, 6, 10, 14));
+		state("tripwire_hook", "facing",    "east",     entryMetas("tripwire_hook", 3, 7, 11, 15));
+		state("tripwire_hook", "attached",  "false",    entryMetas("tripwire_hook", 0, 1, 2, 3, 8, 9, 10, 11));
+		state("tripwire_hook", "attached",  "true",     entryMetas("tripwire_hook", 4, 5, 6, 7, 12, 13, 14, 15));
+		state("tripwire_hook", "powered",   "false",    entryMetas("tripwire_hook", 0, 1, 2, 3, 4, 5, 6, 7));
+		state("tripwire_hook", "powered",   "true",     entryMetas("tripwire_hook", 8, 9, 10, 11, 12, 13, 14, 15));
 
 		// === Tripwire (ID 132) ===
 		// 1.7.10: bit 0=powered, bit 2=attached, bit 3=disarmed
-		state("tripwire", "powered", "true", entryMetas("tripwire", 1, 5, 9, 13));
-		state("tripwire", "powered", "false", entryMetas("tripwire", 0, 4, 8, 12));
-		state("tripwire", "attached", "true", entryMetas("tripwire", 4, 5, 12, 13));
-		state("tripwire", "attached", "false", entryMetas("tripwire", 0, 1, 8, 9));
-		state("tripwire", "disarmed", "true", entryMetas("tripwire", 8, 9, 12, 13));
-		state("tripwire", "disarmed", "false", entryMetas("tripwire", 0, 1, 4, 5));
+		state("tripwire", "powered",    "true",     entryMetas("tripwire", 1, 5, 9, 13));
+		state("tripwire", "powered",    "false",    entryMetas("tripwire", 0, 4, 8, 12));
+		state("tripwire", "attached",   "true",     entryMetas("tripwire", 4, 5, 12, 13));
+		state("tripwire", "attached",   "false",    entryMetas("tripwire", 0, 1, 8, 9));
+		state("tripwire", "disarmed",   "true",     entryMetas("tripwire", 8, 9, 12, 13));
+		state("tripwire", "disarmed",   "false",    entryMetas("tripwire", 0, 1, 4, 5));
 
 		// === Brewing stand (ID 117) ===
 		// 1.7.10: bit 0=has_bottle_0, bit 1=has_bottle_1, bit 2=has_bottle_2
-		state("brewing_stand", "has_bottle_0", "true", entryMetas("brewing_stand", 1, 3, 5, 7));
+		state("brewing_stand", "has_bottle_0", "true",  entryMetas("brewing_stand", 1, 3, 5, 7));
 		state("brewing_stand", "has_bottle_0", "false", entryMetas("brewing_stand", 0, 2, 4, 6));
-		state("brewing_stand", "has_bottle_1", "true", entryMetas("brewing_stand", 2, 3, 6, 7));
+		state("brewing_stand", "has_bottle_1", "true",  entryMetas("brewing_stand", 2, 3, 6, 7));
 		state("brewing_stand", "has_bottle_1", "false", entryMetas("brewing_stand", 0, 1, 4, 5));
-		state("brewing_stand", "has_bottle_2", "true", entryMetas("brewing_stand", 4, 5, 6, 7));
+		state("brewing_stand", "has_bottle_2", "true",  entryMetas("brewing_stand", 4, 5, 6, 7));
 		state("brewing_stand", "has_bottle_2", "false", entryMetas("brewing_stand", 0, 1, 2, 3));
 
 		// === Jukebox (ID 84) ===
 		// 1.7.10: meta 0=empty, 1=has record
 		state("jukebox", "has_record", "false", entryMetas("jukebox", 0));
-		state("jukebox", "has_record", "true", entryMetas("jukebox", 1));
+		state("jukebox", "has_record", "true",  entryMetas("jukebox", 1));
 
 		// === Leaves persistent (IDs 18, 161) ===
 		// 1.7.10: bit 2=no_decay (player-placed). Maps to modern persistent=true.
 		for (int type = 0; type < 4; type++) {
 			String[] leafNames = {"oak_leaves", "spruce_leaves", "birch_leaves", "jungle_leaves"};
-			state(leafNames[type], "persistent", "true", entryMetas("leaves", type + 4, type + 12));
-			state(leafNames[type], "persistent", "false", entryMetas("leaves", type, type + 8));
+			state(leafNames[type], "persistent", "true",    entryMetas("leaves", type + 4, type + 12));
+			state(leafNames[type], "persistent", "false",   entryMetas("leaves", type, type + 8));
 		}
-		state("acacia_leaves", "persistent", "true", entryMetas("leaves2", 4, 12));
-		state("acacia_leaves", "persistent", "false", entryMetas("leaves2", 0, 8));
-		state("dark_oak_leaves", "persistent", "true", entryMetas("leaves2", 5, 13));
-		state("dark_oak_leaves", "persistent", "false", entryMetas("leaves2", 1, 9));
+		state("acacia_leaves", "persistent",    "true",     entryMetas("leaves2", 4, 12));
+		state("acacia_leaves", "persistent",    "false",    entryMetas("leaves2", 0, 8));
+		state("dark_oak_leaves", "persistent",  "true",     entryMetas("leaves2", 5, 13));
+		state("dark_oak_leaves", "persistent",  "false",    entryMetas("leaves2", 1, 9));
 
 		// === Cauldron level (ID 118) ===
 		// Already mapped by name; adding level state for water_cauldron
@@ -860,18 +863,18 @@ public class FlatteningMap {
 
 		// === Double plant half (ID 175) ===
 		// 1.7.10: bottom half has type in meta 0-5; top half is always meta 8
-		state("sunflower", "half", "lower", entryMetas("double_plant", 0));
-		state("sunflower", "half", "upper", entryMetas("double_plant", 8));
-		state("lilac", "half", "lower", entryMetas("double_plant", 1));
-		state("lilac", "half", "upper", entryMetas("double_plant", 8));
+		state("sunflower",  "half", "lower", entryMetas("double_plant", 0));
+		state("sunflower",  "half", "upper", entryMetas("double_plant", 8));
+		state("lilac",      "half", "lower", entryMetas("double_plant", 1));
+		state("lilac",      "half", "upper", entryMetas("double_plant", 8));
 		state("tall_grass", "half", "lower", entryMetas("double_plant", 2));
 		state("tall_grass", "half", "upper", entryMetas("double_plant", 8));
 		state("large_fern", "half", "lower", entryMetas("double_plant", 3));
 		state("large_fern", "half", "upper", entryMetas("double_plant", 8));
-		state("rose_bush", "half", "lower", entryMetas("double_plant", 4));
-		state("rose_bush", "half", "upper", entryMetas("double_plant", 8));
-		state("peony", "half", "lower", entryMetas("double_plant", 5));
-		state("peony", "half", "upper", entryMetas("double_plant", 8));
+		state("rose_bush",  "half", "lower", entryMetas("double_plant", 4));
+		state("rose_bush",  "half", "upper", entryMetas("double_plant", 8));
+		state("peony",      "half", "lower", entryMetas("double_plant", 5));
+		state("peony",      "half", "upper", entryMetas("double_plant", 8));
 	}
 
 	/**
@@ -921,7 +924,7 @@ public class FlatteningMap {
 	 * Only blocks present in both lists survive. Empty meta set = wildcard (all metas).
 	 */
 	private static List<BlockEntry> intersectBlockEntries(List<BlockEntry> a, List<BlockEntry> b) {
-		List<BlockEntry> result = new ArrayList<>();
+		List<BlockEntry> result = new ArrayList<>(Math.min(a.size(), b.size()));
 		for (BlockEntry entryA : a) {
 			for (BlockEntry entryB : b) {
 				if (!entryA.getId().equals(entryB.getId())) continue;
@@ -940,7 +943,7 @@ public class FlatteningMap {
 					result.add(new BlockEntry(entryA.getId(), metasA));
 				} else {
 					// Both have specific metas -> intersect
-					Set<Integer> intersection = new HashSet<>(metasA);
+					Set<Integer> intersection = new IntOpenHashSet(metasA);
 					intersection.retainAll(metasB);
 					if (!intersection.isEmpty()) {
 						result.add(new BlockEntry(entryA.getId(), intersection));
@@ -967,7 +970,7 @@ public class FlatteningMap {
 
 	/** Multiple metadata values. */
 	private static void metas(String modern, String legacy, int... metaValues) {
-		Set<Integer> metaSet = new HashSet<>();
+		Set<Integer> metaSet = new IntOpenHashSet();
 		for (int m : metaValues) metaSet.add(m);
 		MODERN_TO_LEGACY.put(modern, List.of(new BlockEntry(new NamespacedId("minecraft", legacy), metaSet)));
 	}
@@ -989,7 +992,7 @@ public class FlatteningMap {
 
 	/** Creates a BlockEntry with specific metas. */
 	private static BlockEntry entryMetas(String legacyName, int... metaValues) {
-		Set<Integer> metaSet = new HashSet<>();
+		Set<Integer> metaSet = new IntOpenHashSet();
 		for (int m : metaValues) metaSet.add(m);
 		return new BlockEntry(new NamespacedId("minecraft", legacyName), metaSet);
 	}
