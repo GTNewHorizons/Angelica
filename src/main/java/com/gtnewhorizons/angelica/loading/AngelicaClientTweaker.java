@@ -75,6 +75,8 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         }
         verifyDependencies();
 
+        Launch.blackboard.put("angelica.earlyRedirectorTargets", EcosystemNarrowRules.EARLY_REDIRECTOR_TARGETS);
+
         // Register a scoped redirector early so classes prematurely loaded by other coremods during discovery/injectData
         // (e.g. Mycelium using HookLoader.class.getName()) still get GL calls redirected to GLSM. Only targets specific mod
         // packages to avoid interfering with mixin delegation on game classes. AngelicaLateTweaker removes this registration once
