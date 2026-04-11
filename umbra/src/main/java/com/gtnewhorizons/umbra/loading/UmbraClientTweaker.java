@@ -47,6 +47,8 @@ public class UmbraClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader 
 
         verifyDependencies();
 
+        Launch.blackboard.put("angelica.earlyRedirectorTargets", EcosystemNarrowRules.EARLY_REDIRECTOR_TARGETS);
+
         // Register early redirector if RFB is not loaded (RFB handles its own registration)
         if (!Boolean.TRUE.equals(Launch.blackboard.get("umbra.rfbPluginLoaded"))) {
             final String earlyTransformer = "com.gtnewhorizons.umbra.loading.fml.transformers.EarlyRedirectorTransformer";
