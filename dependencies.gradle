@@ -97,6 +97,8 @@ dependencies {
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
+    //devOnlyNonPublishable('com.github.GTNewHorizons:worldedit-gtnh:v0.0.9')
+
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
     devOnlyNonPublishable("com.github.GTNewHorizons:Baubles-Expanded:2.2.2-GTNH:dev")
