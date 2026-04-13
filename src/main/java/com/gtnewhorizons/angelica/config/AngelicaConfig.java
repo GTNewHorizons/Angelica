@@ -107,6 +107,18 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
 
+    @Config.Comment("Enable RGB color support via §x§R§R§G§G§B§B format codes")
+    @Config.DefaultBoolean(true)
+    public static boolean enableRGBColors;
+
+    @Config.Comment("Enable text effects: rainbow (§y), wave (§w), gradient (§g), dinnerbone (§j)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableTextEffects;
+
+    @Config.Comment("Convert &RRGGBB to §x color codes at render time")
+    @Config.DefaultBoolean(true)
+    public static boolean enableAmpersandConversion;
+
     @Config.Comment("Enable Dynamic Lights")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

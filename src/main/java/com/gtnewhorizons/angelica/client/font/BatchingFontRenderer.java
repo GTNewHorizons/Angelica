@@ -4,7 +4,9 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -219,6 +221,16 @@ public class BatchingFontRenderer {
         pushVtx(x - itOff, y + h, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
         pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushQuadIdx();
+    }
+
+    /** Like pushTexRect but flips V coordinates vertically (for dinnerbone effect). Atlas bounds stay correct. */
+    private void pushTexRectVFlipped(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz) {
+        ensureCapacity();
+        pushVtx(x + itOff, y, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x - itOff, y + h, rgba, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
         pushQuadIdx();
     }
 
@@ -442,6 +454,70 @@ public class BatchingFontRenderer {
         return (what >= fromInclusive) && (what <= toInclusive);
     }
 
+    /**
+     * Read {@code count} §-hex pairs from str starting at {@code start}.
+     * Each pair must be § followed by [0-9a-fA-F].
+     * Returns assembled hex value, or -1 if any pair is malformed.
+     */
+    private static int parseHexPairs(CharSequence str, int start, int count) {
+        int result = 0;
+        for (int i = 0; i < count; i++) {
+            int pairStart = start + i * 2;
+            if (str.charAt(pairStart) != FORMATTING_CHAR) return -1;
+            int digit = Character.digit(str.charAt(pairStart + 1), 16);
+            if (digit == -1) return -1;
+            result = (result << 4) | digit;
+        }
+        return result;
+    }
+
+    /** Parse a full §x§R§R§G§G§B§B sequence (14 chars). Returns RGB or -1. */
+    private static int parseFullSectionX(CharSequence str, int start) {
+        if (str.charAt(start) != FORMATTING_CHAR) return -1;
+        if (Character.toLowerCase(str.charAt(start + 1)) != 'x') return -1;
+        return parseHexPairs(str, start + 2, 6);
+    }
+
+    /**
+     * Count visible characters from {@code start} to {@code end}, skipping format codes.
+     * Stops at §r, any color code (§0-f, §x), or any color effect (§y, §g).
+     */
+    private static int countVisibleChars(CharSequence str, int start, int end) {
+        int count = 0;
+        for (int i = start; i < end; i++) {
+            char ch = str.charAt(i);
+            if (ch == FORMATTING_CHAR && i + 1 < end) {
+                char code = Character.toLowerCase(str.charAt(i + 1));
+                if (code == 'r' || (code >= '0' && code <= '9') || (code >= 'a' && code <= 'f')
+                    || code == 'x' || code == 'y' || code == 'g') {
+                    break;
+                }
+                i++; // skip style codes (k-o, w, j) — they don't terminate gradient
+            } else {
+                count++;
+            }
+        }
+        return Math.max(count, 1); // avoid div-by-zero
+    }
+
+    private static int hsvToRgb(float hue, float sat, float val) {
+        int h = (int)(hue / 60f) % 6;
+        float f = hue / 60f - h;
+        float p = val * (1 - sat);
+        float q = val * (1 - f * sat);
+        float t = val * (1 - (1 - f) * sat);
+        float r, g, b;
+        switch (h) {
+            case 0: r=val; g=t; b=p; break;
+            case 1: r=q; g=val; b=p; break;
+            case 2: r=p; g=val; b=t; break;
+            case 3: r=p; g=q; b=val; break;
+            case 4: r=t; g=p; b=val; break;
+            default: r=val; g=p; b=q; break;
+        }
+        return ((int)(r*255) << 16) | ((int)(g*255) << 8) | (int)(b*255);
+    }
+
     public boolean forceDefaults() {
         return this.bookMode || this.isSGA || this.isSplash;
     }
@@ -497,6 +573,13 @@ public class BatchingFontRenderer {
             boolean curBold = false;
             boolean curStrikethrough = false;
             boolean curUnderline = false;
+            boolean curRainbow = false;
+            boolean curWave = false;
+            boolean curDinnerbone = false;
+            boolean curGradient = false;
+            int gradientStartRgb = 0, gradientEndRgb = 0;
+            int gradientCharIndex = 0, gradientTotalChars = 0;
+            int rainbowCharIndex = 0;
 
             float glyphScaleY = getGlyphScaleY();
             float glyphScaleX = getGlyphScaleX();
@@ -534,6 +617,21 @@ public class BatchingFontRenderer {
                         strikethroughStartX = strikethroughEndX;
                     }
 
+                    if (fmtCode == 'x' && AngelicaConfig.enableRGBColors && charIdx + 12 < stringEnd) {
+                        int rgb = parseHexPairs(string, charIdx + 1, 6);
+                        if (rgb != -1) {
+                            curRainbow = false;
+                            curGradient = false;
+                            curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
+                            curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                            curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
+                            charIdx += 12;
+                        }
+                    } else {
                     final boolean is09 = charInRange(fmtCode, '0', '9');
                     final boolean isAF = charInRange(fmtCode, 'a', 'f');
                     if (is09 || isAF) {
@@ -542,6 +640,9 @@ public class BatchingFontRenderer {
                         curStrikethrough = false;
                         curUnderline = false;
                         curItalic = false;
+                        curRainbow = false;
+                        curGradient = false;
+                        // wave/dinnerbone NOT reset — they're positional effects, independent of color
 
                         final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
                         final int rgb = this.colorCode[colorIdx];
@@ -562,15 +663,40 @@ public class BatchingFontRenderer {
                         underlineEndX = underlineStartX;
                     } else if (fmtCode == 'o') {
                         curItalic = true;
+                    } else if (fmtCode == 'y' && AngelicaConfig.enableTextEffects) {
+                        curRainbow = true;
+                        curGradient = false;
+                        rainbowCharIndex = 0;
+                    } else if (fmtCode == 'w' && AngelicaConfig.enableTextEffects) {
+                        curWave = !curWave;
+                    } else if (fmtCode == 'j' && AngelicaConfig.enableTextEffects) {
+                        curDinnerbone = !curDinnerbone;
+                    } else if (fmtCode == 'g' && AngelicaConfig.enableTextEffects && charIdx + 28 < stringEnd) {
+                        int color1 = parseFullSectionX(string, charIdx + 1);
+                        int color2 = parseFullSectionX(string, charIdx + 15);
+                        if (color1 != -1 && color2 != -1) {
+                            curGradient = true;
+                            curRainbow = false;
+                            gradientStartRgb = color1;
+                            gradientEndRgb = color2;
+                            gradientCharIndex = 0;
+                            gradientTotalChars = countVisibleChars(string, charIdx + 29, stringEnd);
+                            charIdx += 28;
+                        }
                     } else if (fmtCode == 'r') {
                         curRandom = false;
                         curBold = false;
                         curStrikethrough = false;
                         curUnderline = false;
                         curItalic = false;
+                        curRainbow = false;
+                        curWave = false;
+                        curDinnerbone = false;
+                        curGradient = false;
                         curColor = color;
                         curShadowColor = shadowColor;
                     }
+                    } // close else block for non-§x codes
 
                     continue;
                 }
@@ -603,6 +729,26 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
+                // Per-character color effects (rainbow / gradient)
+                if (curRainbow) {
+                    float hue = (rainbowCharIndex * 15f) % 360f;
+                    int rgbEffect = hsvToRgb(hue, 1f, 1f);
+                    curColor = (curColor & 0xFF000000) | rgbEffect;
+                    curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
+                    rainbowCharIndex++;
+                }
+                if (curGradient && gradientTotalChars > 0) {
+                    float t = gradientTotalChars > 1 ? (float) gradientCharIndex / (float)(gradientTotalChars - 1) : 0f;
+                    t = Math.min(t, 1f);
+                    int gr = (int)((gradientStartRgb >> 16 & 0xFF) * (1-t) + (gradientEndRgb >> 16 & 0xFF) * t);
+                    int gg = (int)((gradientStartRgb >> 8 & 0xFF) * (1-t) + (gradientEndRgb >> 8 & 0xFF) * t);
+                    int gb = (int)((gradientStartRgb & 0xFF) * (1-t) + (gradientEndRgb & 0xFF) * t);
+                    int rgbEffect = (gr << 16) | (gg << 8) | gb;
+                    curColor = (curColor & 0xFF000000) | rgbEffect;
+                    curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
+                    gradientCharIndex++;
+                }
+
                 final float uStart = fontProvider.getUStart(chr);
                 final float vStart = fontProvider.getVStart(chr);
                 final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
@@ -616,23 +762,46 @@ public class BatchingFontRenderer {
                 final ResourceLocation texture = fontProvider.getTexture(chr);
                 final int idxId = idxWriterIndex;
 
+                // Wave: Y offset via sine wave
+                float renderY = heightNorth;
+                if (curWave) {
+                    float time = HUDCaching.renderingCacheOverride ? 0f : System.nanoTime() * 0.000000005f;
+                    renderY += (float) Math.sin(charIdx * 0.5 + time) * 2.0f;
+                }
+
                 if (enableShadow) {
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(curX + shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        if (curDinnerbone) {
+                            pushTexRectVFlipped(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        } else {
+                            pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                        }
 
                         if (curBold) {
-                            pushTexRect(curX + 2.0f * shadowOffsetPart, heightNorth + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                            if (curDinnerbone) {
+                                pushTexRectVFlipped(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                            } else {
+                                pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
+                            }
                         }
                     }
                 }
 
-                pushTexRect(curX, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                if (curDinnerbone) {
+                    pushTexRectVFlipped(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                } else {
+                    pushTexRect(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                }
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushTexRect(curX + shadowOffsetPart, heightNorth, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                        if (curDinnerbone) {
+                            pushTexRectVFlipped(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                        } else {
+                            pushTexRect(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
+                        }
                     }
                 }
 
