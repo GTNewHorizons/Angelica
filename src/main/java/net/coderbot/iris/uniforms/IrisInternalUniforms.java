@@ -2,6 +2,7 @@ package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.state.FogMode;
+import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
 import org.joml.Vector3d;
 import org.joml.Vector4f;
@@ -22,6 +23,12 @@ public class IrisInternalUniforms {
         return GLStateManager.getAlphaState().getReference();
     }
 
+    private static int getEffectiveAlphaFunc() {
+        if (!GLStateManager.getAlphaTest().isEnabled()) return 7;
+        final int func = GLStateManager.getAlphaState().getFunction();
+        return func & 0x7;
+    }
+
     public static void addFogUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {
         uniforms.uniform4f(PER_FRAME, "iris_FogColor", () -> {
             final Vector3d color = GLStateManager.getFogState().getFogColor();
@@ -34,7 +41,8 @@ public class IrisInternalUniforms {
             .uniform1f(PER_FRAME, "iris_FogDensity", () -> Math.max(0.0F, GLStateManager.getFogState().getDensity()));
 
         uniforms
-            .uniform1f(PER_FRAME, "iris_currentAlphaTest", IrisInternalUniforms::getEffectiveAlphaRef)
-            .uniform1f(PER_FRAME, "alphaTestRef", IrisInternalUniforms::getEffectiveAlphaRef);
+            .uniform1f("iris_currentAlphaTest", IrisInternalUniforms::getEffectiveAlphaRef, StateUpdateNotifiers.alphaTestNotifier)
+            .uniform1f("alphaTestRef", IrisInternalUniforms::getEffectiveAlphaRef, StateUpdateNotifiers.alphaTestNotifier)
+            .uniform1i("iris_currentAlphaFunc", IrisInternalUniforms::getEffectiveAlphaFunc, StateUpdateNotifiers.alphaFuncNotifier);
     }
 }

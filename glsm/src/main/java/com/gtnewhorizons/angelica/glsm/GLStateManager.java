@@ -1636,6 +1636,9 @@ public class GLStateManager {
         }
         alphaTest.enable();
         fragmentGeneration++;
+        if (GLSMHooks.ALPHA_STATE_CHANGE.hasListeners()) {
+            GLSMHooks.ALPHA_STATE_CHANGE.post(GLSMHooks.alphaStateChangeEvent);
+        }
     }
 
     public static void disableAlphaTest() {
@@ -1653,6 +1656,9 @@ public class GLStateManager {
         }
         alphaTest.disable();
         fragmentGeneration++;
+        if (GLSMHooks.ALPHA_STATE_CHANGE.hasListeners()) {
+            GLSMHooks.ALPHA_STATE_CHANGE.post(GLSMHooks.alphaStateChangeEvent);
+        }
     }
 
     public static void glAlphaFunc(int function, float reference) {
@@ -1672,6 +1678,9 @@ public class GLStateManager {
             alphaState.setFunction(function);
             alphaState.setReference(reference);
             fragmentGeneration++;
+            if (GLSMHooks.ALPHA_STATE_CHANGE.hasListeners()) {
+                GLSMHooks.ALPHA_STATE_CHANGE.post(GLSMHooks.alphaStateChangeEvent);
+            }
         }
     }
 
