@@ -43,6 +43,20 @@ public class CTMUtils {
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
 
+    private static final ThreadLocal<TileOverrideImpl.CTMCompact> CURRENT_COMPACT = new ThreadLocal<>();
+
+    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact) {
+        CURRENT_COMPACT.set(compact);
+    }
+
+    public static TileOverrideImpl.CTMCompact getCurrentCompact() {
+        return CURRENT_COMPACT.get();
+    }
+
+    public static void clearCurrentCompact() {
+        CURRENT_COMPACT.remove();
+    }
+
     private static final StampedLock lock = new StampedLock();
 
     private static class StateAndIterator {

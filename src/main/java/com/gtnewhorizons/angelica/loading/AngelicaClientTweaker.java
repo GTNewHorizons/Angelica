@@ -8,6 +8,8 @@ import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
+import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
@@ -91,30 +93,25 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             .findFirst()
             .orElse(null);
         if (handle != null) {
-            handle.exclusions().add("org.embeddedt.embeddium");
-            handle.exclusions().add("org.taumc.celeritas");
-            handle.exclusions().add("com.mitchej123.lwjgl.lwjgl3");
-            handle.exclusions().add("com.mitchej123.glsm");
-            handle.exclusions().add("com.gtnewhorizons.angelica.lwjgl3");
+            for (String exclusion : EcosystemNarrowRules.LWJGL3IFY_EXCLUSIONS_SHARED) {
+                handle.exclusions().add(exclusion);
+            }
             handle.exclusions().add("com.gtnewhorizons.angelica.vulkan");
         }
     }
 
     private static void verifyDependencies() {
-        // Check for fastutil (bundled with GTNHLib since 0.2.1)
-        if (AngelicaTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
-            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib");
-        }
-
-        // Check for PrimitiveExtractor/cel.model classes (added in GTNHLib 0.8.21)
-        if (AngelicaTweaker.class.getResource("/com/gtnewhorizon/gtnhlib/client/renderer/PrimitiveExtractor.class") == null) {
-            throw new RuntimeException("GTNHLib is outdated: Angelica requires GTNHLib 0.8.21 or newer! Download: https://modrinth.com/mod/gtnhlib");
-        }
-
-        // Check for jvmdowngrader stubs (bundled with GTNHLib since 0.9.0)
-        if (AngelicaTweaker.class.getResource("/xyz/wagyourtail/jvmdg/exc/MissingStubError.class") == null) {
-            throw new RuntimeException("GTNHLib is outdated: Angelica requires GTNHLib 0.9.0 or newer! Download: https://modrinth.com/mod/gtnhlib");
-        }
+        DependencyVerifier.verify(AngelicaTweaker.class, List.of(
+            new DependencyVerifier.Check(
+                "/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class",
+                "Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib"),
+            new DependencyVerifier.Check(
+                "/com/gtnewhorizon/gtnhlib/client/renderer/PrimitiveExtractor.class",
+                "GTNHLib is outdated: Angelica requires GTNHLib 0.8.21 or newer! Download: https://modrinth.com/mod/gtnhlib"),
+            new DependencyVerifier.Check(
+                "/xyz/wagyourtail/jvmdg/exc/MissingStubError.class",
+                "GTNHLib is outdated: Angelica requires GTNHLib 0.9.0 or newer! Download: https://modrinth.com/mod/gtnhlib")
+        ));
     }
 
     @Override
