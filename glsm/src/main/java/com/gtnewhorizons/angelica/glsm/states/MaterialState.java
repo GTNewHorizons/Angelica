@@ -103,9 +103,12 @@ public class MaterialState implements ISettableState<MaterialState> {
         }
     }
 
-    public void setShininess(FloatBuffer newBuffer) { setShininess(newBuffer.get()); }
+    // On the buffer versions of shininess, we need to call `get(0)` explicitly specifying the index
+    // otherwise calling `get()` advances the buffer position, and some mods may re-use the same buffer
+    // in subsequent calls, resulting in a BufferUnderflowException.
+    public void setShininess(FloatBuffer newBuffer) { setShininess(newBuffer.get(0)); }
 
-    public void setShininess(IntBuffer newBuffer) { setShininess((float) newBuffer.get());}
+    public void setShininess(IntBuffer newBuffer) { setShininess((float) newBuffer.get(0)); }
 
     public void setShininess(int val) { setShininess((float) val);}
 

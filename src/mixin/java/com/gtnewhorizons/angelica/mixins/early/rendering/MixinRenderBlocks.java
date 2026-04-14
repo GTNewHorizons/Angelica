@@ -6,6 +6,9 @@ import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
+import com.prupe.mcpatcher.ctm.CTMUtils;
+import com.prupe.mcpatcher.ctm.CompactCtmQuadProcessor;
+import com.prupe.mcpatcher.ctm.TileOverrideImpl;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -17,6 +20,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -176,5 +180,90 @@ public abstract class MixinRenderBlocks {
     private void resetAOFlag(Block p_147764_1_, double p_147764_2_, double p_147764_4_, double p_147764_6_, IIcon p_147764_8_, CallbackInfo ci,
                              @Local(ordinal = 0) Tessellator tessellator) {
         ((StateAwareTessellator)tessellator).angelica$setAppliedAo(false);
+    }
+
+    @Shadow
+    public IBlockAccess blockAccess;
+
+    @Unique
+    private boolean compactCtmRendering = false;
+
+    @Unique
+    private CompactCtmQuadProcessor getCompactProcessor() {
+        TileOverrideImpl.CTMCompact compact = CTMUtils.getCurrentCompact();
+        if (compact == null) {
+            return null;
+        }
+        return compact.getProcessor();
+    }
+
+    private void handleCompactCtmFace(int face, Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        // recursion protection
+        if (compactCtmRendering) {
+            return;
+        }
+
+        if (this.blockAccess == null) {
+            return;
+        }
+
+        CompactCtmQuadProcessor processor = getCompactProcessor();
+        if (processor == null) {
+            return;
+        }
+
+        compactCtmRendering = true;
+        try {
+            boolean handled = processor.processFace(
+                (RenderBlocks)(Object)this,
+                this.blockAccess,
+                MathHelper.floor_double(x),
+                MathHelper.floor_double(y),
+                MathHelper.floor_double(z),
+                face,
+                icon
+            );
+
+            if (handled) {
+                ci.cancel();
+            }
+        } finally {
+            compactCtmRendering = false;
+        }
+    }
+
+    @Inject(method = "renderFaceYNeg", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(0, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceYPos", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(1, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceZNeg", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(2, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceZPos", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(3, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceXNeg", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(4, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceXPos", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(5, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
+    private void compactCtm_resetAfterBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
+        CTMUtils.clearCurrentCompact();
     }
 }

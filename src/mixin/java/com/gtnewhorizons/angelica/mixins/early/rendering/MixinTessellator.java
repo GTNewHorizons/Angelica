@@ -15,6 +15,12 @@ public class MixinTessellator implements StateAwareTessellator {
     private final IntArrayList vertexStates = new IntArrayList();
 
     @Unique
+    private final IntArrayList shaderOverrideBlockIds = new IntArrayList();
+
+    @Unique
+    private short currentShaderOverrideBlockId = -1;
+
+    @Unique
     private boolean appliedAo;
 
     @Unique
@@ -33,11 +39,14 @@ public class MixinTessellator implements StateAwareTessellator {
             state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;
         }
         this.vertexStates.add(state);
+        this.shaderOverrideBlockIds.add(currentShaderOverrideBlockId);
     }
 
     @Inject(method = "reset", at = @At("RETURN"))
     private void resetVertexStates(CallbackInfo ci) {
         this.vertexStates.clear();
+        this.shaderOverrideBlockIds.clear();
+        this.currentShaderOverrideBlockId = -1;
     }
 
     @Override
@@ -48,5 +57,15 @@ public class MixinTessellator implements StateAwareTessellator {
     @Override
     public int[] angelica$getVertexStates() {
         return this.vertexStates.elements();
+    }
+
+    @Override
+    public int[] angelica$getShaderOverrideBlockIds() {
+        return this.shaderOverrideBlockIds.elements();
+    }
+
+    @Override
+    public void angelica$setShaderOverrideBlockId(short blockId) {
+        this.currentShaderOverrideBlockId = blockId;
     }
 }

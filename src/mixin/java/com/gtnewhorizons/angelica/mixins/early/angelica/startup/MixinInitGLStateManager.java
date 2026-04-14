@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.startup;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
-import com.gtnewhorizons.angelica.client.rendering.TessellatorStreamingDrawer;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
