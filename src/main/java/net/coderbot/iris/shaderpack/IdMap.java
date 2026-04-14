@@ -72,8 +72,8 @@ public class IdMap {
 			// Pack has a 1.7.10 section
 			resolvedDefines = environmentDefines;
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
-				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
-				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+				blockPropertiesMap = parseBlockMap(blockProperties);
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties);
 			});
 		} else {
 			// No 1.7.10 section, use modern MC_VERSION and convert entries
@@ -90,8 +90,8 @@ public class IdMap {
 			resolvedDefines = modernDefines;
 
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
-				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
-				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+				blockPropertiesMap = parseBlockMap(blockProperties);
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties);
 				blockPropertiesMap = LegacyIdMap.convertModernBlockEntries(blockPropertiesMap);
 			});
 		}

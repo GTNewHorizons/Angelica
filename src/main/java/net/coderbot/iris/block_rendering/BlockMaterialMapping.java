@@ -28,30 +28,9 @@ public class BlockMaterialMapping {
 	public static Reference2ObjectMap<Block, Int2IntMap> createBlockMetaIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
 		Reference2ObjectMap<Block, Int2IntMap> blockMatches = new Reference2ObjectOpenHashMap<>();
 
-		// Detect modern shader packs by looking for block names that only exist post-flattening.
-		// This determines how to handle ambiguous names like "grass" (block in 1.7.10, plant in 1.13+).
-		boolean isModernPack = false;
-		detection:
-		for (List<BlockEntry> entries : blockPropertiesMap.values()) {
-			for (BlockEntry entry : entries) {
-				if ("minecraft".equals(entry.getId().getNamespace())) {
-					String name = entry.getId().getName();
-					if ("grass_block".equals(name) || "short_grass".equals(name)) {
-						isModernPack = true;
-						break detection;
-					}
-				}
-			}
-		}
-
-		if (isModernPack) {
-			Iris.logger.info("Detected modern shader pack, automatically changing grass into short_grass");
-		}
-
-		final boolean modernPack = isModernPack;
 		blockPropertiesMap.forEach((intId, entries) -> {
 			for (BlockEntry entry : entries) {
-				addBlockMetas(entry, blockMatches, intId, modernPack);
+				addBlockMetas(entry, blockMatches, intId);
 			}
 		});
 
@@ -103,17 +82,11 @@ public class BlockMaterialMapping {
 	 * Adds block+metadata combinations to the material ID map.
 	 * Based on Iris's addBlockStates method, adapted for 1.7.10 metadata system.
 	 */
-	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId, boolean isModernPack) {
+	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
 		NamespacedId id = entry.getId();
 		String name = id.getName();
 		boolean hasStateProps = !entry.getStateProperties().isEmpty();
 		boolean hasExplicitMetas = !entry.getMetas().isEmpty();
-
-		// In modern packs, "grass" means the short grass plant (renamed to "short_grass" in 1.20.3),
-		// not the grass block (which modern packs call "grass_block").
-		if (isModernPack && "minecraft".equals(id.getNamespace()) && "grass".equals(name)) {
-			name = "short_grass";
-		}
 
         if ("minecraft".equals(id.getNamespace()) && (hasStateProps || !hasExplicitMetas)) {
 			List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(name, entry.getStateProperties());

@@ -257,6 +257,7 @@ public class FlatteningMap {
 
 		// === Tall grass / fern (ID 31) ===
 		// tallgrass: 0 = shrub, 1 = grass, 2 = fern
+		meta("grass",       "tallgrass", 1);   // 1.13-1.20.2 name
 		meta("short_grass", "tallgrass", 1);   // 1.20.3+ name
 		meta("fern",        "tallgrass", 2);
 
