@@ -91,7 +91,7 @@ public class LegacyIdMap {
 		blockIdMap.forEach((intId, entries) -> {
 			List<BlockEntry> convertedEntries = new ArrayList<>(entries.size());
 			for (BlockEntry entry : entries) {
-				NamespacedId id = entry.getId();
+				NamespacedId id = entry.id();
 				if (!"minecraft".equals(id.getNamespace())) {
 					convertedEntries.add(entry);
 					continue;
@@ -103,7 +103,7 @@ public class LegacyIdMap {
 					continue;
 				}
 
-				convertedEntries.add(new BlockEntry(new NamespacedId(id.getNamespace(), convertedName), entry.getMetas()));
+				convertedEntries.add(new BlockEntry(new NamespacedId(id.getNamespace(), convertedName), entry.metas()));
 			}
 			converted.put(intId, Collections.unmodifiableList(convertedEntries));
 		});
