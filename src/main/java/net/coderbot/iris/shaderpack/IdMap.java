@@ -1,5 +1,6 @@
 package net.coderbot.iris.shaderpack;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -65,22 +66,51 @@ public class IdMap {
     private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		final ParsedIdMap parsedItems = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines)
+		// Check if block.properties has a dedicated 1.7.10 section
+		String rawBlockProperties = readProperties(shaderPath, "block.properties");
+		boolean hasLegacySection = rawBlockProperties != null
+			&& rawBlockProperties.contains("MC_VERSION") && rawBlockProperties.contains("10710");
+
+		Iterable<StringPair> resolvedDefines;
+		if (hasLegacySection) {
+			// Pack has a 1.7.10 section
+			resolvedDefines = environmentDefines;
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+			});
+		} else {
+			// No 1.7.10 section, use modern MC_VERSION and convert entries
+			ArrayList<StringPair> modernDefines = new ArrayList<>();
+			for (StringPair define : environmentDefines) {
+				if (!"MC_VERSION".equals(define.getKey())) {
+					modernDefines.add(define);
+				}
+			}
+
+			String modernVersion = AngelicaConfig.modernFallbackMcVersion > 0
+				? String.valueOf(AngelicaConfig.modernFallbackMcVersion) : "260101";
+			modernDefines.add(new StringPair("MC_VERSION", modernVersion));
+			resolvedDefines = modernDefines;
+
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+				blockPropertiesMap = LegacyIdMap.convertModernBlockEntries(blockPropertiesMap);
+			});
+		}
+
+		final ParsedIdMap parsedItems = loadProperties(shaderPath, "item.properties", shaderPackOptions, resolvedDefines)
 			.map(p -> parseIdMap(p, "item.", "item.properties"))
 			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
 		itemIdMap = parsedItems.simpleMap();
 		itemNbtEntries = parsedItems.nbtEntries();
 
-		final ParsedIdMap parsedEntities = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines)
+		final ParsedIdMap parsedEntities = loadProperties(shaderPath, "entity.properties", shaderPackOptions, resolvedDefines)
 			.map(p -> parseIdMap(p, "entity.", "entity.properties"))
 			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
 		entityIdMap = parsedEntities.simpleMap();
 		entityNbtEntries = parsedEntities.nbtEntries();
-
-		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
-			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
-			blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
-		});
 
 		// TODO: Properly override block render layers
 
