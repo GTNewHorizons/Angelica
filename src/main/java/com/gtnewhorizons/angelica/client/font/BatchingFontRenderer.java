@@ -215,22 +215,14 @@ public class BatchingFontRenderer {
         pushQuadIdx();
     }
 
-    private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz) {
+    private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz, boolean flipV) {
         ensureCapacity();
-        pushVtx(x + itOff, y, rgba, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff, y + h, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushQuadIdx();
-    }
-
-    /** Like pushTexRect but flips V coordinates vertically (for dinnerbone effect). Atlas bounds stay correct. */
-    private void pushTexRectVFlipped(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz) {
-        ensureCapacity();
-        pushVtx(x + itOff, y, rgba, uStart, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff, y + h, rgba, uStart, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vStart + vSz, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vStart, uStart, uStart + uSz, vStart, vStart + vSz);
+        float vTop = flipV ? vStart + vSz : vStart;
+        float vBot = flipV ? vStart : vStart + vSz;
+        pushVtx(x + itOff, y, rgba, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x - itOff, y + h, rgba, uStart, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
         pushQuadIdx();
     }
 
@@ -480,7 +472,7 @@ public class BatchingFontRenderer {
 
     /**
      * Count visible characters from {@code start} to {@code end}, skipping format codes.
-     * Stops at §r, any color code (§0-f, §x), or any color effect (§y, §g).
+     * Stops at §r, any color code (§0-f, §x), or any color effect (§q, §g).
      */
     private static int countVisibleChars(CharSequence str, int start, int end) {
         int count = 0;
@@ -489,7 +481,7 @@ public class BatchingFontRenderer {
             if (ch == FORMATTING_CHAR && i + 1 < end) {
                 char code = Character.toLowerCase(str.charAt(i + 1));
                 if (code == 'r' || (code >= '0' && code <= '9') || (code >= 'a' && code <= 'f')
-                    || code == 'x' || code == 'y' || code == 'g') {
+                    || code == 'x' || code == 'q' || code == 'g') {
                     break;
                 }
                 i++; // skip style codes (k-o, w, j) — they don't terminate gradient
@@ -663,13 +655,13 @@ public class BatchingFontRenderer {
                         underlineEndX = underlineStartX;
                     } else if (fmtCode == 'o') {
                         curItalic = true;
-                    } else if (fmtCode == 'y' && AngelicaConfig.enableTextEffects) {
+                    } else if (fmtCode == 'q' && AngelicaConfig.enableTextEffects) {
                         curRainbow = true;
                         curGradient = false;
                         rainbowCharIndex = 0;
-                    } else if (fmtCode == 'w' && AngelicaConfig.enableTextEffects) {
+                    } else if (fmtCode == 'z' && AngelicaConfig.enableTextEffects) {
                         curWave = !curWave;
-                    } else if (fmtCode == 'j' && AngelicaConfig.enableTextEffects) {
+                    } else if (fmtCode == 'v' && AngelicaConfig.enableTextEffects) {
                         curDinnerbone = !curDinnerbone;
                     } else if (fmtCode == 'g' && AngelicaConfig.enableTextEffects && charIdx + 28 < stringEnd) {
                         int color1 = parseFullSectionX(string, charIdx + 1);
@@ -772,36 +764,20 @@ public class BatchingFontRenderer {
                 if (enableShadow) {
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        if (curDinnerbone) {
-                            pushTexRectVFlipped(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
-                        } else {
-                            pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
-                        }
+                        pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
 
                         if (curBold) {
-                            if (curDinnerbone) {
-                                pushTexRectVFlipped(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
-                            } else {
-                                pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz);
-                            }
+                            pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
                         }
                     }
                 }
 
-                if (curDinnerbone) {
-                    pushTexRectVFlipped(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
-                } else {
-                    pushTexRect(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
-                }
+                pushTexRect(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz, curDinnerbone);
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        if (curDinnerbone) {
-                            pushTexRectVFlipped(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
-                        } else {
-                            pushTexRect(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz);
-                        }
+                        pushTexRect(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz, curDinnerbone);
                     }
                 }
 

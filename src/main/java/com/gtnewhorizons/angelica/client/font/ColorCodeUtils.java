@@ -5,13 +5,18 @@ package com.gtnewhorizons.angelica.client.font;
  * format codes understood by the batched font renderer.
  * <p>
  * {@code &#RRGGBB} → {@code §x§R§R§G§G§B§B} (RGB color)<br>
- * {@code &c}, {@code &l}, {@code &r}, {@code &y}, etc. → {@code §c}, {@code §l}, {@code §r}, {@code §y}
+ * {@code &g&#RRGGBB&#RRGGBB} → {@code §g§x§R§R§G§G§B§B§x§R§R§G§G§B§B} (gradient)<br>
+ * {@code &c}, {@code &l}, {@code &r}, {@code &q}, etc. → {@code §c}, {@code §l}, {@code §r}, {@code §q}
+ * <p>
+ * Effect codes use low-collision letters to avoid false positives on natural text:
+ * rainbow = {@code &q}, wave = {@code &z}, dinnerbone = {@code &v}, gradient = {@code &g} (only with &#-prefixed colors).
  */
 public final class ColorCodeUtils {
 
     private ColorCodeUtils() {}
 
-    private static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorywjg";
+    // Valid single & codes. Note: 'g' is excluded — &g only converts as part of &g&#RRGGBB&#RRGGBB gradient syntax.
+    private static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
 
     public static String convertAmpersandToSectionX(String text) {
         int idx = text.indexOf('&');
@@ -37,6 +42,27 @@ public final class ColorCodeUtils {
                         sb.append('\u00a7').append(text.charAt(idx + i));
                     }
                     last = idx + 8; // skip &#RRGGBB (8 chars)
+                    idx = text.indexOf('&', last);
+                    continue;
+                }
+            }
+            // Try &g gradient — only when followed by &#RRGGBB&#RRGGBB
+            if (Character.toLowerCase(text.charAt(idx + 1)) == 'g' && idx + 17 < len
+                && text.charAt(idx + 2) == '&' && text.charAt(idx + 3) == '#'
+                && text.charAt(idx + 10) == '&' && text.charAt(idx + 11) == '#') {
+                boolean valid1 = true, valid2 = true;
+                for (int i = 4; i <= 9; i++) {
+                    if (Character.digit(text.charAt(idx + i), 16) == -1) { valid1 = false; break; }
+                }
+                if (valid1) {
+                    for (int i = 12; i <= 17; i++) {
+                        if (Character.digit(text.charAt(idx + i), 16) == -1) { valid2 = false; break; }
+                    }
+                }
+                if (valid1 && valid2) {
+                    sb.append(text, last, idx);
+                    sb.append('\u00a7').append('g');
+                    last = idx + 2; // skip &g, let the two &#RRGGBB be caught on next iterations
                     idx = text.indexOf('&', last);
                     continue;
                 }

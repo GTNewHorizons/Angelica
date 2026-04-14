@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
-import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
+import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -124,14 +124,8 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
         angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.colorCode, this.locationFontTexture);
-        try {
-            FontRendering.setTextPreprocessor(text ->
-                AngelicaConfig.enableAmpersandConversion
-                    ? ColorCodeUtils.convertAmpersandToSectionX(text)
-                    : text
-            );
-        } catch (NoSuchMethodError ignored) {
-            // Old GTNHLib without text preprocessor — & conversion only at render time
+        if (GTNHLibCompat.HAS_TEXT_PREPROCESSOR) {
+            GTNHLibCompat.registerPreprocessor();
         }
     }
 
@@ -317,7 +311,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 }
 
                 // Single-char & format code
-                if ("0123456789abcdefklmnorywjg".indexOf(ampCode) != -1) {
+                if ("0123456789abcdefklmnorqzv".indexOf(ampCode) != -1) {
                     if ((ampCode >= '0' && ampCode <= '9') || (ampCode >= 'a' && ampCode <= 'f')) {
                         lastColor = "" + angelica$FORMATTING_CHAR + ampCode;
                         styles.setLength(0);
@@ -328,7 +322,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                         effects.setLength(0);
                     } else if (ampCode >= 'k' && ampCode <= 'o') {
                         styles.append(angelica$FORMATTING_CHAR).append(ampCode);
-                    } else if (ampCode == 'y' || ampCode == 'w' || ampCode == 'j' || ampCode == 'g') {
+                    } else if (ampCode == 'q' || ampCode == 'z' || ampCode == 'v' || ampCode == 'g') {
                         effects.append(angelica$FORMATTING_CHAR).append(ampCode);
                     }
                     i++;
@@ -372,7 +366,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             } else if (code >= 'k' && code <= 'o') {
                 styles.append(angelica$FORMATTING_CHAR).append(code);
                 i++;
-            } else if (code == 'y' || code == 'w' || code == 'j') {
+            } else if (code == 'q' || code == 'z' || code == 'v') {
                 effects.append(angelica$FORMATTING_CHAR).append(code);
                 i++;
             } else {
