@@ -89,7 +89,6 @@ public class IdMap {
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
 				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
 				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
-				blockPropertiesMap = LegacyIdMap.convertModernBlockEntries(blockPropertiesMap);
 			});
 		}
 
