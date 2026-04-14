@@ -19,20 +19,27 @@ import java.util.Map;
 import java.util.Set;
 
 public class BlockMaterialMapping {
+
+	public record BlockIdMaps(Reference2ObjectMap<Block, Int2IntMap> blockMetaMap, NbtConditionalIdMap<Block> tileEntityMap) {}
+
 	/**
-	 * Creates a two-level map structure for block material IDs.
-	 * Based on Iris's BlockState mapping approach adapted for 1.7.10's metadata system.
+	 * Creates both the standard block meta ID map and the TileEntity NBT-conditional map.
 	 */
-	public static Reference2ObjectMap<Block, Int2IntMap> createBlockMetaIdMap(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
+	public static BlockIdMaps createBlockIdMaps(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
 		Reference2ObjectMap<Block, Int2IntMap> blockMatches = new Reference2ObjectOpenHashMap<>();
+		NbtConditionalIdMap<Block> tileEntityMap = new NbtConditionalIdMap<>();
 
 		blockPropertiesMap.forEach((intId, entries) -> {
 			for (BlockEntry entry : entries) {
-				addBlockMetas(entry, blockMatches, intId);
+				if (entry.hasNbtProperties()) {
+					addTileEntityEntry(entry, tileEntityMap, intId);
+				} else {
+					addBlockMetas(entry, blockMatches, intId);
+				}
 			}
 		});
 
-		return blockMatches;
+		return new BlockIdMaps(blockMatches, tileEntityMap);
 	}
 
 	public static Map<Block, BlockRenderLayer> createBlockTypeMap(Map<NamespacedId, BlockRenderType> blockPropertiesMap) {
@@ -69,11 +76,41 @@ public class BlockMaterialMapping {
 	}
 
 	/**
+	 * Creates an NBT-conditional ID map keyed by NamespacedId, for items or entities.
+	 */
+	public static NbtConditionalIdMap<NamespacedId> createNamespacedNbtMap(Int2ObjectMap<List<BlockEntry>> nbtEntries) {
+		NbtConditionalIdMap<NamespacedId> map = new NbtConditionalIdMap<>();
+
+		nbtEntries.forEach((intId, entries) -> {
+			for (BlockEntry entry : entries) {
+				if (entry.hasNbtProperties()) {
+					map.addCondition(entry.id(), entry.nbtProperties(), intId);
+				}
+			}
+		});
+
+		return map;
+	}
+
+	private static void addTileEntityEntry(BlockEntry entry, NbtConditionalIdMap<Block> teMap, int intId) {
+		final NamespacedId id = entry.id();
+		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
+
+		final Block block = (Block) Block.blockRegistry.getObject(resourceLocation.toString());
+
+		if (block == null || block == Blocks.air) {
+			return;
+		}
+
+		teMap.addCondition(block, entry.nbtProperties(), intId);
+	}
+
+	/**
 	 * Adds block+metadata combinations to the material ID map.
 	 * Based on Iris's addBlockStates method, adapted for 1.7.10 metadata system.
 	 */
 	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
-		final NamespacedId id = entry.getId();
+		final NamespacedId id = entry.id();
 		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
 
 		final Block block = (Block) Block.blockRegistry.getObject(resourceLocation.toString());
@@ -84,7 +121,7 @@ public class BlockMaterialMapping {
 			return;
 		}
 
-		Set<Integer> metas = entry.getMetas();
+		Set<Integer> metas = entry.metas();
 
 		Int2IntMap metaMap = idMap.get(block);
 		if (metaMap == null) {

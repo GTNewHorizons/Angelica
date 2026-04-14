@@ -5,23 +5,57 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
+import lombok.Setter;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 public class BlockRenderingSettings {
 	public static final BlockRenderingSettings INSTANCE = new BlockRenderingSettings();
 
+	private static final ConcurrentHashMap<Long, Integer> teNbtIdCache = new ConcurrentHashMap<>(256);
+
+	public static long packBlockPos(int x, int y, int z) {
+		return ((long) x & 0x3FFFFFFL) << 38 | ((long) y & 0xFFFL) << 26 | ((long) z & 0x3FFFFFFL);
+	}
+
+	public static void invalidateTeNbtCache(int x, int y, int z) {
+		teNbtIdCache.remove(packBlockPos(x, y, z));
+	}
+
+	public static Integer getCachedTeNbtId(long packedPos) {
+		return teNbtIdCache.get(packedPos);
+	}
+
+	public static void cacheTeNbtId(long packedPos, int shaderId) {
+		teNbtIdCache.put(packedPos, shaderId);
+	}
+
+	public static void clearTeNbtCache() {
+		teNbtIdCache.clear();
+	}
+
 	@Getter
     private boolean reloadRequired;
 	private Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
+	private NbtConditionalIdMap<Block> blockNbtMap;
 	private Map<Block, BlockRenderLayer> blockTypeIds;
-	private Object2IntFunction<NamespacedId> entityIds;
-	private Object2IntFunction<NamespacedId> itemIds;
-	private float ambientOcclusionLevel;
+    // note: no reload needed, entities are rebuilt every frame.
+    @Setter
+    private Object2IntFunction<NamespacedId> entityIds;
+	@Setter
+    private NbtConditionalIdMap<NamespacedId> entityNbtMap;
+    // note: no reload needed, items are rendered every frame.
+    @Setter
+    private Object2IntFunction<NamespacedId> itemIds;
+	@Setter
+    private NbtConditionalIdMap<NamespacedId> itemNbtMap;
+	@Getter
+    private float ambientOcclusionLevel;
 	private boolean disableDirectionalShading;
 	private boolean useSeparateAo;
 	private boolean useExtendedVertexFormat;
@@ -29,6 +63,7 @@ public class BlockRenderingSettings {
 	public BlockRenderingSettings() {
 		reloadRequired = false;
 		blockMetaMatches = null;
+		blockNbtMap = null;
 		blockTypeIds = null;
 		ambientOcclusionLevel = 1.0F;
 		disableDirectionalShading = false;
@@ -69,12 +104,33 @@ public class BlockRenderingSettings {
 		return itemIds;
 	}
 
+	@Nullable
+	public NbtConditionalIdMap<Block> getBlockNbtMap() {
+		return blockNbtMap;
+	}
+
+	@Nullable
+	public NbtConditionalIdMap<NamespacedId> getItemNbtMap() {
+		return itemNbtMap;
+	}
+
+	@Nullable
+	public NbtConditionalIdMap<NamespacedId> getEntityNbtMap() {
+		return entityNbtMap;
+	}
+
 	public void setBlockMetaMatches(Reference2ObjectMap<Block, Int2IntMap> blockMetaIds) {
 		this.reloadRequired = true;
 		this.blockMetaMatches = blockMetaIds;
 	}
 
-	public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
+	public void setBlockNbtMap(NbtConditionalIdMap<Block> blockNbtMap) {
+		this.reloadRequired = true;
+		this.blockNbtMap = blockNbtMap;
+		clearTeNbtCache();
+	}
+
+    public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
 		if (this.blockTypeIds != null && this.blockTypeIds.equals(blockTypeIds)) {
 			return;
 		}
@@ -83,21 +139,7 @@ public class BlockRenderingSettings {
 		this.blockTypeIds = blockTypeIds;
 	}
 
-	public void setEntityIds(Object2IntFunction<NamespacedId> entityIds) {
-		// note: no reload needed, entities are rebuilt every frame.
-		this.entityIds = entityIds;
-	}
-
-	public void setItemIds(Object2IntFunction<NamespacedId> itemIds) {
-		// note: no reload needed, items are rendered every frame.
-		this.itemIds = itemIds;
-	}
-
-	public float getAmbientOcclusionLevel() {
-		return ambientOcclusionLevel;
-	}
-
-	public void setAmbientOcclusionLevel(float ambientOcclusionLevel) {
+    public void setAmbientOcclusionLevel(float ambientOcclusionLevel) {
 		if (ambientOcclusionLevel == this.ambientOcclusionLevel) {
 			return;
 		}

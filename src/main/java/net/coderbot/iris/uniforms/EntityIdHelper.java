@@ -1,10 +1,17 @@
 package net.coderbot.iris.uniforms;
 
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.minecraft.nbt.NBTTagCompound;
+
+import java.util.IdentityHashMap;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
@@ -21,7 +28,11 @@ public final class EntityIdHelper {
     private static final NamespacedId LIGHTNING_BOLT_ID = new NamespacedId("minecraft", "lightning_bolt");
 
     private static final Object2IntMap<Class<?>> entityIdCache = new Object2IntOpenHashMap<>();
+    private static final Map<Class<?>, NamespacedId> entityNameCache = new IdentityHashMap<>();
     private static Object2IntFunction<NamespacedId> cachedEntityIdMap;
+
+    private static final Int2ObjectMap<long[]> entityNbtCache = new Int2ObjectOpenHashMap<>();
+    private static final int NBT_CACHE_INTERVAL_TICKS = 20;
 
     static {
         entityIdCache.defaultReturnValue(Integer.MIN_VALUE);
@@ -42,10 +53,42 @@ public final class EntityIdHelper {
             return -1;
         }
 
-        // Invalidate cache if the map changed (shader reload)
+        // Invalidate caches if the map changed (shader reload)
         if (entityIdMap != cachedEntityIdMap) {
             entityIdCache.clear();
+            entityNameCache.clear();
+            entityNbtCache.clear();
             cachedEntityIdMap = entityIdMap;
+        }
+
+        // Check NBT-conditional match first
+        final NbtConditionalIdMap<NamespacedId> entityNbtMap = BlockRenderingSettings.INSTANCE.getEntityNbtMap();
+        if (entityNbtMap != null && !entityNbtMap.isEmpty()) {
+            NamespacedId namespacedId = getCachedEntityName(entity);
+            if (namespacedId != null && entityNbtMap.hasConditions(namespacedId)) {
+                final int entityRuntimeId = entity.getEntityId();
+                final long currentTick = entity.worldObj != null ? entity.worldObj.getTotalWorldTime() : 0;
+
+                // Attempt to reduce the performance impact of entity nbt checks
+                final long[] cached = entityNbtCache.get(entityRuntimeId);
+                if (cached != null && entity.worldObj != null && (currentTick - cached[0]) < NBT_CACHE_INTERVAL_TICKS) {
+                    if (cached[1] != -1) {
+                        return (int) cached[1];
+                    }
+                } else {
+                    // Cache miss or stale
+                    NBTTagCompound nbt = new NBTTagCompound();
+                    entity.writeToNBT(nbt);
+                    int nbtId = entityNbtMap.resolve(namespacedId, nbt);
+                    entityNbtCache.put(entityRuntimeId, new long[]{currentTick, nbtId});
+                    if (entityNbtCache.size() > 256) {
+                        entityNbtCache.clear();
+                    }
+                    if (nbtId != -1) {
+                        return nbtId;
+                    }
+                }
+            }
         }
 
         // Normal entity type lookup
@@ -133,5 +176,25 @@ public final class EntityIdHelper {
         }
 
         return id;
+    }
+
+    /**
+     * Returns a cached NamespacedId for the entity's registered type.
+     */
+    private static NamespacedId getCachedEntityName(Entity entity) {
+        Class<?> entityClass = entity.getClass();
+        NamespacedId cached = entityNameCache.get(entityClass);
+        if (cached != null) {
+            return cached;
+        }
+
+        String entityType = EntityList.getEntityString(entity);
+        if (entityType == null) {
+            return null;
+        }
+
+        cached = new NamespacedId(entityType);
+        entityNameCache.put(entityClass, cached);
+        return cached;
     }
 }

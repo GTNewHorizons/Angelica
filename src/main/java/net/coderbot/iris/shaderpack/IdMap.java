@@ -7,10 +7,12 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.coderbot.iris.shaderpack.materialmap.PropertiesTokenizer;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
 import net.minecraft.item.Item;
@@ -41,26 +43,39 @@ public class IdMap {
 	 * Maps a given item ID to an integer ID
 	 */
 	private final Object2IntMap<NamespacedId> itemIdMap;
+	@Getter
+    private final Int2ObjectMap<List<BlockEntry>> itemNbtEntries;
 
 	/**
 	 * Maps a given entity ID to an integer ID
 	 */
 	private final Object2IntMap<NamespacedId> entityIdMap;
+	@Getter
+    private final Int2ObjectMap<List<BlockEntry>> entityNbtEntries;
 
 	/**
 	 * Maps block states to block ids defined in block.properties
 	 */
 	private Int2ObjectMap<List<BlockEntry>> blockPropertiesMap;
 
-	/**
-	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
-	 */
-	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+    /**
+     * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
+     */
+	@Getter
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
+		final ParsedIdMap parsedItems = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines)
+			.map(p -> parseIdMap(p, "item.", "item.properties"))
+			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
+		itemIdMap = parsedItems.simpleMap();
+		itemNbtEntries = parsedItems.nbtEntries();
 
-		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
+		final ParsedIdMap parsedEntities = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines)
+			.map(p -> parseIdMap(p, "entity.", "entity.properties"))
+			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
+		entityIdMap = parsedEntities.simpleMap();
+		entityNbtEntries = parsedEntities.nbtEntries();
 
 		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
 			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
@@ -124,13 +139,6 @@ public class IdMap {
 		}
 	}
 
-	private static Object2IntMap<NamespacedId> parseItemIdMap(Properties properties) {
-		return parseIdMap(properties, "item.", "item.properties");
-	}
-
-	private static Object2IntMap<NamespacedId> parseEntityIdMap(Properties properties) {
-		return parseIdMap(properties, "entity.", "entity.properties");
-	}
 
     /**
 	 * Parses a space-delimited list of identifiers.
@@ -153,67 +161,18 @@ public class IdMap {
 	 * @return List of parsed identifiers
 	 */
 	static List<String> parseIdentifierList(String value, String fileName, String key) {
-		if (value.indexOf('"') == -1) {
-			String[] parts = value.split("\\s+");
-			List<String> result = new ArrayList<>(parts.length);
-			for (String part : parts) {
-				if (!part.isEmpty()) {
-					result.add(part);
-				}
-			}
-			return result;
-		}
-
-		// Found quote, start of a dumb block ID
-		List<String> result = new ArrayList<>();
-		StringBuilder current = new StringBuilder();
-		boolean inQuotes = false;
-		boolean escaped = false;
-
-		for (int i = 0; i < value.length(); i++) {
-			char c = value.charAt(i);
-
-			if (escaped) {
-				current.append(c);
-				escaped = false;
-			} else if (c == '\\') {
-				escaped = true;
-			} else if (c == '"') {
-				inQuotes = !inQuotes;
-			} else if (Character.isWhitespace(c) && !inQuotes) {
-				if (current.length() > 0) {
-					result.add(current.toString());
-					current.setLength(0);
-				}
-			} else {
-				current.append(c);
-			}
-		}
-
-		// Didn't close a quote, warn
-		if (inQuotes) {
-			Iris.logger.warn(fileName + " [" + key + "]: Unclosed quote");
-		}
-
-		// Trailing backslash, warn
-		if (escaped) {
-			Iris.logger.warn(fileName + " [" + key + "]: Trailing backslash");
-		}
-
-		// Add final token
-		if (current.length() > 0) {
-			result.add(current.toString());
-		}
-
-		return result;
+		return PropertiesTokenizer.tokenizeValues(value, ' ');
 	}
+
+	record ParsedIdMap(Object2IntMap<NamespacedId> simpleMap, Int2ObjectMap<List<BlockEntry>> nbtEntries) {}
 
 	/**
 	 * Parses a NamespacedId map in OptiFine format
 	 */
-	private static Object2IntMap<NamespacedId> parseIdMap(Properties properties, String keyPrefix, String fileName) {
+	private static ParsedIdMap parseIdMap(Properties properties, String keyPrefix, String fileName) {
 		Object2IntMap<NamespacedId> idMap = new Object2IntOpenHashMap<>();
 		idMap.defaultReturnValue(-1);
+		Int2ObjectMap<List<BlockEntry>> nbtEntries = new Int2ObjectOpenHashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
 			String key = (String) keyObject;
@@ -236,6 +195,20 @@ public class IdMap {
 
 			// Parse identifiers
 			for (String part : parseIdentifierList(value, fileName, key)) {
+				if (part.contains("[")) {
+					// NBT-conditional entry
+					try {
+						BlockEntry entry = BlockEntry.parse(part);
+						if (entry.hasNbtProperties()) {
+							nbtEntries.computeIfAbsent(intId, k -> new ArrayList<>()).add(entry);
+						} else {
+							idMap.put(entry.id(), intId);
+						}
+					} catch (Exception e) {
+						Iris.logger.warn("Failed to parse NBT entry in " + fileName + " for key " + key + ": " + part, e);
+					}
+					continue;
+				}
 				if (part.contains("=")) {
 					// Avoid tons of logspam for now
 					Iris.logger.warn("Failed to parse an ResourceLocation in " + fileName + " for the key " + key + ": state properties are currently not supported: " + part);
@@ -248,7 +221,7 @@ public class IdMap {
 			}
 		});
 
-		return Object2IntMaps.unmodifiable(idMap);
+		return new ParsedIdMap(Object2IntMaps.unmodifiable(idMap), nbtEntries);
 	}
 
 	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
@@ -349,15 +322,11 @@ public class IdMap {
 		return itemIdMap;
 	}
 
-	public Object2IntFunction<NamespacedId> getEntityIdMap() {
+    public Object2IntFunction<NamespacedId> getEntityIdMap() {
 		return entityIdMap;
 	}
 
-	public Map<NamespacedId, BlockRenderType> getBlockRenderTypeMap() {
-		return blockRenderTypeMap;
-	}
-
-	@Override
+    @Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;

@@ -9,8 +9,11 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
+import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -258,6 +261,31 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             } else {
                 contextEncoder.prepareToRenderBlock(blockRenderContext, block, metadata,
                     ExtendedDataHelper.BLOCK_RENDER_TYPE, lightValue);
+
+                // Check for TileEntity NBT-conditional shader block ID override
+                final NbtConditionalIdMap<Block> teMap = BlockRenderingSettings.INSTANCE.getBlockNbtMap();
+                if (teMap != null && !teMap.isEmpty() && teMap.hasConditions(block)) {
+                    final long packedPos = BlockRenderingSettings.packBlockPos(x, y, z);
+                    final Integer cachedId = BlockRenderingSettings.getCachedTeNbtId(packedPos);
+
+                    if (cachedId != null) {
+                        if (cachedId != -1) {
+                            blockRenderContext.blockId = (short) cachedId.intValue();
+                        }
+
+                    } else {
+                        final TileEntity te = getBlockAccess().getTileEntity(x, y, z);
+                        if (te != null) {
+                            final NBTTagCompound teNbt = new NBTTagCompound();
+                            te.writeToNBT(teNbt);
+                            final int teBlockId = teMap.resolve(block, teNbt);
+                            BlockRenderingSettings.cacheTeNbtId(packedPos, teBlockId);
+                            if (teBlockId != -1) {
+                                blockRenderContext.blockId = (short) teBlockId;
+                            }
+                        }
+                    }
+                }
             }
         }
 

@@ -263,6 +263,8 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderNameTag"
             , "shaders.MixinRenderPlayerArmor"
             , "shaders.MixinTileEntityBeaconRenderer"
+            , "shaders.MixinTileEntityNbtCache"
+            , "shaders.MixinWorldNbtCache"
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
             , "shaders.MixinGlProgram"

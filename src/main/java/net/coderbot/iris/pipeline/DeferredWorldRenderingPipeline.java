@@ -279,13 +279,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
         );
 
-		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(BlockMaterialMapping.createBlockMetaIdMap(programs.getPack().getIdMap().getBlockProperties()));
+		final var blockIdMaps = BlockMaterialMapping.createBlockIdMaps(programs.getPack().getIdMap().getBlockProperties());
+		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(blockIdMaps.blockMetaMap());
+		BlockRenderingSettings.INSTANCE.setBlockNbtMap(blockIdMaps.tileEntityMap());
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
 
 		BlockRenderingSettings.INSTANCE.setEntityIds(programs.getPack().getIdMap().getEntityIdMap());
+		BlockRenderingSettings.INSTANCE.setEntityNbtMap(BlockMaterialMapping.createNamespacedNbtMap(programs.getPack().getIdMap().getEntityNbtEntries()));
 
 		ItemMaterialHelper.clearCache();
 		BlockRenderingSettings.INSTANCE.setItemIds(programs.getPack().getIdMap().getItemIdMap());
+		BlockRenderingSettings.INSTANCE.setItemNbtMap(BlockMaterialMapping.createNamespacedNbtMap(programs.getPack().getIdMap().getItemNbtEntries()));
 		BlockRenderingSettings.INSTANCE.setAmbientOcclusionLevel(programs.getPackDirectives().getAmbientOcclusionLevel());
 		BlockRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
 		BlockRenderingSettings.INSTANCE.setUseSeparateAo(programs.getPackDirectives().shouldUseSeparateAo());
