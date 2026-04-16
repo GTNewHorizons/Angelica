@@ -99,7 +99,7 @@ public enum Settings {
             ChunkRebuildManager.setMaxTicksWaiting((int) this.option.getStore());
         }
     },
-    HORIZON(new NotFineOptionTickBox(true, OptionImpact.LOW)),
+    HORIZON(new NotFineOptionTickBox(false, OptionImpact.LOW)),
     TERRAIN_FOG(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     FOG_NEAR_DISTANCE(new NotFineOptionSliderPercentage(75, 1, 100, 1, OptionImpact.LOW)),
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {
