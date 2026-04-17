@@ -21,10 +21,19 @@ public class GTNHLibCompat {
 
     /** Only call when {@link #HAS_TEXT_PREPROCESSOR} is true. */
     public static void registerPreprocessor() {
-        FontRendering.setTextPreprocessor(text ->
-            AngelicaConfig.enableAmpersandConversion
-                ? ColorCodeUtils.convertAmpersandToSectionX(text)
-                : text
-        );
+        FontRendering.setTextPreprocessor(new FontRendering.TextPreprocessor() {
+
+            @Override
+            public String apply(String text) {
+                return AngelicaConfig.enableAmpersandConversion
+                        ? ColorCodeUtils.convertAmpersandToSectionX(text)
+                        : text;
+            }
+
+            @Override
+            public boolean handlesAmpCodes() {
+                return AngelicaConfig.enableAmpersandConversion;
+            }
+        });
     }
 }
