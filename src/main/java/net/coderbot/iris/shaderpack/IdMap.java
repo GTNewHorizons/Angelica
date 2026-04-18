@@ -8,8 +8,10 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.EntityFlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
@@ -56,7 +58,8 @@ public class IdMap {
 	/**
 	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
 	 */
-	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+	@Getter
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
 		// Check if block.properties has a dedicated 1.7.10 section
@@ -140,7 +143,7 @@ public class IdMap {
 	private static String readProperties(Path shaderPath, String name) {
 		try {
 			// ID maps should be encoded in ISO_8859_1.
-			return new String(Files.readAllBytes(shaderPath.resolve(name)), StandardCharsets.ISO_8859_1);
+			return Files.readString(shaderPath.resolve(name), StandardCharsets.ISO_8859_1);
 		} catch (NoSuchFileException e) {
 			Iris.logger.debug("An " + name + " file was not found in the current shaderpack");
 
@@ -157,7 +160,24 @@ public class IdMap {
 	}
 
 	private static Object2IntMap<NamespacedId> parseEntityIdMap(Properties properties) {
-		return parseIdMap(properties, "entity.", "entity.properties");
+		Object2IntMap<NamespacedId> idMap = parseIdMap(properties, "entity.", "entity.properties");
+
+		// For modern shader packs: translate modern entity names to 1.7.10 names
+		// so runtime lookups match EntityList's registered names directly.
+		Object2IntMap<NamespacedId> augmented = new Object2IntOpenHashMap<>(idMap);
+		augmented.defaultReturnValue(-1);
+
+		for (Object2IntMap.Entry<NamespacedId> entry : idMap.object2IntEntrySet()) {
+			NamespacedId id = entry.getKey();
+			if ("minecraft".equals(id.getNamespace())) {
+				String legacyName = EntityFlatteningMap.toLegacy(id.getName());
+				if (legacyName != null) {
+					augmented.putIfAbsent(new NamespacedId(legacyName), entry.getIntValue());
+				}
+			}
+		}
+
+		return Object2IntMaps.unmodifiable(augmented);
 	}
 
     /**
@@ -209,7 +229,7 @@ public class IdMap {
 			} else if (c == '"') {
 				inQuotes = !inQuotes;
 			} else if (Character.isWhitespace(c) && !inQuotes) {
-				if (current.length() > 0) {
+				if (!current.isEmpty()) {
 					result.add(current.toString());
 					current.setLength(0);
 				}
@@ -229,7 +249,7 @@ public class IdMap {
 		}
 
 		// Add final token
-		if (current.length() > 0) {
+		if (!current.isEmpty()) {
 			result.add(current.toString());
 		}
 
@@ -381,11 +401,7 @@ public class IdMap {
 		return entityIdMap;
 	}
 
-	public Map<NamespacedId, BlockRenderType> getBlockRenderTypeMap() {
-		return blockRenderTypeMap;
-	}
-
-	@Override
+    @Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;

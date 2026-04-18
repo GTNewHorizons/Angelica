@@ -19,21 +19,25 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.vertices.ImmediateState;
 
 public class IrisGLSMBridge {
-    
+
+    private static Runnable alphaFuncListener = null;
+    private static Runnable alphaTestListener = null;
     private static Runnable blendFuncListener = null;
     private static Runnable fogModeListener = null;
     private static Runnable fogStartListener = null;
     private static Runnable fogEndListener = null;
     private static Runnable fogDensityListener = null;
-    
+
     static {
+        StateUpdateNotifiers.alphaFuncNotifier = listener -> alphaFuncListener = listener;
+        StateUpdateNotifiers.alphaTestNotifier = listener -> alphaTestListener = listener;
         StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
         StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
         StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
         StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
         StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
     }
-    
+
     public static void register() {
         IrisSamplers.initRenderer();
         GLSMHooks.blendHandler = new DeferredBlendHandler() {
@@ -91,13 +95,20 @@ public class IrisGLSMBridge {
                 DepthColorStorage.deferColorMask(r, g, b, a);
             }
         };
-        
+
+        GLSMHooks.ALPHA_STATE_CHANGE.addListener(event -> {
+            if (Iris.enabled) {
+                if (alphaFuncListener != null) alphaFuncListener.run();
+                if (alphaTestListener != null) alphaTestListener.run();
+            }
+        });
+
         GLSMHooks.BLEND_FUNC_CHANGE.addListener(event -> {
             if (Iris.enabled) {
                 if (blendFuncListener != null) blendFuncListener.run();
             }
         });
-        
+
         GLSMHooks.FOG_STATE_CHANGE.addListener(event -> {
             if (Iris.enabled) {
                 if (fogModeListener != null) fogModeListener.run();
@@ -106,7 +117,7 @@ public class IrisGLSMBridge {
                 if (fogDensityListener != null) fogDensityListener.run();
             }
         });
-        
+
         GLSMHooks.TEXTURE_BIND.addListener(event -> {
             if (Iris.enabled) {
                 TextureTracker.INSTANCE.onBindTexture();

@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.late.client.ntmSpace;
 
+import com.gtnewhorizons.angelica.utils.WorkaroundUtils;
 import com.hbm.dim.laythe.SkyProviderLaytheSunset;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
+import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -10,19 +12,15 @@ import org.spongepowered.asm.mixin.injection.At;
 public class MixinSkyProviderLaytheSunset {
 	
 	/**
-	 * Disables {@link GL11#glDisable(int GL_TEXTURE_2D)} call
+	 * Avoid program rebinding due to pipeline.setInputs
 	 */
-	@WrapWithCondition(method = "renderSunset", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V", ordinal = 0), remap = false)
-	private boolean iris$sunset$revertTextureDisable(int i) {
-		return false;
+	@WrapWithCondition(method = "renderSunset", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V"), remap = false)
+	private boolean iris$sunset$redirectTex2D(int cap) {
+		if(cap == GL11.GL_TEXTURE_2D) {
+			Minecraft.getMinecraft().renderEngine.bindTexture(WorkaroundUtils.GL_TEXTURE_2D_WORKAROUND);
+			return false;
+		}
+		return true;
 	}
-	
-	/**
-	 * Disables {@link GL11#glEnable(int GL_TEXTURE_2D)} call
-	 */
-	@WrapWithCondition(method = "renderSunset", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glEnable(I)V", ordinal = 0), remap = false)
-	private boolean iris$sunsetBlend$revertTextureEnable(int i) {
-		return false;
-	}
-	
+
 }

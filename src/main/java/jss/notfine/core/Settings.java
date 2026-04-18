@@ -11,6 +11,7 @@ import jss.notfine.gui.options.control.NotFineControlValueFormatter;
 import jss.notfine.gui.options.named.AlwaysNever;
 import jss.notfine.gui.options.named.BackgroundSelect;
 import jss.notfine.gui.options.named.DownfallQuality;
+import jss.notfine.gui.options.named.FOVMode;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import jss.notfine.gui.options.named.LeavesQuality;
 import jss.notfine.gui.options.named.GraphicsToggle;
@@ -49,7 +50,7 @@ public enum Settings {
             SettingsManager.downfallDistanceUpdated();
         }
     },
-    DYNAMIC_FOV(new NotFineOptionTickBox(true, null)),
+    DYNAMIC_FOV(new NotFineOptionCycling<>(FOVMode.ALL, OptionImpact.VARIES)),
     HURT_SHAKE(new NotFineOptionSliderPercentage(100, 0, 300, 5, OptionImpact.LOW)),
     DYNAMIC_LIGHTS(new NotFineOptionCycling<>(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
         @Override
@@ -99,7 +100,7 @@ public enum Settings {
             ChunkRebuildManager.setMaxTicksWaiting((int) this.option.getStore());
         }
     },
-    HORIZON(new NotFineOptionTickBox(true, OptionImpact.LOW)),
+    HORIZON(new NotFineOptionTickBox(false, OptionImpact.LOW)),
     TERRAIN_FOG(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     FOG_NEAR_DISTANCE(new NotFineOptionSliderPercentage(75, 1, 100, 1, OptionImpact.LOW)),
     GUI_BACKGROUND(new NotFineOptionCycling<>(BackgroundSelect.DEFAULT, null)) {

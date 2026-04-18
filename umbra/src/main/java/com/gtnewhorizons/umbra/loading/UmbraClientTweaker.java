@@ -70,8 +70,8 @@ public class UmbraClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader 
     private static void verifyDependencies() {
         DependencyVerifier.verify(UmbraClientTweaker.class, List.of(
             new DependencyVerifier.Check(
-                "/com/gtnewhorizon/gtnhlib/client/renderer/PrimitiveExtractor.class",
-                "Missing dependency: Umbra requires GTNHLib 0.8.21+! Download: https://modrinth.com/mod/gtnhlib"),
+                "/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class",
+                "Missing dependency: Umbra requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib"),
             new DependencyVerifier.Check(
                 "/xyz/wagyourtail/jvmdg/exc/MissingStubError.class",
                 "GTNHLib is outdated: Umbra requires GTNHLib 0.9.0+! Download: https://modrinth.com/mod/gtnhlib")
