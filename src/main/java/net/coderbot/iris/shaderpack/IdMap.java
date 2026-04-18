@@ -72,8 +72,8 @@ public class IdMap {
 			// Pack has a 1.7.10 section
 			resolvedDefines = environmentDefines;
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
-				blockPropertiesMap = parseBlockMap(blockProperties);
-				blockRenderTypeMap = parseRenderTypeMap(blockProperties);
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
 			});
 		} else {
 			// No 1.7.10 section, use modern MC_VERSION and convert entries
@@ -90,9 +90,8 @@ public class IdMap {
 			resolvedDefines = modernDefines;
 
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
-				blockPropertiesMap = parseBlockMap(blockProperties);
-				blockRenderTypeMap = parseRenderTypeMap(blockProperties);
-				blockPropertiesMap = LegacyIdMap.convertModernBlockEntries(blockPropertiesMap);
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
 			});
 		}
 
@@ -300,14 +299,14 @@ public class IdMap {
 		return Object2IntMaps.unmodifiable(idMap);
 	}
 
-	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties) {
+	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
 		Int2ObjectMap<List<BlockEntry>> entriesById = new Int2ObjectOpenHashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
 			final String key = (String) keyObject;
 			StringBuilder value = new StringBuilder((String) valueObject);
 
-			if (!key.startsWith("block.")) {
+			if (!key.startsWith(keyPrefix)) {
 				// Not a valid line, ignore it
 				return;
 			}
@@ -315,10 +314,10 @@ public class IdMap {
 			final int intId;
 
 			try {
-				intId = Integer.parseInt(key.substring("block.".length()));
+				intId = Integer.parseInt(key.substring(keyPrefix.length()));
 			} catch (NumberFormatException e) {
 				// Not a valid property line
-				Iris.logger.warn("Failed to parse line in " + "block.properties" + ": invalid key " + key);
+				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid key " + key);
 				return;
 			}
 
@@ -335,7 +334,7 @@ public class IdMap {
 			}
 
 			// Parse identifiers
-			for (String part : parseIdentifierList(value.toString(), "block.properties", key)) {
+			for (String part : parseIdentifierList(value.toString(), fileName, key)) {
 				if (part.isEmpty()) {
 					continue;
 				}
@@ -343,7 +342,7 @@ public class IdMap {
 				try {
 					entries.add(BlockEntry.parse(part));
 				} catch (Exception e) {
-					Iris.logger.warn("Unexpected error while parsing an entry from " + "block.properties" + " for the key " + key + ":", e);
+					Iris.logger.warn("Unexpected error while parsing an entry from " + fileName + " for the key " + key + ":", e);
 				}
 			}
 
@@ -358,29 +357,29 @@ public class IdMap {
 	 *
 	 * This feature is used by Chocapic v9 and Wisdom Shaders. Otherwise, it is a rarely-used feature.
 	 */
-	private static Map<NamespacedId, BlockRenderType> parseRenderTypeMap(Properties properties) {
+	private static Map<NamespacedId, BlockRenderType> parseRenderTypeMap(Properties properties, String keyPrefix, String fileName) {
 		Map<NamespacedId, BlockRenderType> overrides = new HashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
 			String key = (String) keyObject;
 			String value = (String) valueObject;
 
-			if (!key.startsWith("layer.")) {
+			if (!key.startsWith(keyPrefix)) {
 				// Not a valid line, ignore it
 				return;
 			}
 
 			// Note: We have to remove the prefix "layer." because fromString expects "cutout", not "layer.cutout".
-			String keyWithoutPrefix = key.substring("layer.".length());
+			String keyWithoutPrefix = key.substring(keyPrefix.length());
 
 			BlockRenderType renderType = BlockRenderType.fromString(keyWithoutPrefix).orElse(null);
 
 			if (renderType == null) {
-				Iris.logger.warn("Failed to parse line in " + "block.properties" + ": invalid block render type: " + key);
+				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid block render type: " + key);
 				return;
 			}
 
-			for (String part : parseIdentifierList(value, "block.properties", key)) {
+			for (String part : parseIdentifierList(value, fileName, key)) {
 				// Note: NamespacedId performs no validation on the content. That will need to be done by whatever is
 				//       converting these things to ResourceLocations.
 				overrides.put(new NamespacedId(part), renderType);
