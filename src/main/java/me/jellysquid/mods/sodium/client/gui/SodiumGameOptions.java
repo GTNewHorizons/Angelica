@@ -100,6 +100,10 @@ public class SodiumGameOptions {
 
         config.configPath = path;
 
+        if (config.advanced.streamingUploadStrategy == null) {
+            config.advanced.streamingUploadStrategy = StreamingUploader.UploadStrategy.MAP_BUFFER_RANGE;
+        }
+
         // Clamp render-ahead to 0 if GL 3.2 fences aren't available
         if (GLStateManager.capabilities == null || !GLStateManager.capabilities.OpenGL32) {
             config.performance.cpuRenderAheadLimit = 0;

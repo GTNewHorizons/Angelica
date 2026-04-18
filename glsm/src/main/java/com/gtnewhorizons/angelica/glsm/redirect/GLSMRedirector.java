@@ -4,16 +4,19 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.objectweb.asm.Handle;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.IntInsnNode;
+import org.objectweb.asm.tree.InvokeDynamicInsnNode;
 import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.TypeInsnNode;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -79,6 +82,9 @@ public class GLSMRedirector {
         glCapRedirects.put(org.lwjgl.opengl.GL11.GL_SCISSOR_TEST, "ScissorTest");
 
         final var gl11 = RedirectMap.newMap()
+            // glEnable/Disable - Special cased in GLSMRedirector, but included here for the external API
+            .add("glEnable")
+            .add("glDisable")
             .add("glAlphaFunc")
             .add("glBegin")
             .add("glBindTexture")
@@ -495,6 +501,22 @@ public class GLSMRedirector {
         return CORE_EXCLUSIONS.clone();
     }
 
+    /** The internal-name prefix used to match GL version classes (e.g., {@code "org/lwjgl/opengl/GL"}). */
+    public static String getGLPrefix() { return GL_PREFIX; }
+
+    /** The internal name of the redirect target class. */
+    public static String getTargetClassName() { return GLStateManager; }
+
+    /** Method redirects for GL-prefix classes. Key: original method name, Value: GLStateManager method name. */
+    public static Map<String, String> getGLPrefixMethodRedirects() {
+        return Collections.unmodifiableMap(glMethodRedirects);
+    }
+
+    /** Method redirects for named (non-GL-prefix) classes. Key: internal class name, Value: per-method redirect map. */
+    public static Map<String, Map<String, String>> getNamedClassMethodRedirects() {
+        return Collections.unmodifiableMap(methodRedirects);
+    }
+
     public boolean shouldTransform(byte[] basicClass) {
         return cstPoolParser.find(basicClass, true);
     }
@@ -504,7 +526,7 @@ public class GLSMRedirector {
         boolean changed = false;
         final boolean isOpenGlHelper = transformedName.equals("net.minecraft.client.renderer.OpenGlHelper");
 
-        for (MethodNode mn : cn.methods) {
+        for (MethodNode mn : (List<MethodNode>) cn.methods) {
             if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
@@ -589,6 +611,22 @@ public class GLSMRedirector {
                             mNode.owner = redirect;
                             changed = true;
                         }
+                    }
+                } else if (node instanceof InvokeDynamicInsnNode dynNode) {
+                    // Redirect method handles in invokedynamic bootstrap arguments
+                    for (int i = 0; i < dynNode.bsmArgs.length; i++) {
+                        if (!(dynNode.bsmArgs[i] instanceof Handle handle)) continue;
+                        final Map<String, String> redirects = handle.getOwner().startsWith(GL_PREFIX) ? glMethodRedirects : methodRedirects.get(handle.getOwner());
+                        if (redirects == null) continue;
+                        final String glsmName = redirects.get(handle.getName());
+                        if (glsmName == null) continue;
+                        if (LOG_SPAM) {
+                            final String shortOwner = handle.getOwner().substring(handle.getOwner().lastIndexOf("/") + 1);
+                            LOGGER.info("Redirecting invokedynamic handle in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, handle.getName(), handle.getDesc(), glsmName, handle.getDesc());
+                        }
+                        dynNode.bsmArgs[i] = new Handle(handle.getTag(), GLStateManager, glsmName, handle.getDesc());
+                        changed = true;
+                        redirectInMethod = true;
                     }
                 }
             }

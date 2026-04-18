@@ -8,6 +8,7 @@ public enum RenderCondition {
 	CLOUDS,
 	DESTROY,
 	BLOCK_ENTITIES,
+	BLOCK_ENTITIES_TRANSLUCENT,
 	BEACON_BEAM,
 	ENTITIES,
 	ENTITIES_TRANSLUCENT,
@@ -17,6 +18,7 @@ public enum RenderCondition {
 	HAND_TRANSLUCENT,
 	RAIN_SNOW,
 	WORLD_BORDER,
+	SHADOW_TRANSLUCENT,
 	// NB: Must be last due to implementation details of DeferredWorldRenderingPipeline
 	SHADOW
 }

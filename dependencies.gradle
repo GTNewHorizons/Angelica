@@ -83,19 +83,21 @@ dependencies {
     shadowImplementation("net.minecraftforge:eventbus:7.0-beta.15")
 
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
-    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-26.g5ee7d96-GTNH") {
+    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-32.g7dd88a4-GTNH") {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
     shadowImplementation("org.antlr:antlr4-runtime:4.13.2")
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Celeritas (transitive=false: deps provided by GTNHLib/runtime)
-    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.3-GTNH") { transitive = false }
+    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.4-GTNH") { transitive = false }
     embedOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.5.3-GTNH") { transitive = false }
 
     // Because who doesn't want NEI
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
+
+    //devOnlyNonPublishable('com.github.GTNewHorizons:worldedit-gtnh:v0.0.9')
 
     // Notfine Deps
     compileOnly("thaumcraft:Thaumcraft:1.7.10-4.2.3.5:dev")
@@ -119,7 +121,7 @@ dependencies {
 
     compileOnly("com.github.GTNewHorizons:NotEnoughIds:2.1.10:dev")
 
-    compileOnly(rfg.deobf("maven.modrinth:ntmspace:X5593_H261"))
+    compileOnly(rfg.deobf("maven.modrinth:ntmspace:X5663_H261"))
 
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
@@ -136,6 +138,9 @@ dependencies {
     // Better Crashes
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.1-GTNH:dev")
 
+    // Distant Horizons
+    compileOnly("maven.modrinth:DistantHorizonsApi:5.1.0")
+
     afterEvaluate {
         dependencies {
             testImplementation(platform('org.junit:junit-bom:5.14.1'))
@@ -146,6 +151,8 @@ dependencies {
             testImplementation('org.junit.platform:junit-platform-engine')
             testImplementation('org.junit.platform:junit-platform-reporting')
             testImplementation('org.junit.platform:junit-platform-launcher')
+
+            testImplementation('com.tngtech.archunit:archunit-junit5:1.4.1')
         }
     }
 

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders.startup;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import net.coderbot.iris.Iris;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.spongepowered.asm.mixin.Mixin;
@@ -14,7 +14,7 @@ public class MixinInitRenderer {
     @Inject(method = "initializeTextures", at = @At("RETURN"))
     private static void angelica$initializeRenderer(CallbackInfo ci) {
         if (Thread.currentThread() != GLStateManager.getMainThread()) {
-            AngelicaTweaker.LOGGER.warn("Renderer initialization called from non-main thread!");
+            AngelicaClientTweaker.LOGGER.warn("Renderer initialization called from non-main thread!");
             return;
         }
 

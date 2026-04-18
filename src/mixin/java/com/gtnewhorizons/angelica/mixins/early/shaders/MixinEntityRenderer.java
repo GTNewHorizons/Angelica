@@ -6,7 +6,10 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
+import jss.notfine.core.SettingsManager;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.shaderpack.CloudSetting;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -25,7 +28,9 @@ import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
@@ -35,6 +40,9 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/ClippingHelperImpl;getInstance()Lnet/minecraft/client/renderer/culling/ClippingHelper;", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V")
     private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        DHCompat.checkFrame();
+        Iris.tryLoadShaderpackWhenPossible();
+
         CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
         SystemTimeUniforms.COUNTER.beginFrame();
         SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
@@ -75,6 +83,12 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private int iris$alwaysRenderSky(GameSettings instance) {
         return Math.max(instance.renderDistanceChunks, 4);
     }
+
+    @ModifyConstant(method = "renderWorld(FJ)V", constant = @Constant(doubleValue = 128.0D), expect = 2)
+    private double iris$alwaysRenderCloudsLate(double cloudHeightCheck) {
+        return IrisApi.getInstance().isShaderPackInUse() ? Double.NEGATIVE_INFINITY : SettingsManager.cloudTranslucencyCheck;
+    }
+
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V"))
     private void iris$beginSky(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // Use CUSTOM_SKY until levelFogColor is called as a heuristic to catch FabricSkyboxes.
@@ -90,7 +104,9 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
     private void iris$clouds(EntityRenderer instance, RenderGlobal rg, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         pipeline.get().setPhase(WorldRenderingPhase.CLOUDS);
-        original.call(instance, rg, partialTicks);
+        if (pipeline.get().getCloudSetting() != CloudSetting.OFF) {
+            original.call(instance, rg, partialTicks);
+        }
         pipeline.get().setPhase(WorldRenderingPhase.NONE);
     }
 

@@ -19,6 +19,9 @@ public abstract class RenderBackend {
     public abstract boolean isAvailable();
     public abstract String getName();
 
+    /** Returns true if the current thread has a valid render context. Safe to call from any thread. */
+    public abstract boolean hasContext();
+
     /** Higher priority backends are preferred. */
     public int getPriority() { return 0; }
 
@@ -208,14 +211,25 @@ public abstract class RenderBackend {
     public abstract void bufferData(int target, ByteBuffer data, int usage);
     public abstract void bufferData(int target, FloatBuffer data, int usage);
     public abstract void bufferData(int target, ShortBuffer data, int usage);
+    public abstract void bufferData(int target, IntBuffer data, int usage);
+    public abstract void bufferData(int target, DoubleBuffer data, int usage);
     public abstract void bufferData(int target, int[] data, int usage);
     public abstract void bufferData(int target, float[] data, int usage);
     public abstract void bufferSubData(int target, long offset, ByteBuffer data);
+    public abstract void bufferSubData(int target, long offset, ShortBuffer data);
+    public abstract void bufferSubData(int target, long offset, IntBuffer data);
+    public abstract void bufferSubData(int target, long offset, FloatBuffer data);
+    public abstract void bufferSubData(int target, long offset, DoubleBuffer data);
     public abstract ByteBuffer mapBuffer(int target, int access);
+    public abstract ByteBuffer mapBuffer(int target, int access, long length, ByteBuffer old_buffer);
     public abstract boolean unmapBuffer(int target);
     public abstract void bufferStorage(int target, ByteBuffer data, int flags);
     public abstract void bufferStorage(int target, long size, int flags);
     public abstract void getBufferSubData(int target, long offset, ByteBuffer data);
+    public abstract void getBufferSubData(int target, long offset, ShortBuffer data);
+    public abstract void getBufferSubData(int target, long offset, IntBuffer data);
+    public abstract void getBufferSubData(int target, long offset, FloatBuffer data);
+    public abstract void getBufferSubData(int target, long offset, DoubleBuffer data);
     public abstract int getBufferParameteri(int target, int pname);
     public abstract boolean isBuffer(int buffer);
     public abstract ByteBuffer mapBufferRange(int target, long offset, long length, int access);

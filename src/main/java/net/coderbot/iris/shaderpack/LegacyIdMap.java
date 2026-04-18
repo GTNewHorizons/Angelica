@@ -3,6 +3,7 @@ package net.coderbot.iris.shaderpack;
 import com.google.common.collect.ImmutableList;
 import it.unimi.dsi.fastutil.Function;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 
@@ -10,6 +11,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
+import java.util.Map;
 
 public class LegacyIdMap {
 	private static final ImmutableList<String> COLORS =
@@ -18,6 +20,11 @@ public class LegacyIdMap {
 
 	private static final ImmutableList<String> WOOD_TYPES =
 			ImmutableList.of("oak", "birch", "jungle", "spruce", "acacia", "dark_oak");
+
+	private static final Map<String, String> MODERN_TO_LEGACY_BLOCK_IDS = Map.of(
+			"grass", "tallgrass",
+			"grass_block", "grass"
+	);
 
 	public static void addLegacyValues(Int2ObjectMap<List<BlockEntry>> blockIdMap) {
 		add(blockIdMap, 1, block("stone"), block("granite"), block("diorite"), block("andesite"));
@@ -76,6 +83,32 @@ public class LegacyIdMap {
 		add(blockIdMap, 111, block("lily_pad"));
 
 		// TODO: 76 -> redstone_torch (on)
+	}
+
+	public static Int2ObjectMap<List<BlockEntry>> convertModernBlockEntries(Int2ObjectMap<List<BlockEntry>> blockIdMap) {
+		Int2ObjectMap<List<BlockEntry>> converted = new Int2ObjectOpenHashMap<>();
+
+		blockIdMap.forEach((intId, entries) -> {
+			List<BlockEntry> convertedEntries = new ArrayList<>(entries.size());
+			for (BlockEntry entry : entries) {
+				NamespacedId id = entry.getId();
+				if (!"minecraft".equals(id.getNamespace())) {
+					convertedEntries.add(entry);
+					continue;
+				}
+
+				String convertedName = MODERN_TO_LEGACY_BLOCK_IDS.get(id.getName());
+				if (convertedName == null) {
+					convertedEntries.add(entry);
+					continue;
+				}
+
+				convertedEntries.add(new BlockEntry(new NamespacedId(id.getNamespace(), convertedName), entry.getMetas()));
+			}
+			converted.put(intId, Collections.unmodifiableList(convertedEntries));
+		});
+
+		return converted;
 	}
 
 	private static BlockEntry block(String name) {

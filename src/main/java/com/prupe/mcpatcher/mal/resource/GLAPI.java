@@ -1,13 +1,11 @@
 package com.prupe.mcpatcher.mal.resource;
 
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GLContext;
-
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 public class GLAPI {
 
-    private static final boolean useGlBlendFuncSeparate = GLContext.getCapabilities().OpenGL14;
+    private static final boolean useGlBlendFuncSeparate = GLStateManager.capabilities.OpenGL14;
 
     public static void glBindTexture(int texture) {
         if (texture >= 0) {

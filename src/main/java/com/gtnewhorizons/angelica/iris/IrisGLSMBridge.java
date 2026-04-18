@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.iris;
 
+import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
@@ -10,12 +11,32 @@ import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.coderbot.iris.vertices.ImmediateState;
 
 public class IrisGLSMBridge {
+
+    private static Runnable alphaFuncListener = null;
+    private static Runnable alphaTestListener = null;
+    private static Runnable blendFuncListener = null;
+    private static Runnable fogModeListener = null;
+    private static Runnable fogStartListener = null;
+    private static Runnable fogEndListener = null;
+    private static Runnable fogDensityListener = null;
+
+    static {
+        StateUpdateNotifiers.alphaFuncNotifier = listener -> alphaFuncListener = listener;
+        StateUpdateNotifiers.alphaTestNotifier = listener -> alphaTestListener = listener;
+        StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
+        StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
+        StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
+        StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
+        StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
+    }
 
     public static void register() {
         IrisSamplers.initRenderer();
@@ -75,8 +96,31 @@ public class IrisGLSMBridge {
             }
         };
 
+        GLSMHooks.ALPHA_STATE_CHANGE.addListener(event -> {
+            if (Iris.enabled) {
+                if (alphaFuncListener != null) alphaFuncListener.run();
+                if (alphaTestListener != null) alphaTestListener.run();
+            }
+        });
+
+        GLSMHooks.BLEND_FUNC_CHANGE.addListener(event -> {
+            if (Iris.enabled) {
+                if (blendFuncListener != null) blendFuncListener.run();
+            }
+        });
+
+        GLSMHooks.FOG_STATE_CHANGE.addListener(event -> {
+            if (Iris.enabled) {
+                if (fogModeListener != null) fogModeListener.run();
+                if (fogStartListener != null) fogStartListener.run();
+                if (fogEndListener != null) fogEndListener.run();
+                if (fogDensityListener != null) fogDensityListener.run();
+            }
+        });
+
         GLSMHooks.TEXTURE_BIND.addListener(event -> {
             if (Iris.enabled) {
+                TextureTracker.INSTANCE.onBindTexture();
                 final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
                 if (pipeline != null) {
                     pipeline.onBindTexture(event.textureId);
@@ -114,10 +158,10 @@ public class IrisGLSMBridge {
             if (!drp.shouldOverrideShaders()) return;
             if (drp.getActivePassProgramId() == -1) return;
 
-            if (DepthColorStorage.isOwnedProgram(event.newProgram)) {
+            if (!ImmediateState.isRenderingLevel || DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 DepthColorStorage.unlockDepthColor();
             } else {
-                DepthColorStorage.disableDepthColor();
+                drp.onModProgramOverride();
             }
         });
     }

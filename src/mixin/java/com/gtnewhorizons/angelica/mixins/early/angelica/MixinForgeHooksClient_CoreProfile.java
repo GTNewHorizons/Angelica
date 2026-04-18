@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraftforge.client.ForgeHooksClient;
@@ -39,13 +40,12 @@ public abstract class MixinForgeHooksClient_CoreProfile {
     @Overwrite
     public static void createDisplay() throws LWJGLException {
         ImageIO.setUseCache(false);
-        // Preserve vanilla Forge stencil support -- enabled via -Dforge.forceDisplayStencil=true by users/modpacks
-        final boolean wantStencil = Boolean.parseBoolean(System.getProperty("forge.forceDisplayStencil", "false"));
-        stencilBits = wantStencil ? 8 : 0;
+        // Always enable 8-bit stencil, was an option before "-Dforge.forceDisplayStencil=true"
+        stencilBits = 8;
 
         final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
 
-        final ContextAttribs attribs = new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true);
+        final ContextAttribs attribs = new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true).withDebug(AngelicaMod.lwjglDebug);
         final MethodHandle setMajor, setMinor;
         try {
             final Field majorField = ContextAttribs.class.getDeclaredField("majorVersion");
@@ -142,8 +142,12 @@ public abstract class MixinForgeHooksClient_CoreProfile {
     private static void angelica$reportContextFailure(Exception e) {
         LOGGER.error("FATAL: Failed to create OpenGL core profile context.");
         LOGGER.error("Error: {}", e != null ? e.getMessage() : "unknown");
-        try {
-            LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
-        } catch (Exception ignored) {}
+        if (Display.isCreated()) {
+            try {
+                LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
+            } catch (Exception ignored) {}
+        } else {
+            LOGGER.error("GPU info: not available (no GL context)");
+        }
     }
 }

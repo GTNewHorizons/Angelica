@@ -42,10 +42,11 @@ public class CompatUniformManager {
     static final int LOC_IRIS_PROJECTION = 11;
     static final int LOC_IRIS_NORMAL = 12;
     static final int LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX = 13;
-    static final int LOC_ALPHA_TEST_REF = 14;
-    static final int LOC_SCENE_COLOR = 15;
-    static final int LOC_CLIP_PLANES = 16;
-    static final int LOC_CLIP_PLANES_ENABLED = 17;
+    static final int LOC_IRIS_TEXTURE_MATRIX = 14;
+    static final int LOC_ALPHA_TEST_REF = 15;
+    static final int LOC_SCENE_COLOR = 16;
+    static final int LOC_CLIP_PLANES = 17;
+    static final int LOC_CLIP_PLANES_ENABLED = 18;
 
     // Light source fields: 12 per light × 2 lights = 24 locations
     static final int LIGHT_FIELDS = 12;
@@ -53,14 +54,14 @@ public class CompatUniformManager {
     static final int LF_HALF_VECTOR = 4, LF_SPOT_DIRECTION = 5, LF_SPOT_EXPONENT = 6;
     static final int LF_SPOT_CUTOFF = 7, LF_SPOT_COS_CUTOFF = 8;
     static final int LF_CONSTANT_ATTEN = 9, LF_LINEAR_ATTEN = 10, LF_QUADRATIC_ATTEN = 11;
-    static final int LOC_LIGHT_BASE = 18;
+    static final int LOC_LIGHT_BASE = 19;
 
     // Material fields: 5 locations
     static final int MF_EMISSION = 0, MF_AMBIENT = 1, MF_DIFFUSE = 2, MF_SPECULAR = 3, MF_SHININESS = 4;
     static final int MAT_FIELDS = 5;
-    static final int LOC_MAT_BASE = LOC_LIGHT_BASE + 2 * LIGHT_FIELDS; // 42
+    static final int LOC_MAT_BASE = LOC_LIGHT_BASE + 2 * LIGHT_FIELDS; // 43
 
-    static final int LOC_COUNT = LOC_MAT_BASE + MAT_FIELDS; // 47
+    static final int LOC_COUNT = LOC_MAT_BASE + MAT_FIELDS; // 48
 
     private static final String[] LIGHT_FIELD_NAMES = {
         "ambient", "diffuse", "specular", "position", "halfVector",
@@ -89,6 +90,7 @@ public class CompatUniformManager {
         UNIFORM_NAMES[LOC_IRIS_PROJECTION] = "iris_ProjectionMatrix";
         UNIFORM_NAMES[LOC_IRIS_NORMAL] = "iris_NormalMatrix";
         UNIFORM_NAMES[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX] = "iris_LightmapTextureMatrix";
+        UNIFORM_NAMES[LOC_IRIS_TEXTURE_MATRIX] = "iris_TextureMatrix";
         UNIFORM_NAMES[LOC_ALPHA_TEST_REF] = "angelica_currentAlphaTest";
         UNIFORM_NAMES[LOC_SCENE_COLOR] = "angelica_SceneColor";
         UNIFORM_NAMES[LOC_CLIP_PLANES] = "angelica_ClipPlane[0]";
@@ -263,6 +265,12 @@ public class CompatUniformManager {
             if (locs[LOC_LIGHTMAP_TEXTURE_MATRIX] != -1) {
                 GLStateManager.getTextures().getTextureUnitMatrix(1).get(mat4Buf);
                 RENDER_BACKEND.uniformMatrix4(locs[LOC_LIGHTMAP_TEXTURE_MATRIX], false, mat4Buf);
+            }
+
+            // iris_TextureMatrix — texture unit 0 matrix (animated by glints, etc.)
+            if (locs[LOC_IRIS_TEXTURE_MATRIX] != -1) {
+                GLStateManager.getTextures().getTextureUnitMatrix(0).get(mat4Buf);
+                RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_TEXTURE_MATRIX], false, mat4Buf);
             }
         }
     }

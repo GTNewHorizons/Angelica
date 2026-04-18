@@ -1,5 +1,8 @@
 package net.coderbot.iris.shadows.frustum.advanced;
 
+import cpw.mods.fml.common.Optional;
+import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShadowCullingFrustum;
+import com.seibel.distanthorizons.api.objects.math.DhApiMat4f;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.util.AxisAlignedBB;
@@ -8,6 +11,7 @@ import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.embeddedt.embeddium.impl.render.viewport.frustum.Frustum;
 import org.joml.Math;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -32,7 +36,8 @@ import org.joml.Vector4f;
  * are not sensitive to the specific internal ordering of planes and corners, in order to avoid potential bugs at the
  * cost of slightly more computations.</p>
  */
-public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportProvider, Frustum {
+@Optional.Interface(modid = "distanthorizons", iface = "com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShadowCullingFrustum")
+public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportProvider, Frustum, IDhApiShadowCullingFrustum {
 	private static final int MAX_CLIPPING_PLANES = 13;
 
 	/**
@@ -79,6 +84,8 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 
 	private final BaseClippingPlanes baseClippingPlanes = new BaseClippingPlanes();
 	private final boolean[] isBackArray = new boolean[6];
+	private int worldMinYDH;
+	private int worldMaxYDH;
 
 	public AdvancedShadowCullingFrustum() {
 		for (int i = 0; i < MAX_CLIPPING_PLANES; i++) {
@@ -86,7 +93,7 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 		}
 	}
 
-	public void init(Matrix4f playerView, Matrix4f playerProjection, Vector3f shadowLightVector, BoxCuller boxCuller) {
+	public void init(Matrix4fc playerView, Matrix4fc playerProjection, Vector3f shadowLightVector, BoxCuller boxCuller) {
 		this.shadowLightVectorFromOrigin.set(shadowLightVector);
 		this.boxCuller = boxCuller;
 		this.planeCount = 0;
@@ -297,5 +304,18 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 		}
 
 		return true;
+	}
+
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public void update(int worldMinBlockY, int worldMaxBlockY, DhApiMat4f worldViewProjection) {
+		this.worldMinYDH = worldMinBlockY;
+		this.worldMaxYDH = worldMaxBlockY;
+	}
+
+	@Optional.Method(modid = "distanthorizons")
+	@Override
+	public boolean intersects(int lodBlockPosMinX, int lodBlockPosMinZ, int lodBlockWidth, int lodDetailLevel) {
+		return this.isVisible(lodBlockPosMinX, this.worldMinYDH, lodBlockPosMinZ, lodBlockPosMinX + lodBlockWidth, this.worldMaxYDH, lodBlockPosMinZ + lodBlockWidth);
 	}
 }

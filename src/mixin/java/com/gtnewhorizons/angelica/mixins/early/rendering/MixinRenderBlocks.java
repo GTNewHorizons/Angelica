@@ -1,11 +1,14 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
+import com.prupe.mcpatcher.ctm.CTMUtils;
+import com.prupe.mcpatcher.ctm.CompactCtmQuadProcessor;
+import com.prupe.mcpatcher.ctm.TileOverrideImpl;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -16,8 +19,8 @@ import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.IBlockAccess;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -104,7 +107,7 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && AngelicaMod.options().quality.useCeleritasSmoothLighting) ||
+        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             this.applyingCeleritasAO = true;
             try {
@@ -124,7 +127,7 @@ public abstract class MixinRenderBlocks {
     @ModifyExpressionValue(method = "renderStandardBlockWithColorMultiplier",
         at = @At(value = "FIELD", target = "Lnet/minecraft/init/Blocks;grass:Lnet/minecraft/block/BlockGrass;", opcode = Opcodes.GETSTATIC))
     private BlockGrass angelica$widenGrassCheck(BlockGrass grassBlock, @Local(argsOnly = true, ordinal = 0) Block block) {
-        return (block instanceof BlockGrass bg) ? bg : grassBlock;
+        return (block instanceof BlockGrass bg && block == ClientProxy.bopGrass) ? bg : grassBlock;
     }
 
     /* Disable diffuse when celeritas AO is in use */
@@ -151,13 +154,13 @@ public abstract class MixinRenderBlocks {
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
             rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
-            rb.renderStandardBlock(AngelicaMod.blockError, x, y, z);
+            rb.renderStandardBlock(ClientProxy.blockError, x, y, z);
             rb.overrideBlockTexture = null;
 
             // Check if we've already caught the exception for this block and log it if we haven't
             String key = block.getUnlocalizedName() + ":" + meta;
             if (isbrhExceptionCache.add(key)) {
-                AngelicaTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
+                AngelicaClientTweaker.LOGGER.warn("Caught an exception during ISBRH rendering for {} at position {}, {}, {} with renderer ID {}", block.getUnlocalizedName(), x, y, z, modelId, e);
             }
         }
         return false;
@@ -177,5 +180,90 @@ public abstract class MixinRenderBlocks {
     private void resetAOFlag(Block p_147764_1_, double p_147764_2_, double p_147764_4_, double p_147764_6_, IIcon p_147764_8_, CallbackInfo ci,
                              @Local(ordinal = 0) Tessellator tessellator) {
         ((StateAwareTessellator)tessellator).angelica$setAppliedAo(false);
+    }
+
+    @Shadow
+    public IBlockAccess blockAccess;
+
+    @Unique
+    private boolean compactCtmRendering = false;
+
+    @Unique
+    private CompactCtmQuadProcessor getCompactProcessor() {
+        TileOverrideImpl.CTMCompact compact = CTMUtils.getCurrentCompact();
+        if (compact == null) {
+            return null;
+        }
+        return compact.getProcessor();
+    }
+
+    private void handleCompactCtmFace(int face, Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        // recursion protection
+        if (compactCtmRendering) {
+            return;
+        }
+
+        if (this.blockAccess == null) {
+            return;
+        }
+
+        CompactCtmQuadProcessor processor = getCompactProcessor();
+        if (processor == null) {
+            return;
+        }
+
+        compactCtmRendering = true;
+        try {
+            boolean handled = processor.processFace(
+                (RenderBlocks)(Object)this,
+                this.blockAccess,
+                MathHelper.floor_double(x),
+                MathHelper.floor_double(y),
+                MathHelper.floor_double(z),
+                face,
+                icon
+            );
+
+            if (handled) {
+                ci.cancel();
+            }
+        } finally {
+            compactCtmRendering = false;
+        }
+    }
+
+    @Inject(method = "renderFaceYNeg", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(0, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceYPos", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(1, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceZNeg", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(2, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceZPos", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(3, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceXNeg", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(4, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderFaceXPos", at = @At("HEAD"), cancellable = true)
+    private void compactCtm_onRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
+        handleCompactCtmFace(5, block, x, y, z, icon, ci);
+    }
+
+    @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
+    private void compactCtm_resetAfterBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
+        CTMUtils.clearCurrentCompact();
     }
 }

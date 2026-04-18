@@ -11,7 +11,6 @@ import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.EXTTextureLODBias;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GLContext;
 import org.lwjgl.util.glu.GLU;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -47,10 +46,10 @@ public class MipmapHelper {
     private static final Map<String, Boolean> mipmapType = new HashMap<>();
 
     static {
-        mipmapSupported = GLContext.getCapabilities().OpenGL12;
+        mipmapSupported = GLStateManager.capabilities.OpenGL12;
         useMipmap = mipmapSupported && mipmapEnabled && maxMipmapLevel > 0;
 
-        anisoSupported = GLContext.getCapabilities().GL_EXT_texture_filter_anisotropic;
+        anisoSupported = GLStateManager.capabilities.GL_EXT_texture_filter_anisotropic;
         if (anisoSupported) {
             anisoMax = (int) GLStateManager.glGetFloat(EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT);
             checkGLError("glGetFloat(GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT)");
@@ -59,7 +58,7 @@ public class MipmapHelper {
             anisoMax = anisoLevel = 1;
         }
 
-        lodSupported = GLContext.getCapabilities().GL_EXT_texture_lod_bias;
+        lodSupported = GLStateManager.capabilities.GL_EXT_texture_lod_bias;
         if (lodSupported) {
             lodBias = MCPatcherForgeConfig.ExtendedHD.lodBias;
         } else {

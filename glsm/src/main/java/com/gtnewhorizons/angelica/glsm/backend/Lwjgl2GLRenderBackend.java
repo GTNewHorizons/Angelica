@@ -9,6 +9,7 @@ import org.lwjgl.opengl.ARBDebugOutputCallback;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.EXTDirectStateAccess;
+import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -67,7 +68,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void init() {
-        caps = org.lwjgl.opengl.GLContext.getCapabilities();
+        caps = GLContext.getCapabilities();
         activeDebugExtension = 0;
     }
 
@@ -84,6 +85,15 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public String getName() {
         return "OpenGL (LWJGL2)";
+    }
+
+    @Override
+    public boolean hasContext() {
+        try {
+            return GLContext.getCapabilities() != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override
@@ -903,6 +913,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void bufferData(int target, IntBuffer data, int usage) {
+        GL15.glBufferData(target, data, usage);
+    }
+
+    @Override
+    public void bufferData(int target, DoubleBuffer data, int usage) {
+        GL15.glBufferData(target, data, usage);
+    }
+
+    @Override
     public void bufferData(int target, int[] data, int usage) {
         final IntBuffer buffer = getIntArrayBuffer(data.length);
         buffer.put(data);
@@ -924,8 +944,33 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void bufferSubData(int target, long offset, ShortBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, IntBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, FloatBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void bufferSubData(int target, long offset, DoubleBuffer data) {
+        GL15.glBufferSubData(target, offset, data);
+    }
+
+    @Override
     public ByteBuffer mapBuffer(int target, int access) {
         return GL15.glMapBuffer(target, access, null);
+    }
+
+    @Override
+    public ByteBuffer mapBuffer(int target, int access, long length, ByteBuffer old_buffer) {
+        return GL15.glMapBuffer(target, access, length, old_buffer);
     }
 
     @Override
@@ -945,6 +990,26 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void getBufferSubData(int target, long offset, ByteBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, ShortBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, IntBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, FloatBuffer data) {
+        GL15.glGetBufferSubData(target, offset, data);
+    }
+
+    @Override
+    public void getBufferSubData(int target, long offset, DoubleBuffer data) {
         GL15.glGetBufferSubData(target, offset, data);
     }
 

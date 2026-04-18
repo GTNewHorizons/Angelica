@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
@@ -52,10 +52,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private static final double MAX_ENTITY_CHECK_VOLUME = 16 * 16 * 16 * 15;
 
     // For sorting transparent TESRs
-    private RenderSectionOrderer renderSectionOrderer = new RenderSectionOrderer();
-    private TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
-    private ArrayList<RenderSection> sortedRenderSections = new ArrayList<>();
-    private ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
+    private final RenderSectionOrderer renderSectionOrderer = new RenderSectionOrderer();
+    private final TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
+    private final ArrayList<RenderSection> sortedRenderSections = new ArrayList<>();
+    private final ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
 
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
@@ -92,6 +92,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     @Override
     protected void unloadWorld() {
         DynamicLights.setActiveRenderer(null);
+        this.sortedRenderSections.clear();
+        this.sortedTileEntities.clear();
+        ShadowRenderer.visibleTileEntities.clear();
+        ShadowRenderer.globalTileEntities.clear();
         super.unloadWorld();
     }
 
@@ -127,7 +131,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             }
         }
 
-        if (AngelicaMod.options().performance.useCompactVertexFormat) {
+        if (ClientProxy.options().performance.useCompactVertexFormat) {
             return ChunkMeshFormats.COMPACT;
         }
         return ChunkMeshFormats.VANILLA_LIKE;
@@ -155,7 +159,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         renderSectionManager.setCameraPosition(transform.x, transform.y, transform.z);
 
-        this.useEntityCulling = AngelicaMod.options().performance.useEntityCulling;
+        this.useEntityCulling = ClientProxy.options().performance.useEntityCulling;
 
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 
@@ -313,7 +317,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     public int renderBlockEntities(float partialTicks) {
         final int pass = MinecraftForgeClient.getRenderPass();
         teRenderContext.set(partialTicks, pass);
-        if (pass == 0 || !AngelicaMod.options().performance.translucencySorting) {
+        if (pass == 0 || !ClientProxy.options().performance.translucencySorting) {
             return super.renderBlockEntities(teRenderContext);
         }
         int count = 0;

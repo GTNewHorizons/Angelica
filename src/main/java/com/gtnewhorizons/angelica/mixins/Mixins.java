@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import jss.notfine.config.MCPatcherForgeConfig;
@@ -35,7 +36,15 @@ public enum Mixins implements IMixins {
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraft_FrameHook"
             , "angelica.MixinMinecraftServer"
+            , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
+            , "angelica.bugfixes.MixinModelCreeper_AuraBodyInflate"
+            , "angelica.bugfixes.MixinModelWither_ArmorCentering"
+            , "angelica.bugfixes.MixinRenderBlocks_CrossedSquaresNormal"
+            , "angelica.bugfixes.MixinRenderCreeper_AuraDepth"
+            , "angelica.bugfixes.MixinRenderGlobal_DeferredEntityOverlay"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
+            , "angelica.bugfixes.MixinRendererLivingEntity_DeferredEntityOverlay"
+            , "angelica.bugfixes.MixinRenderWither_ArmorCentering"
             , "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
             , "angelica.debug.MixinMinecraft_FPSCap"
             , "angelica.ffp.MixinTessellator_CoreProfile"
@@ -214,11 +223,28 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    CELERITAS_COLORED_LIGHT(new MixinBuilder("Colored light infrastructure for celeritas light pipeline")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> {
+            BlockLightProvider.freezeMixinConfig();
+            return AngelicaConfig.enableCeleritas && BlockLightProvider.coloredLightEnabled();
+        })
+        .addClientMixins(
+            "celeritas.light.MixinQuadLightData",
+            "celeritas.light.MixinLightDataAccess",
+            "celeritas.light.MixinLightDataCache",
+            "celeritas.light.MixinAoFaceData",
+            "celeritas.light.MixinSmoothLightPipeline",
+            "celeritas.light.MixinFlatLightPipeline"
+        )
+    ),
+
     IRIS_SHADERS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
               "shaders.MixinDroppedItemGlintEdges"
+            , "shaders.MixinHeldItemGlintEdges"
             , "shaders.MixinEntityPickupFX"
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
@@ -231,6 +257,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
+            , "shaders.AccessorEntityHorse"
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
             , "shaders.MixinRenderNameTag"
@@ -353,17 +380,16 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.MINEFACTORY_RELOADED)
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
-
-    NTM_SPACE_TWEAKS(new MixinBuilder("Support for 'Disable Horizon' & 'disableAltitudePlanetRenderer' options in NTM:Space")
-            .setPhase(Phase.LATE)
-            .addRequiredMod(TargetedMod.NTM_SPACE)
-            .setApplyIf(() -> CompatConfig.tweakNTMSpace)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_Tweaks")),
-    NTM_SPACE_SHADER_COMPAT(new MixinBuilder("Multiple shader fixes for NTM:Space")
+    
+    NTM_SPACE_COMPAT(new MixinBuilder("Multiple fixes for NTM:Space")
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
             .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat", "client.ntmSpace.MixinSkyProviderLaytheSunset")),
+            .addClientMixins(
+                    "client.ntmSpace.MixinSkyProviderCelestial",
+                    "client.ntmSpace.MixinSkyProviderOrbit",
+                    "client.ntmSpace.MixinSkyProviderLaytheSunset"
+            )),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)
@@ -698,7 +724,7 @@ public enum Mixins implements IMixins {
     private final MixinBuilder builder;
 
     private static String[] addPrefix(String prefix, String... values) {
-        List<String> list = new ArrayList<>(values.length);
+        final List<String> list = new ArrayList<>(values.length);
         for (String s : values) {
             list.add(prefix + s);
         }
