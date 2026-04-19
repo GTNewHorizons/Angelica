@@ -19,6 +19,7 @@ public final class ColorCodeUtils {
     private static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
 
     public static String convertAmpersandToSectionX(String text) {
+        if (text == null) return text;
         int idx = text.indexOf('&');
         if (idx == -1) return text;
 
