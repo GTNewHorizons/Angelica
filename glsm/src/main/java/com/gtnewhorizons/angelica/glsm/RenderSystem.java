@@ -432,7 +432,7 @@ public class RenderSystem {
     }
 
     public static void deleteBuffers(int buffer) {
-        RENDER_BACKEND.deleteBuffers(buffer);
+        GLStateManager.glDeleteBuffers(buffer);
     }
 
     public static long getVRAM() {
@@ -491,7 +491,7 @@ public class RenderSystem {
 
     public static void destroySampler(int sampler) {
         if (!supportsSamplerObjects || sampler == 0) return;
-        RENDER_BACKEND.deleteSamplers(sampler);
+        GLStateManager.glDeleteSamplers(sampler);
     }
 
     public static void samplerParameteri(int sampler, int pname, int param) {

@@ -15,6 +15,9 @@ import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBOBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
+import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
+import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
+import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.Getter;
@@ -566,10 +569,14 @@ public class DisplayListManager {
         currentRecorder.recordDrawBuffers(count, bufs);
     }
 
-    // Complex commands are texture uploads - not draw barriers
     public static void recordComplexCommand(DisplayListCommand cmd) {
         if (currentRecorder == null) return;
         currentRecorder.recordComplexCommand(cmd);
+    }
+
+    public static void recordIndexedDrawCapture(IndexedDrawCapture capture) {
+        if (currentRecorder == null) return;
+        currentRecorder.recordIndexedDrawCapture(capture);
     }
 
     public static void recordLoadMatrix(Matrix4f matrix) {
@@ -578,14 +585,6 @@ public class DisplayListManager {
 
     public static void recordLoadIdentity() {
         if (currentRecorder != null) currentRecorder.recordLoadIdentity();
-    }
-
-    public static void recordDrawArrays(int mode, int start, int count) {
-        if (currentRecorder != null) currentRecorder.recordDrawArrays(mode, start, count);
-    }
-
-    public static void recordDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        if (currentRecorder != null) currentRecorder.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
     }
 
     public static void recordBindVBO(int vbo) { if (currentRecorder != null) currentRecorder.recordBindVBO(vbo); }
@@ -822,17 +821,34 @@ public class DisplayListManager {
         final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
 
         if (hasCommands || hasDraws) {
-            // Phase 1: Compile format-based VBOs (shared by both optimized and unoptimized paths)
             final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
+            try {
+                final CommandBuffer finalBuffer = new CommandBuffer();
+                CommandBufferBuilder.buildFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
 
-            // Build to CommandBuffer - optimize raw buffer to final buffer
-            final CommandBuffer finalBuffer = new CommandBuffer();
-            CommandBufferBuilder.buildFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
+                final IndexedDrawBatchBuilder indexedBuilder = currentRecorder.getIndexedDraws();
+                final List<IndexedDrawBatch> indexedBatches;
+                if (indexedBuilder.isEmpty()) {
+                    indexedBatches = Collections.emptyList();
+                } else {
+                    final CommandRecorder paused = pauseRecording();
+                    try {
+                        indexedBatches = indexedBuilder.build();
+                    } finally {
+                        try {
+                            for (IndexedDrawCapture c : indexedBuilder.getCaptures()) {
+                                c.freeBuffers();
+                            }
+                        } finally {
+                            resumeRecording(paused);
+                        }
+                    }
+                }
 
-            // Free the recorder (and its buffer) after optimization
-            currentRecorder.free();
-
-            compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), compiledBuffers);
+                compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
+            } finally {
+                currentRecorder.free();
+            }
         } else {
             // Free the recorder even if empty
             if (currentRecorder != null) {
@@ -841,8 +857,10 @@ public class DisplayListManager {
             // Empty display list - per OpenGL spec, still valid after glNewList/glEndList
             compiled = CompiledDisplayList.EMPTY;
         }
-        // Store the compiled list (even if empty - an empty list is still a valid list)
-        displayListCache.put(glListId, compiled);
+        final CompiledDisplayList previous = displayListCache.put(glListId, compiled);
+        if (previous != null && previous != CompiledDisplayList.EMPTY && previous != compiled) {
+            previous.delete();
+        }
 
         // Log compilation details if enabled (before context restoration changes glListId)
         if (LOG_DISPLAY_LIST_COMPILATION) {
@@ -895,7 +913,7 @@ public class DisplayListManager {
         }
 
         // Merge the previous draw call if possible
-        final AccumulatedDraw previous = accumulatedDraws.get(accumulatedDraws.size() - 1);
+        final AccumulatedDraw previous = accumulatedDraws.getLast();
         if (previous.format == tessellator.getVertexFormat() && previous.stateGeneration == stateGeneration) {
             previous.mergeDraw(tessellator, copyLast);
             return;

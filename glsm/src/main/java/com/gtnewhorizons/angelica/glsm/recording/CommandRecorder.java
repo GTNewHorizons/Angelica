@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
+import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
+import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
 import org.joml.Matrix4f;
 
 import java.nio.FloatBuffer;
@@ -11,6 +13,7 @@ import java.nio.IntBuffer;
  */
 public final class CommandRecorder {
     private final CommandBuffer buffer;
+    private final IndexedDrawBatchBuilder indexedDraws = new IndexedDrawBatchBuilder();
     private int commandCount;
 
     public CommandRecorder() {
@@ -26,7 +29,19 @@ public final class CommandRecorder {
         return commandCount;
     }
 
+    public IndexedDrawBatchBuilder getIndexedDraws() {
+        return indexedDraws;
+    }
+
+    public void recordIndexedDrawCapture(IndexedDrawCapture capture) {
+        indexedDraws.add(capture);
+        recordComplexCommand(capture.placeholder);
+    }
+
     public void free() {
+        for (IndexedDrawCapture c : indexedDraws.getCaptures()) {
+            c.freeBuffers();
+        }
         buffer.free();
     }
 
@@ -344,16 +359,6 @@ public final class CommandRecorder {
 
     public void recordDrawBuffers(int count, IntBuffer bufs) {
         buffer.writeDrawBuffers(count, bufs);
-        commandCount++;
-    }
-
-    public void recordDrawArrays(int mode, int start, int count) {
-        buffer.writeDrawArrays(mode, start, count);
-        commandCount++;
-    }
-
-    public void recordDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        buffer.writeDrawElements(mode, indices_count, type, indices_buffer_offset);
         commandCount++;
     }
 
