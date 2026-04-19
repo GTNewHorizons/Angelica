@@ -15,8 +15,8 @@ public final class ColorCodeUtils {
 
     private ColorCodeUtils() {}
 
-    // Valid single & codes. Note: 'g' is excluded — &g only converts as part of &g&#RRGGBB&#RRGGBB gradient syntax.
-    private static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
+    /** Valid single {@code &} codes. Note: {@code g} is excluded — {@code &g} only converts as part of {@code &g&#RRGGBB&#RRGGBB} gradient syntax. */
+    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
 
     public static String convertAmpersandToSectionX(String text) {
         if (text == null) return text;

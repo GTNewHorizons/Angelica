@@ -311,7 +311,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 }
 
                 // Single-char & format code
-                if ("0123456789abcdefklmnorqzv".indexOf(ampCode) != -1) {
+                if (ColorCodeUtils.VALID_SINGLE_CODES.indexOf(ampCode) != -1) {
                     if ((ampCode >= '0' && ampCode <= '9') || (ampCode >= 'a' && ampCode <= 'f')) {
                         lastColor = "" + angelica$FORMATTING_CHAR + ampCode;
                         styles.setLength(0);
