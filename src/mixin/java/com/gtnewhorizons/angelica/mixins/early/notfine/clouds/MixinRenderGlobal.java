@@ -365,11 +365,17 @@ public abstract class MixinRenderGlobal {
         float cameraOffsetY = (float)(mc.renderViewEntity.lastTickPosY + (mc.renderViewEntity.posY - mc.renderViewEntity.lastTickPosY) * (double)partialTicks);
         double cameraOffsetX = mc.renderViewEntity.prevPosX + (mc.renderViewEntity.posX - mc.renderViewEntity.prevPosX) * (double)partialTicks + cloudTick * 0.03D;
         double cameraOffsetZ = mc.renderViewEntity.prevPosZ + (mc.renderViewEntity.posZ - mc.renderViewEntity.prevPosZ) * (double)partialTicks;
-        cameraOffsetX -= MathHelper.floor_double(cameraOffsetX / 2048.0D) * 2048;
-        cameraOffsetZ -= MathHelper.floor_double(cameraOffsetZ / 2048.0D) * 2048;
 
-        float renderRadius = 32 * (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore();
-        double uvScale = 0.0005D / (int)Settings.CLOUD_SCALE.option.getStore() * 0.25f;
+        final int cloudSettingScale = (int)Settings.CLOUD_SCALE.option.getStore();
+        final int fastScale = 8 * cloudSettingScale;
+        final int fastTargetDistance = Math.max(mc.gameSettings.renderDistanceChunks,
+            (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
+        float renderRadius = fastTargetDistance * 64.0f;
+        double uvScale = (1.0 / 256.0) / fastScale;
+
+        final double fastTextureCycleWorld = 256.0 * fastScale;
+        cameraOffsetX -= MathHelper.floor_double(cameraOffsetX / fastTextureCycleWorld) * fastTextureCycleWorld;
+        cameraOffsetZ -= MathHelper.floor_double(cameraOffsetZ / fastTextureCycleWorld) * fastTextureCycleWorld;
 
         float uvShiftX = (float)(cameraOffsetX * uvScale);
         float uvShiftZ = (float)(cameraOffsetZ * uvScale);
