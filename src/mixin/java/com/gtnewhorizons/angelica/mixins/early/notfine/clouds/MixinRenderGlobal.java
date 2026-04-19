@@ -15,13 +15,30 @@ import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.client.IRenderHandler;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(value = RenderGlobal.class, priority = 990)
 public abstract class MixinRenderGlobal {
+
+    @Unique
+    private static int angelica$cloudMipmapTexId = -1;
+
+    @Unique
+    private static void angelica$setupCloudTexture() {
+        final int bound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        if (bound != angelica$cloudMipmapTexId) {
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 1);
+            GLStateManager.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+            angelica$cloudMipmapTexId = bound;
+        }
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+    }
 
     /**
      * @author jss2a98aj
@@ -54,7 +71,9 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glDisable(GL11.GL_CULL_FACE);
         GLStateManager.glEnable(GL11.GL_BLEND);
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+        GLStateManager.glDepthMask(false);
         renderEngine.bindTexture(locationCloudsPng);
+        angelica$setupCloudTexture();
 
         Vec3 color = theWorld.getCloudColour(partialTicks);
         float red = (float)color.xCoord;
@@ -188,6 +207,7 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glEnable(GL11.GL_CULL_FACE);
+        GLStateManager.glDepthMask(true);
     }
 
     public void renderCloudsFast(float partialTicks) {
@@ -196,6 +216,7 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glEnable(GL11.GL_BLEND);
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
+        angelica$setupCloudTexture();
 
         Vec3 color = theWorld.getCloudColour(partialTicks);
         float red = (float)color.xCoord;

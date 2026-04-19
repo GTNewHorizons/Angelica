@@ -422,7 +422,7 @@ public enum Mixins implements IMixins {
         .addClientMixins(addPrefix("notfine.",
             "clouds.MixinEntityRenderer",
             "clouds.MixinGameSettings",
-            //"clouds.MixinRenderGlobal",
+            "clouds.MixinRenderGlobal",
             "clouds.MixinWorldType",
 
             "fix.MixinRenderItem",
