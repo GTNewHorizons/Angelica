@@ -144,13 +144,18 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                 if (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity)) {
                                     isGlobal = true;
                                 } else {
-                                    final AxisAlignedBB aabb = tileEntity.getRenderBoundingBox();
+                                    AxisAlignedBB aabb;
+                                    try {
+                                        aabb = tileEntity.getRenderBoundingBox();
+                                    } catch (Throwable t) {
+                                        aabb = null;
+                                    }
                                     if (aabb != null) {
                                         final int secMinX = x & ~15, secMinY = y & ~15, secMinZ = z & ~15;
                                         isGlobal = aabb.minX < secMinX || aabb.minY < secMinY || aabb.minZ < secMinZ
                                             || aabb.maxX > secMinX + 16 || aabb.maxY > secMinY + 16 || aabb.maxZ > secMinZ + 16;
                                     } else {
-                                        isGlobal = false;
+                                        isGlobal = true;
                                     }
                                 }
                                 (isGlobal ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);

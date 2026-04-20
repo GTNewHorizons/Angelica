@@ -179,7 +179,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         final ByteBuffer tinyIdx = MemoryUtilities.memAlloc(16);
         final IndexedDrawCapture huge = new IndexedDrawCapture(
             otherLayout, GL11.GL_TRIANGLES,
-            Integer.MAX_VALUE / 4, 1, tinyVtx, tinyIdx, 16,
+            Integer.MAX_VALUE / 4, 1, tinyVtx, tinyIdx,
             new BatchedIndexedDrawCmd());
 
         final IndexedDrawBatchBuilder builder = new IndexedDrawBatchBuilder();
@@ -205,7 +205,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
         final ByteBuffer idx = MemoryUtilities.memAlloc(32);
         final IndexedDrawCapture cap = new IndexedDrawCapture(
             new AttribLayoutKey(new int[]{0}, new int[]{2}, new int[]{GL11.GL_FLOAT}, new boolean[]{false}),
-            GL11.GL_TRIANGLES, 4, 6, vtx, idx, 8, new BatchedIndexedDrawCmd());
+            GL11.GL_TRIANGLES, 4, 6, vtx, idx, new BatchedIndexedDrawCmd());
 
         rec.recordIndexedDrawCapture(cap);
         assertFalse(cap.isFreed());

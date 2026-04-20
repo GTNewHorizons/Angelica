@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -81,7 +80,7 @@ public final class IndexedDrawBatchBuilder {
         long totalVertexBytes = 0;
         long totalIndexBytes = 0;
         for (IndexedDrawCapture c : group) {
-            totalVertexBytes += (long) c.vertexCount * c.tightStride;
+            totalVertexBytes += (long) c.vertexCount * c.layoutKey.stride();
             totalIndexBytes += (long) c.indexCount * 4;   // always GL_UNSIGNED_INT
         }
         if (totalVertexBytes > Integer.MAX_VALUE || totalIndexBytes > Integer.MAX_VALUE) {
@@ -116,7 +115,7 @@ public final class IndexedDrawBatchBuilder {
 
             for (int g = 0; g < n; g++) {
                 final IndexedDrawCapture c = group.get(g);
-                final int vBytes = c.vertexCount * c.tightStride;
+                final int vBytes = c.vertexCount * c.layoutKey.stride();
                 GLStateManager.glBufferSubData(GL15.GL_ARRAY_BUFFER, vboBytePos, c.vertexData);
 
                 final long srcIdxAddr = memAddress0(c.indexData);
@@ -148,15 +147,13 @@ public final class IndexedDrawBatchBuilder {
             GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, eboData, GL15.GL_STATIC_DRAW);
 
             final AttribLayoutKey layout = group.get(0).layoutKey;
-            final int stride = group.get(0).tightStride;
-            int attribOffset = 0;
+            final int stride = layout.stride();
             for (int i = 0; i < layout.locations.length; i++) {
                 final int loc = layout.locations[i];
                 final int size = layout.sizes[i];
                 final int type = layout.types[i];
-                GLStateManager.glVertexAttribPointer(loc, size, type, layout.normalized[i], stride, attribOffset);
+                GLStateManager.glVertexAttribPointer(loc, size, type, layout.normalized[i], stride, layout.offset(i));
                 GLStateManager.glEnableVertexAttribArray(loc);
-                attribOffset += size * VertexAttribState.Attrib.glTypeSizeBytes(type);
             }
 
             success = true;
