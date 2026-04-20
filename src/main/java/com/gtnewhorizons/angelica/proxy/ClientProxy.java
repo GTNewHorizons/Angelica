@@ -43,6 +43,7 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
+import jss.notfine.gui.options.named.FOVMode;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
@@ -342,10 +343,19 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
-    // This is a bit of a hack to prevent the FOV from being modified by other mods
+    // This only disables FOV changes from vanilla, leaving mod FOV changes untouched
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onFOVModifierUpdateEarly(FOVUpdateEvent event) {
+        if(Settings.DYNAMIC_FOV.option.getStore() == FOVMode.MODS) {
+            event.fov = 1.0F;
+            event.newfov = 1.0F;
+        }
+    }
+
+    // This removes all FOV dynamics, both from vanilla (speed/sprinting), and mods
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void onFOVModifierUpdate(FOVUpdateEvent event) {
-        if (!(boolean) Settings.DYNAMIC_FOV.option.getStore()) {
+    public void onFOVModifierUpdateLate(FOVUpdateEvent event) {
+        if(Settings.DYNAMIC_FOV.option.getStore() == FOVMode.NONE) {
             event.newfov = 1.0F;
         }
     }

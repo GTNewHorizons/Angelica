@@ -1,5 +1,6 @@
 package net.coderbot.iris.shaderpack;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -7,8 +8,10 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.EntityFlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
@@ -55,17 +58,45 @@ public class IdMap {
 	/**
 	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
 	 */
-	private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+	@Getter
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, environmentDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
+		// Check if block.properties has a dedicated 1.7.10 section
+		String rawBlockProperties = readProperties(shaderPath, "block.properties");
+		boolean hasLegacySection = rawBlockProperties != null
+			&& rawBlockProperties.contains("MC_VERSION") && rawBlockProperties.contains("10710");
 
-		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, environmentDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
+		Iterable<StringPair> resolvedDefines;
+		if (hasLegacySection) {
+			// Pack has a 1.7.10 section
+			resolvedDefines = environmentDefines;
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+			});
+		} else {
+			// No 1.7.10 section, use modern MC_VERSION and convert entries
+			ArrayList<StringPair> modernDefines = new ArrayList<>();
+			for (StringPair define : environmentDefines) {
+				if (!"MC_VERSION".equals(define.getKey())) {
+					modernDefines.add(define);
+				}
+			}
 
-		loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
-			blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
-			blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
-		});
+			String modernVersion = AngelicaConfig.modernFallbackMcVersion > 0
+				? String.valueOf(AngelicaConfig.modernFallbackMcVersion) : "260101";
+			modernDefines.add(new StringPair("MC_VERSION", modernVersion));
+			resolvedDefines = modernDefines;
+
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+			});
+		}
+
+		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, resolvedDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
+		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, resolvedDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
 
 		// TODO: Properly override block render layers
 
@@ -112,7 +143,7 @@ public class IdMap {
 	private static String readProperties(Path shaderPath, String name) {
 		try {
 			// ID maps should be encoded in ISO_8859_1.
-			return new String(Files.readAllBytes(shaderPath.resolve(name)), StandardCharsets.ISO_8859_1);
+			return Files.readString(shaderPath.resolve(name), StandardCharsets.ISO_8859_1);
 		} catch (NoSuchFileException e) {
 			Iris.logger.debug("An " + name + " file was not found in the current shaderpack");
 
@@ -129,7 +160,24 @@ public class IdMap {
 	}
 
 	private static Object2IntMap<NamespacedId> parseEntityIdMap(Properties properties) {
-		return parseIdMap(properties, "entity.", "entity.properties");
+		Object2IntMap<NamespacedId> idMap = parseIdMap(properties, "entity.", "entity.properties");
+
+		// For modern shader packs: translate modern entity names to 1.7.10 names
+		// so runtime lookups match EntityList's registered names directly.
+		Object2IntMap<NamespacedId> augmented = new Object2IntOpenHashMap<>(idMap);
+		augmented.defaultReturnValue(-1);
+
+		for (Object2IntMap.Entry<NamespacedId> entry : idMap.object2IntEntrySet()) {
+			NamespacedId id = entry.getKey();
+			if ("minecraft".equals(id.getNamespace())) {
+				String legacyName = EntityFlatteningMap.toLegacy(id.getName());
+				if (legacyName != null) {
+					augmented.putIfAbsent(new NamespacedId(legacyName), entry.getIntValue());
+				}
+			}
+		}
+
+		return Object2IntMaps.unmodifiable(augmented);
 	}
 
     /**
@@ -181,7 +229,7 @@ public class IdMap {
 			} else if (c == '"') {
 				inQuotes = !inQuotes;
 			} else if (Character.isWhitespace(c) && !inQuotes) {
-				if (current.length() > 0) {
+				if (!current.isEmpty()) {
 					result.add(current.toString());
 					current.setLength(0);
 				}
@@ -201,7 +249,7 @@ public class IdMap {
 		}
 
 		// Add final token
-		if (current.length() > 0) {
+		if (!current.isEmpty()) {
 			result.add(current.toString());
 		}
 
@@ -353,11 +401,7 @@ public class IdMap {
 		return entityIdMap;
 	}
 
-	public Map<NamespacedId, BlockRenderType> getBlockRenderTypeMap() {
-		return blockRenderTypeMap;
-	}
-
-	@Override
+    @Override
 	public boolean equals(Object o) {
 		if (this == o) {
 			return true;

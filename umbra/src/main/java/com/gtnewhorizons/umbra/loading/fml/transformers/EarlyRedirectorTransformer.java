@@ -1,15 +1,8 @@
 package com.gtnewhorizons.umbra.loading.fml.transformers;
 
+import com.gtnewhorizons.angelica.glsm.loading.EarlyRedirectorCore;
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
-import com.gtnewhorizons.angelica.glsm.redirect.GLSMRedirector;
 import net.minecraft.launchwrapper.IClassTransformer;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
-import org.objectweb.asm.tree.ClassNode;
-
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 
 /**
  * A scoped redirector that only transforms classes from known-misbehaving (core)mod packages.
@@ -25,43 +18,12 @@ import java.util.List;
  */
 public class EarlyRedirectorTransformer implements IClassTransformer {
 
-    private final GLSMRedirector core = new GLSMRedirector();
-    private final String[] exclusions;
-
-    public EarlyRedirectorTransformer() {
-        final List<String> excl = new ArrayList<>(Arrays.asList(core.getCoreExclusions()));
-        excl.add("com.gtnewhorizons.umbra.loading");
-        exclusions = excl.toArray(new String[0]);
-    }
+    private final EarlyRedirectorCore impl = new EarlyRedirectorCore(
+        "com.gtnewhorizons.umbra.loading"
+    );
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        if (basicClass == null) return null;
-
-        boolean targeted = false;
-        for (String pkg : EcosystemNarrowRules.EARLY_REDIRECTOR_TARGETS) {
-            if (transformedName.startsWith(pkg)) {
-                targeted = true;
-                break;
-            }
-        }
-        if (!targeted) return basicClass;
-
-        for (String exclusion : exclusions) {
-            if (transformedName.startsWith(exclusion)) return basicClass;
-        }
-
-        if (!core.shouldTransform(basicClass)) return basicClass;
-
-        final ClassReader cr = new ClassReader(basicClass);
-        final ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
-        final boolean changed = core.transformClassNode(transformedName, cn);
-        if (changed) {
-            final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-            cn.accept(cw);
-            return cw.toByteArray();
-        }
-        return basicClass;
+        return impl.transform(transformedName, basicClass);
     }
 }

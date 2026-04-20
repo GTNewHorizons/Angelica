@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
@@ -40,7 +41,7 @@ public final class OrphanStreamingBuffer {
 
     public void destroy() {
         if (bufferId != 0) {
-            RENDER_BACKEND.deleteBuffers(bufferId);
+            GLStateManager.glDeleteBuffers(bufferId);
             bufferId = 0;
         }
     }
