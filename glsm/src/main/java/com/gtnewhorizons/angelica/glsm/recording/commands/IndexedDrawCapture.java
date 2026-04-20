@@ -26,12 +26,11 @@ public final class IndexedDrawCapture {
     public final int indexCount;
     public final ByteBuffer vertexData;
     public final ByteBuffer indexData;
-    public final int tightStride;
     public final BatchedIndexedDrawCmd placeholder;
     private boolean freed;
 
     public IndexedDrawCapture(AttribLayoutKey layoutKey, int drawMode, int vertexCount, int indexCount,
-                              ByteBuffer vertexData, ByteBuffer indexData, int tightStride,
+                              ByteBuffer vertexData, ByteBuffer indexData,
                               BatchedIndexedDrawCmd placeholder) {
         this.layoutKey = layoutKey;
         this.drawMode = drawMode;
@@ -39,7 +38,6 @@ public final class IndexedDrawCapture {
         this.indexCount = indexCount;
         this.vertexData = vertexData;
         this.indexData = indexData;
-        this.tightStride = tightStride;
         this.placeholder = placeholder;
     }
 
@@ -120,12 +118,6 @@ public final class IndexedDrawCapture {
             final int[] types = new int[enabledCount];
             final boolean[] normalized = new boolean[enabledCount];
             int k = 0;
-            int tightStride = 0;
-            int expectedSrcOffset = -1;
-            ByteBuffer sharedSrcBuffer = null;
-            long sharedSrcBase = 0;
-            int sharedSrcStride = -1;
-            boolean tightSrc = true;
             for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
                 final AttribSnapshot.AttribDesc d = snap.get(i);
                 if (d == null) continue;
@@ -133,22 +125,26 @@ public final class IndexedDrawCapture {
                 sizes[k] = d.size();
                 types[k] = d.type();
                 normalized[k] = d.normalized();
-                final int attribBytes = d.size() * d.typeSizeBytes();
-                if (tightSrc) {
-                    final int relOffset = (int) (d.offset() - d.readBufferBaseOffset());
-                    if (k == 0) {
-                        sharedSrcBuffer = d.readBuffer();
-                        sharedSrcStride = d.effectiveStride();
-                        sharedSrcBase = MemoryUtilities.memAddress0(sharedSrcBuffer) + relOffset + (long) minVtx * sharedSrcStride;
-                        expectedSrcOffset = relOffset + attribBytes;
-                    } else if (d.readBuffer() != sharedSrcBuffer || d.effectiveStride() != sharedSrcStride || relOffset != expectedSrcOffset) {
-                        tightSrc = false;
-                    } else {
-                        expectedSrcOffset += attribBytes;
-                    }
-                }
-                tightStride += attribBytes;
                 k++;
+            }
+            final AttribLayoutKey layoutKey = new AttribLayoutKey(locations, sizes, types, normalized);
+            final int tightStride = layoutKey.stride();
+
+            ByteBuffer sharedSrcBuffer = null;
+            long sharedSrcBase = 0;
+            int sharedSrcStride = -1;
+            boolean tightSrc = true;
+            for (int a = 0; a < enabledCount; a++) {
+                final AttribSnapshot.AttribDesc d = snap.get(locations[a]);
+                final int relOffset = (int) (d.offset() - d.readBufferBaseOffset());
+                if (a == 0) {
+                    sharedSrcBuffer = d.readBuffer();
+                    sharedSrcStride = d.effectiveStride();
+                    sharedSrcBase = MemoryUtilities.memAddress0(sharedSrcBuffer) + relOffset + (long) minVtx * sharedSrcStride;
+                    if (relOffset != layoutKey.offset(0)) tightSrc = false;
+                } else if (d.readBuffer() != sharedSrcBuffer || d.effectiveStride() != sharedSrcStride || relOffset != layoutKey.offset(a)) {
+                    tightSrc = false;
+                }
             }
             if (tightSrc && sharedSrcStride != tightStride) tightSrc = false;
 
@@ -157,15 +153,13 @@ public final class IndexedDrawCapture {
             if (tightSrc) {
                 MemoryUtilities.memCopy(sharedSrcBase, dstAddr, (long) vertexCount * tightStride);
             } else {
-                int attribOutBase = 0;
                 for (int a = 0; a < enabledCount; a++) {
                     final AttribSnapshot.AttribDesc d = snap.get(locations[a]);
                     final int attribBytes = d.size() * d.typeSizeBytes();
                     final int srcStride = d.effectiveStride();
                     final long srcStart = MemoryUtilities.memAddress0(d.readBuffer()) + (d.offset() - d.readBufferBaseOffset()) + (long) minVtx * srcStride;
-                    final long dstStart = dstAddr + attribOutBase;
+                    final long dstStart = dstAddr + layoutKey.offset(a);
                     copyStrided(srcStart, srcStride, dstStart, tightStride, attribBytes, vertexCount);
-                    attribOutBase += attribBytes;
                 }
             }
 
@@ -184,10 +178,9 @@ public final class IndexedDrawCapture {
                 bakedDrawMode = mode;
             }
 
-            final AttribLayoutKey layoutKey = new AttribLayoutKey(locations, sizes, types, normalized);
             final BatchedIndexedDrawCmd placeholder = new BatchedIndexedDrawCmd();
 
-            final IndexedDrawCapture out = new IndexedDrawCapture(layoutKey, bakedDrawMode, vertexCount, bakedIndexCount, vertexData, indexData, tightStride, placeholder);
+            final IndexedDrawCapture out = new IndexedDrawCapture(layoutKey, bakedDrawMode, vertexCount, bakedIndexCount, vertexData, indexData, placeholder);
             success = true;
             return out;
         } finally {
