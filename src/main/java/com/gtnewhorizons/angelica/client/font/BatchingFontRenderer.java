@@ -614,11 +614,6 @@ public class BatchingFontRenderer {
                         if (rgb != -1) {
                             curRainbow = false;
                             curGradient = false;
-                            curRandom = false;
-                            curBold = false;
-                            curStrikethrough = false;
-                            curUnderline = false;
-                            curItalic = false;
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
                             charIdx += 12;
