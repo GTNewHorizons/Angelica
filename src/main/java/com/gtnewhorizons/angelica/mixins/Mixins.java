@@ -287,6 +287,14 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    DRAGONAPI_SHADER_REGISTRY_PARSE_ERROR(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "dragonapi.MixinShaderRegistry_ParseError"
+        )
+    ),
+
     IRIS_RENDERING_NOBACKHAND(new MixinBuilder("Iris Hand Shaders")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
