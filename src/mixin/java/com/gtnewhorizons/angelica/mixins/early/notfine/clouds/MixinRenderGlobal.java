@@ -1,7 +1,15 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
 import jss.notfine.core.Settings;
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
+import org.joml.Vector4f;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -14,6 +22,8 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.client.IRenderHandler;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.spongepowered.asm.mixin.Final;
@@ -24,6 +34,9 @@ import org.spongepowered.asm.mixin.Unique;
 
 @Mixin(value = RenderGlobal.class)
 public abstract class MixinRenderGlobal {
+
+    @Unique
+    private static final Logger ANGELICA_CLOUDS_LOGGER = LogManager.getLogger("Angelica/Clouds");
 
     @Unique
     private static int angelica$cloudMipmapTexId = -1;
@@ -38,10 +51,13 @@ public abstract class MixinRenderGlobal {
     @Unique
     private static final int ANGELICA_CELL_EMPTY_THRESHOLD = 10;
 
-    // Cached cloud mesh — stored cell-local (no camera offset baked in) so the
-    // per-frame camera position is applied as a translate around the call. We
-    // only rebuild when an input that affects the recorded geometry changes.
-    @Unique private static int angelica$cloudListId = -1;
+    // Caching the cloud mesh. Stored cell-local (no camera offset baked into
+    // vertices) so the per-frame camera position is applied as a translation
+    // around the draw and camera motion within a cell doesn't invalidate the
+    // cache. Immutable VBO so the depth prepass and color pass both reuse
+    // GPU-resident geometry; Angelica picks up glDrawArrays in the cloud phase
+    // and binds gbuffers_clouds on its own.
+    @Unique private static IVertexArrayObject angelica$cloudVao;
     @Unique private static int angelica$cachedCellTexId = Integer.MIN_VALUE;
     @Unique private static int angelica$cachedFloorOffsetX = Integer.MIN_VALUE;
     @Unique private static int angelica$cachedFloorOffsetZ = Integer.MIN_VALUE;
@@ -55,10 +71,37 @@ public abstract class MixinRenderGlobal {
     @Unique private static float angelica$cachedRed = Float.NaN;
     @Unique private static float angelica$cachedGreen = Float.NaN;
     @Unique private static float angelica$cachedBlue = Float.NaN;
-    // Color is baked per-vertex, so any color shift would otherwise rebuild the
-    // list every frame. Tolerate a small delta — sky/sun-driven cloud color
-    // drifts continuously but slowly, well below visual perception at 0.5%.
+    // Cloud color is baked per-vertex, so any sky/sun color drift would
+    // rebuild the cache every frame. Tolerate a small delta below visual
+    // perception.
     @Unique private static final float ANGELICA_CLOUD_COLOR_REBUILD_DELTA = 0.005f;
+
+    @Unique private static float angelica$planeLA, angelica$planeLB, angelica$planeLC, angelica$planeLOffset;
+    @Unique private static float angelica$planeRA, angelica$planeRB, angelica$planeRC, angelica$planeROffset;
+    @Unique private static float angelica$planeTA, angelica$planeTB, angelica$planeTC, angelica$planeTOffset;
+    @Unique private static float angelica$planeBA, angelica$planeBB, angelica$planeBC, angelica$planeBOffset;
+    @Unique private static float angelica$cachedFX = Float.NaN;
+    @Unique private static float angelica$cachedFY = Float.NaN;
+    @Unique private static float angelica$cachedFZ = Float.NaN;
+    @Unique private static float angelica$cachedUX = Float.NaN;
+    @Unique private static float angelica$cachedUY = Float.NaN;
+    @Unique private static float angelica$cachedUZ = Float.NaN;
+    @Unique private static float angelica$cachedBakedHalfHFovRad = Float.NaN;
+    @Unique private static float angelica$cachedBakedHalfVFovRad = Float.NaN;
+    @Unique private static final float ANGELICA_FRUSTUM_DRIFT_RAD = (float)(5.0 * Math.PI / 180.0);
+    @Unique private static final float ANGELICA_FRUSTUM_DRIFT_COS = (float)Math.cos(ANGELICA_FRUSTUM_DRIFT_RAD);
+    @Unique private static final float ANGELICA_PLANE_MAX_HALF_FOV_RAD = (float)(89.0 * Math.PI / 180.0);
+    @Unique private static final Matrix4f angelica$scratchPWide = new Matrix4f();
+    @Unique private static final Matrix4f angelica$scratchMVNoTrans = new Matrix4f();
+    @Unique private static final Matrix4f angelica$scratchMVP = new Matrix4f();
+    @Unique private static final Vector4f angelica$scratchPlane = new Vector4f();
+
+    // -Dangelica.clouds.stats=true to get culling stats
+    @Unique private static final boolean ANGELICA_CLOUDS_STATS =
+        Boolean.getBoolean("angelica.clouds.stats");
+    @Unique private static int angelica$statsCellsInRadius;
+    @Unique private static int angelica$statsCellsFrustumCulled;
+    @Unique private static int angelica$statsCellsEmitted;
 
     @Unique
     private static void angelica$setupCloudTexture() {
@@ -127,7 +170,6 @@ public abstract class MixinRenderGlobal {
      */
     @Overwrite
     public void renderCloudsFancy(float partialTicks) {
-        Tessellator tessellator = Tessellator.instance;
         GLStateManager.glEnable(GL11.GL_CULL_FACE);
         OpenGlHelper.glBlendFunc(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
@@ -190,7 +232,133 @@ public abstract class MixinRenderGlobal {
         final boolean cameraInsideCloud = cameraInsideY
             && angelica$cellOpaque(floorOffsetX, floorOffsetZ);
 
-        final boolean cacheValid = angelica$cloudListId > 0
+        // Camera forward + up in world space
+        final float yawDeg = mc.renderViewEntity.prevRotationYaw
+            + (mc.renderViewEntity.rotationYaw - mc.renderViewEntity.prevRotationYaw) * partialTicks;
+        final float pitchDeg = mc.renderViewEntity.prevRotationPitch
+            + (mc.renderViewEntity.rotationPitch - mc.renderViewEntity.prevRotationPitch) * partialTicks;
+        final float yawRad = yawDeg * (float)(Math.PI / 180.0);
+        final float pitchRad = pitchDeg * (float)(Math.PI / 180.0);
+        final float cosY = MathHelper.cos(yawRad), sinY = MathHelper.sin(yawRad);
+        final float cosP = MathHelper.cos(pitchRad), sinP = MathHelper.sin(pitchRad);
+        final float fwdX = -sinY * cosP;
+        final float fwdY = -sinP;
+        final float fwdZ =  cosY * cosP;
+        final float upX  = -sinY * sinP;
+        final float upY  =  cosP;
+        final float upZ  =  cosY * sinP;
+
+        final Matrix4f projMat = RenderingState.INSTANCE.getProjectionMatrix();
+        final Matrix4f mvMat = RenderingState.INSTANCE.getModelViewMatrix();
+        final float halfHFovRad = (float)Math.atan(1.0 / projMat.m00());
+        final float halfVFovRad = (float)Math.atan(1.0 / projMat.m11());
+        final float halfHFovPlusDrift = halfHFovRad + ANGELICA_FRUSTUM_DRIFT_RAD;
+        final float halfVFovPlusDrift = halfVFovRad + ANGELICA_FRUSTUM_DRIFT_RAD;
+        final boolean horizontalCullActive = halfHFovPlusDrift < ANGELICA_PLANE_MAX_HALF_FOV_RAD;
+        final boolean verticalCullActive   = halfVFovPlusDrift < ANGELICA_PLANE_MAX_HALF_FOV_RAD;
+
+        // If the view cone doesn't reach the cloud Y band at any distance in the render radius, skip everything.
+        if (!cameraInsideY) {
+            final float maxDistBlocks = renderRadius * cellsPerChunk * cloudInteriorWidth;
+            final float viewAxisElevRad = -pitchRad;
+            final float viewUpperEdgeRad = viewAxisElevRad + halfVFovPlusDrift;
+            final float viewLowerEdgeRad = viewAxisElevRad - halfVFovPlusDrift;
+            final boolean slabOutOfView;
+            if (cameraRelativeY > 0f) {
+                slabOutOfView = viewUpperEdgeRad < (float)Math.atan(cameraRelativeY / maxDistBlocks);
+            } else {
+                slabOutOfView = viewLowerEdgeRad > (float)Math.atan((cameraRelativeY + cloudInteriorHeight) / maxDistBlocks);
+            }
+            if (slabOutOfView) {
+                if (angelica$cloudVao != null) {
+                    angelica$cloudVao.delete();
+                    angelica$cloudVao = null;
+                }
+                return;
+            }
+        }
+
+        // Widen the projection (m00/m11 = 1/tan(halfFov + drift)) so the bake
+        // covers rotations up to drift, and strip the translation from MV so
+        // extracted planes live in camera-relative world space (the same frame
+        // as our cell positions). If widened halfFov would reach the 90°
+        // ceiling, clamp here to keep tan finite; the plane-zero branch below
+        // disables that axis' cull for real.
+        angelica$scratchPWide.set(projMat);
+        angelica$scratchPWide.m00((float)(1.0 / Math.tan(horizontalCullActive
+            ? halfHFovPlusDrift : ANGELICA_PLANE_MAX_HALF_FOV_RAD)));
+        angelica$scratchPWide.m11((float)(1.0 / Math.tan(verticalCullActive
+            ? halfVFovPlusDrift : ANGELICA_PLANE_MAX_HALF_FOV_RAD)));
+
+        angelica$scratchMVNoTrans.set(mvMat);
+        angelica$scratchMVNoTrans.m30(0f).m31(0f).m32(0f);
+
+        angelica$scratchPWide.mul(angelica$scratchMVNoTrans, angelica$scratchMVP);
+
+        // Cell AABB half-extents in world blocks. X/Z use the full cell width
+        // (not half) to also absorb the sub-cell camera drift the emission
+        // loop ignores when computing cell centers.
+        final float cellHx = cloudInteriorWidth;
+        final float cellHy = cloudInteriorHeight * 0.5f;
+        final float cellHz = cloudInteriorWidth;
+
+        // Extract the 4 side planes via Gribb-Hartmann. frustumPlane returns a
+        // normalized (a, b, c, d) with the inward normal; inside iff a·x + b·y
+        // + c·z + d ≥ 0. We fold the AABB margin into `offset` here so each
+        // per-cell test is one fused dot + compare.
+        if (horizontalCullActive) {
+            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_NX, angelica$scratchPlane);
+            angelica$planeLA = angelica$scratchPlane.x;
+            angelica$planeLB = angelica$scratchPlane.y;
+            angelica$planeLC = angelica$scratchPlane.z;
+            angelica$planeLOffset = angelica$scratchPlane.w
+                + Math.abs(angelica$scratchPlane.x) * cellHx
+                + Math.abs(angelica$scratchPlane.y) * cellHy
+                + Math.abs(angelica$scratchPlane.z) * cellHz;
+            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_PX, angelica$scratchPlane);
+            angelica$planeRA = angelica$scratchPlane.x;
+            angelica$planeRB = angelica$scratchPlane.y;
+            angelica$planeRC = angelica$scratchPlane.z;
+            angelica$planeROffset = angelica$scratchPlane.w
+                + Math.abs(angelica$scratchPlane.x) * cellHx
+                + Math.abs(angelica$scratchPlane.y) * cellHy
+                + Math.abs(angelica$scratchPlane.z) * cellHz;
+        } else {
+            angelica$planeLA = angelica$planeLB = angelica$planeLC = angelica$planeLOffset = 0f;
+            angelica$planeRA = angelica$planeRB = angelica$planeRC = angelica$planeROffset = 0f;
+        }
+        if (verticalCullActive) {
+            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_NY, angelica$scratchPlane);
+            angelica$planeBA = angelica$scratchPlane.x;
+            angelica$planeBB = angelica$scratchPlane.y;
+            angelica$planeBC = angelica$scratchPlane.z;
+            angelica$planeBOffset = angelica$scratchPlane.w
+                + Math.abs(angelica$scratchPlane.x) * cellHx
+                + Math.abs(angelica$scratchPlane.y) * cellHy
+                + Math.abs(angelica$scratchPlane.z) * cellHz;
+            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_PY, angelica$scratchPlane);
+            angelica$planeTA = angelica$scratchPlane.x;
+            angelica$planeTB = angelica$scratchPlane.y;
+            angelica$planeTC = angelica$scratchPlane.z;
+            angelica$planeTOffset = angelica$scratchPlane.w
+                + Math.abs(angelica$scratchPlane.x) * cellHx
+                + Math.abs(angelica$scratchPlane.y) * cellHy
+                + Math.abs(angelica$scratchPlane.z) * cellHz;
+        } else {
+            angelica$planeTA = angelica$planeTB = angelica$planeTC = angelica$planeTOffset = 0f;
+            angelica$planeBA = angelica$planeBB = angelica$planeBC = angelica$planeBOffset = 0f;
+        }
+
+        // Cache valid iff forward + up are within drift of cached and neither
+        // FOV has widened past cached. Forward alone misses roll at extreme
+        // pitch (yaw ≈ roll there, forward barely moves) — up catches it.
+        final boolean frustumCacheValid = cameraInsideCloud
+            || ((angelica$cachedFX * fwdX + angelica$cachedFY * fwdY + angelica$cachedFZ * fwdZ) >= ANGELICA_FRUSTUM_DRIFT_COS
+                && (angelica$cachedUX * upX + angelica$cachedUY * upY + angelica$cachedUZ * upZ) >= ANGELICA_FRUSTUM_DRIFT_COS
+                && halfHFovPlusDrift <= angelica$cachedBakedHalfHFovRad
+                && halfVFovPlusDrift <= angelica$cachedBakedHalfVFovRad);
+
+        final boolean cacheValid = angelica$cloudVao != null
             && angelica$cachedCellTexId == angelica$cellTexId
             && angelica$cachedFloorOffsetX == floorOffsetX
             && angelica$cachedFloorOffsetZ == floorOffsetZ
@@ -203,20 +371,39 @@ public abstract class MixinRenderGlobal {
             && angelica$cachedCloudScrollingZ == cloudScrollingZ
             && Math.abs(angelica$cachedRed - red) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
             && Math.abs(angelica$cachedGreen - green) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
-            && Math.abs(angelica$cachedBlue - blue) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA;
+            && Math.abs(angelica$cachedBlue - blue) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
+            && frustumCacheValid;
 
         if (!cacheValid) {
-            if (angelica$cloudListId <= 0) {
-                angelica$cloudListId = GLStateManager.glGenLists(1);
+            if (angelica$cloudVao != null) {
+                angelica$cloudVao.delete();
+                angelica$cloudVao = null;
             }
-            GLStateManager.glNewList(angelica$cloudListId, GL11.GL_COMPILE);
-            angelica$emitCloudGeometry(tessellator, renderRadius, cloudWidth, cellsPerChunk,
+            final DirectTessellator capture = TessellatorManager.startCapturingDirect();
+            angelica$emitCloudGeometry(capture, renderRadius, cloudWidth, cellsPerChunk,
                 radiusCellsSq, floorOffsetX, floorOffsetZ,
-                cloudInteriorHeight,
+                cloudInteriorWidth, cloudInteriorHeight, cameraRelativeY,
                 scrollSpeed, cloudScrollingX, cloudScrollingZ, edgeOverlap,
                 emitTopFace, emitBottomFace, cameraInsideCloud,
                 red, green, blue);
-            GLStateManager.glEndList();
+            // stopCapturingToVBO(IMMUTABLE) with zero captured vertices throws
+            // GL_INVALID_VALUE and returns a format-less VAO that NPEs on bind.
+            if (capture.getVertexCount() == 0) {
+                TessellatorManager.stopCapturingDirect();
+                angelica$cloudVao = null;
+            } else {
+                angelica$cloudVao = DirectTessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE);
+            }
+
+            if (ANGELICA_CLOUDS_STATS) {
+                final int radiusCount = angelica$statsCellsInRadius;
+                final int culledCount = angelica$statsCellsFrustumCulled;
+                final int emittedCount = angelica$statsCellsEmitted;
+                final float cullPct = radiusCount > 0 ? 100f * culledCount / radiusCount : 0f;
+                ANGELICA_CLOUDS_LOGGER.info(
+                    "Culling rebuild: opaque-in-radius={}, frustum-culled={} ({}%), emitted={}",
+                    radiusCount, culledCount, String.format("%.1f", cullPct), emittedCount);
+            }
 
             angelica$cachedCellTexId = angelica$cellTexId;
             angelica$cachedFloorOffsetX = floorOffsetX;
@@ -231,14 +418,28 @@ public abstract class MixinRenderGlobal {
             angelica$cachedRed = red;
             angelica$cachedGreen = green;
             angelica$cachedBlue = blue;
+            angelica$cachedFX = fwdX;
+            angelica$cachedFY = fwdY;
+            angelica$cachedFZ = fwdZ;
+            angelica$cachedUX = upX;
+            angelica$cachedUY = upY;
+            angelica$cachedUZ = upZ;
+            angelica$cachedBakedHalfHFovRad = halfHFovPlusDrift;
+            angelica$cachedBakedHalfVFovRad = halfVFovPlusDrift;
         }
+
+        if (angelica$cloudVao == null) {
+            return;
+        }
+
+        angelica$cloudVao.bind();
 
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glDepthMask(true);
         GLStateManager.glPushMatrix();
         GLStateManager.glTranslatef(-cameraRelativeX, cameraRelativeY, -cameraRelativeZ);
-        GLStateManager.glCallList(angelica$cloudListId);
+        angelica$cloudVao.draw();
         GLStateManager.glPopMatrix();
 
         if (mc.gameSettings.anaglyph) {
@@ -254,8 +455,10 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glDepthMask(false);
         GLStateManager.glPushMatrix();
         GLStateManager.glTranslatef(-cameraRelativeX, cameraRelativeY, -cameraRelativeZ);
-        GLStateManager.glCallList(angelica$cloudListId);
+        angelica$cloudVao.draw();
         GLStateManager.glPopMatrix();
+
+        angelica$cloudVao.unbind();
 
         GLStateManager.glDepthMask(true);
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
@@ -272,7 +475,9 @@ public abstract class MixinRenderGlobal {
         int radiusCellsSq,
         int floorOffsetX,
         int floorOffsetZ,
+        float cloudInteriorWidth,
         float cloudInteriorHeight,
+        float cameraRelativeY,
         float scrollSpeed,
         float cloudScrollingX,
         float cloudScrollingZ,
@@ -285,9 +490,12 @@ public abstract class MixinRenderGlobal {
         float blue
     ) {
         final float a = 0.8F;
+        angelica$statsCellsInRadius = 0;
+        angelica$statsCellsFrustumCulled = 0;
+        angelica$statsCellsEmitted = 0;
+        // DirectTessellator captures everything between one startDrawingQuads() and stopCapturingToVBO() into one VBO.
         for (int chunkX = -renderRadius + 1; chunkX <= renderRadius; ++chunkX) {
             for (int chunkZ = -renderRadius + 1; chunkZ <= renderRadius; ++chunkZ) {
-                tessellator.startDrawingQuads();
                 final float chunkOffsetX = (chunkX * cloudWidth);
                 final float chunkOffsetZ = (chunkZ * cloudWidth);
                 final float startX = chunkOffsetX - (float) 0.0;
@@ -304,9 +512,29 @@ public abstract class MixinRenderGlobal {
                         final int relX = chunkX * cellsPerChunk + k;
                         final int relZ = chunkZ * cellsPerChunk + j;
                         if (relX * relX + relZ * relZ > radiusCellsSq) continue;
+                        angelica$statsCellsInRadius++;
 
-                        // Only render the cell the player is in
-                        if (cameraInsideCloud && (relX != 0 || relZ != 0)) continue;
+                        // Gribb-Hartmann frustum cull against the 4 baked side
+                        // planes. Disabled axes have zero plane + offset, so
+                        // the test is `0 < 0` = false and the cell keeps.
+                        // cameraInsideCloud skips the cull so the 3×3 interior
+                        // cluster below can emit.
+                        if (!cameraInsideCloud) {
+                            final float cx = (relX + 0.5f) * cloudInteriorWidth;
+                            final float cy = cameraRelativeY + cloudInteriorHeight * 0.5f;
+                            final float cz = (relZ + 0.5f) * cloudInteriorWidth;
+                            if (angelica$planeLA * cx + angelica$planeLB * cy + angelica$planeLC * cz + angelica$planeLOffset < 0f
+                             || angelica$planeRA * cx + angelica$planeRB * cy + angelica$planeRC * cz + angelica$planeROffset < 0f
+                             || angelica$planeTA * cx + angelica$planeTB * cy + angelica$planeTC * cz + angelica$planeTOffset < 0f
+                             || angelica$planeBA * cx + angelica$planeBB * cy + angelica$planeBC * cz + angelica$planeBOffset < 0f) {
+                                angelica$statsCellsFrustumCulled++;
+                                continue;
+                            }
+                        }
+
+                        // When inside a cloud, only process a 3×3 cluster.
+                        if (cameraInsideCloud && (Math.abs(relX) > 1 || Math.abs(relZ) > 1)) continue;
+                        angelica$statsCellsEmitted++;
 
                         final boolean isCenter = cameraInsideCloud
                             && Math.abs(relX) <= 1 && Math.abs(relZ) <= 1;
@@ -437,12 +665,31 @@ public abstract class MixinRenderGlobal {
                         }
                     }
                 }
-                tessellator.draw();
             }
         }
     }
 
     public void renderCloudsFast(float partialTicks) {
+        final float cameraOffsetY = (float)(mc.renderViewEntity.lastTickPosY + (mc.renderViewEntity.posY - mc.renderViewEntity.lastTickPosY) * (double)partialTicks);
+        int fastCloudElevation = (int)theWorld.provider.getCloudHeight();
+        if (fastCloudElevation >= 96) {
+            fastCloudElevation = (int)Settings.CLOUD_HEIGHT.option.getStore();
+        }
+        final double cameraRelativeY = fastCloudElevation - cameraOffsetY + 0.33F;
+        final int fastTargetDistance = Math.max(mc.gameSettings.renderDistanceChunks,
+            (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
+        final float renderRadius = fastTargetDistance * 64.0f;
+
+        final float fastPitchRad = (mc.renderViewEntity.prevRotationPitch
+            + (mc.renderViewEntity.rotationPitch - mc.renderViewEntity.prevRotationPitch) * partialTicks)
+            * (float)(Math.PI / 180.0);
+        final float fastHalfVFovRad = RenderingState.INSTANCE.getFov() * 0.5f * (float)(Math.PI / 180.0);
+        final float fastPlaneElev = (float)Math.atan(cameraRelativeY / renderRadius);
+        if ((cameraRelativeY > 0.0 && -fastPitchRad + fastHalfVFovRad < fastPlaneElev)
+         || (cameraRelativeY < 0.0 && -fastPitchRad - fastHalfVFovRad > fastPlaneElev)) {
+            return;
+        }
+
         Tessellator tessellator = Tessellator.instance;
         GLStateManager.glDisable(GL11.GL_CULL_FACE);
         GLStateManager.glEnable(GL11.GL_BLEND);
@@ -463,15 +710,11 @@ public abstract class MixinRenderGlobal {
             blue = altBlue;
         }
         double cloudTick = ((float)cloudTickCounter + partialTicks);
-        float cameraOffsetY = (float)(mc.renderViewEntity.lastTickPosY + (mc.renderViewEntity.posY - mc.renderViewEntity.lastTickPosY) * (double)partialTicks);
         double cameraOffsetX = mc.renderViewEntity.prevPosX + (mc.renderViewEntity.posX - mc.renderViewEntity.prevPosX) * (double)partialTicks + cloudTick * 0.03D;
         double cameraOffsetZ = mc.renderViewEntity.prevPosZ + (mc.renderViewEntity.posZ - mc.renderViewEntity.prevPosZ) * (double)partialTicks;
 
         final int cloudSettingScale = (int)Settings.CLOUD_SCALE.option.getStore();
         final int fastScale = 8 * cloudSettingScale;
-        final int fastTargetDistance = Math.max(mc.gameSettings.renderDistanceChunks,
-            (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
-        float renderRadius = fastTargetDistance * 64.0f;
         double uvScale = (1.0 / 256.0) / fastScale;
 
         final double fastTextureCycleWorld = 256.0 * fastScale;
@@ -481,11 +724,6 @@ public abstract class MixinRenderGlobal {
         float uvShiftX = (float)(cameraOffsetX * uvScale);
         float uvShiftZ = (float)(cameraOffsetZ * uvScale);
 
-        int fastCloudElevation = (int)theWorld.provider.getCloudHeight();
-        if (fastCloudElevation >= 96) {
-            fastCloudElevation = (int)Settings.CLOUD_HEIGHT.option.getStore();
-        }
-        double cameraRelativeY = fastCloudElevation - cameraOffsetY + 0.33F;
         double neg = -renderRadius;
 
         double startXUv = neg * uvScale + uvShiftX;
