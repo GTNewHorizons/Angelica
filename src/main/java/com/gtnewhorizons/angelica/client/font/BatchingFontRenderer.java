@@ -572,6 +572,7 @@ public class BatchingFontRenderer {
             int gradientStartRgb = 0, gradientEndRgb = 0;
             int gradientCharIndex = 0, gradientTotalChars = 0;
             int rainbowCharIndex = 0;
+            int visibleCharIndex = 0;
 
             float glyphScaleY = getGlyphScaleY();
             float glyphScaleX = getGlyphScaleX();
@@ -650,15 +651,15 @@ public class BatchingFontRenderer {
                         underlineEndX = underlineStartX;
                     } else if (fmtCode == 'o') {
                         curItalic = true;
-                    } else if (fmtCode == 'q' && AngelicaConfig.enableTextEffects) {
+                    } else if (fmtCode == 'q' && AngelicaConfig.enableRainbow) {
                         curRainbow = true;
                         curGradient = false;
                         rainbowCharIndex = 0;
-                    } else if (fmtCode == 'z' && AngelicaConfig.enableTextEffects) {
+                    } else if (fmtCode == 'z' && AngelicaConfig.enableWaveText) {
                         curWave = !curWave;
-                    } else if (fmtCode == 'v' && AngelicaConfig.enableTextEffects) {
+                    } else if (fmtCode == 'v' && AngelicaConfig.enableDinnerboneText) {
                         curDinnerbone = !curDinnerbone;
-                    } else if (fmtCode == 'g' && AngelicaConfig.enableTextEffects && charIdx + 28 < stringEnd) {
+                    } else if (fmtCode == 'g' && AngelicaConfig.enableGradients && charIdx + 28 < stringEnd) {
                         int color1 = parseFullSectionX(string, charIdx + 1);
                         int color2 = parseFullSectionX(string, charIdx + 15);
                         if (color1 != -1 && color2 != -1) {
@@ -710,6 +711,8 @@ public class BatchingFontRenderer {
                 heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
+                visibleCharIndex++;
+
                 // Check ASCII space, NBSP, NNBSP
                 if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
                     curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
@@ -753,7 +756,7 @@ public class BatchingFontRenderer {
                 float renderY = heightNorth;
                 if (curWave) {
                     float time = HUDCaching.renderingCacheOverride ? 0f : System.nanoTime() * 0.000000005f;
-                    renderY += (float) Math.sin(charIdx * 0.5 + time) * 2.0f;
+                    renderY += (float) Math.sin(visibleCharIndex * 0.5 + time) * 2.0f;
                 }
 
                 if (enableShadow) {

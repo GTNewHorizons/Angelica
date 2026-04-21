@@ -111,9 +111,21 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean enableRGBColors;
 
-    @Config.Comment("Enable text effects: rainbow (&q), wave (&z), gradient (&g&#start&#end), dinnerbone (&v)")
+    @Config.Comment("Enable gradient text (&g&#start&#end)")
     @Config.DefaultBoolean(true)
-    public static boolean enableTextEffects;
+    public static boolean enableGradients;
+
+    @Config.Comment("Enable rainbow cycling text (&q)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableRainbow;
+
+    @Config.Comment("Enable wave/bounce animated text (&z)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableWaveText;
+
+    @Config.Comment("Enable upside-down text (&v)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableDinnerboneText;
 
     @Config.Comment("Convert &-prefix format codes (&#RRGGBB, &c, &l, etc.) at render time")
     @Config.DefaultBoolean(true)

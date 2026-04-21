@@ -534,4 +534,55 @@ public class SodiumGameOptionPages {
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
     }
 
+    public static OptionPage text() {
+        final List<OptionGroup> groups = new ArrayList<>();
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("RGB Colors")
+                        .setTooltip("Enable hex colors via &#RRGGBB syntax")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableRGBColors = value,
+                                    opts -> AngelicaConfig.enableRGBColors)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Gradients")
+                        .setTooltip("Smooth color transitions via &g&#start&#end")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableGradients = value,
+                                    opts -> AngelicaConfig.enableGradients)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Rainbow")
+                        .setTooltip("Cycling rainbow colors via &q")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableRainbow = value,
+                                    opts -> AngelicaConfig.enableRainbow)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Wave Text")
+                        .setTooltip("Animated bouncing text via &z")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableWaveText = value,
+                                    opts -> AngelicaConfig.enableWaveText)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Dinnerbone Text")
+                        .setTooltip("Flipped upside down text via &v")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableDinnerboneText = value,
+                                    opts -> AngelicaConfig.enableDinnerboneText)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Ampersand Conversion")
+                        .setTooltip("Convert & prefix codes to formatting codes at render time")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableAmpersandConversion = value,
+                                    opts -> AngelicaConfig.enableAmpersandConversion)
+                        .build())
+                .build());
+
+        return new OptionPage("Text Effects", ImmutableList.copyOf(groups));
+    }
+
 }
