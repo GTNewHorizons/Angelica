@@ -5726,6 +5726,14 @@ public class GLStateManager {
         return RENDER_BACKEND.getProgramInfoLog(program);
     }
 
+    public static boolean glIsProgram(int obj) {
+        return RENDER_BACKEND.isProgram(obj);
+    }
+
+    public static boolean glIsShader(int obj) {
+        return RENDER_BACKEND.isShader(obj);
+    }
+
     public static void glBindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) { RENDER_BACKEND.bindImageTexture(unit, texture, level, layered, layer, access, format); }
     public static void glMemoryBarrier(int barriers) { RENDER_BACKEND.memoryBarrier(barriers); }
     public static void glCopyImageSubData(int srcName, int srcTarget, int srcLevel, int srcX, int srcY, int srcZ,
