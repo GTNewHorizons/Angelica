@@ -566,6 +566,13 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> AngelicaConfig.enableWaveText = value,
                                     opts -> AngelicaConfig.enableWaveText)
                         .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName("Wave Amplitude")
+                        .setTooltip("How far wave text bounces (default 2)")
+                        .setControl(option -> new SliderControl(option, 1, 8, 1, ControlValueFormatter.number()))
+                        .setBinding((opts, value) -> AngelicaConfig.waveAmplitude = value,
+                                    opts -> (int) AngelicaConfig.waveAmplitude)
+                        .build())
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                         .setName("Dinnerbone Text")
                         .setTooltip("Flipped upside down text via &v")

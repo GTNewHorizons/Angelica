@@ -127,6 +127,11 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean enableDinnerboneText;
 
+    @Config.Comment("Wave text amplitude (how far characters bounce)")
+    @Config.DefaultFloat(2.0f)
+    @Config.RangeFloat(min = 0.5f, max = 8.0f)
+    public static float waveAmplitude;
+
     @Config.Comment("Convert &-prefix format codes (&#RRGGBB, &c, &l, etc.) at render time")
     @Config.DefaultBoolean(true)
     public static boolean enableAmpersandConversion;

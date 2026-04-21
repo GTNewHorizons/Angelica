@@ -756,7 +756,7 @@ public class BatchingFontRenderer {
                 float renderY = heightNorth;
                 if (curWave) {
                     float time = HUDCaching.renderingCacheOverride ? 0f : System.nanoTime() * 0.000000005f;
-                    renderY += (float) Math.sin(visibleCharIndex * 0.5 + time) * 2.0f;
+                    renderY += (float) Math.sin(visibleCharIndex * 0.5 + time) * AngelicaConfig.waveAmplitude;
                 }
 
                 if (enableShadow) {
