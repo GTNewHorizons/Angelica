@@ -295,7 +295,11 @@ public class ShadowRenderer {
 		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filteringMode);
 	}
 
-	private FrustumHolder createShadowFrustum(float renderMultiplier, FrustumHolder holder) {
+	private FrustumHolder createShadowFrustum(float renderMultiplier, FrustumHolder holder, boolean terrain) {
+		if (terrain) {
+			return createTerrainShadowFrustum(renderMultiplier, holder);
+		}
+
 		// TODO: Cull entities / block entities with Advanced Frustum Culling even if voxelization is detected.
 		String distanceInfo;
 		String cullingInfo;
@@ -372,6 +376,34 @@ public class ShadowRenderer {
 		}
 
 		return holder;
+	}
+
+	private FrustumHolder createTerrainShadowFrustum(float renderMultiplier, FrustumHolder holder) {
+		double distance = halfPlaneLength * renderMultiplier;
+		String setter = "(set by shader pack)";
+
+		if (renderMultiplier < 0) {
+			distance = IrisVideoSettings.shadowDistance * 16;
+			setter = "(set by user)";
+		}
+
+		final double maxDistance = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16;
+		final String distanceInfo;
+
+		if (distance >= maxDistance) {
+			// Terrain that blocks the sun can sit completely outside the player's view frustum, especially above caves.
+			// Prefer broad distance-only culling here so those blockers still make it into the shadow map.
+			distanceInfo = maxDistance + " blocks (capped by normal render distance)";
+			return holder.setInfo(NON_CULLING_FRUSTUM, distanceInfo, "disabled (terrain anti-leak workaround)");
+		}
+
+		distanceInfo = distance + " blocks " + setter;
+
+		if (distance <= 0.0) {
+			return holder.setInfo(CULL_EVERYTHING_FRUSTUM, distanceInfo, "no shadows rendered");
+		}
+
+		return holder.setInfo(getOrCreateBoxCullingFrustum(distance), distanceInfo, "distance only (terrain anti-leak workaround)");
 	}
 
 	private BoxCullingFrustum getOrCreateBoxCullingFrustum(double distance) {
@@ -659,7 +691,7 @@ public class ShadowRenderer {
 
 		profiler.startSection("initialize frustum");
 
-		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
+		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder, true);
 		FRUSTUM = terrainFrustumHolder.getFrustum();
 
 		// Use the player/entity position for shadow rendering
@@ -721,7 +753,7 @@ public class ShadowRenderer {
 			entityFrustumHolder.setInfo(terrainFrustumHolder.getFrustum(), terrainFrustumHolder.getDistanceInfo(), terrainFrustumHolder.getCullingInfo());
 		} else {
 			hasEntityFrustum = true;
-			entityFrustumHolder = createShadowFrustum(renderDistanceMultiplier * entityShadowDistanceMultiplier, entityFrustumHolder);
+			entityFrustumHolder = createShadowFrustum(renderDistanceMultiplier * entityShadowDistanceMultiplier, entityFrustumHolder, false);
 		}
 
 		Frustrum entityShadowFrustum = entityFrustumHolder.getFrustum();

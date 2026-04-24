@@ -380,7 +380,9 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
         final NibbleArray lightArray = this.lightArrays[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)][type.ordinal()];
         if (lightArray == null) {
-            return this.defaultLightValues[type.ordinal()];
+            // Missing sky arrays are common for empty sections; treating them as full skylight leaks false "sun lines"
+            // into underground smooth-light samples. Block light can still safely fall back to its default of 0.
+            return type == EnumSkyBlock.Sky ? 0 : this.defaultLightValues[type.ordinal()];
         }
 
         return lightArray.get(relX & 15, relY & 15, relZ & 15);
