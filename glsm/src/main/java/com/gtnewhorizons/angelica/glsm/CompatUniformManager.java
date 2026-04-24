@@ -7,6 +7,10 @@ import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;

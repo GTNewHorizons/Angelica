@@ -43,10 +43,11 @@ public class RenderTargets {
 	private int cachedHeight;
 	@Getter
     private boolean fullClearRequired;
-	private boolean translucentDepthDirty;
-	private boolean handDepthDirty;
 
 	private int cachedDepthBufferVersion;
+
+	private boolean translucentDepthDirty;
+	private boolean handDepthDirty;
 
 	public RenderTargets(int width, int height,  int depthTexture, int depthBufferVersion, DepthBufferFormat depthFormat, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
         targets = new RenderTarget[renderTargets.size()];
@@ -189,7 +190,7 @@ public class RenderTargets {
     }
 
 	public void copyPreTranslucentDepth() {
-		if (translucentDepthDirty) {
+		if (translucentDepthDirty && !RenderSystem.isGLES()) {
 			translucentDepthDirty = false;
 			final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 			profiler.startSection("iris_depth_realloc");
@@ -203,7 +204,7 @@ public class RenderTargets {
 	}
 
 	public void copyPreHandDepth() {
-		if (handDepthDirty) {
+		if (handDepthDirty && !RenderSystem.isGLES()) {
 			handDepthDirty = false;
 			final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 			profiler.startSection("iris_depth_realloc");

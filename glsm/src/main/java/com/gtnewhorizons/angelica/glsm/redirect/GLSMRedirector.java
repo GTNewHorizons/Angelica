@@ -439,6 +439,7 @@ public class GLSMRedirector {
         methodRedirects.put(ARBShaderObjects, RedirectMap.newMap()
             .add("glUseProgramObjectARB", "glUseProgram")
             .add("glShaderSourceARB", "glShaderSource")
+            .add("nglShaderSourceARB", "nglShaderSource")
             .add("glLinkProgramARB", "glLinkProgram")
             .add("glCreateShaderObjectARB", "glCreateShader")
             .add("glCompileShaderARB", "glCompileShader")
@@ -548,9 +549,7 @@ public class GLSMRedirector {
         final List<String> stringsToSearch = new ArrayList<>(32);
         stringsToSearch.add(GL_PREFIX);
         stringsToSearch.addAll(typeRedirects.keySet());
-        for (String key : methodRedirects.keySet()) {
-            stringsToSearch.add(key);
-        }
+        stringsToSearch.addAll(methodRedirects.keySet());
         cstPoolParser = new ClassConstantPoolParser(stringsToSearch.toArray(new String[0]));
     }
 

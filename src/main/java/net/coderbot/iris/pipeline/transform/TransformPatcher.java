@@ -1,5 +1,7 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.texture.TextureType;
@@ -94,10 +96,20 @@ public class TransformPatcher {
                     // Double-check in case another thread added it while we were transforming
                     final Map<PatchShaderType, String> existing = cache.get(key);
                     if (existing != null) {
-                        return existing;
+                        result = existing;
+                    } else {
+                        cache.put(key, result);
                     }
-                    cache.put(key, result);
                 }
+            }
+        }
+
+        if (result != null && RenderSystem.isGLES()) {
+            for (Map.Entry<PatchShaderType, String> entry : result.entrySet()) {
+                final String src = entry.getValue();
+                if (src == null) continue;
+                final PatchShaderType pType = entry.getKey();
+                CompatShaderTransformer.prewarm(src, pType.glShaderType.id, pType == PatchShaderType.FRAGMENT);
             }
         }
 

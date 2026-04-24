@@ -34,6 +34,10 @@ class AttributeTransformer {
 		final boolean wantsMvInverse = instancedVertex && transformer.containsCall("gl_ModelViewMatrixInverse");
 		CoreTransformHelper.injectMatrixUniforms(transformer, instancedVertex);
 
+		aliasIfUsed(transformer, "projectionMatrix", "iris_ProjectionMatrix");
+		aliasIfUsed(transformer, "modelViewMatrix", "iris_ModelViewMatrix");
+		aliasIfUsed(transformer, "normalMatrix", "iris_NormalMatrix");
+
 		if (parameters.type == ShaderType.VERTEX) {
 			transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
 			transformer.injectVariable("layout(location = 1) in vec4 iris_Color;");
@@ -48,6 +52,10 @@ class AttributeTransformer {
 			transformer.rename("gl_Vertex", "iris_Vertex");
 			transformer.replaceExpression("gl_Color", instancedVertex ? "(iris_Color * iris_ColorModulator * iris_InstColor)" : "(iris_Color * iris_ColorModulator)");
 			transformer.rename("gl_Normal", "iris_Normal");
+			aliasIfUsed(transformer, "vaNormal", "iris_Normal");
+			if (transformer.containsCall("vaPosition") && !transformer.hasVariable("vaPosition")) {
+				transformer.replaceExpression("vaPosition", "iris_Vertex.xyz");
+			}
 
 			// ftransform() = gl_ModelViewProjectionMatrix * gl_Vertex
 			transformer.renameFunctionCall("ftransform", "iris_ftransform");
@@ -109,4 +117,9 @@ class AttributeTransformer {
 		transformer.replaceExpression(name, replacement);
 	}
 
+	private static void aliasIfUsed(Transformer transformer, String modernName, String irisName) {
+		if (transformer.containsCall(modernName) && !transformer.hasVariable(modernName)) {
+			transformer.rename(modernName, irisName);
+		}
+	}
 }
