@@ -1,7 +1,13 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import org.antlr.v4.runtime.BufferedTokenStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.taumc.glsl.grammar.GLSLLexer;
+import org.taumc.glsl.grammar.GLSLParser;
+import org.taumc.glsl.grammar.GLSLPreParser;
 
 import java.util.List;
 import java.util.Map;
@@ -77,6 +83,32 @@ public class GlslTransformUtils {
         source = source.replace(RENAMED_PREFIX + "sampler", "sampler");
         source = source.replace(RENAMED_PREFIX + "sample", "sample");
         return source;
+    }
+
+    /** Full + pre-parser trees for a single input. */
+    public record QuietParse(GLSLParser.Translation_unitContext full, GLSLPreParser.Translation_unitContext pre) {}
+
+    public static GLSLParser.Translation_unitContext parseFullQuiet(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.setBuildParseTree(true);
+        return parser.translation_unit();
+    }
+
+    public static QuietParse parseBothQuiet(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final GLSLPreParser preParser = new GLSLPreParser(new BufferedTokenStream(lexer));
+        preParser.removeErrorListeners();
+        preParser.setBuildParseTree(true);
+        final GLSLPreParser.Translation_unitContext pre = preParser.translation_unit();
+        lexer.reset();
+        final GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.setBuildParseTree(true);
+        return new QuietParse(parser.translation_unit(), pre);
     }
 
     public static String getFormattedShader(ParseTree tree, String header) {

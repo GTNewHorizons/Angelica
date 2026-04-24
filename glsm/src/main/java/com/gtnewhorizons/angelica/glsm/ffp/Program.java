@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
@@ -11,6 +13,10 @@ import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.KHRDebug;
 
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
@@ -216,7 +222,7 @@ public class Program {
             final String debugName = "FFP(v=0x" + vkHex + ",f=" + id + (hasGeom ? ",g" : "") + ")";
             GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, debugName);
 
-            // Detach and delete individual shaders — they're linked into the program
+            // Detach and delete individual shaders - they're linked into the program
             for (int i = 0; i < shaderCount; i++) {
                 backend.detachShader(program, shaders[i]);
                 backend.deleteShader(shaders[i]);
@@ -243,6 +249,10 @@ public class Program {
     private static int compileShader(int type, String src, String name) {
         final RenderBackend backend = RENDER_BACKEND;
         final int shader = backend.createShader(type);
+        if (RenderSystem.isGLES()) {
+            src = CompatShaderTransformer.toGLES(src, type, type == GL20.GL_FRAGMENT_SHADER);
+            dumpTranslatedFFPShader(type, src, name);
+        }
         backend.shaderSource(shader, src);
         backend.compileShader(shader);
 
@@ -270,5 +280,24 @@ public class Program {
         }
 
         return shader;
+    }
+
+    private static final Path FFP_DUMP_DIR = Paths.get("ffp_shaders");
+
+    // Post-translation GLSL ES dump, paired with ShaderCache's pre-translation 330 core dump.
+    private static void dumpTranslatedFFPShader(int type, String translatedSrc, String name) {
+        if (!Boolean.parseBoolean(System.getProperty("angelica.dumpShaders", "false"))) return;
+        final String suffix = switch (type) {
+            case GL20.GL_VERTEX_SHADER -> ".vert.glsl";
+            case GL20.GL_FRAGMENT_SHADER -> ".frag.glsl";
+            case GL32.GL_GEOMETRY_SHADER -> ".geom.glsl";
+            default -> ".glsl";
+        };
+        try {
+            Files.createDirectories(FFP_DUMP_DIR);
+            Files.writeString(FFP_DUMP_DIR.resolve(name + ".gles" + suffix), translatedSrc);
+        } catch (IOException e) {
+            GLStateManager.LOGGER.warn("Failed to dump translated FFP shader: {}", e.getMessage());
+        }
     }
 }

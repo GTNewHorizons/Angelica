@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.bytebuf.Pointer;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
@@ -84,7 +85,9 @@ import org.lwjgl.opengl.KHRDebug;
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Field;
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
@@ -143,7 +146,7 @@ public class GLStateManager {
     public static final GLFeatureSet HAS_MULTIPLE_SET = new GLFeatureSet();
 
     // Generation counters for FFP uniform dirty tracking. Bumped when the corresponding GLSM state changes.
-    // Per-matrix-mode generation counters — avoids re-uploading all matrices when only one mode changed
+    // Per-matrix-mode generation counters - avoids re-uploading all matrices when only one mode changed
     public static int mvGeneration;    // modelview matrix changes
     public static int projGeneration;  // projection matrix changes
     public static int texMatrixGeneration; // texture matrix changes
@@ -152,7 +155,7 @@ public class GLStateManager {
     public static int colorGeneration;    // current vertex color
     public static int clipPlaneGeneration; // clip plane equation changes
 
-    // Deferred vertex attribute upload flags — set when state changes, flushed before draw
+    // Deferred vertex attribute upload flags - set when state changes, flushed before draw
     private static boolean dirtyColorAttrib;
     private static boolean dirtyNormalAttrib;
     private static boolean dirtyTexCoordAttrib;
@@ -265,7 +268,7 @@ public class GLStateManager {
         }
     }
 
-    // Saved generation counters at push time — used to detect whether state actually changed during push/pop scope
+    // Saved generation counters at push time - used to detect whether state actually changed during push/pop scope
     private static final int[] savedMvGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedProjGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedTexMatGen = new int[MAX_ATTRIB_STACK_DEPTH];
@@ -533,7 +536,7 @@ public class GLStateManager {
         RENDER_BACKEND.stencilFunc(stencilState.getFuncFront(), stencilState.getRefFront(), 0xFF);
         RENDER_BACKEND.stencilMask(0xFF);
 
-        // Compute stencil bit mask — driver clamps stencil masks to buffer depth
+        // Compute stencil bit mask - driver clamps stencil masks to buffer depth
         // GL_STENCIL_BITS was removed in core profile; query via default FBO attachment
         final int stencilBits = RENDER_BACKEND.getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
         stencilBitMask = stencilBits >= 32 ? 0xFFFFFFFF : (1 << stencilBits) - 1;
@@ -1028,6 +1031,8 @@ public class GLStateManager {
                 case GL11.GL_FOG_MODE -> fogState.getFogMode();
                 case GL11.GL_LINE_STIPPLE_PATTERN -> lineState.getStipplePattern() & 0xFFFF;
                 case GL11.GL_LINE_STIPPLE_REPEAT -> lineState.getStippleFactor();
+                // GL_LIST_INDEX removed in ES - answer from GLSM state.
+                case GL11.GL_LIST_INDEX -> DisplayListManager.isRecording() ? Math.max(DisplayListManager.getRecordingListId(), 0) : 0;
                 default -> RENDER_BACKEND.getInteger(pname);
             };
         };
@@ -1791,13 +1796,39 @@ public class GLStateManager {
     }
 
     private static int changeFormatIfDeprecated(int internalformat) {
-        switch (internalformat) {
-            case GL11.GL_ALPHA4 -> internalformat = GL11.GL_RGBA4;
-            case GL11.GL_ALPHA8 -> internalformat = GL11.GL_RGBA8;
-            case GL11.GL_ALPHA12 -> internalformat = GL11.GL_RGBA12;
-            case GL11.GL_ALPHA16 -> internalformat = GL11.GL_RGBA16;
+        internalformat = GLESFormatRemap.promoteAlphaFormat(internalformat);
+        if (RenderSystem.isGLES()) {
+            internalformat = GLESFormatRemap.remapInternalFormat(internalformat);
         }
         return internalformat;
+    }
+
+    public static final class GLESTexImageRemap {
+        private final GLESFormatRemap.Result r;
+        private GLESTexImageRemap(GLESFormatRemap.Result r) { this.r = r; }
+        public int internalFormat() { return r.internalFormat(); }
+        public int format() { return r.format(); }
+        public int type() { return r.type(); }
+    }
+
+    public static GLESTexImageRemap remapTexImageForGLES(int internalformat, int format, int type) {
+        return new GLESTexImageRemap(GLESFormatRemap.apply(internalformat, format, type, RenderSystem.isGLES()));
+    }
+
+    static {
+        if (ByteOrder.nativeOrder() != ByteOrder.LITTLE_ENDIAN) {
+            LOGGER.warn("GLSM GLES pixel-type remap assumes little-endian host; big-endian detected - BGRA uploads may be byte-swapped");
+        }
+    }
+
+    private static int remapPixelTypeForGLES(int format, int type) {
+        return RenderSystem.isGLES() ? GLESFormatRemap.remapPixelType(format, type) : type;
+    }
+
+    private static int remapTypeForRemappedInternalFormat(int internalformat, int type) {
+        if (!RenderSystem.isGLES()) return type;
+        if (!GLESFormatRemap.isGenericPixelType(type)) return type;
+        return GLESFormatRemap.typeForInternalFormatES32(internalformat, type);
     }
 
     private static void logUncachedTextureTarget(int target) {
@@ -1819,6 +1850,8 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1840,6 +1873,8 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1855,6 +1890,8 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1870,6 +1907,8 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
@@ -1889,6 +1928,8 @@ public class GLStateManager {
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage2D with buffer offset in display lists not yet supported");
         }
@@ -2241,7 +2282,7 @@ public class GLStateManager {
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
-            // is redirected to it, so a VAO is always bound here — no fallback branches.
+            // is redirected to it, so a VAO is always bound here - no fallback branches.
             DisplayListManager.flushMatrix();
             final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
             if (capture != null) {
@@ -2627,7 +2668,7 @@ public class GLStateManager {
                 case 1 -> VertexFlags.BRIGHTNESS_BIT;
                 default -> 0;
             };
-            default -> 0; // GL_VERTEX_ARRAY — position is implicit
+            default -> 0; // GL_VERTEX_ARRAY - position is implicit
         };
     }
 
@@ -3298,7 +3339,7 @@ public class GLStateManager {
         }
 
         // Bump generation counters only if state actually changed during this push/pop scope.
-        // If nothing changed, the shader already has the right uniforms — no need to re-upload.
+        // If nothing changed, the shader already has the right uniforms - no need to re-upload.
         final int depth = attribDepth; // already decremented by popState()
         if ((mask & GL11.GL_LIGHTING_BIT) != 0 && lightingGeneration != savedLightingGen[depth]) lightingGeneration++;
         if ((mask & GL11.GL_FOG_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++;
@@ -3891,28 +3932,101 @@ public class GLStateManager {
         };
     }
 
-    public static void glGetTexImage(int target, int level, int format, int type, java.nio.ByteBuffer pixels) {
+    public static void glGetTexImage(int target, int level, int format, int type, ByteBuffer pixels) {
+        if (RenderSystem.isGLES()) {
+            getTexImageViaFboReadPixels(target, level, format, type, pixels);
+            return;
+        }
         suspendPixelPackBuffer();
         RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
         restorePixelPackBuffer();
     }
-    public static void glGetTexImage(int target, int level, int format, int type, java.nio.IntBuffer pixels) {
+    public static void glGetTexImage(int target, int level, int format, int type, IntBuffer pixels) {
+        if (RenderSystem.isGLES()) {
+            getTexImageViaFboReadPixels(target, level, format, type, pixels);
+            return;
+        }
         suspendPixelPackBuffer();
         RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
         restorePixelPackBuffer();
     }
 
+    // ES has no glGetTexImage. Attach the bound texture to a scratch read FBO + glReadPixels.
+    // Only caller in tree is NativeImage.downloadTexture (screenshots).
+    private static void getTexImageViaFboReadPixels(int target, int level, int format, int type, Buffer pixels) {
+        if (target != GL11.GL_TEXTURE_2D) {
+            LOGGER.warn("glGetTexImage ES: unsupported target 0x{}", Integer.toHexString(target));
+            return;
+        }
+        final int texId = getBoundTextureForServerState();
+        if (texId == 0) return;
+        final int width = RENDER_BACKEND.getTexLevelParameteri(target, level, GL11.GL_TEXTURE_WIDTH);
+        final int height = RENDER_BACKEND.getTexLevelParameteri(target, level, GL11.GL_TEXTURE_HEIGHT);
+        if (width <= 0 || height <= 0) return;
+
+        final int prevReadFb = RENDER_BACKEND.getInteger(GL30.GL_READ_FRAMEBUFFER_BINDING);
+        final int fbo = RENDER_BACKEND.genFramebuffers();
+        try {
+            RENDER_BACKEND.bindFramebuffer(GL30.GL_READ_FRAMEBUFFER, fbo);
+            RENDER_BACKEND.framebufferTexture2D(GL30.GL_READ_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, target, texId, level);
+            final int status = RENDER_BACKEND.checkFramebufferStatus(GL30.GL_READ_FRAMEBUFFER);
+            if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+                LOGGER.warn("glGetTexImage ES: FBO incomplete (0x{})", Integer.toHexString(status));
+                return;
+            }
+            final int esType = remapPixelTypeForGLES(format, type);
+            final boolean bgra = format == GL12.GL_BGRA;
+            final int esFormat = bgra ? GL11.GL_RGBA : format;
+            suspendPixelPackBuffer();
+            try {
+                if (pixels instanceof ByteBuffer bb) {
+                    RENDER_BACKEND.readPixels(0, 0, width, height, esFormat, esType, bb);
+                } else if (pixels instanceof IntBuffer ib) {
+                    RENDER_BACKEND.readPixels(0, 0, width, height, esFormat, esType, ib);
+                }
+                if (bgra) swapRedBlueInPlace(pixels);
+            } finally {
+                restorePixelPackBuffer();
+            }
+        } finally {
+            RENDER_BACKEND.bindFramebuffer(GL30.GL_READ_FRAMEBUFFER, prevReadFb);
+            RENDER_BACKEND.deleteFramebuffers(fbo);
+        }
+    }
+
+    private static void swapRedBlueInPlace(Buffer pixels) {
+        if (pixels instanceof ByteBuffer bb) {
+            final int p = bb.position();
+            final int lim = bb.limit();
+            for (int i = p; i + 3 < lim; i += 4) {
+                final byte r = bb.get(i);
+                bb.put(i, bb.get(i + 2));
+                bb.put(i + 2, r);
+            }
+        } else if (pixels instanceof IntBuffer ib) {
+            final int p = ib.position();
+            final int lim = ib.limit();
+            for (int i = p; i < lim; i++) {
+                final int w = ib.get(i);
+                ib.put(i, (w & 0xFF00FF00) | ((w & 0xFF) << 16) | ((w >> 16) & 0xFF));
+            }
+        }
+    }
+
     public static void glReadPixels(int x, int y, int width, int height, int format, int type, ByteBuffer pixels) {
+        type = remapPixelTypeForGLES(format, type);
         suspendPixelPackBuffer();
         RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
         restorePixelPackBuffer();
     }
     public static void glReadPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels) {
+        type = remapPixelTypeForGLES(format, type);
         suspendPixelPackBuffer();
         RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
         restorePixelPackBuffer();
     }
     public static void glReadPixels(int x, int y, int width, int height, int format, int type, IntBuffer pixels) {
+        type = remapPixelTypeForGLES(format, type);
         suspendPixelPackBuffer();
         RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
         restorePixelPackBuffer();
@@ -4329,6 +4443,8 @@ public class GLStateManager {
     // Missing GL commands from Mesa cross-check
     public static void glTexImage1D(int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage1D in display lists not yet implemented");
         }
@@ -4339,6 +4455,8 @@ public class GLStateManager {
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
@@ -4349,6 +4467,8 @@ public class GLStateManager {
 
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
+        type = remapPixelTypeForGLES(format, type);
+        type = remapTypeForRemappedInternalFormat(internalformat, type);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
         }
@@ -4417,9 +4537,32 @@ public class GLStateManager {
         // Always rename reserved words for the target GLSL version (e.g. 'sampler' at 460)
         src = GlslTransformUtils.renameReservedWords(src, RENDER_BACKEND.getMinGLSLVersion());
         if (ShaderManager.getInstance().isEnabled()) {
-            src = CompatShaderTransformer.transform(src, isFragmentShader(shader));
+            final int shaderType = RENDER_BACKEND.getShaderi(shader, GL20.GL_SHADER_TYPE);
+            src = CompatShaderTransformer.transform(src, shaderType, shaderType == GL20.GL_FRAGMENT_SHADER);
         }
         RENDER_BACKEND.shaderSource(shader, src);
+    }
+
+    /** Redirect target for {@code GL20C.nglShaderSource} (native-pointer variant). Decodes the
+     *  string pointer(s) into a {@link CharSequence} and delegates to the normal shader-source path
+     *  so {@code CompatShaderTransformer} runs.*/
+    public static void nglShaderSource(int shader, int count, long strings, long lengths) {
+        if (count <= 0) return;
+        final CharSequence source;
+        if (count == 1) {
+            source = decodeShaderSourceString(strings, lengths, 0);
+        } else {
+            final StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < count; i++) sb.append(decodeShaderSourceString(strings, lengths, i));
+            source = sb.toString();
+        }
+        glShaderSource(shader, source);
+    }
+
+    private static String decodeShaderSourceString(long strings, long lengths, int i) {
+        final long strAddr = MemoryUtilities.memGetAddress(strings + (long) i * Pointer.POINTER_SIZE);
+        final int len = lengths == MemoryUtilities.NULL ? -1 : MemoryUtilities.memGetInt(lengths + (long) i * 4);
+        return len < 0 ? MemoryUtilities.memUTF8(strAddr) : MemoryUtilities.memUTF8(strAddr, len);
     }
 
     public static void glShaderSource(int shader, ByteBuffer source) {
@@ -4445,6 +4588,7 @@ public class GLStateManager {
 
     // Texture commands
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
+        type = remapPixelTypeForGLES(format, type);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
@@ -4464,6 +4608,7 @@ public class GLStateManager {
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
+        type = remapPixelTypeForGLES(format, type);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
@@ -4483,6 +4628,7 @@ public class GLStateManager {
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
+        type = remapPixelTypeForGLES(format, type);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glTexSubImage2D with buffer offset in display lists not yet supported");
         }
@@ -4506,6 +4652,7 @@ public class GLStateManager {
     }
 
     public static void glCopyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
+        internalFormat = changeFormatIfDeprecated(internalFormat);
         if (DisplayListManager.isRecording()) {
             throw new UnsupportedOperationException("glCopyTexImage2D in display lists not yet implemented - if you see this, please report!");
         }
@@ -5165,7 +5312,7 @@ public class GLStateManager {
             }
             setLightmapTextureCoords(target, s, t);
         }
-        // Units 2+ silently ignored — shader uses v_TexCoord0 for all non-lightmap units
+        // Units 2+ silently ignored - shader uses v_TexCoord0 for all non-lightmap units
     }
 
     public static void glMultiTexCoord2d(int target, double s, double t) {
@@ -5209,7 +5356,7 @@ public class GLStateManager {
      * Guards against FFP features not supported in core profile.
      * Default: throws UnsupportedOperationException.
      * With {@code -Dangelica.ffp.warnOnUnsupported=true}: warns once per function (diagnostic mode).
-     * @return true (always — caller should skip the GL call)
+     * @return true (always - caller should skip the GL call)
      */
     private static boolean guardUnsupportedFFP(String function, String explanation) {
         if (!FFP_WARN_ON_UNSUPPORTED) {
@@ -5287,7 +5434,7 @@ public class GLStateManager {
      */
     private static void handleTexEnvScalar(int target, int pname, float param) {
         if (target == GL14.GL_TEXTURE_FILTER_CONTROL) {
-            // LOD bias via legacy glTexEnv path — remap to core-profile glTexParameterf
+            // LOD bias via legacy glTexEnv path - remap to core-profile glTexParameterf
             glTexParameterf(GL11.GL_TEXTURE_2D, GL14.GL_TEXTURE_LOD_BIAS, param);
             return;
         }
@@ -5365,7 +5512,7 @@ public class GLStateManager {
                 envState.scaleAlpha = param;
                 fragmentGeneration++;
             }
-            // Silently ignore unknown pname — other mods may pass unrecognized params
+            // Silently ignore unknown pname - other mods may pass unrecognized params
         }
     }
 
@@ -5642,9 +5789,12 @@ public class GLStateManager {
 
         if (hasVertex || fragmentShader == 0) return;
 
-        // Fragment-only program — generate a passthrough vertex shader
+        // Fragment-only program - generate a passthrough vertex shader
         final String fragSource = RENDER_BACKEND.getShaderSource(fragmentShader, 65536);
-        final String vertSource = CompatShaderTransformer.generatePassthroughVertexShader(fragSource);
+        String vertSource = CompatShaderTransformer.generatePassthroughVertexShader(fragSource);
+        if (RenderSystem.isGLES()) {
+            vertSource = CompatShaderTransformer.toGLES(vertSource, GL20.GL_VERTEX_SHADER, false);
+        }
 
         final int vertShader = RENDER_BACKEND.createShader(GL20.GL_VERTEX_SHADER);
         RENDER_BACKEND.shaderSource(vertShader, vertSource);

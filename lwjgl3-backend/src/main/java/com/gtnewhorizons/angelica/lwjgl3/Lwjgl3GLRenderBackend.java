@@ -1,8 +1,11 @@
 package com.gtnewhorizons.angelica.lwjgl3;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.DebugMessageHandler;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.ARBClearTexture;
 import org.lwjgl.opengl.EXTDirectStateAccess;
 import org.lwjgl.opengl.GL;
@@ -23,8 +26,11 @@ import org.lwjgl.opengl.GL44C;
 import org.lwjgl.opengl.GL45C;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLDebugMessageCallback;
+import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
+import org.lwjgl.system.MemoryUtil;
 
+import java.nio.Buffer;
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -39,6 +45,8 @@ import java.nio.ShortBuffer;
  */
 @Lwjgl3Aware
 public final class Lwjgl3GLRenderBackend extends RenderBackend {
+    private static final Logger LOGGER = LogManager.getLogger("Lwjgl3GLRenderBackend");
+
     private GLCapabilities caps;
     private GLDebugMessageCallback debugCallback;
     private boolean debugOutputActive;
@@ -46,7 +54,16 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void init() {
         caps = GL.getCapabilities();
+        // ES glClearDepthf / glDepthRangef: resolved via the GL function loader. GL41C.* isn't
+        // loaded on an ES context, and GLES20.* needs liblwjgl_opengles.so (not bundled).
+        if (RenderSystem.isGLES()) {
+            pfnClearDepthf = GL.getFunctionProvider().getFunctionAddress("glClearDepthf");
+            pfnDepthRangef = GL.getFunctionProvider().getFunctionAddress("glDepthRangef");
+        }
     }
+
+    private long pfnClearDepthf;
+    private long pfnDepthRangef;
 
     @Override
     public void shutdown() {
@@ -167,6 +184,9 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void polygonMode(int face, int mode) {
+        // GLES always rasterizes as GL_FILL; GL_LINE/GL_POINT have no driver-level equivalent.
+        // v1 silently no-ops. Wireframe emulation via geometry shader is a follow-up.
+        if (RenderSystem.isGLES()) return;
         GL11C.glPolygonMode(face, mode);
     }
 
@@ -212,6 +232,10 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void depthRange(double nearVal, double farVal) {
+        if (RenderSystem.isGLES()) {
+            JNI.callV((float) nearVal, (float) farVal, pfnDepthRangef);
+            return;
+        }
         GL11C.glDepthRange(nearVal, farVal);
     }
 
@@ -227,6 +251,10 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void clearDepth(double depth) {
+        if (RenderSystem.isGLES()) {
+            JNI.callV((float) depth, pfnClearDepthf);
+            return;
+        }
         GL11C.glClearDepth(depth);
     }
 
@@ -247,11 +275,15 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void pointSize(float size) {
+        // GLES has no glPointSize - point size must come from gl_PointSize in the vertex shader.
+        if (RenderSystem.isGLES()) return;
         GL11C.glPointSize(size);
     }
 
     @Override
     public void logicOp(int opcode) {
+        // GLES doesn't support logic-op blending (GL_COLOR_LOGIC_OP). Silently drop.
+        if (RenderSystem.isGLES()) return;
         GL11C.glLogicOp(opcode);
     }
 
@@ -287,7 +319,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void drawElements(int mode, int count, int type, ByteBuffer indices) {
-        GL11C.glDrawElements(mode, count, type, org.lwjgl.system.MemoryUtil.memAddress(indices));
+        GL11C.glDrawElements(mode, count, type, MemoryUtil.memAddress(indices));
     }
 
     @Override
@@ -975,27 +1007,67 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void getBufferSubData(int target, long offset, ByteBuffer data) {
+        if (RenderSystem.isGLES()) { getBufferSubDataES(target, offset, data); return; }
         GL15C.glGetBufferSubData(target, offset, data);
     }
 
     @Override
     public void getBufferSubData(int target, long offset, ShortBuffer data) {
+        if (RenderSystem.isGLES()) { getBufferSubDataES(target, offset, data); return; }
         GL15C.glGetBufferSubData(target, offset, data);
     }
 
     @Override
     public void getBufferSubData(int target, long offset, IntBuffer data) {
+        if (RenderSystem.isGLES()) { getBufferSubDataES(target, offset, data); return; }
         GL15C.glGetBufferSubData(target, offset, data);
     }
 
     @Override
     public void getBufferSubData(int target, long offset, FloatBuffer data) {
+        if (RenderSystem.isGLES()) { getBufferSubDataES(target, offset, data); return; }
         GL15C.glGetBufferSubData(target, offset, data);
     }
 
     @Override
     public void getBufferSubData(int target, long offset, DoubleBuffer data) {
+        if (RenderSystem.isGLES()) { getBufferSubDataES(target, offset, data); return; }
         GL15C.glGetBufferSubData(target, offset, data);
+    }
+
+    // ES has no glGetBufferSubData - map read + bulk copy + unmap. dst.position() is not advanced.
+    private static void getBufferSubDataES(int target, long offset, Buffer dst) {
+        final int elementBytes;
+        if (dst instanceof ByteBuffer) elementBytes = 1;
+        else if (dst instanceof ShortBuffer) elementBytes = 2;
+        else if (dst instanceof IntBuffer || dst instanceof FloatBuffer) elementBytes = 4;
+        else if (dst instanceof DoubleBuffer) elementBytes = 8;
+        else throw new IllegalArgumentException("unsupported buffer: " + dst.getClass().getName());
+
+        final long length = (long) dst.remaining() * elementBytes;
+        final ByteBuffer mapped = GL30C.glMapBufferRange(target, offset, length, GL30C.GL_MAP_READ_BIT);
+        if (mapped == null) {
+            LOGGER.warn("glMapBufferRange returned null in getBufferSubDataES (target=0x{}, offset={}, length={})", Integer.toHexString(target), offset, length);
+            return;
+        }
+        try {
+            if (dst.isDirect()) {
+                // memAddress(typed) accounts for element size + current position, so this writes dst[position..+length).
+                MemoryUtil.memCopy(MemoryUtil.memAddress(mapped), MemoryUtil.memAddress(dst), length);
+            } else {
+                switch (dst) {
+                    case ByteBuffer bb -> bb.duplicate().put(mapped.duplicate());
+                    case ShortBuffer sb -> sb.duplicate().put(mapped.asShortBuffer());
+                    case IntBuffer ib -> ib.duplicate().put(mapped.asIntBuffer());
+                    case FloatBuffer fb -> fb.duplicate().put(mapped.asFloatBuffer());
+                    case DoubleBuffer db -> db.duplicate().put(mapped.asDoubleBuffer());
+                    default -> {
+                    }
+                }
+            }
+        } finally {
+            GL30C.glUnmapBuffer(target);
+        }
     }
 
     @Override
@@ -1035,7 +1107,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
-        GL20C.glVertexAttribPointer(index, size, type, normalized, stride, org.lwjgl.system.MemoryUtil.memAddress(pointer));
+        GL20C.glVertexAttribPointer(index, size, type, normalized, stride, MemoryUtil.memAddress(pointer));
     }
 
     @Override
@@ -1045,7 +1117,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void vertexAttribIPointer(int index, int size, int type, int stride, ByteBuffer pointer) {
-        GL30C.glVertexAttribIPointer(index, size, type, stride, org.lwjgl.system.MemoryUtil.memAddress(pointer));
+        GL30C.glVertexAttribIPointer(index, size, type, stride, MemoryUtil.memAddress(pointer));
     }
 
     @Override

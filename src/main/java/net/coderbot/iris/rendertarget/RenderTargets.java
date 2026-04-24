@@ -1,8 +1,6 @@
 package net.coderbot.iris.rendertarget;
 
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
@@ -11,7 +9,6 @@ import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import org.joml.Vector2i;
-import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -36,8 +33,6 @@ public class RenderTargets {
 	private int cachedHeight;
 	@Getter
     private boolean fullClearRequired;
-	private boolean translucentDepthDirty;
-	private boolean handDepthDirty;
 
 	private int cachedDepthBufferVersion;
 
@@ -81,9 +76,6 @@ public class RenderTargets {
 
 		this.noHandDestFb = createFramebufferWritingToMain(new int[] {0});
 		this.noHandDestFb.addDepthAttachment(this.noHand.getTextureId());
-
-		this.translucentDepthDirty = true;
-		this.handDepthDirty = true;
 	}
 
 	public void destroy() {
@@ -161,8 +153,6 @@ public class RenderTargets {
             // Reallocate depth buffers
             noTranslucents.resize(newWidth, newHeight, newDepthFormat);
             noHand.resize(newWidth, newHeight, newDepthFormat);
-            this.translucentDepthDirty = true;
-            this.handDepthDirty = true;
         }
 
         if (sizeChanged) {
@@ -180,25 +170,11 @@ public class RenderTargets {
     }
 
 	public void copyPreTranslucentDepth() {
-		if (translucentDepthDirty) {
-			translucentDepthDirty = false;
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
-			depthSourceFb.bindAsReadBuffer();
-			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
-		} else {
-			copyStrategy.copy(depthSourceFb, getDepthTexture(), noTranslucentsDestFb, noTranslucents.getTextureId(), getCurrentWidth(), getCurrentHeight());
-		}
+		copyStrategy.copy(depthSourceFb, getDepthTexture(), noTranslucentsDestFb, noTranslucents.getTextureId(), getCurrentWidth(), getCurrentHeight());
 	}
 
 	public void copyPreHandDepth() {
-		if (handDepthDirty) {
-			handDepthDirty = false;
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
-			depthSourceFb.bindAsReadBuffer();
-			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
-		} else {
-			copyStrategy.copy(depthSourceFb, getDepthTexture(), noHandDestFb, noHand.getTextureId(), getCurrentWidth(), getCurrentHeight());
-		}
+		copyStrategy.copy(depthSourceFb, getDepthTexture(), noHandDestFb, noHand.getTextureId(), getCurrentWidth(), getCurrentHeight());
 	}
 
     public void onFullClear() {

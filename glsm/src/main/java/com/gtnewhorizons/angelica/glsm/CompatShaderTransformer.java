@@ -1,7 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
-import org.taumc.glsl.ShaderParser;
+import com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator;
+import org.lwjgl.opengl.GL20;
 import org.taumc.glsl.Transformer;
 
 import java.io.IOException;
@@ -10,6 +11,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -27,12 +29,12 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
  * <ul>
  *   <li>Matrix builtin replacement (gl_ModelViewMatrix, gl_ProjectionMatrix, etc.)</li>
  *   <li>Vertex attribute replacement (gl_Vertex, gl_Color, gl_MultiTexCoord0/1, gl_Normal)</li>
- *   <li>gl_TexCoord[N] varying array → per-index in/out declarations</li>
- *   <li>Texture function renames (texture2D → texture, etc.)</li>
- *   <li>Fragment output handling (gl_FragColor → layout-qualified out declarations)</li>
+ *   <li>gl_TexCoord[N] varying array -> per-index in/out declarations</li>
+ *   <li>Texture function renames (texture2D -> texture, etc.)</li>
+ *   <li>Fragment output handling (gl_FragColor -> layout-qualified out declarations)</li>
  *   <li>Fog builtins (gl_Fog, gl_FogFragCoord)</li>
- *   <li>gl_FrontColor → local variable in vertex shaders</li>
- *   <li>shadow2D/shadow2DLod → texture/textureLod with vec4 wrapping</li>
+ *   <li>gl_FrontColor -> local variable in vertex shaders</li>
+ *   <li>shadow2D/shadow2DLod -> texture/textureLod with vec4 wrapping</li>
  *   <li>Version upgrade to 330 core minimum</li>
  *   <li>Reserved word pre-parse renaming (texture-as-variable, sample, etc.)</li>
  * </ul>
@@ -72,23 +74,57 @@ public class CompatShaderTransformer {
         DUMP_DIR = Boolean.parseBoolean(System.getProperty("angelica.dumpShaders", "false")) ? Paths.get("compat_shaders") : null;
     }
 
-    private static final int CACHE_SIZE = 32;
+    private static final int CACHE_SIZE = 256;
     private record CacheKey(String source, boolean isFragment) {}
+
     private static final Map<CacheKey, String> cache = Collections.synchronizedMap(
-        new LinkedHashMap<>(32, 0.75f, true) {
+        new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
             @Override protected boolean removeEldestEntry(Map.Entry<CacheKey, String> eldest) {
-            return size() > CACHE_SIZE;
-        }
+                return size() > CACHE_SIZE;
+            }
+    });
+
+    private record EsCacheKey(String source, int glShaderType, boolean isFragment) {}
+    private static final Map<EsCacheKey, String> esCache = Collections.synchronizedMap(
+        new LinkedHashMap<>(CACHE_SIZE, 0.75f, true) {
+            @Override protected boolean removeEldestEntry(Map.Entry<EsCacheKey, String> eldest) {
+                return size() > CACHE_SIZE;
+            }
     });
 
     public static void clearCache() {
         cache.clear();
+        esCache.clear();
     }
 
-    /**
-     * Transform a mod shader source for core profile compatibility.
-     */
+    public static void prewarm(String source, int glShaderType, boolean isFragment) {
+        if (!RenderSystem.isGLES()) return;
+        final EsCacheKey key = new EsCacheKey(source, glShaderType, isFragment);
+        if (esCache.containsKey(key)) return;
+        transform(source, glShaderType, isFragment);
+    }
+
+    /** Transform a mod shader for core profile; under GLES, also rewrites to ES 320. */
     public static String transform(String source, boolean isFragment) {
+        return transform(source, isFragment ? GL20.GL_FRAGMENT_SHADER : GL20.GL_VERTEX_SHADER, isFragment);
+    }
+
+    /** Variant carrying the exact GL shader type so the GLES re-emit dispatches to the right shaderc kind (geometry/tess/compute). */
+    public static String transform(String source, int glShaderType, boolean isFragment) {
+        if (!source.isEmpty() && source.charAt(source.length() - 1) == '\0') {
+            source = source.substring(0, source.length() - 1);
+        }
+        final boolean gles = RenderSystem.isGLES();
+
+        if (gles) {
+            final EsCacheKey esKey = new EsCacheKey(source, glShaderType, isFragment);
+            final String esCached = esCache.get(esKey);
+            if (esCached != null) {
+                dumpShader(source, esCached, isFragment, needsTransformation(source));
+                return esCached;
+            }
+        }
+
         final boolean needsTransform = needsTransformation(source);
         String result;
         if (!needsTransform) {
@@ -97,17 +133,27 @@ public class CompatShaderTransformer {
             final CacheKey key = new CacheKey(source, isFragment);
             final String cached = cache.get(key);
             if (cached != null) {
-                dumpShader(source, cached, isFragment, needsTransform);
-                return cached;
+                result = cached;
+            } else {
+                try {
+                    result = transformInternal(source, isFragment);
+                    cache.put(key, result);
+                } catch (Exception e) {
+                    GLStateManager.LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
+                    result = fixupVersion(source);
+                }
             }
+        }
 
+        if (gles) {
+            final String preGles = result;
             try {
-                result = transformInternal(source, isFragment);
-                cache.put(key, result);
-            } catch (Exception e) {
-                GLStateManager.LOGGER.warn("CompatShaderTransformer: AST transformation failed, falling back to version fixup only", e);
-                result = fixupVersion(source);
+                result = toGLES(result, glShaderType, isFragment);
+            } catch (RuntimeException e) {
+                dumpShader(source, preGles, isFragment, needsTransform);
+                throw e;
             }
+            esCache.put(new EsCacheKey(source, glShaderType, isFragment), result);
         }
 
         dumpShader(source, result, isFragment, needsTransform);
@@ -134,24 +180,24 @@ public class CompatShaderTransformer {
 
         final int targetVersion = Math.max(declaredVersion, RENDER_BACKEND != null ? RENDER_BACKEND.getMinGLSLVersion() : 330);
 
-        // Pre-parse reserved word renaming — prevents ANTLR parse failures
+        // Pre-parse reserved word renaming - prevents ANTLR parse failures
         source = GlslTransformUtils.replaceTexture(source);
         source = GlslTransformUtils.renameReservedWords(source, targetVersion);
 
-        final ShaderParser.ParsedShader parsedShader = ShaderParser.parseShader(source);
-        final Transformer transformer = new Transformer(parsedShader.full());
+        final GlslTransformUtils.QuietParse parsed = GlslTransformUtils.parseBothQuiet(source);
+        final Transformer transformer = new Transformer(parsed.full());
 
         injectMatrixUniforms(transformer);
 
         transformFog(transformer, isFragment, source);
 
-        // gl_FrontLightModelProduct.sceneColor → angelica_SceneColor uniform
+        // gl_FrontLightModelProduct.sceneColor -> angelica_SceneColor uniform
         if (source.contains("gl_FrontLightModelProduct")) {
             transformer.injectVariable("uniform vec4 angelica_SceneColor;");
             transformer.replaceExpression("gl_FrontLightModelProduct.sceneColor", "angelica_SceneColor");
         }
 
-        // gl_LightSource[i] → struct + uniform array (both via injectFunction to keep struct before uniform)
+        // gl_LightSource[i] -> struct + uniform array (both via injectFunction to keep struct before uniform)
         if (source.contains("gl_LightSource")) {
             transformer.injectFunction("struct angelica_LightSourceParameters {"
                     + "vec4 ambient;vec4 diffuse;vec4 specular;vec4 position;vec4 halfVector;"
@@ -162,7 +208,7 @@ public class CompatShaderTransformer {
             transformer.rename("gl_LightSource", "angelica_LightSource");
         }
 
-        // gl_FrontMaterial → struct + uniform (both via injectFunction to keep struct before uniform)
+        // gl_FrontMaterial -> struct + uniform (both via injectFunction to keep struct before uniform)
         if (source.contains("gl_FrontMaterial")) {
             transformer.injectFunction("struct angelica_MaterialParameters {"
                     + "vec4 emission;vec4 ambient;vec4 diffuse;vec4 specular;float shininess;"
@@ -171,7 +217,7 @@ public class CompatShaderTransformer {
             transformer.rename("gl_FrontMaterial", "angelica_FrontMaterial");
         }
 
-        // gl_FrontColor (vertex) → gl_Color (fragment) varying chain
+        // gl_FrontColor (vertex) -> gl_Color (fragment) varying chain
         // Vertex side is unconditional: fragment may read gl_Color without vertex writing gl_FrontColor.
         // Uses angelica_ prefix to avoid colliding with user-declared varyings (e.g. "v_Color").
         if (!isFragment) {
@@ -179,7 +225,7 @@ public class CompatShaderTransformer {
             transformer.rename("gl_FrontColor", "angelica_FrontColor");
             transformer.prependMain("angelica_FrontColor = vec4(1.0);");
 
-            // Vertex attributes — replaces removed FFP vertex inputs with explicit in declarations
+            // Vertex attributes - replaces removed FFP vertex inputs with explicit in declarations
             transformVertexAttributes(transformer, source);
         } else {
             if (source.contains("gl_Color")) {
@@ -188,7 +234,7 @@ public class CompatShaderTransformer {
             }
         }
 
-        // gl_TexCoord[N] varying array → per-index in/out declarations
+        // gl_TexCoord[N] varying array -> per-index in/out declarations
         final Set<Integer> texCoordIndices = new HashSet<>();
         transformer.renameArray("gl_TexCoord", "angelica_TexCoord", texCoordIndices);
         for (Integer i : texCoordIndices) {
@@ -215,7 +261,7 @@ public class CompatShaderTransformer {
         transformer.renameAndWrapShadow("shadow2DLod", "textureLod");
 
         final String versionDirective = "#version " + targetVersion + " core\n";
-        final String extensions = VERSION_PATTERN.matcher(GlslTransformUtils.getFormattedShader(parsedShader.pre(), "")).replaceFirst("").trim();
+        final String extensions = VERSION_PATTERN.matcher(GlslTransformUtils.getFormattedShader(parsed.pre(), "")).replaceFirst("").trim();
 
         // Preserve #define directives
         final StringBuilder defines = new StringBuilder();
@@ -231,7 +277,7 @@ public class CompatShaderTransformer {
         // Restore pre-parse renames
         String output = GlslTransformUtils.restoreReservedWords(result.toString());
 
-        // Core profile: attribute → in, varying → out (vertex) / in (fragment)
+        // Core profile: attribute -> in, varying -> out (vertex) / in (fragment)
         output = fixupQualifiers(output, isFragment);
 
         return output;
@@ -299,7 +345,8 @@ public class CompatShaderTransformer {
         transformer.injectVariable("uniform float angelica_FogEnd;");
         transformer.injectVariable("uniform vec4 angelica_FogColor;");
         transformer.injectFunction("struct angelica_FogParameters {vec4 color;float density;float start;float end;float scale;};");
-        transformer.injectFunction("angelica_FogParameters angelica_Fog = angelica_FogParameters("
+        transformer.injectFunction("angelica_FogParameters angelica_Fog;");
+        transformer.prependMain("angelica_Fog = angelica_FogParameters("
                 + "angelica_FogColor, angelica_FogDensity, angelica_FogStart, angelica_FogEnd, "
                 + "1.0 / (angelica_FogEnd - angelica_FogStart));");
     }
@@ -374,10 +421,10 @@ public class CompatShaderTransformer {
         return source;
     }
 
-    // Patterns for parsing fragment shader in declarations to generate passthrough vertex shaders
-    private static final Pattern FRAG_IN_COLOR = Pattern.compile("\\bin\\s+vec4\\s+angelica_FrontColor\\b");
-    private static final Pattern FRAG_IN_TEXCOORD = Pattern.compile("\\bin\\s+vec4\\s+angelica_TexCoord(\\d+)\\b");
-    private static final Pattern FRAG_IN_FOGCOORD = Pattern.compile("\\bin\\s+float\\s+angelica_FogFragCoord\\b");
+    private static final String PRECISION_QUALIFIER = "(?:highp\\s+|mediump\\s+|lowp\\s+)?";
+    private static final Pattern FRAG_IN_COLOR = Pattern.compile("\\bin\\s+" + PRECISION_QUALIFIER + "(vec[234])\\s+angelica_FrontColor\\b");
+    private static final Pattern FRAG_IN_TEXCOORD = Pattern.compile("\\bin\\s+" + PRECISION_QUALIFIER + "(vec[234])\\s+angelica_TexCoord(\\d+)\\b");
+    private static final Pattern FRAG_IN_FOGCOORD = Pattern.compile("\\bin\\s+" + PRECISION_QUALIFIER + "float\\s+angelica_FogFragCoord\\b");
 
     /**
      * Generate a passthrough vertex shader for a fragment-only program.
@@ -398,22 +445,26 @@ public class CompatShaderTransformer {
 
         final StringBuilder varyings = new StringBuilder();
         final StringBuilder assignments = new StringBuilder();
-        if (FRAG_IN_COLOR.matcher(fragmentSource).find()) {
-            sb.append("layout(location = 1) in vec4 a_Color;\n");
-            varyings.append("out vec4 angelica_FrontColor;\n");
+        final Matcher colorMatcher = FRAG_IN_COLOR.matcher(fragmentSource);
+        if (colorMatcher.find()) {
+            final String colorType = colorMatcher.group(1);
+            sb.append("layout(location = 1) in ").append(colorType).append(" a_Color;\n");
+            varyings.append("out ").append(colorType).append(" angelica_FrontColor;\n");
             assignments.append("  angelica_FrontColor = a_Color;\n");
         }
 
         final Matcher texCoordMatcher = FRAG_IN_TEXCOORD.matcher(fragmentSource);
-        final Set<Integer> texCoordIndices = new HashSet<>();
+        final Map<Integer, String> texCoordTypes = new HashMap<>();
         while (texCoordMatcher.find()) {
-            texCoordIndices.add(Integer.parseInt(texCoordMatcher.group(1)));
+            texCoordTypes.putIfAbsent(Integer.parseInt(texCoordMatcher.group(2)), texCoordMatcher.group(1));
         }
-        for (int i : texCoordIndices) {
+        for (Map.Entry<Integer, String> e : texCoordTypes.entrySet()) {
+            final int i = e.getKey();
+            final String type = e.getValue();
             // PRIMARY_UV=2, SECONDARY_UV=3. Only indices 0 and 1 are supported; higher indices collide at location 3.
             final int location = i == 0 ? 2 : 3;
-            sb.append("layout(location = ").append(location).append(") in vec4 a_TexCoord").append(i).append(";\n");
-            varyings.append("out vec4 angelica_TexCoord").append(i).append(";\n");
+            sb.append("layout(location = ").append(location).append(") in ").append(type).append(" a_TexCoord").append(i).append(";\n");
+            varyings.append("out ").append(type).append(" angelica_TexCoord").append(i).append(";\n");
             assignments.append("  angelica_TexCoord").append(i).append(" = a_TexCoord").append(i).append(";\n");
         }
 
@@ -429,6 +480,23 @@ public class CompatShaderTransformer {
         sb.append("}\n");
 
         return sb.toString();
+    }
+
+    /** 330-core -> GLSL ES 320 via shaderc + SPIRV-Cross. Throws on shaderc failure. */
+    public static String toGLES(String source, int glShaderType, boolean isFragment) {
+        final Matcher m = VERSION_PATTERN.matcher(source);
+        if (m.find() && "es".equalsIgnoreCase(m.group(2))) return source;
+        if (glShaderType == 0) throw new IllegalArgumentException("toGLES requires a valid GL shader type");
+        final String translated = SpirvShaderTranslator.glslToGlslEs(source, glShaderType, "compat");
+        if (translated == null) {
+            throw new IllegalStateException("SpirvShaderTranslator failed for shader kind 0x"
+                + Integer.toHexString(glShaderType) + "; see preceding shaderc error + run/client/compat_shaders/");
+        }
+        return translated;
+    }
+
+    public static String toGLES(String source, boolean isFragment) {
+        return toGLES(source, isFragment ? GL20.GL_FRAGMENT_SHADER : GL20.GL_VERTEX_SHADER, isFragment);
     }
 
     /** Ensure #version is at least 330 core, strip 'compatibility' profile. */

@@ -35,7 +35,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
     /**
      * @author Angelica
-     * @reason Request highest GL version with core profile context
+     * @reason Request highest GL version with core profile context, or GL ES 3.2 when requested
      */
     @Overwrite
     public static void createDisplay() throws LWJGLException {
@@ -44,6 +44,19 @@ public abstract class MixinForgeHooksClient_CoreProfile {
         stencilBits = 8;
 
         final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
+
+        final AngelicaConfig.GLProfile profile = AngelicaConfig.getEffectiveGlProfile();
+
+        if (profile == AngelicaConfig.GLProfile.ES) {
+            final Exception e = angelica$tryCreateES();
+            if (e == null) {
+                LOGGER.info("Created GL ES 3.2 context");
+                return;
+            }
+            angelica$reportContextFailure(e);
+            if (e instanceof LWJGLException lwjgl) throw lwjgl;
+            throw new LWJGLException("Failed to create OpenGL ES 3.2 context", e);
+        }
 
         final ContextAttribs attribs = new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true).withDebug(AngelicaMod.lwjglDebug);
         final MethodHandle setMajor, setMinor;
@@ -111,6 +124,19 @@ public abstract class MixinForgeHooksClient_CoreProfile {
     }
 
     @Unique
+    private static Exception angelica$tryCreateES() {
+        final PixelFormat esFormat = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
+        final ContextAttribs esAttribs = new ContextAttribs(3, 2).withProfileES(true).withDebug(AngelicaMod.lwjglDebug);
+        try {
+            Display.create(esFormat, esAttribs);
+            return null;
+        } catch (LWJGLException | RuntimeException e) {
+            try { Display.destroy(); } catch (Exception ignored) {}
+            return e;
+        }
+    }
+
+    @Unique
     private static Exception angelica$tryCreate(ContextAttribs attribs, PixelFormat format, MethodHandle setMajor, MethodHandle setMinor, int major, int minor) throws RuntimeException {
         try {
             setMajor.invokeExact(attribs, major);
@@ -132,7 +158,7 @@ public abstract class MixinForgeHooksClient_CoreProfile {
         AngelicaConfig.pinnedGLVersion = version;
         try {
             ConfigurationManager.save(AngelicaConfig.class);
-            LOGGER.info("Pinned OpenGL version to {}.{} — set pinnedGLVersion=0 to re-probe, or disableGLVersionPinning=true to never pin", version / 10, version % 10);
+            LOGGER.info("Pinned OpenGL version to {}.{} - set pinnedGLVersion=0 to re-probe, or disableGLVersionPinning=true to never pin", version / 10, version % 10);
         } catch (Exception e) {
             LOGGER.warn("Failed to save pinned GL version: {}", e.getMessage());
         }
