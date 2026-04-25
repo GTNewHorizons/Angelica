@@ -105,7 +105,6 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
 
     public TileOverride go(RenderBlockState renderBlockState, IIcon origIcon) {
         CTMUtils.clearCurrentCompact();
-
         this.renderBlockState = renderBlockState;
         renderBlockState.setFilter(null);
         currentIcon = origIcon;
