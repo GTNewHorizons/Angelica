@@ -157,7 +157,7 @@ public class RenderBlocksUtils {
         return isSnow ? Blocks.snow_layer.getIcon(blockAccess, x, y, z, face) : topIcon;
     }
 
-    private static boolean isSnowCovered(IBlockAccess blockAccess, int x, int y, int z) {
+    public static boolean isSnowCovered(IBlockAccess blockAccess, int x, int y, int z) {
         Block topBlock = blockAccess.getBlock(x, y + 1, z);
         return topBlock == Blocks.snow_layer || topBlock == Blocks.snow;
     }
