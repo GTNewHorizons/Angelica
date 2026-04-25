@@ -289,6 +289,14 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    DRAGONAPI_SHADER_REGISTRY_PARSE_ERROR(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "dragonapi.MixinShaderRegistry_ParseError"
+        )
+    ),
+
     IRIS_RENDERING_NOBACKHAND(new MixinBuilder("Iris Hand Shaders")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris)
@@ -382,17 +390,16 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.MINEFACTORY_RELOADED)
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
-
-    NTM_SPACE_TWEAKS(new MixinBuilder("Support for 'Disable Horizon' & 'disableAltitudePlanetRenderer' options in NTM:Space")
-            .setPhase(Phase.LATE)
-            .addRequiredMod(TargetedMod.NTM_SPACE)
-            .setApplyIf(() -> CompatConfig.tweakNTMSpace)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_Tweaks")),
-    NTM_SPACE_SHADER_COMPAT(new MixinBuilder("Multiple shader fixes for NTM:Space")
+    
+    NTM_SPACE_COMPAT(new MixinBuilder("Multiple fixes for NTM:Space")
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
             .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat", "client.ntmSpace.MixinSkyProviderLaytheSunset")),
+            .addClientMixins(
+                    "client.ntmSpace.MixinSkyProviderCelestial",
+                    "client.ntmSpace.MixinSkyProviderOrbit",
+                    "client.ntmSpace.MixinSkyProviderLaytheSunset"
+            )),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)

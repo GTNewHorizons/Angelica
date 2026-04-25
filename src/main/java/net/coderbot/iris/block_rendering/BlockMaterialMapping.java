@@ -7,8 +7,10 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
+import net.coderbot.iris.shaderpack.materialmap.FlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import net.minecraft.init.Blocks;
@@ -46,8 +48,16 @@ public class BlockMaterialMapping {
 		Map<Block, BlockRenderLayer> blockTypeIds = new Reference2ReferenceOpenHashMap<>();
 
 		blockPropertiesMap.forEach((id, blockType) -> {
-			final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
-			final Block block = Block.getBlockFromName(resourceLocation.toString());
+			Block block = resolveBlock(id);
+
+			// Try flattening map for modern names
+			if ((block == null || block == Blocks.air) && "minecraft".equals(id.getNamespace())) {
+				List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(id.getName(), Map.of());
+				if (legacyEntries != null) {
+					// Use the first entry for render type (render type applies per-block)
+					block = resolveBlock(legacyEntries.getFirst().id());
+				}
+			}
 
 			if (block == null || block == Blocks.air) {
 				return;
@@ -111,17 +121,30 @@ public class BlockMaterialMapping {
 	 */
 	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
 		final NamespacedId id = entry.id();
-		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
+		final String name = id.getName();
+		final boolean hasStateProps = entry.hasStateProperties();
+		final boolean hasExplicitMetas = !entry.metas().isEmpty();
 
-		final Block block = (Block) Block.blockRegistry.getObject(resourceLocation.toString());
+		if ("minecraft".equals(id.getNamespace()) && (hasStateProps || !hasExplicitMetas)) {
+			List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(name, entry.stateProperties());
+			if (legacyEntries != null) {
+				for (BlockEntry legacy : legacyEntries) {
+					applyMetas(resolveBlock(legacy.id()), legacy.metas(), idMap, intId);
+				}
+				return;
+			}
+		}
 
-		// If the block doesn't exist, by default the registry will return AIR. That probably isn't what we want.
-		// TODO: Assuming that Registry.BLOCK.getDefaultId() == "minecraft:air" here
+		// Fall back to registry with the entry's own metas
+		Block block = resolveBlock(id);
+		applyMetas(block, entry.metas(), idMap, intId);
+	}
+    // If the block doesn't exist, by default the registry will return AIR. That probably isn't what we want.
+    // TODO: Assuming that Registry.BLOCK.getDefaultId() == "minecraft:air" here
+	private static void applyMetas(Block block, Set<Integer> metas, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
 		if (block == null || block == Blocks.air) {
 			return;
 		}
-
-		Set<Integer> metas = entry.metas();
 
 		Int2IntMap metaMap = idMap.get(block);
 		if (metaMap == null) {
@@ -131,15 +154,18 @@ public class BlockMaterialMapping {
 		}
 
 		if (metas.isEmpty()) {
-			// Add all metadata values (0-15) if there aren't any specific ones
 			for (int meta = 0; meta < 16; meta++) {
 				metaMap.putIfAbsent(meta, intId);
 			}
 		} else {
-			// Add only specific metadata values
 			for (int meta : metas) {
 				metaMap.putIfAbsent(meta, intId);
 			}
 		}
+	}
+
+	private static Block resolveBlock(NamespacedId id) {
+		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
+		return (Block) Block.blockRegistry.getObject(resourceLocation.toString());
 	}
 }

@@ -17,6 +17,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
+import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexImage2DCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.TexSubImage2DCmd;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
@@ -43,6 +44,7 @@ import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -1636,6 +1638,9 @@ public class GLStateManager {
         }
         alphaTest.enable();
         fragmentGeneration++;
+        if (GLSMHooks.ALPHA_STATE_CHANGE.hasListeners()) {
+            GLSMHooks.ALPHA_STATE_CHANGE.post(GLSMHooks.alphaStateChangeEvent);
+        }
     }
 
     public static void disableAlphaTest() {
@@ -1653,6 +1658,9 @@ public class GLStateManager {
         }
         alphaTest.disable();
         fragmentGeneration++;
+        if (GLSMHooks.ALPHA_STATE_CHANGE.hasListeners()) {
+            GLSMHooks.ALPHA_STATE_CHANGE.post(GLSMHooks.alphaStateChangeEvent);
+        }
     }
 
     public static void glAlphaFunc(int function, float reference) {
@@ -1672,6 +1680,9 @@ public class GLStateManager {
             alphaState.setFunction(function);
             alphaState.setReference(reference);
             fragmentGeneration++;
+            if (GLSMHooks.ALPHA_STATE_CHANGE.hasListeners()) {
+                GLSMHooks.ALPHA_STATE_CHANGE.post(GLSMHooks.alphaStateChangeEvent);
+            }
         }
     }
 
@@ -2229,15 +2240,12 @@ public class GLStateManager {
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
-            if (isVAOBound()) {
-                DisplayListManager.recordDrawElements(mode, indices_count, type, indices_buffer_offset);
-            } else if (isVBOBound() || VertexAttribState.hasVBOBoundAttrib()) {
-                final DirectTessellator result = ImmediateModeRecorder.processDrawElementsFromVBO(mode, indices_count, type, indices_buffer_offset, boundEBO);
-                if (result != null) {
-                    DisplayListManager.addImmediateModeDraw(result);
-                }
-            } else {
-                throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            // Core profile: a default VAO is generated at init and glBindVertexArray(0)
+            // is redirected to it, so a VAO is always bound here — no fallback branches.
+            DisplayListManager.flushMatrix();
+            final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
+            if (capture != null) {
+                DisplayListManager.recordIndexedDrawCapture(capture);
             }
             if (recordMode == RecordMode.COMPILE) {
                 return;
@@ -4948,12 +4956,14 @@ public class GLStateManager {
 
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
-        if (boundVBO == buffer) {
-            boundVBO = 0;
-        }
-        if (boundEBO == buffer) {
-            boundEBO = 0;
-            vaoEboMap.put(boundVAO, 0);
+        if (boundVBO == buffer) boundVBO = 0;
+        if (boundEBO == buffer) boundEBO = 0;
+        if (boundPixelUnpackBuffer == buffer) boundPixelUnpackBuffer = 0;
+        if (boundPixelPackBuffer == buffer) boundPixelPackBuffer = 0;
+
+        // Sweep all VAOs: an unbound VAO may later rebind with a dangling EBO id.
+        for (Int2IntMap.Entry e : vaoEboMap.int2IntEntrySet()) {
+            if (e.getIntValue() == buffer) e.setValue(0);
         }
     }
 
@@ -5068,14 +5078,6 @@ public class GLStateManager {
 
     public static void glBindVertexArrayAPPLE(int array) {
         glBindVertexArray(array);
-    }
-
-    public static boolean isVBOBound() {
-        return boundVBO != 0;
-    }
-
-    public static boolean isVAOBound() {
-        return boundVAO != 0;
     }
 
     public static boolean vendorIsAMD() {
@@ -5661,7 +5663,10 @@ public class GLStateManager {
     }
 
     public static void glDeleteProgram(int program) {
+        if (program == 0) return;
         CompatUniformManager.onDeleteProgram(program);
+
+        if (activeProgram == program) activeProgram = 0;
         RENDER_BACKEND.deleteProgram(program);
     }
 
@@ -5719,6 +5724,14 @@ public class GLStateManager {
 
     public static String glGetProgramInfoLog(int program) {
         return RENDER_BACKEND.getProgramInfoLog(program);
+    }
+
+    public static boolean glIsProgram(int obj) {
+        return RENDER_BACKEND.isProgram(obj);
+    }
+
+    public static boolean glIsShader(int obj) {
+        return RENDER_BACKEND.isShader(obj);
     }
 
     public static void glBindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) { RENDER_BACKEND.bindImageTexture(unit, texture, level, layered, layer, access, format); }

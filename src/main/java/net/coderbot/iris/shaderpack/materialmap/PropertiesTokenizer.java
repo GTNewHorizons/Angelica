@@ -1,12 +1,15 @@
 package net.coderbot.iris.shaderpack.materialmap;
 
 import net.coderbot.iris.Iris;
+import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 
 // This got complicated fast
 
@@ -115,7 +118,7 @@ public final class PropertiesTokenizer {
 
     // Begin reading the special case block
     public static ParsedBlockIdentifier parseBlockIdentifier(String entry) {
-        final StringBuilder blockId = new StringBuilder();
+        final StringBuilder blockIdBuilder = new StringBuilder();
         final Map<String, NbtValue> nbt = new LinkedHashMap<>();
 
         boolean escaped = false;
@@ -134,7 +137,7 @@ public final class PropertiesTokenizer {
 
             // Ignore special characters
             if (escaped) {
-                appendCurrent(inBracket, readingValue, blockId, nbtKey, nbtValue, c);
+                appendCurrent(inBracket, readingValue, blockIdBuilder, nbtKey, nbtValue, c);
                 escaped = false;
                 continue;
             }
@@ -159,7 +162,7 @@ public final class PropertiesTokenizer {
                     inDoubleQuotes = false;
 
                 } else {
-                    appendCurrent(inBracket, readingValue, blockId, nbtKey, nbtValue, c);
+                    appendCurrent(inBracket, readingValue, blockIdBuilder, nbtKey, nbtValue, c);
                 }
                 continue;
             }
@@ -179,7 +182,7 @@ public final class PropertiesTokenizer {
                     valueLiteral = false;
 
                 } else {
-                    blockId.append(c);
+                    blockIdBuilder.append(c);
                 }
 
             } else {
@@ -227,17 +230,118 @@ public final class PropertiesTokenizer {
             flushNbtPair(nbtKey, nbtValue, readingValue, valueLiteral, nbt);
         }
 
+        final String baseEntry = blockIdBuilder.toString().trim();
+        final Map<String, NbtValue> nbtProperties = nbt.isEmpty() ? Collections.emptyMap() : nbt;
+
+        return splitBaseEntry(entry, baseEntry, nbtProperties);
+    }
+
+    /**
+     * Splits the bracket-stripped portion of a block identifier (e.g. {@code minecraft:furnace:lit=true})
+     * into its components.
+     *
+     * Accepted forms:
+     *   stone
+     *   stone:0
+     *   minecraft:stone
+     *   minecraft:stone:0
+     *   minecraft:stone:0,1,2
+     *   minecraft:furnace:lit=true               (blockstate property)
+     *   minecraft:oak_log:axis=y,variant=oak     (multiple blockstate properties)
+     *   flower_pot:1                              (used together with NBT brackets)
+     */
+    private static ParsedBlockIdentifier splitBaseEntry(String entry, String baseEntry, Map<String, NbtValue> nbtProperties) {
+        final Set<Integer> metas = new HashSet<>();
+        final Map<String, String> stateProperties = new LinkedHashMap<>();
+
+        if (baseEntry.isEmpty()) {
+            return new ParsedBlockIdentifier(
+                new NamespacedId("minecraft", baseEntry),
+                Collections.emptySet(),
+                Collections.emptyMap(),
+                nbtProperties
+            );
+        }
+
+        final String[] splitStates = baseEntry.split(":");
+
+        // Trivial: "stone"
+        if (splitStates.length == 1) {
+            return new ParsedBlockIdentifier(
+                new NamespacedId("minecraft", baseEntry),
+                Collections.emptySet(),
+                Collections.emptyMap(),
+                nbtProperties
+            );
+        }
+
+        // Two-segment with no metas/state properties: "minecraft:stone"
+        if (splitStates.length == 2
+                && !StringUtils.isNumeric(splitStates[1].substring(0, 1))
+                && !splitStates[1].contains("=")) {
+            return new ParsedBlockIdentifier(
+                new NamespacedId(splitStates[0], splitStates[1]),
+                Collections.emptySet(),
+                Collections.emptyMap(),
+                nbtProperties
+            );
+        }
+
+        // Complex: metas and/or state properties
+        final NamespacedId id;
+        final int statesStart;
+
+        if (splitStates.length == 2) {
+            // "stone:0" or "stone:lit=true"
+            id = new NamespacedId("minecraft", splitStates[0]);
+            statesStart = 1;
+        } else if (StringUtils.isNumeric(splitStates[1].substring(0, 1)) || splitStates[1].contains("=")) {
+            // "stone:0:something" or "stone:lit=true:something" — unlikely but handle it
+            id = new NamespacedId("minecraft", splitStates[0]);
+            statesStart = 1;
+        } else {
+            // "minecraft:stone:0" or "minecraft:furnace:lit=true"
+            id = new NamespacedId(splitStates[0], splitStates[1]);
+            statesStart = 2;
+        }
+
+        for (int index = statesStart; index < splitStates.length; index++) {
+            final String segment = splitStates[index];
+
+            if (segment.contains("=")) {
+                // Blockstate property segment: key=value[,key=value...]
+                for (String prop : segment.split(",")) {
+                    final int eq = prop.indexOf('=');
+                    if (eq > 0 && eq < prop.length() - 1) {
+                        stateProperties.put(prop.substring(0, eq), prop.substring(eq + 1));
+                    }
+                }
+            } else {
+                // Metadata segment: comma-separated integers
+                for (String metaPart : segment.split(",")) {
+                    try {
+                        metas.add(Integer.parseInt(metaPart));
+                    } catch (NumberFormatException e) {
+                        Iris.logger.warn("Warning: the block ID map entry \"{}\" could not be fully parsed:", entry);
+                        Iris.logger.warn("- Metadata ids must be a comma separated list of one or more integers, but {} is not of that form!", segment);
+                    }
+                }
+            }
+        }
+
         return new ParsedBlockIdentifier(
-            blockId.toString().trim(),
-            nbt.isEmpty() ? Collections.emptyMap() : nbt
+            id,
+            metas.isEmpty() ? Collections.emptySet() : metas,
+            stateProperties.isEmpty() ? Collections.emptyMap() : stateProperties,
+            nbtProperties
         );
     }
 
     private static void appendCurrent(boolean inBracket, boolean readingValue,
-                                      StringBuilder blockId, StringBuilder nbtKey,
+                                      StringBuilder blockIdBuilder, StringBuilder nbtKey,
                                       StringBuilder nbtValue, char c) {
         if (!inBracket) {
-            blockId.append(c);
+            blockIdBuilder.append(c);
 
         } else if (readingValue) {
             nbtValue.append(c);
@@ -272,6 +376,11 @@ public final class PropertiesTokenizer {
     public record NbtValue(String value, boolean literal) {
     }
 
-    public record ParsedBlockIdentifier(String blockId, Map<String, NbtValue> nbtProperties) {
+    public record ParsedBlockIdentifier(
+        NamespacedId id,
+        Set<Integer> metas,
+        Map<String, String> stateProperties,
+        Map<String, NbtValue> nbtProperties
+    ) {
     }
 }

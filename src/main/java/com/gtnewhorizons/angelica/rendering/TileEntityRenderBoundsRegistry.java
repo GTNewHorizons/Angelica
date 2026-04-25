@@ -34,11 +34,13 @@ public final class TileEntityRenderBoundsRegistry {
     }
 
     private static boolean probeAndCache(TileEntity te, Class<? extends TileEntity> clazz) {
-        boolean isInfinite = false;
+        boolean isInfinite;
         try {
             final AxisAlignedBB aabb = te.getRenderBoundingBox();
             isInfinite = isInfiniteExtentsBox(aabb);
-        } catch (Exception ignored) {}
+        } catch (Throwable t) {
+            isInfinite = true;
+        }
 
         synchronized (classRegistry) {
             classRegistry.put(clazz, isInfinite ? INFINITE : FINITE);

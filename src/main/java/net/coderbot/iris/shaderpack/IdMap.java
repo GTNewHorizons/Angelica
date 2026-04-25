@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.EntityFlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.shaderpack.materialmap.PropertiesTokenizer;
@@ -59,9 +60,9 @@ public class IdMap {
 	 */
 	private Int2ObjectMap<List<BlockEntry>> blockPropertiesMap;
 
-    /**
-     * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
-     */
+	/**
+	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
+	 */
 	@Getter
     private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
@@ -96,7 +97,6 @@ public class IdMap {
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
 				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
 				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
-				blockPropertiesMap = LegacyIdMap.convertModernBlockEntries(blockPropertiesMap);
 			});
 		}
 
@@ -109,7 +109,7 @@ public class IdMap {
 		final ParsedIdMap parsedEntities = loadProperties(shaderPath, "entity.properties", shaderPackOptions, resolvedDefines)
 			.map(p -> parseIdMap(p, "entity.", "entity.properties"))
 			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
-		entityIdMap = parsedEntities.simpleMap();
+		entityIdMap = augmentEntityIdMap(parsedEntities.simpleMap());
 		entityNbtEntries = parsedEntities.nbtEntries();
 
 		// TODO: Properly override block render layers
@@ -157,7 +157,7 @@ public class IdMap {
 	private static String readProperties(Path shaderPath, String name) {
 		try {
 			// ID maps should be encoded in ISO_8859_1.
-			return new String(Files.readAllBytes(shaderPath.resolve(name)), StandardCharsets.ISO_8859_1);
+			return Files.readString(shaderPath.resolve(name), StandardCharsets.ISO_8859_1);
 		} catch (NoSuchFileException e) {
 			Iris.logger.debug("An " + name + " file was not found in the current shaderpack");
 
@@ -169,6 +169,26 @@ public class IdMap {
 		}
 	}
 
+	/**
+	 * For modern shader packs: also expose entries under their 1.7.10 entity names
+	 * so runtime lookups match EntityList's registered names directly.
+	 */
+	private static Object2IntMap<NamespacedId> augmentEntityIdMap(Object2IntMap<NamespacedId> idMap) {
+		Object2IntMap<NamespacedId> augmented = new Object2IntOpenHashMap<>(idMap);
+		augmented.defaultReturnValue(-1);
+
+		for (Object2IntMap.Entry<NamespacedId> entry : idMap.object2IntEntrySet()) {
+			NamespacedId id = entry.getKey();
+			if ("minecraft".equals(id.getNamespace())) {
+				String legacyName = EntityFlatteningMap.toLegacy(id.getName());
+				if (legacyName != null) {
+					augmented.putIfAbsent(new NamespacedId(legacyName), entry.getIntValue());
+				}
+			}
+		}
+
+		return Object2IntMaps.unmodifiable(augmented);
+	}
 
     /**
 	 * Parses a space-delimited list of identifiers.
