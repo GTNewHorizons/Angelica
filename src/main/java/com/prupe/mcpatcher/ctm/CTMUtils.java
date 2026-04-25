@@ -233,6 +233,7 @@ public class CTMUtils {
     }
 
     public static void reset() {
+        clearCurrentCompact();
     }
 
     private static boolean checkFace(int face) {
