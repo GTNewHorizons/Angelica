@@ -55,11 +55,13 @@ public abstract class MixinRenderBlocks {
 
     @Inject(method = "renderBlockByRenderType", at = @At("HEAD"))
     private void renderingByTypeEnable(CallbackInfoReturnable<Boolean> ci) {
+        CTMUtils.clearCurrentCompact();
         this.isRenderingByType = true;
     }
 
     @Inject(method = "renderBlockByRenderType", at = @At("TAIL"))
     private void renderingByTypeDisable(CallbackInfoReturnable<Boolean> ci) {
+        CTMUtils.clearCurrentCompact();
         this.isRenderingByType = false;
     }
 
