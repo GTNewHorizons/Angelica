@@ -181,6 +181,19 @@ public class DynamicLights {
     }
 
     /**
+     * Removes all tracked light sources, to call when unloading the client world
+     */
+    public void removeAllLightSources() {
+        this.lightSourcesLock.writeLock().lock();
+
+        this.dynamicLightSources.clear();
+        this.lightSourceCount = 0;
+        rebuildLightSourceArray();
+
+        this.lightSourcesLock.writeLock().unlock();
+    }
+
+    /**
      * Removes light sources if the filter matches.
      *
      * @param filter the removal filter

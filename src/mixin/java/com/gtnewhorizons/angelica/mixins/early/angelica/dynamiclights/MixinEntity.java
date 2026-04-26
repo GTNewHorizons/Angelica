@@ -42,8 +42,6 @@ public abstract class MixinEntity implements IDynamicLightSource {
     @Unique
     private int angelica$lastLuminance = 0;
     @Unique
-    private static long angelica$lastUpdate = 0;
-    @Unique
     private double angelica$prevX;
     @Unique
     private double angelica$prevY;
@@ -53,7 +51,6 @@ public abstract class MixinEntity implements IDynamicLightSource {
     private LongOpenHashSet angelica$trackedLitChunkPos = null;
     @Unique
     private LongOpenHashSet angelica$prevTrackedLitChunkPos = null;
-
 
     @Override
     public double angelica$getDynamicLightX() {
