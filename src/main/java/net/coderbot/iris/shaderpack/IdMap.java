@@ -170,7 +170,7 @@ public class IdMap {
 	}
 
 	/**
-	 * For modern shader packs: also expose entries under their 1.7.10 entity names
+	 * For modern shaderpacks: also expose entries under their 1.7.10 entity names
 	 * so runtime lookups match EntityList's registered names directly.
 	 *
 	 * Modern names whose 1.7.10 counterpart is NBT-discriminated (e.g. wither_skeleton

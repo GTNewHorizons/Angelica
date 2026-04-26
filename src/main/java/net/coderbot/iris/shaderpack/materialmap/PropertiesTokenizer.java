@@ -14,7 +14,7 @@ import java.util.Set;
 // This got complicated fast
 
 /**
- * This class handles all processing
+ * This class handles all processing of individual block entries per material ID line.
  */
 public final class PropertiesTokenizer {
 
@@ -241,14 +241,14 @@ public final class PropertiesTokenizer {
      * into its components.
      *
      * Accepted forms:
-     *   stone
-     *   stone:0
-     *   minecraft:stone
-     *   minecraft:stone:0
-     *   minecraft:stone:0,1,2
-     *   minecraft:furnace:lit=true               (blockstate property)
-     *   minecraft:oak_log:axis=y,x:variant=oak     (multiple blockstate properties)
-     *   flower_pot:1[Item=minecraft:red_flower,Data=0]  (used together with NBT brackets)
+     *   stone                                                  (vanilla block)
+     *   stone:0                                                (vanilla block with meta)
+     *   minecraft:stone                                        (block with namespaced id specified)
+     *   minecraft:stone:0                                      (single meta)
+     *   minecraft:stone:0,1,2                                  (multiple metas)
+     *   minecraft:furnace:lit=true                             (blockstate property)
+     *   minecraft:oak_log:axis=y,x:variant=oak                 (multiple blockstate properties)
+     *   flower_pot:1[Item=minecraft:red_flower,Data=0]         (used together with NBT brackets)
      */
     private static ParsedBlockIdentifier splitBaseEntry(String entry, String baseEntry, Map<String, NbtValue> nbtProperties) {
         final Set<Integer> metas = new HashSet<>();
@@ -265,7 +265,7 @@ public final class PropertiesTokenizer {
 
         final String[] splitStates = baseEntry.split(":");
 
-        // Trivial: "stone"
+        // Vanilla block (minecraft namespaced)
         if (splitStates.length == 1) {
             return new ParsedBlockIdentifier(
                 new NamespacedId("minecraft", baseEntry),
@@ -297,7 +297,7 @@ public final class PropertiesTokenizer {
             statesStart = 1;
 
         } else if (StringUtils.isNumeric(splitStates[1].substring(0, 1)) || splitStates[1].contains("=")) {
-            // "stone:0:something" or "stone:lit=true:something" — unlikely but handle it
+            // "stone:0:something" or "stone:lit=true:something", likely will need this for snowy blocks in the future.
             id = new NamespacedId("minecraft", splitStates[0]);
             statesStart = 1;
 
@@ -319,7 +319,7 @@ public final class PropertiesTokenizer {
                     }
                 }
             } else {
-                // Metadata segment: comma-separated integers
+                // Metadata segment (stone:[1,2,3,4,5])
                 for (String metaPart : segment.split(",")) {
                     try {
                         metas.add(Integer.parseInt(metaPart));
