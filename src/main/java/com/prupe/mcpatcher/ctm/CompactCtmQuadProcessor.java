@@ -75,15 +75,8 @@ public final class CompactCtmQuadProcessor {
     private static final int[] QUAD_A = {LEFT, UP, RIGHT, DOWN};
     private static final int[] QUAD_B = {UP, RIGHT, DOWN, LEFT};
     private static final int[] QUAD_DIAG = {UP_LEFT, UP_RIGHT, DOWN_RIGHT, DOWN_LEFT};
-    private static final int CORNER_TOP_LEFT = 0;
-    private static final int CORNER_TOP_RIGHT = 1;
-    private static final int CORNER_BOTTOM_LEFT = 2;
-    private static final int CORNER_BOTTOM_RIGHT = 3;
-    private static final int CORNER_COUNT = 4;
-    private static final int CHANNEL_RED = 0;
-    private static final int CHANNEL_GREEN = 1;
-    private static final int CHANNEL_BLUE = 2;
-    private static final int CHANNEL_COUNT = 3;
+
+    /** Maps split-face quadrant (0=TL,1=TR,2=BR,3=BL face-local) to RenderBlocks per-face TL/TR/BR/BL orientation. */
     private static final int[][] RENDER_FACE_QUADRANT_MAP = {
         {3, 2, 1, 0}, // Y-
         {2, 3, 0, 1}, // Y+
@@ -92,8 +85,8 @@ public final class CompactCtmQuadProcessor {
         {3, 0, 1, 2}, // X-
         {1, 2, 3, 0}  // X+
     };
-    private static final double[] QUADRANT_MIN_U = {0.0D, 0.5D, 0.5D, 0.0D};
-    private static final double[] QUADRANT_MIN_V = {0.0D, 0.0D, 0.5D, 0.5D};
+    private static final float[] QUADRANT_MIN_U = {0.0f, 0.5f, 0.5f, 0.0f};
+    private static final float[] QUADRANT_MIN_V = {0.0f, 0.0f, 0.5f, 0.5f};
 
     private final IIcon[] sprites;
     private final CompactConnectingCtmProperties props;
@@ -167,31 +160,105 @@ public final class CompactCtmQuadProcessor {
     }
 
     private void renderSplitFace(RenderBlocks rb, IBlockAccess world, int x, int y, int z, int face, int connections) {
-        Block block = world.getBlock(x, y, z);
-        LightingState lighting = LightingState.capture(rb);
+        final Block block = world.getBlock(x, y, z);
 
-        double minX = rb.renderMinX;
-        double minY = rb.renderMinY;
-        double minZ = rb.renderMinZ;
-        double maxX = rb.renderMaxX;
-        double maxY = rb.renderMaxY;
-        double maxZ = rb.renderMaxZ;
+        final double minX = rb.renderMinX, minY = rb.renderMinY, minZ = rb.renderMinZ;
+        final double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
+
+        // Without AO the corner color/brightness fields are unused; skip the lighting dance.
+        final boolean ao = rb.enableAO;
+
+        final float rTL, rTR, rBL, rBR, gTL, gTR, gBL, gBR, bTL, bTR, bBL, bBR;
+        final int brTL, brTR, brBL, brBR;
+        if (ao) {
+            rTL = rb.colorRedTopLeft;       rTR = rb.colorRedTopRight;
+            rBL = rb.colorRedBottomLeft;    rBR = rb.colorRedBottomRight;
+            gTL = rb.colorGreenTopLeft;     gTR = rb.colorGreenTopRight;
+            gBL = rb.colorGreenBottomLeft;  gBR = rb.colorGreenBottomRight;
+            bTL = rb.colorBlueTopLeft;      bTR = rb.colorBlueTopRight;
+            bBL = rb.colorBlueBottomLeft;   bBR = rb.colorBlueBottomRight;
+            brTL = rb.brightnessTopLeft;    brTR = rb.brightnessTopRight;
+            brBL = rb.brightnessBottomLeft; brBR = rb.brightnessBottomRight;
+        } else {
+            rTL = rTR = rBL = rBR = 0f;
+            gTL = gTR = gBL = gBR = 0f;
+            bTL = bTR = bBL = bBR = 0f;
+            brTL = brTR = brBL = brBR = 0;
+        }
 
         for (int q = 0; q < 4; q++) {
-            IIcon icon = sprites[getQuadrantSprite(q, connections)];
+            final IIcon icon = sprites[getQuadrantSprite(q, connections)];
             if (icon == null) {
                 continue;
             }
 
-            lighting.applyQuadrant(rb, face, q);
+            if (ao) {
+                applyQuadrantLighting(rb, face, q, rTL, rTR, rBL, rBR, gTL, gTR, gBL, gBR, bTL, bTR, bBL, bBR, brTL, brTR, brBL, brBR);
+            }
             setQuadrantBounds(rb, face, q, minX, minY, minZ, maxX, maxY, maxZ);
             rb.overrideBlockTexture = icon;
             renderFace(rb, block, x, y, z, face, icon);
         }
 
-        lighting.restore(rb);
+        if (ao) {
+            rb.colorRedTopLeft = rTL;       rb.colorRedTopRight = rTR;
+            rb.colorRedBottomLeft = rBL;    rb.colorRedBottomRight = rBR;
+            rb.colorGreenTopLeft = gTL;     rb.colorGreenTopRight = gTR;
+            rb.colorGreenBottomLeft = gBL;  rb.colorGreenBottomRight = gBR;
+            rb.colorBlueTopLeft = bTL;      rb.colorBlueTopRight = bTR;
+            rb.colorBlueBottomLeft = bBL;   rb.colorBlueBottomRight = bBR;
+            rb.brightnessTopLeft = brTL;    rb.brightnessTopRight = brTR;
+            rb.brightnessBottomLeft = brBL; rb.brightnessBottomRight = brBR;
+        }
         rb.overrideBlockTexture = null;
         rb.setRenderBounds(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    private static void applyQuadrantLighting(RenderBlocks rb, int face, int quadrant, float rTL, float rTR, float rBL, float rBR, float gTL, float gTR, float gBL, float gBR, float bTL, float bTR, float bBL, float bBR, int brTL, int brTR, int brBL, int brBR) {
+        final int rq = RENDER_FACE_QUADRANT_MAP[face][quadrant];
+        final float u0 = QUADRANT_MIN_U[rq], u1 = u0 + 0.5f;
+        final float v0 = QUADRANT_MIN_V[rq], v1 = v0 + 0.5f;
+
+        rb.colorRedTopLeft      = bilerp(rTL, rTR, rBL, rBR, u0, v0);
+        rb.colorRedTopRight     = bilerp(rTL, rTR, rBL, rBR, u1, v0);
+        rb.colorRedBottomLeft   = bilerp(rTL, rTR, rBL, rBR, u0, v1);
+        rb.colorRedBottomRight  = bilerp(rTL, rTR, rBL, rBR, u1, v1);
+
+        rb.colorGreenTopLeft     = bilerp(gTL, gTR, gBL, gBR, u0, v0);
+        rb.colorGreenTopRight    = bilerp(gTL, gTR, gBL, gBR, u1, v0);
+        rb.colorGreenBottomLeft  = bilerp(gTL, gTR, gBL, gBR, u0, v1);
+        rb.colorGreenBottomRight = bilerp(gTL, gTR, gBL, gBR, u1, v1);
+
+        rb.colorBlueTopLeft      = bilerp(bTL, bTR, bBL, bBR, u0, v0);
+        rb.colorBlueTopRight     = bilerp(bTL, bTR, bBL, bBR, u1, v0);
+        rb.colorBlueBottomLeft   = bilerp(bTL, bTR, bBL, bBR, u0, v1);
+        rb.colorBlueBottomRight  = bilerp(bTL, bTR, bBL, bBR, u1, v1);
+
+        rb.brightnessTopLeft     = bilerpLight(brTL, brTR, brBL, brBR, u0, v0);
+        rb.brightnessTopRight    = bilerpLight(brTL, brTR, brBL, brBR, u1, v0);
+        rb.brightnessBottomLeft  = bilerpLight(brTL, brTR, brBL, brBR, u0, v1);
+        rb.brightnessBottomRight = bilerpLight(brTL, brTR, brBL, brBR, u1, v1);
+    }
+
+    private static float bilerp(float c00, float c10, float c01, float c11, float u, float v) {
+        final float top = c00 + (c10 - c00) * u;
+        final float bot = c01 + (c11 - c01) * u;
+        return top + (bot - top) * v;
+    }
+
+    /** Brightness packs sky in upper 16 bits, block in lower; bilerp each independently then repack. */
+    private static int bilerpLight(int c00, int c10, int c01, int c11, float u, float v) {
+        final int b00 = c00 & 0xFFFF, b10 = c10 & 0xFFFF, b01 = c01 & 0xFFFF, b11 = c11 & 0xFFFF;
+        final int s00 = c00 >>> 16,   s10 = c10 >>> 16,   s01 = c01 >>> 16,   s11 = c11 >>> 16;
+
+        final float bTop = b00 + (b10 - b00) * u;
+        final float bBot = b01 + (b11 - b01) * u;
+        final float sTop = s00 + (s10 - s00) * u;
+        final float sBot = s01 + (s11 - s01) * u;
+
+        final int block = Math.round(bTop + (bBot - bTop) * v);
+        final int sky   = Math.round(sTop + (sBot - sTop) * v);
+        return (sky << 16) | (block & 0xFFFF);
     }
 
     private void renderWholeFace(RenderBlocks rb, IBlockAccess world, int x, int y, int z, int face, IIcon icon) {
@@ -301,162 +368,6 @@ public final class CompactCtmQuadProcessor {
 
     @Desugar
     private record FaceBasis(int rightX, int rightY, int rightZ, int downX, int downY, int downZ) { }
-
-    private static final class LightingState {
-        private final float[][] colors = new float[CHANNEL_COUNT][CORNER_COUNT];
-        private final int[] brightness = new int[CORNER_COUNT];
-
-        private LightingState(RenderBlocks rb) {
-            captureColorChannel(rb, CHANNEL_RED, colors[CHANNEL_RED]);
-            captureColorChannel(rb, CHANNEL_GREEN, colors[CHANNEL_GREEN]);
-            captureColorChannel(rb, CHANNEL_BLUE, colors[CHANNEL_BLUE]);
-            captureBrightness(rb, brightness);
-        }
-
-        static LightingState capture(RenderBlocks rb) {
-            return new LightingState(rb);
-        }
-
-        void applyQuadrant(RenderBlocks rb, int face, int quadrant) {
-            int renderQuadrant = RENDER_FACE_QUADRANT_MAP[face][quadrant];
-            double u0 = QUADRANT_MIN_U[renderQuadrant];
-            double u1 = u0 + 0.5D;
-            double v0 = QUADRANT_MIN_V[renderQuadrant];
-            double v1 = v0 + 0.5D;
-
-            applySampledColorChannel(rb, CHANNEL_RED, colors[CHANNEL_RED], u0, u1, v0, v1);
-            applySampledColorChannel(rb, CHANNEL_GREEN, colors[CHANNEL_GREEN], u0, u1, v0, v1);
-            applySampledColorChannel(rb, CHANNEL_BLUE, colors[CHANNEL_BLUE], u0, u1, v0, v1);
-            applySampledBrightness(rb, brightness, u0, u1, v0, v1);
-        }
-
-        void restore(RenderBlocks rb) {
-            restoreColorChannel(rb, CHANNEL_RED, colors[CHANNEL_RED]);
-            restoreColorChannel(rb, CHANNEL_GREEN, colors[CHANNEL_GREEN]);
-            restoreColorChannel(rb, CHANNEL_BLUE, colors[CHANNEL_BLUE]);
-            restoreBrightness(rb, brightness);
-        }
-
-        private static void captureColorChannel(RenderBlocks rb, int channel, float[] target) {
-            switch (channel) {
-                case CHANNEL_RED -> {
-                    target[CORNER_TOP_LEFT] = rb.colorRedTopLeft;
-                    target[CORNER_TOP_RIGHT] = rb.colorRedTopRight;
-                    target[CORNER_BOTTOM_LEFT] = rb.colorRedBottomLeft;
-                    target[CORNER_BOTTOM_RIGHT] = rb.colorRedBottomRight;
-                }
-                case CHANNEL_GREEN -> {
-                    target[CORNER_TOP_LEFT] = rb.colorGreenTopLeft;
-                    target[CORNER_TOP_RIGHT] = rb.colorGreenTopRight;
-                    target[CORNER_BOTTOM_LEFT] = rb.colorGreenBottomLeft;
-                    target[CORNER_BOTTOM_RIGHT] = rb.colorGreenBottomRight;
-                }
-                case CHANNEL_BLUE -> {
-                    target[CORNER_TOP_LEFT] = rb.colorBlueTopLeft;
-                    target[CORNER_TOP_RIGHT] = rb.colorBlueTopRight;
-                    target[CORNER_BOTTOM_LEFT] = rb.colorBlueBottomLeft;
-                    target[CORNER_BOTTOM_RIGHT] = rb.colorBlueBottomRight;
-                }
-                default -> throw new IllegalArgumentException("Unknown color channel: " + channel);
-            }
-        }
-
-        private static void applySampledColorChannel(RenderBlocks rb, int channel, float[] corners, double u0, double u1,
-            double v0, double v1) {
-            float topLeft = sampleColor(corners, u0, v0);
-            float topRight = sampleColor(corners, u1, v0);
-            float bottomLeft = sampleColor(corners, u0, v1);
-            float bottomRight = sampleColor(corners, u1, v1);
-
-            switch (channel) {
-                case CHANNEL_RED -> {
-                    rb.colorRedTopLeft = topLeft;
-                    rb.colorRedTopRight = topRight;
-                    rb.colorRedBottomLeft = bottomLeft;
-                    rb.colorRedBottomRight = bottomRight;
-                }
-                case CHANNEL_GREEN -> {
-                    rb.colorGreenTopLeft = topLeft;
-                    rb.colorGreenTopRight = topRight;
-                    rb.colorGreenBottomLeft = bottomLeft;
-                    rb.colorGreenBottomRight = bottomRight;
-                }
-                case CHANNEL_BLUE -> {
-                    rb.colorBlueTopLeft = topLeft;
-                    rb.colorBlueTopRight = topRight;
-                    rb.colorBlueBottomLeft = bottomLeft;
-                    rb.colorBlueBottomRight = bottomRight;
-                }
-                default -> throw new IllegalArgumentException("Unknown color channel: " + channel);
-            }
-        }
-
-        private static void restoreColorChannel(RenderBlocks rb, int channel, float[] source) {
-            switch (channel) {
-                case CHANNEL_RED -> {
-                    rb.colorRedTopLeft = source[CORNER_TOP_LEFT];
-                    rb.colorRedTopRight = source[CORNER_TOP_RIGHT];
-                    rb.colorRedBottomLeft = source[CORNER_BOTTOM_LEFT];
-                    rb.colorRedBottomRight = source[CORNER_BOTTOM_RIGHT];
-                }
-                case CHANNEL_GREEN -> {
-                    rb.colorGreenTopLeft = source[CORNER_TOP_LEFT];
-                    rb.colorGreenTopRight = source[CORNER_TOP_RIGHT];
-                    rb.colorGreenBottomLeft = source[CORNER_BOTTOM_LEFT];
-                    rb.colorGreenBottomRight = source[CORNER_BOTTOM_RIGHT];
-                }
-                case CHANNEL_BLUE -> {
-                    rb.colorBlueTopLeft = source[CORNER_TOP_LEFT];
-                    rb.colorBlueTopRight = source[CORNER_TOP_RIGHT];
-                    rb.colorBlueBottomLeft = source[CORNER_BOTTOM_LEFT];
-                    rb.colorBlueBottomRight = source[CORNER_BOTTOM_RIGHT];
-                }
-                default -> throw new IllegalArgumentException("Unknown color channel: " + channel);
-            }
-        }
-
-        private static void captureBrightness(RenderBlocks rb, int[] target) {
-            target[CORNER_TOP_LEFT] = rb.brightnessTopLeft;
-            target[CORNER_TOP_RIGHT] = rb.brightnessTopRight;
-            target[CORNER_BOTTOM_LEFT] = rb.brightnessBottomLeft;
-            target[CORNER_BOTTOM_RIGHT] = rb.brightnessBottomRight;
-        }
-
-        private static void applySampledBrightness(RenderBlocks rb, int[] corners, double u0, double u1, double v0, double v1) {
-            rb.brightnessTopLeft = sampleBrightness(corners, u0, v0);
-            rb.brightnessTopRight = sampleBrightness(corners, u1, v0);
-            rb.brightnessBottomLeft = sampleBrightness(corners, u0, v1);
-            rb.brightnessBottomRight = sampleBrightness(corners, u1, v1);
-        }
-
-        private static void restoreBrightness(RenderBlocks rb, int[] source) {
-            rb.brightnessTopLeft = source[CORNER_TOP_LEFT];
-            rb.brightnessTopRight = source[CORNER_TOP_RIGHT];
-            rb.brightnessBottomLeft = source[CORNER_BOTTOM_LEFT];
-            rb.brightnessBottomRight = source[CORNER_BOTTOM_RIGHT];
-        }
-
-        private static float sampleColor(float[] corners, double u, double v) {
-            double top = interpolate(corners[CORNER_TOP_LEFT], corners[CORNER_TOP_RIGHT], u);
-            double bottom = interpolate(corners[CORNER_BOTTOM_LEFT], corners[CORNER_BOTTOM_RIGHT], u);
-            return (float) interpolate(top, bottom, v);
-        }
-
-        private static int sampleBrightness(int[] corners, double u, double v) {
-            int blockTop = (int) Math.round(interpolate(corners[CORNER_TOP_LEFT] & 0xFFFF, corners[CORNER_TOP_RIGHT] & 0xFFFF, u));
-            int blockBottom = (int) Math.round(interpolate(corners[CORNER_BOTTOM_LEFT] & 0xFFFF, corners[CORNER_BOTTOM_RIGHT] & 0xFFFF, u));
-            int skyTop = (int) Math.round(interpolate((corners[CORNER_TOP_LEFT] >>> 16) & 0xFFFF, (corners[CORNER_TOP_RIGHT] >>> 16) & 0xFFFF, u));
-            int skyBottom = (int) Math.round(interpolate((corners[CORNER_BOTTOM_LEFT] >>> 16) & 0xFFFF, (corners[CORNER_BOTTOM_RIGHT] >>> 16) & 0xFFFF, u));
-
-            int block = (int) Math.round(interpolate(blockTop, blockBottom, v));
-            int sky = (int) Math.round(interpolate(skyTop, skyBottom, v));
-            return (sky << 16) | (block & 0xFFFF);
-        }
-
-        private static double interpolate(double a, double b, double t) {
-            return a + (b - a) * t;
-        }
-    }
 
     private static final class CtmConnectionHelper {
 
