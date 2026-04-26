@@ -4,7 +4,10 @@ import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSets;
 import lombok.Getter;
+import lombok.Setter;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -19,12 +22,21 @@ public class BlockRenderingSettings {
     private boolean reloadRequired;
 	private Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
 	private Map<Block, BlockRenderLayer> blockTypeIds;
-	private Object2IntFunction<NamespacedId> entityIds;
-	private Object2IntFunction<NamespacedId> itemIds;
-	private float ambientOcclusionLevel;
+    // note: no reload needed, entities are rebuilt every frame.
+    @Setter
+    private Object2IntFunction<NamespacedId> entityIds;
+    // note: no reload needed, items are rendered every frame.
+    @Setter
+    private Object2IntFunction<NamespacedId> itemIds;
+	@Getter
+    private float ambientOcclusionLevel;
 	private boolean disableDirectionalShading;
 	private boolean useSeparateAo;
 	private boolean useExtendedVertexFormat;
+	@Setter
+    private boolean hasSnowyEntries;
+	@Getter
+    private ReferenceSet<Block> snowyBlocks = ReferenceSets.emptySet();
 
 	public BlockRenderingSettings() {
 		reloadRequired = false;
@@ -34,6 +46,7 @@ public class BlockRenderingSettings {
 		disableDirectionalShading = false;
 		useSeparateAo = false;
 		useExtendedVertexFormat = false;
+		hasSnowyEntries = false;
 	}
 
     public void clearReloadRequired() {
@@ -74,6 +87,14 @@ public class BlockRenderingSettings {
 		this.blockMetaMatches = blockMetaIds;
 	}
 
+	public boolean hasSnowyEntries() {
+		return hasSnowyEntries;
+	}
+
+    public void setSnowyBlocks(ReferenceSet<Block> snowyBlocks) {
+		this.snowyBlocks = snowyBlocks != null ? snowyBlocks : ReferenceSets.emptySet();
+	}
+
 	public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
 		if (this.blockTypeIds != null && this.blockTypeIds.equals(blockTypeIds)) {
 			return;
@@ -83,21 +104,7 @@ public class BlockRenderingSettings {
 		this.blockTypeIds = blockTypeIds;
 	}
 
-	public void setEntityIds(Object2IntFunction<NamespacedId> entityIds) {
-		// note: no reload needed, entities are rebuilt every frame.
-		this.entityIds = entityIds;
-	}
-
-	public void setItemIds(Object2IntFunction<NamespacedId> itemIds) {
-		// note: no reload needed, items are rendered every frame.
-		this.itemIds = itemIds;
-	}
-
-	public float getAmbientOcclusionLevel() {
-		return ambientOcclusionLevel;
-	}
-
-	public void setAmbientOcclusionLevel(float ambientOcclusionLevel) {
+    public void setAmbientOcclusionLevel(float ambientOcclusionLevel) {
 		if (ambientOcclusionLevel == this.ambientOcclusionLevel) {
 			return;
 		}

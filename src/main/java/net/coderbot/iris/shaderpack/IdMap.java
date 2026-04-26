@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.regex.Pattern;
 
 /**
  * A utility class for parsing entries in item.properties, block.properties, and entities.properties files in shaderpacks
@@ -61,14 +62,24 @@ public class IdMap {
 	@Getter
     private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
 
+	/** True when block.properties contained a preprocessor directive guarding a 1.7.10-specific section. */
+	private final boolean hasLegacySection;
+
+	public boolean hasLegacySection() {
+		return hasLegacySection;
+	}
+
+	private static final Pattern LEGACY_DIRECTIVE_PATTERN = Pattern.compile(
+		"(?m)^\\s*#\\s*(?:if|elif|ifdef|ifndef)\\b[^\\n]*\\bMC_VERSION\\b[^\\n]*\\b10710\\b");
+
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
 		// Check if block.properties has a dedicated 1.7.10 section
 		String rawBlockProperties = readProperties(shaderPath, "block.properties");
-		boolean hasLegacySection = rawBlockProperties != null
-			&& rawBlockProperties.contains("MC_VERSION") && rawBlockProperties.contains("10710");
+		this.hasLegacySection = rawBlockProperties != null
+			&& LEGACY_DIRECTIVE_PATTERN.matcher(rawBlockProperties).find();
 
 		Iterable<StringPair> resolvedDefines;
-		if (hasLegacySection) {
+		if (this.hasLegacySection) {
 			// Pack has a 1.7.10 section
 			resolvedDefines = environmentDefines;
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
