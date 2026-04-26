@@ -76,6 +76,18 @@ public final class CompactCtmQuadProcessor {
     private static final int[] QUAD_B = {UP, RIGHT, DOWN, LEFT};
     private static final int[] QUAD_DIAG = {UP_LEFT, UP_RIGHT, DOWN_RIGHT, DOWN_LEFT};
 
+    /** Maps split-face quadrant (0=TL,1=TR,2=BR,3=BL face-local) to RenderBlocks per-face TL/TR/BR/BL orientation. */
+    private static final int[][] RENDER_FACE_QUADRANT_MAP = {
+        {3, 2, 1, 0}, // Y-
+        {2, 3, 0, 1}, // Y+
+        {3, 0, 1, 2}, // Z-
+        {0, 1, 2, 3}, // Z+
+        {3, 0, 1, 2}, // X-
+        {1, 2, 3, 0}  // X+
+    };
+    private static final float[] QUADRANT_MIN_U = {0.0f, 0.5f, 0.5f, 0.0f};
+    private static final float[] QUADRANT_MIN_V = {0.0f, 0.0f, 0.5f, 0.5f};
+
     private final IIcon[] sprites;
     private final CompactConnectingCtmProperties props;
 
@@ -148,28 +160,105 @@ public final class CompactCtmQuadProcessor {
     }
 
     private void renderSplitFace(RenderBlocks rb, IBlockAccess world, int x, int y, int z, int face, int connections) {
-        Block block = world.getBlock(x, y, z);
+        final Block block = world.getBlock(x, y, z);
 
-        double minX = rb.renderMinX;
-        double minY = rb.renderMinY;
-        double minZ = rb.renderMinZ;
-        double maxX = rb.renderMaxX;
-        double maxY = rb.renderMaxY;
-        double maxZ = rb.renderMaxZ;
+        final double minX = rb.renderMinX, minY = rb.renderMinY, minZ = rb.renderMinZ;
+        final double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
+
+        // Without AO the corner color/brightness fields are unused; skip the lighting dance.
+        final boolean ao = rb.enableAO;
+
+        final float rTL, rTR, rBL, rBR, gTL, gTR, gBL, gBR, bTL, bTR, bBL, bBR;
+        final int brTL, brTR, brBL, brBR;
+        if (ao) {
+            rTL = rb.colorRedTopLeft;       rTR = rb.colorRedTopRight;
+            rBL = rb.colorRedBottomLeft;    rBR = rb.colorRedBottomRight;
+            gTL = rb.colorGreenTopLeft;     gTR = rb.colorGreenTopRight;
+            gBL = rb.colorGreenBottomLeft;  gBR = rb.colorGreenBottomRight;
+            bTL = rb.colorBlueTopLeft;      bTR = rb.colorBlueTopRight;
+            bBL = rb.colorBlueBottomLeft;   bBR = rb.colorBlueBottomRight;
+            brTL = rb.brightnessTopLeft;    brTR = rb.brightnessTopRight;
+            brBL = rb.brightnessBottomLeft; brBR = rb.brightnessBottomRight;
+        } else {
+            rTL = rTR = rBL = rBR = 0f;
+            gTL = gTR = gBL = gBR = 0f;
+            bTL = bTR = bBL = bBR = 0f;
+            brTL = brTR = brBL = brBR = 0;
+        }
 
         for (int q = 0; q < 4; q++) {
-            IIcon icon = sprites[getQuadrantSprite(q, connections)];
+            final IIcon icon = sprites[getQuadrantSprite(q, connections)];
             if (icon == null) {
                 continue;
             }
 
+            if (ao) {
+                applyQuadrantLighting(rb, face, q, rTL, rTR, rBL, rBR, gTL, gTR, gBL, gBR, bTL, bTR, bBL, bBR, brTL, brTR, brBL, brBR);
+            }
             setQuadrantBounds(rb, face, q, minX, minY, minZ, maxX, maxY, maxZ);
             rb.overrideBlockTexture = icon;
             renderFace(rb, block, x, y, z, face, icon);
         }
 
+        if (ao) {
+            rb.colorRedTopLeft = rTL;       rb.colorRedTopRight = rTR;
+            rb.colorRedBottomLeft = rBL;    rb.colorRedBottomRight = rBR;
+            rb.colorGreenTopLeft = gTL;     rb.colorGreenTopRight = gTR;
+            rb.colorGreenBottomLeft = gBL;  rb.colorGreenBottomRight = gBR;
+            rb.colorBlueTopLeft = bTL;      rb.colorBlueTopRight = bTR;
+            rb.colorBlueBottomLeft = bBL;   rb.colorBlueBottomRight = bBR;
+            rb.brightnessTopLeft = brTL;    rb.brightnessTopRight = brTR;
+            rb.brightnessBottomLeft = brBL; rb.brightnessBottomRight = brBR;
+        }
         rb.overrideBlockTexture = null;
         rb.setRenderBounds(minX, minY, minZ, maxX, maxY, maxZ);
+    }
+
+    private static void applyQuadrantLighting(RenderBlocks rb, int face, int quadrant, float rTL, float rTR, float rBL, float rBR, float gTL, float gTR, float gBL, float gBR, float bTL, float bTR, float bBL, float bBR, int brTL, int brTR, int brBL, int brBR) {
+        final int rq = RENDER_FACE_QUADRANT_MAP[face][quadrant];
+        final float u0 = QUADRANT_MIN_U[rq], u1 = u0 + 0.5f;
+        final float v0 = QUADRANT_MIN_V[rq], v1 = v0 + 0.5f;
+
+        rb.colorRedTopLeft      = bilerp(rTL, rTR, rBL, rBR, u0, v0);
+        rb.colorRedTopRight     = bilerp(rTL, rTR, rBL, rBR, u1, v0);
+        rb.colorRedBottomLeft   = bilerp(rTL, rTR, rBL, rBR, u0, v1);
+        rb.colorRedBottomRight  = bilerp(rTL, rTR, rBL, rBR, u1, v1);
+
+        rb.colorGreenTopLeft     = bilerp(gTL, gTR, gBL, gBR, u0, v0);
+        rb.colorGreenTopRight    = bilerp(gTL, gTR, gBL, gBR, u1, v0);
+        rb.colorGreenBottomLeft  = bilerp(gTL, gTR, gBL, gBR, u0, v1);
+        rb.colorGreenBottomRight = bilerp(gTL, gTR, gBL, gBR, u1, v1);
+
+        rb.colorBlueTopLeft      = bilerp(bTL, bTR, bBL, bBR, u0, v0);
+        rb.colorBlueTopRight     = bilerp(bTL, bTR, bBL, bBR, u1, v0);
+        rb.colorBlueBottomLeft   = bilerp(bTL, bTR, bBL, bBR, u0, v1);
+        rb.colorBlueBottomRight  = bilerp(bTL, bTR, bBL, bBR, u1, v1);
+
+        rb.brightnessTopLeft     = bilerpLight(brTL, brTR, brBL, brBR, u0, v0);
+        rb.brightnessTopRight    = bilerpLight(brTL, brTR, brBL, brBR, u1, v0);
+        rb.brightnessBottomLeft  = bilerpLight(brTL, brTR, brBL, brBR, u0, v1);
+        rb.brightnessBottomRight = bilerpLight(brTL, brTR, brBL, brBR, u1, v1);
+    }
+
+    private static float bilerp(float c00, float c10, float c01, float c11, float u, float v) {
+        final float top = c00 + (c10 - c00) * u;
+        final float bot = c01 + (c11 - c01) * u;
+        return top + (bot - top) * v;
+    }
+
+    /** Brightness packs sky in upper 16 bits, block in lower; bilerp each independently then repack. */
+    private static int bilerpLight(int c00, int c10, int c01, int c11, float u, float v) {
+        final int b00 = c00 & 0xFFFF, b10 = c10 & 0xFFFF, b01 = c01 & 0xFFFF, b11 = c11 & 0xFFFF;
+        final int s00 = c00 >>> 16,   s10 = c10 >>> 16,   s01 = c01 >>> 16,   s11 = c11 >>> 16;
+
+        final float bTop = b00 + (b10 - b00) * u;
+        final float bBot = b01 + (b11 - b01) * u;
+        final float sTop = s00 + (s10 - s00) * u;
+        final float sBot = s01 + (s11 - s01) * u;
+
+        final int block = Math.round(bTop + (bBot - bTop) * v);
+        final int sky   = Math.round(sTop + (sBot - sTop) * v);
+        return (sky << 16) | (block & 0xFFFF);
     }
 
     private void renderWholeFace(RenderBlocks rb, IBlockAccess world, int x, int y, int z, int face, IIcon icon) {
