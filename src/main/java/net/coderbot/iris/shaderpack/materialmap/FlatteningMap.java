@@ -158,18 +158,18 @@ public class FlatteningMap {
 		rename("dark_oak_wall_sign",    "wall_sign");
 
 		// === Skull / Head blocks (ID 144) ===
-		// In 1.7.10, skull type is stored in tile entity, not metadata.
-		// All modern skull blocks map to the same 1.7.10 block.
-		rename("skeleton_skull",                "skull");
-		rename("skeleton_wall_skull",           "skull");
-		rename("wither_skeleton_skull",         "skull");
-		rename("wither_skeleton_wall_skull",    "skull");
-		rename("zombie_head",                   "skull");
-		rename("zombie_wall_head",              "skull");
-		rename("player_head",                   "skull");
-		rename("player_wall_head",              "skull");
-		rename("creeper_head",                  "skull");
-		rename("creeper_wall_head",             "skull");
+		// 1.7.10 stores skull type in TileEntitySkull's SkullType byte (0=skeleton,
+		// 1=wither, 2=zombie, 3=player, 4=creeper).
+		MODERN_TO_LEGACY.put("skeleton_skull",             List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("skeleton_wall_skull",        List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("wither_skeleton_skull",      List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("1", false)))));
+		MODERN_TO_LEGACY.put("wither_skeleton_wall_skull", List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("1", false)))));
+		MODERN_TO_LEGACY.put("zombie_head",                List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("2", false)))));
+		MODERN_TO_LEGACY.put("zombie_wall_head",           List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("2", false)))));
+		MODERN_TO_LEGACY.put("player_head",                List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("3", false)))));
+		MODERN_TO_LEGACY.put("player_wall_head",           List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("3", false)))));
+		MODERN_TO_LEGACY.put("creeper_head",               List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("4", false)))));
+		MODERN_TO_LEGACY.put("creeper_wall_head",          List.of(new BlockEntry(new NamespacedId("minecraft", "skull"), Collections.emptySet(), Collections.emptyMap(), Map.of("SkullType", new PropertiesTokenizer.NbtValue("4", false)))));
 
 		// ==========================================
 		// Metadata variants (block split by flattening)
@@ -321,29 +321,29 @@ public class FlatteningMap {
 		meta("mossy_cobblestone_wall", "cobblestone_wall", 1);
 
 		// === Flower pot (ID 140) ===
-		// In 1.7.10, flower pot contents are in the tile entity.
-		// In 1.13+, each potted plant is a separate block.
-		rename("potted_oak_sapling",        "flower_pot");
-		rename("potted_spruce_sapling",     "flower_pot");
-		rename("potted_birch_sapling",      "flower_pot");
-		rename("potted_jungle_sapling",     "flower_pot");
-		rename("potted_acacia_sapling",     "flower_pot");
-		rename("potted_dark_oak_sapling",   "flower_pot");
-		rename("potted_fern",               "flower_pot");
-		rename("potted_dandelion",          "flower_pot");
-		rename("potted_poppy",              "flower_pot");
-		rename("potted_blue_orchid",        "flower_pot");
-		rename("potted_allium",             "flower_pot");
-		rename("potted_azure_bluet",        "flower_pot");
-		rename("potted_red_tulip",          "flower_pot");
-		rename("potted_orange_tulip",       "flower_pot");
-		rename("potted_white_tulip",        "flower_pot");
-		rename("potted_pink_tulip",         "flower_pot");
-		rename("potted_oxeye_daisy",        "flower_pot");
-		rename("potted_red_mushroom",       "flower_pot");
-		rename("potted_brown_mushroom",     "flower_pot");
-		rename("potted_dead_bush",          "flower_pot");
-		rename("potted_cactus",             "flower_pot");
+		// 1.7.10 stores potted contents in TileEntityFlowerPot's NBT. 1.13+ has a separate block
+		// per potted plant.
+		MODERN_TO_LEGACY.put("potted_oak_sapling",      List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:sapling", false),        "Data", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("potted_spruce_sapling",   List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:sapling", false),        "Data", new PropertiesTokenizer.NbtValue("1", false)))));
+		MODERN_TO_LEGACY.put("potted_birch_sapling",    List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:sapling", false),        "Data", new PropertiesTokenizer.NbtValue("2", false)))));
+		MODERN_TO_LEGACY.put("potted_jungle_sapling",   List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:sapling", false),        "Data", new PropertiesTokenizer.NbtValue("3", false)))));
+		MODERN_TO_LEGACY.put("potted_acacia_sapling",   List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:sapling", false),        "Data", new PropertiesTokenizer.NbtValue("4", false)))));
+		MODERN_TO_LEGACY.put("potted_dark_oak_sapling", List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:sapling", false),        "Data", new PropertiesTokenizer.NbtValue("5", false)))));
+		MODERN_TO_LEGACY.put("potted_fern",             List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:tallgrass", false),      "Data", new PropertiesTokenizer.NbtValue("2", false)))));
+		MODERN_TO_LEGACY.put("potted_dandelion",        List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:yellow_flower", false),  "Data", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("potted_poppy",            List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("potted_blue_orchid",      List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("1", false)))));
+		MODERN_TO_LEGACY.put("potted_allium",           List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("2", false)))));
+		MODERN_TO_LEGACY.put("potted_azure_bluet",      List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("3", false)))));
+		MODERN_TO_LEGACY.put("potted_red_tulip",        List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("4", false)))));
+		MODERN_TO_LEGACY.put("potted_orange_tulip",     List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("5", false)))));
+		MODERN_TO_LEGACY.put("potted_white_tulip",      List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("6", false)))));
+		MODERN_TO_LEGACY.put("potted_pink_tulip",       List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("7", false)))));
+		MODERN_TO_LEGACY.put("potted_oxeye_daisy",      List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_flower", false),     "Data", new PropertiesTokenizer.NbtValue("8", false)))));
+		MODERN_TO_LEGACY.put("potted_red_mushroom",     List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:red_mushroom", false),   "Data", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("potted_brown_mushroom",   List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:brown_mushroom", false), "Data", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("potted_dead_bush",        List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:deadbush", false),       "Data", new PropertiesTokenizer.NbtValue("0", false)))));
+		MODERN_TO_LEGACY.put("potted_cactus",           List.of(new BlockEntry(new NamespacedId("minecraft", "flower_pot"), Collections.emptySet(), Collections.emptyMap(), Map.of("Item", new PropertiesTokenizer.NbtValue("minecraft:cactus", false),         "Data", new PropertiesTokenizer.NbtValue("0", false)))));
 
 		// === Anvil (ID 145) ===
 		// Bits 0-1 = facing, bits 2-3 = damage level

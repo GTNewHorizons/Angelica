@@ -247,8 +247,8 @@ public final class PropertiesTokenizer {
      *   minecraft:stone:0
      *   minecraft:stone:0,1,2
      *   minecraft:furnace:lit=true               (blockstate property)
-     *   minecraft:oak_log:axis=y,variant=oak     (multiple blockstate properties)
-     *   flower_pot:1                              (used together with NBT brackets)
+     *   minecraft:oak_log:axis=y,x:variant=oak     (multiple blockstate properties)
+     *   flower_pot:1[Item=minecraft:red_flower,Data=0]  (used together with NBT brackets)
      */
     private static ParsedBlockIdentifier splitBaseEntry(String entry, String baseEntry, Map<String, NbtValue> nbtProperties) {
         final Set<Integer> metas = new HashSet<>();
@@ -287,7 +287,7 @@ public final class PropertiesTokenizer {
             );
         }
 
-        // Complex: metas and/or state properties
+        // Metas and/or state properties
         final NamespacedId id;
         final int statesStart;
 
@@ -295,10 +295,12 @@ public final class PropertiesTokenizer {
             // "stone:0" or "stone:lit=true"
             id = new NamespacedId("minecraft", splitStates[0]);
             statesStart = 1;
+
         } else if (StringUtils.isNumeric(splitStates[1].substring(0, 1)) || splitStates[1].contains("=")) {
             // "stone:0:something" or "stone:lit=true:something" — unlikely but handle it
             id = new NamespacedId("minecraft", splitStates[0]);
             statesStart = 1;
+
         } else {
             // "minecraft:stone:0" or "minecraft:furnace:lit=true"
             id = new NamespacedId(splitStates[0], splitStates[1]);

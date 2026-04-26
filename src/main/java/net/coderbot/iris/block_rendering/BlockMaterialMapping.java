@@ -36,7 +36,7 @@ public class BlockMaterialMapping {
 				if (entry.hasNbtProperties()) {
 					addTileEntityEntry(entry, tileEntityMap, intId);
 				} else {
-					addBlockMetas(entry, blockMatches, intId);
+					addBlockMetas(entry, blockMatches, tileEntityMap, intId);
 				}
 			}
 		});
@@ -119,7 +119,7 @@ public class BlockMaterialMapping {
 	 * Adds block+metadata combinations to the material ID map.
 	 * Based on Iris's addBlockStates method, adapted for 1.7.10 metadata system.
 	 */
-	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
+	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, NbtConditionalIdMap<Block> tileEntityMap, int intId) {
 		final NamespacedId id = entry.id();
 		final String name = id.getName();
 		final boolean hasStateProps = entry.hasStateProperties();
@@ -129,7 +129,11 @@ public class BlockMaterialMapping {
 			List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(name, entry.stateProperties());
 			if (legacyEntries != null) {
 				for (BlockEntry legacy : legacyEntries) {
-					applyMetas(resolveBlock(legacy.id()), legacy.metas(), idMap, intId);
+					if (legacy.hasNbtProperties()) {
+						addTileEntityEntry(legacy, tileEntityMap, intId);
+					} else {
+						applyMetas(resolveBlock(legacy.id()), legacy.metas(), idMap, intId);
+					}
 				}
 				return;
 			}
