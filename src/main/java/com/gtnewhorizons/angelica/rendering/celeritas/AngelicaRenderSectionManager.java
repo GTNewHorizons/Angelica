@@ -107,6 +107,13 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     protected boolean shouldUseOcclusionCulling(Viewport positionedViewport, boolean spectator) {
+        // Shadow maps must include terrain that blocks sunlight even if it is occluded from the player's eye.
+        // Keeping camera-space occlusion culling enabled here can drop the surface/ceiling sections above caves
+        // and show up as thin "sunlight" lines in underground corners with some shader packs.
+        if (isInShadowPass()) {
+            return false;
+        }
+
         if (spectator) {
             final var camBlockPos = positionedViewport.getBlockCoord();
             if (this.world.getBlock(camBlockPos.x(), camBlockPos.y(), camBlockPos.z()).isOpaqueCube()) {
