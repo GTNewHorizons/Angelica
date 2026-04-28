@@ -40,6 +40,16 @@ public class IrisExclusiveUniforms {
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "eyePosition", IrisExclusiveUniforms::getEyePosition);
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "relativeEyePosition", IrisExclusiveUniforms::getRelativeEyePosition);
 		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", IrisExclusiveUniforms::getLightningBoltPosition);
+		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "cloudTime", IrisExclusiveUniforms::getCloudTime);
+	}
+
+	private static float getCloudTime() {
+		final WorldClient level = Minecraft.getMinecraft().theWorld;
+		if (level == null) return 0f;
+		final long cycle = 256L * 400L;
+		final long t = level.getWorldTime() % cycle;
+		final float partial = Minecraft.getMinecraft().timer.renderPartialTicks;
+		return (t + partial) * 0.03F;
 	}
 
 	private static float getThunderStrength() {

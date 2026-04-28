@@ -23,7 +23,9 @@ public enum ProgramId {
 	TexturedLit(ProgramGroup.Gbuffers, "textured_lit", Textured),
 	SkyBasic(ProgramGroup.Gbuffers, "skybasic", Basic),
 	SkyTextured(ProgramGroup.Gbuffers, "skytextured", Textured),
-	Clouds(ProgramGroup.Gbuffers, "clouds", Textured),
+	// Iris has this as default
+	Clouds(ProgramGroup.Gbuffers, "clouds", Textured, null,
+		new AlphaTestOverride(new AlphaTest(AlphaTestFunction.GREATER, 0.1F))),
 
 	Terrain(ProgramGroup.Gbuffers, "terrain", TexturedLit),
 	TerrainSolid(ProgramGroup.Gbuffers, "terrain_solid", Terrain),

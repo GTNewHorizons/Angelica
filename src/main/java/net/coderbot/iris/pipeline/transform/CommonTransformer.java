@@ -51,14 +51,12 @@ public class CommonTransformer {
                         "bool iris_alphaTestPass(float a) {" +
                             " if (iris_currentAlphaFunc == 7) return true;" +   // ALWAYS / disabled
                             " if (iris_currentAlphaFunc == 0) return false;" +  // NEVER
-                            " float qa = round(a * 255.0);" +
-                            " float qr = round(iris_currentAlphaTest * 255.0);" +
-                            " if (iris_currentAlphaFunc == 1) return qa < qr;" +    // LESS
-                            " if (iris_currentAlphaFunc == 2) return qa == qr;" +   // EQUAL
-                            " if (iris_currentAlphaFunc == 3) return qa <= qr;" +   // LEQUAL
-                            " if (iris_currentAlphaFunc == 4) return qa > qr;" +    // GREATER
-                            " if (iris_currentAlphaFunc == 5) return qa != qr;" +   // NOTEQUAL
-                            " return qa >= qr;" +                                // GEQUAL (6)
+                            " if (iris_currentAlphaFunc == 1) return a < iris_currentAlphaTest;" +    // LESS
+                            " if (iris_currentAlphaFunc == 2) return a == iris_currentAlphaTest;" +   // EQUAL
+                            " if (iris_currentAlphaFunc == 3) return a <= iris_currentAlphaTest;" +   // LEQUAL
+                            " if (iris_currentAlphaFunc == 4) return a > iris_currentAlphaTest;" +    // GREATER
+                            " if (iris_currentAlphaFunc == 5) return a != iris_currentAlphaTest;" +   // NOTEQUAL
+                            " return a >= iris_currentAlphaTest;" +                                // GEQUAL (6)
                             "}"
                     );
                     root.appendMain("if (!iris_alphaTestPass(iris_FragData0.a)) discard;");
