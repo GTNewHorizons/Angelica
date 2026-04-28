@@ -77,6 +77,7 @@ public enum Mixins implements IMixins {
             "angelica.fontrenderer.MixinGuiIngameForge"
             , "angelica.fontrenderer.MixinFontRenderer"
             , "angelica.fontrenderer.MixinMCResourceAccessor"
+            , "angelica.fontrenderer.MixinTileEntitySignRenderer"
         )
     ),
 
