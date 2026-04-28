@@ -297,4 +297,18 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean disableGLVersionPinning;
 
+    public enum GLProfile { AUTO, CORE, ES }
+
+    @Config.Comment("GL context profile: AUTO (probes Core first), CORE (desktop only), ES (GLES 3.2 only). Also settable via -Dangelica.glProfile=auto|core|es.")
+    @Config.DefaultEnum("AUTO")
+    @Config.RequiresMcRestart
+    public static GLProfile glProfile;
+
+    /** System-property override takes precedence over the config file when set. */
+    public static GLProfile getEffectiveGlProfile() {
+        final String sys = System.getProperty("angelica.glProfile", "").trim().toUpperCase();
+        if ("GLES".equals(sys)) return GLProfile.ES;
+        if (sys.isEmpty()) return glProfile;
+        try { return GLProfile.valueOf(sys); } catch (IllegalArgumentException e) { return glProfile; }
+    }
 }

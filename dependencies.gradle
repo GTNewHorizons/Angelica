@@ -63,6 +63,10 @@ configurations {
 // Exclude self-reference from all configurations - prevents transitive Angelica deps from resolving against this project
 configurations.all {
     exclude group: "com.github.GTNewHorizons", module: "Angelica"
+    // Force lwjgl3ify version
+    resolutionStrategy.dependencySubstitution {
+        substitute module("com.github.GTNewHorizons:lwjgl3ify") using module("com.github.GTNewHorizons:lwjgl3ify:3.0.99")
+    }
 }
 
 dependencies {

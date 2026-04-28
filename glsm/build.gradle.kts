@@ -31,7 +31,7 @@ configurations {
 }
 
 // Compile stubs: MC class signatures needed to resolve GTNHLib's type hierarchy.
-// Not included in the published jar — real MC classes are on the classpath at runtime.
+// Not included in the published jar - real MC classes are on the classpath at runtime.
 sourceSets {
     create("stubs") {
         java.srcDir("src/stubs/java")
@@ -65,6 +65,17 @@ repositories {
         url = uri("https://maven.wagyourtail.xyz/releases")
         content { includeGroup("xyz.wagyourtail.jvmdowngrader") }
     }
+    // LWJGL3 snapshots for shaderc / spvc used by SpirvShaderTranslator.
+    maven {
+        name = "Sonatype Snapshots"
+        url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
+    }
+    maven {
+        name = "Maven Central Snapshots"
+        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+    }
+    // LOCAL-DEV PREREQUISITE: mavenLocal() resolves the lwjgl3ify:3.0.99
+    mavenLocal()
     mavenCentral()
 }
 
@@ -86,6 +97,20 @@ dependencies {
     implementation("org.taumc:glsl-transformation-lib:${property("glslTransformLibVersion")}") { exclude(module = "antlr4") }
     implementation("org.antlr:antlr4-runtime:${property("antlr4RuntimeVersion")}")
     implementation("org.anarres:jcpp:${property("jcppVersion")}")
+
+    // shaderc + SPIRV-Cross for the SpirvShaderTranslator (GLSL -> SPIR-V -> GLSL ES).
+    // TODO: Remove
+    compileOnly("org.lwjgl:lwjgl-shaderc:3.4.2-SNAPSHOT")
+    compileOnly("org.lwjgl:lwjgl-spvc:3.4.2-SNAPSHOT")
+    testImplementation("org.lwjgl:lwjgl-shaderc:3.4.2-SNAPSHOT")
+    testImplementation("org.lwjgl:lwjgl-spvc:3.4.2-SNAPSHOT")
+    // Host natives so the JNI wrapper can find libshaderc.so / libspirv-cross.so.
+    testRuntimeOnly("org.lwjgl:lwjgl-shaderc:3.4.2-SNAPSHOT:natives-linux")
+    testRuntimeOnly("org.lwjgl:lwjgl-spvc:3.4.2-SNAPSHOT:natives-linux")
+    testRuntimeOnly("org.lwjgl:lwjgl:3.4.2-SNAPSHOT")
+    testRuntimeOnly("org.lwjgl:lwjgl:3.4.2-SNAPSHOT:natives-linux")
+    // @Lwjgl3Aware annotation
+    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.99:dev") { isTransitive = false }
 
     compileOnly("org.projectlombok:lombok:${property("lombokVersion")}") { isTransitive = false }
     annotationProcessor("org.projectlombok:lombok:${property("lombokVersion")}")
@@ -142,7 +167,13 @@ val downgradeTestClasses by tasks.registering(DowngradeFiles::class) {
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        // Translator tests need LWJGL3 (Java 11+ classes) - run them in spirvTest below on Java 21
+        excludeTags = setOf("lwjgl3")
+    }
+    filter {
+        excludeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
+    }
 
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(8)
@@ -172,6 +203,41 @@ tasks.test {
     dependsOn(extractNatives)
     jvmArgs("-Djava.library.path=${extractNatives.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}")
 }
+
+val spirvTest by tasks.registering(Test::class) {
+    description = "Runs SpirvShaderTranslator* tests against native shaderc + spvc on Java 21."
+    group = "verification"
+    useJUnitPlatform()
+
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath.filter { file ->
+        // Strip the LWJGL2 jars - they collide with LWJGL3's sealed org.lwjgl package.
+        !file.name.startsWith("lwjgl-2.") && !file.name.startsWith("lwjgl_util-") && !file.name.startsWith("lwjgl-platform-")
+    }
+
+    filter {
+        includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
+    }
+
+    // libshaderc.so / libspirv-cross.so are extracted by extractNatives3.
+    val extractNatives3 = rootProject.tasks.named("extractNatives3")
+    dependsOn(extractNatives3)
+    jvmArgs(
+        "-Djava.library.path=${extractNatives3.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}",
+        "--enable-native-access=ALL-UNNAMED"
+    )
+
+    // Stream stdout/stderr so the translator's console dumps show up in the gradle log.
+    testLogging {
+        showStandardStreams = true
+    }
+}
+
+tasks.named("check") { dependsOn(spirvTest) }
 
 publishing {
     publications {

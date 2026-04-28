@@ -64,6 +64,7 @@ import net.coderbot.iris.shaderpack.ProgramDirectives;
 import net.coderbot.iris.shaderpack.ProgramFallbackResolver;
 import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ProgramSource;
+import net.coderbot.iris.shaderpack.loading.ProgramGroup;
 import net.coderbot.iris.shaderpack.loading.ProgramId;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.shadows.ShadowCompositeRenderer;
@@ -1761,6 +1762,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>();
 		final Set<String> processedSourceNames = new HashSet<>();
 		for (ProgramId id : ProgramId.values()) {
+			if (id.getGroup() == ProgramGroup.Dh) continue;
 			ProgramSource source = resolver.resolveNullable(id);
 			if (source != null && !processedSourceNames.contains(source.getName())) {
 				processedSourceNames.add(source.getName());

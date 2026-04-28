@@ -67,7 +67,7 @@ class CompatShaderTransformerTest {
             """;
 
         String result = CompatShaderTransformer.transform(src, false);
-        // texture2D → texture
+        // texture2D -> texture
         assertFalse(result.contains("texture2D"));
         assertTrue(result.contains("texture"));
     }
@@ -261,13 +261,13 @@ class CompatShaderTransformerTest {
 
         String result = CompatShaderTransformer.transform(src, true);
         assertFalse(result.contains("shadow2D("), "shadow2D should be renamed");
-        // shadow2D → texture with vec4 wrapping
+        // shadow2D -> texture with vec4 wrapping
         assertTrue(result.contains("texture"), "shadow2D should be renamed to texture");
     }
 
     @Test
     void testReservedWordTextureAsVariable() {
-        // Shader declares 'texture' as a sampler variable — this is valid in GLSL 120
+        // Shader declares 'texture' as a sampler variable - this is valid in GLSL 120
         // but 'texture' is a reserved word in GLSL 330+, causing parse failures without pre-rename
         String src = """
             #version 120
@@ -277,7 +277,7 @@ class CompatShaderTransformerTest {
             }
             """;
 
-        // Should not throw — the pre-parse replaceTexture handles this
+        // Should not throw - the pre-parse replaceTexture handles this
         String result = CompatShaderTransformer.transform(src, true);
         assertNotNull(result);
         assertTrue(result.contains("#version 330 core"));
@@ -360,7 +360,7 @@ class CompatShaderTransformerTest {
             """;
 
         String result = CompatShaderTransformer.transform(src, false);
-        assertTrue(result.contains("angelica_Color"), "gl_Color → angelica_Color (vertex attribute)");
+        assertTrue(result.contains("angelica_Color"), "gl_Color -> angelica_Color (vertex attribute)");
         assertTrue(result.contains("in vec4 angelica_Color"), "should have in declaration");
         assertTrue(result.contains("location = 1"), "should use attribute location 1");
         assertFalse(result.contains("gl_Color"), "gl_Color should not remain");
@@ -467,8 +467,8 @@ class CompatShaderTransformerTest {
 
     @Test
     void testGlColorVertexVsFragmentDifferentTreatment() {
-        // Vertex: gl_Color = vertex attribute → angelica_Color
-        // Fragment: gl_Color = interpolated gl_FrontColor → angelica_FrontColor
+        // Vertex: gl_Color = vertex attribute -> angelica_Color
+        // Fragment: gl_Color = interpolated gl_FrontColor -> angelica_FrontColor
         String vertSrc = """
             #version 120
             void main() {
@@ -486,14 +486,14 @@ class CompatShaderTransformerTest {
         String vertResult = CompatShaderTransformer.transform(vertSrc, false);
         String fragResult = CompatShaderTransformer.transform(fragSrc, true);
 
-        // Vertex shader: gl_Color → angelica_Color (attribute), gl_FrontColor → angelica_FrontColor (out)
-        assertTrue(vertResult.contains("angelica_Color"), "vertex gl_Color → angelica_Color");
-        assertTrue(vertResult.contains("angelica_FrontColor"), "vertex gl_FrontColor → angelica_FrontColor");
+        // Vertex shader: gl_Color -> angelica_Color (attribute), gl_FrontColor -> angelica_FrontColor (out)
+        assertTrue(vertResult.contains("angelica_Color"), "vertex gl_Color -> angelica_Color");
+        assertTrue(vertResult.contains("angelica_FrontColor"), "vertex gl_FrontColor -> angelica_FrontColor");
         assertFalse(vertResult.contains("gl_Color"), "no gl_Color should remain in vertex");
         assertFalse(vertResult.contains("gl_FrontColor"), "no gl_FrontColor should remain");
 
-        // Fragment shader: gl_Color → angelica_FrontColor (in varying)
-        assertTrue(fragResult.contains("angelica_FrontColor"), "fragment gl_Color → angelica_FrontColor");
+        // Fragment shader: gl_Color -> angelica_FrontColor (in varying)
+        assertTrue(fragResult.contains("angelica_FrontColor"), "fragment gl_Color -> angelica_FrontColor");
         assertFalse(fragResult.contains("gl_Color"), "fragment should NOT have gl_Color");
     }
 
@@ -586,15 +586,37 @@ class CompatShaderTransformerTest {
         String vertResult = CompatShaderTransformer.transform(vertSrc, false);
         String fragResult = CompatShaderTransformer.transform(fragSrc, true);
 
-        // attribute → in, varying → out (vertex)
+        // attribute -> in, varying -> out (vertex)
         assertFalse(vertResult.contains("attribute"), "no 'attribute' keyword in core profile");
         assertFalse(vertResult.contains("varying"), "no 'varying' keyword in vertex");
-        assertTrue(vertResult.contains("in float a_Custom"), "attribute → in");
-        assertTrue(vertResult.contains("out vec2 v_TexCoord"), "varying → out in vertex");
+        assertTrue(vertResult.contains("in float a_Custom"), "attribute -> in");
+        assertTrue(vertResult.contains("out vec2 v_TexCoord"), "varying -> out in vertex");
 
-        // varying → in (fragment)
+        // varying -> in (fragment)
         assertFalse(fragResult.contains("varying"), "no 'varying' keyword in fragment");
-        assertTrue(fragResult.contains("in vec2 v_TexCoord"), "varying → in in fragment");
+        assertTrue(fragResult.contains("in vec2 v_TexCoord"), "varying -> in in fragment");
+    }
+
+    @Test
+    void testPassthroughVertexShader_matchesPrecisionQualifiedFragmentInputs() {
+        final String esFrag = """
+            #version 320 es
+            precision mediump float;
+            precision highp int;
+            in highp vec4 angelica_TexCoord0;
+            in highp vec4 angelica_FrontColor;
+            in highp float angelica_FogFragCoord;
+            layout(location = 0) out highp vec4 angelica_FragData0;
+            void main() {
+                angelica_FragData0 = angelica_FrontColor * angelica_TexCoord0 + vec4(angelica_FogFragCoord);
+            }
+            """;
+
+        final String vs = CompatShaderTransformer.generatePassthroughVertexShader(esFrag);
+        assertNotNull(vs);
+        assertTrue(vs.contains("out vec4 angelica_FrontColor"), "VS must declare angelica_FrontColor output\n" + vs);
+        assertTrue(vs.contains("out vec4 angelica_TexCoord0"), "VS must declare angelica_TexCoord0 output\n" + vs);
+        assertTrue(vs.contains("out float angelica_FogFragCoord"), "VS must declare angelica_FogFragCoord output\n" + vs);
     }
 
     @Test

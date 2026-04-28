@@ -26,6 +26,10 @@ class AttributeTransformer {
 	private static void transformCore(Transformer transformer, AttributeParameters parameters) {
 		CoreTransformHelper.injectMatrixUniforms(transformer);
 
+		aliasIfUsed(transformer, "projectionMatrix", "iris_ProjectionMatrix");
+		aliasIfUsed(transformer, "modelViewMatrix", "iris_ModelViewMatrix");
+		aliasIfUsed(transformer, "normalMatrix", "iris_NormalMatrix");
+
 		if (parameters.type == ShaderType.VERTEX) {
 			transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
 			transformer.injectVariable("layout(location = 1) in vec4 iris_Color;");
@@ -36,6 +40,10 @@ class AttributeTransformer {
 			transformer.rename("gl_Vertex", "iris_Vertex");
 			transformer.rename("gl_Color", "iris_Color");
 			transformer.rename("gl_Normal", "iris_Normal");
+			aliasIfUsed(transformer, "vaNormal", "iris_Normal");
+			if (transformer.containsCall("vaPosition") && !transformer.hasVariable("vaPosition")) {
+				transformer.replaceExpression("vaPosition", "iris_Vertex.xyz");
+			}
 
 			// ftransform() = gl_ModelViewProjectionMatrix * gl_Vertex
 			transformer.renameFunctionCall("ftransform", "iris_ftransform");
@@ -67,4 +75,9 @@ class AttributeTransformer {
 		}
 	}
 
+	private static void aliasIfUsed(Transformer transformer, String modernName, String irisName) {
+		if (transformer.containsCall(modernName) && !transformer.hasVariable(modernName)) {
+			transformer.rename(modernName, irisName);
+		}
+	}
 }

@@ -14,6 +14,7 @@ import net.coderbot.iris.texture.format.TextureFormatLoader;
 import net.coderbot.iris.uniforms.VanillaBiomeList;
 import net.minecraft.world.biome.BiomeGenBase;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -27,13 +28,9 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
-import java.util.regex.Matcher;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class StandardMacros {
-	private static final Pattern SEMVER_PATTERN = Pattern.compile("(?<major>\\d+)\\.(?<minor>\\d+)\\.*(?<bugfix>\\d*)(.*)");
-
 	private static void define(List<StringPair> defines, String key) {
 		defines.add(new StringPair(key, ""));
 	}
@@ -83,7 +80,7 @@ public class StandardMacros {
 			define(standardDefines, "IS_IRIS");
 		}
 
-		if (DHCompat.hasRenderingEnabled()) {
+		if (DHCompat.isPresent()) {
 			define(standardDefines, "DISTANT_HORIZONS");
 		}
 
@@ -170,44 +167,7 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L705-L707">Optifine Doc for GLSL Version</a>
 	 */
 	public static String getGlVersion(int name) {
-		final String info = GLStateManager.glGetString(name);
-
-		Matcher matcher = SEMVER_PATTERN.matcher(Objects.requireNonNull(info));
-
-		if (!matcher.matches()) {
-			throw new IllegalStateException("Could not parse GL version from \"" + info + "\"");
-		}
-
-		String major = group(matcher, "major");
-		String minor = group(matcher, "minor");
-		String bugfix = group(matcher, "bugfix");
-
-		if (bugfix == null) {
-			// if bugfix is not there, it is 0
-			bugfix = "0";
-		}
-
-		if (major == null || minor == null) {
-			throw new IllegalStateException("Could not parse GL version from \"" + info + "\"");
-		}
-
-		return major + minor + bugfix;
-	}
-
-	/**
-	 * Expanded version of {@link Matcher#group(String)} that does not throw an exception.
-	 * If the argument is incorrect (normally resulting in an exception), it returns null
-	 *
-	 * @param matcher matcher to check the group by
-	 * @param name    name of the group
-	 * @return the section of the matcher that is a group, or null, if that matcher does not contain said group
-	 */
-	public static String group(Matcher matcher, String name) {
-		try {
-			return matcher.group(name);
-		} catch (IllegalArgumentException | IllegalStateException exception) {
-			return null;
-		}
+		return RenderSystem.parseGlVersionString(GLStateManager.glGetString(name));
 	}
 
 	/**
@@ -316,11 +276,10 @@ public class StandardMacros {
 	 * @return List of definitions corresponding to the uniform names prefixed with "MC_"
 	 */
 	public static List<String> getIrisDefines() {
-		List<String> defines = new ArrayList<>();
-		// All Iris-exclusive uniforms should have a corresponding definition here. Example:
+        // All Iris-exclusive uniforms should have a corresponding definition here. Example:
 		// defines.add("MC_UNIFORM_DRAGON_DEATH_PROGRESS");
 
-		return defines;
+		return new ArrayList<>();
 	}
 
 	/**
