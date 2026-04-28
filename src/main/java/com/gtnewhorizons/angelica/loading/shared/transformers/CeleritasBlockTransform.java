@@ -1,23 +1,36 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
+import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
 import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.NotNull;
+import org.objectweb.asm.Label;
 import org.objectweb.asm.Opcodes;
+import org.objectweb.asm.Type;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.FieldNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.LabelNode;
+import org.objectweb.asm.tree.LocalVariableNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
+import org.objectweb.asm.tree.VarInsnNode;
+import org.objectweb.asm.tree.analysis.Analyzer;
+import org.objectweb.asm.tree.analysis.Frame;
+import org.objectweb.asm.tree.analysis.SourceInterpreter;
+import org.objectweb.asm.tree.analysis.SourceValue;
 
 import java.lang.invoke.MethodHandle;
 import java.lang.invoke.MethodHandles;
+import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -25,22 +38,30 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 
-public final class CeleritasBlockTransform implements Opcodes {
+public final class CeleritasBlockTransform {
 
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/client/rendering/ThreadedBlockData";
 
-    private final Map<String, String> fieldNameToRedirect = new HashMap<>();
-    private final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
-    // Block subclass owners we shouldn't redirect because they shadow some fields we want to redirect
-    private final Set<String> blockSubclassExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     private final ClassConstantPoolParser cstPoolParser;
+    private final ImmutableMap<String, String> blockFieldRedirects;
+    private final ImmutableList<String> methodNames;
+    private final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    /** Block subclass owners we shouldn't redirect because they shadow some fields we want to redirect */
+    private final Set<String> blockSubclassExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    /**
+     * Store information about overloaded methods that have already been created,
+     * and replace calls to these methods elsewhere with direct calls to the overloaded methods when possible.
+     */
+    private final Map<String, Map<String, String>> overloadedMethods = new ConcurrentHashMap<>();
 
+    /** Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader. */
     private final MethodHandle celeritasEnabledGetter;
     private boolean isCeleritasEnabled;
 
+    /** isObf will not be changed during runtime. */
     public CeleritasBlockTransform(boolean isObf) {
         final List<Pair<String, String>> mappings = ImmutableList.of(
             Pair.of("minX", "field_149759_B"),
@@ -50,26 +71,46 @@ public final class CeleritasBlockTransform implements Opcodes {
             Pair.of("maxY", "field_149756_F"),
             Pair.of("maxZ", "field_149757_G")
         );
+        // These functions are the ones for which we need to create overloads.
+        // Other functions may be modified elsewhere, so creating overloads in the ASM will cause some issues.
+        final List<Pair<String, String>> methodCanOverload = ImmutableList.of(
+            Pair.of("setBlockBounds", "func_149676_a"),
+            Pair.of("isVecInsideYZBounds", "func_149654_a"),
+            Pair.of("isVecInsideXZBounds", "func_149687_b"),
+            Pair.of("isVecInsideXYBounds", "func_149661_c"),
+            Pair.of("getBlockBoundsMinX", "func_149704_x"),
+            Pair.of("getBlockBoundsMaxX", "func_149753_y"),
+            Pair.of("getBlockBoundsMinY", "func_149665_z"),
+            Pair.of("getBlockBoundsMaxY", "func_149669_A"),
+            Pair.of("getBlockBoundsMinZ", "func_149706_B"),
+            Pair.of("getBlockBoundsMaxZ", "func_149693_C")
+        );
+
+        ArrayList<String> names = new ArrayList<>();
+        var blockFieldRedirects = ImmutableMap.<String, String>builder();
         for (Pair<String, String> pair : mappings) {
             final String name = isObf ? pair.getRight() : pair.getLeft();
-            this.fieldNameToRedirect.put(name, pair.getLeft());
+            blockFieldRedirects.put(name, pair.getLeft());
+            names.add(name);
         }
-
-        this.cstPoolParser = new ClassConstantPoolParser(this.fieldNameToRedirect.keySet().toArray(new String[0]));
+        this.blockFieldRedirects = blockFieldRedirects.build();
+        var methodNames = ImmutableList.<String>builder();
+        for (Pair<String, String> pair : methodCanOverload) {
+            final String name = isObf ? pair.getRight() : pair.getLeft();
+            methodNames.add(name);
+            names.add(name);
+        }
+        this.methodNames = methodNames.build();
+        this.cstPoolParser = new ClassConstantPoolParser(names.toArray(new String[0]));
 
         blockSubclasses.add(BlockClass);
 
         try {
-            // Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader.
             final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
             celeritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
         } catch (ReflectiveOperationException e) {
             throw new RuntimeException(e);
         }
-    }
-
-    public void setCeleritasSetting() {
-        isCeleritasEnabled = true;
     }
 
     private boolean isCeleritasEnabled() {
@@ -81,7 +122,11 @@ public final class CeleritasBlockTransform implements Opcodes {
         }
     }
 
-    // This method needs to be called for every class, including the ones we don't want to transform
+    public void setCeleritasSetting() {
+        isCeleritasEnabled = true;
+    }
+
+    /** This method needs to be called for every class, including the ones we don't want to transform */
     public void trackBlockSubclasses(String className, String superClassName) {
         // It works because the deepest subclasses are always transformed first due to
         // ForgeEventTransformer recursive superclass loading
@@ -97,36 +142,17 @@ public final class CeleritasBlockTransform implements Opcodes {
 
     public String[] getTransformerExclusions() {
         return new String[]{
-            "org.lwjgl",
+            "org.lwjgl.",
             "com.gtnewhorizons.angelica.glsm.",
-            "com.gtnewhorizons.angelica.transform",
-            "me.eigenraven.lwjgl3ify"
+            "com.gtnewhorizons.angelica.transform.",
+            "me.eigenraven.lwjgl3ify.",
         };
-    }
-
-    public boolean shouldTransform(byte[] classBytes) {
-        return cstPoolParser.find(classBytes);
-    }
-
-    /** @return Was the class changed? */
-    public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if (!isCeleritasEnabled()) {
-            return false;
-        }
-        boolean changed = false;
-        if (BlockClass.equals(cn.name)) {
-            changed = cn.fields.removeIf(field -> fieldNameToRedirect.containsKey(field.name));
-        } else {
-            trackBlockShadowingFields(cn);
-        }
-        changed |= redirectBlockBoundFields(cn, transformedName);
-        return changed;
     }
 
     private void trackBlockShadowingFields(ClassNode cn) {
         if (blockSubclasses.contains(cn.name)) {
             for (FieldNode field : cn.fields) {
-                if (fieldNameToRedirect.containsKey(field.name)) {
+                if (blockFieldRedirects.containsKey(field.name)) {
                     LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
                     blockSubclassExclusions.add(cn.name);
                     break;
@@ -135,44 +161,569 @@ public final class CeleritasBlockTransform implements Opcodes {
         }
     }
 
-    private boolean redirectBlockBoundFields(ClassNode cn, String transformedName) {
+    public boolean shouldTransform(byte[] classBytes) {
+        return cstPoolParser.find(classBytes);
+    }
+
+    /**
+     * For field names contained in blockFieldNames, we replace accesses of `block.foo` with `ThreadedBlockData.get(block).foo`.
+     * <p>
+     * When multiple accesses are detected, for example:
+     * <p>
+     * ```java
+     * block.foo1
+     * block.foo2
+     * block.foo3
+     * ```
+     * <p>
+     * to reduce the number of ThreadLocal lookups, these are transformed into:
+     * <p>
+     * ```java
+     * var cache = ThreadedBlockData.get(block);
+     * cache.foo1
+     * cache.foo2
+     * cache.foo3
+     * ```
+     * <p>
+     * Also, for methods where `block` is `this`, we create overloads whose first parameter is `ThreadedBlockData cache`.
+     * <p>
+     * Where possible, we replace calls with calls to the overloaded methods so the `cache` can be reused.
+     * <p>
+     * To avoid interfering with other ASM and Mixins, only create overloads for method names whitelisted in methodNames.
+     *
+     * @return Was the class changed?
+     */
+    public boolean transformClassNode(String transformedName, ClassNode cn) {
+        if (!isCeleritasEnabled()) {
+            return false;
+        }
+
         boolean changed = false;
+        if (BlockClass.equals(cn.name)) {
+            changed = cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
+        } else {
+            trackBlockShadowingFields(cn);
+        }
+
+        Map<String, String> overloaded = new HashMap<>(); // Cache it first in a local variable, so we don't need a ConcurrentHashMap.
+        if (!overloadedMethods.containsKey(cn.name)) {
+            Map<String, String> superMethods = cn.superName != null ? overloadedMethods.get(cn.superName) : null;
+            if (superMethods != null) {
+                overloaded.putAll(superMethods);
+            }
+        }
+
+        Map<String, int[]> methodCacheSlots = new HashMap<>(); // methodName+desc -> cacheSlots
+        Map<String, Map<VarInsnNode, Integer>> methodCacheVars = new HashMap<>(); // methodName+desc -> (var -> cacheSlot)
+        for (int i = 0; i < cn.methods.size(); i++) { // Use index-based loop because we may add new methods during iteration.
+            MethodNode mn = cn.methods.get(i);
+            if (mn.instructions.size() == 0) continue;
+
+            if (willGetFieldAccessInfoReturnEmpty(mn)) {
+                continue; // Skip analysis if there are no relevant field accesses, to improve performance.
+            }
+
+            Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
+            boolean analyzeSuccess = false;
+            try {
+                // FIXME The game launches fine but analyze fails on some classes, that's strange.
+                // If analysis fails, fall back to the original implementation.
+                // This will not cause any issues other than potential performance impact.
+                analyzer.analyze(cn.name, mn);
+                analyzeSuccess = true;
+            } catch (Exception e) {
+                LOGGER.warn("Failed to analyze method {} in {}, falling back to the old implementation.", mn.name, transformedName);
+            }
+
+            FieldAccessInfo info = getFieldAccessInfo(mn, analyzeSuccess ? analyzer.getFrames() : null); // Pass null to fall back.
+
+            if (info.records.isEmpty()) { // `willGetFieldAccessInfoReturnEmpty == false && info.records.isEmpty()` should be impossible.
+                LOGGER.error("Method {} in {}, willGetFieldAccessInfoReturnEmpty returns false but no field accesses found! This should not happen.", mn.name, transformedName);
+                continue;
+            }
+
+            changed = true;
+
+            if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0 && methodNames.contains(mn.name)) {
+                MethodNode overload = createOverload(mn, info.records, methodCacheSlots);
+                cn.methods.add(overload);
+                overloaded.put(mn.name + mn.desc, overload.desc);
+            }
+            if (LOG_SPAM) {
+                if (!Modifier.isStatic(mn.access) && info.paramUsedCount[0] > 0 && !methodNames.contains(mn.name)) {
+                    LOGGER.warn("Method {} in {} accesses block bounds fields but is not in the overload list.", mn.name, transformedName);
+                }
+            }
+
+            info.prepareCaches(mn); // Get ThreadedBlockData at the start of the function and cache it.
+
+            methodCacheSlots.put(mn.name + mn.desc, info.cacheSlots);
+            methodCacheVars.put(mn.name + mn.desc, info.cacheVars);
+
+            for (FieldAccessRecord record : info.records) {
+                FieldInsnNode node = record.fieldNode;
+                if (LOG_SPAM) {
+                    LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper, param slot: {}", node.name, transformedName, record.paramSlot);
+                }
+                // Perform the redirect
+                node.name = record.fieldRedirect; // use unobfuscated name
+                node.owner = ThreadedBlockData;
+                mn.instructions.insertBefore(node, makeRedirect(node, record.paramSlot, record.varStore, info));
+            }
+        }
+        overloadedMethods.put(cn.name, overloaded);
         for (MethodNode mn : cn.methods) {
-            for (AbstractInsnNode node = mn.instructions.getFirst(); node != null; node = node.getNext()) {
-                if ((node.getOpcode() == GETFIELD || node.getOpcode() == PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                    String newFieldName = fieldNameToRedirect.get(fNode.name);
-                    if (newFieldName != null && blockSubclasses.contains(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
-                        if (LOG_SPAM) {
-                            LOGGER.info("Redirecting Block.{} in {} to thread-safe wrapper", fNode.name, transformedName);
+            if (mn.instructions.size() == 0) continue;
+
+            if (willGetMethodInvokeInfoReturnEmpty(mn)) {
+                continue; // Skip analysis if there are no relevant method invokes, to improve performance.
+            }
+
+            Analyzer<SourceValue> analyzer = new Analyzer<>(new SourceInterpreter());
+            try {
+                // FIXME The game launches fine but analyze fails on some classes, that's strange.
+                analyzer.analyze(cn.name, mn);
+            } catch (Exception e) {
+                LOGGER.warn("Failed to analyze method {} in {}, do nothing in this method.", mn.name, transformedName);
+                continue;
+            }
+
+            MethodInvokeInfo info = getMethodInvokeInfo(mn, analyzer.getFrames());
+
+            if (info.records.isEmpty()) {
+                continue; // It's possible that `willGetMethodInvokeInfoReturnEmpty == false && info.records.isEmpty()`
+            }
+
+            info.prepareCaches(mn, methodCacheSlots.get(mn.name + mn.desc), methodCacheVars.get(mn.name + mn.desc)); // Reuse the same cache if this method also accesses fields.
+
+            for (MethodInvokeRecord record : info.records) {
+                MethodInsnNode node = record.methodNode;
+                if (record.paramSlot >= 0 && info.paramUsedCount[record.paramSlot] > 1) {
+                    int cacheSlot = info.cacheSlots[record.paramSlot];
+                    node.desc = record.newDesc;
+                    mn.instructions.insertBefore(node, new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                    changed = true;
+                }
+                if (record.varStore != null && info.varUsedCount.get(record.varStore) > 1) {
+                    int cacheSlot = info.cacheVars.get(record.varStore);
+                    node.desc = record.newDesc;
+                    mn.instructions.insertBefore(node, new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                    changed = true;
+                }
+            }
+        }
+
+        return changed;
+    }
+
+    private @NotNull MethodInvokeInfo getMethodInvokeInfo(MethodNode mn, Frame<SourceValue>[] frames) {
+        MethodInvokeInfo info = new MethodInvokeInfo(mn);
+        for (int i = 0; i < mn.instructions.size(); i++) {
+            AbstractInsnNode node = mn.instructions.get(i);
+            Frame<SourceValue> frame = frames[i];
+            if (frame == null) continue;
+
+            if ((node.getOpcode() == Opcodes.INVOKEVIRTUAL || node.getOpcode() == Opcodes.INVOKESPECIAL) && node instanceof MethodInsnNode mNode) {
+                Map<String, String> map = overloadedMethods.get(mNode.owner);
+                if (map == null) continue;
+                String newDesc = map.get(mNode.name + mNode.desc);
+                if (newDesc == null) continue;
+                int stackSize = frame.getStackSize();
+                int argSize = Type.getArgumentTypes(mNode.desc).length;
+                SourceValue receiver = frame.getStack(stackSize - argSize - 1);
+                if (receiver.insns.size() != 1) continue;
+                int paramSlot = getParamSlot(receiver.insns.iterator().next(), mn, frame);
+                VarInsnNode varStore = getVarStore(receiver.insns.iterator().next(), mn, frame);
+                info.addRecord(i, mNode, paramSlot, varStore, newDesc);
+            }
+        }
+        return info;
+    }
+
+    /**
+     * Inconsistent with the behavior of willGetFieldAccessInfoReturnEmpty:
+     * This function returns false does not mean that getMethodInvokeInfo will definitely not return empty.
+     */
+    private boolean willGetMethodInvokeInfoReturnEmpty(MethodNode mn) {
+        for (int i = 0; i < mn.instructions.size(); i++) {
+            AbstractInsnNode node = mn.instructions.get(i);
+            if ((node.getOpcode() == Opcodes.INVOKEVIRTUAL || node.getOpcode() == Opcodes.INVOKESPECIAL) && node instanceof MethodInsnNode mNode) {
+                Map<String, String> map = overloadedMethods.get(mNode.owner);
+                if (map == null) continue;
+                String newDesc = map.get(mNode.name + mNode.desc);
+                if (newDesc == null) continue;
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private static @NotNull InsnList makeRedirect(@NotNull FieldInsnNode node, int paramSlot, VarInsnNode varStore, @NotNull FieldAccessInfo info) {
+        assert info.cacheSlots != null : "Caches should have been prepared before applying redirects";
+        final InsnList code = new InsnList();
+        int cacheSlot = 0;
+        if (paramSlot >= 0 && info.paramUsedCount[paramSlot] > 1) {
+            cacheSlot = info.cacheSlots[paramSlot];
+        }
+        if (varStore != null && info.varUsedCount.get(varStore) > 1) {
+            cacheSlot = info.cacheVars.get(varStore);
+        }
+        if (cacheSlot > 0) {
+            // Use the cached value instead of calling the getter again
+            if (node.getOpcode() == Opcodes.GETFIELD) {
+                code.add(new InsnNode(Opcodes.POP));
+                code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+            } else {
+                // FIXME: this code assumes doubles
+                // Stack: Block, double
+                code.add(new InsnNode(Opcodes.DUP2_X1));
+                // Stack: double, Block, double
+                code.add(new InsnNode(Opcodes.POP2));
+                // Stack: double, Block
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: double
+                code.add(new VarInsnNode(Opcodes.ALOAD, cacheSlot));
+                // Stack: double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.DUP_X2));
+                // Stack: ThreadedBlockData, double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: ThreadedBlockData, double
+            }
+        } else {
+            // Inject getter before the field access, to turn Block -> ThreadedBlockData
+            final MethodInsnNode getter = new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
+            if (node.getOpcode() == Opcodes.GETFIELD) {
+                code.add(getter);
+            } else {
+                // FIXME: this code assumes doubles
+                // Stack: Block, double
+                code.add(new InsnNode(Opcodes.DUP2_X1));
+                // Stack: double, Block, double
+                code.add(new InsnNode(Opcodes.POP2));
+                // Stack: double, Block
+                code.add(getter);
+                // Stack: double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.DUP_X2));
+                // Stack: ThreadedBlockData, double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: ThreadedBlockData, double
+            }
+        }
+        return code;
+    }
+
+    /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+    private static Pair<int @NotNull [], @NotNull Map<VarInsnNode, Integer>> prepareCaches(@NotNull MethodNode mn, int @NotNull [] paramUsedCount, @NotNull Map<VarInsnNode, Integer> cacheVars) {
+        LabelNode methodStart = new LabelNode(new Label());
+        LabelNode methodEnd = new LabelNode(new Label());
+        int cnt = 0;
+
+        int[] caches1 = new int[paramUsedCount.length];
+        final InsnList thisCache = new InsnList(); // In a static method, since there's no `this` parameter, this is actually the first argument, but it won't cause any problems.
+        final InsnList initCache = new InsnList();
+        for (int i = 0; i < paramUsedCount.length; i++) {
+            if (paramUsedCount[i] > 1) {
+                caches1[i] = mn.maxLocals++;
+                mn.localVariables.add(new LocalVariableNode("angelica$blockDataCache" + cnt++, "L" + ThreadedBlockData + ";", null, methodStart, methodEnd, caches1[i]));
+                final InsnList cache = i == 0 ? thisCache : initCache;
+                cache.add(new VarInsnNode(Opcodes.ALOAD, i));
+                cache.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
+                cache.add(new VarInsnNode(Opcodes.ASTORE, caches1[i]));
+            }
+        }
+        if ("<init>".equals(mn.name)) {
+            for (AbstractInsnNode node : mn.instructions.toArray()) {
+                if (node.getOpcode() == Opcodes.INVOKESPECIAL && node instanceof MethodInsnNode mNode && "<init>".equals(mNode.name)) {
+                    mn.instructions.insert(node, thisCache);
+                    break;
+                }
+            }
+        }
+        mn.instructions.insertBefore(mn.instructions.getFirst(), initCache);
+        mn.instructions.insertBefore(mn.instructions.getFirst(), thisCache);
+
+        Map<VarInsnNode, Integer> caches2 = new HashMap<>();
+        for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
+            if (entry.getValue() > 1) {
+                int cacheSlot = mn.maxLocals++;
+                caches2.put(entry.getKey(), cacheSlot);
+                mn.localVariables.add(new LocalVariableNode("angelica$blockDataCache" + cnt++, "L" + ThreadedBlockData + ";", null, methodStart, methodEnd, cacheSlot));
+                final InsnList init = new InsnList();
+                init.add(new VarInsnNode(Opcodes.ALOAD, entry.getKey().var));
+                init.add(new MethodInsnNode(Opcodes.INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false));
+                init.add(new VarInsnNode(Opcodes.ASTORE, cacheSlot));
+                mn.instructions.insert(entry.getKey(), init);
+            }
+        }
+
+        mn.instructions.insertBefore(mn.instructions.getFirst(), methodStart);
+        mn.instructions.insertBefore(mn.instructions.getLast(), methodEnd);
+        return Pair.of(caches1, caches2);
+    }
+
+    private static @NotNull MethodNode createOverload(@NotNull MethodNode original, @NotNull List<FieldAccessRecord> records, @NotNull Map<String, int[]> methodCacheSlots) {
+        if (Modifier.isStatic(original.access)) throw new IllegalArgumentException("Can't create overload of static method");
+        MethodNode mn = new MethodNode(
+            Opcodes.ASM5,
+            original.access,
+            original.name,
+            original.desc.substring(0, original.desc.indexOf(')')) + "L" + ThreadedBlockData + ";" + original.desc.substring(original.desc.indexOf(')')),
+            original.signature,
+            original.exceptions.toArray(new String[0])
+        );
+        mn.maxLocals = original.maxLocals + 1;
+        mn.maxStack = original.maxStack;
+
+        Map<LabelNode, LabelNode> labelMap = new HashMap<>();
+        for (AbstractInsnNode node : original.instructions.toArray()) {
+            if (node instanceof LabelNode label) {
+                labelMap.computeIfAbsent(label, _ -> new LabelNode(new Label()));
+            }
+        }
+        for (AbstractInsnNode node : original.instructions.toArray()) {
+            mn.instructions.add(node.clone(labelMap));
+        }
+        Map<Integer, FieldInsnNode> nodeMap = new HashMap<>();
+        for (FieldAccessRecord record : records) {
+            nodeMap.put(record.nodeIndex, (FieldInsnNode) mn.instructions.get(record.nodeIndex));
+        }
+
+        LabelNode methodStart = new LabelNode(new Label());
+        LabelNode initEnd = new LabelNode(new Label());
+        LabelNode methodEnd = new LabelNode(new Label());
+        final InsnList init = new InsnList();
+        init.add(methodStart);
+        init.add(new VarInsnNode(Opcodes.ALOAD, maxParamSlots(original)));
+        init.add(initEnd);
+        init.add(new VarInsnNode(Opcodes.ASTORE, original.maxLocals));
+        mn.instructions.insertBefore(mn.instructions.getFirst(), init);
+        mn.instructions.insertBefore(mn.instructions.getLast(), methodEnd);
+
+        if (mn.localVariables == null) mn.localVariables = new ArrayList<>();
+        mn.localVariables.clear();
+        mn.localVariables.add(new LocalVariableNode("angelica$this", "L" + ThreadedBlockData + ";", null, methodStart, initEnd, maxParamSlots(original)));
+        mn.localVariables.add(new LocalVariableNode("angelica$this", "L" + ThreadedBlockData + ";", null, initEnd, methodEnd, original.maxLocals));
+        for (LocalVariableNode var : original.localVariables) {
+            mn.localVariables.add(new LocalVariableNode(var.name, var.desc, var.signature, labelMap.get(var.start), labelMap.get(var.end), var.index));
+        }
+
+        for (FieldAccessRecord record : records) {
+            if (record.paramSlot != 0) continue; // Only redirect accesses to the original "this" parameter.
+            FieldInsnNode node = nodeMap.get(record.nodeIndex);
+            // Perform the redirect
+            node.name = record.fieldRedirect; // use unobfuscated name
+            node.owner = ThreadedBlockData;
+            final InsnList code = new InsnList();
+            if (node.getOpcode() == Opcodes.GETFIELD) {
+                code.add(new InsnNode(Opcodes.POP));
+                code.add(new VarInsnNode(Opcodes.ALOAD, original.maxLocals));
+            } else {
+                // FIXME: this code assumes doubles
+                // Stack: Block, double
+                code.add(new InsnNode(Opcodes.DUP2_X1));
+                // Stack: double, Block, double
+                code.add(new InsnNode(Opcodes.POP2));
+                // Stack: double, Block
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: double
+                code.add(new VarInsnNode(Opcodes.ALOAD, original.maxLocals));
+                // Stack: double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.DUP_X2));
+                // Stack: ThreadedBlockData, double, ThreadedBlockData
+                code.add(new InsnNode(Opcodes.POP));
+                // Stack: ThreadedBlockData, double
+            }
+            mn.instructions.insertBefore(node, code);
+        }
+
+        methodCacheSlots.put(mn.name + mn.desc, new int[]{original.maxLocals});
+        return mn;
+    }
+
+    /** Scan the instructions to find all accesses to fields that need to be redirected, and which parameters they come from (if any) */
+    private @NotNull FieldAccessInfo getFieldAccessInfo(MethodNode mn, Frame<SourceValue>[] frames) {
+        FieldAccessInfo info = new FieldAccessInfo(mn);
+        for (int i = 0; i < mn.instructions.size(); i++) {
+            AbstractInsnNode node = mn.instructions.get(i);
+            Frame<SourceValue> frame = frames != null ? frames[i] : null;
+
+            if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                if (blockSubclasses.contains(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
+                    String fieldRedirect = blockFieldRedirects.get(fNode.name);
+                    if (fieldRedirect == null) {
+                        continue;
+                    }
+                    int paramSlot = -1;
+                    VarInsnNode varStore = null;
+                    if (frame != null) {
+                        int stackSize = frame.getStackSize();
+                        SourceValue receiver;
+                        if (fNode.getOpcode() == Opcodes.GETFIELD) {
+                            receiver = frame.getStack(stackSize - 1);
+                        } else {
+                            receiver = frame.getStack(stackSize - 2);
                         }
-                        // Perform the redirect
-                        fNode.name = newFieldName; // use unobfuscated name
-                        fNode.owner = ThreadedBlockData;
-                        // Inject getter before the field access, to turn Block -> ThreadedBlockData
-                        final MethodInsnNode getter = new MethodInsnNode(INVOKESTATIC, ThreadedBlockData, "get", "(L" + BlockClass + ";)L" + ThreadedBlockData + ";", false);
-                        if (node.getOpcode() == GETFIELD) {
-                            mn.instructions.insertBefore(fNode, getter);
-                        } else if (node.getOpcode() == PUTFIELD) {
-                            // FIXME: this code assumes doubles
-                            // Stack: Block, double
-                            final InsnList beforePut = new InsnList();
-                            beforePut.add(new InsnNode(DUP2_X1));
-                            // Stack: double, Block, double
-                            beforePut.add(new InsnNode(POP2));
-                            // Stack: double, Block
-                            beforePut.add(getter);
-                            // Stack: double, ThreadedBlockData
-                            beforePut.add(new InsnNode(DUP_X2));
-                            // Stack: ThreadedBlockData, double, ThreadedBlockData
-                            beforePut.add(new InsnNode(POP));
-                            // Stack: ThreadedBlockData, double
-                            mn.instructions.insertBefore(fNode, beforePut);
+                        if (receiver.insns.size() == 1) {
+                            paramSlot = getParamSlot(receiver.insns.iterator().next(), mn, frame);
+                            varStore = getVarStore(receiver.insns.iterator().next(), mn, frame);
                         }
-                        changed = true;
+                    }
+                    info.addRecord(i, fNode, paramSlot, varStore, fieldRedirect);
+                }
+            }
+        }
+        return info;
+    }
+
+    private boolean willGetFieldAccessInfoReturnEmpty(MethodNode mn) {
+        for (AbstractInsnNode node : mn.instructions.toArray()) {
+            if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
+                if (blockSubclasses.contains(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
+                    String fieldRedirect = blockFieldRedirects.get(fNode.name);
+                    if (fieldRedirect != null) {
+                        return false;
                     }
                 }
             }
         }
-        return changed;
+        return true;
+    }
+
+    private static VarInsnNode getVarStore(@NotNull AbstractInsnNode src, @NotNull MethodNode mn, @NotNull Frame<SourceValue> frame) {
+        if (!(src instanceof VarInsnNode)) return null;
+        if (src.getOpcode() != Opcodes.ALOAD) return null;
+        int var = ((VarInsnNode) src).var;
+        int paramSlots = maxParamSlots(mn);
+        if (var < paramSlots) return null;
+        SourceValue receiver = frame.getLocal(var);
+        if (receiver.insns.size() != 1) return null;
+        if (!(receiver.insns.iterator().next() instanceof VarInsnNode node)) return null;
+        if (node.getOpcode() != Opcodes.ASTORE) return null;
+        return node;
+    }
+
+    private static int getParamSlot(@NotNull AbstractInsnNode src, @NotNull MethodNode mn, @NotNull Frame<SourceValue> frame) {
+        if (!(src instanceof VarInsnNode)) return -1;
+        if (src.getOpcode() != Opcodes.ALOAD) return -1;
+        int var = ((VarInsnNode) src).var;
+        int paramSlots = maxParamSlots(mn);
+        // `frame.getLocal(var).insns.isEmpty()` just for safety.
+        return var < paramSlots && frame.getLocal(var).insns.isEmpty() ? var : -1;
+    }
+
+    private static int maxParamSlots(@NotNull MethodNode mn) {
+        int size = Type.getArgumentsAndReturnSizes(mn.desc) >> 2;
+        if (Modifier.isStatic(mn.access)) size -= 1;
+        return size;
+    }
+
+    private record FieldAccessRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {}
+
+    private static class FieldAccessInfo {
+        /**
+         * The number of times fields of incoming parameters that need to be redirected are read or written in the function.
+         * non-`Block` parameters are always 0.
+         * **paramSlot -> count**
+         */
+        private final int[] paramUsedCount;
+        private final Map<VarInsnNode, Integer> varUsedCount = new HashMap<>();
+        /**
+         * Records of instructions that read or write fields requiring redirection.
+         */
+        private final ArrayList<FieldAccessRecord> records = new ArrayList<>();
+        /** paramSlot -> cacheSlot** */
+        private int[] cacheSlots;
+        /** VarInsnNode -> cacheSlot** */
+        private Map<VarInsnNode, Integer> cacheVars;
+
+        FieldAccessInfo(MethodNode mn) {
+            paramUsedCount = new int[maxParamSlots(mn)];
+        }
+
+        private void addRecord(int nodeIndex, FieldInsnNode fieldNode, int paramSlot, VarInsnNode varStore, String fieldRedirect) {
+            if (paramSlot >= 0) {
+                paramUsedCount[paramSlot]++;
+            }
+            if (varStore != null) {
+                varUsedCount.put(varStore, varUsedCount.getOrDefault(varStore, 0) + 1);
+            }
+            assert (paramSlot < 0) || (varStore == null) : "Only one of paramSlot and varStore should be set";
+            records.add(new FieldAccessRecord(nodeIndex, fieldNode, paramSlot, varStore, fieldRedirect));
+        }
+
+        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+        private void prepareCaches(MethodNode mn) {
+            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
+            this.cacheSlots = ret.getLeft();
+            this.cacheVars = ret.getRight();
+        }
+    }
+
+    private record MethodInvokeRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, VarInsnNode varStore, String newDesc) {}
+
+    private static class MethodInvokeInfo {
+        /**
+         * How many times a given input parameter is used by a specific function call.
+         * non-`Block` parameters are always 0.
+         * **paramSlot -> count**
+         */
+        private final int[] paramUsedCount;
+        private final Map<VarInsnNode, Integer> varUsedCount = new HashMap<>();
+        /**
+         * Records of instructions that invoke the method that we have already overloaded.
+         */
+        private final ArrayList<MethodInvokeRecord> records = new ArrayList<>();
+        /** paramSlot -> cacheSlot** */
+        private int[] cacheSlots;
+        /** VarInsnNode -> cacheSlot** */
+        private Map<VarInsnNode, Integer> cacheVars;
+
+        MethodInvokeInfo(MethodNode mn) {
+            paramUsedCount = new int[maxParamSlots(mn)];
+        }
+
+        private void addRecord(int nodeIndex, MethodInsnNode methodNode, int paramSlot, VarInsnNode varStore, String newDesc) {
+            if (paramSlot >= 0) {
+                paramUsedCount[paramSlot]++;
+            }
+            if (varStore != null) {
+                varUsedCount.put(varStore, varUsedCount.getOrDefault(varStore, 0) + 1);
+            }
+            assert (paramSlot < 0) || (varStore == null) : "Only one of paramSlot and varStore should be set";
+            records.add(new MethodInvokeRecord(nodeIndex, methodNode, paramSlot, varStore, newDesc));
+        }
+
+        /** Put getters at the start of the method to redirect the field accesses, and cache them in local variables if they're used multiple times */
+        private void prepareCaches(MethodNode mn, int[] cacheSlots, Map<VarInsnNode, Integer> cacheVars) {
+            int[] paramUsedCount = this.paramUsedCount.clone();
+            if (cacheSlots != null) {
+                for (int i = 0; i < cacheSlots.length; i++) {
+                    if (cacheSlots[i] > 0) paramUsedCount[i] = 0; // Do not cache it again.
+                }
+            }
+            Map<VarInsnNode, Integer> varUsedCount = new HashMap<>(this.varUsedCount);
+            if (cacheVars != null) {
+                for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
+                    if (entry.getValue() > 0) varUsedCount.put(entry.getKey(), 0); // Do not cache it again.
+                }
+            }
+            Pair<int[], Map<VarInsnNode, Integer>> ret = CeleritasBlockTransform.prepareCaches(mn, paramUsedCount, varUsedCount);
+            this.cacheSlots = ret.getLeft();
+            this.cacheVars = ret.getRight();
+            if (cacheSlots != null) {
+                for (int i = 0; i < cacheSlots.length; i++) {
+                    if (cacheSlots[i] > 0) {
+                        this.cacheSlots[i] = cacheSlots[i]; // Use the existing cache slot if it exists.
+                    }
+                }
+            }
+            if (cacheVars != null) {
+                for (Map.Entry<VarInsnNode, Integer> entry : cacheVars.entrySet()) {
+                    if (entry.getValue() > 0) {
+                        this.cacheVars.put(entry.getKey(), entry.getValue()); // Use the existing cache slot if it exists.
+                    }
+                }
+            }
+        }
     }
 }
