@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
@@ -81,6 +82,47 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
     protected void onExitExecute() {}
 
     protected void addExtraCrashInfo(CrashReportCategory category) {}
+
+    private void resetTessellatorState(Tessellator tessellator, boolean resetTranslation) {
+        tessellator.reset();
+        tessellator.isDrawing = false;
+        if (resetTranslation) {
+            tessellator.setTranslation(0, 0, 0);
+        }
+    }
+
+    private static boolean isRecoverableBlockRenderFailure(Throwable t) {
+        return !(t instanceof Error);
+    }
+
+    private void logSuppressedBlockRenderFailure(Block block, int metadata, int x, int y, int z, int pass, boolean deferred, Throwable t) {
+        AngelicaMod.LOGGER.warn(
+            "Suppressed {} exception while building chunk mesh for {} at ({}, {}, {}) meta {} pass {} in section {}",
+            deferred ? "deferred block render" : "block render",
+            block,
+            x,
+            y,
+            z,
+            metadata,
+            pass,
+            this.render,
+            t);
+    }
+
+    private void tryRenderBlock(Block block, int metadata, int x, int y, int z, int pass, Tessellator tessellator,
+                                RenderBlocks renderBlocks, ChunkBuildBuffers buffers, AngelicaChunkBuildContext buildContext,
+                                BlockRenderContext blockRenderContext, int originX, int originY, int originZ, Material materialOverride,
+                                boolean isShaderPackOverride, boolean deferred) {
+        try {
+            renderBlock(block, metadata, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext,
+                blockRenderContext, originX, originY, originZ, materialOverride, isShaderPackOverride);
+        } catch (Throwable t) {
+            if (!isRecoverableBlockRenderFailure(t)) {
+                throw t;
+            }
+            logSuppressedBlockRenderFailure(block, metadata, x, y, z, pass, deferred, t);
+        }
+    }
 
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
@@ -192,7 +234,9 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                     continue;
                                 }
 
-                                renderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers, buildContext, blockRenderContext, minX, minY, minZ, materialOverride, isShaderPackOverride);
+                                tryRenderBlock(block, meta, x, y, z, pass, tessellator, renderBlocks, buffers,
+                                    buildContext, blockRenderContext, minX, minY, minZ, materialOverride,
+                                    isShaderPackOverride, false);
                             }
                         }
 
@@ -230,6 +274,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         } catch (Throwable ex) {
             throw fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building chunk meshes"), region, blockPos);
         } finally {
+            resetTessellatorState(tessellator, true);
             ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
             SmoothBiomeColorCache.clearActiveCache();
             onExitExecute();
@@ -279,18 +324,20 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft set global state in this method that gets read elsewhere renderWorldBlock)
         block.canRenderInPass(pass);
         tessellator.startDrawingQuads();
-        renderBlocks.renderBlockByRenderType(block, x, y, z);
-        boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
-            && block.getLightValue() == 0; // does not emit real block light
-        buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,
-            ((StateAwareTessellator)tessellator).angelica$getVertexStates(),
-            ((StateAwareTessellator)tessellator).angelica$getShaderOverrideBlockIds(),
-            buffers, passMaterial, isShaderPackOverride, blockAllowsSmoothLighting);
-        tessellator.reset();
-        tessellator.isDrawing = false;
+        try {
+            renderBlocks.renderBlockByRenderType(block, x, y, z);
+            boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
+                && block.getLightValue() == 0; // does not emit real block light
+            buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,
+                ((StateAwareTessellator) tessellator).angelica$getVertexStates(),
+                ((StateAwareTessellator) tessellator).angelica$getShaderOverrideBlockIds(),
+                buffers, passMaterial, isShaderPackOverride, blockAllowsSmoothLighting);
+        } finally {
+            resetTessellatorState(tessellator, false);
 
-        if (contextEncoder != null) {
-            contextEncoder.finishRenderingBlock();
+            if (contextEncoder != null) {
+                contextEncoder.finishRenderingBlock();
+            }
         }
     }
 
@@ -306,13 +353,14 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
             try {
                 for (DeferredBlock deferred : deferredBlocks) {
-                    renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
+                    tryRenderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
                         mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
-                        blockRenderContext, minX, minY, minZ, deferred.materialOverride(), deferred.isShaderPackOverride());
+                        blockRenderContext, minX, minY, minZ, deferred.materialOverride(),
+                        deferred.isShaderPackOverride(), true);
                 }
             } finally {
+                resetTessellatorState(mainTessellator, true);
                 ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(false);
-                mainTessellator.setTranslation(0, 0, 0);
             }
         }, AngelicaRenderQueue.executor());
 
