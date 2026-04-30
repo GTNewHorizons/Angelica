@@ -22,6 +22,7 @@ import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
+import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
@@ -102,6 +103,7 @@ public final class ClientProxy extends CommonProxy {
         super.preInit(event);
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
     }
