@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
@@ -63,7 +64,13 @@ public class RenderSystem {
 
 	public static void initRenderer() {
         try {
-            if (GLStateManager.capabilities.OpenGL45) {
+            if (GLStateManager.vendorIsIntel()) {
+                dsaState = new DSAUnsupported();
+                LOGGER.info("Detected Intel drivers, disabling DSA.");
+            } else if (!AngelicaConfig.enableDSA) {
+                dsaState = new DSAUnsupported();
+                LOGGER.info("enableDSA is set to false, disabling DSA.");
+            } else if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = (Runtime.version().feature() > 8 && GLStateManager.capabilities.GL_EXT_direct_state_access) ? new DSAEXT() : new DSACore();
                 LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
