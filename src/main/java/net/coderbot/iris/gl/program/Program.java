@@ -1,12 +1,19 @@
 package net.coderbot.iris.gl.program;
 
+import lombok.Getter;
 import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 public final class Program extends GlResource {
+	
+	@Getter
 	private final ProgramUniforms uniforms;
+	
+	@Getter
 	private final ProgramSamplers samplers;
+	
+	@Getter
 	private final ProgramImages images;
 
 	Program(int program, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
@@ -18,15 +25,15 @@ public final class Program extends GlResource {
 
 		DepthColorStorage.registerOwnedProgram(program);
 	}
-
+	
 	public void use() {
 		GLStateManager.glUseProgram(getGlId());
-
+		
 		uniforms.update();
 		samplers.update();
 		images.update();
 	}
-
+	
 	public static void unbind() {
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
@@ -38,12 +45,7 @@ public final class Program extends GlResource {
 		DepthColorStorage.unregisterOwnedProgram(getGlId());
 		GLStateManager.glDeleteProgram(getGlId());
 	}
-
-	/**
-	 * @return the OpenGL ID of this program.
-	 * @deprecated this should be encapsulated eventually
-	 */
-	@Deprecated
+	
 	public int getProgramId() {
 		return getGlId();
 	}

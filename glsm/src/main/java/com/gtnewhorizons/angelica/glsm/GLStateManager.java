@@ -4295,6 +4295,7 @@ public class GLStateManager {
             if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = 0;
+                GLSMHooks.programChangeEvent.postBind = false;
                 GLSMHooks.PROGRAM_CHANGE.post(GLSMHooks.programChangeEvent);
             }
             ffp.activate();
@@ -4315,6 +4316,7 @@ public class GLStateManager {
             if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = program;
+                GLSMHooks.programChangeEvent.postBind = false;
                 GLSMHooks.PROGRAM_CHANGE.post(GLSMHooks.programChangeEvent);
             }
             if (initConfig != null && initConfig.isLwjglDebug()) {
@@ -4323,6 +4325,12 @@ public class GLStateManager {
             }
             RENDER_BACKEND.useProgram(program);
             CompatUniformManager.onUseProgram(program);
+            if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
+                GLSMHooks.programChangeEvent.previousProgram = prev;
+                GLSMHooks.programChangeEvent.newProgram = program;
+                GLSMHooks.programChangeEvent.postBind = true;
+                GLSMHooks.PROGRAM_CHANGE.post(GLSMHooks.programChangeEvent);
+            }
         }
     }
 
