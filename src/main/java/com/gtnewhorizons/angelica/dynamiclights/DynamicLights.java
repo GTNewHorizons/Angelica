@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.dynamiclights;
 
 import baubles.common.lib.PlayerHandler;
+import lain.mods.cos.CosmeticArmorReworked;
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizon.gtnhlib.util.CoordinatePacker;
@@ -633,6 +634,18 @@ public class DynamicLights {
                         for (int i = 0; i < playerBaubles.getSizeInventory(); i++){
                             final var stack = playerBaubles.getStackInSlot(i);
                             if (stack != null){
+                                luminance = Math.max(luminance, getLuminanceFromItemStack(stack));
+                            }
+                        }
+                    }
+                }
+
+                if (ModStatus.isCosmeticArmorReworkedLoaded) {
+                    final var cosArmor = CosmeticArmorReworked.invMan.getCosArmorInventoryClient(player.getUniqueID());
+                    if (cosArmor != null) {
+                        for (int i = 0; i < cosArmor.getSizeInventory(); i++) {
+                            final var stack = cosArmor.getStackInSlot(i);
+                            if (stack != null) {
                                 luminance = Math.max(luminance, getLuminanceFromItemStack(stack));
                             }
                         }
