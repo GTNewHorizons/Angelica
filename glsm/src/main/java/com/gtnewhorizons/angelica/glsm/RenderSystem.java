@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -61,7 +62,13 @@ public class RenderSystem {
         if (rendererInitialized) return;
         rendererInitialized = true;
         try {
-            if (GLStateManager.capabilities.OpenGL45) {
+            if (GLStateManager.vendorIsIntel()) {
+                dsaState = new DSAUnsupported();
+                GLStateManager.LOGGER.info("Detected Intel drivers, disabling DSA.");
+            } else if (!GLStateManager.getInitConfig().isDSAEnabled()) {
+                dsaState = new DSAUnsupported();
+                GLStateManager.LOGGER.info("enableDSA is set to false, disabling DSA.");
+            } else if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = (Runtime.version().feature() > 8 && GLStateManager.capabilities.GL_EXT_direct_state_access) ? new DSAEXT() : new DSACore();
                 GLStateManager.LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
