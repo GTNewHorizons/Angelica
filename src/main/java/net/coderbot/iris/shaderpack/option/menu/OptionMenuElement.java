@@ -12,6 +12,7 @@ public abstract class OptionMenuElement {
 
 	private static final String ELEMENT_EMPTY = "<empty>";
 	private static final String ELEMENT_PROFILE = "<profile>";
+    private static final String ELEMENT_PROFILE2 = "<profile2>";
 
 	public static OptionMenuElement create(String elementString, OptionMenuContainer container, ShaderProperties shaderProperties, ShaderPackOptions shaderPackOptions) throws IllegalArgumentException {
 		// Empty element
@@ -24,6 +25,13 @@ public abstract class OptionMenuElement {
 			// null indicates that the element should be forgotten (not treated as empty)
 			return container.getProfiles().size() > 0 ? new OptionMenuProfileElement(container.getProfiles(), shaderPackOptions.getOptionSet(), shaderPackOptions.getOptionValues()) : null;
 		}
+        // Second profile element
+        if (ELEMENT_PROFILE2.equals(elementString)) {
+            // null indicates that the element should be forgotten (not treated as empty)
+            return container.getProfiles2().size() > 0
+                ? ProfileElementTracker.markSecondProfileSet(new OptionMenuProfileElement(container.getProfiles2(), shaderPackOptions.getOptionSet(), shaderPackOptions.getOptionValues()))
+                : null;
+        }
 		// Link to sub screen element
 		if (elementString.startsWith("[") && elementString.endsWith("]")) {
 			return new OptionMenuLinkElement(elementString.substring(1, elementString.length() - 1));

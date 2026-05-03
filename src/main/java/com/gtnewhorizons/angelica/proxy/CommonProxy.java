@@ -10,8 +10,7 @@ import cpw.mods.fml.common.registry.GameRegistry;
 public class CommonProxy {
 
     public void preInit(FMLPreInitializationEvent event) {
-
-        if (AngelicaConfig.enableTestBlocks){
+        if (AngelicaConfig.enableTestBlocks) {
             GameRegistry.registerBlock(new BlockTest(), "test_block");
         }
     }

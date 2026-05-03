@@ -79,13 +79,13 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
 
         baseEncoder.write(ptr, material, vertex, sectionIndex);
 
-        // Per-vertex: renderType, midBlock, lightValue
-        memPutShort(ptr + MC_ENTITY_OFFSET + 2, ctx.renderType);
+        // Per-vertex: mc_Entity (packed blockId + renderType), midBlock, lightValue
+        memPutInt(ptr + MC_ENTITY_OFFSET, ((ctx.blockId + 1) << 1) | (ctx.renderType & 1));
         final int midBlock = ExtendedDataHelper.computeMidBlock(vertex.x, vertex.y, vertex.z, ctx.localPosX, ctx.localPosY, ctx.localPosZ);
         memPutInt(ptr + MID_BLOCK_OFFSET, midBlock);
         memPutByte(ptr + MID_BLOCK_OFFSET + 3, ctx.lightValue);
 
-        // Per-quad: midTexCoord, blockId, normal, tangent
+        // Per-quad: midTexCoord, normal, tangent
         if (vertexCount == 4) {
             vertexCount = 0;
 
@@ -97,11 +97,6 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE, midUV);
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE * 2, midUV);
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE * 3, midUV);
-
-            memPutShort(ptr + MC_ENTITY_OFFSET, ctx.blockId);
-            memPutShort(ptr + MC_ENTITY_OFFSET - STRIDE, ctx.blockId);
-            memPutShort(ptr + MC_ENTITY_OFFSET - STRIDE * 2, ctx.blockId);
-            memPutShort(ptr + MC_ENTITY_OFFSET - STRIDE * 3, ctx.blockId);
 
             quad.setup(ptr, STRIDE);
             NormalHelper.computeFaceNormal(normal, quad);

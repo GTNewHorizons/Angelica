@@ -97,6 +97,7 @@ public class ShaderProperties {
 	@Getter private OptionalBoolean prepareBeforeShadow = OptionalBoolean.DEFAULT;
 	@Getter private List<String> sliderOptions = new ArrayList<>();
 	@Getter private final Map<String, List<String>> profiles = new LinkedHashMap<>();
+    @Getter private final Map<String, List<String>> profiles2 = new LinkedHashMap<>();
 	private List<String> mainScreenOptions = null;
 	@Getter private final Map<String, List<String>> subScreenOptions = new HashMap<>();
 	private Integer mainScreenColumnCount = null;
@@ -494,15 +495,15 @@ public class ShaderProperties {
                 customUniforms.addVariable(parts[0], parts[1], value, false);
             });
 
-            handlePassDirective("uniform.", key, value, pass -> {
-               String[] parts = pass.split("\\.");
-               if (parts.length != 2) {
-                   Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
-                   return;
-               }
+			handlePassDirective("uniform.", key, value, pass -> {
+				String[] parts = pass.split("\\.");
+				if (parts.length != 2) {
+					Iris.logger.warn("Custom uniforms sould take the form of `uniform.<type>.<name> = <expression>. Ignoring " + key);
+					return;
+				}
 
-               customUniforms.addVariable(parts[0], parts[1], value, true);
-            });
+				customUniforms.addVariable(parts[0], parts[1], value, true);
+			});
 
 			// TODO: Buffer size directives
 			// TODO: Conditional program enabling directives
@@ -517,6 +518,7 @@ public class ShaderProperties {
 			// the last definition being used, should be tested if behavior matches OptiFine
 			handleWhitespacedListDirective(key, value, "sliders", sliders -> sliderOptions = sliders);
 			handlePrefixedWhitespacedListDirective("profile.", key, value, profiles::put);
+            handlePrefixedWhitespacedListDirective("profile2.", key, value, profiles2::put);
 
 			if (handleIntDirective(key, value, "screen.columns", columns -> mainScreenColumnCount = columns)) {
 				return;

@@ -35,6 +35,13 @@ public class MixinSplashProgressCaching {
         ImmediateModeRecorder.initSplashTessellator();
     }
 
+    // VAOs aren't shared across GL contexts; the SharedDrawable the client thread just swapped
+    // onto has none. Core profile (macOS) rejects glValidateProgram without one.
+    @Inject(method = "start", at = @At("RETURN"))
+    private static void angelica$bindSharedDrawableVAO(CallbackInfo ci) {
+        GLStateManager.glBindVertexArray(GLStateManager.glGenVertexArrays());
+    }
+
     /**
      *  On return from finish() - destroy splash tessellator and mark splash complete
      */

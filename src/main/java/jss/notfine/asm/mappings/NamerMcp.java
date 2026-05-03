@@ -1,15 +1,15 @@
 package jss.notfine.asm.mappings;
 
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
+import jss.notfine.asm.mappings.Names.Clas;
+import jss.notfine.asm.mappings.Names.Fiel;
+import jss.notfine.asm.mappings.Names.Meth;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.HashMap;
 import java.util.Map;
-
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
-import jss.notfine.asm.mappings.Names.Clas;
-import jss.notfine.asm.mappings.Names.Fiel;
-import jss.notfine.asm.mappings.Names.Meth;
 
 public class NamerMcp extends NamerSrg {
 
@@ -71,15 +71,15 @@ public class NamerMcp extends NamerSrg {
         nameMap = loadReobfMap(confPath + "packaged.srg");
         for (Clas c : ac) {
             String s = nameMap.get(c.name);
-            AngelicaTweaker.LOGGER.trace("C {} {}", c.name, s);
+            AngelicaClientTweaker.LOGGER.trace("C {} {}", c.name, s);
         }
         for (Fiel f : af) {
             String s = nameMap.get(f.clas + "/" + f.name);
-            AngelicaTweaker.LOGGER.trace("F {} {}", f.name, s);
+            AngelicaClientTweaker.LOGGER.trace("F {} {}", f.name, s);
         }
         for (Meth m : am) {
             String s = nameMap.get(m.clas + "/" + m.name + m.desc);
-            AngelicaTweaker.LOGGER.trace("M {} {}", m.name, s);
+            AngelicaClientTweaker.LOGGER.trace("M {} {}", m.name, s);
         }
     }
 

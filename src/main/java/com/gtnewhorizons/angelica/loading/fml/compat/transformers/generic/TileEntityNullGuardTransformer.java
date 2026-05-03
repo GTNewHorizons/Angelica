@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.AbstractInsnNode;
 import org.spongepowered.asm.lib.tree.ClassNode;
@@ -59,7 +59,7 @@ public class TileEntityNullGuardTransformer {
             AbstractInsnNode in = mn.instructions.get(i);
             if (in instanceof MethodInsnNode min) {
                 if (min.getOpcode() == Opcodes.INVOKEINTERFACE
-                    && min.name.equals(AngelicaTweaker.obf("getTileEntity", "func_147438_o"))
+                    && min.name.equals(AngelicaClientTweaker.obf("getTileEntity", "func_147438_o"))
                     && min.owner.equals("net/minecraft/world/IBlockAccess")) {
                     AbstractInsnNode castNodeAbstract = min.getNext();
                     if (castNodeAbstract instanceof TypeInsnNode castNodeType) {
@@ -77,7 +77,7 @@ public class TileEntityNullGuardTransformer {
                                     } else if (mn.desc.endsWith("V")) {
                                         list.add(new InsnNode(Opcodes.RETURN));
                                     } else {
-                                        AngelicaTweaker.LOGGER.warn("TileEntityNullGuard - Unknown Return Type: {}:{}", mn.name, mn.desc);
+                                        AngelicaClientTweaker.LOGGER.warn("TileEntityNullGuard - Unknown Return Type: {}:{}", mn.name, mn.desc);
                                         return;
                                     }
                                     list.add(exit);

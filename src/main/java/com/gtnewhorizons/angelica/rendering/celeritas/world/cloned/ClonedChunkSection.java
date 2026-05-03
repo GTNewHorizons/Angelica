@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.celeritas.world.cloned;
 
 import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
+import com.gtnewhorizons.angelica.api.BlockLightProvider;
+import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
@@ -33,6 +35,7 @@ public class ClonedChunkSection {
     private ChunkSectionPos pos;
     private ExtendedBlockStorageExt data;
     private BiomeGenBase[] biomeData;
+    private SectionLightData sectionLightData;
     private final Short2ObjectOpenHashMap<TileEntity> tileEntities;
 
     private long lastUsedTimestamp = Long.MAX_VALUE;
@@ -75,6 +78,8 @@ public class ClonedChunkSection {
                 this.biomeData[(x & 15) | ((z & 15) << 4)] = world.getBiomeGenForCoords(x, z);
             }
         }
+
+        this.sectionLightData = BlockLightProvider.getInstance().prepareSectionData(chunk, pos.y);
     }
 
     @SuppressWarnings("unchecked")
@@ -125,6 +130,10 @@ public class ClonedChunkSection {
             return (!world.provider.hasNoSky && data.hasSky) ? data.getSkylightArray() : null;
         }
         return data.getBlocklightArray();
+    }
+
+    public SectionLightData getSectionLightData() {
+        return this.sectionLightData;
     }
 
     public BiomeGenBase[] getBiomeData() {

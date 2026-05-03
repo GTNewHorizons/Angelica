@@ -18,7 +18,7 @@ public class GlTexture extends GlObject implements TextureAccess {
 	private final TextureType target;
 
 	public GlTexture(TextureType target, int sizeX, int sizeY, int sizeZ, int internalFormat, int format, int pixelType, byte[] pixels, TextureFilteringData filteringData) {
-		this.setHandle(GL11.glGenTextures());
+		this.setHandle(GLStateManager.glGenTextures());
 		bindTextureForSetup(target.getGlType(), handle());
 
 		TextureUploadHelper.resetTextureUploadState();

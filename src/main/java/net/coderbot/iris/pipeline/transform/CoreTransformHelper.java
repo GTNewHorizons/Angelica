@@ -21,6 +21,7 @@ class CoreTransformHelper {
         transformer.injectVariable("uniform mat4 iris_ProjectionMatrixInverse;");
         transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
         transformer.injectVariable("uniform mat4 iris_LightmapTextureMatrix;");
+        transformer.injectVariable("uniform mat4 iris_TextureMatrix;");
 
         final Map<String, String> renames = new HashMap<>();
         renames.put("gl_ModelViewMatrix", "iris_ModelViewMatrix");
@@ -32,12 +33,12 @@ class CoreTransformHelper {
 
         final Map<String, String> replacements = new HashMap<>();
         replacements.put("gl_ModelViewProjectionMatrix", "(iris_ProjectionMatrix * iris_ModelViewMatrix)");
-        replacements.put("gl_TextureMatrix[0]", "mat4(1.0)");
+        replacements.put("gl_TextureMatrix[0]", "iris_TextureMatrix");
         replacements.put("gl_TextureMatrix[1]", "iris_LightmapTextureMatrix");
         replacements.forEach(transformer::replaceExpression);
 
         // Catch any remaining gl_TextureMatrix references (e.g. [2]-[7])
-        transformer.replaceExpression("gl_TextureMatrix", "mat4[8](mat4(1.0), iris_LightmapTextureMatrix, mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0))");
+        transformer.replaceExpression("gl_TextureMatrix", "mat4[8](iris_TextureMatrix, iris_LightmapTextureMatrix, mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0))");
     }
 
     /**

@@ -26,9 +26,9 @@ import org.lwjgl.opengl.EXTFramebufferObject;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
-import org.lwjgl.opengl.GLContext;
 import org.lwjgl.util.glu.GLU;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
@@ -46,8 +46,8 @@ public class FancyDial {
     private static final double ANGLE_UNSET = Double.MAX_VALUE;
     private static final int NUM_SCRATCH_TEXTURES = 3;
 
-    private static final boolean fboSupported = GLContext.getCapabilities().GL_EXT_framebuffer_object;
-    private static final boolean gl13Supported = GLContext.getCapabilities().OpenGL13;
+    private static final boolean fboSupported = GLStateManager.capabilities.GL_EXT_framebuffer_object;
+    private static final boolean gl13Supported = GLStateManager.capabilities.OpenGL13;
     private static final boolean enableCompass = MCPatcherForgeConfig.ExtendedHD.fancyCompass;
     private static final boolean enableClock = MCPatcherForgeConfig.ExtendedHD.fancyClock;
     private static final boolean useGL13 = gl13Supported && MCPatcherForgeConfig.ExtendedHD.useGL13;
@@ -55,7 +55,7 @@ public class FancyDial {
     private static final int glAttributes;
     private static boolean initialized;
     private static boolean active;
-    private static final int drawList = GL11.glGenLists(1);
+    private static final int drawList = GLStateManager.glGenLists(1);
 
     private static final Map<TextureAtlasSprite, ResourceLocation> setupInfo = new IdentityHashMap<>();
     private static final Map<TextureAtlasSprite, FancyDial> instances = new IdentityHashMap<>();
@@ -97,9 +97,9 @@ public class FancyDial {
         }
         glAttributes = bits;
 
-        GL11.glNewList(drawList, GL11.GL_COMPILE);
+        GLStateManager.glNewList(drawList, GL11.GL_COMPILE);
         drawBox();
-        GL11.glEndList();
+        GLStateManager.glEndList();
     }
 
     public static void setup(TextureAtlasSprite icon) {
@@ -136,18 +136,18 @@ public class FancyDial {
         if (!active) {
             return false;
         }
-        int oldFB = GL11.glGetInteger(EXTFramebufferObject.GL_FRAMEBUFFER_BINDING_EXT);
+        int oldFB = GLStateManager.glGetInteger(EXTFramebufferObject.GL_FRAMEBUFFER_BINDING_EXT);
         if (oldFB != 0 && warnCount < 10) {
             logger.finer("rendering %s while non-default framebuffer %d is active", icon.getIconName(), oldFB);
             warnCount++;
         }
-        int oldTexture = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        int oldTexture = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 
         try {
             FancyDial instance = getInstance(icon);
             return instance != null && instance.render(itemFrameRenderer);
         } finally {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, oldFB);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, oldFB);
             GLAPI.glBindTexture(oldTexture);
         }
     }
@@ -271,7 +271,7 @@ public class FancyDial {
 
         outputFrames = properties.getInt("outputFrames", 0);
 
-        int glError = GL11.glGetError();
+        int glError = GLStateManager.glGetError();
         if (glError != 0) {
             logger.severe("%s during %s setup", GLU.gluErrorString(glError), name);
             return;
@@ -367,7 +367,7 @@ public class FancyDial {
             lastItemFrameRenderer = false;
         }
 
-        int glError = GL11.glGetError();
+        int glError = GLStateManager.glGetError();
         if (glError != 0) {
             logger.severe("%s during %s update", GLU.gluErrorString(glError), name);
             ok = false;
@@ -430,7 +430,7 @@ public class FancyDial {
     private void renderImpl(double angle) {
         for (Layer layer : layers) {
             layer.blendMethod.applyBlending();
-            GL11.glPushMatrix();
+            GLStateManager.glPushMatrix();
             TexturePackAPI.bindTexture(layer.textureName);
             float offsetX = layer.offsetX;
             float offsetY = layer.offsetY;
@@ -442,26 +442,26 @@ public class FancyDial {
                 scaleX += scaleXDelta;
                 scaleY += scaleYDelta;
             }
-            GL11.glTranslatef(offsetX, offsetY, 0.0f);
-            GL11.glScalef(scaleX, scaleY, 1.0f);
+            GLStateManager.glTranslatef(offsetX, offsetY, 0.0f);
+            GLStateManager.glScalef(scaleX, scaleY, 1.0f);
             float layerAngle = (float) (angle * layer.rotationMultiplier + layer.rotationOffset);
-            GL11.glRotatef(layerAngle, 0.0f, 0.0f, 1.0f);
-            GL11.glCallList(drawList);
-            GL11.glPopMatrix();
+            GLStateManager.glRotatef(layerAngle, 0.0f, 0.0f, 1.0f);
+            GLStateManager.glCallList(drawList);
+            GLStateManager.glPopMatrix();
         }
     }
 
     private static void drawBox() {
-        GL11.glBegin(GL11.GL_QUADS);
-        GL11.glTexCoord2f(0.0f, 0.0f);
-        GL11.glVertex3f(-1.0f, -1.0f, 0.0f);
-        GL11.glTexCoord2f(1.0f, 0.0f);
-        GL11.glVertex3f(1.0f, -1.0f, 0.0f);
-        GL11.glTexCoord2f(1.0f, 1.0f);
-        GL11.glVertex3f(1.0f, 1.0f, 0.0f);
-        GL11.glTexCoord2f(0.0f, 1.0f);
-        GL11.glVertex3f(-1.0f, 1.0f, 0.0f);
-        GL11.glEnd();
+        GLStateManager.glBegin(GL11.GL_QUADS);
+        GLStateManager.glTexCoord2f(0.0f, 0.0f);
+        GLStateManager.glVertex3f(-1.0f, -1.0f, 0.0f);
+        GLStateManager.glTexCoord2f(1.0f, 0.0f);
+        GLStateManager.glVertex3f(1.0f, -1.0f, 0.0f);
+        GLStateManager.glTexCoord2f(1.0f, 1.0f);
+        GLStateManager.glVertex3f(1.0f, 1.0f, 0.0f);
+        GLStateManager.glTexCoord2f(0.0f, 1.0f);
+        GLStateManager.glVertex3f(-1.0f, 1.0f, 0.0f);
+        GLStateManager.glEnd();
     }
 
     private void finish() {
@@ -602,13 +602,13 @@ public class FancyDial {
             this.width = width;
             this.height = height;
 
-            frameBuffer = EXTFramebufferObject.glGenFramebuffersEXT();
+            frameBuffer = GLStateManager.glGenFramebuffers();
             if (frameBuffer < 0) {
                 throw new RuntimeException("could not get framebuffer object");
             }
             GLAPI.glBindTexture(texture);
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
-            EXTFramebufferObject.glFramebufferTexture2DEXT(
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
+            GLStateManager.glFramebufferTexture2D(
                 EXTFramebufferObject.GL_FRAMEBUFFER_EXT,
                 EXTFramebufferObject.GL_COLOR_ATTACHMENT0_EXT,
                 GL11.GL_TEXTURE_2D,
@@ -617,75 +617,75 @@ public class FancyDial {
         }
 
         void bind() {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
 
-            GL11.glPushAttrib(glAttributes);
-            GL11.glViewport(x0, y0, width, height);
-            GL11.glEnable(GL11.GL_SCISSOR_TEST);
-            GL11.glScissor(x0, y0, width, height);
+            GLStateManager.glPushAttrib(glAttributes);
+            GLStateManager.glViewport(x0, y0, width, height);
+            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+            GLStateManager.glScissor(x0, y0, width, height);
 
             lightmapEnabled = false;
             if (gl13Supported) {
-                GL13.glActiveTexture(GL13.GL_TEXTURE1);
-                lightmapEnabled = GL11.glIsEnabled(GL11.GL_TEXTURE_2D);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+                lightmapEnabled = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
                 if (lightmapEnabled) {
-                    GL11.glDisable(GL11.GL_TEXTURE_2D);
+                    GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
                 }
-                GL13.glActiveTexture(GL13.GL_TEXTURE0);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             }
-            GL11.glEnable(GL11.GL_TEXTURE_2D);
-            GL11.glDisable(GL11.GL_DEPTH_TEST);
-            GL11.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
-            GL11.glDisable(GL11.GL_LIGHTING);
-            GL11.glEnable(GL11.GL_ALPHA_TEST);
-            GL11.glAlphaFunc(GL11.GL_GREATER, 0.01f);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glDisable(GL11.GL_DEPTH_TEST);
+            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
+            GLStateManager.glDisable(GL11.GL_LIGHTING);
+            GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
+            GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.01f);
             if (useGL13) {
-                GL11.glDisable(GL13.GL_MULTISAMPLE);
+                GLStateManager.glDisable(GL13.GL_MULTISAMPLE);
             }
 
-            GL11.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
-            GL11.glClear(GL11.GL_COLOR_BUFFER_BIT);
+            GLStateManager.glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
 
-            GL11.glMatrixMode(GL11.GL_PROJECTION);
-            GL11.glPushMatrix();
-            GL11.glLoadIdentity();
-            GL11.glOrtho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
+            GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+            GLStateManager.glPushMatrix();
+            GLStateManager.glLoadIdentity();
+            GLStateManager.glOrtho(-1.0f, 1.0f, -1.0f, 1.0f, -1.0f, 1.0f);
 
-            GL11.glMatrixMode(GL11.GL_MODELVIEW);
-            GL11.glPushMatrix();
-            GL11.glLoadIdentity();
+            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLStateManager.glPushMatrix();
+            GLStateManager.glLoadIdentity();
         }
 
         void unbind() {
-            GL11.glPopAttrib();
+            GLStateManager.glPopAttrib();
 
-            GL11.glMatrixMode(GL11.GL_PROJECTION);
-            GL11.glPopMatrix();
+            GLStateManager.glMatrixMode(GL11.GL_PROJECTION);
+            GLStateManager.glPopMatrix();
 
-            GL11.glMatrixMode(GL11.GL_MODELVIEW);
-            GL11.glPopMatrix();
+            GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+            GLStateManager.glPopMatrix();
 
             if (lightmapEnabled) {
-                GL13.glActiveTexture(GL13.GL_TEXTURE1);
-                GL11.glEnable(GL11.GL_TEXTURE_2D);
-                GL13.glActiveTexture(GL13.GL_TEXTURE0);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             }
-            GL11.glEnable(GL11.GL_BLEND);
+            GLStateManager.glEnable(GL11.GL_BLEND);
             GLAPI.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
 
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, 0);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, 0);
         }
 
         void read(ByteBuffer buffer) {
-            EXTFramebufferObject.glBindFramebufferEXT(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
+            GLStateManager.glBindFramebuffer(EXTFramebufferObject.GL_FRAMEBUFFER_EXT, frameBuffer);
             buffer.position(0);
-            GL11.glReadPixels(x0, y0, width, height, MipmapHelper.TEX_FORMAT, MipmapHelper.TEX_DATA_TYPE, buffer);
+            GLStateManager.glReadPixels(x0, y0, width, height, MipmapHelper.TEX_FORMAT, MipmapHelper.TEX_DATA_TYPE, buffer);
         }
 
         void write(ByteBuffer buffer) {
             GLAPI.glBindTexture(texture);
             buffer.position(0);
-            GL11.glTexSubImage2D(
+            GLStateManager.glTexSubImage2D(
                 GL11.GL_TEXTURE_2D,
                 0,
                 x0,
@@ -701,9 +701,9 @@ public class FancyDial {
             if (!deleted) {
                 deleted = true;
                 if (ownTexture) {
-                    GL11.glDeleteTextures(texture);
+                    GLStateManager.glDeleteTextures(texture);
                 }
-                EXTFramebufferObject.glDeleteFramebuffersEXT(frameBuffer);
+                GLStateManager.glDeleteFramebuffers(frameBuffer);
             }
         }
 
@@ -714,7 +714,7 @@ public class FancyDial {
         }
 
         private static int blankTexture(int width, int height) {
-            int texture = GL11.glGenTextures();
+            int texture = GLStateManager.glGenTextures();
             MipmapHelper.setupTexture(texture, width, height, "scratch");
             return texture;
         }

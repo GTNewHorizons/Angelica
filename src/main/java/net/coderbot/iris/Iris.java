@@ -1,32 +1,31 @@
 package net.coderbot.iris;
 
 import com.google.common.base.Throwables;
-import com.gtnewhorizon.gtnhlib.client.renderer.CapturingTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.config.IrisConfig;
+import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gl.shader.StandardMacros;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
-import net.coderbot.iris.pipeline.transform.ShaderTransformer;
-import net.coderbot.iris.pipeline.transform.TransformPatcher;
-import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.coderbot.iris.pipeline.transform.ShaderTransformer;
+import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ShaderPack;
@@ -35,7 +34,6 @@ import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
-import net.coderbot.iris.block_context.BlockContextHolder;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -64,7 +62,6 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -72,6 +69,7 @@ import java.util.concurrent.ForkJoinPool;
 import java.util.concurrent.ForkJoinWorkerThread;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.zip.ZipError;
@@ -113,10 +111,30 @@ public class Iris {
     // Used in favor of queueDefaultShaderPackOptionValues() for resetting as the
     // behavior is more concrete and therefore is more likely to repair a user's issues
     private static boolean resetShaderPackOptions = false;
+    private static boolean loadShaderPackWhenPossible = false;
 
     private static String IRIS_VERSION;
     @Getter
     private static boolean fallback;
+
+    public static boolean loadedIncompatiblePack() {
+        return DHCompat.lastPackIncompatible();
+    }
+
+    public static void loadShaderpackWhenPossible() {
+        loadShaderPackWhenPossible = true;
+    }
+
+    public static void tryLoadShaderpackWhenPossible() {
+        if (loadShaderPackWhenPossible) {
+            loadShaderPackWhenPossible = false;
+            try {
+                reload();
+            } catch (IOException e) {
+                logger.error("Error during deferred shader reload", e);
+            }
+        }
+    }
 
     /**
      * Lazy executor for parallelizing shader transformations during shader pack loading.
@@ -335,7 +353,7 @@ public class Iris {
         final boolean released = !Keyboard.getEventKeyState();
         if (Minecraft.getMinecraft().gameSettings.showDebugInfo && GuiScreen.isShiftKeyDown() && GuiScreen.isCtrlKeyDown() && released) {
             if (key == Keyboard.KEY_N) {
-                AngelicaMod.animationsMode.next();
+                ClientProxy.animationsMode.next();
             }
         }
     }
@@ -350,6 +368,7 @@ public class Iris {
      * <p>This is called right before options are loaded, so we can add key bindings here.</p>
      */
     public void onEarlyInitialize() {
+        DHCompat.run();
         try {
             if (!Files.exists(getShaderpacksDirectory())) {
                 Files.createDirectories(getShaderpacksDirectory());
@@ -395,8 +414,19 @@ public class Iris {
 
         PBRTextureManager.INSTANCE.init();
 
-        // Only load the shader pack when we can access OpenGL
-        loadShaderpack();
+        boolean isDHLoaded;
+        try {
+            Class.forName("com.seibel.distanthorizons.DistantHorizonsTweaker");
+            isDHLoaded = true;
+        }
+        catch (Exception e) {
+            isDHLoaded = false;
+        }
+
+        // When DH is present, defer shaderpack loading until its init callback has run.
+        if (!isDHLoaded) {
+            loadShaderpack();
+        }
     }
 
     /**
@@ -448,11 +478,9 @@ public class Iris {
         // Attempt to load an external shaderpack if it is available
         final Optional<String> externalName = irisConfig.getShaderPackName();
 
-        if (!externalName.isPresent()) {
+        if (externalName.isEmpty()) {
             logger.info("Shaders are disabled because no valid shaderpack is selected");
-
             setShadersDisabled();
-
             return;
         }
 
@@ -721,6 +749,12 @@ public class Iris {
 
             BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
         }
+
+        if (loadedIncompatiblePack() && Minecraft.getMinecraft().thePlayer != null) {
+            Iris.logger.warn("Incompatible pack for DH!");
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.BOLD.toString() + EnumChatFormatting.RED + "This pack doesn't have DH support."));
+            Minecraft.getMinecraft().thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "Distant Horizons (DH) chunks won't show up. This isn't a bug, get another shader."));
+        }
     }
 
     /**
@@ -880,35 +914,25 @@ public class Iris {
         ClientRegistry.registerKeyBinding(shaderpackScreenKeybind);
     }
 
-    static BlockContextHolder contextHolder;
-
-    private static int getShaderMaterialOverrideId(Block block, int meta) {
-        if (contextHolder == null) {
-            final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-            if (blockMetaMatches == null) {
-                return -1;
-            }
-            contextHolder = new BlockContextHolder(blockMetaMatches);
-
-        }
-        contextHolder.set(block, meta, (short) block.getRenderType());
-        return contextHolder.blockId;
-    }
-
     public static void setShaderMaterialOverride(Block block, int meta) {
         if (!enabled)
             return;
 
-        int blockId = getShaderMaterialOverrideId(block, meta);
+        final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+        if (blockMetaMatches == null)
+            return;
 
-        if (TessellatorManager.get() instanceof CapturingTessellator tess)
-            tess.setShaderBlockId(blockId);
+        final Int2IntMap metaMap = blockMetaMatches.get(block);
+        final int blockId = metaMap != null ? metaMap.get(meta) : -1;
+
+        if (TessellatorManager.get() instanceof StateAwareTessellator tess)
+            tess.angelica$setShaderOverrideBlockId((short) blockId);
     }
 
     public static void resetShaderMaterialOverride() {
         if (!enabled)
             return;
-        if (TessellatorManager.get() instanceof CapturingTessellator tess)
-            tess.setShaderBlockId(-1);
+        if (TessellatorManager.get() instanceof StateAwareTessellator tess)
+            tess.angelica$setShaderOverrideBlockId((short) -1);
     }
 }

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas.world;
 
+import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
@@ -84,11 +85,14 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     // Local Section->Light table
     private final NibbleArray[][] lightArrays;
 
+    // Per-section RGB light data (captured from BlockLightProvider on main thread)
+    private final SectionLightData[] sectionLightData;
+
     // Local section copies
     private ClonedChunkSection[] sections;
 
     // Biome data for each chunk section
-    private BiomeGenBase[][] biomeData;
+    private final BiomeGenBase[][] biomeData;
 
     // The starting point from which this slice captures blocks
     private int baseX, baseY, baseZ;
@@ -158,6 +162,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         this.metadataArrays = new int[SECTION_TABLE_ARRAY_SIZE][];
         this.biomeData = new BiomeGenBase[SECTION_TABLE_ARRAY_SIZE][];
         this.lightArrays = new NibbleArray[SECTION_TABLE_ARRAY_SIZE][LIGHT_TYPES.length];
+        this.sectionLightData = new SectionLightData[SECTION_TABLE_ARRAY_SIZE];
 
         if (ModStatus.isFluidLoggedLoaded) {
             this.fluidArrays = new Fluid[SECTION_TABLE_ARRAY_SIZE][];
@@ -220,6 +225,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
                     this.lightArrays[idx][EnumSkyBlock.Block.ordinal()] = section.getLightArray(EnumSkyBlock.Block);
                     this.lightArrays[idx][EnumSkyBlock.Sky.ordinal()] = section.getLightArray(EnumSkyBlock.Sky);
+                    this.sectionLightData[idx] = section.getSectionLightData();
                 }
             }
         }
@@ -378,6 +384,24 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         }
 
         return lightArray.get(relX & 15, relY & 15, relZ & 15);
+    }
+
+    public SectionLightData getSectionLightData(int x, int y, int z) {
+        if (!blockBoxContains(this.volume, x, y, z)) {
+            return null;
+        }
+        final int relX = x - this.baseX;
+        final int relY = y - this.baseY;
+        final int relZ = z - this.baseZ;
+        return this.sectionLightData[getLocalSectionIndex(relX >> 4, relY >> 4, relZ >> 4)];
+    }
+
+    public List<IDynamicLightSource> getChunkLightSources() {
+        return chunkLightSources;
+    }
+
+    public DynamicLights getDynamicLightsInstance() {
+        return dynamicLightsInstance;
     }
 
     @Override

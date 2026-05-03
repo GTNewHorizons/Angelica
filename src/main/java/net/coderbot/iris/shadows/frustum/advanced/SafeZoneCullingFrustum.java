@@ -3,12 +3,13 @@ package net.coderbot.iris.shadows.frustum.advanced;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.minecraft.util.AxisAlignedBB;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector3f;
 
 public class SafeZoneCullingFrustum extends AdvancedShadowCullingFrustum {
 	private final BoxCuller distanceCuller;
 
-	public SafeZoneCullingFrustum(Matrix4f playerView, Matrix4f playerProjection, Vector3f shadowLightVector, BoxCuller voxelCuller, BoxCuller distanceCuller) {
+	public SafeZoneCullingFrustum(Matrix4fc playerView, Matrix4fc playerProjection, Vector3f shadowLightVector, BoxCuller voxelCuller, BoxCuller distanceCuller) {
 		super();
 		init(playerView, playerProjection, shadowLightVector, voxelCuller);
 		this.distanceCuller = distanceCuller;

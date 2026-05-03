@@ -33,12 +33,18 @@ public class IrisConfig {
 	 */
 	private boolean disableUpdateMessage;
 
+	/**
+	 * If debug features should be enabled. Gives much more detailed OpenGL error outputs at the cost of performance.
+	 */
+	private boolean enableDebugOptions;
+
 	private final Path propertiesPath;
 
 	public IrisConfig(Path propertiesPath) {
 		shaderPackName = null;
 		enableShaders = true;
 		disableUpdateMessage = false;
+		enableDebugOptions = false;
 		this.propertiesPath = propertiesPath;
 	}
 
@@ -103,6 +109,10 @@ public class IrisConfig {
 		this.enableShaders = enabled;
 	}
 
+	public boolean areDebugOptionsEnabled() {
+		return enableDebugOptions;
+	}
+
 	/**
 	 * loads the config file and then populates the string, int, and boolean entries with the parsed entries
 	 *
@@ -121,6 +131,7 @@ public class IrisConfig {
 		}
 		shaderPackName = properties.getProperty("shaderPack");
 		enableShaders = !"false".equals(properties.getProperty("enableShaders"));
+		enableDebugOptions = "true".equals(properties.getProperty("enableDebugOptions"));
 		disableUpdateMessage = "true".equals(properties.getProperty("disableUpdateMessage"));
         // TODO: GUI
         try {
@@ -147,6 +158,7 @@ public class IrisConfig {
 		final Properties properties = new Properties();
 		properties.setProperty("shaderPack", getShaderPackName().orElse(""));
 		properties.setProperty("enableShaders", enableShaders ? "true" : "false");
+		properties.setProperty("enableDebugOptions", enableDebugOptions ? "true" : "false");
 		properties.setProperty("disableUpdateMessage", disableUpdateMessage ? "true" : "false");
 		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
 		// NB: This uses ISO-8859-1 with unicode escapes as the encoding

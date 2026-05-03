@@ -2,8 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.optimizations;
 
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.GLAllocation;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Mutable;
@@ -31,7 +31,7 @@ public class MixinGLAllocation {
      */
     @Overwrite
     public static synchronized int generateDisplayLists(int count) {
-        final int id = GL11.glGenLists(count);
+        final int id = GLStateManager.glGenLists(count);
         // Cast to Int2IntMap to use primitive put(int, int) instead of put(Integer, Integer)
         ((Int2IntMap) mapDisplayLists).put(id, count);
         return id;
@@ -47,7 +47,7 @@ public class MixinGLAllocation {
         // This makes it null-safe even if called with unallocated ID (no NPE from unboxing null)
         final int count = ((Int2IntMap) mapDisplayLists).remove(id);
         if (count > 0) {
-            GL11.glDeleteLists(id, count);
+            GLStateManager.glDeleteLists(id, count);
         }
     }
 
@@ -59,7 +59,7 @@ public class MixinGLAllocation {
     public static synchronized void deleteTexturesAndDisplayLists() {
         // Cast to Int2IntMap to use primitive iteration
         for (Int2IntMap.Entry entry : ((Int2IntMap) mapDisplayLists).int2IntEntrySet()) {
-            GL11.glDeleteLists(entry.getIntKey(), entry.getIntValue());
+            GLStateManager.glDeleteLists(entry.getIntKey(), entry.getIntValue());
         }
         mapDisplayLists.clear();
     }

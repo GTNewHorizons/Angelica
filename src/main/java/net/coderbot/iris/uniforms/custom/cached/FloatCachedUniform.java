@@ -4,7 +4,7 @@ import kroppeb.stareval.function.FunctionReturn;
 import kroppeb.stareval.function.Type;
 import net.coderbot.iris.gl.uniform.FloatSupplier;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
-import org.lwjgl.opengl.GL20;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 public class FloatCachedUniform extends CachedUniform {
 
@@ -25,7 +25,7 @@ public class FloatCachedUniform extends CachedUniform {
 
 	@Override
 	public void push(int location) {
-		GL20.glUniform1f(location, this.cached);
+		GLStateManager.glUniform1f(location, this.cached);
 	}
 
 	@Override

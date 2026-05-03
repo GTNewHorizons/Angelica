@@ -263,7 +263,9 @@ public class ShadowCompositeRenderer {
                 source.getGeometrySource().orElse(null),
                 source.getTessControlSource().orElse(null),
                 source.getTessEvalSource().orElse(null),
-                source.getFragmentSource().orElseThrow(NullPointerException::new));
+                source.getFragmentSource().orElseThrow(NullPointerException::new),
+                TextureStage.SHADOWCOMP,
+                pipeline.getTextureMap());
         String vertex = transformed.get(PatchShaderType.VERTEX);
         String geometry = transformed.get(PatchShaderType.GEOMETRY);
         String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);

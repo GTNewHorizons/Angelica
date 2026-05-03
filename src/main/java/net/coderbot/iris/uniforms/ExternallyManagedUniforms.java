@@ -14,6 +14,7 @@ public class ExternallyManagedUniforms {
 		addMat4(uniformHolder, "iris_ProjectionMatrix");
 		addMat4(uniformHolder, "iris_ProjectionMatrixInverse");
 		addMat4(uniformHolder, "iris_LightmapTextureMatrix");
+		addMat4(uniformHolder, "iris_TextureMatrix");
 		addMat4(uniformHolder, "u_ModelViewProjectionMatrix");
 		addMat3(uniformHolder, "iris_NormalMatrix");
 		uniformHolder.externallyManagedUniform("heavyFog", UniformType.BOOL);

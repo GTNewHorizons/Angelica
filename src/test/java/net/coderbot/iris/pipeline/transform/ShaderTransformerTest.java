@@ -1,8 +1,11 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.taumc.glsl.ShaderParser;
 
+import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -16,6 +19,16 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
 class ShaderTransformerTest {
+
+    @BeforeAll
+    static void initShaderTransformer() throws Exception {
+        Field maxGlsl = RenderSystem.class.getDeclaredField("maxGlslVersion");
+        maxGlsl.setAccessible(true);
+        maxGlsl.setInt(null, 460);
+
+        ShaderTransformer.clearCache();
+        ShaderTransformer.init();
+    }
 
     @Test
     void transformIsDeterministicUnderConcurrency() throws ExecutionException, InterruptedException {

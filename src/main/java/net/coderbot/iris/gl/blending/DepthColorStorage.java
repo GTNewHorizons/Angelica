@@ -3,6 +3,7 @@ package net.coderbot.iris.gl.blending;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import lombok.Getter;
 
 public class DepthColorStorage {
@@ -11,10 +12,24 @@ public class DepthColorStorage {
 	@Getter
     private static boolean depthColorLocked;
 
+	private static final IntOpenHashSet ownedPrograms = new IntOpenHashSet();
+
+	public static void registerOwnedProgram(int programId) {
+		ownedPrograms.add(programId);
+	}
+
+	public static void unregisterOwnedProgram(int programId) {
+		ownedPrograms.remove(programId);
+	}
+
+	public static boolean isOwnedProgram(int programId) {
+		return ownedPrograms.contains(programId);
+	}
+
     public static void disableDepthColor() {
 		if (!depthColorLocked) {
 			// Only save the previous state if the depth and color mask wasn't already locked
-			ColorMask colorMask = GLStateManager.getColorMask();
+			final ColorMask colorMask = GLStateManager.getColorMask();
 			final DepthState depthState = GLStateManager.getDepthState();
 
 			originalDepthEnable = depthState.isEnabled();

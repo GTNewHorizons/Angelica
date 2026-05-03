@@ -7,6 +7,7 @@ import net.minecraft.util.ResourceLocation;
 
 import org.lwjgl.opengl.GL11;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.prupe.mcpatcher.MCPatcherUtils;
 
 public class BlendMethod {
@@ -155,38 +156,38 @@ public class BlendMethod {
 
     public void applyFade(float fade) {
         if (fadeRGB && fadeAlpha) {
-            GL11.glColor4f(fade, fade, fade, fade);
+            GLStateManager.glColor4f(fade, fade, fade, fade);
         } else if (fadeRGB) {
-            GL11.glColor4f(fade, fade, fade, 1.0f);
+            GLStateManager.glColor4f(fade, fade, fade, 1.0f);
         } else if (fadeAlpha) {
-            GL11.glColor4f(1.0f, 1.0f, 1.0f, fade);
+            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, fade);
         }
     }
 
     public void applyAlphaTest() {
         if (blend) {
-            GL11.glDisable(GL11.GL_ALPHA_TEST);
+            GLStateManager.glDisable(GL11.GL_ALPHA_TEST);
         } else {
-            GL11.glEnable(GL11.GL_ALPHA_TEST);
-            GL11.glAlphaFunc(GL11.GL_GREATER, 0.01f);
+            GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
+            GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.01f);
         }
     }
 
     public void applyDepthFunc() {
         if (blend) {
-            GL11.glDepthFunc(GL11.GL_EQUAL);
+            GLStateManager.glDepthFunc(GL11.GL_EQUAL);
         } else {
-            GL11.glDepthFunc(GL11.GL_LEQUAL);
-            GL11.glDepthMask(true);
+            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+            GLStateManager.glDepthMask(true);
         }
     }
 
     public void applyBlending() {
         if (blend) {
-            GL11.glEnable(GL11.GL_BLEND);
+            GLStateManager.glEnable(GL11.GL_BLEND);
             GLAPI.glBlendFuncSeparate(srcBlend, dstBlend, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
         } else {
-            GL11.glDisable(GL11.GL_BLEND);
+            GLStateManager.glDisable(GL11.GL_BLEND);
         }
     }
 

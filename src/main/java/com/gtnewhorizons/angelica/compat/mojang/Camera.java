@@ -26,12 +26,11 @@ public class Camera {
 
     private float pitch;
     private float yaw;
-    private EntityLivingBase entity;
+    private boolean isSleeping;
     private boolean thirdPerson;
     private float partialTicks;
 
-    private Camera() {
-    }
+    private Camera() {}
 
     /**
      * Updates the camera position and orientation based on the current entity and partial ticks.
@@ -41,7 +40,7 @@ public class Camera {
      */
     public void update(EntityLivingBase entity, float partialTicks) {
         this.partialTicks = partialTicks;
-        this.entity = entity;
+        this.isSleeping = entity.isPlayerSleeping();
 
         // Entity position (interpolated, at eye level)
         final double entityX = entity.lastTickPosX + (entity.posX - entity.lastTickPosX) * partialTicks;

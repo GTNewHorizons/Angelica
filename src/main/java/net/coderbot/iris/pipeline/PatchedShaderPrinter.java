@@ -39,53 +39,54 @@ public class PatchedShaderPrinter {
 	}
 
 	public static void debugPatchedShaders(String name, String vertex, String geometry, String tessControl, String tessEval, String fragment, String compute) {
-		if (prettyPrintShaders) {
-			final Path debugOutDir = Minecraft.getMinecraft().mcDataDir.toPath().resolve("patched_shaders");
-			if (!outputLocationCleared) {
-				try {
-					if (Files.exists(debugOutDir)) {
-						try (Stream<Path> stream = Files.list(debugOutDir)) {
-							stream.forEach(path -> {
-								try {
-									Files.delete(path);
-								} catch (IOException e) {
-									throw new RuntimeException(e);
-								}
-							});
-						}
-					}
-
-					Files.createDirectories(debugOutDir);
-				} catch (IOException e) {
-					Iris.logger.warn("Failed to initialize debug patched shader source location", e);
-				}
-				outputLocationCleared = true;
-			}
-
+		if (!prettyPrintShaders && !Iris.getIrisConfig().areDebugOptionsEnabled()) {
+			return;
+		}
+		final Path debugOutDir = Minecraft.getMinecraft().mcDataDir.toPath().resolve("patched_shaders");
+		if (!outputLocationCleared) {
 			try {
-				programCounter++;
-				String prefix = String.format("%03d_", programCounter);
-				if (vertex != null) {
-					Files.write(debugOutDir.resolve(prefix + name + ".vsh"), vertex.getBytes(StandardCharsets.UTF_8));
+				if (Files.exists(debugOutDir)) {
+					try (Stream<Path> stream = Files.list(debugOutDir)) {
+						stream.forEach(path -> {
+							try {
+								Files.delete(path);
+							} catch (IOException e) {
+								throw new RuntimeException(e);
+							}
+						});
+					}
 				}
-				if (geometry != null) {
-					Files.write(debugOutDir.resolve(prefix + name + ".gsh"), geometry.getBytes(StandardCharsets.UTF_8));
-				}
-				if (tessControl != null) {
-					Files.write(debugOutDir.resolve(prefix + name + ".tcs"), tessControl.getBytes(StandardCharsets.UTF_8));
-				}
-				if (tessEval != null) {
-					Files.write(debugOutDir.resolve(prefix + name + ".tes"), tessEval.getBytes(StandardCharsets.UTF_8));
-				}
-				if (fragment != null) {
-					Files.write(debugOutDir.resolve(prefix + name + ".fsh"), fragment.getBytes(StandardCharsets.UTF_8));
-				}
-				if (compute != null) {
-					Files.write(debugOutDir.resolve(prefix + name + ".csh"), compute.getBytes(StandardCharsets.UTF_8));
-				}
+
+				Files.createDirectories(debugOutDir);
 			} catch (IOException e) {
-				Iris.logger.warn("Failed to write debug patched shader source", e);
+				Iris.logger.warn("Failed to initialize debug patched shader source location", e);
 			}
+			outputLocationCleared = true;
+		}
+
+		try {
+			programCounter++;
+			String prefix = String.format("%03d_", programCounter);
+			if (vertex != null) {
+				Files.write(debugOutDir.resolve(prefix + name + ".vsh"), vertex.getBytes(StandardCharsets.UTF_8));
+			}
+			if (geometry != null) {
+				Files.write(debugOutDir.resolve(prefix + name + ".gsh"), geometry.getBytes(StandardCharsets.UTF_8));
+			}
+			if (tessControl != null) {
+				Files.write(debugOutDir.resolve(prefix + name + ".tcs"), tessControl.getBytes(StandardCharsets.UTF_8));
+			}
+			if (tessEval != null) {
+				Files.write(debugOutDir.resolve(prefix + name + ".tes"), tessEval.getBytes(StandardCharsets.UTF_8));
+			}
+			if (fragment != null) {
+				Files.write(debugOutDir.resolve(prefix + name + ".fsh"), fragment.getBytes(StandardCharsets.UTF_8));
+			}
+			if (compute != null) {
+				Files.write(debugOutDir.resolve(prefix + name + ".csh"), compute.getBytes(StandardCharsets.UTF_8));
+			}
+		} catch (IOException e) {
+			Iris.logger.warn("Failed to write debug patched shader source", e);
 		}
 	}
 }

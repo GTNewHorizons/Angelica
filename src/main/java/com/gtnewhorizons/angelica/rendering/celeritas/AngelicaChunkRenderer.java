@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
@@ -30,7 +31,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     }
 
     private static MultiDrawEmitter createEmitter() {
-        MultiDrawMode mode = AngelicaMod.options().advanced.multiDrawMode;
+        MultiDrawMode mode = ClientProxy.options().advanced.multiDrawMode;
 
         if (mode == MultiDrawMode.INDIRECT) {
             boolean supported = GLStateManager.capabilities != null && (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect);

@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders.startup;
 
-import com.gtnewhorizons.angelica.glsm.texture.TextureTracker;
+import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 
 import org.spongepowered.asm.lib.Opcodes;

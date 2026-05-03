@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
@@ -24,6 +25,7 @@ import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraftforge.client.GuiIngameForge;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import thaumcraft.common.Thaumcraft;
 import xaero.common.core.XaeroMinimapCore;
 
@@ -68,6 +70,12 @@ public class HUDCaching {
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
         }
 
+        GLStateManager.disableLighting();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.disableTexture();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.enableTexture();
+
         if (!AngelicaConfig.hudCachingActive || !GLStateManager.isFramebufferEnabled()) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
@@ -86,8 +94,10 @@ public class HUDCaching {
                 framebuffer.clearBindFramebuffer();
             }
             renderingCacheOverride = true;
+            GLSMConfig.hudCacheOverride = true;
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             renderingCacheOverride = false;
+            GLSMConfig.hudCacheOverride = false;
             mc.getFramebuffer().bindFramebuffer(false);
         } else {
             renderer.setupOverlayRendering();

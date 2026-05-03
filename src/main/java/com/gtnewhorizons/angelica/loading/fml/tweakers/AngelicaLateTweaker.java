@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.loading.fml.tweakers;
 
+import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
+import com.gtnewhorizons.angelica.glsm.loading.TransformerNarrower;
 import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
@@ -27,8 +29,6 @@ public class AngelicaLateTweaker implements ITweaker {
 
     /**
      * Reduces overly broad transformer exclusions that prevent AngelicaRedirector from doing its job.
-     *
-     * Looking at you, DragonAPI.
      */
     @SuppressWarnings("unchecked")
     private static void narrowTransformerExclusions(LaunchClassLoader classLoader) {
@@ -37,32 +37,9 @@ public class AngelicaLateTweaker implements ITweaker {
             exceptionsField.setAccessible(true);
             final Set<String> exceptions = (Set<String>) exceptionsField.get(classLoader);
 
-            if (exceptions.remove("Reika.DragonAPI.ASM")) {
-                // Don't read ASMCallsClient and Patchers/Fixes/WorldRenderAlpha.  The rest are fair game.
+            TransformerNarrower.narrow(exceptions, Launch.blackboard, "angelica", "Angelica",
+                EcosystemNarrowRules.ALL);
 
-                // Re-add the other non utility classes
-                exceptions.add("Reika.DragonAPI.ASM.Patchers");
-                exceptions.add("Reika.DragonAPI.ASM.Profiling");
-                exceptions.add("Reika.DragonAPI.ASM.APIStripper");
-                exceptions.add("Reika.DragonAPI.ASM.ClassReparenter");
-                exceptions.add("Reika.DragonAPI.ASM.DependentMethodStripper");
-                exceptions.add("Reika.DragonAPI.ASM.DragonAPIClassTransformer");
-                exceptions.add("Reika.DragonAPI.ASM.FMLItemBlockPatch");
-                exceptions.add("Reika.DragonAPI.ASM.FluidNamePatch");
-                exceptions.add("Reika.DragonAPI.ASM.InterfaceInjector");
-                exceptions.add("Reika.DragonAPI.ASM.SpecialBiomePlacement");
-                exceptions.add("Reika.DragonAPI.ASM.StructureLootHooks");
-                FMLRelaunchLog.info("[Angelica] Narrowed Reika.DragonAPI.ASM transformer exclusion to allow GL redirection of utility classes");
-            }
-
-            if (exceptions.remove("xaero.common.core")) {
-                exceptions.add("xaero.common.core.transformer");
-                FMLRelaunchLog.info("[Angelica] Narrowed xaero.common.core transformer exclusion to allow GL redirection");
-            }
-            if (exceptions.remove("xaero.map.core")) {
-                exceptions.add("xaero.map.core.transformer");
-                FMLRelaunchLog.info("[Angelica] Narrowed xaero.map.core transformer exclusion to allow GL redirection");
-            }
         } catch (Exception e) {
             FMLRelaunchLog.warning("[Angelica] Failed to narrow transformer exclusions: %s", e.getMessage());
         }

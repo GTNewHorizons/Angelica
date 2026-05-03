@@ -1,13 +1,15 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.ffp.TessellatorStreamingDrawer;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -48,7 +50,7 @@ public abstract class MixinMinecraft {
     @Overwrite
     public static int getGLMaximumTextureSize() {
         if (max_texture_size == -1) {
-            max_texture_size = GL11.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
+            max_texture_size = GLStateManager.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
         }
         return max_texture_size;
     }
@@ -58,7 +60,7 @@ public abstract class MixinMinecraft {
         at = @At(value = "INVOKE", target = "Lcpw/mods/fml/common/FMLCommonHandler;onRenderTickEnd(F)V", shift = At.Shift.AFTER, remap = false)
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
-        GL11.glEnable(GL11.GL_LIGHTING);
+        GLStateManager.glEnable(GL11.GL_LIGHTING);
     }
 
     @Inject(
@@ -107,7 +109,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("HEAD"))
     private void celeritas$renderAheadStartFrame(CallbackInfo ci) {
-        final int limit = AngelicaMod.options().performance.cpuRenderAheadLimit;
+        final int limit = ClientProxy.options().performance.cpuRenderAheadLimit;
         if (limit > 0) {
             celeritas$renderAheadManager.startFrame(limit);
         }
@@ -115,7 +117,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("RETURN"))
     private void celeritas$renderAheadEndFrame(CallbackInfo ci) {
-        if (AngelicaMod.options().performance.cpuRenderAheadLimit > 0) {
+        if (ClientProxy.options().performance.cpuRenderAheadLimit > 0) {
             celeritas$renderAheadManager.endFrame();
         }
     }

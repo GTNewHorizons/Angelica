@@ -26,6 +26,7 @@ public enum TargetedMod implements ITargetMod {
     THAUMCRAFT(null, "Thaumcraft"),
     TINKERS_CONSTRUCT(null, "TConstruct"),
     TWILIGHT_FOREST(null, "TwilightForest"),
+    BIOMES_O_PLENTY(null, "BiomesOPlenty"),
     WITCHERY(null, "witchery");
 
     private final TargetModBuilder builder;

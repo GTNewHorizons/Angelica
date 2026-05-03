@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.loading.fml.compat.transformers.generic;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import org.spongepowered.asm.lib.Opcodes;
 import org.spongepowered.asm.lib.tree.ClassNode;
 import org.spongepowered.asm.lib.tree.InsnList;
@@ -29,7 +29,7 @@ public class HUDCachingEarlyReturnTransformer {
                 } else if (method.desc.endsWith("V")) {
                     list.add(new InsnNode(Opcodes.RETURN));
                 } else {
-                    AngelicaTweaker.LOGGER.warn(
+                    AngelicaClientTweaker.LOGGER.warn(
                         "HUDCaching Conditional Return - Unknown return type: {}#{}:{}", cn.name, method.name, method.desc
                     );
                     return;

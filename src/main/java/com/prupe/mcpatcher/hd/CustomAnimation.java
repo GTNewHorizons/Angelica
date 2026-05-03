@@ -14,6 +14,7 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.util.glu.GLU;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.resource.GLAPI;
@@ -145,8 +146,8 @@ public class CustomAnimation implements Comparable<CustomAnimation> {
             return;
         }
         TexturePackAPI.bindTexture(dstName);
-        int dstWidth = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
-        int dstHeight = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
+        int dstWidth = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
+        int dstHeight = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
         int levels = MipmapHelper.getMipmapLevelsForCurrentTexture();
         if (x + w > dstWidth || y + h > dstHeight) {
             properties.error(
@@ -238,7 +239,7 @@ public class CustomAnimation implements Comparable<CustomAnimation> {
         }
         GLAPI.glBindTexture(texture);
         update(texture, 0, 0);
-        int glError = GL11.glGetError();
+        int glError = GLStateManager.glGetError();
         if (glError != 0) {
             logger.severe("%s: %s", this, GLU.gluErrorString(glError));
             error = true;
@@ -351,7 +352,7 @@ public class CustomAnimation implements Comparable<CustomAnimation> {
     // Without the cast the code won't compile
     @SuppressWarnings("RedundantCast")
     private void update(int texture, int dx, int dy) {
-        GL11.glTexSubImage2D(
+        GLStateManager.glTexSubImage2D(
             GL11.GL_TEXTURE_2D,
             mipmapLevel,
             x + dx,

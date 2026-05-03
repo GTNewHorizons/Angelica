@@ -428,6 +428,7 @@ public class ShaderTransformer {
                 // Handle mc_midTexCoord for Celeritas
                 patchMultiTexCoord3(transformer, parameters);
                 replaceMidTexCoord(transformer, IrisExtendedChunkVertexType.MID_TEX_SCALE);
+                replaceMCEntity(transformer, parameters);
                 applyIntelHd4000Workaround(transformer);
                 break;
             case COMPOSITE:
@@ -439,9 +440,16 @@ public class ShaderTransformer {
             case COMPUTE:
                 ComputeTransformer.transform(transformer, parameters, versionInt);
                 break;
+            case DH_TERRAIN:
+                DHTerrainTransformer.transform(transformer, parameters, versionInt);
+                break;
+            case DH_GENERIC:
+                DHGenericTransformer.transform(transformer, parameters, versionInt);
+                break;
             default:
                 throw new IllegalStateException("Unknown patch type: " + patchType.name());
         }
+        TextureTransformer.transform(transformer, parameters);
         CompatibilityTransformer.transformEach(transformer, parameters);
     }
 
@@ -485,6 +493,55 @@ public class ShaderTransformer {
 
         transformer.injectVariable("in vec2 mc_midTexCoord;"); //TODO why is this inserted oddly?
 
+    }
+
+    /**
+     * Replaces shader-declared mc_Entity (vec2/ivec2/float/int/etc.) with upstream-compatible unpacking
+     * from a single uint attribute. The uint is packed as ((blockId + 1) << 1) | (renderType & 1).
+     */
+    public static void replaceMCEntity(Transformer transformer, Parameters parameters) {
+        if (parameters.type != ShaderType.VERTEX) return;
+
+        final int type = transformer.findType("mc_Entity");
+        if (type != 0) {
+            transformer.removeVariable("mc_Entity");
+        }
+        transformer.replaceExpression("mc_Entity", "iris_Entity");
+        switch (type) {
+            case 0:
+            case GLSLLexer.BOOL:
+                return;
+            case GLSLLexer.FLOAT:
+                transformer.injectFunction("float iris_Entity = float(int(mc_Entity >> 1u) - 1);");
+                break;
+            case GLSLLexer.VEC2:
+                transformer.injectFunction("vec2 iris_Entity = vec2(int(mc_Entity >> 1u) - 1, mc_Entity & 1u);");
+                break;
+            case GLSLLexer.VEC3:
+                transformer.injectFunction("vec3 iris_Entity = vec3(int(mc_Entity >> 1u) - 1, mc_Entity & 1u, 0.0);");
+                break;
+            case GLSLLexer.VEC4:
+                transformer.injectFunction("vec4 iris_Entity = vec4(int(mc_Entity >> 1u) - 1, mc_Entity & 1u, 0.0, 1.0);");
+                break;
+            case GLSLLexer.UINT:
+                transformer.injectFunction("uint iris_Entity = uint(int(mc_Entity >> 1u) - 1);");
+                break;
+            case GLSLLexer.INT:
+                transformer.injectFunction("int iris_Entity = int(mc_Entity >> 1u) - 1;");
+                break;
+            case GLSLLexer.IVEC2:
+                transformer.injectFunction("ivec2 iris_Entity = ivec2(int(mc_Entity >> 1u) - 1, mc_Entity & 1u);");
+                break;
+            case GLSLLexer.IVEC3:
+                transformer.injectFunction("ivec3 iris_Entity = ivec3(int(mc_Entity >> 1u) - 1, mc_Entity & 1u, 0);");
+                break;
+            case GLSLLexer.IVEC4:
+                transformer.injectFunction("ivec4 iris_Entity = ivec4(int(mc_Entity >> 1u) - 1, mc_Entity & 1u, 0, 1);");
+                break;
+            default:
+                throw new IllegalStateException("Got an invalid format mc_Entity (type token " + type + ").");
+        }
+        transformer.injectVariable("in uint mc_Entity;");
     }
 
     public static void addIfNotExists(Transformer transformer, String name, String code) {

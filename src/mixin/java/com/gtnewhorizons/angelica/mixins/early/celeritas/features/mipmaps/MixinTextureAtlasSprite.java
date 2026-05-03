@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.features.mipmaps;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import org.embeddedt.embeddium.api.util.ColorABGR;
@@ -29,7 +30,21 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
         if (this.framesTextureData.isEmpty() || this.framesTextureData.get(0) == null) {
             return;
         }
+        if (celeritas$isAlwaysTranslucent(this.iconName)) {
+            this.celeritas$transparencyLevel = SpriteTransparencyLevel.TRANSLUCENT;
+            return;
+        }
         celeritas$processTransparentImages(this.framesTextureData.get(0)[0], level > 0 && !iconName.contains("leaves"));
+    }
+
+    @Unique
+    private static boolean celeritas$isAlwaysTranslucent(String name) {
+        final String[] list = AngelicaConfig.alwaysTranslucentSprites;
+        if (list == null || list.length == 0) return false;
+        for (String s : list) {
+            if (name.equals(s)) return true;
+        }
+        return false;
     }
 
     // Ordinals: OPAQUE=0, TRANSPARENT=1, TRANSLUCENT=2

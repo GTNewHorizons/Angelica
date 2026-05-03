@@ -25,6 +25,7 @@ public class ModStatus {
     public static boolean isThaumicHorizonsLoaded;
     public static boolean isBaublesLoaded;
     public static boolean isFluidLoggedLoaded;
+    public static boolean isBOPLoaded;
 
     public static void preInit() {
         if (Loader.isModLoaded("backhand")) {
@@ -45,6 +46,7 @@ public class ModStatus {
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
+        isBOPLoaded = Loader.isModLoaded("BiomesOPlenty");
 
         // remove compat with original release of BG2
         if (isBattlegearLoaded){

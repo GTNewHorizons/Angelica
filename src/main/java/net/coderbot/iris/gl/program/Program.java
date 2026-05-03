@@ -1,7 +1,8 @@
 package net.coderbot.iris.gl.program;
 
 import net.coderbot.iris.gl.GlResource;
-import org.lwjgl.opengl.GL20;
+import net.coderbot.iris.gl.blending.DepthColorStorage;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 public final class Program extends GlResource {
 	private final ProgramUniforms uniforms;
@@ -14,10 +15,12 @@ public final class Program extends GlResource {
 		this.uniforms = uniforms;
 		this.samplers = samplers;
 		this.images = images;
+
+		DepthColorStorage.registerOwnedProgram(program);
 	}
 
 	public void use() {
-		GL20.glUseProgram(getGlId());
+		GLStateManager.glUseProgram(getGlId());
 
 		uniforms.update();
 		samplers.update();
@@ -27,12 +30,13 @@ public final class Program extends GlResource {
 	public static void unbind() {
 		ProgramUniforms.clearActiveUniforms();
 		ProgramSamplers.clearActiveSamplers();
-		GL20.glUseProgram(0);
+		GLStateManager.glUseProgram(0);
 	}
 
 	@Override
     public void destroyInternal() {
-		GL20.glDeleteProgram(getGlId());
+		DepthColorStorage.unregisterOwnedProgram(getGlId());
+		GLStateManager.glDeleteProgram(getGlId());
 	}
 
 	/**

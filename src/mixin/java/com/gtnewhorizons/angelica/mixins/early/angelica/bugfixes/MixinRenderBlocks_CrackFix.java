@@ -5,7 +5,7 @@
  * All Rights Reserved
  *
  * Modifications by Angelica in accordance with LGPL v3.0
- * 
+ *
  * The above copyright notice and this permission notice shall be included
  * in all copies or substantial portions of the Software.
  *
@@ -25,7 +25,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -45,7 +45,7 @@ import java.util.Objects;
 
 @Mixin(RenderBlocks.class)
 public class MixinRenderBlocks_CrackFix {
-	
+
 	@Unique
 	private static String[] angelica$currentCrackFixBlacklistArr;
 	@Unique
@@ -72,7 +72,7 @@ public class MixinRenderBlocks_CrackFix {
 	private boolean angelica$disableCrackFix;
 	@Unique
 	private boolean angelica$bypassRenderPassCheck;
-	
+
 	@ModifyExpressionValue(method = "renderFaceXNeg",
 			at = @At(value = "FIELD",
 					target = "Lnet/minecraft/client/renderer/RenderBlocks;renderMinX:D",
@@ -149,24 +149,24 @@ public class MixinRenderBlocks_CrackFix {
 		angelica$bounds[3] = renderMaxX;
 		angelica$bounds[4] = renderMaxY;
 		angelica$bounds[5] = renderMaxZ;
-		
+
 		if (ForgeHooksClient.getWorldRenderPass() != 0 && !angelica$bypassRenderPassCheck) {
 			return;
 		}
-		
+
 		if (renderMinX != 0 || renderMinY != 0 || renderMinZ != 0 || renderMaxX != 1 || renderMaxY != 1 || renderMaxZ != 1) {
 			return;
 		}
-		
+
 		double EPSILON = AngelicaConfig.blockCrackFixEpsilon;
-		
+
 		renderMinX -= EPSILON;
 		renderMinY -= EPSILON;
 		renderMinZ -= EPSILON;
 		renderMaxX += EPSILON;
 		renderMaxY += EPSILON;
 		renderMaxZ += EPSILON;
-		
+
 		switch (skipDir) {
 			case WEST: renderMinX = angelica$bounds[0]; break;
 			case DOWN: renderMinY = angelica$bounds[1]; break;
@@ -199,7 +199,7 @@ public class MixinRenderBlocks_CrackFix {
 		angelica$disableCrackFix = angelica$isListed(block.getClass(), false);
 		angelica$bypassRenderPassCheck = angelica$isListed(block.getClass(), true);
 	}
-	
+
 	@Inject(method = "renderBlockByRenderType",
 			at = @At("RETURN"),
 			require = 1)
@@ -207,7 +207,7 @@ public class MixinRenderBlocks_CrackFix {
 		angelica$disableCrackFix = false;
 		angelica$bypassRenderPassCheck = false;
 	}
-	
+
 	@Unique
 	private static boolean angelica$isListed(Class<?> clazz, boolean whitelist) {
 		Class<?>[] list = whitelist ? angelica$getCrackFixRenderPassWhitelist() : angelica$getCrackFixBlacklist();
@@ -221,7 +221,7 @@ public class MixinRenderBlocks_CrackFix {
 		}
 		return false;
 	}
-	
+
 	@Unique
 	private static Class<?>[] angelica$getCrackFixBlacklist() {
 		if (angelica$currentCrackFixBlacklistArr != AngelicaConfig.blockCrackFixBlacklist) {
@@ -230,7 +230,7 @@ public class MixinRenderBlocks_CrackFix {
 				try {
 					return Class.forName(name);
 				} catch (ClassNotFoundException e) {
-					AngelicaTweaker.LOGGER.debug("Could not find class " + name + " for crack fix blacklist!");
+                    AngelicaClientTweaker.LOGGER.debug("Could not find class " + name + " for crack fix blacklist!");
 					return null;
 				}
 			}).filter(Objects::nonNull).toArray(Class<?>[]::new);
@@ -245,7 +245,7 @@ public class MixinRenderBlocks_CrackFix {
 				try {
 					return Class.forName(name);
 				} catch (ClassNotFoundException e) {
-					AngelicaTweaker.LOGGER.debug("Could not find class " + name + " for crack fix whitelist!");
+                    AngelicaClientTweaker.LOGGER.debug("Could not find class " + name + " for crack fix whitelist!");
 					return null;
 				}
 			}).filter(Objects::nonNull).toArray(Class<?>[]::new);

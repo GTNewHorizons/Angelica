@@ -30,7 +30,7 @@ public final class CeleritasBlockTransform implements Opcodes {
     private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
-    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/glsm/ThreadedBlockData";
+    private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/client/rendering/ThreadedBlockData";
 
     private final Map<String, String> fieldNameToRedirect = new HashMap<>();
     private final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
@@ -114,7 +114,7 @@ public final class CeleritasBlockTransform implements Opcodes {
             return false;
         }
         boolean changed = false;
-        if ("net.minecraft.block.Block".equals(transformedName)) {
+        if (BlockClass.equals(cn.name)) {
             changed = cn.fields.removeIf(field -> fieldNameToRedirect.containsKey(field.name));
         } else {
             trackBlockShadowingFields(cn);

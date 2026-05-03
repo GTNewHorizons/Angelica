@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.PackDirectives;
@@ -43,6 +44,7 @@ import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -67,6 +69,8 @@ public class ShadowRenderer {
 	public static final List<TileEntity> visibleTileEntities = new ArrayList<>();
 	public static final List<TileEntity> globalTileEntities = new ArrayList<>();
 	public static boolean ACTIVE = false;
+
+	public static Frustrum FRUSTUM;
 
 	private static final Comparator<Entity> ENTITY_CLASS_COMPARATOR = Comparator.comparingInt(a -> System.identityHashCode(a.getClass()));
 	private static final NonCullingFrustum NON_CULLING_FRUSTUM = new NonCullingFrustum();
@@ -111,12 +115,16 @@ public class ShadowRenderer {
 	private double lastBoxCullerDistance = -1;
 	private double lastAdvancedBoxCullerDistance = -1;
 	private double lastTileEntityCullerDistance = -1;
+	private final boolean shouldRenderDH;
+	private final float nearPlane, farPlane;
 
 	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets, ShadowCompositeRenderer compositeRenderer) {
 
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
 		final PackShadowDirectives shadowDirectives = directives.getShadowDirectives();
+		this.nearPlane = shadowDirectives.getNearPlane();
+		this.farPlane = shadowDirectives.getFarPlane();
 
 		this.halfPlaneLength = shadowDirectives.getDistance();
 		this.voxelDistance = shadowDirectives.getVoxelDistance();
@@ -129,6 +137,7 @@ public class ShadowRenderer {
 		this.shouldRenderEntities = shadowDirectives.shouldRenderEntities();
 		this.shouldRenderPlayer = shadowDirectives.shouldRenderPlayer();
 		this.shouldRenderBlockEntities = shadowDirectives.shouldRenderBlockEntities();
+		this.shouldRenderDH = shadowDirectives.isDhShadowEnabled().orElse(false);
 
 		this.compositeRenderer = compositeRenderer;
 
@@ -348,14 +357,16 @@ public class ShadowRenderer {
 			shadowLightVectorCache.set(shadowLightPosition.x(), shadowLightPosition.y(), shadowLightPosition.z());
 			shadowLightVectorCache.normalize();
 
+			Matrix4fc projView = ((shouldRenderDH && DHCompat.hasRenderingEnabled()) ? DHCompat.getProjection() : RenderingState.INSTANCE.getProjectionMatrix());
+
 			if (hasSafeZone) {
 				BoxCuller distanceCuller = new BoxCuller(halfPlaneLength * renderMultiplier);
 				SafeZoneCullingFrustum safeZoneFrustum = new SafeZoneCullingFrustum(
-					RenderingState.INSTANCE.getModelViewMatrix(), RenderingState.INSTANCE.getProjectionMatrix(),
+					RenderingState.INSTANCE.getModelViewMatrix(), projView,
 					shadowLightVectorCache, boxCuller, distanceCuller);
 				return holder.setInfo(safeZoneFrustum, distanceInfo, cullingInfo);
 			} else {
-				cachedAdvancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), RenderingState.INSTANCE.getProjectionMatrix(), shadowLightVectorCache, boxCuller);
+				cachedAdvancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), projView, shadowLightVectorCache, boxCuller);
 				return holder.setInfo(cachedAdvancedFrustum, distanceInfo, cullingInfo);
 			}
 		}
@@ -630,12 +641,12 @@ public class ShadowRenderer {
 		final MatrixStack modelView = getShadowModelView();
 		MODELVIEW.set(modelView.peek().getModel());
 
-        final Matrix4f shadowProjection;
+		final Matrix4f shadowProjection;
 		if (this.fov != null) {
 			// If FOV is not null, the pack wants a perspective based projection matrix. (This is to support legacy packs)
-            shadowProjection = ShadowMatrices.createPerspectiveMatrix(this.fov);
+			shadowProjection = ShadowMatrices.createPerspectiveMatrix(this.fov);
 		} else {
-            shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength);
+			shadowProjection = ShadowMatrices.createOrthoMatrix(halfPlaneLength, nearPlane < 0 ? -DHCompat.getRenderDistance() : nearPlane, farPlane < 0 ? DHCompat.getRenderDistance() : farPlane);
 		}
 
 		PROJECTION.set(shadowProjection);
@@ -649,6 +660,7 @@ public class ShadowRenderer {
 		profiler.startSection("initialize frustum");
 
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
+		FRUSTUM = terrainFrustumHolder.getFrustum();
 
 		// Use the player/entity position for shadow rendering
 		final Vector3d entityPos = playerCamera.getEntityPos();

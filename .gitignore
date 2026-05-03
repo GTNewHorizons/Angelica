@@ -3,8 +3,8 @@
 /.idea/
 /.vs/
 /.vscode/
-/run/
-/build/
+run/
+build/
 /eclipse/
 .classpath
 .project

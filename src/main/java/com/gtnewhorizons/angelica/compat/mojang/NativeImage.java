@@ -9,6 +9,7 @@ import java.nio.IntBuffer;
 import javax.imageio.ImageIO;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import org.lwjgl.opengl.GL11;
@@ -54,7 +55,7 @@ public class NativeImage extends BufferedImage {
 
     public void downloadTexture(int level, boolean bl) {
 //        this.checkAllocated();
-        GL11.glPixelStorei(GL11.GL_PACK_ALIGNMENT, format.components);
+        GLStateManager.glPixelStorei(GL11.GL_PACK_ALIGNMENT, format.components);
 //        GlStateManager._getTexImage(3553, level, format.glFormat, GL11.GL_UNSIGNED_BYTE, this.pixels);
 
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
@@ -63,7 +64,7 @@ public class NativeImage extends BufferedImage {
         final IntBuffer buffer = MemoryUtilities.memAllocInt(size);
 
         try {
-            GL11.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
+            GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
 
             int[] data = new int[size];
             buffer.get(data);

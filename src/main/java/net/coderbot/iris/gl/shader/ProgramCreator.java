@@ -3,6 +3,7 @@
 package net.coderbot.iris.gl.shader;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,7 +21,7 @@ public class ProgramCreator {
 	public static final int AT_MIDBLOCK = 14;
 
 	public static int create(String name, GlShader... shaders) {
-		int program = GL20.glCreateProgram();
+		int program = GLStateManager.glCreateProgram();
 
 		// TODO: This is *really* hardcoded, we need to refactor this to support external calls to glBindAttribLocation
 		RenderSystem.bindAttributeLocation(program, MC_ENTITY, "mc_Entity");
@@ -29,10 +30,10 @@ public class ProgramCreator {
 		RenderSystem.bindAttributeLocation(program, AT_MIDBLOCK, "at_midBlock");
 
 		for (GlShader shader : shaders) {
-            GL20.glAttachShader(program, shader.getHandle());
+            GLStateManager.glAttachShader(program, shader.getHandle());
 		}
 
-        GL20.glLinkProgram(program);
+        GLStateManager.glLinkProgram(program);
 
 		GLDebug.nameObject(KHRDebug.GL_PROGRAM, program, name);
 
@@ -47,7 +48,7 @@ public class ProgramCreator {
 			LOGGER.warn("Program link log for " + name + ": " + log);
 		}
 
-		int result = GL20.glGetProgrami(program, GL20.GL_LINK_STATUS);
+		int result = GLStateManager.glGetProgrami(program, GL20.GL_LINK_STATUS);
 
 		if (result != GL11.GL_TRUE) {
 			throw new RuntimeException("Shader program linking failed, see log for details");

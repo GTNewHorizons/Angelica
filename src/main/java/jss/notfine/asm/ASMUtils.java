@@ -2,7 +2,7 @@ package jss.notfine.asm;
 
 import java.util.Objects;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
+import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.FieldInsnNode;
 import org.objectweb.asm.tree.FrameNode;
@@ -133,7 +133,7 @@ public class ASMUtils {
                 yield false;
             }
             default -> {
-                AngelicaTweaker.LOGGER.warn("Unchecked node found: " + node1.getClass());
+                AngelicaClientTweaker.LOGGER.warn("Unchecked node found: " + node1.getClass());
                 yield node1.toString()
                     .equals(node2.toString());
             }

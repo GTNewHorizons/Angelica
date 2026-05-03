@@ -15,6 +15,7 @@ public class AngelicaRfbPlugin implements RfbPlugin {
     @Override
     public void onConstruction(@NotNull PluginContext ctx) {
         Launch.blackboard.put("angelica.rfbPluginLoaded", Boolean.TRUE);
+        Launch.classLoader.addClassLoaderExclusion("com.gtnewhorizons.angelica.glsm.redirect.");
     }
 
     @Override

@@ -1,10 +1,10 @@
 package net.coderbot.iris.gl.uniform;
 
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
-import org.joml.Vector2i;
-import org.joml.Vector3i;
-import org.joml.Vector4f;
-import org.joml.Vector4i;
+import org.joml.Vector2ic;
+import org.joml.Vector3ic;
+import org.joml.Vector4fc;
+import org.joml.Vector4ic;
 
 import java.util.function.DoubleSupplier;
 import java.util.function.IntSupplier;
@@ -37,19 +37,19 @@ public interface DynamicLocationalUniformHolder extends LocationalUniformHolder,
 		return this;
 	}
 
-	default DynamicLocationalUniformHolder uniform2i(String name, Supplier<Vector2i> value, ValueUpdateNotifier notifier) {
+	default DynamicLocationalUniformHolder uniform2i(String name, Supplier<Vector2ic> value, ValueUpdateNotifier notifier) {
 		location(name, UniformType.VEC2I).ifPresent(id -> addDynamicUniform(new Vector2IntegerJomlUniform(id, value, notifier), notifier));
 
 		return this;
 	}
 
-    default DynamicUniformHolder uniform3i(String name, Supplier<Vector3i> value, ValueUpdateNotifier notifier) {
+    default DynamicUniformHolder uniform3i(String name, Supplier<Vector3ic> value, ValueUpdateNotifier notifier) {
         location(name, UniformType.VEC3I).ifPresent(id -> addDynamicUniform(new Vector3IntegerJomlUniform(id, value, notifier), notifier));
 
         return this;
     }
 
-	default DynamicUniformHolder uniform4f(String name, Supplier<Vector4f> value, ValueUpdateNotifier notifier) {
+	default DynamicUniformHolder uniform4f(String name, Supplier<Vector4fc> value, ValueUpdateNotifier notifier) {
 		location(name, UniformType.VEC4).ifPresent(id -> addDynamicUniform(new Vector4Uniform(id, value, notifier), notifier));
 
 		return this;
@@ -60,7 +60,7 @@ public interface DynamicLocationalUniformHolder extends LocationalUniformHolder,
         return this;
     }
 
-	default DynamicUniformHolder uniform4i(String name, Supplier<Vector4i> value, ValueUpdateNotifier notifier) {
+	default DynamicUniformHolder uniform4i(String name, Supplier<Vector4ic> value, ValueUpdateNotifier notifier) {
 		location(name, UniformType.VEC4I).ifPresent(id -> addDynamicUniform(new Vector4IntegerJomlUniform(id, value, notifier), notifier));
 
 		return this;
