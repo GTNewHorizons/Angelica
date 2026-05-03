@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.startup;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -31,6 +32,7 @@ public class MixinInitGLStateManager {
             .streamingUploadStrategy(ClientProxy.options().advanced.streamingUploadStrategy)
             .framebufferSupported(OpenGlHelper.framebufferSupported)
             .fboEnabled(mc.gameSettings.fboEnable)
+            .enableDSA(AngelicaConfig.enableDSA)
             .directDrawer(TessellatorStreamingDrawer::drawDirect)
             .streamingDrawerDestroy(TessellatorStreamingDrawer::destroy)
             .postInitCallback(SelectionBoxRenderer::init)

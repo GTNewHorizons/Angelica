@@ -188,6 +188,8 @@ public class GLStateManager {
 
     @Getter private static Vendor VENDOR;
 
+    @Getter private static boolean windows;
+
     // This setting varies depending on driver, so it gets queried at runtime
     public static int DEFAULT_DRAW_BUFFER = 0x0405; // GL_BACK
 
@@ -527,6 +529,10 @@ public class GLStateManager {
 
         final String glVendor = RENDER_BACKEND.getString(GL11.GL_VENDOR);
         VENDOR = Vendor.getVendor(glVendor.toLowerCase());
+
+        final String os = System.getProperty("os.name").toLowerCase();
+
+        windows = os.contains("win");
 
         // The initial mask value should be defined as all 1's. However, some drivers have it set to 0's.
         // To ensure consistency & correctness across all drivers, we're setting them to 0xFF.

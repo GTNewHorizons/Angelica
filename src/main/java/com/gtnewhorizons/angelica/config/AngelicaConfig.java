@@ -63,6 +63,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableVAO;
 
+    @Config.Comment("Enables DSA (Direct State Access) for faster bindings. Disable if you notice terrible performance.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableDSA;
+
     @Config.Comment("Enable NotFine features")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
