@@ -62,9 +62,9 @@ public class RenderSystem {
         if (rendererInitialized) return;
         rendererInitialized = true;
         try {
-            if (GLStateManager.vendorIsIntel()) {
+            if (GLStateManager.vendorIsIntel() && GLStateManager.isWindows()) {
                 dsaState = new DSAUnsupported();
-                GLStateManager.LOGGER.info("Detected Intel drivers, disabling DSA.");
+                GLStateManager.LOGGER.info("Detected Intel drivers on Windows, disabling DSA.");
             } else if (!GLStateManager.getInitConfig().isDSAEnabled()) {
                 dsaState = new DSAUnsupported();
                 GLStateManager.LOGGER.info("enableDSA is set to false, disabling DSA.");
