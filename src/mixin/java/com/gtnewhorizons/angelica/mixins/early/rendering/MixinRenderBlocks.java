@@ -199,16 +199,8 @@ public abstract class MixinRenderBlocks {
             return;
         }
 
-        try {
-            boolean handled = processor.processFace(
-                (RenderBlocks)(Object)this,
-                renderBlockState,
-                icon
-            );
-
-            if (handled) {
-                ci.cancel();
-            }
+        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon)) {
+            ci.cancel();
         }
     }
 
