@@ -32,7 +32,7 @@ public class MixinInitGLStateManager {
             .displaySize(mc.displayWidth, mc.displayHeight)
             .lwjglDebug(AngelicaMod.lwjglDebug)
             .streamingUploadStrategy(ClientProxy.options().advanced.streamingUploadStrategy)
-            .noErrorChecks(AngelicaConfig.disableErrorChecks && !GTNHLibCore.isObf() && !AngelicaMod.lwjglDebug)
+            .noErrorChecks(AngelicaConfig.disableErrorChecks && GTNHLibCore.isObf() && !AngelicaMod.lwjglDebug)
             .enableDSA(AngelicaConfig.enableDSA)
             .directDrawer(TessellatorStreamingDrawer::drawDirect)
             .streamingDrawerDestroy(TessellatorStreamingDrawer::destroy)
