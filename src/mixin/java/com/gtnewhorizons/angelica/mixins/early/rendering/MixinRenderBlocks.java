@@ -186,9 +186,6 @@ public abstract class MixinRenderBlocks {
     @Shadow
     public IBlockAccess blockAccess;
 
-    @Shadow
-    public boolean field_152631_f;
-
     @Unique
     private void angelica$handleCompactCtmFace(IIcon icon, CallbackInfo ci) {
         CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
