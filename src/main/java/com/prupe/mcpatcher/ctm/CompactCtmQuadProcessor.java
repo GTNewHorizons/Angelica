@@ -14,25 +14,6 @@ public final class CompactCtmQuadProcessor {
     private static final int SPRITE_VERTICAL = 3;
     private static final int SPRITE_MIXED = 4;
 
-    private static final int[] CTM_47_BY_CONNECTIONS = {
-        0,3,0,3,12,5,12,15,0,3,0,3,12,5,12,15,
-        1,2,1,2,4,7,4,29,1,2,1,2,13,31,13,14,
-        0,3,0,3,12,5,12,15,0,3,0,3,12,5,12,15,
-        1,2,1,2,4,7,4,29,1,2,1,2,13,31,13,14,
-        36,17,36,17,24,19,24,43,36,17,36,17,24,19,24,43,
-        16,18,16,18,6,46,6,21,16,18,16,18,28,9,28,22,
-        36,17,36,17,24,19,24,43,36,17,36,17,24,19,24,43,
-        37,40,37,40,30,8,30,34,37,40,37,40,25,23,25,45,
-        0,3,0,3,12,5,12,15,0,3,0,3,12,5,12,15,
-        1,2,1,2,4,7,4,29,1,2,1,2,13,31,13,14,
-        0,3,0,3,12,5,12,15,0,3,0,3,12,5,12,15,
-        1,2,1,2,4,7,4,29,1,2,1,2,13,31,13,14,
-        36,39,36,39,24,41,24,27,36,39,36,39,24,41,24,27,
-        16,42,16,42,6,20,6,10,16,42,16,42,28,35,28,44,
-        36,39,36,39,24,41,24,27,36,39,36,39,24,41,24,27,
-        37,38,37,38,30,11,30,32,37,38,37,38,25,33,25,26
-    };
-
     /**
      * Quadrant side references:
      * 0 = top-left
@@ -80,7 +61,7 @@ public final class CompactCtmQuadProcessor {
             }
         }
 
-        int ctmIndex = CTM_47_BY_CONNECTIONS[neighborBits & 0xFF];
+        int ctmIndex = override.neighborMap[neighborBits & 0xFF];
         IIcon replacement = getReplacementIcon(ctmIndex);
         if (replacement != null) {
             renderWholeFace(rb, renderBlockState, replacement);
