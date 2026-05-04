@@ -627,16 +627,6 @@ public class GLStateManager {
         return BYPASS_CACHE || !isCachingEnabled();
     }
 
-    /**
-     * Returns true if we should use DSA for texture operations. DSA relies on cached texture bindings, which aren't tracked when caching is disabled. Also,
-     * proxy textures are special query textures that shouldn't use DSA.
-     */
-    private static boolean shouldUseDSA(int target) {
-        if (!isCachingEnabled()) return false;
-        // Proxy textures are for capability queries, not real textures
-        return target != GL11.GL_PROXY_TEXTURE_1D && target != GL11.GL_PROXY_TEXTURE_2D && target != GL12.GL_PROXY_TEXTURE_3D;
-    }
-
     // LWJGL Overrides
     public static void glEnable(int cap) {
         final RecordMode mode = DisplayListManager.getRecordMode();
@@ -1834,13 +1824,7 @@ public class GLStateManager {
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         suspendPixelUnpackBuffer();
-        if (shouldUseDSA(target)) {
-            // Use DSA to upload directly to the texture
-            RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
-        } else {
-            // Non-main thread or proxy texture - use direct GL call
-            RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        }
+        RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
     }
 
@@ -1885,11 +1869,7 @@ public class GLStateManager {
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels != null ? pixels.asIntBuffer() : null);
         suspendPixelUnpackBuffer();
-        if (shouldUseDSA(target)) {
-            RenderSystem.textureImage2D(getBoundTextureForServerState(), target, level, internalformat, width, height, border, format, type, pixels);
-        } else {
-            RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
-        }
+        RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
     }
 
@@ -4413,6 +4393,7 @@ public class GLStateManager {
 
     public static int glGetError() {
         if (!RENDER_BACKEND.hasContext()) return 0;
+        if (initConfig.noErrorChecks()) return 0;
         return RENDER_BACKEND.getError();
     }
 
@@ -4467,13 +4448,7 @@ public class GLStateManager {
             }
         }
         suspendPixelUnpackBuffer();
-        if (shouldUseDSA(target)) {
-            // Use DSA to upload directly to the texture - keeps GL binding state unchanged
-            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
-        } else {
-            // Non-main thread or proxy texture - use direct GL call
-            RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-        }
+        RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
     }
 
@@ -4486,13 +4461,7 @@ public class GLStateManager {
             }
         }
         suspendPixelUnpackBuffer();
-        if (shouldUseDSA(target)) {
-            // Use DSA to upload directly to the texture
-            RenderSystem.textureSubImage2D(getBoundTextureForServerState(), target, level, xoffset, yoffset, width, height, format, type, pixels);
-        } else {
-            // Non-main thread or proxy texture - use direct GL call
-            RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
-        }
+        RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
     }
 
@@ -5212,7 +5181,7 @@ public class GLStateManager {
     }
 
     public static boolean isFramebufferEnabled() {
-        return initConfig != null && initConfig.isFramebufferSupported() && initConfig.isFboEnabled();
+        return true;
     }
 
     private static final boolean FFP_WARN_ON_UNSUPPORTED = Boolean.parseBoolean(System.getProperty("angelica.ffp.warnOnUnsupported", "false"));

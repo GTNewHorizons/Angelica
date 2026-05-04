@@ -302,4 +302,9 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean disableGLVersionPinning;
 
+    @Config.Comment("Disables GL Error checks. Always set to false in dev env or if LWJGL debug is on. Improves performance.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean disableErrorChecks;
+
 }
