@@ -375,6 +375,16 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         return shouldConnect(renderBlockState, icon, renderBlockState.getOffset(blockFace, relativeDirection));
     }
 
+    protected final int getNeighborBits(RenderBlockState renderBlockState, IIcon origIcon) {
+        int neighborBits = 0;
+        for (int bit = 0; bit < 8; bit++) {
+            if (shouldConnect(renderBlockState, origIcon, bit)) {
+                neighborBits |= (1 << bit);
+            }
+        }
+        return neighborBits;
+    }
+
     private boolean shouldConnect(RenderBlockState renderBlockState, IIcon icon, int[] offset) {
         IBlockAccess blockAccess = renderBlockState.getBlockAccess();
         Block block = renderBlockState.getBlock();

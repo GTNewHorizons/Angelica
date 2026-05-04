@@ -47,13 +47,7 @@ public class TileOverrideImpl {
 
         @Override
         IIcon getTileWorld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
-            int neighborBits = 0;
-            for (int bit = 0; bit < 8; bit++) {
-                if (shouldConnect(renderBlockState, origIcon, bit)) {
-                    neighborBits |= (1 << bit);
-                }
-            }
-            return icons[neighborMap[neighborBits]];
+            return icons[neighborMap[getNeighborBits(renderBlockState, origIcon)]];
         }
 
         @Override
