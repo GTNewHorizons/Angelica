@@ -8,20 +8,18 @@ import java.util.function.Consumer;
 public final class GLSMInitConfig {
     private final boolean lwjglDebug;
     private final StreamingUploader.UploadStrategy streamingUploadStrategy;
-    private final boolean framebufferSupported;
-    private final boolean fboEnabled;
     private final Consumer<DirectTessellator> directDrawer;
     private final Runnable streamingDrawerDestroy;
     private final int displayWidth;
     private final int displayHeight;
     private final Runnable postInitCallback;
     private final boolean enableDSA;
+    private final boolean noErrorChecks;
 
     private GLSMInitConfig(Builder builder) {
         this.lwjglDebug = builder.lwjglDebug;
         this.streamingUploadStrategy = builder.streamingUploadStrategy;
-        this.framebufferSupported = builder.framebufferSupported;
-        this.fboEnabled = builder.fboEnabled;
+        this.noErrorChecks = builder.noErrorChecks;
         this.directDrawer = builder.directDrawer;
         this.streamingDrawerDestroy = builder.streamingDrawerDestroy;
         this.displayWidth = builder.displayWidth;
@@ -36,26 +34,24 @@ public final class GLSMInitConfig {
 
     public boolean isLwjglDebug() { return lwjglDebug; }
     public StreamingUploader.UploadStrategy getStreamingUploadStrategy() { return streamingUploadStrategy; }
-    public boolean isFramebufferSupported() { return framebufferSupported; }
-    public boolean isFboEnabled() { return fboEnabled; }
     public Consumer<DirectTessellator> getDirectDrawer() { return directDrawer; }
     public Runnable getStreamingDrawerDestroy() { return streamingDrawerDestroy; }
     public int getDisplayWidth() { return displayWidth; }
     public int getDisplayHeight() { return displayHeight; }
     public Runnable getPostInitCallback() { return postInitCallback; }
     public boolean isDSAEnabled() { return enableDSA; }
+    public boolean noErrorChecks() { return noErrorChecks; }
 
     public static final class Builder {
         private boolean lwjglDebug = false;
         private StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.BUFFER_DATA;
-        private boolean framebufferSupported = false;
-        private boolean fboEnabled = false;
         private Consumer<DirectTessellator> directDrawer = null;
         private Runnable streamingDrawerDestroy = null;
         private int displayWidth = 0;
         private int displayHeight = 0;
         private Runnable postInitCallback = null;
         private boolean enableDSA = false;
+        private boolean noErrorChecks;
 
         private Builder() {}
 
@@ -69,13 +65,8 @@ public final class GLSMInitConfig {
             return this;
         }
 
-        public Builder framebufferSupported(boolean framebufferSupported) {
-            this.framebufferSupported = framebufferSupported;
-            return this;
-        }
-
-        public Builder fboEnabled(boolean fboEnabled) {
-            this.fboEnabled = fboEnabled;
+        public Builder noErrorChecks(boolean noErrorChecks) {
+            this.noErrorChecks = noErrorChecks;
             return this;
         }
 
