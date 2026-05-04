@@ -326,7 +326,4 @@ public final class CompactCtmQuadProcessor {
 
         return SPRITE_DEFAULT;
     }
-
-    @Desugar
-    private record FaceBasis(int rightX, int rightY, int rightZ, int downX, int downY, int downZ) { }
 }
