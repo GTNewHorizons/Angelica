@@ -520,7 +520,7 @@ public class TileOverrideImpl {
         public CompactCtmQuadProcessor getProcessor() {
             CompactCtmQuadProcessor p = this.processor;
             if (p == null) {
-                p = new CompactCtmQuadProcessor(icons, properties);
+                p = new CompactCtmQuadProcessor(icons, properties, this);
                 this.processor = p;
             }
             return p;

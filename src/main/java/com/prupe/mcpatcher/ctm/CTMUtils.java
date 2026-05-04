@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.StampedLock;
 
+import com.github.bsideup.jabel.Desugar;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
@@ -43,13 +44,16 @@ public class CTMUtils {
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
 
-    private static final ThreadLocal<TileOverrideImpl.CTMCompact> CURRENT_COMPACT = new ThreadLocal<>();
+    @Desugar
+    public record CTMCompactContext(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {}
 
-    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact) {
-        CURRENT_COMPACT.set(compact);
+    private static final ThreadLocal<CTMCompactContext> CURRENT_COMPACT = new ThreadLocal<>();
+
+    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {
+        CURRENT_COMPACT.set(new CTMCompactContext(compact, renderBlockState));
     }
 
-    public static TileOverrideImpl.CTMCompact getCurrentCompact() {
+    public static CTMCompactContext getCurrentCompact() {
         return CURRENT_COMPACT.get();
     }
 
