@@ -177,7 +177,7 @@ final class BlockOrientation extends RenderBlockState {
         copy.block = block;
         copy.useAO = useAO;
         copy.inWorld = inWorld;
-        copy.matcher =  matcher;
+        copy.matcher = matcher;
         copy.offsetsComputed = offsetsComputed;
         copy.haveOffsets = haveOffsets;
         copy.dx = dx;

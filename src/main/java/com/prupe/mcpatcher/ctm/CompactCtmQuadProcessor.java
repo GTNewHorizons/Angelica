@@ -1,6 +1,5 @@
 package com.prupe.mcpatcher.ctm;
 
-import com.github.bsideup.jabel.Desugar;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
