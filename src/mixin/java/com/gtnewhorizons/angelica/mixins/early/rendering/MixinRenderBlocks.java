@@ -190,15 +190,7 @@ public abstract class MixinRenderBlocks {
     public boolean field_152631_f;
 
     @Unique
-    private boolean angelica$compactCtmRendering = false;
-
-    @Unique
     private void angelica$handleCompactCtmFace(IIcon icon, CallbackInfo ci) {
-        // recursion protection
-        if (angelica$compactCtmRendering) {
-            return;
-        }
-
         CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
         if (ctx == null) {
             return;
@@ -220,8 +212,6 @@ public abstract class MixinRenderBlocks {
             if (handled) {
                 ci.cancel();
             }
-        } finally {
-            angelica$compactCtmRendering = false;
         }
     }
 
