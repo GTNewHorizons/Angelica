@@ -152,6 +152,7 @@ public abstract class MixinRenderBlocks {
         try {
             return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
         } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
+            CTMUtils.clearCurrentCompact();
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
             rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
