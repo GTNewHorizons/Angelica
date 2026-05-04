@@ -205,16 +205,15 @@ public abstract class MixinRenderBlocks {
             return;
         }
 
+        CompactCtmQuadProcessor processor = getCompactProcessor();
+        CTMUtils.clearCurrentCompact();
         if (this.blockAccess == null) {
             return;
         }
-
-        CompactCtmQuadProcessor processor = getCompactProcessor();
         if (processor == null) {
             return;
         }
 
-        compactCtmRendering = true;
         try {
             boolean handled = processor.processFace(
                 (RenderBlocks)(Object)this,
