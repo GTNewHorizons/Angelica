@@ -3460,7 +3460,7 @@ public class GLStateManager {
     public static void glTranslatef(float x, float y, float z) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.TRANSLATE, null);
+            DisplayListManager.applyMatrixTranslation(x, y, z);
             if (mode == RecordMode.COMPILE) return;
         }
         if (isCachingEnabled()) {
@@ -3472,7 +3472,7 @@ public class GLStateManager {
     public static void glTranslated(double x, double y, double z) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.TRANSLATE, null);
+            DisplayListManager.applyMatrixTranslation((float) x, (float) y, (float) z);
             if (mode == RecordMode.COMPILE) return;
         }
         if (isCachingEnabled()) {
@@ -3484,7 +3484,7 @@ public class GLStateManager {
     public static void glScalef(float x, float y, float z) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.SCALE, null);
+            DisplayListManager.applyMatrixScale(x, y, z);
             if (mode == RecordMode.COMPILE) return;
         }
         if (isCachingEnabled()) {
@@ -3496,7 +3496,7 @@ public class GLStateManager {
     public static void glScaled(double x, double y, double z) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.SCALE, null);
+            DisplayListManager.applyMatrixScale((float) x, (float) y, (float) z);
             if (mode == RecordMode.COMPILE) return;
         }
         if (isCachingEnabled()) {
@@ -3540,20 +3540,25 @@ public class GLStateManager {
         }
     }
 
-    private static final Vector3f rotation = new Vector3f();
-
     public static void glRotatef(float angle, float x, float y, float z) {
         final float lenSq = x * x + y * y + z * z;
         if (lenSq == 0.0f) return;
+
+        // Fast way to normalize rotation
+        final float scalar = 1.0f / (float) Math.sqrt(lenSq);
+        x *= scalar;
+        y *= scalar;
+        z *= scalar;
+        // Convert deg to rad
+        angle = (float) Math.toRadians(angle);
+
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            rotation.set(x, y, z).normalize();
-            DisplayListManager.updateRelativeTransform(angle, 0, 0, DisplayListManager.TransformOp.ROTATE, rotation);
+            DisplayListManager.applyMatrixRotation(angle, x, y, z);
             if (mode == RecordMode.COMPILE) return;
         }
         if (isCachingEnabled()) {
-            rotation.set(x, y, z).normalize();
-            getMatrixStack().rotate((float) Math.toRadians(angle), rotation);
+            getMatrixStack().rotate(angle, x, y, z);
             bumpMatrixGeneration();
         }
     }
@@ -3561,15 +3566,22 @@ public class GLStateManager {
     public static void glRotated(double angle, double x, double y, double z) {
         final double lenSq = x * x + y * y + z * z;
         if (lenSq == 0.0) return;
+
+        // Fast way to normalize rotation
+        final double scalar = 1.0 / Math.sqrt(lenSq);
+        x *= scalar;
+        y *= scalar;
+        z *= scalar;
+        // Convert deg to rad
+        angle = Math.toRadians(angle);
+
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            rotation.set((float) x, (float) y, (float) z).normalize();
-            DisplayListManager.updateRelativeTransform((float) angle, 0, 0, DisplayListManager.TransformOp.ROTATE, rotation);
+            DisplayListManager.applyMatrixRotation((float) angle, (float) x, (float) y, (float) z);
             if (mode == RecordMode.COMPILE) return;
         }
         if (isCachingEnabled()) {
-            rotation.set((float) x, (float) y, (float) z).normalize();
-            getMatrixStack().rotate((float) Math.toRadians(angle), rotation);
+            getMatrixStack().rotate((float) angle, (float) x, (float) y, (float) z);
             bumpMatrixGeneration();
         }
     }

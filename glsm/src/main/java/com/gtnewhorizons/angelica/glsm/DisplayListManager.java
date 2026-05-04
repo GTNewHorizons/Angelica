@@ -72,8 +72,6 @@ public class DisplayListManager {
         return (m.properties() & Matrix4f.PROPERTY_IDENTITY) != 0 || m.equals(IDENTITY, 1e-6f);
     }
 
-    /** Transform operation types for relative transform tracking. */
-    public enum TransformOp { TRANSLATE, SCALE, ROTATE }
 
     /** Recording mode for display list compilation. */
     public enum RecordMode {
@@ -611,33 +609,53 @@ public class DisplayListManager {
         tessellator.reset();
     }
 
-    private static void applyTransformOp(Matrix4f m, float x, float y, float z, TransformOp op, Vector3f axis) {
-        switch (op) {
-            case TRANSLATE -> m.translate(x, y, z);
-            case SCALE -> m.scale(x, y, z);
-            case ROTATE -> { if (axis != null) m.rotate((float) Math.toRadians(x), axis); }
-        }
-    }
-
-    public static void updateRelativeTransform(float x, float y, float z, TransformOp op, Vector3f rotationAxis) {
-        if (relativeTransform == null) return;
-
+    public static void applyMatrixTranslation(float x, float y, float z) {
         if (DEBUG_DISPLAY_LISTS) {
             final Matrix4f singleTransform = new Matrix4f();
-            applyTransformOp(singleTransform, x, y, z, op, rotationAxis);
-            if (currentRecorder != null) currentRecorder.recordMultMatrix(singleTransform);
+            singleTransform.translate(x, y, z);
+            currentRecorder.recordMultMatrix(singleTransform);
             return;
         }
 
-        applyTransformOp(relativeTransform, x, y, z, op, rotationAxis);
+        relativeTransform.translate(x, y, z);
 
         if (pendingTransformOps != null) {
-            final String log = switch (op) {
-                case TRANSLATE -> String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z);
-                case SCALE -> String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z);
-                case ROTATE -> rotationAxis != null ? String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", x, rotationAxis.x, rotationAxis.y, rotationAxis.z) : null;
-            };
-            if (log != null) pendingTransformOps.add(log);
+            pendingTransformOps.add(String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z));
+        }
+    }
+
+    public static void applyMatrixScale(float x, float y, float z) {
+        if (DEBUG_DISPLAY_LISTS) {
+            final Matrix4f singleTransform = new Matrix4f();
+            singleTransform.scale(x, y, z);
+            currentRecorder.recordMultMatrix(singleTransform);
+            return;
+        }
+
+        relativeTransform.scale(x, y, z);
+
+        if (pendingTransformOps != null) {
+            pendingTransformOps.add(String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z));
+        }
+    }
+
+    /**
+     * Records a matrix rotation.
+     * <p>
+     * Requires the angle to be in radians & the coordinates to be normalized.
+     */
+    public static void applyMatrixRotation(float rad, float x, float y, float z) {
+        if (DEBUG_DISPLAY_LISTS) {
+            final Matrix4f singleTransform = new Matrix4f();
+            singleTransform.rotate(rad, x, y, z);
+            currentRecorder.recordMultMatrix(singleTransform);
+            return;
+        }
+
+        relativeTransform.rotate(rad, x, y, z);
+
+        if (pendingTransformOps != null) {
+            pendingTransformOps.add(String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", Math.toDegrees(rad), x, y, z));
         }
     }
 

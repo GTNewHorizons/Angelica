@@ -97,6 +97,22 @@ dependencies {
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
+    // Display List Testing
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-749-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ae2stuff:0.10.14-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:BuildCraft:7.1.54:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:IguanaTweaksTConstruct:2.7.0:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenBlocks:1.12.4-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:OpenComputers:1.12.12-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:TinkersConstruct:1.14.12-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ServerUtilities:2.2.13:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:ironchest:6.1.6:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:waila:1.9.7:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Botania:1.13.15-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Mobs-Info:0.5.10-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Draconic-Evolution:1.5.18-GTNH:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:HoloInventory:2.5.8-GTNH:dev")
+
     //devOnlyNonPublishable('com.github.GTNewHorizons:worldedit-gtnh:v0.0.9')
 
     // Notfine Deps
