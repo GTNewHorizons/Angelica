@@ -520,19 +520,18 @@ public class GLStateManager {
             // After Display.create(), viewport is (0, 0, width, height)
             viewportState.setViewPort(0, 0, displayWidth, displayHeight);
         }
+
+        final String glVendor = RENDER_BACKEND.getString(GL11.GL_VENDOR);
+        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
+
+        final String os = System.getProperty("os.name").toLowerCase();
+        windows = os.contains("win");
     }
 
     static void init(Runnable initCallback) {
         RenderSystem.initRenderer();
 
         DEFAULT_DRAW_BUFFER = RENDER_BACKEND.getInteger(GL11.GL_DRAW_BUFFER);
-
-        final String glVendor = RENDER_BACKEND.getString(GL11.GL_VENDOR);
-        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
-
-        final String os = System.getProperty("os.name").toLowerCase();
-
-        windows = os.contains("win");
 
         // The initial mask value should be defined as all 1's. However, some drivers have it set to 0's.
         // To ensure consistency & correctness across all drivers, we're setting them to 0xFF.
