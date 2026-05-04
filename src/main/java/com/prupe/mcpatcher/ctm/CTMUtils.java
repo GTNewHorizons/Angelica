@@ -50,7 +50,7 @@ public class CTMUtils {
     private static final ThreadLocal<CTMCompactContext> CURRENT_COMPACT = new ThreadLocal<>();
 
     public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {
-        CURRENT_COMPACT.set(new CTMCompactContext(compact, renderBlockState));
+        CURRENT_COMPACT.set(new CTMCompactContext(compact, renderBlockState.copy()));
     }
 
     public static CTMCompactContext getCurrentCompact() {

@@ -56,7 +56,7 @@ public final class CompactCtmQuadProcessor {
     public boolean processFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon origIcon) {
         int neighborBits = override.getNeighborBits(renderBlockState, origIcon);
 
-        int ctmIndex = override.neighborMap[neighborBits & 0xFF];
+        int ctmIndex = TileOverride.neighborMap[neighborBits & 0xFF];
         IIcon replacement = getReplacementIcon(ctmIndex);
         if (replacement != null) {
             renderWholeFace(rb, renderBlockState, replacement);
