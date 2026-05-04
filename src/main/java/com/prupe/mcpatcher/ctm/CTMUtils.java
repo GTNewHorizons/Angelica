@@ -180,6 +180,7 @@ public class CTMUtils {
             local.renderBlockState.setBlock(block, blockAccess, x, y, z);
             local.renderBlockState.setFace(face);
             TileOverride lastOverride = local.ijkIterator.go(local.renderBlockState, icon);
+            local.renderBlockState.blockAccess = null;
             if (lastOverride != null) {
                 return skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : local.ijkIterator.getIcon();
             }
