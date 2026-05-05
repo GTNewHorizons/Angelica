@@ -15,6 +15,17 @@ public final class ColorCodeUtils {
 
     private ColorCodeUtils() {}
 
+    public static final char FORMATTING_CHAR = '§';
+
+    // §x§R§R§G§G§B§B — 6 hex pairs after §x
+    public static final int SECTION_X_PAYLOAD = 12;
+    // §x§R§R§G§G§B§B
+    public static final int SECTION_X_LENGTH = 14;
+    // two §x sequences after §g
+    public static final int GRADIENT_PAYLOAD = 28;
+    // §g + two §x sequences
+    public static final int GRADIENT_LENGTH = 30;
+
     /** Valid single {@code &} codes. Note: {@code g} is excluded — {@code &g} only converts as part of {@code &g&#RRGGBB&#RRGGBB} gradient syntax. */
     public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
 
@@ -38,9 +49,9 @@ public final class ColorCodeUtils {
                 }
                 if (validHex) {
                     sb.append(text, last, idx);
-                    sb.append('\u00a7').append('x');
+                    sb.append(FORMATTING_CHAR).append('x');
                     for (int i = 2; i <= 7; i++) {
-                        sb.append('\u00a7').append(text.charAt(idx + i));
+                        sb.append(FORMATTING_CHAR).append(text.charAt(idx + i));
                     }
                     last = idx + 8; // skip &#RRGGBB (8 chars)
                     idx = text.indexOf('&', last);
@@ -62,7 +73,7 @@ public final class ColorCodeUtils {
                 }
                 if (valid1 && valid2) {
                     sb.append(text, last, idx);
-                    sb.append('\u00a7').append('g');
+                    sb.append(FORMATTING_CHAR).append('g');
                     last = idx + 2; // skip &g, let the two &#RRGGBB be caught on next iterations
                     idx = text.indexOf('&', last);
                     continue;
@@ -72,7 +83,7 @@ public final class ColorCodeUtils {
             char code = Character.toLowerCase(text.charAt(idx + 1));
             if (VALID_SINGLE_CODES.indexOf(code) != -1) {
                 sb.append(text, last, idx);
-                sb.append('\u00a7').append(text.charAt(idx + 1));
+                sb.append(FORMATTING_CHAR).append(text.charAt(idx + 1));
                 last = idx + 2;
             }
             idx = text.indexOf('&', idx + 1);

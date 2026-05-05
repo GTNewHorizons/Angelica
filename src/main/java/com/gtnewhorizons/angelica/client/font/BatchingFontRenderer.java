@@ -4,6 +4,11 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
+
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
@@ -534,7 +539,9 @@ public class BatchingFontRenderer {
         return forceDefaults() ? 1 : FontConfig.fontShadowOffset;
     }
 
-    private static final char FORMATTING_CHAR = 167; // §
+    private static final float RAINBOW_HUE_STEP = 15f;
+    private static final float WAVE_TIME_SCALE = 5e-9f;
+    private static final float WAVE_FREQUENCY = 0.5f;
 
     public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
         final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
@@ -610,14 +617,14 @@ public class BatchingFontRenderer {
                         strikethroughStartX = strikethroughEndX;
                     }
 
-                    if (fmtCode == 'x' && AngelicaConfig.enableRGBColors && charIdx + 12 < stringEnd) {
+                    if (fmtCode == 'x' && AngelicaConfig.enableRGBColors && charIdx + SECTION_X_PAYLOAD < stringEnd) {
                         int rgb = parseHexPairs(string, charIdx + 1, 6);
                         if (rgb != -1) {
                             curRainbow = false;
                             curGradient = false;
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
-                            charIdx += 12;
+                            charIdx += SECTION_X_PAYLOAD;
                         }
                     } else {
                     final boolean is09 = charInRange(fmtCode, '0', '9');
@@ -659,17 +666,17 @@ public class BatchingFontRenderer {
                         curWave = !curWave;
                     } else if (fmtCode == 'v' && AngelicaConfig.enableDinnerboneText) {
                         curDinnerbone = !curDinnerbone;
-                    } else if (fmtCode == 'g' && AngelicaConfig.enableGradients && charIdx + 28 < stringEnd) {
+                    } else if (fmtCode == 'g' && AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
                         int color1 = parseFullSectionX(string, charIdx + 1);
-                        int color2 = parseFullSectionX(string, charIdx + 15);
+                        int color2 = parseFullSectionX(string, charIdx + 1 + SECTION_X_LENGTH);
                         if (color1 != -1 && color2 != -1) {
                             curGradient = true;
                             curRainbow = false;
                             gradientStartRgb = color1;
                             gradientEndRgb = color2;
                             gradientCharIndex = 0;
-                            gradientTotalChars = countVisibleChars(string, charIdx + 29, stringEnd);
-                            charIdx += 28;
+                            gradientTotalChars = countVisibleChars(string, charIdx + 1 + GRADIENT_PAYLOAD, stringEnd);
+                            charIdx += GRADIENT_PAYLOAD;
                         }
                     } else if (fmtCode == 'r') {
                         curRandom = false;
@@ -721,7 +728,7 @@ public class BatchingFontRenderer {
 
                 // Per-character color effects (rainbow / gradient)
                 if (curRainbow) {
-                    float hue = (rainbowCharIndex * 15f) % 360f;
+                    float hue = (rainbowCharIndex * RAINBOW_HUE_STEP) % 360f;
                     int rgbEffect = hsvToRgb(hue, 1f, 1f);
                     curColor = (curColor & 0xFF000000) | rgbEffect;
                     curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
@@ -755,8 +762,8 @@ public class BatchingFontRenderer {
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
                 if (curWave) {
-                    float time = HUDCaching.renderingCacheOverride ? 0f : System.nanoTime() * 0.000000005f;
-                    renderY += (float) Math.sin(visibleCharIndex * 0.5 + time) * AngelicaConfig.waveAmplitude;
+                    float time = HUDCaching.renderingCacheOverride ? 0f : System.nanoTime() * WAVE_TIME_SCALE;
+                    renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
                 }
 
                 if (enableShadow) {
@@ -796,6 +803,19 @@ public class BatchingFontRenderer {
                 if (bookMode) { curX = (int) curX; }
                 underlineEndX = curX;
                 strikethroughEndX = curX;
+
+                if ((curRainbow || curGradient) && curUnderline && underlineStartX != underlineEndX) {
+                    final int ulIdx = idxWriterIndex;
+                    pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                    pushDrawCmd(ulIdx, 6, null, false);
+                    underlineStartX = underlineEndX;
+                }
+                if ((curRainbow || curGradient) && curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                    final int stIdx = idxWriterIndex;
+                    pushUntexRect(strikethroughStartX, strikethroughY, strikethroughEndX - strikethroughStartX, glyphScaleY, curColor);
+                    pushDrawCmd(stIdx, 6, null, false);
+                    strikethroughStartX = strikethroughEndX;
+                }
             }
 
             if (curUnderline && underlineStartX != underlineEndX) {

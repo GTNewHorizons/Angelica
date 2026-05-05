@@ -2,6 +2,10 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
 import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_LENGTH;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
+
 import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -113,12 +117,6 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Unique
     public BatchingFontRenderer angelica$batcher;
-
-    @Unique
-    private static final char angelica$FORMATTING_CHAR = 167; // §
-
-    @Unique
-    private static final float angelica$1_over_255 = 1.0f/255.0f; // §
 
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
@@ -265,10 +263,10 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                         }
                     }
                     if (validHex) {
-                        StringBuilder sb = new StringBuilder(14);
-                        sb.append(angelica$FORMATTING_CHAR).append('x');
+                        StringBuilder sb = new StringBuilder(SECTION_X_LENGTH);
+                        sb.append(FORMATTING_CHAR).append('x');
                         for (int j = 2; j <= 7; j++) {
-                            sb.append(angelica$FORMATTING_CHAR).append(text.charAt(i + j));
+                            sb.append(FORMATTING_CHAR).append(text.charAt(i + j));
                         }
                         lastColor = sb.toString();
                         styles.setLength(0);
@@ -292,15 +290,15 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                         if (Character.digit(text.charAt(i + j), 16) == -1) valid = false;
                     }
                     if (valid) {
-                        StringBuilder sb = new StringBuilder(30);
-                        sb.append(angelica$FORMATTING_CHAR).append('g');
-                        sb.append(angelica$FORMATTING_CHAR).append('x');
+                        StringBuilder sb = new StringBuilder(GRADIENT_LENGTH);
+                        sb.append(FORMATTING_CHAR).append('g');
+                        sb.append(FORMATTING_CHAR).append('x');
                         for (int j = 4; j <= 9; j++) {
-                            sb.append(angelica$FORMATTING_CHAR).append(text.charAt(i + j));
+                            sb.append(FORMATTING_CHAR).append(text.charAt(i + j));
                         }
-                        sb.append(angelica$FORMATTING_CHAR).append('x');
+                        sb.append(FORMATTING_CHAR).append('x');
                         for (int j = 12; j <= 17; j++) {
-                            sb.append(angelica$FORMATTING_CHAR).append(text.charAt(i + j));
+                            sb.append(FORMATTING_CHAR).append(text.charAt(i + j));
                         }
                         lastColor = sb.toString();
                         styles.setLength(0);
@@ -313,7 +311,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 // Single-char & format code
                 if (ColorCodeUtils.VALID_SINGLE_CODES.indexOf(ampCode) != -1) {
                     if ((ampCode >= '0' && ampCode <= '9') || (ampCode >= 'a' && ampCode <= 'f')) {
-                        lastColor = "" + angelica$FORMATTING_CHAR + ampCode;
+                        lastColor = "" + FORMATTING_CHAR + ampCode;
                         styles.setLength(0);
                         effects.setLength(0);
                     } else if (ampCode == 'r') {
@@ -321,34 +319,34 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                         styles.setLength(0);
                         effects.setLength(0);
                     } else if (ampCode >= 'k' && ampCode <= 'o') {
-                        styles.append(angelica$FORMATTING_CHAR).append(ampCode);
+                        styles.append(FORMATTING_CHAR).append(ampCode);
                     } else if (ampCode == 'q' || ampCode == 'z' || ampCode == 'v' || ampCode == 'g') {
-                        effects.append(angelica$FORMATTING_CHAR).append(ampCode);
+                        effects.append(FORMATTING_CHAR).append(ampCode);
                     }
                     i++;
                     continue;
                 }
             }
 
-            if (ch != angelica$FORMATTING_CHAR) continue;
+            if (ch != FORMATTING_CHAR) continue;
             char code = Character.toLowerCase(text.charAt(i + 1));
 
-            if (code == 'g' && i + 29 < text.length()) {
-                if (angelica$isValidSectionX(text, i + 2) && angelica$isValidSectionX(text, i + 16)) {
-                    lastColor = text.substring(i, i + 30);
+            if (code == 'g' && i + GRADIENT_LENGTH <= text.length()) {
+                if (angelica$isValidSectionX(text, i + 2) && angelica$isValidSectionX(text, i + 2 + SECTION_X_LENGTH)) {
+                    lastColor = text.substring(i, i + GRADIENT_LENGTH);
                     styles.setLength(0);
                     effects.setLength(0);
-                    i += 29;
+                    i += GRADIENT_LENGTH - 1;
                     continue;
                 }
             }
 
-            if (code == 'x' && i + 13 < text.length()) {
+            if (code == 'x' && i + SECTION_X_LENGTH <= text.length()) {
                 if (angelica$isValidSectionX(text, i)) {
-                    lastColor = text.substring(i, i + 14);
+                    lastColor = text.substring(i, i + SECTION_X_LENGTH);
                     styles.setLength(0);
                     effects.setLength(0);
-                    i += 13;
+                    i += SECTION_X_LENGTH - 1;
                     continue;
                 }
             }
@@ -364,10 +362,10 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 effects.setLength(0);
                 i++;
             } else if (code >= 'k' && code <= 'o') {
-                styles.append(angelica$FORMATTING_CHAR).append(code);
+                styles.append(FORMATTING_CHAR).append(code);
                 i++;
             } else if (code == 'q' || code == 'z' || code == 'v') {
-                effects.append(angelica$FORMATTING_CHAR).append(code);
+                effects.append(FORMATTING_CHAR).append(code);
                 i++;
             } else {
                 i++;
@@ -379,11 +377,11 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Unique
     private static boolean angelica$isValidSectionX(String text, int start) {
-        if (text.charAt(start) != angelica$FORMATTING_CHAR) return false;
+        if (text.charAt(start) != FORMATTING_CHAR) return false;
         if (Character.toLowerCase(text.charAt(start + 1)) != 'x') return false;
         for (int i = 0; i < 6; i++) {
             int pairStart = start + 2 + i * 2;
-            if (text.charAt(pairStart) != angelica$FORMATTING_CHAR) return false;
+            if (text.charAt(pairStart) != FORMATTING_CHAR) return false;
             if (Character.digit(text.charAt(pairStart + 1), 16) == -1) return false;
         }
         return true;
