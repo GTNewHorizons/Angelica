@@ -27,9 +27,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.IVertexBuffer;
-import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
-import com.gtnewhorizons.angelica.rendering.ItemRenderListManager;
+import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.client.renderer.ItemRenderer;
