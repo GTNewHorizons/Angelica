@@ -573,13 +573,13 @@ public class DynamicLights {
      */
     public static int getLuminanceFromItemStack(@NotNull ItemStack stack) {
         final Item item = stack.getItem();
-        if (item instanceof ItemBlock itemBlock) {
+        if (item instanceof IDynamicLightProducer lightProducer) {
+            return lightProducer.getLuminance(stack);
+        } else if (item instanceof ItemBlock itemBlock) {
             final Block block = itemBlock.field_150939_a;
             if (block != null) {
                 return block.getLightValue();
             }
-        } else if (item instanceof IDynamicLightProducer lightProducer){
-            return lightProducer.getLuminance();
         }
 
         if (item == Items.lava_bucket) return Blocks.lava.getLightValue();
