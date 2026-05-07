@@ -25,26 +25,9 @@ public final class CommandBufferBuilder {
             CommandBuffer finalBuffer) {
 
         rawBuffer.resetRead();
-        int cmdIndex = 0;
-        int rangeIndex = 0;
-
-        AccumulatedDraw draw;
         while (rawBuffer.hasRemaining()) {
             // Read and process the command
             CommandBufferProcessor.copyCommand(rawBuffer, finalBuffer);
-
-            // Emit draw ranges at this command position
-            while (rangeIndex < accumulatedDraws.size() && (draw = accumulatedDraws.get(rangeIndex)).commandIndex == cmdIndex) {
-                emitDrawRangeToBuffer(draw, finalBuffer, rangeIndex);
-                rangeIndex++;
-            }
-
-            cmdIndex++;
-        }
-
-        while (rangeIndex < accumulatedDraws.size()) {
-            emitDrawRangeToBuffer(accumulatedDraws.get(rangeIndex), finalBuffer, rangeIndex);
-            rangeIndex++;
         }
     }
 

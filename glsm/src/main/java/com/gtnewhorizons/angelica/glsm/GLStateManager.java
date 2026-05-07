@@ -2122,7 +2122,7 @@ public class GLStateManager {
             final DirectTessellator result = ImmediateModeRecorder.end();
             if (result != null) {
                 if (DisplayListManager.isCompileAndExecute() && initConfig != null && initConfig.getDirectDrawer() != null) {
-                    DisplayListManager.flushMatrix();
+                    DisplayListManager.flushAll();
                     final var recorder = DisplayListManager.pauseRecording();
                     initConfig.getDirectDrawer().accept(result);
                     DisplayListManager.resumeRecording(recorder);
@@ -2248,7 +2248,7 @@ public class GLStateManager {
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
             // is redirected to it, so a VAO is always bound here — no fallback branches.
-            DisplayListManager.flushMatrix();
+            DisplayListManager.flushAll();
             final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
             if (capture != null) {
                 DisplayListManager.recordIndexedDrawCapture(capture);
@@ -3369,7 +3369,6 @@ public class GLStateManager {
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
             DisplayListManager.recordMatrixMode(mode);
-            DisplayListManager.resetRelativeTransform();  // Mode switch is a barrier - reset delta tracking
             if (recordMode == RecordMode.COMPILE) {
                 return;
             }
@@ -3383,8 +3382,6 @@ public class GLStateManager {
             final Matrix4f matrix = new Matrix4f().set(m);
             m.rewind();
             DisplayListManager.recordLoadMatrix(matrix);
-            // Reset relative transform - subsequent transforms are relative to loaded matrix
-            DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -3404,8 +3401,6 @@ public class GLStateManager {
             final Matrix4f floatMatrix = new Matrix4f();
             floatMatrix.set(conversionMatrix4d);
             DisplayListManager.recordLoadMatrix(floatMatrix);
-            // Reset relative transform - subsequent transforms are relative to loaded matrix
-            DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -3445,8 +3440,6 @@ public class GLStateManager {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordLoadIdentity();
-            // Reset relative transform - accumulated transforms are discarded (overwritten by load)
-            DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
                 return;
             }

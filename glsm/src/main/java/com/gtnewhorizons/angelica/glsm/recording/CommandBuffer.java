@@ -426,29 +426,29 @@ public final class CommandBuffer {
 
     // === Double commands ===
 
-    public void writeTranslate(double x, double y, double z) {
-        ensureCapacity(28);
+    public void writeTranslate(float x, float y, float z) {
+        ensureCapacity(16);
         writeInt(GLCommand.TRANSLATE);
-        writeDouble(x);
-        writeDouble(y);
-        writeDouble(z);
+        writeFloat(x);
+        writeFloat(y);
+        writeFloat(z);
     }
 
-    public void writeRotate(double angle, double x, double y, double z) {
-        ensureCapacity(36);
+    public void writeRotate(float angle, float x, float y, float z) {
+        ensureCapacity(20);
         writeInt(GLCommand.ROTATE);
-        writeDouble(angle);
-        writeDouble(x);
-        writeDouble(y);
-        writeDouble(z);
+        writeFloat(angle);
+        writeFloat(x);
+        writeFloat(y);
+        writeFloat(z);
     }
 
-    public void writeScale(double x, double y, double z) {
-        ensureCapacity(28);
+    public void writeScale(float x, float y, float z) {
+        ensureCapacity(16);
         writeInt(GLCommand.SCALE);
-        writeDouble(x);
-        writeDouble(y);
-        writeDouble(z);
+        writeFloat(x);
+        writeFloat(y);
+        writeFloat(z);
     }
 
     public void writeOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
@@ -593,6 +593,23 @@ public final class CommandBuffer {
         writeFloat(restoreData.lastTexCoordU);
         writeFloat(restoreData.lastTexCoordV);
     }
+
+    public void writeDrawRangeRestore(
+        int vboIndex, int flags, int lastColor, int lastNormal, float lastTexCoordU, float lastTexCoordV
+    ) {
+        ensureCapacity(28);
+        writeInt(GLCommand.DRAW_RANGE_RESTORE);
+        writeInt(vboIndex);
+        writeInt(flags);
+        // Last color (4 bytes)
+        writeInt(lastColor);
+        // Last normal (4 bytes)
+        writeInt(lastNormal);
+        // Last texcoord (2 floats = 8 bytes)
+        writeFloat(lastTexCoordU);
+        writeFloat(lastTexCoordV);
+    }
+
 
     public void writeCallList(int listId) {
         ensureCapacity(8);

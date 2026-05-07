@@ -47,8 +47,12 @@ public final class CompiledDisplayList {
      * Render this display list by executing all commands.
      */
     public void render() {
+        render(-1);
+    }
+
+    public void render(int list) {
         if (commandBuffer != null && commandBuffer.limit() > 0) {
-            CommandBufferExecutor.execute(commandBuffer, complexObjects, ownedVbos);
+            CommandBufferExecutor.execute(commandBuffer, complexObjects, ownedVbos, list, this);
         }
     }
 

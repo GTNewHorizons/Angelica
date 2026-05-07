@@ -16,17 +16,13 @@ public final class AccumulatedDraw {
     public final VertexFormat format;
     public final List<ByteBuffer> drawBuffers;
     public final int drawMode;
-    public final int commandIndex; // Position in command list for state tracking
-    public final int stateGeneration; // Position in command list for state tracking
     public RestoreData restoreData;
 
-    public AccumulatedDraw(DirectTessellator tessellator, int commandIndex, int stateGeneration, boolean copyLast) {
+    public AccumulatedDraw(DirectTessellator tessellator, boolean copyLast) {
         this.format = tessellator.getVertexFormat();
         this.drawMode = tessellator.drawMode;
         this.drawBuffers = new ArrayList<>();
         this.drawBuffers.add(tessellator.allocateBufferCopy());
-        this.commandIndex = commandIndex;
-        this.stateGeneration = stateGeneration;
 
         if (copyLast) {
             this.restoreData = new RestoreData(tessellator);

@@ -91,9 +91,9 @@ public final class CommandBufferProcessor {
             case GLCommand.TEX_PARAMETERF -> out.writeTexParameterf(raw.readInt(), raw.readInt(), raw.readFloat());
 
             // Double commands
-            case GLCommand.TRANSLATE -> out.writeTranslate(raw.readDouble(), raw.readDouble(), raw.readDouble());
-            case GLCommand.ROTATE -> out.writeRotate(raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
-            case GLCommand.SCALE -> out.writeScale(raw.readDouble(), raw.readDouble(), raw.readDouble());
+            case GLCommand.TRANSLATE -> out.writeTranslate(raw.readFloat(), raw.readFloat(), raw.readFloat());
+            case GLCommand.ROTATE -> out.writeRotate(raw.readFloat(), raw.readFloat(), raw.readFloat(), raw.readFloat());
+            case GLCommand.SCALE -> out.writeScale(raw.readFloat(), raw.readFloat(), raw.readFloat());
             case GLCommand.ORTHO -> out.writeOrtho(raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
             case GLCommand.FRUSTUM -> out.writeFrustum(raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble(), raw.readDouble());
 
@@ -149,6 +149,7 @@ public final class CommandBufferProcessor {
 
             // Draw/call commands
             case GLCommand.DRAW_RANGE -> out.writeDrawRange(raw.readInt());
+            case GLCommand.DRAW_RANGE_RESTORE -> out.writeDrawRangeRestore(raw.readInt(), raw.readInt(), raw.readInt(), raw.readInt(), raw.readFloat(), raw.readFloat());
             case GLCommand.CALL_LIST -> out.writeCallList(raw.readInt());
             case GLCommand.BIND_VBO -> out.writeBindVBO(raw.readInt());
             case GLCommand.BIND_VAO -> out.writeBindVAO(raw.readInt());

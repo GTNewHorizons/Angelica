@@ -39,7 +39,13 @@ public final class CommandBufferExecutor {
      * @param complexObjects Array of complex objects (TexImage2DCmd, etc.)
      * @param ownedVbos Array of VBOs owned by the display list (indexed by DrawRange commands)
      */
-    public static void execute(ByteBuffer buffer, Object[] complexObjects, DisplayListVBO ownedVbos) {
+    public static void execute(
+        ByteBuffer buffer,
+        Object[] complexObjects,
+        DisplayListVBO ownedVbos,
+        int list,
+        CompiledDisplayList compiledDisplayList
+    ) {
         long ptr = memAddress(buffer);
         final long end = ptr + buffer.limit();
 
@@ -546,7 +552,7 @@ public final class CommandBufferExecutor {
                     ((DisplayListCommand) complexObjects[index]).execute();
                 }
 
-                default -> throw new IllegalStateException("Unknown command opcode: " + cmd);
+                default -> throw new IllegalStateException("Unknown command opcode: " + cmd + " in display list with ID " + list + "\n" + DisplayListManager.getCompiledDisplayListString(list, compiledDisplayList, null));
             }
         }
     }

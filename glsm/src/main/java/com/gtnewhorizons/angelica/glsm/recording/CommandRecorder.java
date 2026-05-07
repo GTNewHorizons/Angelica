@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
