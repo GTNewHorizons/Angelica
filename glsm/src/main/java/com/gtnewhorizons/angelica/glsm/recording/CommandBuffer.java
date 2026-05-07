@@ -17,7 +17,7 @@ public final class CommandBuffer {
     private ByteBuffer buffer;
     private long basePointer;
     private long writePointer;
-    private final List<Object> complexObjects = new ArrayList<>();
+    private final ArrayList<DisplayListCommand> complexObjects = new ArrayList<>();
 
     public CommandBuffer() {
         this(DEFAULT_CAPACITY);
@@ -25,7 +25,7 @@ public final class CommandBuffer {
 
     public CommandBuffer(int initialCapacity) {
         this.buffer = memAlloc(initialCapacity);
-        this.basePointer = memAddress(buffer);
+        this.basePointer = memAddress0(buffer);
         this.writePointer = basePointer;
     }
 
@@ -57,7 +57,7 @@ public final class CommandBuffer {
         if (remaining < needed) {
             final int newCapacity = Math.max(buffer.capacity() * 2, buffer.capacity() + needed);
             buffer = memRealloc(buffer, newCapacity);
-            basePointer = memAddress(buffer);
+            basePointer = memAddress0(buffer);
             writePointer = basePointer + size;
         }
     }
@@ -740,26 +740,22 @@ public final class CommandBuffer {
         return (int) (writePointer - basePointer);
     }
 
-    public long address() {
-        return basePointer;
-    }
-
     public ByteBuffer toBuffer() {
         buffer.limit(size());
         buffer.position(0);
         return buffer;
     }
 
-    public Object[] getComplexObjects() {
-        return complexObjects.toArray();
+    public DisplayListCommand[] getComplexObjects() {
+        return complexObjects.toArray(new DisplayListCommand[complexObjects.size()]);
     }
 
-    public Object getComplexObject(int index) {
+    public DisplayListCommand getComplexObject(int index) {
         return complexObjects.get(index);
     }
 
     public boolean isEmpty() {
-        return size() == 0 && complexObjects.isEmpty();
+        return size() == 0;
     }
 
     /**

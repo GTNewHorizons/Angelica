@@ -41,7 +41,7 @@ public final class CommandBufferExecutor {
      */
     public static void execute(
         ByteBuffer buffer,
-        Object[] complexObjects,
+        DisplayListCommand[] complexObjects,
         DisplayListVBO ownedVbos,
         int list,
         CompiledDisplayList compiledDisplayList
@@ -549,7 +549,7 @@ public final class CommandBufferExecutor {
                 case GLCommand.COMPLEX_REF -> {
                     final int index = memGetInt(ptr);
                     ptr += 4;
-                    ((DisplayListCommand) complexObjects[index]).execute();
+                    complexObjects[index].execute();
                 }
 
                 default -> throw new IllegalStateException("Unknown command opcode: " + cmd + " in display list with ID " + list + "\n" + DisplayListManager.getCompiledDisplayListString(list, compiledDisplayList, null));

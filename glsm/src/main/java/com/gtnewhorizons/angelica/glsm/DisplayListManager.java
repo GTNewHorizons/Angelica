@@ -28,6 +28,7 @@ import org.lwjgl.opengl.GL11;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
@@ -154,10 +155,7 @@ public class DisplayListManager {
     }
 
     public static void flushAll() {
-        if (pendingDraw != null) {
-            emitDrawRangeToBuffer(pendingDraw, currentRecorder.getBuffer(), accumulatedDraws.size() - 1);
-            pendingDraw = null;
-        }
+        drawBarrier();
         flushMatrix();
     }
 
@@ -200,10 +198,6 @@ public class DisplayListManager {
 
     public static int getListMode() {
         return glListMode;
-    }
-
-    public static int getCommandCount() {
-        return currentRecorder != null ? currentRecorder.getCommandCount() : 0;
     }
 
     public static void trackDrawRangeSource(String source) {
@@ -784,15 +778,12 @@ public class DisplayListManager {
 
         final CompiledDisplayList compiled;
         // Create CompiledDisplayList with both unoptimized and optimized versions
-        final CommandBuffer rawCommandBuffer = currentRecorder.getBuffer();
-        final boolean hasCommands = !rawCommandBuffer.isEmpty();
+        final CommandBuffer commandBuffer = currentRecorder.getBuffer();
+        final boolean hasCommands = !commandBuffer.isEmpty();
 
         if (hasCommands) {
             final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
             try {
-                final CommandBuffer finalBuffer = new CommandBuffer();
-                CommandBufferBuilder.buildFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
-
                 final IndexedDrawBatchBuilder indexedBuilder = currentRecorder.getIndexedDraws();
                 final List<IndexedDrawBatch> indexedBatches;
                 if (indexedBuilder.isEmpty()) {
@@ -812,7 +803,7 @@ public class DisplayListManager {
                     }
                 }
 
-                compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
+                compiled = new CompiledDisplayList(commandBuffer.toBuffer(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
             } finally {
                 currentRecorder.free();
             }
@@ -868,53 +859,17 @@ public class DisplayListManager {
     }
 
     private static void addAccumulatedDraw(DirectTessellator tessellator, boolean copyLast) {
-//        if (DEBUG_DISPLAY_LISTS) {
-//            pendingDraw = new AccumulatedDraw(
-//                tessellator, copyLast
-//            );
-//            accumulatedDraws.add(pendingDraw);
-//            emitDrawRangeToBuffer(pendingDraw, currentRecorder.getBuffer(), accumulatedDraws.size() - 1);
-//            pendingDraw = null;
-//            return;
-//        }
-//        if (DEBUG_DISPLAY_LISTS) {
-//            if (!isIdentity(relativeTransform)) {
-//                System.out.println(relativeTransform.toString());
-//                throw new IllegalStateException("test");
-//            }
-//            if (tessellator)
-//        }
         if (pendingDraw == null) {
             pendingDraw = new AccumulatedDraw(
                 tessellator, copyLast
             );
             accumulatedDraws.add(pendingDraw);
             if (DEBUG_DISPLAY_LISTS) {
-                flushAll();
+                drawBarrier();
             }
             return;
         }
         pendingDraw.mergeDraw(tessellator, copyLast);
-
-//        if (accumulatedDraws.isEmpty()) {
-//            accumulatedDraws.add(
-//                new AccumulatedDraw(
-//                    tessellator, cmdIndex, stateGeneration, copyLast
-//                )
-//            );
-//            return;
-//        }
-//
-//        // Merge the previous draw call if possible
-//        final AccumulatedDraw previous = accumulatedDraws.getLast();
-//        if (previous.format == tessellator.getVertexFormat() && previous.stateGeneration == stateGeneration) {
-//            previous.mergeDraw(tessellator, copyLast);
-//            return;
-//        }
-//
-//        accumulatedDraws.add(
-//            new AccumulatedDraw(tessellator, cmdIndex, stateGeneration, copyLast)
-//        );
     }
 
     /**
@@ -1091,7 +1046,7 @@ public class DisplayListManager {
         return className;
     }
 
-    private static void dumpCommandBuffer(ByteBuffer buffer, Object[] complexObjects, StringBuilder sb) {
+    private static void dumpCommandBuffer(ByteBuffer buffer, DisplayListCommand[] complexObjects, StringBuilder sb) {
         if (buffer == null) return;
 
         final long basePtr = memAddress(buffer);
