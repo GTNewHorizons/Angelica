@@ -185,6 +185,7 @@ public class DisplayListManager {
         }
 
         // Record the collapsed MultMatrix command (for playback)
+        // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
         drawBarrier();
         currentRecorder.recordMultMatrix(relativeTransform);
 
@@ -332,7 +333,6 @@ public class DisplayListManager {
     public static void recordMatrixMode(int mode) {
         flushMatrix();  // Matrix barrier: flush and reset
         currentRecorder.recordMatrixMode(mode);
-        resetRelativeTransform();  // Mode switch is a barrier - reset delta tracking
     }
 
     public static void recordPushMatrix() {
@@ -342,11 +342,10 @@ public class DisplayListManager {
     }
 
     public static void recordPopMatrix() {
-        // Flush any pending delta, then record pop.
-        // flushMatrix();
-
-        currentRecorder.recordPopMatrix();
+        // Discard any transformations & flush any pending draw operations
+        drawBarrier();
         resetRelativeTransform();
+        currentRecorder.recordPopMatrix();
     }
 
     public static void recordViewport(int x, int y, int width, int height) {
@@ -395,7 +394,6 @@ public class DisplayListManager {
     }
 
     public static void recordActiveTexture(int texture) {
-        drawBarrier();
         currentRecorder.recordActiveTexture(texture);
     }
 
@@ -511,6 +509,7 @@ public class DisplayListManager {
     }
 
     public static void recordCallList(int listId) {
+        // Flush all pending draws & transformations
         flushAll();
         currentRecorder.recordCallList(listId);
     }
@@ -541,15 +540,20 @@ public class DisplayListManager {
     }
 
     public static void recordLoadMatrix(Matrix4f matrix) {
+        drawBarrier();
+        resetRelativeTransform();
         currentRecorder.recordLoadMatrix(matrix);
     }
 
     public static void recordLoadIdentity() {
-        currentRecorder.recordLoadIdentity();
+        drawBarrier();
         resetRelativeTransform();
+        currentRecorder.recordLoadIdentity();
+
     }
 
     public static void recordBindVBO(int vbo) {
+        drawBarrier();
         currentRecorder.recordBindVBO(vbo);
     }
 
@@ -573,7 +577,7 @@ public class DisplayListManager {
      */
     public static void addImmediateModeDraw(DirectTessellator tessellator) {
         if (!tessellator.isEmpty()) {
-            flushMatrix(); //TODO prebake transforms here
+            flushAll(); //TODO prebake transforms here
             // Get relative transform (changes since glNewList, not absolute matrix state)
             addAccumulatedDraw(tessellator, tessellator.getVertexFormat() != DefaultVertexFormat.POSITION);
         }

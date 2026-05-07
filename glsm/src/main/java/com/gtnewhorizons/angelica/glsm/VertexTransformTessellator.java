@@ -5,6 +5,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 
 import java.nio.ByteBuffer;
@@ -46,9 +47,13 @@ public class VertexTransformTessellator extends DirectTessellator {
         reusableVector.z = (float) (z + this.zOffset);
         reusableVector.w = 1;
         transformationMatrix.transform(reusableVector);
-        reusableVector.x /= reusableVector.w;
-        reusableVector.y /= reusableVector.w;
-        reusableVector.z /= reusableVector.w;
+
+        // Only divide by w if the matrix has perspective
+        if ((transformationMatrix.properties() & Matrix4fc.PROPERTY_PERSPECTIVE) != 0) {
+            reusableVector.x /= reusableVector.w;
+            reusableVector.y /= reusableVector.w;
+            reusableVector.z /= reusableVector.w;
+        }
 
         writePtr = format.writeToBuffer0(
             writePtr,
