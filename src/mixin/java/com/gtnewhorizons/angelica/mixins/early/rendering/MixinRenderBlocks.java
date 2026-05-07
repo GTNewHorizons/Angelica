@@ -168,19 +168,16 @@ public abstract class MixinRenderBlocks {
         return false;
     }
 
-    @ModifyExpressionValue(method = { "renderFaceXPos", "renderFaceYPos", "renderFaceZPos",
-                              "renderFaceXNeg", "renderFaceYNeg", "renderFaceZNeg" },
-                    at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/renderer/RenderBlocks;enableAO:Z"))
+    @ModifyExpressionValue(method = { "renderStandardBlockWithColorMultiplier" },
+                    at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/renderer/RenderBlocks;renderAllFaces:Z"))
     private boolean applyAOBrightness(boolean original, @Local(ordinal = 0) Tessellator tessellator) {
         ((StateAwareTessellator)tessellator).angelica$setAppliedAo(this.applyingCeleritasAO);
         return original;
     }
 
-    @Inject(method = { "renderFaceXPos", "renderFaceYPos", "renderFaceZPos",
-        "renderFaceXNeg", "renderFaceYNeg", "renderFaceZNeg" },
+    @Inject(method = { "renderStandardBlockWithColorMultiplier" },
         at = @At("RETURN"))
-    private void resetAOFlag(Block p_147764_1_, double p_147764_2_, double p_147764_4_, double p_147764_6_, IIcon p_147764_8_, CallbackInfo ci,
-                             @Local(ordinal = 0) Tessellator tessellator) {
+    private void resetAOFlag(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_, CallbackInfoReturnable<Boolean> cir, @Local(ordinal = 0) Tessellator tessellator) {
         ((StateAwareTessellator)tessellator).angelica$setAppliedAo(false);
     }
 
