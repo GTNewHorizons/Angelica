@@ -598,7 +598,6 @@ public class DisplayListManager {
      */
     public static void addImmediateModeDraw(DirectTessellator tessellator) {
         if (!tessellator.isEmpty()) {
-            flushAll(); //TODO prebake transforms here
             // Get relative transform (changes since glNewList, not absolute matrix state)
             addAccumulatedDraw(tessellator, tessellator.getVertexFormat() != DefaultVertexFormat.POSITION);
         }
@@ -777,6 +776,7 @@ public class DisplayListManager {
         }
 
         TessellatorManager.startCapturingDirect(displayListCallback);
+        ImmediateModeRecorder.setDrawCallback(displayListCallback);
     }
 
     /**
@@ -791,6 +791,7 @@ public class DisplayListManager {
 
         // Stop compiling mode (works for both root and nested lists now)
         TessellatorManager.stopCapturingDirect();
+        ImmediateModeRecorder.resetDrawCallback();
 
         flushAll();
 

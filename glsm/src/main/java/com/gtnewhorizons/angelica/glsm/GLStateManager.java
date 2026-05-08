@@ -2118,22 +2118,20 @@ public class GLStateManager {
     }
 
     public static void glEnd() {
-        if (DisplayListManager.isRecording()) {
-            final DirectTessellator result = ImmediateModeRecorder.end();
-            if (result != null) {
+        final DirectTessellator result = ImmediateModeRecorder.end();
+        if (result != null) {
+            if (DisplayListManager.isRecording()) {
                 if (DisplayListManager.isCompileAndExecute() && initConfig != null && initConfig.getDirectDrawer() != null) {
-                    DisplayListManager.flushAll();
-                    final var recorder = DisplayListManager.pauseRecording();
+                    final CommandRecorder recorder = DisplayListManager.pauseRecording();
                     initConfig.getDirectDrawer().accept(result);
                     DisplayListManager.resumeRecording(recorder);
                 }
                 DisplayListManager.addImmediateModeDraw(result);
+                return;
             }
-            return;
-        }
-        final DirectTessellator result = ImmediateModeRecorder.end();
-        if (result != null && initConfig != null && initConfig.getDirectDrawer() != null) {
-            initConfig.getDirectDrawer().accept(result);
+            if (initConfig != null && initConfig.getDirectDrawer() != null) {
+                initConfig.getDirectDrawer().accept(result);
+            }
         }
     }
 
@@ -3451,10 +3449,9 @@ public class GLStateManager {
     }
 
     public static void glTranslatef(float x, float y, float z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.applyMatrixTranslation(x, y, z);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate(x, y, z);
@@ -3463,10 +3460,9 @@ public class GLStateManager {
     }
 
     public static void glTranslated(double x, double y, double z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.applyMatrixTranslation((float) x, (float) y, (float) z);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate((float) x, (float) y, (float) z);
@@ -3475,10 +3471,9 @@ public class GLStateManager {
     }
 
     public static void glScalef(float x, float y, float z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.applyMatrixScale(x, y, z);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().scale(x, y, z);
@@ -3487,10 +3482,9 @@ public class GLStateManager {
     }
 
     public static void glScaled(double x, double y, double z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.applyMatrixScale((float) x, (float) y, (float) z);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().scale((float) x, (float) y, (float) z);
@@ -3504,10 +3498,9 @@ public class GLStateManager {
         multMatrix.set(floatBuffer);
         final int currentMode = matrixMode.getMode();
 
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransform(multMatrix);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().mul(multMatrix);
@@ -3522,10 +3515,9 @@ public class GLStateManager {
         conversionMatrix4d.set(matrix);
         conversionMatrix4f.set(conversionMatrix4d);
 
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransform(conversionMatrix4f);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().mul(conversionMatrix4f);
@@ -3545,10 +3537,9 @@ public class GLStateManager {
         // Convert deg to rad
         angle = (float) Math.toRadians(angle);
 
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.applyMatrixRotation(angle, x, y, z);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().rotate(angle, x, y, z);
@@ -3568,10 +3559,9 @@ public class GLStateManager {
         // Convert deg to rad
         angle = Math.toRadians(angle);
 
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.applyMatrixRotation((float) angle, (float) x, (float) y, (float) z);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().rotate((float) angle, (float) x, (float) y, (float) z);
@@ -3580,10 +3570,9 @@ public class GLStateManager {
     }
 
     public static void glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransformOrtho(left, right, bottom, top, zNear, zFar);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
@@ -3592,10 +3581,9 @@ public class GLStateManager {
     }
 
     public static void glFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransformFrustum(left, right, bottom, top, zNear, zFar);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
