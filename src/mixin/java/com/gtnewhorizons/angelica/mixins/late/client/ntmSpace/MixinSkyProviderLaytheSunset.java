@@ -8,13 +8,15 @@ import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 
-@Mixin(value = SkyProviderLaytheSunset.class, priority = 100)
+@Mixin(value = SkyProviderLaytheSunset.class, priority = 100, remap = false)
 public class MixinSkyProviderLaytheSunset {
 	
 	/**
 	 * Avoid program rebinding due to pipeline.setInputs
 	 */
-	@WrapWithCondition(method = "renderSunset", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V"), remap = false)
+	@WrapWithCondition(method = "renderSunset"
+			, at = @At(value = "INVOKE"
+				, target = "Lorg/lwjgl/opengl/GL11;glDisable(I)V"))
 	private boolean iris$sunset$redirectTex2D(int cap) {
 		if(cap == GL11.GL_TEXTURE_2D) {
 			Minecraft.getMinecraft().renderEngine.bindTexture(WorkaroundUtils.GL_TEXTURE_2D_WORKAROUND);
