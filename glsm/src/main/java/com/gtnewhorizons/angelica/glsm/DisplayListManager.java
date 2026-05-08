@@ -890,19 +890,21 @@ public class DisplayListManager {
             drawBarrier();
             return;
         }
-        if (pendingDraw.drawMode != tessellator.drawMode
-            || isContinuous(tessellator.drawMode)
-            || isContinuous(pendingDraw.drawMode) //TODO is this needed
-        ) {
+        if (pendingDraw.drawMode != tessellator.drawMode || isContinuous(tessellator.drawMode)) {
             drawBarrier();
             return;
         }
         pendingDraw.mergeDraw(tessellator, copyLast);
-        //new Exception().printStackTrace();
     }
 
+    /**
+     * Draw modes that rely on the previous vertex data cannot be merged currently.
+     * It is possible to merge them using Index Buffers, but currently implemented.
+     */
     private static boolean isContinuous(int drawMode) {
-        return drawMode == GL11.GL_LINE_STRIP; //TODO add the rest
+        return drawMode == GL11.GL_TRIANGLE_STRIP || drawMode == GL11.GL_TRIANGLE_FAN
+            || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP
+            || drawMode == GL11.GL_QUAD_STRIP || drawMode == GL11.GL_POLYGON;
     }
 
     /**
