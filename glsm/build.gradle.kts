@@ -66,6 +66,7 @@ repositories {
         content { includeGroup("xyz.wagyourtail.jvmdowngrader") }
     }
     mavenCentral()
+    mavenLocal()
 }
 
 dependencies {

@@ -12,7 +12,7 @@ import java.util.List;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
 public final class CommandBuffer {
-    private static final int DEFAULT_CAPACITY = 4096; // Guess at typical display list size
+    private static final int DEFAULT_CAPACITY = 2048; // Guess at typical display list size
 
     private ByteBuffer buffer;
     private long basePointer;
@@ -740,10 +740,10 @@ public final class CommandBuffer {
         return (int) (writePointer - basePointer);
     }
 
-    public ByteBuffer toBuffer() {
-        buffer.limit(size());
-        buffer.position(0);
-        return buffer;
+    public ByteBuffer trim() {
+        final int size = size();
+        buffer.limit(size);
+        return memRealloc(buffer, size);
     }
 
     public DisplayListCommand[] getComplexObjects() {

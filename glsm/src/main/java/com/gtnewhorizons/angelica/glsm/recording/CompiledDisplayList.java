@@ -146,6 +146,10 @@ public final class CompiledDisplayList {
         return opcodes;
     }
 
+    public String getCompiledDisplayListString(int listId, StackTraceElement[] stackTrace) {
+        return DisplayListManager.getCompiledDisplayListString(listId, this, stackTrace);
+    }
+
     @Override
     public String toString() {
         return DisplayListManager.getCompiledDisplayListString(0, this, null);

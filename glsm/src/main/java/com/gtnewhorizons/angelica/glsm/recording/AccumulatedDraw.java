@@ -32,7 +32,6 @@ public final class AccumulatedDraw {
 
     public void mergeDraw(DirectTessellator tessellator, boolean copyLast) {
         this.drawBuffers.add(tessellator.allocateBufferCopy());
-
         if (copyLast) {
             this.restoreData = new RestoreData(tessellator);
         }

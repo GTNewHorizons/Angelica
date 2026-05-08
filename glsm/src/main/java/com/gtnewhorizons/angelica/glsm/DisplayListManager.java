@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.DirectDrawCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
@@ -23,6 +25,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.Getter;
 import lombok.experimental.UtilityClass;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
+import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -54,15 +58,34 @@ public class DisplayListManager {
     // -Dangelica.logDisplayListCompilation: log compiled display list commands
     private static final boolean LOG_DISPLAY_LIST_COMPILATION = true;
 
-    private static final VertexTransformTessellator tessellator = new VertexTransformTessellator(
-        TessellatorManager.DEFAULT_BUFFER_SIZE,
-        (tessellator) -> {
+    private static final Vector4f reusableVector = new Vector4f();
+
+    private static final DirectDrawCallback displayListCallback = new DirectDrawCallback() {
+        @Override
+        public boolean onDraw(CallbackTessellator tessellator) {
             if (!tessellator.isEmpty()) {
                 addAccumulatedDraw(tessellator, false);
             }
             return true;
         }
-        );
+
+        @Override
+        public void onAddVertex(CallbackTessellator tessellator, double x, double y, double z) {
+            reusableVector.x = (float) (x + tessellator.xOffset);
+            reusableVector.y = (float) (y + tessellator.yOffset);
+            reusableVector.z = (float) (z + tessellator.zOffset);
+            reusableVector.w = 1;
+            relativeTransform.transform(reusableVector);
+
+            // Only divide by w if the matrix has perspective
+            if ((relativeTransform.properties() & Matrix4fc.PROPERTY_PERSPECTIVE) != 0) {
+                reusableVector.x /= reusableVector.w;
+                reusableVector.y /= reusableVector.w;
+                reusableVector.z /= reusableVector.w;
+            }
+            tessellator.writeVertex(reusableVector.x, reusableVector.y, reusableVector.z);
+        }
+    };
 
 //    static {
 //        LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
@@ -742,7 +765,6 @@ public class DisplayListManager {
         currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(16);   // Fewer draws than commands typically
         relativeTransform = new Matrix4f();
-        tessellator.setTransformationMatrix(relativeTransform);
         compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
         // Initialize debug logging fields (only when logging enabled)
@@ -756,13 +778,7 @@ public class DisplayListManager {
             drawRangeSources = null;
         }
 
-//        TessellatorManager.startCapturingDirect((tessellator) -> {
-//            if (!tessellator.isEmpty()) {
-//                addAccumulatedDraw(tessellator, false);
-//            }
-//            return true;
-//        });
-        TessellatorManager.startCapturingDirect(tessellator);
+        TessellatorManager.startCapturingDirect(displayListCallback);
     }
 
     /**
@@ -807,7 +823,7 @@ public class DisplayListManager {
                     }
                 }
 
-                compiled = new CompiledDisplayList(commandBuffer.toBuffer(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
+                compiled = new CompiledDisplayList(commandBuffer.trim(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
             } finally {
                 currentRecorder.free();
             }
@@ -842,8 +858,6 @@ public class DisplayListManager {
             multMatrixSources = parentContext.matrixSources;
             drawRangeSources = parentContext.drawSources;
 
-            tessellator.setTransformationMatrix(relativeTransform);
-
             // Note: TessellatorManager callback stack was popped by stopCompiling()
             // Parent's COMPILING callback is now active again
         } else {
@@ -871,9 +885,22 @@ public class DisplayListManager {
             if (DEBUG_DISPLAY_LISTS) {
                 drawBarrier();
             }
+            drawBarrier();
+            return;
+        }
+        if (pendingDraw.drawMode != tessellator.drawMode
+            || isContinuous(tessellator.drawMode)
+            || isContinuous(pendingDraw.drawMode) //TODO is this needed
+        ) {
+            drawBarrier();
             return;
         }
         pendingDraw.mergeDraw(tessellator, copyLast);
+        //new Exception().printStackTrace();
+    }
+
+    private static boolean isContinuous(int drawMode) {
+        return drawMode == GL11.GL_LINE_STRIP; //TODO add the rest
     }
 
     /**
@@ -954,7 +981,7 @@ public class DisplayListManager {
                 sb.append("Contents: No commands\n");
             } else {
                 sb.append("Commands (").append(buffer.limit()).append(" bytes):\n");
-                dumpCommandBuffer(buffer, compiled.getComplexObjects(), sb);
+                dumpCommandBuffer(buffer, compiled, sb);
             }
         }
 
@@ -1050,9 +1077,11 @@ public class DisplayListManager {
         return className;
     }
 
-    private static void dumpCommandBuffer(ByteBuffer buffer, DisplayListCommand[] complexObjects, StringBuilder sb) {
+    private static void dumpCommandBuffer(ByteBuffer buffer, CompiledDisplayList compiledList, StringBuilder sb) {
         if (buffer == null) return;
 
+        DisplayListCommand[] complexObjects = compiledList.getComplexObjects();
+        DisplayListVBO vbos = compiledList.getOwnedVbos();
         final long basePtr = memAddress(buffer);
         long ptr = basePtr;
         final long end = basePtr + buffer.limit();
@@ -1078,7 +1107,12 @@ public class DisplayListManager {
                     }
                     case GLCommand.DRAW_RANGE -> {
                         final int vboIdx = memGetInt(ptr + 4);
-                        sb.append("(vbo=").append(vboIdx).append(")");
+                        final DisplayListVBO.SubVBO vbo = vbos.getVBO(vboIdx);
+                        sb.append("(vbo=").append(vboIdx)
+                            .append(", drawMode=").append(vbo.getDrawMode())
+                            .append(", start=").append(vbo.getStart())
+                            .append(", count=").append(vbo.getCount())
+                            .append(")");
                         // Show draw source if available
                         if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
                             sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");

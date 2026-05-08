@@ -63,6 +63,9 @@ configurations {
 // Exclude self-reference from all configurations - prevents transitive Angelica deps from resolving against this project
 configurations.all {
     exclude group: "com.github.GTNewHorizons", module: "Angelica"
+    resolutionStrategy {
+        force "com.github.GTNewHorizons:GTNHLib:9:dev"
+    }
 }
 
 dependencies {
@@ -76,7 +79,12 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.9.36:dev")
+    implementation("com.github.GTNewHorizons:GTNHLib:9:dev") {
+        version {
+            strictly '9'
+            reject '0.9.36'
+        }
+    }
 
     shadowImplementation(project(":glsm")) { transitive = false }
     shadowImplementation(project(":lwjgl3-backend")) { transitive = false }

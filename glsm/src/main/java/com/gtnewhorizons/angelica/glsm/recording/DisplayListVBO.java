@@ -23,6 +23,10 @@ public final class DisplayListVBO {
         return vbos;
     }
 
+    public SubVBO getVBO(int index) {
+        return vbos[index];
+    }
+
     public void render(int index) {
         vbos[index].render();
     }
@@ -39,6 +43,18 @@ public final class DisplayListVBO {
             this.drawMode = drawMode;
             this.start = start;
             this.count = count;
+        }
+
+        public int getStart() {
+            return start;
+        }
+
+        public int getCount() {
+            return count;
+        }
+
+        public int getDrawMode() {
+            return drawMode;
         }
 
         public void delete() {
