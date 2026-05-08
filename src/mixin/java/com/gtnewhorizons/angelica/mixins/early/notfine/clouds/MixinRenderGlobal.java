@@ -7,9 +7,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import jss.notfine.core.Settings;
-import org.joml.Matrix4f;
-import org.joml.Matrix4fc;
-import org.joml.Vector4f;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -22,8 +19,6 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.client.IRenderHandler;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.spongepowered.asm.mixin.Final;
@@ -36,16 +31,19 @@ import org.spongepowered.asm.mixin.Unique;
 public abstract class MixinRenderGlobal {
 
     @Unique
-    private static final Logger ANGELICA_CLOUDS_LOGGER = LogManager.getLogger("Angelica/Clouds");
-
-    @Unique
     private static int angelica$cloudMipmapTexId = -1;
     @Unique
-    private static byte[] angelica$cellAlpha;
+    private static long[] angelica$cellOpaqueBits;
     @Unique
     private static int angelica$cellW;
     @Unique
     private static int angelica$cellH;
+    @Unique
+    private static int angelica$cellWMask;
+    @Unique
+    private static int angelica$cellHMask;
+    @Unique
+    private static boolean angelica$cellWHPow2;
     @Unique
     private static int angelica$cellTexId = -1;
     @Unique
@@ -72,36 +70,16 @@ public abstract class MixinRenderGlobal {
     @Unique private static float angelica$cachedGreen = Float.NaN;
     @Unique private static float angelica$cachedBlue = Float.NaN;
     // Cloud color is baked per-vertex, so any sky/sun color drift would
-    // rebuild the cache every frame. Tolerate a small delta below visual
-    // perception.
+    // rebuild the cache every frame.
+    //TODO: Make this better
     @Unique private static final float ANGELICA_CLOUD_COLOR_REBUILD_DELTA = 0.005f;
 
-    @Unique private static float angelica$planeLA, angelica$planeLB, angelica$planeLC, angelica$planeLOffset;
-    @Unique private static float angelica$planeRA, angelica$planeRB, angelica$planeRC, angelica$planeROffset;
-    @Unique private static float angelica$planeTA, angelica$planeTB, angelica$planeTC, angelica$planeTOffset;
-    @Unique private static float angelica$planeBA, angelica$planeBB, angelica$planeBC, angelica$planeBOffset;
-    @Unique private static float angelica$cachedFX = Float.NaN;
-    @Unique private static float angelica$cachedFY = Float.NaN;
-    @Unique private static float angelica$cachedFZ = Float.NaN;
-    @Unique private static float angelica$cachedUX = Float.NaN;
-    @Unique private static float angelica$cachedUY = Float.NaN;
-    @Unique private static float angelica$cachedUZ = Float.NaN;
-    @Unique private static float angelica$cachedBakedHalfHFovRad = Float.NaN;
-    @Unique private static float angelica$cachedBakedHalfVFovRad = Float.NaN;
-    @Unique private static final float ANGELICA_FRUSTUM_DRIFT_RAD = (float)(5.0 * Math.PI / 180.0);
-    @Unique private static final float ANGELICA_FRUSTUM_DRIFT_COS = (float)Math.cos(ANGELICA_FRUSTUM_DRIFT_RAD);
-    @Unique private static final float ANGELICA_PLANE_MAX_HALF_FOV_RAD = (float)(89.0 * Math.PI / 180.0);
-    @Unique private static final Matrix4f angelica$scratchPWide = new Matrix4f();
-    @Unique private static final Matrix4f angelica$scratchMVNoTrans = new Matrix4f();
-    @Unique private static final Matrix4f angelica$scratchMVP = new Matrix4f();
-    @Unique private static final Vector4f angelica$scratchPlane = new Vector4f();
-
-    // -Dangelica.clouds.stats=true to get culling stats
-    @Unique private static final boolean ANGELICA_CLOUDS_STATS =
-        Boolean.getBoolean("angelica.clouds.stats");
-    @Unique private static int angelica$statsCellsInRadius;
-    @Unique private static int angelica$statsCellsFrustumCulled;
-    @Unique private static int angelica$statsCellsEmitted;
+    // Per-chunk opacity. cellsPerChunk=8 hardcoded by cloudWidth=8;
+    // grid is 10×10 (chunk + 1-cell border on each side). Each int holds one
+    // row of 10 bits (bit n = opacity of cell at column n). Built once per
+    // chunk; consumed by per-cell neighbor lookups + greedy meshing instead of
+    // hitting the global bitset 4× per cell.
+    @Unique private static final int[] angelica$chunkOpaqueRows = new int[10];
 
     @Unique
     private static void angelica$setupCloudTexture() {
@@ -114,19 +92,24 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
         GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
 
-        if (bound != angelica$cellTexId || angelica$cellAlpha == null) {
+        if (bound != angelica$cellTexId || angelica$cellOpaqueBits == null) {
             final int w = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
             final int h = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
             if (w > 0 && h > 0) {
                 final java.nio.ByteBuffer buf = org.lwjgl.BufferUtils.createByteBuffer(w * h * 4);
                 GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
-                final byte[] alpha = new byte[w * h];
+                final long[] bits = new long[(w * h + 63) >>> 6];
                 for (int i = 0; i < w * h; i++) {
-                    alpha[i] = buf.get(i * 4 + 3);
+                    if ((buf.get(i * 4 + 3) & 0xFF) >= ANGELICA_CELL_EMPTY_THRESHOLD) {
+                        bits[i >>> 6] |= 1L << (i & 63);
+                    }
                 }
-                angelica$cellAlpha = alpha;
+                angelica$cellOpaqueBits = bits;
                 angelica$cellW = w;
                 angelica$cellH = h;
+                angelica$cellWMask = w - 1;
+                angelica$cellHMask = h - 1;
+                angelica$cellWHPow2 = (w & (w - 1)) == 0 && (h & (h - 1)) == 0;
                 angelica$cellTexId = bound;
             }
         }
@@ -134,13 +117,19 @@ public abstract class MixinRenderGlobal {
 
     @Unique
     private static boolean angelica$cellOpaque(int x, int z) {
-        final byte[] a = angelica$cellAlpha;
-        if (a == null) return true;
+        final long[] bits = angelica$cellOpaqueBits;
+        if (bits == null) return true;
         final int w = angelica$cellW;
-        final int h = angelica$cellH;
-        final int ix = Math.floorMod(x, w);
-        final int iz = Math.floorMod(z, h);
-        return (a[ix + iz * w] & 0xFF) >= ANGELICA_CELL_EMPTY_THRESHOLD;
+        final int xw, zh;
+        if (angelica$cellWHPow2) {
+            xw = x & angelica$cellWMask;
+            zh = z & angelica$cellHMask;
+        } else {
+            xw = Math.floorMod(x, w);
+            zh = Math.floorMod(z, angelica$cellH);
+        }
+        final int idx = xw + zh * w;
+        return ((bits[idx >>> 6] >>> (idx & 63)) & 1L) != 0L;
     }
 
     /**
@@ -232,132 +221,6 @@ public abstract class MixinRenderGlobal {
         final boolean cameraInsideCloud = cameraInsideY
             && angelica$cellOpaque(floorOffsetX, floorOffsetZ);
 
-        // Camera forward + up in world space
-        final float yawDeg = mc.renderViewEntity.prevRotationYaw
-            + (mc.renderViewEntity.rotationYaw - mc.renderViewEntity.prevRotationYaw) * partialTicks;
-        final float pitchDeg = mc.renderViewEntity.prevRotationPitch
-            + (mc.renderViewEntity.rotationPitch - mc.renderViewEntity.prevRotationPitch) * partialTicks;
-        final float yawRad = yawDeg * (float)(Math.PI / 180.0);
-        final float pitchRad = pitchDeg * (float)(Math.PI / 180.0);
-        final float cosY = MathHelper.cos(yawRad), sinY = MathHelper.sin(yawRad);
-        final float cosP = MathHelper.cos(pitchRad), sinP = MathHelper.sin(pitchRad);
-        final float fwdX = -sinY * cosP;
-        final float fwdY = -sinP;
-        final float fwdZ =  cosY * cosP;
-        final float upX  = -sinY * sinP;
-        final float upY  =  cosP;
-        final float upZ  =  cosY * sinP;
-
-        final Matrix4f projMat = RenderingState.INSTANCE.getProjectionMatrix();
-        final Matrix4f mvMat = RenderingState.INSTANCE.getModelViewMatrix();
-        final float halfHFovRad = (float)Math.atan(1.0 / projMat.m00());
-        final float halfVFovRad = (float)Math.atan(1.0 / projMat.m11());
-        final float halfHFovPlusDrift = halfHFovRad + ANGELICA_FRUSTUM_DRIFT_RAD;
-        final float halfVFovPlusDrift = halfVFovRad + ANGELICA_FRUSTUM_DRIFT_RAD;
-        final boolean horizontalCullActive = halfHFovPlusDrift < ANGELICA_PLANE_MAX_HALF_FOV_RAD;
-        final boolean verticalCullActive   = halfVFovPlusDrift < ANGELICA_PLANE_MAX_HALF_FOV_RAD;
-
-        // If the view cone doesn't reach the cloud Y band at any distance in the render radius, skip everything.
-        if (!cameraInsideY) {
-            final float maxDistBlocks = renderRadius * cellsPerChunk * cloudInteriorWidth;
-            final float viewAxisElevRad = -pitchRad;
-            final float viewUpperEdgeRad = viewAxisElevRad + halfVFovPlusDrift;
-            final float viewLowerEdgeRad = viewAxisElevRad - halfVFovPlusDrift;
-            final boolean slabOutOfView;
-            if (cameraRelativeY > 0f) {
-                slabOutOfView = viewUpperEdgeRad < (float)Math.atan(cameraRelativeY / maxDistBlocks);
-            } else {
-                slabOutOfView = viewLowerEdgeRad > (float)Math.atan((cameraRelativeY + cloudInteriorHeight) / maxDistBlocks);
-            }
-            if (slabOutOfView) {
-                if (angelica$cloudVao != null) {
-                    angelica$cloudVao.delete();
-                    angelica$cloudVao = null;
-                }
-                return;
-            }
-        }
-
-        // Widen the projection (m00/m11 = 1/tan(halfFov + drift)) so the bake
-        // covers rotations up to drift, and strip the translation from MV so
-        // extracted planes live in camera-relative world space (the same frame
-        // as our cell positions). If widened halfFov would reach the 90°
-        // ceiling, clamp here to keep tan finite; the plane-zero branch below
-        // disables that axis' cull for real.
-        angelica$scratchPWide.set(projMat);
-        angelica$scratchPWide.m00((float)(1.0 / Math.tan(horizontalCullActive
-            ? halfHFovPlusDrift : ANGELICA_PLANE_MAX_HALF_FOV_RAD)));
-        angelica$scratchPWide.m11((float)(1.0 / Math.tan(verticalCullActive
-            ? halfVFovPlusDrift : ANGELICA_PLANE_MAX_HALF_FOV_RAD)));
-
-        angelica$scratchMVNoTrans.set(mvMat);
-        angelica$scratchMVNoTrans.m30(0f).m31(0f).m32(0f);
-
-        angelica$scratchPWide.mul(angelica$scratchMVNoTrans, angelica$scratchMVP);
-
-        // Cell AABB half-extents in world blocks. X/Z use the full cell width
-        // (not half) to also absorb the sub-cell camera drift the emission
-        // loop ignores when computing cell centers.
-        final float cellHx = cloudInteriorWidth;
-        final float cellHy = cloudInteriorHeight * 0.5f;
-        final float cellHz = cloudInteriorWidth;
-
-        // Extract the 4 side planes via Gribb-Hartmann. frustumPlane returns a
-        // normalized (a, b, c, d) with the inward normal; inside iff a·x + b·y
-        // + c·z + d ≥ 0. We fold the AABB margin into `offset` here so each
-        // per-cell test is one fused dot + compare.
-        if (horizontalCullActive) {
-            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_NX, angelica$scratchPlane);
-            angelica$planeLA = angelica$scratchPlane.x;
-            angelica$planeLB = angelica$scratchPlane.y;
-            angelica$planeLC = angelica$scratchPlane.z;
-            angelica$planeLOffset = angelica$scratchPlane.w
-                + Math.abs(angelica$scratchPlane.x) * cellHx
-                + Math.abs(angelica$scratchPlane.y) * cellHy
-                + Math.abs(angelica$scratchPlane.z) * cellHz;
-            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_PX, angelica$scratchPlane);
-            angelica$planeRA = angelica$scratchPlane.x;
-            angelica$planeRB = angelica$scratchPlane.y;
-            angelica$planeRC = angelica$scratchPlane.z;
-            angelica$planeROffset = angelica$scratchPlane.w
-                + Math.abs(angelica$scratchPlane.x) * cellHx
-                + Math.abs(angelica$scratchPlane.y) * cellHy
-                + Math.abs(angelica$scratchPlane.z) * cellHz;
-        } else {
-            angelica$planeLA = angelica$planeLB = angelica$planeLC = angelica$planeLOffset = 0f;
-            angelica$planeRA = angelica$planeRB = angelica$planeRC = angelica$planeROffset = 0f;
-        }
-        if (verticalCullActive) {
-            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_NY, angelica$scratchPlane);
-            angelica$planeBA = angelica$scratchPlane.x;
-            angelica$planeBB = angelica$scratchPlane.y;
-            angelica$planeBC = angelica$scratchPlane.z;
-            angelica$planeBOffset = angelica$scratchPlane.w
-                + Math.abs(angelica$scratchPlane.x) * cellHx
-                + Math.abs(angelica$scratchPlane.y) * cellHy
-                + Math.abs(angelica$scratchPlane.z) * cellHz;
-            angelica$scratchMVP.frustumPlane(Matrix4fc.PLANE_PY, angelica$scratchPlane);
-            angelica$planeTA = angelica$scratchPlane.x;
-            angelica$planeTB = angelica$scratchPlane.y;
-            angelica$planeTC = angelica$scratchPlane.z;
-            angelica$planeTOffset = angelica$scratchPlane.w
-                + Math.abs(angelica$scratchPlane.x) * cellHx
-                + Math.abs(angelica$scratchPlane.y) * cellHy
-                + Math.abs(angelica$scratchPlane.z) * cellHz;
-        } else {
-            angelica$planeTA = angelica$planeTB = angelica$planeTC = angelica$planeTOffset = 0f;
-            angelica$planeBA = angelica$planeBB = angelica$planeBC = angelica$planeBOffset = 0f;
-        }
-
-        // Cache valid iff forward + up are within drift of cached and neither
-        // FOV has widened past cached. Forward alone misses roll at extreme
-        // pitch (yaw ≈ roll there, forward barely moves) — up catches it.
-        final boolean frustumCacheValid = cameraInsideCloud
-            || ((angelica$cachedFX * fwdX + angelica$cachedFY * fwdY + angelica$cachedFZ * fwdZ) >= ANGELICA_FRUSTUM_DRIFT_COS
-                && (angelica$cachedUX * upX + angelica$cachedUY * upY + angelica$cachedUZ * upZ) >= ANGELICA_FRUSTUM_DRIFT_COS
-                && halfHFovPlusDrift <= angelica$cachedBakedHalfHFovRad
-                && halfVFovPlusDrift <= angelica$cachedBakedHalfVFovRad);
-
         final boolean cacheValid = angelica$cloudVao != null
             && angelica$cachedCellTexId == angelica$cellTexId
             && angelica$cachedFloorOffsetX == floorOffsetX
@@ -371,8 +234,7 @@ public abstract class MixinRenderGlobal {
             && angelica$cachedCloudScrollingZ == cloudScrollingZ
             && Math.abs(angelica$cachedRed - red) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
             && Math.abs(angelica$cachedGreen - green) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
-            && Math.abs(angelica$cachedBlue - blue) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
-            && frustumCacheValid;
+            && Math.abs(angelica$cachedBlue - blue) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA;
 
         if (!cacheValid) {
             if (angelica$cloudVao != null) {
@@ -380,30 +242,22 @@ public abstract class MixinRenderGlobal {
                 angelica$cloudVao = null;
             }
             final DirectTessellator capture = TessellatorManager.startCapturingDirect();
+            // do this or suffer issues
+            capture.startDrawingQuads();
             angelica$emitCloudGeometry(capture, renderRadius, cloudWidth, cellsPerChunk,
                 radiusCellsSq, floorOffsetX, floorOffsetZ,
-                cloudInteriorWidth, cloudInteriorHeight, cameraRelativeY,
+                cloudInteriorHeight,
                 scrollSpeed, cloudScrollingX, cloudScrollingZ, edgeOverlap,
                 emitTopFace, emitBottomFace, cameraInsideCloud,
                 red, green, blue);
-            // stopCapturingToVBO(IMMUTABLE) with zero captured vertices throws
-            // GL_INVALID_VALUE and returns a format-less VAO that NPEs on bind.
-            if (capture.getVertexCount() == 0) {
-                TessellatorManager.stopCapturingDirect();
+            final int vertexCount = capture.getVertexCount();
+            if (vertexCount == 0) {
                 angelica$cloudVao = null;
             } else {
-                angelica$cloudVao = DirectTessellator.stopCapturingToVBO(VertexBufferType.IMMUTABLE);
+                angelica$cloudVao = VertexBufferType.IMMUTABLE.allocate(
+                    capture.getVertexFormat(), GL11.GL_QUADS, capture.getWriteBuffer(), vertexCount);
             }
-
-            if (ANGELICA_CLOUDS_STATS) {
-                final int radiusCount = angelica$statsCellsInRadius;
-                final int culledCount = angelica$statsCellsFrustumCulled;
-                final int emittedCount = angelica$statsCellsEmitted;
-                final float cullPct = radiusCount > 0 ? 100f * culledCount / radiusCount : 0f;
-                ANGELICA_CLOUDS_LOGGER.info(
-                    "Culling rebuild: opaque-in-radius={}, frustum-culled={} ({}%), emitted={}",
-                    radiusCount, culledCount, String.format("%.1f", cullPct), emittedCount);
-            }
+            TessellatorManager.stopCapturingDirect();
 
             angelica$cachedCellTexId = angelica$cellTexId;
             angelica$cachedFloorOffsetX = floorOffsetX;
@@ -418,14 +272,6 @@ public abstract class MixinRenderGlobal {
             angelica$cachedRed = red;
             angelica$cachedGreen = green;
             angelica$cachedBlue = blue;
-            angelica$cachedFX = fwdX;
-            angelica$cachedFY = fwdY;
-            angelica$cachedFZ = fwdZ;
-            angelica$cachedUX = upX;
-            angelica$cachedUY = upY;
-            angelica$cachedUZ = upZ;
-            angelica$cachedBakedHalfHFovRad = halfHFovPlusDrift;
-            angelica$cachedBakedHalfVFovRad = halfVFovPlusDrift;
         }
 
         if (angelica$cloudVao == null) {
@@ -434,13 +280,13 @@ public abstract class MixinRenderGlobal {
 
         angelica$cloudVao.bind();
 
+        GLStateManager.glPushMatrix();
+        GLStateManager.glTranslatef(-cameraRelativeX, cameraRelativeY, -cameraRelativeZ);
+
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glDepthMask(true);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(-cameraRelativeX, cameraRelativeY, -cameraRelativeZ);
         angelica$cloudVao.draw();
-        GLStateManager.glPopMatrix();
 
         if (mc.gameSettings.anaglyph) {
             if (EntityRenderer.anaglyphField == 0) {
@@ -453,8 +299,6 @@ public abstract class MixinRenderGlobal {
         }
         GLStateManager.glEnable(GL11.GL_BLEND);
         GLStateManager.glDepthMask(false);
-        GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(-cameraRelativeX, cameraRelativeY, -cameraRelativeZ);
         angelica$cloudVao.draw();
         GLStateManager.glPopMatrix();
 
@@ -475,9 +319,7 @@ public abstract class MixinRenderGlobal {
         int radiusCellsSq,
         int floorOffsetX,
         int floorOffsetZ,
-        float cloudInteriorWidth,
         float cloudInteriorHeight,
-        float cameraRelativeY,
         float scrollSpeed,
         float cloudScrollingX,
         float cloudScrollingZ,
@@ -490,87 +332,100 @@ public abstract class MixinRenderGlobal {
         float blue
     ) {
         final float a = 0.8F;
-        angelica$statsCellsInRadius = 0;
-        angelica$statsCellsFrustumCulled = 0;
-        angelica$statsCellsEmitted = 0;
-        // DirectTessellator captures everything between one startDrawingQuads() and stopCapturingToVBO() into one VBO.
-        for (int chunkX = -renderRadius + 1; chunkX <= renderRadius; ++chunkX) {
-            for (int chunkZ = -renderRadius + 1; chunkZ <= renderRadius; ++chunkZ) {
+        final double y1 = cloudInteriorHeight;
+        final double ye = y1 - edgeOverlap;
+        final int[] opaqueRows = angelica$chunkOpaqueRows;
+        final int chunkLo = cameraInsideCloud ? -1 : -renderRadius;
+        final int chunkHi = cameraInsideCloud ?  0 :  renderRadius;
+        for (int chunkX = chunkLo; chunkX <= chunkHi; ++chunkX) {
+            for (int chunkZ = chunkLo; chunkZ <= chunkHi; ++chunkZ) {
                 final float chunkOffsetX = (chunkX * cloudWidth);
                 final float chunkOffsetZ = (chunkZ * cloudWidth);
-                final float startX = chunkOffsetX - (float) 0.0;
-                final float startZ = chunkOffsetZ - (float) 0.0;
                 final int baseU = chunkX * cellsPerChunk + floorOffsetX;
                 final int baseV = chunkZ * cellsPerChunk + floorOffsetZ;
 
-                for (int k = 0; k < cellsPerChunk; k++) {
-                    for (int j = 0; j < cellsPerChunk; j++) {
-                        final int cu = baseU + k;
-                        final int cv = baseV + j;
-                        if (!angelica$cellOpaque(cu, cv)) continue;
+                // Build local opacity grid (10×10 = chunk + 1-cell border).
+                // opaqueRows[r] holds 10 bits where bit c = cell at chunk-local
+                // (c-1, r-1) is opaque. Per-cell self/neighbor checks below
+                // shift+AND from this instead of calling the global bitset.
+                for (int row = 0; row < 10; row++) {
+                    final int cv = baseV + row - 1;
+                    int rowBits = 0;
+                    for (int col = 0; col < 10; col++) {
+                        if (angelica$cellOpaque(baseU + col - 1, cv)) {
+                            rowBits |= 1 << col;
+                        }
+                    }
+                    opaqueRows[row] = rowBits;
+                }
 
+                // Mask of cells in this chunk able to emit (opaque + within
+                // radius circle + within 3×3 cluster when cameraInsideCloud).
+                // Bit (j*8 + k) is set if cell (k, j) emits. Used for both the
+                // greedy top/bottom mesh and the per-cell side/interior pass.
+                long emittableBits = 0L;
+                for (int j = 0; j < cellsPerChunk; j++) {
+                    int rowOpaque = (opaqueRows[j + 1] >>> 1) & 0xFF;
+                    while (rowOpaque != 0) {
+                        final int k = Integer.numberOfTrailingZeros(rowOpaque);
+                        rowOpaque &= rowOpaque - 1;
                         final int relX = chunkX * cellsPerChunk + k;
                         final int relZ = chunkZ * cellsPerChunk + j;
                         if (relX * relX + relZ * relZ > radiusCellsSq) continue;
-                        angelica$statsCellsInRadius++;
+                        if (cameraInsideCloud && (Math.abs(relX) > 1 || Math.abs(relZ) > 1)) continue;
+                        emittableBits |= 1L << (j * cellsPerChunk + k);
+                    }
+                }
 
-                        // Gribb-Hartmann frustum cull against the 4 baked side
-                        // planes. Disabled axes have zero plane + offset, so
-                        // the test is `0 < 0` = false and the cell keeps.
-                        // cameraInsideCloud skips the cull so the 3×3 interior
-                        // cluster below can emit.
-                        if (!cameraInsideCloud) {
-                            final float cx = (relX + 0.5f) * cloudInteriorWidth;
-                            final float cy = cameraRelativeY + cloudInteriorHeight * 0.5f;
-                            final float cz = (relZ + 0.5f) * cloudInteriorWidth;
-                            if (angelica$planeLA * cx + angelica$planeLB * cy + angelica$planeLC * cz + angelica$planeLOffset < 0f
-                             || angelica$planeRA * cx + angelica$planeRB * cy + angelica$planeRC * cz + angelica$planeROffset < 0f
-                             || angelica$planeTA * cx + angelica$planeTB * cy + angelica$planeTC * cz + angelica$planeTOffset < 0f
-                             || angelica$planeBA * cx + angelica$planeBB * cy + angelica$planeBC * cz + angelica$planeBOffset < 0f) {
-                                angelica$statsCellsFrustumCulled++;
-                                continue;
-                            }
+                if (emittableBits == 0L) continue;
+
+                // Greedy mesh top + bottom faces.
+                if (emitTopFace || emitBottomFace) {
+                    long meshTodo = emittableBits;
+                    while (meshTodo != 0L) {
+                        final int startBit = Long.numberOfTrailingZeros(meshTodo);
+                        final int k0 = startBit & 7;
+                        final int j0 = startBit >>> 3;
+
+                        // Extend +k while contiguous run of set bits in row.
+                        int w = 1;
+                        while (k0 + w < cellsPerChunk
+                            && ((meshTodo >>> (j0 * cellsPerChunk + k0 + w)) & 1L) != 0L) {
+                            w++;
                         }
 
-                        // When inside a cloud, only process a 3×3 cluster.
-                        if (cameraInsideCloud && (Math.abs(relX) > 1 || Math.abs(relZ) > 1)) continue;
-                        angelica$statsCellsEmitted++;
+                        // Extend +j while every cell in [k0, k0+w) of next row is set.
+                        final long widthMask = ((1L << w) - 1L);
+                        int h = 1;
+                        while (j0 + h < cellsPerChunk) {
+                            final long rowMask = widthMask << ((j0 + h) * cellsPerChunk + k0);
+                            if ((meshTodo & rowMask) != rowMask) break;
+                            h++;
+                        }
 
-                        final boolean isCenter = cameraInsideCloud
-                            && Math.abs(relX) <= 1 && Math.abs(relZ) <= 1;
+                        long mergedMask = 0L;
+                        for (int dh = 0; dh < h; dh++) {
+                            mergedMask |= widthMask << ((j0 + dh) * cellsPerChunk + k0);
+                        }
+                        meshTodo &= ~mergedMask;
 
-                        final double x0 = startX + k;
-                        final double x1 = startX + k + 1;
-                        final double z0 = startZ + j;
-                        final double z1 = startZ + j + 1;
-                        final double y1 = (float) 0.0 + cloudInteriorHeight;
+                        final double x0 = chunkOffsetX + k0;
+                        final double x1 = chunkOffsetX + k0 + w;
+                        final double z0 = chunkOffsetZ + j0;
+                        final double z1 = chunkOffsetZ + j0 + h;
+                        final float uL = (chunkOffsetX + k0)     * scrollSpeed + cloudScrollingX;
+                        final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
+                        final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
+                        final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
 
-                        final float cellUF = (chunkOffsetX + k + 0.5F) * scrollSpeed + cloudScrollingX;
-                        final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
-                        final float uL = (chunkOffsetX + k)     * scrollSpeed + cloudScrollingX;
-                        final float uR = (chunkOffsetX + k + 1) * scrollSpeed + cloudScrollingX;
-                        final float vN = (chunkOffsetZ + j)     * scrollSpeed + cloudScrollingZ;
-                        final float vS = (chunkOffsetZ + j + 1) * scrollSpeed + cloudScrollingZ;
-
-                        final double ye = y1 - edgeOverlap;
-                        final double xe = x1 - edgeOverlap;
-                        final double ze = z1 - edgeOverlap;
-
-                        final boolean westEmpty  = !angelica$cellOpaque(cu - 1, cv);
-                        final boolean eastEmpty  = !angelica$cellOpaque(cu + 1, cv);
-                        final boolean northEmpty = !angelica$cellOpaque(cu, cv - 1);
-                        final boolean southEmpty = !angelica$cellOpaque(cu, cv + 1);
-
-                        // -Y normal
                         if (emitTopFace) {
                             tessellator.setColorRGBA_F(red * 0.7F, green * 0.7F, blue * 0.7F, a);
                             tessellator.setNormal(0.0F, -1.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z0, uL, vN);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, z0, uR, vN);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, z1, uR, vS);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z1, uL, vS);
+                            tessellator.addVertexWithUV(x0, 0.0, z0, uL, vN);
+                            tessellator.addVertexWithUV(x1, 0.0, z0, uR, vN);
+                            tessellator.addVertexWithUV(x1, 0.0, z1, uR, vS);
+                            tessellator.addVertexWithUV(x0, 0.0, z1, uL, vS);
                         }
-                        // +Y normal
                         if (emitBottomFace) {
                             tessellator.setColorRGBA_F(red, green, blue, a);
                             tessellator.setNormal(0.0F, 1.0F, 0.0F);
@@ -579,90 +434,218 @@ public abstract class MixinRenderGlobal {
                             tessellator.addVertexWithUV(x1, ye, z0, uR, vN);
                             tessellator.addVertexWithUV(x0, ye, z0, uL, vN);
                         }
-                        // -X normal
-                        if (relX > 0 && westEmpty) {
-                            tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
-                            tessellator.setNormal(-1.0F, 0.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z1, cellUF, vS);
-                            tessellator.addVertexWithUV(x0, y1, z1, cellUF, vS);
-                            tessellator.addVertexWithUV(x0, y1, z0, cellUF, vN);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z0, cellUF, vN);
-                        }
-                        // +X normal
-                        if (relX < 0 && eastEmpty) {
-                            tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
-                            tessellator.setNormal(1.0F, 0.0F, 0.0F);
-                            tessellator.addVertexWithUV(xe, (float) 0.0, z0, cellUF, vN);
-                            tessellator.addVertexWithUV(xe, y1, z0, cellUF, vN);
-                            tessellator.addVertexWithUV(xe, y1, z1, cellUF, vS);
-                            tessellator.addVertexWithUV(xe, (float) 0.0, z1, cellUF, vS);
-                        }
-                        // -Z normal
-                        if (relZ > 0 && northEmpty) {
-                            tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
-                            tessellator.setNormal(0.0F, 0.0F, -1.0F);
-                            tessellator.addVertexWithUV(x0, y1, z0, uL, cellVF);
-                            tessellator.addVertexWithUV(x1, y1, z0, uR, cellVF);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, z0, uR, cellVF);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z0, uL, cellVF);
-                        }
-                        // +Z normal
-                        if (relZ < 0 && southEmpty) {
-                            tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
-                            tessellator.setNormal(0.0F, 0.0F, 1.0F);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, ze, uL, cellVF);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, ze, uR, cellVF);
-                            tessellator.addVertexWithUV(x1, y1, ze, uR, cellVF);
-                            tessellator.addVertexWithUV(x0, y1, ze, uL, cellVF);
-                        }
+                    }
+                }
 
-                        // Modern MC's FLAG_INSIDE_FACE....kinda. emit for 3x3 center cluster,
-                        // with reversed vertex order so the rasterizer's back-face culling makes
-                        // these visible only when the camera is inside the cell's cuboid.
-                        if (isCenter) {
-                            // Interior top
-                            tessellator.setColorRGBA_F(red * 0.7F, green * 0.7F, blue * 0.7F, a);
-                            tessellator.setNormal(0.0F, 1.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z1, uL, vS);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, z1, uR, vS);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, z0, uR, vN);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z0, uL, vN);
-                            // Interior bottom
-                            tessellator.setColorRGBA_F(red, green, blue, a);
-                            tessellator.setNormal(0.0F, -1.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, ye, z0, uL, vN);
-                            tessellator.addVertexWithUV(x1, ye, z0, uR, vN);
-                            tessellator.addVertexWithUV(x1, ye, z1, uR, vS);
-                            tessellator.addVertexWithUV(x0, ye, z1, uL, vS);
-                            // Interior west
-                            tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
-                            tessellator.setNormal(1.0F, 0.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z0, cellUF, vN);
-                            tessellator.addVertexWithUV(x0, y1, z0, cellUF, vN);
-                            tessellator.addVertexWithUV(x0, y1, z1, cellUF, vS);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z1, cellUF, vS);
-                            // Interior east
-                            tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
-                            tessellator.setNormal(-1.0F, 0.0F, 0.0F);
-                            tessellator.addVertexWithUV(xe, (float) 0.0, z1, cellUF, vS);
-                            tessellator.addVertexWithUV(xe, y1, z1, cellUF, vS);
-                            tessellator.addVertexWithUV(xe, y1, z0, cellUF, vN);
-                            tessellator.addVertexWithUV(xe, (float) 0.0, z0, cellUF, vN);
-                            // Interior north
-                            tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
-                            tessellator.setNormal(0.0F, 0.0F, 1.0F);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, z0, uL, cellVF);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, z0, uR, cellVF);
-                            tessellator.addVertexWithUV(x1, y1, z0, uR, cellVF);
-                            tessellator.addVertexWithUV(x0, y1, z0, uL, cellVF);
-                            // Interior south
-                            tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
-                            tessellator.setNormal(0.0F, 0.0F, -1.0F);
-                            tessellator.addVertexWithUV(x0, y1, ze, uL, cellVF);
-                            tessellator.addVertexWithUV(x1, y1, ze, uR, cellVF);
-                            tessellator.addVertexWithUV(x1, (float) 0.0, ze, uR, cellVF);
-                            tessellator.addVertexWithUV(x0, (float) 0.0, ze, uL, cellVF);
-                        }
+                // If every cell in chunk + border is opaque, no cell
+                // has an empty neighbor, so no side faces emit. Skip mask
+                // build + 4 greedy mesh loops.
+                int rowsAnd = 0x3FF;
+                for (int r = 0; r < 10 && rowsAnd == 0x3FF; r++) rowsAnd &= opaqueRows[r];
+                final boolean hasBoundary = rowsAnd != 0x3FF;
+
+                // Build per-direction side face masks. Each cell can emit at
+                // most one X-axis face (-X if relX>0, +X if relX<0) and one
+                // Z-axis face. Greedy meshes below run along the perpendicular
+                // axis (X-faces along Z; Z-faces along X) since the face's
+                // own axis is fixed at the cell boundary.
+                long westFace = 0L, eastFace = 0L, northFace = 0L, southFace = 0L;
+                if (hasBoundary) {
+                    long bits = emittableBits;
+                    while (bits != 0L) {
+                        final int bit = Long.numberOfTrailingZeros(bits);
+                        bits &= bits - 1;
+                        final int k = bit & 7;
+                        final int j = bit >>> 3;
+                        final int relX = chunkX * cellsPerChunk + k;
+                        final int relZ = chunkZ * cellsPerChunk + j;
+                        if (relX > 0 && (opaqueRows[j + 1] >>> k & 1) == 0)
+                            westFace  |= 1L << bit;
+                        if (relX < 0 && (opaqueRows[j + 1] >>> (k + 2) & 1) == 0)
+                            eastFace  |= 1L << bit;
+                        if (relZ > 0 && (opaqueRows[j]     >>> (k + 1) & 1) == 0)
+                            northFace |= 1L << bit;
+                        if (relZ < 0 && (opaqueRows[j + 2] >>> (k + 1) & 1) == 0)
+                            southFace |= 1L << bit;
+                    }
+                }
+
+                // Greedy mesh -X face
+                while (westFace != 0L) {
+                    final int bit = Long.numberOfTrailingZeros(westFace);
+                    final int k = bit & 7;
+                    final int j0 = bit >>> 3;
+                    int h = 1;
+                    while (j0 + h < cellsPerChunk
+                        && ((westFace >>> ((j0 + h) * cellsPerChunk + k)) & 1L) != 0L) {
+                        h++;
+                    }
+                    long mask = 0L;
+                    for (int dh = 0; dh < h; dh++) mask |= 1L << ((j0 + dh) * cellsPerChunk + k);
+                    westFace &= ~mask;
+
+                    final double x0 = chunkOffsetX + k;
+                    final double z0 = chunkOffsetZ + j0;
+                    final double z1 = chunkOffsetZ + j0 + h;
+                    final float cellUF = (chunkOffsetX + k + 0.5F) * scrollSpeed + cloudScrollingX;
+                    final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
+                    final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
+
+                    tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                    tessellator.setNormal(-1.0F, 0.0F, 0.0F);
+                    tessellator.addVertexWithUV(x0, 0.0, z1, cellUF, vS);
+                    tessellator.addVertexWithUV(x0, y1,  z1, cellUF, vS);
+                    tessellator.addVertexWithUV(x0, y1,  z0, cellUF, vN);
+                    tessellator.addVertexWithUV(x0, 0.0, z0, cellUF, vN);
+                }
+
+                // Greedy mesh +X face
+                while (eastFace != 0L) {
+                    final int bit = Long.numberOfTrailingZeros(eastFace);
+                    final int k = bit & 7;
+                    final int j0 = bit >>> 3;
+                    int h = 1;
+                    while (j0 + h < cellsPerChunk
+                        && ((eastFace >>> ((j0 + h) * cellsPerChunk + k)) & 1L) != 0L) {
+                        h++;
+                    }
+                    long mask = 0L;
+                    for (int dh = 0; dh < h; dh++) mask |= 1L << ((j0 + dh) * cellsPerChunk + k);
+                    eastFace &= ~mask;
+
+                    final double xe = chunkOffsetX + k + 1 - edgeOverlap;
+                    final double z0 = chunkOffsetZ + j0;
+                    final double z1 = chunkOffsetZ + j0 + h;
+                    final float cellUF = (chunkOffsetX + k + 0.5F) * scrollSpeed + cloudScrollingX;
+                    final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
+                    final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
+
+                    tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                    tessellator.setNormal(1.0F, 0.0F, 0.0F);
+                    tessellator.addVertexWithUV(xe, 0.0, z0, cellUF, vN);
+                    tessellator.addVertexWithUV(xe, y1,  z0, cellUF, vN);
+                    tessellator.addVertexWithUV(xe, y1,  z1, cellUF, vS);
+                    tessellator.addVertexWithUV(xe, 0.0, z1, cellUF, vS);
+                }
+
+                // Greedy mesh -Z face
+                while (northFace != 0L) {
+                    final int bit = Long.numberOfTrailingZeros(northFace);
+                    final int k0 = bit & 7;
+                    final int j = bit >>> 3;
+                    int w = 1;
+                    while (k0 + w < cellsPerChunk
+                        && ((northFace >>> (j * cellsPerChunk + k0 + w)) & 1L) != 0L) {
+                        w++;
+                    }
+                    northFace &= ~(((1L << w) - 1L) << (j * cellsPerChunk + k0));
+
+                    final double x0 = chunkOffsetX + k0;
+                    final double x1 = chunkOffsetX + k0 + w;
+                    final double z0 = chunkOffsetZ + j;
+                    final float uL = (chunkOffsetX + k0)     * scrollSpeed + cloudScrollingX;
+                    final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
+                    final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
+
+                    tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                    tessellator.setNormal(0.0F, 0.0F, -1.0F);
+                    tessellator.addVertexWithUV(x0, y1,  z0, uL, cellVF);
+                    tessellator.addVertexWithUV(x1, y1,  z0, uR, cellVF);
+                    tessellator.addVertexWithUV(x1, 0.0, z0, uR, cellVF);
+                    tessellator.addVertexWithUV(x0, 0.0, z0, uL, cellVF);
+                }
+
+                // Greedy mesh +Z face
+                while (southFace != 0L) {
+                    final int bit = Long.numberOfTrailingZeros(southFace);
+                    final int k0 = bit & 7;
+                    final int j = bit >>> 3;
+                    int w = 1;
+                    while (k0 + w < cellsPerChunk
+                        && ((southFace >>> (j * cellsPerChunk + k0 + w)) & 1L) != 0L) {
+                        w++;
+                    }
+                    southFace &= ~(((1L << w) - 1L) << (j * cellsPerChunk + k0));
+
+                    final double x0 = chunkOffsetX + k0;
+                    final double x1 = chunkOffsetX + k0 + w;
+                    final double ze = chunkOffsetZ + j + 1 - edgeOverlap;
+                    final float uL = (chunkOffsetX + k0)     * scrollSpeed + cloudScrollingX;
+                    final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
+                    final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
+
+                    tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                    tessellator.setNormal(0.0F, 0.0F, 1.0F);
+                    tessellator.addVertexWithUV(x0, 0.0, ze, uL, cellVF);
+                    tessellator.addVertexWithUV(x1, 0.0, ze, uR, cellVF);
+                    tessellator.addVertexWithUV(x1, y1,  ze, uR, cellVF);
+                    tessellator.addVertexWithUV(x0, y1,  ze, uL, cellVF);
+                }
+
+                // Modern MC's FLAG_INSIDE_FACE....kinda. emit for 3x3 center cluster,
+                // with reversed vertex order so the rasterizer's back-face culling makes
+                // these visible only when the camera is inside the cell's cuboid.
+                if (cameraInsideCloud) {
+                    long bits = emittableBits;
+                    while (bits != 0L) {
+                        final int bit = Long.numberOfTrailingZeros(bits);
+                        bits &= bits - 1;
+                        final int k = bit & 7;
+                        final int j = bit >>> 3;
+                        final double x0 = chunkOffsetX + k;
+                        final double x1 = chunkOffsetX + k + 1;
+                        final double z0 = chunkOffsetZ + j;
+                        final double z1 = chunkOffsetZ + j + 1;
+                        final double xe = x1 - edgeOverlap;
+                        final double ze = z1 - edgeOverlap;
+                        final float cellUF = (chunkOffsetX + k + 0.5F) * scrollSpeed + cloudScrollingX;
+                        final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
+                        final float uL = (chunkOffsetX + k)     * scrollSpeed + cloudScrollingX;
+                        final float uR = (chunkOffsetX + k + 1) * scrollSpeed + cloudScrollingX;
+                        final float vN = (chunkOffsetZ + j)     * scrollSpeed + cloudScrollingZ;
+                        final float vS = (chunkOffsetZ + j + 1) * scrollSpeed + cloudScrollingZ;
+                        // Interior top
+                        tessellator.setColorRGBA_F(red * 0.7F, green * 0.7F, blue * 0.7F, a);
+                        tessellator.setNormal(0.0F, 1.0F, 0.0F);
+                        tessellator.addVertexWithUV(x0, 0.0, z1, uL, vS);
+                        tessellator.addVertexWithUV(x1, 0.0, z1, uR, vS);
+                        tessellator.addVertexWithUV(x1, 0.0, z0, uR, vN);
+                        tessellator.addVertexWithUV(x0, 0.0, z0, uL, vN);
+                        // Interior bottom
+                        tessellator.setColorRGBA_F(red, green, blue, a);
+                        tessellator.setNormal(0.0F, -1.0F, 0.0F);
+                        tessellator.addVertexWithUV(x0, ye, z0, uL, vN);
+                        tessellator.addVertexWithUV(x1, ye, z0, uR, vN);
+                        tessellator.addVertexWithUV(x1, ye, z1, uR, vS);
+                        tessellator.addVertexWithUV(x0, ye, z1, uL, vS);
+                        // Interior west
+                        tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                        tessellator.setNormal(1.0F, 0.0F, 0.0F);
+                        tessellator.addVertexWithUV(x0, 0.0, z0, cellUF, vN);
+                        tessellator.addVertexWithUV(x0, y1,  z0, cellUF, vN);
+                        tessellator.addVertexWithUV(x0, y1,  z1, cellUF, vS);
+                        tessellator.addVertexWithUV(x0, 0.0, z1, cellUF, vS);
+                        // Interior east
+                        tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                        tessellator.setNormal(-1.0F, 0.0F, 0.0F);
+                        tessellator.addVertexWithUV(xe, 0.0, z1, cellUF, vS);
+                        tessellator.addVertexWithUV(xe, y1,  z1, cellUF, vS);
+                        tessellator.addVertexWithUV(xe, y1,  z0, cellUF, vN);
+                        tessellator.addVertexWithUV(xe, 0.0, z0, cellUF, vN);
+                        // Interior north
+                        tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                        tessellator.setNormal(0.0F, 0.0F, 1.0F);
+                        tessellator.addVertexWithUV(x0, 0.0, z0, uL, cellVF);
+                        tessellator.addVertexWithUV(x1, 0.0, z0, uR, cellVF);
+                        tessellator.addVertexWithUV(x1, y1,  z0, uR, cellVF);
+                        tessellator.addVertexWithUV(x0, y1,  z0, uL, cellVF);
+                        // Interior south
+                        tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                        tessellator.setNormal(0.0F, 0.0F, -1.0F);
+                        tessellator.addVertexWithUV(x0, y1,  ze, uL, cellVF);
+                        tessellator.addVertexWithUV(x1, y1,  ze, uR, cellVF);
+                        tessellator.addVertexWithUV(x1, 0.0, ze, uR, cellVF);
+                        tessellator.addVertexWithUV(x0, 0.0, ze, uL, cellVF);
                     }
                 }
             }
