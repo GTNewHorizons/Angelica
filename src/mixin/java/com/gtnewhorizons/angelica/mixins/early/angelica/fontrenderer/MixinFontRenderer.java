@@ -163,9 +163,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         }
         else
         {
-            if (AngelicaConfig.enableAmpersandConversion) {
-                text = ColorCodeUtils.convertAmpersandToSectionX(text);
-            }
+            text = ColorCodeUtils.convertAmpersandToSectionX(text);
 
             if (this.bidiFlag)
             {
@@ -242,117 +240,47 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         cir.setReturnValue(angelica$extractFormat(text));
     }
 
+    @Unique private static final StringBuilder EXTRACT_STYLES = new StringBuilder();
+    @Unique private static final StringBuilder EXTRACT_EFFECTS = new StringBuilder();
+    @Unique private static final StringBuilder EXTRACT_COLOR = new StringBuilder();
+    @Unique private static final StringBuilder EXTRACT_RESULT = new StringBuilder();
+
     @Unique
     private static String angelica$extractFormat(String text) {
+        text = ColorCodeUtils.convertAmpersandToSectionX(text);
+        final int len = text.length();
+        if (len < 2) return "";
+
         String lastColor = "";
-        StringBuilder styles = new StringBuilder();
-        StringBuilder effects = new StringBuilder();
+        final StringBuilder styles = EXTRACT_STYLES; styles.setLength(0);
+        final StringBuilder effects = EXTRACT_EFFECTS; effects.setLength(0);
 
-        for (int i = 0; i < text.length() - 1; i++) {
-            char ch = text.charAt(i);
+        for (int i = 0; i < len - 1; i++) {
+            if (text.charAt(i) != FORMATTING_CHAR) continue;
+            final char code = Character.toLowerCase(text.charAt(i + 1));
 
-            // Handle & ampersand shorthand
-            if (ch == '&' && AngelicaConfig.enableAmpersandConversion && i + 1 < text.length()) {
-                // &#RRGGBB RGB color (hash + 6 hex digits)
-                if (text.charAt(i + 1) == '#' && i + 7 < text.length()) {
-                    boolean validHex = true;
-                    for (int j = 2; j <= 7; j++) {
-                        if (Character.digit(text.charAt(i + j), 16) == -1) {
-                            validHex = false;
-                            break;
-                        }
-                    }
-                    if (validHex) {
-                        StringBuilder sb = new StringBuilder(SECTION_X_LENGTH);
-                        sb.append(FORMATTING_CHAR).append('x');
-                        for (int j = 2; j <= 7; j++) {
-                            sb.append(FORMATTING_CHAR).append(text.charAt(i + j));
-                        }
-                        lastColor = sb.toString();
-                        styles.setLength(0);
-                        effects.setLength(0);
-                        i += 7;
-                        continue;
-                    }
-                }
-
-                char ampCode = Character.toLowerCase(text.charAt(i + 1));
-
-                // &g&#RRGGBB&#RRGGBB gradient (18 chars)
-                if (ampCode == 'g' && i + 17 < text.length()
-                    && text.charAt(i + 2) == '&' && text.charAt(i + 3) == '#'
-                    && text.charAt(i + 10) == '&' && text.charAt(i + 11) == '#') {
-                    boolean valid = true;
-                    for (int j = 4; j <= 9 && valid; j++) {
-                        if (Character.digit(text.charAt(i + j), 16) == -1) valid = false;
-                    }
-                    for (int j = 12; j <= 17 && valid; j++) {
-                        if (Character.digit(text.charAt(i + j), 16) == -1) valid = false;
-                    }
-                    if (valid) {
-                        StringBuilder sb = new StringBuilder(GRADIENT_LENGTH);
-                        sb.append(FORMATTING_CHAR).append('g');
-                        sb.append(FORMATTING_CHAR).append('x');
-                        for (int j = 4; j <= 9; j++) {
-                            sb.append(FORMATTING_CHAR).append(text.charAt(i + j));
-                        }
-                        sb.append(FORMATTING_CHAR).append('x');
-                        for (int j = 12; j <= 17; j++) {
-                            sb.append(FORMATTING_CHAR).append(text.charAt(i + j));
-                        }
-                        lastColor = sb.toString();
-                        styles.setLength(0);
-                        effects.setLength(0);
-                        i += 17;
-                        continue;
-                    }
-                }
-
-                // Single-char & format code
-                if (ColorCodeUtils.VALID_SINGLE_CODES.indexOf(ampCode) != -1) {
-                    if ((ampCode >= '0' && ampCode <= '9') || (ampCode >= 'a' && ampCode <= 'f')) {
-                        lastColor = "" + FORMATTING_CHAR + ampCode;
-                        styles.setLength(0);
-                        effects.setLength(0);
-                    } else if (ampCode == 'r') {
-                        lastColor = "";
-                        styles.setLength(0);
-                        effects.setLength(0);
-                    } else if (ampCode >= 'k' && ampCode <= 'o') {
-                        styles.append(FORMATTING_CHAR).append(ampCode);
-                    } else if (ampCode == 'q' || ampCode == 'z' || ampCode == 'v' || ampCode == 'g') {
-                        effects.append(FORMATTING_CHAR).append(ampCode);
-                    }
-                    i++;
-                    continue;
-                }
+            if (code == 'g' && i + GRADIENT_LENGTH <= len && ColorCodeUtils.isValidSectionX(text, i + 2) && ColorCodeUtils.isValidSectionX(text, i + 2 + SECTION_X_LENGTH)) {
+                final StringBuilder cb = EXTRACT_COLOR; cb.setLength(0);
+                for (int j = 0; j < GRADIENT_LENGTH; j++) cb.append(text.charAt(i + j));
+                lastColor = cb.toString();
+                styles.setLength(0);
+                effects.setLength(0);
+                i += GRADIENT_LENGTH - 1;
+                continue;
             }
 
-            if (ch != FORMATTING_CHAR) continue;
-            char code = Character.toLowerCase(text.charAt(i + 1));
-
-            if (code == 'g' && i + GRADIENT_LENGTH <= text.length()) {
-                if (angelica$isValidSectionX(text, i + 2) && angelica$isValidSectionX(text, i + 2 + SECTION_X_LENGTH)) {
-                    lastColor = text.substring(i, i + GRADIENT_LENGTH);
-                    styles.setLength(0);
-                    effects.setLength(0);
-                    i += GRADIENT_LENGTH - 1;
-                    continue;
-                }
-            }
-
-            if (code == 'x' && i + SECTION_X_LENGTH <= text.length()) {
-                if (angelica$isValidSectionX(text, i)) {
-                    lastColor = text.substring(i, i + SECTION_X_LENGTH);
-                    styles.setLength(0);
-                    effects.setLength(0);
-                    i += SECTION_X_LENGTH - 1;
-                    continue;
-                }
+            if (code == 'x' && i + SECTION_X_LENGTH <= len && ColorCodeUtils.isValidSectionX(text, i)) {
+                final StringBuilder cb = EXTRACT_COLOR; cb.setLength(0);
+                for (int j = 0; j < SECTION_X_LENGTH; j++) cb.append(text.charAt(i + j));
+                lastColor = cb.toString();
+                styles.setLength(0);
+                effects.setLength(0);
+                i += SECTION_X_LENGTH - 1;
+                continue;
             }
 
             if ((code >= '0' && code <= '9') || (code >= 'a' && code <= 'f')) {
-                lastColor = text.substring(i, i + 2);
+                lastColor = ColorCodeUtils.sectionPrefix(code);
                 styles.setLength(0);
                 effects.setLength(0);
                 i++;
@@ -362,52 +290,34 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 effects.setLength(0);
                 i++;
             } else if (code >= 'k' && code <= 'o') {
-                styles.append(FORMATTING_CHAR).append(code);
+                styles.append(ColorCodeUtils.sectionPrefix(code));
                 i++;
             } else if (code == 'q' || code == 'z' || code == 'v') {
-                effects.append(FORMATTING_CHAR).append(code);
+                effects.append(ColorCodeUtils.sectionPrefix(code));
                 i++;
             } else {
                 i++;
             }
         }
 
-        return lastColor + effects.toString() + styles.toString();
-    }
-
-    @Unique
-    private static boolean angelica$isValidSectionX(String text, int start) {
-        if (text.charAt(start) != FORMATTING_CHAR) return false;
-        if (Character.toLowerCase(text.charAt(start + 1)) != 'x') return false;
-        for (int i = 0; i < 6; i++) {
-            int pairStart = start + 2 + i * 2;
-            if (text.charAt(pairStart) != FORMATTING_CHAR) return false;
-            if (Character.digit(text.charAt(pairStart + 1), 16) == -1) return false;
-        }
-        return true;
+        if (styles.length() == 0 && effects.length() == 0) return lastColor;
+        final StringBuilder result = EXTRACT_RESULT; result.setLength(0);
+        result.append(lastColor).append(styles).append(effects);
+        return result.toString();
     }
 
     @ModifyVariable(method = "getStringWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private String angelica$convertBeforeWidth(String str) {
-        if (AngelicaConfig.enableAmpersandConversion) {
-            return ColorCodeUtils.convertAmpersandToSectionX(str);
-        }
-        return str;
+        return ColorCodeUtils.convertAmpersandToSectionX(str);
     }
 
     @ModifyVariable(method = "listFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private String angelica$convertBeforeListWrap(String str) {
-        if (AngelicaConfig.enableAmpersandConversion) {
-            return ColorCodeUtils.convertAmpersandToSectionX(str);
-        }
-        return str;
+        return ColorCodeUtils.convertAmpersandToSectionX(str);
     }
 
     @ModifyVariable(method = "wrapFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private String angelica$convertBeforeWrap(String str) {
-        if (AngelicaConfig.enableAmpersandConversion) {
-            return ColorCodeUtils.convertAmpersandToSectionX(str);
-        }
-        return str;
+        return ColorCodeUtils.convertAmpersandToSectionX(str);
     }
 }

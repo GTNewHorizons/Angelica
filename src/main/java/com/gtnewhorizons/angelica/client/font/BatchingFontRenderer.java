@@ -452,32 +452,9 @@ public class BatchingFontRenderer {
     }
 
     /**
-     * Read {@code count} §-hex pairs from str starting at {@code start}.
-     * Each pair must be § followed by [0-9a-fA-F].
-     * Returns assembled hex value, or -1 if any pair is malformed.
-     */
-    private static int parseHexPairs(CharSequence str, int start, int count) {
-        int result = 0;
-        for (int i = 0; i < count; i++) {
-            int pairStart = start + i * 2;
-            if (str.charAt(pairStart) != FORMATTING_CHAR) return -1;
-            int digit = Character.digit(str.charAt(pairStart + 1), 16);
-            if (digit == -1) return -1;
-            result = (result << 4) | digit;
-        }
-        return result;
-    }
-
-    /** Parse a full §x§R§R§G§G§B§B sequence (14 chars). Returns RGB or -1. */
-    private static int parseFullSectionX(CharSequence str, int start) {
-        if (str.charAt(start) != FORMATTING_CHAR) return -1;
-        if (Character.toLowerCase(str.charAt(start + 1)) != 'x') return -1;
-        return parseHexPairs(str, start + 2, 6);
-    }
-
-    /**
      * Count visible characters from {@code start} to {@code end}, skipping format codes.
      * Stops at §r, any color code (§0-f, §x), or any color effect (§q, §g).
+     * Style codes (§k-o) and non-terminating effects (§z wave, §v dinnerbone) are skipped.
      */
     private static int countVisibleChars(CharSequence str, int start, int end) {
         int count = 0;
@@ -489,12 +466,12 @@ public class BatchingFontRenderer {
                     || code == 'x' || code == 'q' || code == 'g') {
                     break;
                 }
-                i++; // skip style codes (k-o, w, j) — they don't terminate gradient
+                i++;
             } else {
                 count++;
             }
         }
-        return Math.max(count, 1); // avoid div-by-zero
+        return Math.max(count, 1);
     }
 
     private static int hsvToRgb(float hue, float sat, float val) {
@@ -513,6 +490,14 @@ public class BatchingFontRenderer {
             default: r=val; g=p; b=q; break;
         }
         return ((int)(r*255) << 16) | ((int)(g*255) << 8) | (int)(b*255);
+    }
+
+    private static final int RAINBOW_LUT_SIZE = 24;
+    private static final int[] RAINBOW_LUT = new int[RAINBOW_LUT_SIZE];
+    static {
+        for (int i = 0; i < RAINBOW_LUT_SIZE; i++) {
+            RAINBOW_LUT[i] = hsvToRgb(i * 15f, 1f, 1f);
+        }
     }
 
     public boolean forceDefaults() {
@@ -539,8 +524,7 @@ public class BatchingFontRenderer {
         return forceDefaults() ? 1 : FontConfig.fontShadowOffset;
     }
 
-    private static final float RAINBOW_HUE_STEP = 15f;
-    private static final float WAVE_TIME_SCALE = 5e-9f;
+    private static final double WAVE_TIME_SCALE = 5e-9;
     private static final float WAVE_FREQUENCY = 0.5f;
 
     public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
@@ -578,6 +562,7 @@ public class BatchingFontRenderer {
             boolean curGradient = false;
             int gradientStartRgb = 0, gradientEndRgb = 0;
             int gradientCharIndex = 0, gradientTotalChars = 0;
+            float gradientStep = 0f;
             int rainbowCharIndex = 0;
             int visibleCharIndex = 0;
 
@@ -618,7 +603,7 @@ public class BatchingFontRenderer {
                     }
 
                     if (fmtCode == 'x' && AngelicaConfig.enableRGBColors && charIdx + SECTION_X_PAYLOAD < stringEnd) {
-                        int rgb = parseHexPairs(string, charIdx + 1, 6);
+                        int rgb = ColorCodeUtils.parseHexPairs(string, charIdx + 1, 6);
                         if (rgb != -1) {
                             curRainbow = false;
                             curGradient = false;
@@ -667,8 +652,8 @@ public class BatchingFontRenderer {
                     } else if (fmtCode == 'v' && AngelicaConfig.enableDinnerboneText) {
                         curDinnerbone = !curDinnerbone;
                     } else if (fmtCode == 'g' && AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
-                        int color1 = parseFullSectionX(string, charIdx + 1);
-                        int color2 = parseFullSectionX(string, charIdx + 1 + SECTION_X_LENGTH);
+                        int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
+                        int color2 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1 + SECTION_X_LENGTH);
                         if (color1 != -1 && color2 != -1) {
                             curGradient = true;
                             curRainbow = false;
@@ -676,6 +661,7 @@ public class BatchingFontRenderer {
                             gradientEndRgb = color2;
                             gradientCharIndex = 0;
                             gradientTotalChars = countVisibleChars(string, charIdx + 1 + GRADIENT_PAYLOAD, stringEnd);
+                            gradientStep = gradientTotalChars > 1 ? 1f / (gradientTotalChars - 1) : 0f;
                             charIdx += GRADIENT_PAYLOAD;
                         }
                     } else if (fmtCode == 'r') {
@@ -726,17 +712,14 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
-                // Per-character color effects (rainbow / gradient)
                 if (curRainbow) {
-                    float hue = (rainbowCharIndex * RAINBOW_HUE_STEP) % 360f;
-                    int rgbEffect = hsvToRgb(hue, 1f, 1f);
+                    int rgbEffect = RAINBOW_LUT[rainbowCharIndex % RAINBOW_LUT_SIZE];
                     curColor = (curColor & 0xFF000000) | rgbEffect;
                     curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
                     rainbowCharIndex++;
                 }
                 if (curGradient && gradientTotalChars > 0) {
-                    float t = gradientTotalChars > 1 ? (float) gradientCharIndex / (float)(gradientTotalChars - 1) : 0f;
-                    t = Math.min(t, 1f);
+                    float t = Math.min(gradientCharIndex * gradientStep, 1f);
                     int gr = (int)((gradientStartRgb >> 16 & 0xFF) * (1-t) + (gradientEndRgb >> 16 & 0xFF) * t);
                     int gg = (int)((gradientStartRgb >> 8 & 0xFF) * (1-t) + (gradientEndRgb >> 8 & 0xFF) * t);
                     int gb = (int)((gradientStartRgb & 0xFF) * (1-t) + (gradientEndRgb & 0xFF) * t);
@@ -762,7 +745,7 @@ public class BatchingFontRenderer {
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
                 if (curWave) {
-                    float time = HUDCaching.renderingCacheOverride ? 0f : System.nanoTime() * WAVE_TIME_SCALE;
+                    float time = HUDCaching.renderingCacheOverride ? 0f : (float)((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
                     renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
                 }
 

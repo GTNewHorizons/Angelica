@@ -568,10 +568,9 @@ public class SodiumGameOptionPages {
                         .build())
                 .add(OptionImpl.createBuilder(int.class, angelicaOpts)
                         .setName("Wave Amplitude")
-                        .setTooltip("How far wave text bounces (default 2)")
-                        .setControl(option -> new SliderControl(option, 1, 8, 1, ControlValueFormatter.number()))
-                        .setBinding((opts, value) -> AngelicaConfig.waveAmplitude = value,
-                                    opts -> (int) AngelicaConfig.waveAmplitude)
+                        .setTooltip("How far wave text bounces (default 2.0)")
+                        .setControl(option -> new SliderControl(option, 10, 80, 5, v -> (v / 10) + "." + (v % 10)))
+                        .setBinding((opts, value) -> AngelicaConfig.waveAmplitude = value / 10f, opts -> Math.round(AngelicaConfig.waveAmplitude * 10f))
                         .build())
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                         .setName("Dinnerbone Text")
