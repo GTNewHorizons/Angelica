@@ -9,9 +9,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
-import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
-import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
+import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBOBuilder;
@@ -32,7 +31,6 @@ import org.lwjgl.opengl.GL11;
 import java.nio.ByteBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Deque;
 import java.util.List;
@@ -210,7 +208,7 @@ public class DisplayListManager {
         // Record the collapsed MultMatrix command (for playback)
         // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
         drawBarrier();
-        currentRecorder.recordMultMatrix(relativeTransform);
+        currentRecorder.writeMultMatrix(relativeTransform);
 
         // Reset to identity - we're now synchronized with GL
         resetRelativeTransform();
@@ -234,14 +232,14 @@ public class DisplayListManager {
     // Draw barriers: state commands that prevent draw merging
     static void drawBarrier() {
         if (pendingDraw != null) {
-            emitDrawRangeToBuffer(pendingDraw, currentRecorder.getBuffer(), accumulatedDraws.size() - 1);
+            emitDrawRangeToBuffer(pendingDraw, currentRecorder, accumulatedDraws.size() - 1);
             pendingDraw = null;
         }
     }
 
     private static void emitDrawRangeToBuffer(
         AccumulatedDraw draw,
-        CommandBuffer out,
+        CommandRecorder out,
         int vboIdx) {
 
         if (draw.restoreData != null) {
@@ -255,12 +253,12 @@ public class DisplayListManager {
 
     public static void recordEnable(int cap) {
         drawBarrier();
-        currentRecorder.recordEnable(cap);
+        currentRecorder.writeEnable(cap);
     }
 
     public static void recordDisable(int cap) {
         drawBarrier();
-        currentRecorder.recordDisable(cap);
+        currentRecorder.writeDisable(cap);
     }
 
     // ==================== NON-BARRIER COMMANDS ====================
@@ -268,31 +266,31 @@ public class DisplayListManager {
 
     public static void recordClear(int mask) {
         drawBarrier(); // glClear changes the FBO values, needs a draw barrier.
-        currentRecorder.recordClear(mask);
+        currentRecorder.writeClear(mask);
     }
 
     public static void recordClearColor(float r, float g, float b, float a) {
-        currentRecorder.recordClearColor(r, g, b, a);
+        currentRecorder.writeClearColor(r, g, b, a);
     }
 
     public static void recordClearDepth(double depth) {
-        currentRecorder.recordClearDepth(depth);
+        currentRecorder.writeClearDepth(depth);
     }
 
     public static void recordClearStencil(int s) {
-        currentRecorder.recordClearStencil(s);
+        currentRecorder.writeClearStencil(s);
     }
 
     // ==================== MORE DRAW BARRIER COMMANDS ====================
 
     public static void recordBlendColor(float r, float g, float b, float a) {
         drawBarrier();
-        currentRecorder.recordBlendColor(r, g, b, a);
+        currentRecorder.writeBlendColor(r, g, b, a);
     }
 
     public static void recordColor(float r, float g, float b, float a) {
         drawBarrier();
-        currentRecorder.recordColor(r, g, b, a);
+        currentRecorder.writeColor(r, g, b, a);
         if (ImmediateModeRecorder.isDrawing()) {
             ImmediateModeRecorder.setColor(r, g, b, a);
         }
@@ -300,289 +298,289 @@ public class DisplayListManager {
 
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) {
         drawBarrier();
-        currentRecorder.recordColorMask(r, g, b, a);
+        currentRecorder.writeColorMask(r, g, b, a);
     }
 
     public static void recordDepthMask(boolean flag) {
         drawBarrier();
-        currentRecorder.recordDepthMask(flag);
+        currentRecorder.writeDepthMask(flag);
     }
 
     public static void recordFrontFace(int mode) {
         drawBarrier();
-        currentRecorder.recordFrontFace(mode);
+        currentRecorder.writeFrontFace(mode);
     }
 
     public static void recordDepthFunc(int func) {
         drawBarrier();
-        currentRecorder.recordDepthFunc(func);
+        currentRecorder.writeDepthFunc(func);
     }
 
     public static void recordBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
         drawBarrier();
-        currentRecorder.recordBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        currentRecorder.writeBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
     }
 
     public static void recordAlphaFunc(int func, float ref) {
         drawBarrier();
-        currentRecorder.recordAlphaFunc(func, ref);
+        currentRecorder.writeAlphaFunc(func, ref);
     }
 
     public static void recordCullFace(int mode) {
         drawBarrier();
-        currentRecorder.recordCullFace(mode);
+        currentRecorder.writeCullFace(mode);
     }
 
     public static void recordShadeModel(int mode) {
         drawBarrier();
-        currentRecorder.recordShadeModel(mode);
+        currentRecorder.writeShadeModel(mode);
     }
 
     public static void recordBindTexture(int target, int texture) {
         drawBarrier();
-        currentRecorder.recordBindTexture(target, texture);
+        currentRecorder.writeBindTexture(target, texture);
     }
 
     public static void recordTexParameteri(int target, int pname, int param) {
         drawBarrier();
-        currentRecorder.recordTexParameteri(target, pname, param);
+        currentRecorder.writeTexParameteri(target, pname, param);
     }
 
     public static void recordTexParameterf(int target, int pname, float param) {
         drawBarrier();
-        currentRecorder.recordTexParameterf(target, pname, param);
+        currentRecorder.writeTexParameterf(target, pname, param);
     }
 
     public static void recordMatrixMode(int mode) {
         flushMatrix();  // Matrix barrier: flush and reset
-        currentRecorder.recordMatrixMode(mode);
+        currentRecorder.writeMatrixMode(mode);
     }
 
     public static void recordPushMatrix() {
         // Flush any pending delta, then record push.
         flushMatrix();
-        currentRecorder.recordPushMatrix();
+        currentRecorder.writePushMatrix();
     }
 
     public static void recordPopMatrix() {
         // Discard any transformations & flush any pending draw operations
         drawBarrier();
         resetRelativeTransform();
-        currentRecorder.recordPopMatrix();
+        currentRecorder.writePopMatrix();
     }
 
     public static void recordViewport(int x, int y, int width, int height) {
         drawBarrier();
-        currentRecorder.recordViewport(x, y, width, height);
+        currentRecorder.writeViewport(x, y, width, height);
     }
 
     public static void recordScissor(int x, int y, int width, int height) {
         drawBarrier();
-        currentRecorder.recordScissor(x, y, width, height);
+        currentRecorder.writeScissor(x, y, width, height);
     }
 
     public static void recordPointSize(float size) {
         drawBarrier();
-        currentRecorder.recordPointSize(size);
+        currentRecorder.writePointSize(size);
     }
 
     public static void recordLineWidth(float width) {
         drawBarrier();
-        currentRecorder.recordLineWidth(width);
+        currentRecorder.writeLineWidth(width);
     }
 
     public static void recordLineStipple(int factor, int pattern) {
         drawBarrier();
-        currentRecorder.recordLineStipple(factor, pattern);
+        currentRecorder.writeLineStipple(factor, pattern);
     }
 
     public static void recordPolygonOffset(float factor, float units) {
         drawBarrier();
-        currentRecorder.recordPolygonOffset(factor, units);
+        currentRecorder.writePolygonOffset(factor, units);
     }
 
     public static void recordPolygonMode(int face, int mode) {
         drawBarrier();
-        currentRecorder.recordPolygonMode(face, mode);
+        currentRecorder.writePolygonMode(face, mode);
     }
 
     public static void recordColorMaterial(int face, int mode) {
         drawBarrier();
-        currentRecorder.recordColorMaterial(face, mode);
+        currentRecorder.writeColorMaterial(face, mode);
     }
 
     public static void recordLogicOp(int opcode) {
         drawBarrier();
-        currentRecorder.recordLogicOp(opcode);
+        currentRecorder.writeLogicOp(opcode);
     }
 
     public static void recordActiveTexture(int texture) {
-        currentRecorder.recordActiveTexture(texture);
+        currentRecorder.writeActiveTexture(texture);
     }
 
     public static void recordUseProgram(int program) {
         drawBarrier();
-        currentRecorder.recordUseProgram(program);
+        currentRecorder.writeUseProgram(program);
     }
 
     // PushAttrib saves state but doesn't change it - not a draw barrier
     public static void recordPushAttrib(int mask) {
-        currentRecorder.recordPushAttrib(mask);
+        currentRecorder.writePushAttrib(mask);
     }
 
     // PopAttrib restores potentially any state - draw barrier
     public static void recordPopAttrib() {
         drawBarrier();
-        currentRecorder.recordPopAttrib();
+        currentRecorder.writePopAttrib();
     }
 
     public static void recordFogf(int pname, float param) {
         drawBarrier();
-        currentRecorder.recordFogf(pname, param);
+        currentRecorder.writeFogf(pname, param);
     }
 
     public static void recordFogi(int pname, int param) {
         drawBarrier();
-        currentRecorder.recordFogi(pname, param);
+        currentRecorder.writeFogi(pname, param);
     }
 
     public static void recordHint(int target, int mode) {
         drawBarrier();
-        currentRecorder.recordHint(target, mode);
+        currentRecorder.writeHint(target, mode);
     }
 
     public static void recordFog(int pname, java.nio.FloatBuffer params) {
         drawBarrier();
-        currentRecorder.recordFog(pname, params);
+        currentRecorder.writeFog(pname, params);
     }
 
     public static void recordLightf(int light, int pname, float param) {
         drawBarrier();
-        currentRecorder.recordLightf(light, pname, param);
+        currentRecorder.writeLightf(light, pname, param);
     }
 
     public static void recordLighti(int light, int pname, int param) {
         drawBarrier();
-        currentRecorder.recordLighti(light, pname, param);
+        currentRecorder.writeLighti(light, pname, param);
     }
 
     public static void recordLight(int light, int pname, java.nio.FloatBuffer params) {
         drawBarrier();
-        currentRecorder.recordLight(light, pname, params);
+        currentRecorder.writeLight(light, pname, params);
     }
 
     public static void recordLightModelf(int pname, float param) {
         drawBarrier();
-        currentRecorder.recordLightModelf(pname, param);
+        currentRecorder.writeLightModelf(pname, param);
     }
 
     public static void recordLightModeli(int pname, int param) {
         drawBarrier();
-        currentRecorder.recordLightModeli(pname, param);
+        currentRecorder.writeLightModeli(pname, param);
     }
 
     public static void recordLightModel(int pname, java.nio.FloatBuffer params) {
         drawBarrier();
-        currentRecorder.recordLightModel(pname, params);
+        currentRecorder.writeLightModel(pname, params);
     }
 
     public static void recordMaterialf(int face, int pname, float val) {
         drawBarrier();
-        currentRecorder.recordMaterialf(face, pname, val);
+        currentRecorder.writeMaterialf(face, pname, val);
     }
 
     public static void recordMaterial(int face, int pname, java.nio.FloatBuffer params) {
         drawBarrier();
-        currentRecorder.recordMaterial(face, pname, params);
+        currentRecorder.writeMaterial(face, pname, params);
     }
 
     public static void recordClipPlane(int plane, double a, double b, double c, double d) {
         drawBarrier();
-        currentRecorder.recordClipPlane(plane, a, b, c, d);
+        currentRecorder.writeClipPlane(plane, a, b, c, d);
     }
 
     public static void recordStencilFunc(int func, int ref, int mask) {
         drawBarrier();
-        currentRecorder.recordStencilFunc(func, ref, mask);
+        currentRecorder.writeStencilFunc(func, ref, mask);
     }
 
     public static void recordStencilFuncSeparate(int face, int func, int ref, int mask) {
         drawBarrier();
-        currentRecorder.recordStencilFuncSeparate(face, func, ref, mask);
+        currentRecorder.writeStencilFuncSeparate(face, func, ref, mask);
     }
 
     public static void recordStencilOp(int fail, int zfail, int zpass) {
         drawBarrier();
-        currentRecorder.recordStencilOp(fail, zfail, zpass);
+        currentRecorder.writeStencilOp(fail, zfail, zpass);
     }
 
     public static void recordStencilOpSeparate(int face, int sfail, int dpfail, int dppass) {
         drawBarrier();
-        currentRecorder.recordStencilOpSeparate(face, sfail, dpfail, dppass);
+        currentRecorder.writeStencilOpSeparate(face, sfail, dpfail, dppass);
     }
 
     public static void recordStencilMask(int mask) {
         drawBarrier();
-        currentRecorder.recordStencilMask(mask);
+        currentRecorder.writeStencilMask(mask);
     }
 
     public static void recordStencilMaskSeparate(int face, int mask) {
         drawBarrier();
-        currentRecorder.recordStencilMaskSeparate(face, mask);
+        currentRecorder.writeStencilMaskSeparate(face, mask);
     }
 
     public static void recordCallList(int listId) {
         // Flush all pending draws & transformations
         flushAll();
-        currentRecorder.recordCallList(listId);
+        currentRecorder.writeCallList(listId);
     }
 
     public static void recordDrawBuffer(int mode) {
         drawBarrier();
-        currentRecorder.recordDrawBuffer(mode);
+        currentRecorder.writeDrawBuffer(mode);
     }
 
     public static void recordDrawBuffers(int count, int buf) {
         drawBarrier();
-        currentRecorder.recordDrawBuffers(count, buf);
+        currentRecorder.writeDrawBuffers(count, buf);
     }
 
     public static void recordDrawBuffers(int count, java.nio.IntBuffer bufs) {
         drawBarrier();
-        currentRecorder.recordDrawBuffers(count, bufs);
+        currentRecorder.writeDrawBuffers(count, bufs);
     }
 
     public static void recordComplexCommand(DisplayListCommand cmd) {
         flushAll(); //TODO
-        currentRecorder.recordComplexCommand(cmd);
+        currentRecorder.writeComplexCommand(cmd);
     }
 
     public static void recordIndexedDrawCapture(IndexedDrawCapture capture) {
         flushAll(); //TODO
-        currentRecorder.recordIndexedDrawCapture(capture);
+        currentRecorder.writeIndexedDrawCapture(capture);
     }
 
     public static void recordLoadMatrix(Matrix4f matrix) {
         drawBarrier();
         resetRelativeTransform();
-        currentRecorder.recordLoadMatrix(matrix);
+        currentRecorder.writeLoadMatrix(matrix);
     }
 
     public static void recordLoadIdentity() {
         drawBarrier();
         resetRelativeTransform();
-        currentRecorder.recordLoadIdentity();
+        currentRecorder.writeLoadIdentity();
 
     }
 
     public static void recordBindVBO(int vbo) {
         drawBarrier();
-        currentRecorder.recordBindVBO(vbo);
+        currentRecorder.writeBindVBO(vbo);
     }
 
     public static void recordBindVAO(int vao) {
         drawBarrier();
-        currentRecorder.recordBindVAO(vao);
+        currentRecorder.writeBindVAO(vao);
     }
 
 
@@ -798,13 +796,13 @@ public class DisplayListManager {
 
         final CompiledDisplayList compiled;
         // Create CompiledDisplayList with both unoptimized and optimized versions
-        final CommandBuffer commandBuffer = currentRecorder.getBuffer();
+        final CommandRecorder commandBuffer = currentRecorder;
         final boolean hasCommands = !commandBuffer.isEmpty();
 
         if (hasCommands) {
             final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
             try {
-                final IndexedDrawBatchBuilder indexedBuilder = currentRecorder.getIndexedDraws();
+                final IndexedDrawBatchBuilder indexedBuilder = commandBuffer.getIndexedDraws();
                 final List<IndexedDrawBatch> indexedBatches;
                 if (indexedBuilder.isEmpty()) {
                     indexedBatches = Collections.emptyList();
@@ -823,13 +821,16 @@ public class DisplayListManager {
                     }
                 }
 
-                compiled = new CompiledDisplayList(commandBuffer.trim(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
-            } finally {
-                currentRecorder.free();
+                compiled = new CompiledDisplayList(commandBuffer.finish(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
+            } catch (Exception e) {
+                GLStateManager.LOGGER.error("Encountered a fatal issue while trying to compile a display list.");
+                e.printStackTrace();
+                commandBuffer.delete();
+                return;
             }
         } else {
             // Free the recorder even if empty
-            currentRecorder.free();
+            commandBuffer.delete();
             // Empty display list - per OpenGL spec, still valid after glNewList/glEndList
             compiled = CompiledDisplayList.EMPTY;
         }
