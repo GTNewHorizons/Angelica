@@ -151,7 +151,7 @@ public abstract class MixinRenderBlocks {
     private boolean handleISBRHException(RenderBlocks rb, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
         try {
             return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
-        } catch (NullPointerException | ArrayIndexOutOfBoundsException e) {
+        } catch (Exception e) {
             CTMUtils.clearCurrentCompact();
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
