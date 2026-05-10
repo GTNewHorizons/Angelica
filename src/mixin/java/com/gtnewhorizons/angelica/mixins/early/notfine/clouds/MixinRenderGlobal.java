@@ -1,9 +1,11 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import jss.notfine.core.Settings;
@@ -19,6 +21,7 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.util.Vec3;
 import net.minecraftforge.client.IRenderHandler;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.spongepowered.asm.mixin.Final;
@@ -26,6 +29,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
+
+import java.nio.ByteBuffer;
 
 @Mixin(value = RenderGlobal.class)
 public abstract class MixinRenderGlobal {
@@ -56,6 +61,8 @@ public abstract class MixinRenderGlobal {
     // GPU-resident geometry; Angelica picks up glDrawArrays in the cloud phase
     // and binds gbuffers_clouds on its own.
     @Unique private static IVertexArrayObject angelica$cloudVao;
+    @Unique private static ByteBuffer angelica$factorOnlyBytes;
+    @Unique private static ByteBuffer angelica$workingBytes;
     @Unique private static int angelica$cachedCellTexId = Integer.MIN_VALUE;
     @Unique private static int angelica$cachedFloorOffsetX = Integer.MIN_VALUE;
     @Unique private static int angelica$cachedFloorOffsetZ = Integer.MIN_VALUE;
@@ -66,13 +73,16 @@ public abstract class MixinRenderGlobal {
     @Unique private static float angelica$cachedCloudInteriorHeight = -1f;
     @Unique private static float angelica$cachedCloudScrollingX = Float.NaN;
     @Unique private static float angelica$cachedCloudScrollingZ = Float.NaN;
-    @Unique private static float angelica$cachedRed = Float.NaN;
-    @Unique private static float angelica$cachedGreen = Float.NaN;
-    @Unique private static float angelica$cachedBlue = Float.NaN;
-    // Cloud color is baked per-vertex, so any sky/sun color drift would
-    // rebuild the cache every frame.
-    //TODO: Make this better
-    @Unique private static final float ANGELICA_CLOUD_COLOR_REBUILD_DELTA = 0.005f;
+    @Unique private static int angelica$cachedVertexCount;
+    @Unique private static float angelica$appliedTintR = Float.NaN;
+    @Unique private static float angelica$appliedTintG = Float.NaN;
+    @Unique private static float angelica$appliedTintB = Float.NaN;
+
+    // POSITION_TEXTURE_COLOR_NORMAL layout: POS(12) + TEX(8) + COLOR(4) + NORMAL(4)
+    @Unique private static final int ANGELICA_CLOUD_VERTEX_STRIDE = 28;
+    @Unique private static final int ANGELICA_CLOUD_COLOR_OFFSET = 20;
+    // Tint update is suppressed unless any channel moved by more than this.
+    @Unique private static final float ANGELICA_TINT_UPDATE_EPSILON = 1.0F / 255.0F;
 
     // Per-chunk opacity. cellsPerChunk=8 hardcoded by cloudWidth=8;
     // grid is 10×10 (chunk + 1-cell border on each side). Each int holds one
@@ -83,7 +93,7 @@ public abstract class MixinRenderGlobal {
 
     @Unique
     private static void angelica$setupCloudTexture() {
-        final int bound = GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        final int bound = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
         if (bound != angelica$cloudMipmapTexId) {
             GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 4);
             GLStateManager.glGenerateMipmap(GL11.GL_TEXTURE_2D);
@@ -96,8 +106,8 @@ public abstract class MixinRenderGlobal {
             final int w = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
             final int h = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_HEIGHT);
             if (w > 0 && h > 0) {
-                final java.nio.ByteBuffer buf = org.lwjgl.BufferUtils.createByteBuffer(w * h * 4);
-                GL11.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
+                final ByteBuffer buf = BufferUtils.createByteBuffer(w * h * 4);
+                GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, buf);
                 final long[] bits = new long[(w * h + 63) >>> 6];
                 for (int i = 0; i < w * h; i++) {
                     if ((buf.get(i * 4 + 3) & 0xFF) >= ANGELICA_CELL_EMPTY_THRESHOLD) {
@@ -221,7 +231,7 @@ public abstract class MixinRenderGlobal {
         final boolean cameraInsideCloud = cameraInsideY
             && angelica$cellOpaque(floorOffsetX, floorOffsetZ);
 
-        final boolean cacheValid = angelica$cloudVao != null
+        final boolean geomCacheValid = angelica$cloudVao != null
             && angelica$cachedCellTexId == angelica$cellTexId
             && angelica$cachedFloorOffsetX == floorOffsetX
             && angelica$cachedFloorOffsetZ == floorOffsetZ
@@ -231,31 +241,45 @@ public abstract class MixinRenderGlobal {
             && angelica$cachedRenderRadius == renderRadius
             && angelica$cachedCloudInteriorHeight == cloudInteriorHeight
             && angelica$cachedCloudScrollingX == cloudScrollingX
-            && angelica$cachedCloudScrollingZ == cloudScrollingZ
-            && Math.abs(angelica$cachedRed - red) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
-            && Math.abs(angelica$cachedGreen - green) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA
-            && Math.abs(angelica$cachedBlue - blue) < ANGELICA_CLOUD_COLOR_REBUILD_DELTA;
+            && angelica$cachedCloudScrollingZ == cloudScrollingZ;
 
-        if (!cacheValid) {
+        if (!geomCacheValid) {
             if (angelica$cloudVao != null) {
                 angelica$cloudVao.delete();
                 angelica$cloudVao = null;
             }
-            final DirectTessellator capture = TessellatorManager.startCapturingDirect();
+            final DirectTessellator capture = TessellatorManager.startCapturingDirect(
+                DefaultVertexFormat.POSITION_TEXTURE_COLOR_NORMAL);
             // do this or suffer issues
             capture.startDrawingQuads();
             angelica$emitCloudGeometry(capture, renderRadius, cloudWidth, cellsPerChunk,
                 radiusCellsSq, floorOffsetX, floorOffsetZ,
                 cloudInteriorHeight,
                 scrollSpeed, cloudScrollingX, cloudScrollingZ, edgeOverlap,
-                emitTopFace, emitBottomFace, cameraInsideCloud,
-                red, green, blue);
+                emitTopFace, emitBottomFace, cameraInsideCloud);
             final int vertexCount = capture.getVertexCount();
             if (vertexCount == 0) {
                 angelica$cloudVao = null;
+                angelica$cachedVertexCount = 0;
             } else {
-                angelica$cloudVao = VertexBufferType.IMMUTABLE.allocate(
-                    capture.getVertexFormat(), GL11.GL_QUADS, capture.getWriteBuffer(), vertexCount);
+                angelica$factorOnlyBytes = capture.allocateBufferCopy();
+                final int totalBytes = vertexCount * ANGELICA_CLOUD_VERTEX_STRIDE;
+                if (angelica$workingBytes == null || angelica$workingBytes.capacity() < totalBytes) {
+                    angelica$workingBytes = BufferUtils.createByteBuffer(totalBytes);
+                }
+                MemoryUtilities.memCopy(
+                    MemoryUtilities.memAddress(angelica$factorOnlyBytes, 0),
+                    MemoryUtilities.memAddress(angelica$workingBytes, 0),
+                    totalBytes);
+                angelica$workingBytes.position(0).limit(totalBytes);
+                angelica$applyTint(vertexCount, red, green, blue);
+                angelica$cloudVao = VertexBufferType.MUTABLE.allocate(
+                    DefaultVertexFormat.POSITION_TEXTURE_COLOR_NORMAL,
+                    GL11.GL_QUADS, angelica$workingBytes, vertexCount);
+                angelica$cachedVertexCount = vertexCount;
+                angelica$appliedTintR = red;
+                angelica$appliedTintG = green;
+                angelica$appliedTintB = blue;
             }
             TessellatorManager.stopCapturingDirect();
 
@@ -269,9 +293,12 @@ public abstract class MixinRenderGlobal {
             angelica$cachedCloudInteriorHeight = cloudInteriorHeight;
             angelica$cachedCloudScrollingX = cloudScrollingX;
             angelica$cachedCloudScrollingZ = cloudScrollingZ;
-            angelica$cachedRed = red;
-            angelica$cachedGreen = green;
-            angelica$cachedBlue = blue;
+        } else if (angelica$tintMovedEnough(red, green, blue)) {
+            angelica$applyTint(angelica$cachedVertexCount, red, green, blue);
+            angelica$cloudVao.getVBO().update(angelica$workingBytes, 0L);
+            angelica$appliedTintR = red;
+            angelica$appliedTintG = green;
+            angelica$appliedTintB = blue;
         }
 
         if (angelica$cloudVao == null) {
@@ -311,6 +338,39 @@ public abstract class MixinRenderGlobal {
     }
 
     @Unique
+    private static boolean angelica$tintMovedEnough(float red, float green, float blue) {
+        final float eps = ANGELICA_TINT_UPDATE_EPSILON;
+        return Math.abs(angelica$appliedTintR - red)   > eps
+            || Math.abs(angelica$appliedTintG - green) > eps
+            || Math.abs(angelica$appliedTintB - blue)  > eps;
+    }
+
+    @Unique
+    private static void angelica$applyTint(int vertexCount, float tintR, float tintG, float tintB) {
+        final long baseAddr = MemoryUtilities.memAddress(angelica$factorOnlyBytes, 0);
+        final long workAddr = MemoryUtilities.memAddress(angelica$workingBytes, 0);
+        final int stride   = ANGELICA_CLOUD_VERTEX_STRIDE;
+        final int colorOff = ANGELICA_CLOUD_COLOR_OFFSET;
+        for (int i = 0; i < vertexCount; i++) {
+            final long off = (long) i * stride + colorOff;
+            final int rb = MemoryUtilities.memGetByte(baseAddr + off)     & 0xFF;
+            final int gb = MemoryUtilities.memGetByte(baseAddr + off + 1) & 0xFF;
+            final int bb = MemoryUtilities.memGetByte(baseAddr + off + 2) & 0xFF;
+            int rOut = (int)(rb * tintR);
+            int gOut = (int)(gb * tintG);
+            int bOut = (int)(bb * tintB);
+            if (rOut > 255) rOut = 255; else if (rOut < 0) rOut = 0;
+            if (gOut > 255) gOut = 255; else if (gOut < 0) gOut = 0;
+            if (bOut > 255) bOut = 255; else if (bOut < 0) bOut = 0;
+            MemoryUtilities.memPutByte(workAddr + off,     (byte) rOut);
+            MemoryUtilities.memPutByte(workAddr + off + 1, (byte) gOut);
+            MemoryUtilities.memPutByte(workAddr + off + 2, (byte) bOut);
+            // alpha at off+3 stays as written by the seed copy
+        }
+        angelica$workingBytes.position(0).limit(vertexCount * stride);
+    }
+
+    @Unique
     private static void angelica$emitCloudGeometry(
         Tessellator tessellator,
         int renderRadius,
@@ -326,10 +386,7 @@ public abstract class MixinRenderGlobal {
         float edgeOverlap,
         boolean emitTopFace,
         boolean emitBottomFace,
-        boolean cameraInsideCloud,
-        float red,
-        float green,
-        float blue
+        boolean cameraInsideCloud
     ) {
         final float a = 0.8F;
         final double y1 = cloudInteriorHeight;
@@ -419,7 +476,7 @@ public abstract class MixinRenderGlobal {
                         final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
 
                         if (emitTopFace) {
-                            tessellator.setColorRGBA_F(red * 0.7F, green * 0.7F, blue * 0.7F, a);
+                            tessellator.setColorRGBA_F(0.7F, 0.7F, 0.7F, a);
                             tessellator.setNormal(0.0F, -1.0F, 0.0F);
                             tessellator.addVertexWithUV(x0, 0.0, z0, uL, vN);
                             tessellator.addVertexWithUV(x1, 0.0, z0, uR, vN);
@@ -427,7 +484,7 @@ public abstract class MixinRenderGlobal {
                             tessellator.addVertexWithUV(x0, 0.0, z1, uL, vS);
                         }
                         if (emitBottomFace) {
-                            tessellator.setColorRGBA_F(red, green, blue, a);
+                            tessellator.setColorRGBA_F(1.0F, 1.0F, 1.0F, a);
                             tessellator.setNormal(0.0F, 1.0F, 0.0F);
                             tessellator.addVertexWithUV(x0, ye, z1, uL, vS);
                             tessellator.addVertexWithUV(x1, ye, z1, uR, vS);
@@ -491,7 +548,7 @@ public abstract class MixinRenderGlobal {
                     final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
                     final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                    tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
                     tessellator.setNormal(-1.0F, 0.0F, 0.0F);
                     tessellator.addVertexWithUV(x0, 0.0, z1, cellUF, vS);
                     tessellator.addVertexWithUV(x0, y1,  z1, cellUF, vS);
@@ -520,7 +577,7 @@ public abstract class MixinRenderGlobal {
                     final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
                     final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                    tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
                     tessellator.setNormal(1.0F, 0.0F, 0.0F);
                     tessellator.addVertexWithUV(xe, 0.0, z0, cellUF, vN);
                     tessellator.addVertexWithUV(xe, y1,  z0, cellUF, vN);
@@ -547,7 +604,7 @@ public abstract class MixinRenderGlobal {
                     final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
                     final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                    tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
                     tessellator.setNormal(0.0F, 0.0F, -1.0F);
                     tessellator.addVertexWithUV(x0, y1,  z0, uL, cellVF);
                     tessellator.addVertexWithUV(x1, y1,  z0, uR, cellVF);
@@ -574,7 +631,7 @@ public abstract class MixinRenderGlobal {
                     final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
                     final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                    tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
                     tessellator.setNormal(0.0F, 0.0F, 1.0F);
                     tessellator.addVertexWithUV(x0, 0.0, ze, uL, cellVF);
                     tessellator.addVertexWithUV(x1, 0.0, ze, uR, cellVF);
@@ -605,42 +662,42 @@ public abstract class MixinRenderGlobal {
                         final float vN = (chunkOffsetZ + j)     * scrollSpeed + cloudScrollingZ;
                         final float vS = (chunkOffsetZ + j + 1) * scrollSpeed + cloudScrollingZ;
                         // Interior top
-                        tessellator.setColorRGBA_F(red * 0.7F, green * 0.7F, blue * 0.7F, a);
+                        tessellator.setColorRGBA_F(0.7F, 0.7F, 0.7F, a);
                         tessellator.setNormal(0.0F, 1.0F, 0.0F);
                         tessellator.addVertexWithUV(x0, 0.0, z1, uL, vS);
                         tessellator.addVertexWithUV(x1, 0.0, z1, uR, vS);
                         tessellator.addVertexWithUV(x1, 0.0, z0, uR, vN);
                         tessellator.addVertexWithUV(x0, 0.0, z0, uL, vN);
                         // Interior bottom
-                        tessellator.setColorRGBA_F(red, green, blue, a);
+                        tessellator.setColorRGBA_F(1.0F, 1.0F, 1.0F, a);
                         tessellator.setNormal(0.0F, -1.0F, 0.0F);
                         tessellator.addVertexWithUV(x0, ye, z0, uL, vN);
                         tessellator.addVertexWithUV(x1, ye, z0, uR, vN);
                         tessellator.addVertexWithUV(x1, ye, z1, uR, vS);
                         tessellator.addVertexWithUV(x0, ye, z1, uL, vS);
                         // Interior west
-                        tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                        tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
                         tessellator.setNormal(1.0F, 0.0F, 0.0F);
                         tessellator.addVertexWithUV(x0, 0.0, z0, cellUF, vN);
                         tessellator.addVertexWithUV(x0, y1,  z0, cellUF, vN);
                         tessellator.addVertexWithUV(x0, y1,  z1, cellUF, vS);
                         tessellator.addVertexWithUV(x0, 0.0, z1, cellUF, vS);
                         // Interior east
-                        tessellator.setColorRGBA_F(red * 0.9F, green * 0.9F, blue * 0.9F, a);
+                        tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
                         tessellator.setNormal(-1.0F, 0.0F, 0.0F);
                         tessellator.addVertexWithUV(xe, 0.0, z1, cellUF, vS);
                         tessellator.addVertexWithUV(xe, y1,  z1, cellUF, vS);
                         tessellator.addVertexWithUV(xe, y1,  z0, cellUF, vN);
                         tessellator.addVertexWithUV(xe, 0.0, z0, cellUF, vN);
                         // Interior north
-                        tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                        tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
                         tessellator.setNormal(0.0F, 0.0F, 1.0F);
                         tessellator.addVertexWithUV(x0, 0.0, z0, uL, cellVF);
                         tessellator.addVertexWithUV(x1, 0.0, z0, uR, cellVF);
                         tessellator.addVertexWithUV(x1, y1,  z0, uR, cellVF);
                         tessellator.addVertexWithUV(x0, y1,  z0, uL, cellVF);
                         // Interior south
-                        tessellator.setColorRGBA_F(red * 0.8F, green * 0.8F, blue * 0.8F, a);
+                        tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
                         tessellator.setNormal(0.0F, 0.0F, -1.0F);
                         tessellator.addVertexWithUV(x0, y1,  ze, uL, cellVF);
                         tessellator.addVertexWithUV(x1, y1,  ze, uR, cellVF);
