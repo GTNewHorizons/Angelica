@@ -63,12 +63,12 @@ public abstract class MixinEntityRenderer_StereoCamera {
         )
     )
     private void angelica$applyStereoProjectionOffset(float partialTicks, int pass, CallbackInfo ci) {
+        // Disabled: parallel-axis stereo (modelview-only) avoids the asymmetric-frustum
+        // gap between eyes. Re-enable later if we move to proper toed-in / asymmetric stereo.
+        if (true) return;
         if (!StereoState.INSTANCE.isActive()) return;
         float dx = StereoState.INSTANCE.getEyeOffset();
         if (dx == 0f) return;
-        // GL_PROJECTION is already the active matrix mode at this point.
-        // Vanilla anaglyph used 0.07f; that's our IPD-scaled equivalent (0.07/0.064 ≈ 1.09x of IPD).
-        // We use 1.09 * eye offset to roughly match vanilla's projection vs modelview ratio.
         GLStateManager.glTranslatef(-dx * 1.09f, 0f, 0f);
     }
 

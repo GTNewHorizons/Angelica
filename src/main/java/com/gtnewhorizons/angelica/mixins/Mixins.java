@@ -41,7 +41,8 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addClientMixins(
             "angelica.stereo.MixinEntityRenderer_StereoCamera"
-            // , "angelica.stereo.MixinEntityRenderer_Stereo" // step 3
+            , "angelica.stereo.MixinEntityRenderer_Stereo"
+            , "angelica.stereo.MixinFramebuffer_Stereo"
         )
     ),
     ANGELICA_VBO(
