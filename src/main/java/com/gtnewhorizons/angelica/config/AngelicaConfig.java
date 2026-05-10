@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
+import com.gtnewhorizons.angelica.stereo.StereoHudMode;
+import com.gtnewhorizons.angelica.stereo.StereoMode;
 
 @Config(modid = "angelica", filename = "angelica-modules")
 public class AngelicaConfig {
@@ -12,6 +14,34 @@ public class AngelicaConfig {
     @Config.Comment("Enable NotFine Options")
     @Config.DefaultBoolean(false)
     public static boolean enableNotFineOptions;
+
+    // ---------- Stereoscopic rendering (experimental) ----------
+
+    @Config.Comment({
+        "Stereoscopic rendering mode for VR virtual monitors and 3D displays.",
+        "OFF disables stereo rendering. SBS_HALF is recommended for Quest/Index/Vive in",
+        "side-by-side 3D mode via Virtual Desktop or Steam Link. Roughly halves framerate.",
+        "Incompatible with HUD caching (auto-disabled when active)."
+    })
+    @Config.DefaultEnum("OFF")
+    public static StereoMode stereoscopicMode;
+
+    @Config.Comment({
+        "Interpupillary distance, in blocks (1 block = 1 meter).",
+        "0.064 = average human IPD. Increase for stronger 3D effect; decrease for subtler."
+    })
+    @Config.DefaultFloat(0.064f)
+    @Config.RangeFloat(min = 0.0f, max = 0.5f)
+    public static float stereoIpd;
+
+    @Config.Comment({
+        "How to render the 2D HUD in stereo mode.",
+        "DUPLICATE: drawn into both eyes (recommended).",
+        "STRETCH: drawn once full-screen (looks bad in headset; debug only).",
+        "HIDE: HUD not drawn."
+    })
+    @Config.DefaultEnum("DUPLICATE")
+    public static StereoHudMode stereoHudMode;
 
     @Config.Comment("Enable Reese's Sodium Options")
     @Config.DefaultBoolean(true)
