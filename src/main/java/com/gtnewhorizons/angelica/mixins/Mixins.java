@@ -194,6 +194,7 @@ public enum Mixins implements IMixins {
             , "rendering.MixinTileEntity"
             , "rendering.MixinTileEntityMobSpawner"
             , "rendering.MixinTileEntityRendererDispatcher"
+            , "rendering.MixinRenderBlocksEmissive"
         )
     ),
 
@@ -388,7 +389,7 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.MINEFACTORY_RELOADED)
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
-    
+
     NTM_SPACE_COMPAT(new MixinBuilder("Multiple fixes for NTM:Space")
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)

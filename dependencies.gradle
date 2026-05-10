@@ -76,7 +76,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.9.36:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.9.52:dev")
 
     shadowImplementation(project(":glsm")) { transitive = false }
     shadowImplementation(project(":lwjgl3-backend")) { transitive = false }
@@ -128,6 +128,8 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
     compileOnly(rfg.deobf("curse.maven:et-futurum-requiem-441392:5873837"))
     compileOnly(rfg.deobf("curse.maven:biomes-o-plenty-220318:2499612"))
+
+    devOnlyNonPublishable("com.github.GTNewHorizons:CosmeticArmorReworked:1.0.3-GTNH:dev")
 
     // For testing alternative splash screens — https://github.com/MalTeeez/ModernSplash/releases
     // devOnlyNonPublishable("com.github.MalTeeez:modernsplash:1.7.10-1.2.4:dev")

@@ -2,6 +2,13 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
 import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_LENGTH;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
+
+import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
+import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
@@ -16,6 +23,7 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -110,16 +118,13 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Unique
     public BatchingFontRenderer angelica$batcher;
 
-    @Unique
-    private static final char angelica$FORMATTING_CHAR = 167; // §
-
-    @Unique
-    private static final float angelica$1_over_255 = 1.0f/255.0f; // §
-
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
         angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.colorCode, this.locationFontTexture);
+        if (GTNHLibCompat.HAS_TEXT_PREPROCESSOR) {
+            GTNHLibCompat.registerPreprocessor();
+        }
     }
 
     @Unique
@@ -158,6 +163,8 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         }
         else
         {
+            text = ColorCodeUtils.convertAmpersandToSectionX(text);
+
             if (this.bidiFlag)
             {
                 text = this.bidiReorder(text);
@@ -225,5 +232,92 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Override
     public float getCharWidthFine(char chr) {
         return angelica$getBatcher().getCharWidthFine(chr);
+    }
+
+    @Inject(method = "getFormatFromString", at = @At("HEAD"), cancellable = true)
+    private static void angelica$getFormatFromString(String text, CallbackInfoReturnable<String> cir) {
+        if (!AngelicaConfig.enableRGBColors) return;
+        cir.setReturnValue(angelica$extractFormat(text));
+    }
+
+    @Unique private static final StringBuilder EXTRACT_STYLES = new StringBuilder();
+    @Unique private static final StringBuilder EXTRACT_EFFECTS = new StringBuilder();
+    @Unique private static final StringBuilder EXTRACT_COLOR = new StringBuilder();
+    @Unique private static final StringBuilder EXTRACT_RESULT = new StringBuilder();
+
+    @Unique
+    private static String angelica$extractFormat(String text) {
+        text = ColorCodeUtils.convertAmpersandToSectionX(text);
+        final int len = text.length();
+        if (len < 2) return "";
+
+        String lastColor = "";
+        final StringBuilder styles = EXTRACT_STYLES; styles.setLength(0);
+        final StringBuilder effects = EXTRACT_EFFECTS; effects.setLength(0);
+
+        for (int i = 0; i < len - 1; i++) {
+            if (text.charAt(i) != FORMATTING_CHAR) continue;
+            final char code = Character.toLowerCase(text.charAt(i + 1));
+
+            if (code == 'g' && i + GRADIENT_LENGTH <= len && ColorCodeUtils.isValidSectionX(text, i + 2) && ColorCodeUtils.isValidSectionX(text, i + 2 + SECTION_X_LENGTH)) {
+                final StringBuilder cb = EXTRACT_COLOR; cb.setLength(0);
+                for (int j = 0; j < GRADIENT_LENGTH; j++) cb.append(text.charAt(i + j));
+                lastColor = cb.toString();
+                styles.setLength(0);
+                effects.setLength(0);
+                i += GRADIENT_LENGTH - 1;
+                continue;
+            }
+
+            if (code == 'x' && i + SECTION_X_LENGTH <= len && ColorCodeUtils.isValidSectionX(text, i)) {
+                final StringBuilder cb = EXTRACT_COLOR; cb.setLength(0);
+                for (int j = 0; j < SECTION_X_LENGTH; j++) cb.append(text.charAt(i + j));
+                lastColor = cb.toString();
+                styles.setLength(0);
+                effects.setLength(0);
+                i += SECTION_X_LENGTH - 1;
+                continue;
+            }
+
+            if ((code >= '0' && code <= '9') || (code >= 'a' && code <= 'f')) {
+                lastColor = ColorCodeUtils.sectionPrefix(code);
+                styles.setLength(0);
+                effects.setLength(0);
+                i++;
+            } else if (code == 'r') {
+                lastColor = "";
+                styles.setLength(0);
+                effects.setLength(0);
+                i++;
+            } else if (code >= 'k' && code <= 'o') {
+                styles.append(ColorCodeUtils.sectionPrefix(code));
+                i++;
+            } else if (code == 'q' || code == 'z' || code == 'v') {
+                effects.append(ColorCodeUtils.sectionPrefix(code));
+                i++;
+            } else {
+                i++;
+            }
+        }
+
+        if (styles.length() == 0 && effects.length() == 0) return lastColor;
+        final StringBuilder result = EXTRACT_RESULT; result.setLength(0);
+        result.append(lastColor).append(styles).append(effects);
+        return result.toString();
+    }
+
+    @ModifyVariable(method = "getStringWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private String angelica$convertBeforeWidth(String str) {
+        return ColorCodeUtils.convertAmpersandToSectionX(str);
+    }
+
+    @ModifyVariable(method = "listFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private String angelica$convertBeforeListWrap(String str) {
+        return ColorCodeUtils.convertAmpersandToSectionX(str);
+    }
+
+    @ModifyVariable(method = "wrapFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
+    private String angelica$convertBeforeWrap(String str) {
+        return ColorCodeUtils.convertAmpersandToSectionX(str);
     }
 }
