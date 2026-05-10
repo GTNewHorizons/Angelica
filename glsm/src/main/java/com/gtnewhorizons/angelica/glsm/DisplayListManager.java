@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectDrawCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
@@ -56,21 +57,18 @@ public class DisplayListManager {
     private static final boolean DEBUG_DISPLAY_LISTS = false;
 
     // -Dangelica.logDisplayListCompilation: log compiled display list commands
-    private static final boolean LOG_DISPLAY_LIST_COMPILATION = false;
+    private static final boolean LOG_DISPLAY_LIST_COMPILATION = true;
 
     private static final Vector4f reusableVector = new Vector4f();
 
-    private static final DirectDrawCallback displayListCallback = new DirectDrawCallback() {
+    private static final TessellatorCallback displayListCallback = new TessellatorCallback() {
         @Override
-        public boolean onDraw(CallbackTessellator tessellator) {
-            if (!tessellator.isEmpty()) {
-                addAccumulatedDraw(tessellator, false);
-            }
-            return true;
+        public void onDraw(CallbackTessellator tessellator) {
+            addAccumulatedDraw(tessellator, false);
         }
 
         @Override
-        public void onAddVertex(CallbackTessellator tessellator, double x, double y, double z) {
+        public void onVertex(CallbackTessellator tessellator, double x, double y, double z) {
             reusableVector.x = (float) (x + tessellator.xOffset);
             reusableVector.y = (float) (y + tessellator.yOffset);
             reusableVector.z = (float) (z + tessellator.zOffset);
@@ -93,9 +91,6 @@ public class DisplayListManager {
 //            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
 //        }
 //    }
-
-    // Track which display list is currently being rendered
-    @Getter private static int currentRenderingList = -1;
 
     private static final Matrix4f IDENTITY = new Matrix4f();
 
@@ -801,7 +796,6 @@ public class DisplayListManager {
         }
 
         TessellatorManager.startCapturingDirect(displayListCallback);
-        ImmediateModeRecorder.setDrawCallback(displayListCallback);
     }
 
     /**
@@ -816,7 +810,6 @@ public class DisplayListManager {
 
         // Stop compiling mode (works for both root and nested lists now)
         TessellatorManager.stopCapturingDirect();
-        ImmediateModeRecorder.resetDrawCallback();
 
         flushAll();
 
@@ -937,7 +930,7 @@ public class DisplayListManager {
      */
     public static void glCallList(int list) {
         if (currentRecorder != null) {
-            recordCallList(list);
+            recordCallList(list); //TODO extract display list data & optimize
 
             if (getListMode() != GL11.GL_COMPILE) {
                 // Don't record the GL calls, we already recorded glCallList
@@ -957,10 +950,7 @@ public class DisplayListManager {
     private static void executeDisplayList(int list) {
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
-            final int prevList = currentRenderingList;
-            currentRenderingList = list;
             compiled.render(list);
-            currentRenderingList = prevList;
             return;
         }
 

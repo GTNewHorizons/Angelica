@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectDrawCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -28,14 +29,6 @@ public final class ImmediateModeRecorder {
 
     public static void initSplashTessellator() {
         splashTessellator = new DirectTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
-    }
-
-    public static void setDrawCallback(DirectDrawCallback callback) {
-        tessellator.setDrawCallback(callback);
-    }
-
-    public static void resetDrawCallback() {
-        tessellator.resetDrawCallback();
     }
 
     public static void destroySplashTessellator() {

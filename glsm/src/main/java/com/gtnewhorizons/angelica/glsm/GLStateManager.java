@@ -2225,7 +2225,6 @@ public class GLStateManager {
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
             // is redirected to it, so a VAO is always bound here — no fallback branches.
-            DisplayListManager.flushAll();
             final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
             if (capture != null) {
                 DisplayListManager.recordIndexedDrawCapture(capture);
