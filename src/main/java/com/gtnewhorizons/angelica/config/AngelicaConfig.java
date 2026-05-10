@@ -63,6 +63,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableVAO;
 
+    @Config.Comment("Enables DSA (Direct State Access) for faster bindings. Disable if you notice terrible performance.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableDSA;
+
     @Config.Comment("Enable NotFine features")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -106,6 +111,35 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
+
+    @Config.Comment("Enable full RGB color support (16.7M colors) using &#RRGGBB syntax in text")
+    @Config.DefaultBoolean(true)
+    public static boolean enableRGBColors;
+
+    @Config.Comment("Enable gradient text (&g&#start&#end)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableGradients;
+
+    @Config.Comment("Enable rainbow cycling text (&q)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableRainbow;
+
+    @Config.Comment("Enable wave/bounce animated text (&z)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableWaveText;
+
+    @Config.Comment("Enable upside-down text (&v)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableDinnerboneText;
+
+    @Config.Comment("Wave text amplitude (how far characters bounce)")
+    @Config.DefaultFloat(2.0f)
+    @Config.RangeFloat(min = 1.0f, max = 8.0f)
+    public static float waveAmplitude;
+
+    @Config.Comment("Convert &-prefix format codes (&#RRGGBB, &c, &l, etc.) at render time")
+    @Config.DefaultBoolean(true)
+    public static boolean enableAmpersandConversion;
 
     @Config.Comment("Enable Dynamic Lights")
     @Config.DefaultBoolean(true)
@@ -296,5 +330,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
     public static boolean disableGLVersionPinning;
+
+    @Config.Comment("Disables GL Error checks. Always set to false in dev env or if LWJGL debug is on. Improves performance.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean disableErrorChecks;
 
 }
