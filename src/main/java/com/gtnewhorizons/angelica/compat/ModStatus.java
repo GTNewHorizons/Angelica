@@ -24,6 +24,7 @@ public class ModStatus {
     public static boolean isThaumcraftLoaded;
     public static boolean isThaumicHorizonsLoaded;
     public static boolean isBaublesLoaded;
+    public static boolean isCosmeticArmorReworkedLoaded;
     public static boolean isFluidLoggedLoaded;
     public static boolean isBOPLoaded;
 
@@ -43,6 +44,7 @@ public class ModStatus {
         isThaumcraftLoaded = Loader.isModLoaded("Thaumcraft");
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
+        isCosmeticArmorReworkedLoaded = Loader.isModLoaded("cosmeticarmorreworked");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");

@@ -63,6 +63,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
         this.pages.add(SodiumGameOptionPages.appearance());
+        this.pages.add(SodiumGameOptionPages.text());
 
         // Add Dynamic Lights page if enabled
         if (DynamicLights.configEnabled) {
