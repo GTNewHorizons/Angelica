@@ -349,50 +349,6 @@ public final class CommandBufferExecutor {
                     GLStateManager.glTexParameterf(target, pname, param);
                 }
 
-                // === Double commands ===
-                case GLCommand.TRANSLATE -> {
-                    final double x = memGetDouble(ptr);
-                    final double y = memGetDouble(ptr + 8);
-                    final double z = memGetDouble(ptr + 16);
-                    ptr += 24;
-                    GLStateManager.glTranslated(x, y, z);
-                }
-                case GLCommand.ROTATE -> {
-                    final double angle = memGetDouble(ptr);
-                    final double x = memGetDouble(ptr + 8);
-                    final double y = memGetDouble(ptr + 16);
-                    final double z = memGetDouble(ptr + 24);
-                    ptr += 32;
-                    GLStateManager.glRotated(angle, x, y, z);
-                }
-                case GLCommand.SCALE -> {
-                    final double x = memGetDouble(ptr);
-                    final double y = memGetDouble(ptr + 8);
-                    final double z = memGetDouble(ptr + 16);
-                    ptr += 24;
-                    GLStateManager.glScaled(x, y, z);
-                }
-                case GLCommand.ORTHO -> {
-                    final double left = memGetDouble(ptr);
-                    final double right = memGetDouble(ptr + 8);
-                    final double bottom = memGetDouble(ptr + 16);
-                    final double top = memGetDouble(ptr + 24);
-                    final double zNear = memGetDouble(ptr + 32);
-                    final double zFar = memGetDouble(ptr + 40);
-                    ptr += 48;
-                    GLStateManager.glOrtho(left, right, bottom, top, zNear, zFar);
-                }
-                case GLCommand.FRUSTUM -> {
-                    final double left = memGetDouble(ptr);
-                    final double right = memGetDouble(ptr + 8);
-                    final double bottom = memGetDouble(ptr + 16);
-                    final double top = memGetDouble(ptr + 24);
-                    final double zNear = memGetDouble(ptr + 32);
-                    final double zFar = memGetDouble(ptr + 40);
-                    ptr += 48;
-                    GLStateManager.glFrustum(left, right, bottom, top, zNear, zFar);
-                }
-
                 // === Matrix commands ===
                 case GLCommand.MULT_MATRIX -> {
                     // Mode-agnostic: just multiply current matrix
@@ -403,6 +359,20 @@ public final class CommandBufferExecutor {
                     }
                     MATRIX_BUFFER.flip();
                     GLStateManager.glMultMatrix(MATRIX_BUFFER);
+                }
+                case GLCommand.TRANSLATE -> {
+                    final float x = memGetFloat(ptr);
+                    final float y = memGetFloat(ptr + 4);
+                    final float z = memGetFloat(ptr + 8);
+                    ptr += 12;
+                    GLStateManager.glTranslatef(x, y, z);
+                }
+                case GLCommand.SCALE -> {
+                    final float x = memGetFloat(ptr);
+                    final float y = memGetFloat(ptr + 4);
+                    final float z = memGetFloat(ptr + 8);
+                    ptr += 12;
+                    GLStateManager.glScalef(x, y, z);
                 }
                 case GLCommand.LOAD_MATRIX -> {
                     MATRIX_BUFFER.clear();

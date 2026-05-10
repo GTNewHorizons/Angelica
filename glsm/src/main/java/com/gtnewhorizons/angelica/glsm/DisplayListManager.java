@@ -25,6 +25,7 @@ import lombok.Getter;
 import lombok.experimental.UtilityClass;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
@@ -36,6 +37,7 @@ import java.util.Deque;
 import java.util.List;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 
 /**
@@ -54,7 +56,7 @@ public class DisplayListManager {
     private static final boolean DEBUG_DISPLAY_LISTS = false;
 
     // -Dangelica.logDisplayListCompilation: log compiled display list commands
-    private static final boolean LOG_DISPLAY_LIST_COMPILATION = true;
+    private static final boolean LOG_DISPLAY_LIST_COMPILATION = false;
 
     private static final Vector4f reusableVector = new Vector4f();
 
@@ -117,6 +119,11 @@ public class DisplayListManager {
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
     private static AccumulatedDraw pendingDraw = null;
     private static Matrix4f relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
+    private static int relativeTransformType;
+
+    private static final int TRANSFORM_SCALE = 0x1; // Can be extracted to a glScale easily
+    private static final int TRANSFORM_TRANSLATE = 0x2; // Can be extracted to a glTranslate easily
+    private static final int TRANSFORM_COMPLEX = 0x4; // Cannot easily be extracted, will record a mult matrix call.
 
     private static StackTraceElement[] compilationStackTrace = null;  // For logging: captured at glNewList()
 
@@ -140,7 +147,6 @@ public class DisplayListManager {
         int listMode,
         CommandRecorder recorder,
         List<AccumulatedDraw> draws,
-        Matrix4f transform,
         StackTraceElement[] stackTrace,
 
         // Debug logging fields (only used when LOG_DISPLAY_LIST_COMPILATION)
@@ -181,6 +187,8 @@ public class DisplayListManager {
     }
 
 
+    private static final Vector3f transformVector = new Vector3f();
+
     /**
      * Emit accumulated transform as MultMatrix if non-identity, then reset.
      */
@@ -208,7 +216,17 @@ public class DisplayListManager {
         // Record the collapsed MultMatrix command (for playback)
         // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
         drawBarrier();
-        currentRecorder.writeMultMatrix(relativeTransform);
+        if (relativeTransformType == TRANSFORM_SCALE) {
+            currentRecorder.writeScale(relativeTransform.getScale(transformVector));
+        } else if (relativeTransformType == TRANSFORM_TRANSLATE) {
+            currentRecorder.writeTranslate(relativeTransform.getTranslation(transformVector));
+        } else {
+            currentRecorder.writeMultMatrix(relativeTransform);
+        }
+        if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
+            GLStateManager.applyMultMatrix(relativeTransform);
+        }
+
 
         // Reset to identity - we're now synchronized with GL
         resetRelativeTransform();
@@ -606,6 +624,7 @@ public class DisplayListManager {
 
     public static void applyMatrixTranslation(float x, float y, float z) {
         relativeTransform.translate(x, y, z);
+        relativeTransformType |= TRANSFORM_TRANSLATE;
 
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z));
@@ -618,6 +637,7 @@ public class DisplayListManager {
 
     public static void applyMatrixScale(float x, float y, float z) {
         relativeTransform.scale(x, y, z);
+        relativeTransformType |= TRANSFORM_SCALE;
 
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z));
@@ -635,6 +655,7 @@ public class DisplayListManager {
      */
     public static void applyMatrixRotation(float rad, float x, float y, float z) {
         relativeTransform.rotate(rad, x, y, z);
+        relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", Math.toDegrees(rad), x, y, z));
@@ -656,6 +677,7 @@ public class DisplayListManager {
      */
     public static void updateRelativeTransform(Matrix4f matrix) {
         relativeTransform.mul(matrix);
+        relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
             pendingTransformOps.add("glMultMatrixf(...)");
@@ -669,11 +691,12 @@ public class DisplayListManager {
     // Reusable matrix for ortho/frustum computation
     private static final Matrix4f orthoFrustumTemp = new Matrix4f();
 
-    /** Accumulate ortho projection into relativeTransform. */
     public static void updateRelativeTransformOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
         relativeTransform.mul(orthoFrustumTemp);
+        relativeTransformType |= TRANSFORM_COMPLEX;
+
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glOrtho(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
@@ -683,11 +706,12 @@ public class DisplayListManager {
         }
     }
 
-    /** Accumulate frustum projection into relativeTransform. */
     public static void updateRelativeTransformFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
         relativeTransform.mul(orthoFrustumTemp);
+        relativeTransformType |= TRANSFORM_COMPLEX;
+
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glFrustum(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
@@ -704,6 +728,7 @@ public class DisplayListManager {
      */
     public static void resetRelativeTransform() {
         relativeTransform.identity();
+        relativeTransformType = 0;
     }
 
     /**
@@ -749,7 +774,7 @@ public class DisplayListManager {
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws, relativeTransform,
+                glListId, glListMode, currentRecorder, accumulatedDraws,
                 compilationStackTrace, pendingTransformOps, multMatrixSources, drawRangeSources
             );
             compilationStack.push(parentContext);
@@ -760,7 +785,7 @@ public class DisplayListManager {
         glListMode = mode;
         recordingThread = Thread.currentThread();  // Track which thread is recording
         currentRecorder = new CommandRecorder();  // Create command recorder
-        accumulatedDraws = new ArrayList<>(16);   // Fewer draws than commands typically
+        accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
         relativeTransform = new Matrix4f();
         compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
@@ -854,7 +879,6 @@ public class DisplayListManager {
             glListMode = parentContext.listMode;
             currentRecorder = parentContext.recorder;
             accumulatedDraws = parentContext.draws;
-            relativeTransform = parentContext.transform;
             compilationStackTrace = parentContext.stackTrace;
             pendingTransformOps = parentContext.pendingOps;
             multMatrixSources = parentContext.matrixSources;
@@ -868,7 +892,6 @@ public class DisplayListManager {
             recordingThread = null;
             accumulatedDraws = null;
             pendingDraw = null;
-            relativeTransform = null;
             compilationStackTrace = null;
             pendingTransformOps = null;
             multMatrixSources = null;
@@ -887,10 +910,12 @@ public class DisplayListManager {
             if (DEBUG_DISPLAY_LISTS) {
                 drawBarrier();
             }
-            drawBarrier();
             return;
         }
-        if (pendingDraw.drawMode != tessellator.drawMode || isContinuous(tessellator.drawMode)) {
+        if (pendingDraw.drawMode != tessellator.drawMode
+            || pendingDraw.format != tessellator.getVertexFormat()
+            || isContinuous(tessellator.drawMode)
+        ) {
             drawBarrier();
             return;
         }
@@ -1143,6 +1168,15 @@ public class DisplayListManager {
                             sb.append(i == 0 ? value : ", " + value);
                         }
                         sb.append(")");
+                    }
+                    case GLCommand.SCALE, GLCommand.TRANSLATE -> {
+                        final float x = memGetFloat(ptr + 4);
+                        final float y = memGetFloat(ptr + 8);
+                        final float z = memGetFloat(ptr + 12);
+                        sb.append("(x=").append(x)
+                            .append(", y=").append(y)
+                            .append(", z=").append(z)
+                            .append(")");
                     }
                     case GLCommand.COLOR -> {
                         final float r = Float.intBitsToFloat(memGetInt(ptr + 4));

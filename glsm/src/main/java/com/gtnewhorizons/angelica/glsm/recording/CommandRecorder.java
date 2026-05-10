@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -441,53 +442,22 @@ public final class CommandRecorder {
         writeFloat(param);
     }
 
-    // === Double commands ===
+    // === Transformation commands ===
 
-    public void writeTranslate(float x, float y, float z) {
+    public void writeTranslate(Vector3f translationVector) {
         ensureCapacity(16);
         writeInt(GLCommand.TRANSLATE);
-        writeFloat(x);
-        writeFloat(y);
-        writeFloat(z);
+        writeFloat(translationVector.x);
+        writeFloat(translationVector.y);
+        writeFloat(translationVector.z);
     }
 
-    public void writeRotate(float angle, float x, float y, float z) {
-        ensureCapacity(20);
-        writeInt(GLCommand.ROTATE);
-        writeFloat(angle);
-        writeFloat(x);
-        writeFloat(y);
-        writeFloat(z);
-    }
-
-    public void writeScale(float x, float y, float z) {
+    public void writeScale(Vector3f scaleVector) {
         ensureCapacity(16);
         writeInt(GLCommand.SCALE);
-        writeFloat(x);
-        writeFloat(y);
-        writeFloat(z);
-    }
-
-    public void writeOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
-        ensureCapacity(52);
-        writeInt(GLCommand.ORTHO);
-        writeDouble(left);
-        writeDouble(right);
-        writeDouble(bottom);
-        writeDouble(top);
-        writeDouble(zNear);
-        writeDouble(zFar);
-    }
-
-    public void writeFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
-        ensureCapacity(52);
-        writeInt(GLCommand.FRUSTUM);
-        writeDouble(left);
-        writeDouble(right);
-        writeDouble(bottom);
-        writeDouble(top);
-        writeDouble(zNear);
-        writeDouble(zFar);
+        writeFloat(scaleVector.x);
+        writeFloat(scaleVector.y);
+        writeFloat(scaleVector.z);
     }
 
     // === Matrix commands ===

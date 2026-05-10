@@ -3508,6 +3508,13 @@ public class GLStateManager {
         }
     }
 
+    public static void applyMultMatrix(Matrix4f multMatrix) {
+        if (isCachingEnabled()) {
+            getMatrixStack().mul(multMatrix);
+            bumpMatrixGeneration();
+        }
+    }
+
     public static final Matrix4d conversionMatrix4d = new Matrix4d();
     public static final Matrix4f conversionMatrix4f = new Matrix4f();
 
