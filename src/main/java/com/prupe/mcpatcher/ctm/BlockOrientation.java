@@ -158,6 +158,34 @@ final class BlockOrientation extends RenderBlockState {
         return origIcon == neighbor.getIcon(blockAccess, neighborX, neighborY, neighborZ, getTextureFaceOrig());
     }
 
+    @Override
+    public BlockOrientation copy() {
+        BlockOrientation copy = new BlockOrientation();
+        copy.x = x;
+        copy.y = y;
+        copy.z = z;
+        copy.metadata = metadata;
+        copy.altMetadata = altMetadata;
+        copy.metadataBits = metadataBits;
+        copy.renderType = renderType;
+        copy.blockFace = blockFace;
+        copy.textureFace = textureFace;
+        copy.textureFaceOrig = textureFaceOrig;
+        copy.rotateUV = rotateUV;
+
+        copy.blockAccess = blockAccess;
+        copy.block = block;
+        copy.useAO = useAO;
+        copy.inWorld = inWorld;
+        copy.matcher = matcher;
+        copy.offsetsComputed = offsetsComputed;
+        copy.haveOffsets = haveOffsets;
+        copy.dx = dx;
+        copy.dy = dy;
+        copy.dz = dz;
+        return copy;
+    }
+
     void setBlock(Block block, IBlockAccess blockAccess, int x, int y, int z) {
         this.block = block;
         this.blockAccess = blockAccess;

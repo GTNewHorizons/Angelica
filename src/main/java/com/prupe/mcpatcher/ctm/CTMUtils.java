@@ -15,6 +15,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
 
+import com.github.bsideup.jabel.Desugar;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 import com.prupe.mcpatcher.mal.block.BlockAPI;
@@ -43,13 +44,16 @@ public class CTMUtils {
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
 
-    private static final ThreadLocal<TileOverrideImpl.CTMCompact> CURRENT_COMPACT = new ThreadLocal<>();
+    @Desugar
+    public record CTMCompactContext(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {}
 
-    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact) {
-        CURRENT_COMPACT.set(compact);
+    private static final ThreadLocal<CTMCompactContext> CURRENT_COMPACT = new ThreadLocal<>();
+
+    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {
+        CURRENT_COMPACT.set(new CTMCompactContext(compact, renderBlockState.copy()));
     }
 
-    public static TileOverrideImpl.CTMCompact getCurrentCompact() {
+    public static CTMCompactContext getCurrentCompact() {
         return CURRENT_COMPACT.get();
     }
 
@@ -180,6 +184,7 @@ public class CTMUtils {
             local.renderBlockState.setBlock(block, blockAccess, x, y, z);
             local.renderBlockState.setFace(face);
             TileOverride lastOverride = local.ijkIterator.go(local.renderBlockState, icon);
+            local.renderBlockState.blockAccess = null;
             if (lastOverride != null) {
                 return skipDefaultRendering(block) ? RenderBlocksUtils.blankIcon : local.ijkIterator.getIcon();
             }
