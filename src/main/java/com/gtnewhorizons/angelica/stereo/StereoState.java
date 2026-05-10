@@ -26,8 +26,24 @@ public class StereoState {
 
     public static final StereoState INSTANCE = new StereoState();
 
-    @Getter private Eye currentEye = Eye.MONO;
-    @Getter private boolean active = false;
+    private Eye currentEye = Eye.MONO;
+    private boolean active = false;
+
+    public Eye getCurrentEye() {
+        StereoDebugEye debug = AngelicaConfig.stereoDebugForceEye;
+        if (debug != null && debug != StereoDebugEye.OFF) {
+            return debug == StereoDebugEye.LEFT ? Eye.LEFT : Eye.RIGHT;
+        }
+        return currentEye;
+    }
+
+    public boolean isActive() {
+        StereoDebugEye debug = AngelicaConfig.stereoDebugForceEye;
+        if (debug != null && debug != StereoDebugEye.OFF) {
+            return true;
+        }
+        return active;
+    }
 
     /** Cached at frame start so config flips mid-frame don't cause inconsistency. */
     @Getter private StereoMode frameMode = StereoMode.OFF;
@@ -84,29 +100,31 @@ public class StereoState {
      * which is a leftward camera shift expressed as a +X world shift. We follow the same convention.</p>
      */
     public float getEyeOffset() {
-        if (!active) return 0f;
-        float half = frameIpd * 0.5f;
-        switch (currentEye) {
-            case LEFT:  return  half; // world shifts right-of-camera → camera moved left
-            case RIGHT: return -half;
+        if (!isActive()) return 0f;
+        float ipd = AngelicaConfig.stereoIpd > 0f ? AngelicaConfig.stereoIpd : frameIpd;
+        float half = ipd * 0.5f;
+        switch (getCurrentEye()) {
+            case LEFT:  return -half; // matches vanilla anaglyph: left eye = -0.1, right eye = +0.1
+            case RIGHT: return  half;
             default:    return 0f;
         }
     }
 
     /** Convenience: matches the legacy 0.1f anaglyph value, scaled by configured IPD ratio. */
     public float getHandEyeOffset() {
-        if (!active) return 0f;
+        if (!isActive()) return 0f;
         // Hand uses 0.1f modelview offset and 0.07f projection offset in vanilla anaglyph.
         // We scale proportionally to configured IPD, taking 0.064 as the "1.0x" reference.
-        float scale = frameIpd / 0.064f;
+        float ipd = AngelicaConfig.stereoIpd > 0f ? AngelicaConfig.stereoIpd : frameIpd;
+        float scale = ipd / 0.064f;
         float base = 0.1f * scale;
-        switch (currentEye) {
-            case LEFT:  return  base;
-            case RIGHT: return -base;
+        switch (getCurrentEye()) {
+            case LEFT:  return -base;
+            case RIGHT: return  base;
             default:    return 0f;
         }
     }
 
-    public boolean isLeftEye()  { return active && currentEye == Eye.LEFT; }
-    public boolean isRightEye() { return active && currentEye == Eye.RIGHT; }
+    public boolean isLeftEye()  { return isActive() && getCurrentEye() == Eye.LEFT; }
+    public boolean isRightEye() { return isActive() && getCurrentEye() == Eye.RIGHT; }
 }
