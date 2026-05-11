@@ -15,6 +15,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
@@ -84,23 +85,96 @@ public class HUDCaching {
             return;
         }
 
+        final boolean justUpdated = maybeUpdateCache(ingame, partialTicks, hasScreen, mouseX, mouseY);
+        if (!justUpdated) {
+            renderer.setupOverlayRendering();
+        }
+        blitCachedHud(ingame, partialTicks, hasScreen, mouseX, mouseY);
+    }
+
+    /**
+     * Stereo entry point: update the cache once at full-display resolution (the cached HUD is
+     * identical for both eyes), then blit it twice — once per eye viewport. Caller passes the
+     * computed viewport rectangles for each eye.
+     */
+    @SuppressWarnings("unused")
+    public static void renderCachedHudStereo(EntityRenderer renderer, GuiIngame ingame,
+                                              float partialTicks, boolean hasScreen, int mouseX, int mouseY,
+                                              int leftX, int leftY, int rightX, int rightY, int eyeW, int eyeH) {
+        if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
+            XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
+        }
+
+        final int fullW = mc.displayWidth;
+        final int fullH = mc.displayHeight;
+
+        if (!OpenGlHelper.isFramebufferEnabled() || framebuffer == null) {
+            // No framebuffer support: fall back to rendering the HUD uncached twice per frame.
+            GL11.glViewport(leftX, leftY, eyeW, eyeH);
+            StereoState.INSTANCE.enterGuiPass(leftX, leftY, eyeW, eyeH);
+            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            StereoState.INSTANCE.exitGuiPass();
+            GL11.glViewport(rightX, rightY, eyeW, eyeH);
+            StereoState.INSTANCE.enterGuiPass(rightX, rightY, eyeW, eyeH);
+            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            StereoState.INSTANCE.exitGuiPass();
+            GL11.glViewport(0, 0, fullW, fullH);
+            return;
+        }
+
+        // Cache update needs the full framebuffer viewport so the HUD fills the cache FBO.
+        // maybeUpdateCache binds the cache FBO (without changing viewport) and renders the HUD —
+        // so we must temporarily set the viewport to full before the call and restore after.
+        GL11.glViewport(0, 0, fullW, fullH);
+        maybeUpdateCache(ingame, partialTicks, hasScreen, mouseX, mouseY);
+
+        // Blit the cached HUD into each eye's viewport.
+        GL11.glViewport(leftX, leftY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(leftX, leftY, eyeW, eyeH);
+        renderer.setupOverlayRendering();
+        blitCachedHud(ingame, partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
+
+        GL11.glViewport(rightX, rightY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(rightX, rightY, eyeW, eyeH);
+        renderer.setupOverlayRendering();
+        blitCachedHud(ingame, partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
+
+        GL11.glViewport(0, 0, fullW, fullH);
+    }
+
+    /**
+     * Refresh the cached HUD FBO if the refresh interval has elapsed or someone marked it dirty.
+     *
+     * @return true if the cache was just refreshed (caller can skip {@code setupOverlayRendering}
+     *         because the render-into-FBO path already set up GUI ortho).
+     */
+    private static boolean maybeUpdateCache(GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         if (System.currentTimeMillis() > nextHudRefresh) {
             dirty = true;
         }
-
-        if (dirty) {
-            dirty = false;
-            nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
-            resetFramebuffer(mc.displayWidth, mc.displayHeight);
-            framebuffer.bindFramebuffer(false);
-            renderingCacheOverride = true;
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
-            renderingCacheOverride = false;
-            mc.getFramebuffer().bindFramebuffer(false);
-        } else {
-            renderer.setupOverlayRendering();
+        if (!dirty) {
+            return false;
         }
+        dirty = false;
+        nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
+        resetFramebuffer(mc.displayWidth, mc.displayHeight);
+        framebuffer.bindFramebuffer(false);
+        renderingCacheOverride = true;
+        ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+        renderingCacheOverride = false;
+        mc.getFramebuffer().bindFramebuffer(false);
+        return true;
+    }
 
+    /**
+     * Draw the non-cacheable overlay bits (vignette, helmet, portal, crosshair, Thaumcraft text)
+     * for the current viewport, then blit the cached HUD FBO on top. Caller is responsible for
+     * setting the viewport and overlay ortho (via {@code renderer.setupOverlayRendering()}) before
+     * calling this.
+     */
+    private static void blitCachedHud(GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int width = resolution.getScaledWidth();
         int height = resolution.getScaledHeight();

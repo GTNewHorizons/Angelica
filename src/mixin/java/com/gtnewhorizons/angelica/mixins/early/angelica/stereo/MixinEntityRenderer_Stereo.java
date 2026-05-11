@@ -149,7 +149,9 @@ public abstract class MixinEntityRenderer_Stereo {
             return;
         }
 
-        // DUPLICATE: render HUD into each eye's viewport.
+        // DUPLICATE: keep HUD caching alive — render once into the cache FBO at full resolution,
+        // then blit the cache into each eye's viewport. HUDCaching.renderCachedHudStereo handles
+        // viewport setup, enterGuiPass/exitGuiPass, and the per-eye blit.
         final Minecraft mc = Minecraft.getMinecraft();
         final int fullW = mc.displayWidth;
         final int fullH = mc.displayHeight;
@@ -159,22 +161,14 @@ public abstract class MixinEntityRenderer_Stereo {
         final int eyeW = sbs ? (half ? fullW / 2 : fullW) : fullW;
         final int eyeH = sbs ? fullH               : (half ? fullH / 2 : fullH);
 
-        // LEFT
+        final int leftX = 0;
         final int leftY = sbs ? 0 : fullH - eyeH;
-        GL11.glViewport(0, leftY, eyeW, eyeH);
-        StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
-        ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
-        StereoState.INSTANCE.exitGuiPass();
-
-        // RIGHT
         final int rightX = sbs ? eyeW : 0;
-        GL11.glViewport(rightX, 0, eyeW, eyeH);
-        StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
-        ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
-        StereoState.INSTANCE.exitGuiPass();
+        final int rightY = 0;
 
-        // Restore.
-        GL11.glViewport(0, 0, fullW, fullH);
+        com.gtnewhorizons.angelica.hudcaching.HUDCaching.renderCachedHudStereo(
+            mc.entityRenderer, ingame, partialTicks, hasScreen, mouseX, mouseY,
+            leftX, leftY, rightX, rightY, eyeW, eyeH);
     }
 
     /**

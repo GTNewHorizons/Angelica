@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.block.Block;
@@ -34,10 +35,16 @@ public class HandRenderer {
         // We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
         GL11.glScalef(1.0F, 1.0F, DEPTH);
 
-        // TODO: Anaglyph
-        /*if (this.mc.gameSettings.anaglyph) {
-            GL11.glTranslatef((float) (-(anaglyphChannel * 2 - 1)) * 0.07F, 0.0F, 0.0F);
-        }*/
+        // Stereoscopic per-eye projection-space offset for the held item. 0.07f is vanilla's
+        // anaglyph projection-space value; sign is flipped relative to the modelview offset
+        // because the hand uses an inverted Z scale (DEPTH = 0.125f).
+        if (StereoState.INSTANCE.isActive()) {
+            final float sign = StereoState.INSTANCE.isLeftEye() ? -1f
+                : (StereoState.INSTANCE.isRightEye() ? 1f : 0f);
+            if (sign != 0f) {
+                GLStateManager.glTranslatef(sign * 0.07f, 0.0F, 0.0F);
+            }
+        }
 
         if (mc.entityRenderer.cameraZoom != 1.0D) {
             GL11.glTranslatef((float) mc.entityRenderer.cameraYaw, (float) (-mc.entityRenderer.cameraPitch), 0.0F);
@@ -54,10 +61,13 @@ public class HandRenderer {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
-        // TODO: Anaglyph
-        /*if (mc.gameSettings.anaglyph) {
-            GL11.glTranslatef((float) (anaglyphChannel * 2 - 1) * 0.1F, 0.0F, 0.0F);
-        }*/
+        // Stereoscopic per-eye modelview offset for the held item.
+        if (StereoState.INSTANCE.isActive()) {
+            final float dx = StereoState.INSTANCE.getHandEyeOffset();
+            if (dx != 0f) {
+                GLStateManager.glTranslatef(dx, 0.0F, 0.0F);
+            }
+        }
 
         mc.entityRenderer.hurtCameraEffect(tickDelta);
 
