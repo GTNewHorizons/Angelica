@@ -48,6 +48,9 @@ public class GlFramebuffer extends GlResource {
 	public void addDepthAttachmentBypass(int texture) {
 		final int fb = getGlId();
 		RenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, texture, 0);
+		// Detach any stale stencil left over from a prior combined-stencil attach; otherwise drivers
+		// reject the FBO as UNSUPPORTED when the depth attachment no longer matches the stencil.
+		RenderSystem.framebufferTexture2D(fb, GL30.GL_FRAMEBUFFER, GL30.GL_STENCIL_ATTACHMENT, GL11.GL_TEXTURE_2D, 0, 0);
 		this.hasDepthAttachment = true;
 	}
 
