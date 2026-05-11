@@ -1769,6 +1769,24 @@ public class GLStateManager {
     }
 
     public static void glViewport(int x, int y, int width, int height) {
+        final com.gtnewhorizons.angelica.stereo.StereoState state =
+            com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE;
+        if (state.isInWorldPass()) {
+            // Safety net for any Iris call site we didn't patch directly. During a stereo
+            // world-rendering eye pass, Iris's intermediate framebuffers are sized to the eye's
+            // dimensions (half the display width for SBS_HALF). If something asks for the full
+            // main-framebuffer viewport, redirect it to the FBO-sized viewport so geometry isn't
+            // rendered outside the FBO bounds. The main-framebuffer-bound case (final pass) is
+            // handled by MixinFramebuffer_Stereo restoring the eye region on the next bind.
+            final net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+            if (mc != null && x == 0 && y == 0 && width == mc.displayWidth && height == mc.displayHeight) {
+                final int newW = state.irisFbWidth(mc.displayWidth);
+                final int newH = state.irisFbHeight(mc.displayHeight);
+                GL11.glViewport(0, 0, newW, newH);
+                viewportState.setViewPort(0, 0, newW, newH);
+                return;
+            }
+        }
         GL11.glViewport(x, y, width, height);
         viewportState.setViewPort(x, y, width, height);
     }

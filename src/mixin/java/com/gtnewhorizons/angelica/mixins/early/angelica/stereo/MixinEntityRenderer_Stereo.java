@@ -96,21 +96,40 @@ public abstract class MixinEntityRenderer_Stereo {
         final int rightX = sbs ? eyeW : 0;
         final int rightY = sbs ? 0    : 0;
 
-        // Scissor confines glClear and writes to the eye's viewport region — without it,
-        // the second pass's clear erases the first pass's output.
+        // Scissor protects each eye's region of the main framebuffer from vanilla MC's glClear
+        // at the start of renderWorld — without it, the right eye's clear would wipe the left
+        // eye's already-rendered content from the main FB. With shaders, Iris binds its own
+        // half-width intermediate FBOs partway through renderWorld; an active scissor in
+        // main-FB pixel coords would clip every fragment written into those FBOs to nothing.
+        // DeferredWorldRenderingPipeline.beginLevelRendering disables scissor at that handoff
+        // point, so scissor is only "live" during the vanilla pre-Iris portion of renderWorld.
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
         // ===== LEFT EYE =====
         StereoState.INSTANCE.setEye(StereoState.Eye.LEFT);
         GL11.glViewport(leftX, leftY, eyeW, eyeH);
         GL11.glScissor(leftX, leftY, eyeW, eyeH);
+        // enterWorldPass: any subsequent glViewport call that asks for the main FB's full size
+        // (Iris's Pass.use, CompositeRenderer, ClearPass) gets remapped to this eye's viewport.
+        StereoState.INSTANCE.enterWorldPass(leftX, leftY, eyeW, eyeH);
+        // Tell Iris (if a shaderpack is loaded) to swap its render targets to this eye's set,
+        // so all subsequent FBO binds + samplers resolve to the LEFT eye's textures.
+        angelica$setIrisActiveEye(0);
         self.renderWorld(partialTicks, finishTimeNano);
+        StereoState.INSTANCE.exitWorldPass();
 
         // ===== RIGHT EYE =====
         StereoState.INSTANCE.setEye(StereoState.Eye.RIGHT);
         GL11.glViewport(rightX, rightY, eyeW, eyeH);
+        // Re-enable scissor here — beginLevelRendering may have disabled it for the left eye.
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(rightX, rightY, eyeW, eyeH);
+        StereoState.INSTANCE.enterWorldPass(rightX, rightY, eyeW, eyeH);
+        angelica$setIrisActiveEye(1);
         self.renderWorld(partialTicks, finishTimeNano);
+        StereoState.INSTANCE.exitWorldPass();
+        // Restore eye 0 as the "active" eye for any post-world Iris state lookups.
+        angelica$setIrisActiveEye(0);
 
         // Restore full viewport + disable scissor so vanilla HUD code and our HUD redirect see consistent state.
         StereoState.INSTANCE.setEye(StereoState.Eye.MONO);
@@ -303,6 +322,25 @@ public abstract class MixinEntityRenderer_Stereo {
         // Restore.
         GL11.glViewport(0, 0, fullW, fullH);
         return result;
+    }
+
+    /**
+     * Switch Iris's active eye (if a shaderpack is loaded). When stereo is active each eye has
+     * its own set of color and depth+stencil textures in {@code RenderTargets}; calling this
+     * rebinds the owned framebuffer attachments to the requested eye's textures so subsequent
+     * Iris passes write into and sample from the right bubble. No-op if no pipeline.
+     */
+    private static void angelica$setIrisActiveEye(int eyeIndex) {
+        try {
+            final net.coderbot.iris.pipeline.WorldRenderingPipeline pipeline =
+                net.coderbot.iris.Iris.getPipelineManager().getPipelineNullable();
+            if (pipeline != null) {
+                pipeline.setActiveEye(eyeIndex);
+            }
+        } catch (Throwable ignored) {
+            // Iris not present or pipeline not yet constructed — fall through. Treating this as
+            // best-effort keeps the stereo path working when no shaderpack is loaded.
+        }
     }
 
     /**

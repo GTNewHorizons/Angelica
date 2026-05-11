@@ -39,6 +39,16 @@ public interface WorldRenderingPipeline {
 	void finalizeLevelRendering();
 	void destroy();
 
+	/**
+	 * Switches the active eye for stereoscopic rendering. Must be called before each eye's
+	 * world-render pass when stereo is active. No-op for pipelines that don't support stereo.
+	 *
+	 * @param eye 0 for LEFT/MONO, 1 for RIGHT
+	 */
+	default void setActiveEye(int eye) {
+		// No-op by default; stereo-aware pipelines override.
+	}
+
 	SodiumTerrainPipeline getSodiumTerrainPipeline();
 	FrameUpdateNotifier getFrameUpdateNotifier();
 

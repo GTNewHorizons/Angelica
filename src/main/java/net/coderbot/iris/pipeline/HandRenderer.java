@@ -35,16 +35,11 @@ public class HandRenderer {
         // We need to scale the matrix by 0.125 so the hand doesn't clip through blocks.
         GL11.glScalef(1.0F, 1.0F, DEPTH);
 
-        // Stereoscopic per-eye projection-space offset for the held item. 0.07f is vanilla's
-        // anaglyph projection-space value; sign is flipped relative to the modelview offset
-        // because the hand uses an inverted Z scale (DEPTH = 0.125f).
-        if (StereoState.INSTANCE.isActive()) {
-            final float sign = StereoState.INSTANCE.isLeftEye() ? -1f
-                : (StereoState.INSTANCE.isRightEye() ? 1f : 0f);
-            if (sign != 0f) {
-                GLStateManager.glTranslatef(sign * 0.07f, 0.0F, 0.0F);
-            }
-        }
+        // Stereoscopic projection-space offset for the held item: disabled. The vanilla anaglyph
+        // value (0.07f) was tuned for red/cyan glasses' subtle 3D pop, not for SBS VR fusion —
+        // combined with the modelview offset below and the hand's close camera distance, it
+        // produced hundreds of pixels of per-eye disparity that the eyes can't converge on.
+        // Leaving the hand at the same projection in both eyes makes it render at screen depth.
 
         if (mc.entityRenderer.cameraZoom != 1.0D) {
             GL11.glTranslatef((float) mc.entityRenderer.cameraYaw, (float) (-mc.entityRenderer.cameraPitch), 0.0F);
@@ -61,9 +56,13 @@ public class HandRenderer {
         GL11.glMatrixMode(GL11.GL_MODELVIEW);
         GL11.glLoadIdentity();
 
-        // Stereoscopic per-eye modelview offset for the held item.
+        // Stereoscopic modelview offset for the held item: use the WORLD's per-eye offset
+        // (getEyeOffset, ipd/2) rather than vanilla anaglyph's hand-specific 0.1f. That keeps
+        // the hand's disparity consistent with the world geometry around it — so an item the
+        // player holds appears at its correct VR depth instead of "flat at screen depth" or
+        // (with vanilla's exaggerated magnitudes) impossible-to-converge.
         if (StereoState.INSTANCE.isActive()) {
-            final float dx = StereoState.INSTANCE.getHandEyeOffset();
+            final float dx = StereoState.INSTANCE.getEyeOffset();
             if (dx != 0f) {
                 GLStateManager.glTranslatef(dx, 0.0F, 0.0F);
             }

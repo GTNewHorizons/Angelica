@@ -141,14 +141,19 @@ public class IrisSamplers {
 	}
 
 	public static void addWorldDepthSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
+		// NB: depthtex1/2 must be lambdas (not method refs on `getDepthTextureNoTranslucents()`)
+		// — method refs bind to the DepthTexture instance returned at sampler-setup time, which
+		// in stereo is always the eye-0 DepthTexture. A lambda re-invokes the getter at sampler
+		// bind time, picking up the current eye's per-eye DepthTexture.
 		samplers.addDynamicSampler(renderTargets::getDepthTexture, "depthtex0");
 		// TODO: Should depthtex2 be made available to gbuffer / shadow programs?
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1");
+		samplers.addDynamicSampler(() -> renderTargets.getDepthTextureNoTranslucents().getTextureId(), "depthtex1");
 	}
 
 	public static void addCompositeSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
+		// See note in addWorldDepthSamplers about depthtex1/2 being lambdas, not method refs.
 		samplers.addDynamicSampler(renderTargets::getDepthTexture, "gdepthtex", "depthtex0");
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1");
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoHand()::getTextureId, "depthtex2");
+		samplers.addDynamicSampler(() -> renderTargets.getDepthTextureNoTranslucents().getTextureId(), "depthtex1");
+		samplers.addDynamicSampler(() -> renderTargets.getDepthTextureNoHand().getTextureId(), "depthtex2");
 	}
 }

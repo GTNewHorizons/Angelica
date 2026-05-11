@@ -212,7 +212,11 @@ public class CompositeRenderer {
                     final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
                     computeProgram.use();
                     this.customUniforms.push(computeProgram);
-					computeProgram.dispatch(main.framebufferWidth, main.framebufferHeight);
+                    final com.gtnewhorizons.angelica.stereo.StereoState s =
+                        com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE;
+					computeProgram.dispatch(
+						s.irisFbWidth(main.framebufferWidth),
+						s.irisFbHeight(main.framebufferHeight));
 				}
 			}
 

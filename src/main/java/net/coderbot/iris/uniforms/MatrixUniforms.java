@@ -58,20 +58,25 @@ public final class MatrixUniforms {
 
 	private static class Previous implements Supplier<Matrix4f> {
 		private final Supplier<Matrix4f> parent;
-		private Matrix4f previous;
+		// Per-eye storage: LEFT/MONO uses slot 0, RIGHT uses slot 1. With one shared slot the LEFT
+		// eye would read RIGHT eye N-1's matrix (wrong IPD offset, stale by a frame) and RIGHT eye
+		// would read LEFT eye N's matrix (wrong IPD, same frame) — surfacing as eye-asymmetric
+		// artifacts in any shader that reprojects against gbufferPrevious*.
+		private final Matrix4f[] previousPerEye;
 
 		Previous(Supplier<Matrix4f> parent) {
 			this.parent = parent;
-			this.previous = new Matrix4f();
+			this.previousPerEye = new Matrix4f[] { new Matrix4f(), new Matrix4f() };
 		}
 
 		@Override
 		public Matrix4f get() {
 			// PERF: Don't copy + allocate these matrices every time?
+			final int eye = com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE.currentEyeIndex();
 			final Matrix4f copy = new Matrix4f(parent.get());
-            final Matrix4f prev = new Matrix4f(this.previous);
+            final Matrix4f prev = new Matrix4f(this.previousPerEye[eye]);
 
-			this.previous = copy;
+			this.previousPerEye[eye] = copy;
 
 			return prev;
 		}
