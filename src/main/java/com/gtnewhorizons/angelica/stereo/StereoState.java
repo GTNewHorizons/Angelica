@@ -29,6 +29,25 @@ public class StereoState {
     private Eye currentEye = Eye.MONO;
     private boolean active = false;
 
+    // While true, GLStateManager.glScissor remaps caller scissor coords (assumed to be in
+    // "framebuffer pixels with GUI filling the whole screen") into the current eye viewport.
+    // Set by MixinEntityRenderer_Stereo around each drawScreen / renderGameOverlay / Post-event
+    // eye pass. The four eyeVp* fields hold that pass's viewport bounds.
+    private boolean inGuiPass = false;
+    private int eyeVpX = 0, eyeVpY = 0, eyeVpW = 0, eyeVpH = 0;
+
+    public void enterGuiPass(int x, int y, int w, int h) {
+        inGuiPass = true;
+        eyeVpX = x; eyeVpY = y; eyeVpW = w; eyeVpH = h;
+    }
+
+    public void exitGuiPass() { inGuiPass = false; }
+    public boolean isInGuiPass() { return inGuiPass; }
+    public int getEyeVpX() { return eyeVpX; }
+    public int getEyeVpY() { return eyeVpY; }
+    public int getEyeVpW() { return eyeVpW; }
+    public int getEyeVpH() { return eyeVpH; }
+
     public Eye getCurrentEye() {
         StereoDebugEye debug = AngelicaConfig.stereoDebugForceEye;
         if (debug != null && debug != StereoDebugEye.OFF) {
@@ -79,7 +98,11 @@ public class StereoState {
     public void endFrame() {
         active = false;
         currentEye = Eye.MONO;
-        frameMode = StereoMode.OFF;
+        // Intentionally do NOT reset frameMode / frameIpd / frameHudMode here. RenderTickEvent.END
+        // fires from FMLCommonHandler.onRenderTickEnd *after* updateCameraAndRender returns, and
+        // our MixinFMLCommonHandler_Stereo redirect needs the frame's stereo config to still be
+        // readable so it can duplicate the event per-eye. beginFrame() overwrites these values
+        // on the next frame, so leaving them alive between frames is safe.
     }
 
     public void setEye(Eye eye) {

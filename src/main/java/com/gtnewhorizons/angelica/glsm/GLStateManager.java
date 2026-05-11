@@ -1773,6 +1773,45 @@ public class GLStateManager {
         viewportState.setViewPort(x, y, width, height);
     }
 
+    // ---- Stereo virtual-cursor redirect targets ----
+    // AngelicaRedirector rewrites org.lwjgl.input.Mouse.getX/getY/getEventX/getEventY call sites
+    // to these methods, which delegate to StereoCursor — see StereoCursor.java for details.
+
+    public static int stereoMouseGetX() { return com.gtnewhorizons.angelica.stereo.StereoCursor.getX(); }
+    public static int stereoMouseGetY() { return com.gtnewhorizons.angelica.stereo.StereoCursor.getY(); }
+    public static int stereoMouseGetEventX() { return com.gtnewhorizons.angelica.stereo.StereoCursor.getEventX(); }
+    public static int stereoMouseGetEventY() { return com.gtnewhorizons.angelica.stereo.StereoCursor.getEventY(); }
+
+    /**
+     * AngelicaRedirector rewrites {@code GL11.glScissor} call sites to this method. During a
+     * stereo GUI eye pass (NEI/etc.'s {@code drawScreen}, {@code renderGameOverlay} duplicate,
+     * or {@code DrawScreenEvent.Post}), callers assume the framebuffer holds the entire GUI —
+     * so they pass scissor coords in "full-screen FB pixels". Our eye viewport is only a
+     * subset of the framebuffer, so we remap the scissor box into that subset.
+     */
+    public static void glScissor(int x, int y, int width, int height) {
+        final com.gtnewhorizons.angelica.stereo.StereoState state =
+            com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE;
+        if (state.isInGuiPass()) {
+            final net.minecraft.client.Minecraft mc = net.minecraft.client.Minecraft.getMinecraft();
+            final int displayW = mc.displayWidth;
+            final int displayH = mc.displayHeight;
+            if (displayW > 0 && displayH > 0) {
+                final int vpX = state.getEyeVpX();
+                final int vpY = state.getEyeVpY();
+                final int vpW = state.getEyeVpW();
+                final int vpH = state.getEyeVpH();
+                final int newX = vpX + (int)((long) x * vpW / displayW);
+                final int newY = vpY + (int)((long) y * vpH / displayH);
+                final int newW = (int)((long) width  * vpW / displayW);
+                final int newH = (int)((long) height * vpH / displayH);
+                GL11.glScissor(newX, newY, newW, newH);
+                return;
+            }
+        }
+        GL11.glScissor(x, y, width, height);
+    }
+
     public static int getActiveTextureUnit() {
         return activeTextureUnit.getValue();
     }

@@ -56,6 +56,7 @@ public final class AngelicaRedirector {
     private static final String GL14 = "org/lwjgl/opengl/GL14";
     private static final String GL20 = "org/lwjgl/opengl/GL20";
     private static final String Project = "org/lwjgl/util/glu/Project";
+    private static final String Mouse = "org/lwjgl/input/Mouse";
 
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String BlockPackage = "net/minecraft/block/Block";
@@ -87,7 +88,7 @@ public final class AngelicaRedirector {
         "net/minecraft/block/material/"
     };
 
-    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, BlockPackage, Project);
+    private static final ClassConstantPoolParser cstPoolParser = new ClassConstantPoolParser(GL11, GL13, GL14, GL20, OpenGlHelper, EXTBlendFunc, ARBMultiTexture, BlockPackage, Project, Mouse);
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>();
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
 
@@ -186,6 +187,7 @@ public final class AngelicaRedirector {
             .add("glRotatef")
             .add("glScaled")
             .add("glScalef")
+            .add("glScissor")
             .add("glShadeModel")
             .add("glTexCoord1d")
             .add("glTexCoord1f")
@@ -220,6 +222,11 @@ public final class AngelicaRedirector {
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap().add("glActiveTextureARB"));
         methodRedirects.put(Project, RedirectMap.newMap().add("gluPerspective"));
+        methodRedirects.put(Mouse, RedirectMap.newMap()
+            .add("getX", "stereoMouseGetX")
+            .add("getY", "stereoMouseGetY")
+            .add("getEventX", "stereoMouseGetEventX")
+            .add("getEventY", "stereoMouseGetEventY"));
 
         try {
             final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
@@ -262,6 +269,7 @@ public final class AngelicaRedirector {
             "org.lwjgl",
             "com.gtnewhorizons.angelica.glsm.",
             "com.gtnewhorizons.angelica.transform",
+            "com.gtnewhorizons.angelica.stereo.",
             "me.eigenraven.lwjgl3ify"
         };
     }

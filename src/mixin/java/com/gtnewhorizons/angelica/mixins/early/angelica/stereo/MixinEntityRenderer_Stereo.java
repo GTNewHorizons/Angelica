@@ -42,25 +42,7 @@ public abstract class MixinEntityRenderer_Stereo {
     @Inject(method = "updateCameraAndRender", at = @At("HEAD"))
     private void angelica$stereoBeginFrame(float partialTicks, CallbackInfo ci) {
         StereoState.INSTANCE.beginFrame();
-        angelica$constrainCursorToLeftEye();
-    }
-
-    /**
-     * For SBS_HALF + DUPLICATE, snap the OS cursor back into the left half whenever the user
-     * drags it past the seam. Hover/click hit-tests are calibrated to the left eye's view.
-     */
-    private static void angelica$constrainCursorToLeftEye() {
-        if (!org.lwjgl.opengl.Display.isActive()) return;
-        final StereoMode mode = StereoState.INSTANCE.getFrameMode();
-        if (mode == null || !mode.isActive()) return;
-        if (StereoState.INSTANCE.getFrameHudMode() != StereoHudMode.DUPLICATE) return;
-        if (!mode.isSideBySide() || !mode.isHalf()) return;
-        final Minecraft mc = Minecraft.getMinecraft();
-        if (mc.currentScreen == null) return;
-        final int halfW = mc.displayWidth / 2;
-        if (org.lwjgl.input.Mouse.getX() > halfW - 1) {
-            org.lwjgl.input.Mouse.setCursorPosition(halfW - 1, org.lwjgl.input.Mouse.getY());
-        }
+        com.gtnewhorizons.angelica.stereo.StereoCursor.update();
     }
 
     /**
@@ -150,7 +132,10 @@ public abstract class MixinEntityRenderer_Stereo {
     private void angelica$stereoRenderHud(GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         final StereoMode mode = StereoState.INSTANCE.getFrameMode();
         if (mode == null || !mode.isActive()) {
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            // Stereo off — fall back to HUDCaching so non-stereo users keep their cached-HUD perf
+            // (we won the @Redirect priority fight; this delegation restores caching behavior).
+            com.gtnewhorizons.angelica.hudcaching.HUDCaching.renderCachedHud(
+                Minecraft.getMinecraft().entityRenderer, ingame, partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
 
@@ -159,7 +144,8 @@ public abstract class MixinEntityRenderer_Stereo {
             return;
         }
         if (hudMode == StereoHudMode.STRETCH) {
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            com.gtnewhorizons.angelica.hudcaching.HUDCaching.renderCachedHud(
+                Minecraft.getMinecraft().entityRenderer, ingame, partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
 
@@ -174,12 +160,18 @@ public abstract class MixinEntityRenderer_Stereo {
         final int eyeH = sbs ? fullH               : (half ? fullH / 2 : fullH);
 
         // LEFT
-        GL11.glViewport(0, sbs ? 0 : fullH - eyeH, eyeW, eyeH);
+        final int leftY = sbs ? 0 : fullH - eyeH;
+        GL11.glViewport(0, leftY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
         ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
 
         // RIGHT
-        GL11.glViewport(sbs ? eyeW : 0, 0, eyeW, eyeH);
+        final int rightX = sbs ? eyeW : 0;
+        GL11.glViewport(rightX, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
         ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
 
         // Restore.
         GL11.glViewport(0, 0, fullW, fullH);
@@ -221,23 +213,121 @@ public abstract class MixinEntityRenderer_Stereo {
         final int eyeW = sbs ? (half ? fullW / 2 : fullW) : fullW;
         final int eyeH = sbs ? fullH               : (half ? fullH / 2 : fullH);
 
-        // Mouse remap: the GUI is rendered into a half-width viewport with a full-screen
-        // ScaledResolution, so a slot at GUI-x N appears at screen pixel N/2. We want the cursor
-        // (clamped to the left half, screen-x in [0, fullW/2]) to map to the full GUI-x range.
-        // Since the vanilla code already passed mouseX = Mouse.getX() * scaledWidth / fullW,
-        // doubling that gives us the GUI-x within the left eye's view.
-        final int adjMouseX = (sbs && half) ? (mouseX * 2) : mouseX;
-        final int adjMouseY = (!sbs && half) ? (mouseY * 2 - 0) : mouseY; // OU stub; we focus on SBS
+        // mouseX/mouseY already arrive correctly remapped: the call site upstream computed them
+        // from Mouse.getX() * scaledWidth / displayWidth, and AngelicaRedirector has rewritten
+        // Mouse.getX/getEventX to StereoCursor's virtual coords (already in left-eye GUI space).
 
         // LEFT
-        GL11.glViewport(0, sbs ? 0 : fullH - eyeH, eyeW, eyeH);
-        screen.drawScreen(adjMouseX, adjMouseY, partialTicks);
+        final int leftY = sbs ? 0 : fullH - eyeH;
+        GL11.glViewport(0, leftY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
+        screen.drawScreen(mouseX, mouseY, partialTicks);
+        StereoState.INSTANCE.exitGuiPass();
 
         // RIGHT
-        GL11.glViewport(sbs ? eyeW : 0, 0, eyeW, eyeH);
-        screen.drawScreen(adjMouseX, adjMouseY, partialTicks);
+        final int rightX = sbs ? eyeW : 0;
+        GL11.glViewport(rightX, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
+        screen.drawScreen(mouseX, mouseY, partialTicks);
+        StereoState.INSTANCE.exitGuiPass();
 
+        // Restore. Cursor drawing happens in angelica$drawCursorAfterPostEvent so it lands
+        // on top of NEI's overlay (which draws during the DrawScreenEvent.Post that fires
+        // after the drawScreen call site we just intercepted).
+        GL11.glViewport(0, 0, fullW, fullH);
+    }
+
+    /**
+     * Inject after the second {@code EVENT_BUS.post} call in {@code updateCameraAndRender}
+     * (the {@code DrawScreenEvent.Post} dispatch). NEI/other mods draw their GUI overlays
+     * during that event, so the synthetic cursor must be drawn after it to land on top.
+     */
+    /**
+     * Wrap the {@code DrawScreenEvent.Post} dispatch — NEI/other mods render their tooltips,
+     * overlay buttons, and the GTNHLib recipe-tooltip widget's item icons during that event.
+     * Post the event twice (once per eye viewport) so the items appear in both eyes, then draw
+     * the synthetic cursor in both halves on top.
+     */
+    @Redirect(
+        method = "updateCameraAndRender",
+        at = @At(
+            value = "INVOKE",
+            target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z",
+            ordinal = 1,
+            remap = false
+        )
+    )
+    private boolean angelica$stereoPostEvent(cpw.mods.fml.common.eventhandler.EventBus bus,
+                                              cpw.mods.fml.common.eventhandler.Event event) {
+        final StereoMode mode = StereoState.INSTANCE.getFrameMode();
+        final boolean stereoActive = mode != null && mode.isActive()
+            && StereoState.INSTANCE.getFrameHudMode() == StereoHudMode.DUPLICATE
+            && mode.isSideBySide() && mode.isHalf();
+        if (!stereoActive) {
+            return bus.post(event);
+        }
+
+        final Minecraft mc = Minecraft.getMinecraft();
+        final int fullW = mc.displayWidth;
+        final int fullH = mc.displayHeight;
+        final int eyeW = fullW / 2;
+        final int eyeH = fullH;
+
+        // LEFT eye: post the event so NEI's overlay + tooltip items render here.
+        GL11.glViewport(0, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(0, 0, eyeW, eyeH);
+        final boolean result = bus.post(event);
+        StereoState.INSTANCE.exitGuiPass();
+
+        // RIGHT eye: Forge events track phase (HIGHEST → NORMAL → ...) and refuse to be
+        // re-posted, so construct a fresh DrawScreenEvent.Post with the same params.
+        GL11.glViewport(eyeW, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(eyeW, 0, eyeW, eyeH);
+        if (event instanceof net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post) {
+            final net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post original =
+                (net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post) event;
+            final net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post copy =
+                new net.minecraftforge.client.event.GuiScreenEvent.DrawScreenEvent.Post(
+                    original.gui, original.mouseX, original.mouseY, original.renderPartialTicks);
+            bus.post(copy);
+        }
+        StereoState.INSTANCE.exitGuiPass();
+
+        // Draw the synthetic cursor in both halves on top of everything.
+        final net.minecraft.client.gui.ScaledResolution sr =
+            new net.minecraft.client.gui.ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+        final int scaledWidth = sr.getScaledWidth();
+        final int scaledHeight = sr.getScaledHeight();
+        final int cursorX = org.lwjgl.input.Mouse.getX() * scaledWidth / mc.displayWidth;
+        final int cursorY = scaledHeight - org.lwjgl.input.Mouse.getY() * scaledHeight / mc.displayHeight - 1;
+
+        // RIGHT half cursor (viewport still right).
+        angelica$drawSyntheticCursor(cursorX, cursorY);
+        // LEFT half cursor.
+        GL11.glViewport(0, 0, eyeW, eyeH);
+        angelica$drawSyntheticCursor(cursorX, cursorY);
         // Restore.
         GL11.glViewport(0, 0, fullW, fullH);
+        return result;
+    }
+
+    /**
+     * Draw an arrow cursor in GUI coords at (x, y). Right-angle triangle tip at (x, y), filled
+     * white with a 1px black outline. The OS cursor is hidden by {@code Mouse.setGrabbed} when
+     * stereo+GUI is active, so this is the only visible cursor.
+     */
+    private static void angelica$drawSyntheticCursor(int x, int y) {
+        final int B = 0xFF000000;
+        final int F = 0xFFFFFFFF;
+        // Item icons drawn earlier in the frame leave depth values that would occlude this rect.
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        for (int i = 0; i < 9; i++) {
+            net.minecraft.client.gui.Gui.drawRect(x - 1, y + i - 1, x + i + 2, y + i, B);
+        }
+        net.minecraft.client.gui.Gui.drawRect(x - 1, y + 8, x + 9, y + 9, B);
+        for (int i = 0; i < 8; i++) {
+            net.minecraft.client.gui.Gui.drawRect(x, y + i, x + i + 1, y + i + 1, F);
+        }
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
     }
 }
