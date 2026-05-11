@@ -185,6 +185,44 @@ public class SodiumGameOptionPages {
                 )
                 .build());
 
+        // Stereoscopic SBS_HALF on/off toggle. Iris RenderTargets.eyeCount is captured at
+        // pipeline-init time, so flipping the mode requires destroying and re-creating the
+        // pipeline so the per-eye textures get allocated/freed correctly.
+        groups.add(OptionGroup.createBuilder()
+            .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                .setName("Stereoscopic SBS (Side-by-Side)")
+                .setTooltip("Splits the screen into two eye views for VR headset use via Virtual Desktop / Steam Link. Roughly halves framerate.")
+                .setControl(TickBoxControl::new)
+                .setBinding(
+                    (opts, value) -> {
+                        final com.gtnewhorizons.angelica.stereo.StereoMode newMode = value
+                            ? com.gtnewhorizons.angelica.stereo.StereoMode.SBS_HALF
+                            : com.gtnewhorizons.angelica.stereo.StereoMode.OFF;
+                        if (AngelicaConfig.stereoscopicMode == newMode) return;
+                        AngelicaConfig.stereoscopicMode = newMode;
+                        // Force the StereoState frame-cache to pick up the new config NOW. Without
+                        // this, isActive() / stereoEyeCount() still return the cached value from
+                        // the last frame and the pipeline rebuild below would allocate the wrong
+                        // number of per-eye textures.
+                        com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE.beginFrame();
+                        if (AngelicaConfig.enableIris && Minecraft.getMinecraft().theWorld != null) {
+                            // Iris RenderTargets.eyeCount is captured at pipeline init, so we have
+                            // to drop the pipeline and rebuild it for the new eye count to take
+                            // effect. Then force a chunk reload so Sodium's terrain renderer drops
+                            // its stale per-chunk texture references and rebinds against the new
+                            // pipeline's render targets — otherwise the world stops rendering
+                            // until the user reloads shaders manually.
+                            Iris.getPipelineManager().destroyPipeline();
+                            Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimension());
+                            Minecraft.getMinecraft().renderGlobal.loadRenderers();
+                        }
+                    },
+                    opts -> AngelicaConfig.stereoscopicMode != null
+                        && AngelicaConfig.stereoscopicMode != com.gtnewhorizons.angelica.stereo.StereoMode.OFF)
+                .setImpact(OptionImpact.HIGH)
+                .build())
+            .build());
+
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));
     }
 
