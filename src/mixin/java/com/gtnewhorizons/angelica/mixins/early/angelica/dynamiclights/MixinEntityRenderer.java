@@ -17,7 +17,13 @@ public class MixinEntityRenderer {
 
     @Inject(method = "renderWorld", at = @At("HEAD"))
     private void updateDynamicLights(float p_78471_1_, long p_78471_2_, CallbackInfo ci){
-        mc.mcProfiler.endStartSection("angelica_dynamic_lighting");
+        // Use startSection / endSection so the section only encompasses our updateAll call —
+        // not all of vanilla renderWorld, which would happen with endStartSection (vanilla's
+        // own startSection calls inside renderWorld would nest under us). The previous
+        // structure made the F3 profiler attribute every child cost (entity shadows,
+        // particles, etc.) to angelica_dynamic_lighting.
+        mc.mcProfiler.startSection("angelica_dynamic_lighting");
         DynamicLights.get().updateAll(SodiumWorldRenderer.getInstance());
+        mc.mcProfiler.endSection();
     }
 }
