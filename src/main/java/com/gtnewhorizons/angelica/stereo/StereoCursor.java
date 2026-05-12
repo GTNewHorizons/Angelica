@@ -35,17 +35,14 @@ public final class StereoCursor {
 
         if (shouldOverride && !weAreGrabbing) {
             // Entering stereo+GUI: grab the mouse so the OS cursor is hidden, then seed the
-            // virtual cursor with the current OS cursor position (in left-half coords).
+            // virtual cursor at the LEFT eye's center. MC re-centers Mouse to (displayW/2,
+            // displayH/2) when a GUI opens; that lands on the seam between eyes (rightmost
+            // pixel of left eye), which made the cursor feel like it was pinned to the right
+            // edge. Force it to the center of the left eye region instead.
             final Minecraft mc = Minecraft.getMinecraft();
             final int halfW = mc.displayWidth / 2;
-            int seedX = Mouse.getX();
-            int seedY = Mouse.getY();
-            if (seedX > halfW - 1) seedX = halfW - 1;
-            if (seedX < 0) seedX = 0;
-            if (seedY < 0) seedY = 0;
-            if (seedY > mc.displayHeight - 1) seedY = mc.displayHeight - 1;
-            vX = seedX;
-            vY = seedY;
+            vX = halfW / 2;
+            vY = mc.displayHeight / 2;
             Mouse.setGrabbed(true);
             weAreGrabbing = true;
         } else if (!shouldOverride && weAreGrabbing) {
