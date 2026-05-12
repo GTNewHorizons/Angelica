@@ -230,10 +230,19 @@ public abstract class MixinEntityRenderer_Stereo {
         // from Mouse.getX() * scaledWidth / displayWidth, and AngelicaRedirector has rewritten
         // Mouse.getX/getEventX to StereoCursor's virtual coords (already in left-eye GUI space).
 
+        // Before each eye's drawScreen, reset color/lighting state. GuiContainer.drawScreen leaves
+        // GUI item lighting enabled at exit (RenderHelper.enableGUIStandardItemLighting on line 99 of
+        // vanilla GuiContainer.drawScreen), which is fine when drawScreen is called once per frame —
+        // the next frame's renderGameOverlay resets it. But in stereo we call drawScreen TWICE
+        // back-to-back, so the RIGHT eye enters with lighting still on from LEFT eye's exit. That
+        // causes the chest panel's drawGuiContainerBackgroundLayer (which sets color white but
+        // doesn't disable lighting) to be lit, dimming the panel relative to the LEFT eye.
         // LEFT
         final int leftY = sbs ? 0 : fullH - eyeH;
         GL11.glViewport(0, leftY, eyeW, eyeH);
         StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
+        net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         screen.drawScreen(mouseX, mouseY, partialTicks);
         StereoState.INSTANCE.exitGuiPass();
 
@@ -241,6 +250,8 @@ public abstract class MixinEntityRenderer_Stereo {
         final int rightX = sbs ? eyeW : 0;
         GL11.glViewport(rightX, 0, eyeW, eyeH);
         StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
+        net.minecraft.client.renderer.RenderHelper.disableStandardItemLighting();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         screen.drawScreen(mouseX, mouseY, partialTicks);
         StereoState.INSTANCE.exitGuiPass();
 
