@@ -358,13 +358,23 @@ public class ShadowRenderer {
 
 		List<Entity> renderedEntities = new ArrayList<>(32);
 
-		// TODO: I'm sure that this can be improved / optimized.
-        // TODO: Entity culling
+		// Without this cull, we iterate the ENTIRE loadedEntityList every frame and run each
+		// entity's full model build_geometry in the shadow pass — in GTNH worlds with hundreds
+		// of loaded entities (mobs in unloaded chunks, items, GT machines) that single loop was
+		// 33% of frame time. Distance + frustum cull cuts it to entities that can actually
+		// contribute to the on-screen shadow map.
+		final double shadowRangeBlocks = Math.max(IrisVideoSettings.shadowDistance, 4) * 16.0;
+		final double shadowRangeSq = shadowRangeBlocks * shadowRangeBlocks;
 		for (Entity entity : getLevel().loadedEntityList) {
-			if (false/*!dispatcher.shouldRender(entity, frustum, cameraX, cameraY, cameraZ) || entity.isSpectator()*/) {
+			final double dx = entity.posX - cameraX;
+			final double dy = entity.posY - cameraY;
+			final double dz = entity.posZ - cameraZ;
+			if (dx * dx + dy * dy + dz * dz > shadowRangeSq) {
 				continue;
 			}
-
+			if (entity.boundingBox != null && !frustum.isBoundingBoxInFrustum(entity.boundingBox)) {
+				continue;
+			}
 			renderedEntities.add(entity);
 		}
 
