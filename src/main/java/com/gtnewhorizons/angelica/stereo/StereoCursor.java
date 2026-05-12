@@ -60,7 +60,12 @@ public final class StereoCursor {
             final Minecraft mc = Minecraft.getMinecraft();
             final int halfW = mc.displayWidth / 2;
             final int fullH = mc.displayHeight;
-            vX += Mouse.getDX();
+            // SBS_HALF compresses each eye's GUI horizontally into half the screen width, so a
+            // button that's N pixels wide in mono is N/2 pixels wide on screen here. Without
+            // the 0.5 scale, the cursor would cross the GUI in half the mouse motion compared
+            // to mono — feeling 2× too sensitive horizontally. The 0.5 keeps the mouse-pixel
+            // to on-screen-cursor-pixel feel consistent with mono.
+            vX += Mouse.getDX() * 0.5;
             vY += Mouse.getDY();
             if (vX < 0)              vX = 0;
             if (vX > halfW - 1)      vX = halfW - 1;
