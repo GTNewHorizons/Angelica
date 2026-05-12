@@ -66,6 +66,16 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V", shift = At.Shift.AFTER), method = "renderWorld(FJ)V")
     private void iris$beginEntities(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        // In SBS stereo we call renderWorld twice (once per eye). The shadow map is rendered
+        // from the sun/moon's perspective, not the player camera's, so the output is identical
+        // for both eyes — re-rendering it the second time is pure waste (and was costing us
+        // ~35% of frame time in profiler). Skip on the RIGHT eye pass; LEFT eye's shadow map
+        // is still bound and valid when the second eye runs.
+        if (com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE.isActive()
+            && com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE.getCurrentEye()
+               == com.gtnewhorizons.angelica.stereo.StereoState.Eye.RIGHT) {
+            return;
+        }
         pipeline.get().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 

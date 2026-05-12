@@ -884,7 +884,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 		final Vector4f emptyClearColor = new Vector4f(1.0F);
 
-		if (shadowRenderTargets != null) {
+		// In SBS stereo, the shadow map is the same for both eyes (rendered from sun's POV,
+		// not player camera's). MixinEntityRenderer skips renderShadows on the RIGHT eye, so
+		// we must ALSO skip the per-eye shadow clear here — otherwise the LEFT eye's shadow
+		// output gets wiped by the RIGHT eye's prepareRenderTargets and the right eye
+		// samples an empty shadow map.
+		final boolean skipShadowClear = shadowRenderTargets != null
+			&& com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE.isActive()
+			&& com.gtnewhorizons.angelica.stereo.StereoState.INSTANCE.getCurrentEye()
+			   == com.gtnewhorizons.angelica.stereo.StereoState.Eye.RIGHT;
+
+		if (shadowRenderTargets != null && !skipShadowClear) {
 			if (packDirectives.getShadowDirectives().isShadowEnabled() == OptionalBoolean.FALSE) {
 				if (shadowRenderTargets.isFullClearRequired()) {
 					shadowRenderTargets.onFullClear();
