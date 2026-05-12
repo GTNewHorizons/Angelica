@@ -183,12 +183,23 @@ public class StereoState {
 
     /**
      * Returns the number of eyes the pipeline should allocate per-eye resources for: 2 when stereo
-     * is active for the current frame, otherwise 1. Used by Iris's RenderTargets to decide whether
-     * to duplicate its color and depth-stencil textures so each eye gets its own bubble (avoids
+     * is enabled in config, otherwise 1. Used by Iris's RenderTargets to decide whether to
+     * duplicate its color and depth-stencil textures so each eye gets its own bubble (avoids
      * cross-eye contamination in kernel-based composite shaders like bloom).
+     *
+     * <p><strong>Reads the config directly, not the cached {@link #active} flag</strong> — this
+     * gets called at pipeline-init time which can fire before the first {@link #beginFrame()}
+     * (e.g., when entering a world with stereo on, the pipeline is built before the first
+     * {@code updateCameraAndRender} runs). Using the cached flag in that path would allocate
+     * mono RenderTargets and the first frame's stereo render would contaminate across eyes
+     * until a manual shader reload forced a rebuild.</p>
      */
     public int stereoEyeCount() {
-        return isActive() ? 2 : 1;
+        // Debug-force-eye also wants 2-eye allocation so the debug paths work.
+        final StereoDebugEye debug = AngelicaConfig.stereoDebugForceEye;
+        if (debug != null && debug != StereoDebugEye.OFF) return 2;
+        final StereoMode mode = AngelicaConfig.stereoscopicMode;
+        return (mode != null && mode.isActive()) ? 2 : 1;
     }
 
     /**
