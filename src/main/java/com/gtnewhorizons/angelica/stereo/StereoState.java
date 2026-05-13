@@ -99,6 +99,7 @@ public class StereoState {
             active = false;
             currentEye = Eye.MONO;
             frameMode = StereoMode.OFF;
+            CursorPresentThread.stop();
             return false;
         }
         active = true;
@@ -108,6 +109,8 @@ public class StereoState {
             ? AngelicaConfig.stereoHudMode
             : StereoHudMode.DUPLICATE;
         currentEye = Eye.MONO; // until setEye is called for the first pass
+        // Lazy-start cursor present thread when stereo activates. Cheap when already running.
+        CursorPresentThread.ensureStarted();
         return true;
     }
 

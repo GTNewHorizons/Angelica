@@ -55,6 +55,10 @@ public abstract class MixinEntityRenderer_Stereo {
             Minecraft mc = Minecraft.getMinecraft();
             GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
         }
+        // Note: cursor thread's publishFrame() is intentionally NOT called here. It is called
+        // later in the frame at framebufferRender HEAD (see MixinFramebuffer_AsyncCursor), so
+        // we capture framebufferMc after onRenderTickEnd has had a chance to add its content
+        // (WAILA HUD, achievement popups, etc.). Capturing here would miss those.
         StereoState.INSTANCE.endFrame();
     }
 
@@ -317,19 +321,25 @@ public abstract class MixinEntityRenderer_Stereo {
         }
         StereoState.INSTANCE.exitGuiPass();
 
-        // Draw the synthetic cursor in both halves on top of everything.
-        final net.minecraft.client.gui.ScaledResolution sr =
-            new net.minecraft.client.gui.ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-        final int scaledWidth = sr.getScaledWidth();
-        final int scaledHeight = sr.getScaledHeight();
-        final int cursorX = org.lwjgl.input.Mouse.getX() * scaledWidth / mc.displayWidth;
-        final int cursorY = scaledHeight - org.lwjgl.input.Mouse.getY() * scaledHeight / mc.displayHeight - 1;
+        // Draw the synthetic cursor in both halves on top of everything — UNLESS the async
+        // cursor present thread is running, in which case it owns cursor presentation at its
+        // own (compositor) rate. Drawing here too would cause a double-cursor + the main-frame
+        // copy would capture the stale main-thread cursor into the cursor thread's present
+        // texture.
+        if (!com.gtnewhorizons.angelica.stereo.CursorPresentThread.isRunning()) {
+            final net.minecraft.client.gui.ScaledResolution sr =
+                new net.minecraft.client.gui.ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            final int scaledWidth = sr.getScaledWidth();
+            final int scaledHeight = sr.getScaledHeight();
+            final int cursorX = org.lwjgl.input.Mouse.getX() * scaledWidth / mc.displayWidth;
+            final int cursorY = scaledHeight - org.lwjgl.input.Mouse.getY() * scaledHeight / mc.displayHeight - 1;
 
-        // RIGHT half cursor (viewport still right).
-        angelica$drawSyntheticCursor(cursorX, cursorY);
-        // LEFT half cursor.
-        GL11.glViewport(0, 0, eyeW, eyeH);
-        angelica$drawSyntheticCursor(cursorX, cursorY);
+            // RIGHT half cursor (viewport still right).
+            angelica$drawSyntheticCursor(cursorX, cursorY);
+            // LEFT half cursor.
+            GL11.glViewport(0, 0, eyeW, eyeH);
+            angelica$drawSyntheticCursor(cursorX, cursorY);
+        }
         // Restore.
         GL11.glViewport(0, 0, fullW, fullH);
         return result;
