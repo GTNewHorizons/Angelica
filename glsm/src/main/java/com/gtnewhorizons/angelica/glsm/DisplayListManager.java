@@ -6,6 +6,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectDrawCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.tessellator.VertexTransformCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
@@ -57,33 +58,7 @@ public class DisplayListManager {
     private static final boolean DEBUG_DISPLAY_LISTS = false;
 
     // -Dangelica.logDisplayListCompilation: log compiled display list commands
-    private static final boolean LOG_DISPLAY_LIST_COMPILATION = true;
-
-    private static final Vector4f reusableVector = new Vector4f();
-
-    private static final TessellatorCallback displayListCallback = new TessellatorCallback() {
-        @Override
-        public void onDraw(CallbackTessellator tessellator) {
-            addAccumulatedDraw(tessellator, false);
-        }
-
-        @Override
-        public void onVertex(CallbackTessellator tessellator, double x, double y, double z) {
-            reusableVector.x = (float) (x + tessellator.xOffset);
-            reusableVector.y = (float) (y + tessellator.yOffset);
-            reusableVector.z = (float) (z + tessellator.zOffset);
-            reusableVector.w = 1;
-            relativeTransform.transform(reusableVector);
-
-            // Only divide by w if the matrix has perspective
-            if ((relativeTransform.properties() & Matrix4fc.PROPERTY_PERSPECTIVE) != 0) {
-                reusableVector.x /= reusableVector.w;
-                reusableVector.y /= reusableVector.w;
-                reusableVector.z /= reusableVector.w;
-            }
-            tessellator.writeVertex(reusableVector.x, reusableVector.y, reusableVector.z);
-        }
-    };
+    private static final boolean LOG_DISPLAY_LIST_COMPILATION = false;
 
 //    static {
 //        LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
@@ -113,7 +88,7 @@ public class DisplayListManager {
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
     private static AccumulatedDraw pendingDraw = null;
-    private static Matrix4f relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
+    private static DisplayListCallback transformCallback = null;
     private static int relativeTransformType;
 
     private static final int TRANSFORM_SCALE = 0x1; // Can be extracted to a glScale easily
@@ -188,7 +163,7 @@ public class DisplayListManager {
      * Emit accumulated transform as MultMatrix if non-identity, then reset.
      */
     public static void flushMatrix() {
-        if (isIdentity(relativeTransform)) {
+        if (isIdentity(transformCallback.getTransformMatrix())) {
             // Clear pending ops even if we don't emit - they were no-ops (identity)
             if (pendingTransformOps != null) {
                 pendingTransformOps.clear();
@@ -212,14 +187,14 @@ public class DisplayListManager {
         // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
         drawBarrier();
         if (relativeTransformType == TRANSFORM_SCALE) {
-            currentRecorder.writeScale(relativeTransform.getScale(transformVector));
+            currentRecorder.writeScale(transformCallback.getTransformMatrix().getScale(transformVector));
         } else if (relativeTransformType == TRANSFORM_TRANSLATE) {
-            currentRecorder.writeTranslate(relativeTransform.getTranslation(transformVector));
+            currentRecorder.writeTranslate(transformCallback.getTransformMatrix().getTranslation(transformVector));
         } else {
-            currentRecorder.writeMultMatrix(relativeTransform);
+            currentRecorder.writeMultMatrix(transformCallback.getTransformMatrix());
         }
         if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-            GLStateManager.applyMultMatrix(relativeTransform);
+            GLStateManager.applyMultMatrix(transformCallback.getTransformMatrix());
         }
 
 
@@ -618,7 +593,7 @@ public class DisplayListManager {
     }
 
     public static void applyMatrixTranslation(float x, float y, float z) {
-        relativeTransform.translate(x, y, z);
+        transformCallback.getTransformMatrix().translate(x, y, z);
         relativeTransformType |= TRANSFORM_TRANSLATE;
 
         if (pendingTransformOps != null) {
@@ -631,7 +606,7 @@ public class DisplayListManager {
     }
 
     public static void applyMatrixScale(float x, float y, float z) {
-        relativeTransform.scale(x, y, z);
+        transformCallback.getTransformMatrix().scale(x, y, z);
         relativeTransformType |= TRANSFORM_SCALE;
 
         if (pendingTransformOps != null) {
@@ -649,7 +624,7 @@ public class DisplayListManager {
      * Requires the angle to be in radians & the coordinates to be normalized.
      */
     public static void applyMatrixRotation(float rad, float x, float y, float z) {
-        relativeTransform.rotate(rad, x, y, z);
+        transformCallback.getTransformMatrix().rotate(rad, x, y, z);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -671,7 +646,7 @@ public class DisplayListManager {
      * @param matrix The matrix to multiply
      */
     public static void updateRelativeTransform(Matrix4f matrix) {
-        relativeTransform.mul(matrix);
+        transformCallback.getTransformMatrix().mul(matrix);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -689,7 +664,7 @@ public class DisplayListManager {
     public static void updateRelativeTransformOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        relativeTransform.mul(orthoFrustumTemp);
+        transformCallback.getTransformMatrix().mul(orthoFrustumTemp);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -704,7 +679,7 @@ public class DisplayListManager {
     public static void updateRelativeTransformFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        relativeTransform.mul(orthoFrustumTemp);
+        transformCallback.getTransformMatrix().mul(orthoFrustumTemp);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -722,7 +697,7 @@ public class DisplayListManager {
      * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
      */
     public static void resetRelativeTransform() {
-        relativeTransform.identity();
+        transformCallback.getTransformMatrix().identity();
         relativeTransformType = 0;
     }
 
@@ -781,7 +756,7 @@ public class DisplayListManager {
         recordingThread = Thread.currentThread();  // Track which thread is recording
         currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
-        relativeTransform = new Matrix4f();
+        transformCallback = new DisplayListCallback();
         compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
         // Initialize debug logging fields (only when logging enabled)
@@ -795,7 +770,7 @@ public class DisplayListManager {
             drawRangeSources = null;
         }
 
-        TessellatorManager.startCapturingDirect(displayListCallback);
+        TessellatorManager.startCapturingDirect(transformCallback);
     }
 
     /**
@@ -896,13 +871,7 @@ public class DisplayListManager {
 
     private static void addAccumulatedDraw(DirectTessellator tessellator, boolean copyLast) {
         if (pendingDraw == null) {
-            pendingDraw = new AccumulatedDraw(
-                tessellator, copyLast
-            );
-            accumulatedDraws.add(pendingDraw);
-            if (DEBUG_DISPLAY_LISTS) {
-                drawBarrier();
-            }
+            createNewDraw(tessellator, copyLast);
             return;
         }
         if (pendingDraw.drawMode != tessellator.drawMode
@@ -910,9 +879,20 @@ public class DisplayListManager {
             || isContinuous(tessellator.drawMode)
         ) {
             drawBarrier();
+            createNewDraw(tessellator, copyLast);
             return;
         }
         pendingDraw.mergeDraw(tessellator, copyLast);
+    }
+
+    private static void createNewDraw(DirectTessellator tessellator, boolean copyLast) {
+        pendingDraw = new AccumulatedDraw(
+            tessellator, copyLast
+        );
+        accumulatedDraws.add(pendingDraw);
+        if (DEBUG_DISPLAY_LISTS) {
+            drawBarrier();
+        }
     }
 
     /**
@@ -1209,4 +1189,14 @@ public class DisplayListManager {
         }
     }
 
+    private static final class DisplayListCallback extends VertexTransformCallback {
+
+        @Override
+        public boolean onDraw(CallbackTessellator tessellator) {
+            if (!tessellator.isEmpty()) {
+                addAccumulatedDraw(tessellator, false);
+            }
+            return true;
+        }
+    }
 }

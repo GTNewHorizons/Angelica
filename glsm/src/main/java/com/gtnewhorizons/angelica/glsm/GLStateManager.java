@@ -4390,8 +4390,8 @@ public class GLStateManager {
     }
 
     public static int glGetError() {
-        if (!RENDER_BACKEND.hasContext()) return 0;
         if (initConfig.noErrorChecks()) return 0;
+        if (!RENDER_BACKEND.hasContext()) return 0;
         return RENDER_BACKEND.getError();
     }
 
