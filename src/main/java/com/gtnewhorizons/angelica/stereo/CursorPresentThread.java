@@ -42,13 +42,37 @@ import java.util.concurrent.atomic.AtomicReference;
  * All of this is reachable via reflection on real LWJGL3 — lwjgl3ify rewrites bytecode class
  * refs but not {@code Class.forName} string literals.</p>
  *
- * <h2>Producer/consumer</h2>
+ * <h2>Producer/consumer (triple-buffered)</h2>
  *
- * <p>Main thread runs {@link #publishFrame()} at end-of-frame: copies framebufferMc into one
- * of two present textures via {@code glCopyImageSubData}, fences the copy, atomically publishes
- * the (writeIdx, fence) pair. Cursor thread consumes the pair, waits the fence, switches its
- * read index, blits, draws cursor sprites, swaps. Cursor sprite uses the live mouse position
- * sampled inside its own loop so it always lands at the most recent position.</p>
+ * <p>Three shared present textures plus a one-slot atomic mailbox. At all times the three
+ * texture indices are partitioned across three roles:</p>
+ * <ul>
+ *   <li>{@code mainWriteIdx} — exclusively read/written by main.</li>
+ *   <li>{@code cursorReadIdx} — exclusively read/written by cursor.</li>
+ *   <li>{@code pending} — atomic slot holding the third index, with an optional fence.
+ *       {@code fence != null} means "main published fresh content"; {@code null} means "stale,
+ *       no publish since last consume".</li>
+ * </ul>
+ *
+ * <p>Each {@link #publishFrame()}: main writes {@code tex[mainWriteIdx]}, fences, then
+ * {@code getAndSet}s a new slot into {@code pending}; the returned (old) slot's idx becomes
+ * the new {@code mainWriteIdx}. If the old slot held a non-null fence, the cursor never
+ * consumed it and the fence is deleted.</p>
+ *
+ * <p>Each cursor iteration: peek {@code pending}, and if its fence is non-null, attempt a
+ * {@code compareAndSet} replacing it with {@code (cursorReadIdx, null)}. On success, the cursor
+ * waits the peeked fence, sets {@code cursorReadIdx = peeked.idx}, and renders. Doing the
+ * {@code compareAndSet} <em>before</em> the wait is what makes the orphaned-fence delete in
+ * main safe: any concurrent main publish either (a) raced ahead and our CAS fails atomically —
+ * we never wait on the deleted fence, or (b) raced behind and sees our null-fence slot — no
+ * fence to delete. The fence we hold post-CAS is exclusively ours.</p>
+ *
+ * <p>Net effect: main never overwrites a texture cursor is reading or about to read, and the
+ * fence object lifetime has exactly one owner at each instant. The previous double-buffered
+ * design could let main's <em>next</em> copy land in the texture cursor switched to right after
+ * the fence signaled, producing torn frames (top rows fresh, bottom rows still in flight) —
+ * the artifact most visible with shaders + FRAPS lengthening both the GPU pipeline and the
+ * cursor thread's per-iter SwapBuffers latency.</p>
  *
  * <p>Platform: Windows only. macOS and Linux fall back to no async cursor (main thread draws
  * the cursor as it did before this feature existed).</p>
@@ -292,27 +316,44 @@ public final class CursorPresentThread {
     private final long mainHdc;
     private final long cursorHglrc;
 
-    // Double-buffer present textures, allocated on the main thread on first publish.
-    // Both contexts share these (wglCreateContextAttribsARB with shareContext = mainHglrc).
-    private volatile int texA = 0;
-    private volatile int texB = 0;
+    // Triple-buffered present textures, shared between main's and cursor's GL contexts (via
+    // wglCreateContextAttribsARB with shareContext = mainHglrc). Allocated lazily on main's
+    // first publishFrame. See class javadoc for the triple-buffer ownership model.
+    private final int[] tex = new int[3];
     private volatile int cachedW = 0;
     private volatile int cachedH = 0;
 
+    // Main thread's exclusive write target. Updated only on main, by taking the swapped-out
+    // index from each pending publish. No volatile needed — single-thread access.
+    private int mainWriteIdx = 0;
+
+    // Cursor thread's exclusive read target. Updated only on cursor, after a successful CAS
+    // claim of a published slot. No volatile needed — single-thread access.
+    private int cursorReadIdx = 1;
+
     /**
-     * Tuple of "the next index the cursor thread should switch to" and a GL fence that signals
-     * when the copy into that texture has finished on the GPU. The cursor thread atomically
-     * consumes this (via getAndSet(null)), waits on the fence, then updates its own read index.
+     * Atomic handoff slot for the triple-buffer. Always non-null. Holds the third texture
+     * index (the one neither main nor cursor currently owns) plus an optional fence:
+     * <ul>
+     *   <li>{@code fence != null}: main published a fresh copy targeting {@code idx}. Cursor
+     *       may claim it with {@link AtomicReference#compareAndSet}; on success cursor takes
+     *       {@code idx} as its new read target and leaves its old read target in the slot for
+     *       main to reclaim on its next publish.</li>
+     *   <li>{@code fence == null}: stale slot. No publish since cursor's last claim (or initial
+     *       state). Cursor leaves it alone; main's next publish overwrites it.</li>
+     * </ul>
      */
-    private static final class Pending {
-        final int writeIdx;
-        final GLSync copyFence;
-        Pending(int writeIdx, GLSync copyFence) {
-            this.writeIdx = writeIdx;
-            this.copyFence = copyFence;
+    private static final class Slot {
+        final int idx;
+        final GLSync fence; // null = stale, no new publish
+        Slot(int idx, GLSync fence) {
+            this.idx = idx;
+            this.fence = fence;
         }
     }
-    private final AtomicReference<Pending> pendingPublish = new AtomicReference<>();
+    // Initial slot holds index 2 with no fence; main owns 0, cursor owns 1. After the first
+    // successful publish, the slot starts cycling among the three indices.
+    private final AtomicReference<Slot> pending = new AtomicReference<>(new Slot(2, null));
 
     /**
      * Main thread's previous-frame fence, used to rate-limit main to "at most one frame
@@ -326,9 +367,6 @@ public final class CursorPresentThread {
      * synchronisation required.</p>
      */
     private GLSync previousFrameFence;
-
-    /** Which texture the cursor thread is currently reading: 0 = texA, 1 = texB. */
-    private volatile int currentReadIdx = 0;
 
     private boolean useArbFallback = false;
 
@@ -452,8 +490,12 @@ public final class CursorPresentThread {
         // Free the textures on the main thread (caller). Safe to delete textures from any
         // sharing context per the spec.
         try {
-            if (it.texA != 0) GL11.glDeleteTextures(it.texA);
-            if (it.texB != 0) GL11.glDeleteTextures(it.texB);
+            for (int i = 0; i < it.tex.length; i++) {
+                if (it.tex[i] != 0) {
+                    GL11.glDeleteTextures(it.tex[i]);
+                    it.tex[i] = 0;
+                }
+            }
             if (cursorTexId != 0) GL11.glDeleteTextures(cursorTexId);
         } catch (Throwable t) {
             LOGGER.warn("Error freeing present textures on stop.", t);
@@ -463,6 +505,12 @@ public final class CursorPresentThread {
         if (it.previousFrameFence != null) {
             deleteSyncReflective(it.previousFrameFence);
             it.previousFrameFence = null;
+        }
+        // Clean up any fence still sitting in the pending slot. Cursor thread has already
+        // joined, so no one else can be waiting on it.
+        final Slot stale = it.pending.get();
+        if (stale != null && stale.fence != null) {
+            deleteSyncReflective(stale.fence);
         }
     }
 
@@ -702,7 +750,7 @@ public final class CursorPresentThread {
             if (w <= 0 || h <= 0) return;
 
             final boolean justAllocated;
-            if (it.texA == 0 || it.texB == 0 || w != it.cachedW || h != it.cachedH) {
+            if (it.tex[0] == 0 || w != it.cachedW || h != it.cachedH) {
                 LOGGER.info("Cursor present: (re)allocating textures at {}×{} (was {}×{})",
                             w, h, it.cachedW, it.cachedH);
                 it.allocatePresentTextures(w, h);
@@ -711,9 +759,10 @@ public final class CursorPresentThread {
                 justAllocated = false;
             }
 
-            // Write to the texture the cursor thread is NOT currently reading.
-            final int writeIdx = 1 - it.currentReadIdx;
-            final int writeTex = (writeIdx == 0) ? it.texA : it.texB;
+            // Triple-buffer: main writes to its exclusively-owned index. mainWriteIdx rotates
+            // below by taking the index of the slot we just swapped out — guaranteeing main
+            // never targets the texture cursor is reading or about to read.
+            final int writeTex = it.tex[it.mainWriteIdx];
 
             // CRITICAL: glCopyImageSubData has undefined behavior when the source texture is
             // currently bound as a color attachment to the active framebuffer. We're called from
@@ -736,36 +785,44 @@ public final class CursorPresentThread {
             }
 
             // If we just (re)allocated the textures, also copy framebufferMc into the OTHER
-            // texture (the one cursor is reading right now). Otherwise the cursor thread's
-            // next iteration would sample the just-allocated, never-written texture, whose
-            // contents are undefined per the spec — many drivers return 0xFFFFFFFF (white),
-            // producing a "full screen white flash" until the next publish.
+            // two textures so cursor never samples a just-allocated, never-written texture
+            // (undefined per spec — many drivers return 0xFFFFFFFF, producing a "white flash"
+            // until the next publish).
             if (justAllocated) {
-                final int otherTex = (writeIdx == 0) ? it.texB : it.texA;
-                if (it.useArbFallback) {
-                    ARBCopyImage.glCopyImageSubData(srcTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
-                                                     otherTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
-                                                     w, h, 1);
-                } else {
-                    GL43.glCopyImageSubData(srcTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
-                                            otherTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
-                                            w, h, 1);
+                for (int i = 0; i < 3; i++) {
+                    if (i == it.mainWriteIdx) continue;
+                    final int otherTex = it.tex[i];
+                    if (it.useArbFallback) {
+                        ARBCopyImage.glCopyImageSubData(srcTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
+                                                         otherTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
+                                                         w, h, 1);
+                    } else {
+                        GL43.glCopyImageSubData(srcTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
+                                                otherTex, GL11.GL_TEXTURE_2D, 0, 0, 0, 0,
+                                                w, h, 1);
+                    }
                 }
             }
 
-            // Fence the copy. The cursor thread waits on this before switching its read index,
-            // so it never samples writeTex while the GPU is still executing the copy.
+            // Fence the copy. Cursor waits this before sampling the published texture, so it
+            // never reads a region the GPU is still writing.
             // glFenceSync exists in the lwjglx wrapper; the wait/delete pair is missing and is
             // called via reflection against real LWJGL3 — see REAL_GL32_glClientWaitSync.
             final GLSync fence = GL32.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0);
             GL11.glFlush(); // ensure the fence command is actually submitted
 
-            final Pending old = it.pendingPublish.getAndSet(new Pending(writeIdx, fence));
-            if (old != null) {
-                // Cursor thread didn't consume the previous publish before we made a new one
-                // (cursor thread slept past two main frames, unlikely but possible). Delete
-                // the orphaned fence on this thread (main context) so it doesn't leak.
-                deleteSyncReflective(old.copyFence);
+            // Atomic publish: swap our newly-written slot into pending and take the old slot's
+            // idx as our next write target. Cursor's CAS in presentOnce either (a) raced ahead
+            // of this getAndSet and already replaced the slot with a null-fence slot — we get
+            // that back here, prev.fence == null, no delete; or (b) raced behind — its CAS will
+            // fail against newSlot, so it never waits on the orphan fence we delete below.
+            final Slot newSlot = new Slot(it.mainWriteIdx, fence);
+            final Slot prev = it.pending.getAndSet(newSlot);
+            it.mainWriteIdx = prev.idx;
+            if (prev.fence != null) {
+                // Cursor never consumed the previous publish — main outpaced it. Safe to delete
+                // per the argument above: no cursor thread can be mid-wait on this fence.
+                deleteSyncReflective(prev.fence);
             }
 
             // Insert a fence at the end of this frame's GL work. Next call to publishFrame
@@ -806,12 +863,13 @@ public final class CursorPresentThread {
         }
     }
 
-    /** Allocate or resize the two present textures. Must be called on a GL-current thread. */
+    /** Allocate or resize the three present textures. Must be called on a GL-current thread. */
     private void allocatePresentTextures(int w, int h) {
-        if (texA == 0) texA = GL11.glGenTextures();
-        if (texB == 0) texB = GL11.glGenTextures();
-        for (int tex : new int[] { texA, texB }) {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        for (int i = 0; i < tex.length; i++) {
+            if (tex[i] == 0) tex[i] = GL11.glGenTextures();
+        }
+        for (int i = 0; i < tex.length; i++) {
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, tex[i]);
             GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0,
                               GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (IntBuffer) null);
             GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
@@ -916,33 +974,41 @@ public final class CursorPresentThread {
 
         final long iterStartNs = System.nanoTime();
 
-        // Consume any newly-published frame. We wait on the copy fence in our own context so we
-        // never sample writeTex while the GPU is still executing the copy that targeted it.
+        // Triple-buffer claim: peek the pending slot, then compareAndSet to take it before
+        // waiting on its fence. The ordering matters — see Slot's javadoc. The peek-then-CAS
+        // pattern means main can never delete a fence we are mid-wait on: any concurrent main
+        // publish either wins the CAS race (our CAS fails and we never wait) or loses it
+        // (main's getAndSet returns our null-fence slot and skips the delete branch).
         //
         // The fence signals only after EVERY prior command in main's stream completes — that
         // includes all of Iris's shader passes, not just our copy. With shaders enabled the
-        // drain can easily exceed 16ms (especially per-eye in stereo), and a too-short timeout
-        // would return GL_TIMEOUT_EXPIRED while the copy is still in flight. If we then
-        // switched currentReadIdx and sampled, we'd be reading a partially-written texture
-        // (undefined per spec, often surfaces as all-white on Windows drivers — the "white
-        // flash" symptom). Use a generous 1s timeout and, on the rare full timeout, keep the
-        // existing read index for this iteration so we re-present the previous valid frame.
-        final Pending pending = pendingPublish.getAndSet(null);
+        // drain can easily exceed 16ms (especially per-eye in stereo), so the timeout is
+        // generous (1s). On the rare full timeout, keep the existing read index for this
+        // iteration so we re-present the previous valid frame.
         final long waitStartNs = System.nanoTime();
-        if (pending != null) {
-            final int waitResult = clientWaitSyncReflective(
-                pending.copyFence, GL32.GL_SYNC_FLUSH_COMMANDS_BIT, 1_000_000_000L);
-            deleteSyncReflective(pending.copyFence);
-            if (waitResult == GL_ALREADY_SIGNALED || waitResult == GL_CONDITION_SATISFIED) {
-                currentReadIdx = pending.writeIdx;
+        final Slot peeked = pending.get();
+        if (peeked.fence != null) {
+            final Slot replacement = new Slot(cursorReadIdx, null);
+            if (pending.compareAndSet(peeked, replacement)) {
+                // We exclusively own peeked.fence now. Main's next getAndSet returns our
+                // null-fence replacement and won't delete it; cursor is the sole owner.
+                final int waitResult = clientWaitSyncReflective(
+                    peeked.fence, GL32.GL_SYNC_FLUSH_COMMANDS_BIT, 1_000_000_000L);
+                deleteSyncReflective(peeked.fence);
+                if (waitResult == GL_ALREADY_SIGNALED || waitResult == GL_CONDITION_SATISFIED) {
+                    cursorReadIdx = peeked.idx;
+                }
+                // GL_TIMEOUT_EXPIRED / GL_WAIT_FAILED: don't switch — keep showing the previous
+                // frame. The just-claimed slot already cycled in our null-fence replacement, so
+                // main will reclaim that idx on its next publish; nothing leaks.
             }
-            // GL_TIMEOUT_EXPIRED / GL_WAIT_FAILED: don't switch — keep showing the previous
-            // frame for one more iteration rather than sampling a half-written texture.
+            // CAS failed: main published in between our peek and our CAS. The new publish is
+            // visible to us next iteration; for now keep showing the previous frame rather than
+            // sampling a texture main may still be writing to.
         }
         final long waitEndNs = System.nanoTime();
 
-        final int idx = currentReadIdx;
-        final int tex = (idx == 0) ? texA : texB;
+        final int tex = this.tex[cursorReadIdx];
         if (tex == 0) return; // first frame, no publish yet — skip; let main's first frame land
 
         final int w = Display.getWidth();
