@@ -34,41 +34,62 @@ public final class StereoCursor {
         final boolean shouldOverride = shouldRemap() && Display.isActive();
 
         if (shouldOverride && !weAreGrabbing) {
-            // Entering stereo+GUI: grab the mouse so the OS cursor is hidden, then seed the
-            // virtual cursor at the LEFT eye's center. MC re-centers Mouse to (displayW/2,
-            // displayH/2) when a GUI opens; that lands on the seam between eyes (rightmost
-            // pixel of left eye), which made the cursor feel like it was pinned to the right
-            // edge. Force it to the center of the left eye region instead.
+            // Entering stereo+GUI: hide the OS cursor and seed the virtual cursor at the LEFT
+            // eye's center. We use HIDDEN (not DISABLED via Mouse.setGrabbed) so the OS cursor
+            // tracks mouse motion normally — the cursor present thread polls GetCursorPos every
+            // iteration to update vX/vY at its own rate, decoupling cursor responsiveness from
+            // main's framerate. With DISABLED, GetCursorPos would return the locked center and
+            // the cursor thread couldn't observe motion at all.
             final Minecraft mc = Minecraft.getMinecraft();
             final int halfW = mc.displayWidth / 2;
             vX = halfW / 2;
             vY = mc.displayHeight / 2;
-            Mouse.setGrabbed(true);
+            CursorPresentThread.setCursorHidden(true);
+            CursorPresentThread.resetCursorPolling();
             weAreGrabbing = true;
         } else if (!shouldOverride && weAreGrabbing) {
-            // Leaving stereo+GUI: restore the cursor to the appropriate state — visible if a GUI
-            // is open (so user can keep clicking after disabling stereo), hidden in-game so MC's
-            // camera control resumes.
-            Mouse.setGrabbed(Minecraft.getMinecraft().currentScreen == null);
+            // Leaving stereo+GUI: release ClipCursor and restore the appropriate cursor mode.
+            // We MUST force the GLFW mode directly via setCursorMode rather than relying on
+            // Mouse.setGrabbed alone — MC caches its own grab-flag and skips the underlying
+            // glfwSetInputMode call when the cache already matches. We changed GLFW to HIDDEN
+            // behind MC's back on entry, so MC's cache (still "true" from the pre-stereo grab)
+            // and GLFW's actual state (HIDDEN) are out of sync. Without this, GLFW would stay
+            // in HIDDEN after exit, and the cursor would leak out of the window during in-game
+            // mouse-look.
+            CursorPresentThread.releaseClipCursor();
+            final Minecraft mc = Minecraft.getMinecraft();
+            final boolean wantGrab = mc.currentScreen == null;
+            CursorPresentThread.setCursorMode(wantGrab
+                ? CursorPresentThread.CURSOR_DISABLED
+                : CursorPresentThread.CURSOR_NORMAL);
+            Mouse.setGrabbed(wantGrab); // also resync MC's cache
             weAreGrabbing = false;
         }
+        // No per-frame vX/vY update on main — the cursor present thread owns position now.
+    }
 
-        if (weAreGrabbing) {
-            final Minecraft mc = Minecraft.getMinecraft();
-            final int halfW = mc.displayWidth / 2;
-            final int fullH = mc.displayHeight;
-            // SBS_HALF compresses each eye's GUI horizontally into half the screen width, so a
-            // button that's N pixels wide in mono is N/2 pixels wide on screen here. Without
-            // the 0.5 scale, the cursor would cross the GUI in half the mouse motion compared
-            // to mono — feeling 2× too sensitive horizontally. The 0.5 keeps the mouse-pixel
-            // to on-screen-cursor-pixel feel consistent with mono.
-            vX += Mouse.getDX() * 0.5;
-            vY += Mouse.getDY();
-            if (vX < 0)              vX = 0;
-            if (vX > halfW - 1)      vX = halfW - 1;
-            if (vY < 0)              vY = 0;
-            if (vY > fullH - 1)      vY = fullH - 1;
-        }
+    /**
+     * Set the virtual cursor's absolute position. Called from the cursor present thread each
+     * iteration after computing the OS cursor's position relative to MC's client area. We use
+     * absolute (not accumulated-delta) positioning specifically to avoid asymmetric clamping
+     * drift: when the OS cursor sits at a clip-rect edge, accumulated deltas would clamp at the
+     * vX/vY edge but later opposite-direction motion would start from that clamp, leaving the
+     * virtual cursor and OS cursor out of sync. Absolute positioning guarantees that wherever
+     * the OS cursor is in the client area, the virtual cursor is at the deterministic mapped
+     * position — no drift possible.
+     */
+    public static synchronized void setVirtualPos(double vx, double vy) {
+        if (!weAreGrabbing) return;
+        final Minecraft mc = Minecraft.getMinecraft();
+        if (mc == null) return;
+        final int halfW = mc.displayWidth / 2;
+        final int fullH = mc.displayHeight;
+        if (vx < 0)              vx = 0;
+        if (vx > halfW - 1)      vx = halfW - 1;
+        if (vy < 0)              vy = 0;
+        if (vy > fullH - 1)      vy = fullH - 1;
+        vX = vx;
+        vY = vy;
     }
 
     /** Cursor X in window pixels. Bottom-up Y is in {@link #virtualY()}. */

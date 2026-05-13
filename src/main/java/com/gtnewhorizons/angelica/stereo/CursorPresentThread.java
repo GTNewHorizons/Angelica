@@ -120,6 +120,14 @@ public final class CursorPresentThread {
     private static volatile long PFN_GetObject;       // GetObjectW
     private static volatile long PFN_SelectObject;
     private static volatile long PFN_GetPixel;
+    private static volatile long PFN_GetCursorPos;
+    private static volatile long PFN_ClipCursor;
+    private static volatile long PFN_GetClientRect;
+    private static volatile long PFN_ClientToScreen;
+    private static volatile long PFN_GetForegroundWindow;
+    private static volatile Method REAL_GLFW_glfwSetInputMode;
+    private static volatile Method JNI_invokeP_singleArg;  // (funcPtr) → long — GetForegroundWindow
+    private static volatile long mainGlfwWindow = 0L;
 
     // JNI direct-invoke helpers (each maps to a specific Java arg-list overload)
     private static volatile Method JNI_invokePI;      // (P, funcPtr) → int — DeleteDC, DeleteObject
@@ -223,15 +231,29 @@ public final class CursorPresentThread {
             PFN_GetObject          = (Long) getFnAddr.invoke(gdi32, "GetObjectW");
             PFN_SelectObject       = (Long) getFnAddr.invoke(gdi32, "SelectObject");
             PFN_GetPixel           = (Long) getFnAddr.invoke(gdi32, "GetPixel");
+            // Cursor thread polls GetCursorPos every iteration to drive vX/vY at its own rate
+            // (decoupled from main's input poll cadence). Requires the GLFW cursor mode to be
+            // HIDDEN, not DISABLED, so GetCursorPos returns the real moving cursor position.
+            PFN_GetCursorPos       = (Long) getFnAddr.invoke(user32, "GetCursorPos");
+            // ClipCursor confines the cursor to MC's client rect while MC has focus, so
+            // motion can't accidentally drag the cursor into another window/monitor.
+            PFN_ClipCursor         = (Long) getFnAddr.invoke(user32, "ClipCursor");
+            PFN_GetClientRect      = (Long) getFnAddr.invoke(user32, "GetClientRect");
+            PFN_ClientToScreen     = (Long) getFnAddr.invoke(user32, "ClientToScreen");
+            PFN_GetForegroundWindow = (Long) getFnAddr.invoke(user32, "GetForegroundWindow");
+
+            final Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW");
+            REAL_GLFW_glfwSetInputMode = glfw.getMethod("glfwSetInputMode", long.class, int.class, int.class);
+            JNI_invokeP_singleArg = jniCls.getMethod("invokeP", long.class);
 
             if (PFN_LoadCursorW == 0L || PFN_GetIconInfo == 0L || PFN_CreateCompatibleDC == 0L
                 || PFN_DeleteDC == 0L || PFN_DeleteObject == 0L || PFN_GetObject == 0L
-                || PFN_SelectObject == 0L || PFN_GetPixel == 0L) {
+                || PFN_SelectObject == 0L || PFN_GetPixel == 0L || PFN_GetCursorPos == 0L) {
                 LOGGER.warn("One or more Win32 cursor function pointers failed to resolve;"
                           + " LoadCursorW={}, GetIconInfo={}, CreateCompatibleDC={}, DeleteDC={},"
-                          + " DeleteObject={}, GetObjectW={}, SelectObject={}, GetPixel={}.",
+                          + " DeleteObject={}, GetObjectW={}, SelectObject={}, GetPixel={}, GetCursorPos={}.",
                           PFN_LoadCursorW, PFN_GetIconInfo, PFN_CreateCompatibleDC, PFN_DeleteDC,
-                          PFN_DeleteObject, PFN_GetObject, PFN_SelectObject, PFN_GetPixel);
+                          PFN_DeleteObject, PFN_GetObject, PFN_SelectObject, PFN_GetPixel, PFN_GetCursorPos);
                 return;
             }
 
@@ -356,6 +378,8 @@ public final class CursorPresentThread {
             // with MC's context current.
             final long mainGlfw = invokeLong(REAL_GLFW_glfwGetCurrentContext);
             if (mainGlfw == 0L) throw new IllegalStateException("glfwGetCurrentContext() returned NULL");
+            // Cache for setCursorHidden() which also runs on main thread but in a different stack.
+            mainGlfwWindow = mainGlfw;
 
             mainHwnd = invokeLong(REAL_GLFWNativeWin32_getWin32Window, mainGlfw);
             if (mainHwnd == 0L) throw new IllegalStateException("glfwGetWin32Window returned NULL");
@@ -444,6 +468,206 @@ public final class CursorPresentThread {
 
     public static boolean isRunning() {
         return INSTANCE != null;
+    }
+
+    // GLFW cursor mode constants (from GLFW/glfw3.h). Public so callers can request a specific
+    // mode via setCursorMode (used to forcibly resync GLFW + MC's cached grab flag).
+    private static final int GLFW_CURSOR = 0x33001;
+    public static final int CURSOR_NORMAL = 0x34001;
+    public static final int CURSOR_HIDDEN = 0x34002;
+    public static final int CURSOR_DISABLED = 0x34003;
+
+    /**
+     * Toggle the OS cursor mode on the main window between visible-normal and hidden-but-tracking.
+     * Called from {@link StereoCursor} on the main thread when stereo+GUI activates / deactivates.
+     *
+     * <p>HIDDEN mode (versus DISABLED) is the key: with DISABLED, GetCursorPos returns the locked
+     * center forever, so the cursor present thread can't observe live mouse motion. With HIDDEN,
+     * the OS cursor is invisible but its position tracks the mouse normally, and GetCursorPos
+     * returns the live screen-space cursor position. The cursor thread polls this every iteration
+     * to update the virtual cursor at its own rate (≈display refresh) instead of being bottlenecked
+     * by main's frame rate.</p>
+     */
+    public static void setCursorHidden(boolean hidden) {
+        setCursorMode(hidden ? CURSOR_HIDDEN : CURSOR_NORMAL);
+    }
+
+    /**
+     * Force the GLFW cursor mode on the main window. Used to override MC's cached grab-flag
+     * behavior — {@code Mouse.setGrabbed} may no-op if MC thinks the requested state already
+     * matches, but if we changed GLFW behind its back the actual state is out of sync.
+     */
+    public static void setCursorMode(int mode) {
+        ensureCursorReflectionInitialized();
+        if (!cursorReflectionOk || REAL_GLFW_glfwSetInputMode == null) return;
+        if (mainGlfwWindow == 0L) {
+            try {
+                ensureReflectionInitialized();
+                if (REAL_GLFW_glfwGetCurrentContext != null) {
+                    mainGlfwWindow = ((Number) REAL_GLFW_glfwGetCurrentContext.invoke(null)).longValue();
+                }
+            } catch (Throwable t) {
+                LOGGER.warn("Failed to resolve GLFW window handle for cursor-mode set.", t);
+                return;
+            }
+        }
+        if (mainGlfwWindow == 0L) return;
+        try {
+            REAL_GLFW_glfwSetInputMode.invoke(null, mainGlfwWindow, GLFW_CURSOR, mode);
+        } catch (Throwable t) {
+            LOGGER.warn("Failed to set cursor mode (mode=0x{}).", Integer.toHexString(mode), t);
+        }
+    }
+
+    /**
+     * Poll the Windows OS cursor position via GetCursorPos and return the delta from the last
+     * call. First call after activation returns (0,0) and seeds the baseline. Returns null on
+     * any failure. Called from the cursor present thread only.
+     */
+    private final long[] lastRawCursor = { Long.MIN_VALUE, Long.MIN_VALUE };
+    private final ByteBuffer rawCursorPoint = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+    private long rawCursorPointAddr = 0L;
+    private boolean pollCursorDelta(int[] outDelta) {
+        if (PFN_GetCursorPos == 0L || JNI_invokePI == null || MEMUTIL_memAddress == null) return false;
+        try {
+            if (rawCursorPointAddr == 0L) {
+                rawCursorPointAddr = ((Number) MEMUTIL_memAddress.invoke(null, rawCursorPoint)).longValue();
+            }
+            final int rc = ((Number) JNI_invokePI.invoke(null, rawCursorPointAddr, PFN_GetCursorPos)).intValue();
+            if (rc == 0) return false;
+            final int curX = rawCursorPoint.getInt(0);
+            final int curY = rawCursorPoint.getInt(4);
+            if (lastRawCursor[0] == Long.MIN_VALUE) {
+                lastRawCursor[0] = curX;
+                lastRawCursor[1] = curY;
+                outDelta[0] = 0;
+                outDelta[1] = 0;
+                return true;
+            }
+            outDelta[0] = (int) (curX - lastRawCursor[0]);
+            outDelta[1] = (int) (curY - lastRawCursor[1]);
+            lastRawCursor[0] = curX;
+            lastRawCursor[1] = curY;
+            return true;
+        } catch (Throwable t) {
+            return false;
+        }
+    }
+
+    /** Reset cursor-position baseline so the next poll seeds rather than accumulates a delta. */
+    public static void resetCursorPolling() {
+        final CursorPresentThread it = INSTANCE;
+        if (it == null) return;
+        it.lastRawCursor[0] = Long.MIN_VALUE;
+        it.lastRawCursor[1] = Long.MIN_VALUE;
+        it.lastClipApplied = false;
+    }
+
+    // Reusable buffers for ClipCursor / GetClientRect / ClientToScreen (avoid per-iter alloc).
+    // RECT is 4 LONGs = 16 bytes (left, top, right, bottom). POINT is 2 LONGs = 8 bytes.
+    private final ByteBuffer clipRect = ByteBuffer.allocateDirect(16).order(ByteOrder.nativeOrder());
+    private final ByteBuffer clipPt = ByteBuffer.allocateDirect(8).order(ByteOrder.nativeOrder());
+    private long clipRectAddr = 0L;
+    private long clipPtAddr = 0L;
+    private boolean lastClipApplied = false;
+
+    /**
+     * If MC's main window is the foreground window, confine the cursor to its client rect via
+     * {@code ClipCursor}. If MC isn't focused, do nothing — Windows auto-releases the clip when
+     * the owning window loses focus, so the user retains free control over their other windows.
+     * Re-applying every iter is necessary because Windows clears the clip on focus loss, and we
+     * need to re-establish it on focus regain.
+     */
+    private void maintainClipCursor() {
+        if (PFN_ClipCursor == 0L || PFN_GetClientRect == 0L
+            || PFN_ClientToScreen == 0L || PFN_GetForegroundWindow == 0L
+            || JNI_invokeP_singleArg == null || JNI_invokePPI == null
+            || JNI_invokePI == null || MEMUTIL_memAddress == null) return;
+        try {
+            final long fg = ((Number) JNI_invokeP_singleArg.invoke(null, PFN_GetForegroundWindow)).longValue();
+            if (fg != mainHwnd) {
+                // Lost focus: Windows already cleared the clip. Note that so the next focus-gain
+                // triggers a fresh apply (cheap; just sets flag).
+                lastClipApplied = false;
+                return;
+            }
+            if (!lastClipApplied) {
+                // Just regained focus. The user moved the cursor in another window while we were
+                // unfocused; if we don't reset the baseline, pollCursorDelta will compute a huge
+                // delta from the pre-unfocus position to the current position, jumping the virtual
+                // cursor to a clamped edge. Reset so the next poll just seeds at the snapped
+                // post-ClipCursor position with zero delta.
+                lastRawCursor[0] = Long.MIN_VALUE;
+                lastRawCursor[1] = Long.MIN_VALUE;
+            }
+            if (clipRectAddr == 0L) {
+                clipRectAddr = ((Number) MEMUTIL_memAddress.invoke(null, clipRect)).longValue();
+                clipPtAddr = ((Number) MEMUTIL_memAddress.invoke(null, clipPt)).longValue();
+            }
+            // GetClientRect returns (0, 0, width, height) in client coords.
+            final int gcrRc = ((Number) JNI_invokePPI.invoke(null, mainHwnd, clipRectAddr, PFN_GetClientRect)).intValue();
+            if (gcrRc == 0) return;
+            final int clientW = clipRect.getInt(8);
+            final int clientH = clipRect.getInt(12);
+            // ClientToScreen translates (0,0) → screen coords of the client area's top-left.
+            clipPt.putInt(0, 0);
+            clipPt.putInt(4, 0);
+            final int ctsRc = ((Number) JNI_invokePPI.invoke(null, mainHwnd, clipPtAddr, PFN_ClientToScreen)).intValue();
+            if (ctsRc == 0) return;
+            final int sx = clipPt.getInt(0);
+            final int sy = clipPt.getInt(4);
+            // Build the screen-space RECT and clip.
+            clipRect.putInt(0, sx);
+            clipRect.putInt(4, sy);
+            clipRect.putInt(8, sx + clientW);
+            clipRect.putInt(12, sy + clientH);
+            JNI_invokePI.invoke(null, clipRectAddr, PFN_ClipCursor);
+            if (!lastClipApplied) {
+                LOGGER.info("ClipCursor first apply: hwnd=0x{}, GetClientRect=({}x{}), ClientToScreen(0,0)=({},{}), final rect=({},{},{},{})",
+                    Long.toHexString(mainHwnd), clientW, clientH, sx, sy,
+                    sx, sy, sx + clientW, sy + clientH);
+            }
+            lastClipApplied = true;
+
+            // Read OS cursor position (now snapped inside the clip rect we just applied) and
+            // map it absolutely to the virtual cursor. Absolute positioning — not delta
+            // accumulation — guarantees no drift between OS cursor and virtual cursor when the
+            // user pushes against an edge.
+            if (PFN_GetCursorPos != 0L) {
+                clipPt.putInt(0, 0);
+                clipPt.putInt(4, 0);
+                final int gcpRc = ((Number) JNI_invokePI.invoke(null, clipPtAddr, PFN_GetCursorPos)).intValue();
+                if (gcpRc != 0) {
+                    final int cx = clipPt.getInt(0);
+                    final int cy = clipPt.getInt(4);
+                    final int relX = cx - sx;
+                    final int relY = cy - sy;
+                    // X scaled by 0.5 because SBS_HALF compresses each eye horizontally; Y is
+                    // 1:1 but flipped (Win32 grows down, vY grows up).
+                    final double vx = relX * 0.5;
+                    final double vy = (clientH - 1) - relY;
+                    StereoCursor.setVirtualPos(vx, vy);
+                }
+            }
+        } catch (Throwable t) {
+            // Don't spam on persistent failure — disable for the rest of the session by zeroing the fn ptrs.
+            LOGGER.warn("ClipCursor maintenance failed; disabling clip for this session.", t);
+            PFN_ClipCursor = 0L;
+        }
+    }
+
+    /** Release any ClipCursor confinement. Called when leaving stereo+GUI. */
+    public static void releaseClipCursor() {
+        final CursorPresentThread it = INSTANCE;
+        if (it == null) return;
+        if (PFN_ClipCursor == 0L || JNI_invokePI == null) return;
+        try {
+            // ClipCursor(NULL) releases the confinement.
+            JNI_invokePI.invoke(null, 0L, PFN_ClipCursor);
+            it.lastClipApplied = false;
+        } catch (Throwable t) {
+            LOGGER.warn("ClipCursor release failed.", t);
+        }
     }
 
     /**
@@ -669,8 +893,28 @@ public final class CursorPresentThread {
      * blit it as a fullscreen quad to the default framebuffer (= main window), draw the cursor
      * sprites on top, swap the main window.
      */
+    // Diagnostic counters: accumulate per-iteration timing and dump averages every N iters so we
+    // can tell whether cursor latency is dominated by fence wait (main slow) or non-vsynced swap.
+    private long diagIterCount = 0;
+    private long diagWaitNs = 0;
+    private long diagSwapNs = 0;
+    private long diagIterNs = 0;
+    private static final int DIAG_REPORT_EVERY = 100;
+
+    private final int[] cursorDeltaScratch = new int[2];
+
     private void presentOnce() {
         if (!StereoState.INSTANCE.isActive()) return;
+
+        // Maintain ClipCursor on MC's client area while focused, and (atomically with that)
+        // read the OS cursor pos and update the virtual cursor absolutely from it. Both happen
+        // inside maintainClipCursor — the cursor pos is always read AFTER the clip is applied,
+        // so the OS cursor we observe is already snapped inside the rect.
+        if (StereoCursor.isActive()) {
+            maintainClipCursor();
+        }
+
+        final long iterStartNs = System.nanoTime();
 
         // Consume any newly-published frame. We wait on the copy fence in our own context so we
         // never sample writeTex while the GPU is still executing the copy that targeted it.
@@ -684,6 +928,7 @@ public final class CursorPresentThread {
         // flash" symptom). Use a generous 1s timeout and, on the rare full timeout, keep the
         // existing read index for this iteration so we re-present the previous valid frame.
         final Pending pending = pendingPublish.getAndSet(null);
+        final long waitStartNs = System.nanoTime();
         if (pending != null) {
             final int waitResult = clientWaitSyncReflective(
                 pending.copyFence, GL32.GL_SYNC_FLUSH_COMMANDS_BIT, 1_000_000_000L);
@@ -694,6 +939,7 @@ public final class CursorPresentThread {
             // GL_TIMEOUT_EXPIRED / GL_WAIT_FAILED: don't switch — keep showing the previous
             // frame for one more iteration rather than sampling a half-written texture.
         }
+        final long waitEndNs = System.nanoTime();
 
         final int idx = currentReadIdx;
         final int tex = (idx == 0) ? texA : texB;
@@ -731,10 +977,30 @@ public final class CursorPresentThread {
             drawStereoCursors(w, h);
         }
 
+        final long swapStartNs = System.nanoTime();
         try {
             invokeBool(REAL_GDI32_SwapBuffers, mainHdc);
         } catch (Throwable t) {
             LOGGER.warn("GDI32.SwapBuffers failed.", t);
+        }
+        final long swapEndNs = System.nanoTime();
+
+        diagIterCount++;
+        diagWaitNs += (waitEndNs - waitStartNs);
+        diagSwapNs += (swapEndNs - swapStartNs);
+        diagIterNs += (swapEndNs - iterStartNs);
+        if (diagIterCount >= DIAG_REPORT_EVERY) {
+            final double avgWaitMs = (diagWaitNs / (double) diagIterCount) / 1_000_000.0;
+            final double avgSwapMs = (diagSwapNs / (double) diagIterCount) / 1_000_000.0;
+            final double avgIterMs = (diagIterNs / (double) diagIterCount) / 1_000_000.0;
+            final double effectiveHz = avgIterMs > 0 ? 1000.0 / avgIterMs : 0;
+            LOGGER.info(String.format(
+                "Cursor present timing (avg over %d iters): wait=%.2fms, swap=%.2fms, iter=%.2fms (%.1f Hz)",
+                diagIterCount, avgWaitMs, avgSwapMs, avgIterMs, effectiveHz));
+            diagIterCount = 0;
+            diagWaitNs = 0;
+            diagSwapNs = 0;
+            diagIterNs = 0;
         }
     }
 
