@@ -469,6 +469,10 @@ public final class CursorPresentThread {
     public static synchronized void stop() {
         final CursorPresentThread it = INSTANCE;
         if (it == null) return;
+        // Release ClipCursor confinement before tearing down. Without this, the OS clip stays
+        // applied until the window loses focus — trapping the cursor inside MC's client rect
+        // even after stereo is disabled.
+        releaseClipCursor();
         INSTANCE = null;
         it.running = false;
         try {
@@ -964,12 +968,21 @@ public final class CursorPresentThread {
     private void presentOnce() {
         if (!StereoState.INSTANCE.isActive()) return;
 
-        // Maintain ClipCursor on MC's client area while focused, and (atomically with that)
-        // read the OS cursor pos and update the virtual cursor absolutely from it. Both happen
-        // inside maintainClipCursor — the cursor pos is always read AFTER the clip is applied,
-        // so the OS cursor we observe is already snapped inside the rect.
-        if (StereoCursor.isActive()) {
+        // ClipCursor policy: confine the OS cursor to MC's client rect whenever the cursor
+        // should be "captured". Two cases qualify:
+        //   1. stereo+GUI mode (StereoCursor.isActive()) — backstops the virtual cursor's clamp
+        //      and drives its position via the GetCursorPos read inside maintainClipCursor.
+        //   2. stereo gameplay (Mouse grabbed / in-game focus) — backstops GLFW's CURSOR_DISABLED
+        //      centering, which has enough latency that the OS cursor briefly escapes on rapid
+        //      mouse motion. ClipCursor is OS-level continuous confinement and closes that gap.
+        // Outside both cases (GUI open but HUD != DUPLICATE, window unfocused, etc.) we
+        // explicitly release any clip we were holding so the user can move the cursor freely.
+        final Minecraft mc = Minecraft.getMinecraft();
+        final boolean wantClip = StereoCursor.isActive() || (mc != null && mc.inGameHasFocus);
+        if (wantClip) {
             maintainClipCursor();
+        } else if (lastClipApplied) {
+            releaseClipCursor();
         }
 
         final long iterStartNs = System.nanoTime();

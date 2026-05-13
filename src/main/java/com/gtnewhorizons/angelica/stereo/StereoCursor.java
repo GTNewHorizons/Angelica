@@ -48,15 +48,15 @@ public final class StereoCursor {
             CursorPresentThread.resetCursorPolling();
             weAreGrabbing = true;
         } else if (!shouldOverride && weAreGrabbing) {
-            // Leaving stereo+GUI: release ClipCursor and restore the appropriate cursor mode.
-            // We MUST force the GLFW mode directly via setCursorMode rather than relying on
-            // Mouse.setGrabbed alone — MC caches its own grab-flag and skips the underlying
-            // glfwSetInputMode call when the cache already matches. We changed GLFW to HIDDEN
-            // behind MC's back on entry, so MC's cache (still "true" from the pre-stereo grab)
-            // and GLFW's actual state (HIDDEN) are out of sync. Without this, GLFW would stay
-            // in HIDDEN after exit, and the cursor would leak out of the window during in-game
-            // mouse-look.
-            CursorPresentThread.releaseClipCursor();
+            // Leaving stereo+GUI: restore the appropriate cursor mode. We MUST force the GLFW
+            // mode directly via setCursorMode rather than relying on Mouse.setGrabbed alone —
+            // MC caches its own grab-flag and skips the underlying glfwSetInputMode call when
+            // the cache already matches. We changed GLFW to HIDDEN behind MC's back on entry,
+            // so MC's cache (still "true" from the pre-stereo grab) and GLFW's actual state
+            // (HIDDEN) are out of sync. Without this, GLFW would stay in HIDDEN after exit, and
+            // the cursor would leak out of the window during in-game mouse-look. ClipCursor is
+            // NOT released here — the cursor thread keeps it applied while in-game focus is
+            // held, backstopping GLFW's CURSOR_DISABLED centering latency.
             final Minecraft mc = Minecraft.getMinecraft();
             final boolean wantGrab = mc.currentScreen == null;
             CursorPresentThread.setCursorMode(wantGrab
