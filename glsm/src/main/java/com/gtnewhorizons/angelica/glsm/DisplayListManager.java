@@ -53,17 +53,19 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 @UtilityClass
 public class DisplayListManager {
     // -Dangelica.debugDisplayLists: disable transform collapsing and draw merging
-    private static final boolean DEBUG_DISPLAY_LISTS = false;
+    private static final boolean DEBUG_DISPLAY_LISTS;
 
     // -Dangelica.logDisplayListCompilation: log compiled display list commands
-    private static final boolean LOG_DISPLAY_LIST_COMPILATION = false;
+    private static final boolean LOG_DISPLAY_LIST_COMPILATION;
 
-//    static {
-//        LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
-//        if (LOG_DISPLAY_LIST_COMPILATION) {
-//            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
-//        }
-//    }
+    static {
+        DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debugDisplayLists");
+
+        LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
+        if (LOG_DISPLAY_LIST_COMPILATION) {
+            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
+        }
+    }
 
 
     /** Recording mode for display list compilation. */
@@ -689,7 +691,7 @@ public class DisplayListManager {
      * Called by GLStateManager.glLoadMatrix() - after loading an absolute matrix,
      * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
      */
-    public static void resetRelativeTransform() {
+    static void resetRelativeTransform() {
         transformCallback.setIdentity();
         relativeTransformType = 0;
     }
@@ -895,7 +897,7 @@ public class DisplayListManager {
 
     /**
      * Draw modes that rely on the previous vertex data cannot be merged currently.
-     * It is possible to merge them using Index Buffers, but currently implemented.
+     * It is possible to merge them using Index Buffers, but currently unimplemented.
      */
     private static boolean isContinuous(int drawMode) {
         return drawMode == GL11.GL_TRIANGLE_STRIP || drawMode == GL11.GL_TRIANGLE_FAN
@@ -908,7 +910,7 @@ public class DisplayListManager {
      */
     public static void glCallList(int list) {
         if (currentRecorder != null) {
-            recordCallList(list); //TODO extract display list data & optimize
+            recordCallList(list);
 
             if (getListMode() != GL11.GL_COMPILE) {
                 // Don't record the GL calls, we already recorded glCallList
