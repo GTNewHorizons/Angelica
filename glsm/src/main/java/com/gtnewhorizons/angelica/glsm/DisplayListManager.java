@@ -21,14 +21,12 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
+import com.mojang.brigadier.Command;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import lombok.Getter;
 import lombok.experimental.UtilityClass;
 import org.joml.Matrix4f;
-import org.joml.Matrix4fc;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -66,12 +64,6 @@ public class DisplayListManager {
 //            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
 //        }
 //    }
-
-    private static final Matrix4f IDENTITY = new Matrix4f();
-
-    public static boolean isIdentity(Matrix4f m) {
-        return (m.properties() & Matrix4f.PROPERTY_IDENTITY) != 0 || m.equals(IDENTITY, 1e-6f);
-    }
 
 
     /** Recording mode for display list compilation. */
@@ -151,19 +143,19 @@ public class DisplayListManager {
         currentRecorder = r;
     }
 
-    public static void flushAll() {
+
+    private static final Vector3f transformVector = new Vector3f();
+
+    static void flushAll() {
         drawBarrier();
         flushMatrix();
     }
 
-
-    private static final Vector3f transformVector = new Vector3f();
-
     /**
      * Emit accumulated transform as MultMatrix if non-identity, then reset.
      */
-    public static void flushMatrix() {
-        if (isIdentity(transformCallback.getTransformMatrix())) {
+    static void flushMatrix() {
+        if (transformCallback.isIdentity()) {
             // Clear pending ops even if we don't emit - they were no-ops (identity)
             if (pendingTransformOps != null) {
                 pendingTransformOps.clear();
@@ -187,14 +179,14 @@ public class DisplayListManager {
         // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
         drawBarrier();
         if (relativeTransformType == TRANSFORM_SCALE) {
-            currentRecorder.writeScale(transformCallback.getTransformMatrix().getScale(transformVector));
+            currentRecorder.writeScale(transformCallback.getScale(transformVector));
         } else if (relativeTransformType == TRANSFORM_TRANSLATE) {
-            currentRecorder.writeTranslate(transformCallback.getTransformMatrix().getTranslation(transformVector));
+            currentRecorder.writeTranslate(transformCallback.getTranslation(transformVector));
         } else {
-            currentRecorder.writeMultMatrix(transformCallback.getTransformMatrix());
+            currentRecorder.writeMultMatrix(transformCallback.getReadMatrix());
         }
         if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-            GLStateManager.applyMultMatrix(transformCallback.getTransformMatrix());
+            GLStateManager.applyMultMatrix(transformCallback.getReadMatrix());
         }
 
 
@@ -341,6 +333,7 @@ public class DisplayListManager {
 
     public static void recordMatrixMode(int mode) {
         flushMatrix();  // Matrix barrier: flush and reset
+        transformCallback.setMatrixMode(mode);
         currentRecorder.writeMatrixMode(mode);
     }
 
@@ -593,7 +586,7 @@ public class DisplayListManager {
     }
 
     public static void applyMatrixTranslation(float x, float y, float z) {
-        transformCallback.getTransformMatrix().translate(x, y, z);
+        transformCallback.translate(x, y, z);
         relativeTransformType |= TRANSFORM_TRANSLATE;
 
         if (pendingTransformOps != null) {
@@ -606,7 +599,7 @@ public class DisplayListManager {
     }
 
     public static void applyMatrixScale(float x, float y, float z) {
-        transformCallback.getTransformMatrix().scale(x, y, z);
+        transformCallback.scale(x, y, z);
         relativeTransformType |= TRANSFORM_SCALE;
 
         if (pendingTransformOps != null) {
@@ -624,7 +617,7 @@ public class DisplayListManager {
      * Requires the angle to be in radians & the coordinates to be normalized.
      */
     public static void applyMatrixRotation(float rad, float x, float y, float z) {
-        transformCallback.getTransformMatrix().rotate(rad, x, y, z);
+        transformCallback.rotate(rad, x, y, z);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -646,7 +639,7 @@ public class DisplayListManager {
      * @param matrix The matrix to multiply
      */
     public static void updateRelativeTransform(Matrix4f matrix) {
-        transformCallback.getTransformMatrix().mul(matrix);
+        transformCallback.multMatrix(matrix);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -664,7 +657,7 @@ public class DisplayListManager {
     public static void updateRelativeTransformOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        transformCallback.getTransformMatrix().mul(orthoFrustumTemp);
+        transformCallback.multMatrix(orthoFrustumTemp);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -679,7 +672,7 @@ public class DisplayListManager {
     public static void updateRelativeTransformFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        transformCallback.getTransformMatrix().mul(orthoFrustumTemp);
+        transformCallback.multMatrix(orthoFrustumTemp);
         relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
@@ -697,7 +690,7 @@ public class DisplayListManager {
      * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
      */
     public static void resetRelativeTransform() {
-        transformCallback.getTransformMatrix().identity();
+        transformCallback.setIdentity();
         relativeTransformType = 0;
     }
 
@@ -787,6 +780,11 @@ public class DisplayListManager {
         TessellatorManager.stopCapturingDirect();
 
         flushAll();
+
+        // Reset back to MODELVIEW (default state)
+        if (transformCallback.getMatrixMode() != GL11.GL_MODELVIEW) {
+            recordMatrixMode(GL11.GL_MODELVIEW);
+        }
 
         final CompiledDisplayList compiled;
         // Create CompiledDisplayList with both unoptimized and optimized versions

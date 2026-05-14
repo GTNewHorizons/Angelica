@@ -121,6 +121,7 @@ public final class ImmediateModeRecorder {
         }
 
         t.isDrawing = false;
+        t.color = 0xFFFFFFFF;
 
         if (t.isEmpty()) return null;
 
