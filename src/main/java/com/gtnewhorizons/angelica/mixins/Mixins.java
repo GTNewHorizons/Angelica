@@ -38,6 +38,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
             , "angelica.bugfixes.MixinModelCreeper_AuraBodyInflate"
+            , "angelica.bugfixes.MixinModelSkeleton_LegPelvisZFight"
             , "angelica.bugfixes.MixinModelWither_ArmorCentering"
             , "angelica.bugfixes.MixinRenderBlocks_CrossedSquaresNormal"
             , "angelica.bugfixes.MixinRenderCreeper_AuraDepth"
