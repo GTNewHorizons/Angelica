@@ -1,11 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
-import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import jss.notfine.core.Settings;
@@ -32,64 +31,165 @@ import org.spongepowered.asm.mixin.Unique;
 
 import java.nio.ByteBuffer;
 
+/*
+ * Vanilla MC walks every cell of the cloud texture every frame, builds quads
+ * through Tessellator, uploads them, and draws. At Angelica's render
+ * distances that's tens of thousands of quads per frame for something that
+ * almost never visibly changes. This mixin replaces that with:
+ *
+ *   1. A cell-opacity bitmap, extracted once from the clouds.png alpha
+ *      channel. Used for neighbor lookups + face culling.
+ *
+ *   2. A cached VBO, geometry is held in cell-local coordinates and
+ *      translated by the camera position around the draw, so camera motion
+ *      within a cell doesn't dirty it. Cache invalidates on cell crossings,
+ *      render-distance changes, and a few other params.
+ *
+ *   3. Greedy meshing of top + bottom faces across the entire visible grid.
+ *      Side faces use per-chunk 1-D greedy runs.
+ *
+ *   4. Tint applied per-draw via glColor4f to the generic COLOR vertex
+ *      attribute. No tint baked into the VBO, so weather/day-night
+ *      transitions don't re-upload anything.
+ *
+ *   5. Quads are bucket-sorted into 4 contiguous regions (one per
+ *      darkening factor: top, bottom, X-side, Z-side) so each region draws
+ *      in a single glDrawArrays with its own tinted glColor4f, instead of
+ *      baking RGBA into every vertex.
+ */
 @Mixin(value = RenderGlobal.class)
 public abstract class MixinRenderGlobal {
-
-    @Unique
-    private static int angelica$cloudMipmapTexId = -1;
-    @Unique
-    private static long[] angelica$cellOpaqueBits;
-    @Unique
-    private static int angelica$cellW;
-    @Unique
-    private static int angelica$cellH;
-    @Unique
-    private static int angelica$cellWMask;
-    @Unique
-    private static int angelica$cellHMask;
-    @Unique
-    private static boolean angelica$cellWHPow2;
-    @Unique
-    private static int angelica$cellTexId = -1;
-    @Unique
-    private static final int ANGELICA_CELL_EMPTY_THRESHOLD = 10;
-
-    // Caching the cloud mesh. Stored cell-local (no camera offset baked into
-    // vertices) so the per-frame camera position is applied as a translation
-    // around the draw and camera motion within a cell doesn't invalidate the
-    // cache. Immutable VBO so the depth prepass and color pass both reuse
-    // GPU-resident geometry; Angelica picks up glDrawArrays in the cloud phase
-    // and binds gbuffers_clouds on its own.
+    // Cell-opacity bitmap: one bit per pixel of the cloud texture,
+    // set if the pixel's alpha >= the empty threshold.
+    @Unique private static int          angelica$cloudMipmapTexId = -1;
+    @Unique private static long[]       angelica$cellOpaqueBits;
+    @Unique private static int          angelica$cellW;
+    @Unique private static int          angelica$cellH;
+    @Unique private static int          angelica$cellWMask;
+    @Unique private static int          angelica$cellHMask;
+    @Unique private static boolean      angelica$cellWHPow2;
+    @Unique private static int          angelica$cellTexId            = -1;
+    @Unique private static final int    ANGELICA_CELL_EMPTY_THRESHOLD = 10;
+    // The VAO holds cell-local geometry: vertex positions are in
+    // (cell-X, 0/cloudHeight, cell-Z) world space, with camera offset
+    // applied as a translation around the draw call.
+    // The cache key below covers every input that would actually change the geometry
+    // (cell offset, render radius, face visibility, etc.).
     @Unique private static IVertexArrayObject angelica$cloudVao;
-    @Unique private static ByteBuffer angelica$factorOnlyBytes;
-    @Unique private static ByteBuffer angelica$workingBytes;
-    @Unique private static int angelica$cachedCellTexId = Integer.MIN_VALUE;
-    @Unique private static int angelica$cachedFloorOffsetX = Integer.MIN_VALUE;
-    @Unique private static int angelica$cachedFloorOffsetZ = Integer.MIN_VALUE;
-    @Unique private static boolean angelica$cachedEmitTopFace;
-    @Unique private static boolean angelica$cachedEmitBottomFace;
-    @Unique private static boolean angelica$cachedCameraInsideCloud;
-    @Unique private static int angelica$cachedRenderRadius = -1;
-    @Unique private static float angelica$cachedCloudInteriorHeight = -1f;
-    @Unique private static float angelica$cachedCloudScrollingX = Float.NaN;
-    @Unique private static float angelica$cachedCloudScrollingZ = Float.NaN;
-    @Unique private static int angelica$cachedVertexCount;
-    @Unique private static float angelica$appliedTintR = Float.NaN;
-    @Unique private static float angelica$appliedTintG = Float.NaN;
-    @Unique private static float angelica$appliedTintB = Float.NaN;
+    @Unique private static int      angelica$cachedCellTexId            = Integer.MIN_VALUE;
+    @Unique private static int      angelica$cachedFloorOffsetX         = Integer.MIN_VALUE;
+    @Unique private static int      angelica$cachedFloorOffsetZ         = Integer.MIN_VALUE;
+    @Unique private static boolean  angelica$cachedEmitTopFace;
+    @Unique private static boolean  angelica$cachedEmitBottomFace;
+    @Unique private static boolean  angelica$cachedCameraInsideCloud;
+    @Unique private static int      angelica$cachedRenderRadius         = -1;
+    @Unique private static float    angelica$cachedCloudInteriorHeight  = -1f;
+    @Unique private static float    angelica$cachedCloudScrollingX      = Float.NaN;
+    @Unique private static float    angelica$cachedCloudScrollingZ      = Float.NaN;
+    @Unique private static int      angelica$cachedVertexCount;
 
-    // POSITION_TEXTURE_COLOR_NORMAL layout: POS(12) + TEX(8) + COLOR(4) + NORMAL(4)
-    @Unique private static final int ANGELICA_CLOUD_VERTEX_STRIDE = 28;
-    @Unique private static final int ANGELICA_CLOUD_COLOR_OFFSET = 20;
-    // Tint update is suppressed unless any channel moved by more than this.
-    @Unique private static final float ANGELICA_TINT_UPDATE_EPSILON = 1.0F / 255.0F;
+    // The factor index that picks its darkening factor.
+    // After emit, the buffer is bucket-sorted by this so each
+    // factor's quads end up contiguous in the VBO and the draw
+    // loop can issue one glDrawArrays per factor.
+    @Unique private static byte[] angelica$quadFactor = new byte[2048];
+    @Unique private static int    angelica$quadCount;
 
-    // Per-chunk opacity. cellsPerChunk=8 hardcoded by cloudWidth=8;
-    // grid is 10×10 (chunk + 1-cell border on each side). Each int holds one
-    // row of 10 bits (bit n = opacity of cell at column n). Built once per
-    // chunk; consumed by per-cell neighbor lookups + greedy meshing instead of
-    // hitting the global bitset 4× per cell.
+    // Scratch for the cross-chunk top/bottom greedy mesh. Holds the
+    // per-64-bit-word mask of a run while we extend it downward. Reused
+    // across runs; grown if a single run spans more longs than fit.
+
+    @Unique private static long[] angelica$runMaskScratch = new long[8];
+    // Vertex format:
+    //
+    // POSITION_TEXTURE_NORMAL: pos(12 bytes) + uv(8 bytes) + normal(4 bytes).
+    // Vanilla MC bakes RGBA per vertex; we don't, because tint changes
+    // used to dominate the profile by re-uploading the whole VBO.
+    //
+    // Instead, the tint is set per draw via glColor4f which GLStateManager
+    // forwards to the COLOR generic vertex attribute in flushDeferredVertexAttribs.
+    // With the color array disabled on this VAO, the generic
+    // attribute feeds gl_Color / iris_Color in the shader.
+    //
+    // angelica$writeCloudVertex writes bytes directly at these offsets;
+    // verifyCloudVertexFormat asserts the GTNHLib format still matches
+    // before the first emit so a layout change blows up loudly instead
+    // of silently corrupting geometry.
+    @Unique private static final int ANGELICA_CLOUD_VERTEX_STRIDE = 24;
+    @Unique private static final int ANGELICA_CLOUD_NORMAL_OFFSET = 20;
+
+    // The four darkening factors vanilla MC uses for clouds. Indices
+    // are what we store in quadFactor and what the sort + draw loops
+    // iterate over.
+    @Unique private static final byte       ANGELICA_FACTOR_TOP_IDX         = 0;
+    @Unique private static final byte       ANGELICA_FACTOR_BOTTOM_IDX      = 1;
+    @Unique private static final byte       ANGELICA_FACTOR_X_IDX           = 2;
+    @Unique private static final byte       ANGELICA_FACTOR_Z_IDX           = 3;
+    @Unique private static final float[]    ANGELICA_FACTOR_VALUES          = { 0.7f, 1.0f, 0.9f, 0.8f };
+    @Unique private static final float      ANGELICA_CLOUD_ALPHA            = 0.8f;
+
+    // Bucket-sort outputs, set by sortQuadsByFactor and consumed by
+    // drawAllFactorGroups: count of quads per factor, first vertex of
+    // each factor's region (prefix sum × 4 verts per quad).
+    @Unique private static final int[] angelica$factorQuadCount  = new int[4];
+    @Unique private static final int[] angelica$factorVertOffset = new int[4];
+    // Scratch write pointers used during the sort copy itself.
+    @Unique private static final long[] angelica$factorWriteAddr = new long[4];
+
+    // The normal int is 4 bytes packed in a specific position-order,
+    // and which int encoding matches that byte order depends on the machine.
+    @Unique private static final boolean ANGELICA_BIG_ENDIAN =
+        java.nio.ByteOrder.nativeOrder() == java.nio.ByteOrder.BIG_ENDIAN;
+
+    // Emit + sort buffers.
+    //
+    // Going around DirectTessellator and writing bytes directly into a
+    // reusable native buffer made this path noticeably cheaper than
+    // going through Tessellator's per-attribute dispatch.
+    //
+    // emitBuffer: where the per-cell emit code writes its quads in
+    // natural traversal order, with writeAddr / writeEnd tracking the
+    // current cursor and capacity.
+    //
+    // sortedBuffer: the bucket sort copies whole quads from emitBuffer
+    // into here, grouped by factor. This is what gets uploaded to the
+    // VBO. Two buffers because doing the sort in place would need an
+    // extra index array of the same total size; the dedicated buffer
+    // is simpler and the memcpy is cheap.
+    @Unique private static ByteBuffer angelica$emitBuffer;
+    @Unique private static long       angelica$emitBufferAddr;
+    @Unique private static int        angelica$emitBufferCapacity;
+    @Unique private static long       angelica$writeAddr;
+    @Unique private static long       angelica$writeEnd;
+    @Unique private static boolean    angelica$formatVerified;
+    @Unique private static ByteBuffer angelica$sortedBuffer;
+    @Unique private static long       angelica$sortedBufferAddr;
+    @Unique private static int        angelica$sortedBufferCapacity;
+
+    // Per-chunk opacity.
+    //
+    // One 10-bit row per chunk-Z, holding the 10-cell window of opacity
+    // for that row (8 cells of the chunk + a 1-cell border each side).
+    // Built per (chunkX, chunkZ); the side/top/bottom face logic
+    // shifts and ANDs out of this instead of hitting the global
+    // cellOpaqueBits array 4× per cell.
     @Unique private static final int[] angelica$chunkOpaqueRows = new int[10];
+
+    // Global top/bottom emit grid for cross-chunk greedy meshing.
+    //
+    // Each chunk OR's its emittable-cells bitmap into here during the
+    // chunk loop; after the loop, emitTopBottomGlobalGreedy walks the
+    // whole grid in one pass so a cloud run that crosses an 8-cell
+    // chunk boundary collapses into a single quad instead of one per
+    // chunk. Side faces don't share this...cross-chunk side meshing
+    // was tried and didn't help, or I simply suck at programming.
+    @Unique private static long[]   angelica$globalEmit;
+    @Unique private static long[]   angelica$globalEmitTodo;
+    @Unique private static int      angelica$gridStride;
+    @Unique private static int      angelica$gridRows;
+    @Unique private static int      angelica$gridLongsPerRow;
+    @Unique private static int      angelica$gridMinX;
+    @Unique private static int      angelica$gridMinZ;
 
     @Unique
     private static void angelica$setupCloudTexture() {
@@ -119,12 +219,18 @@ public abstract class MixinRenderGlobal {
                 angelica$cellH = h;
                 angelica$cellWMask = w - 1;
                 angelica$cellHMask = h - 1;
+                // Pow2 dimensions let us replace the floorMod with a single
+                // AND in the hot per-cell paths.
                 angelica$cellWHPow2 = (w & (w - 1)) == 0 && (h & (h - 1)) == 0;
                 angelica$cellTexId = bound;
             }
         }
     }
 
+   /**
+   * Cell opacity at world cell (x, z), with toroidal wrap on both axes.
+   * Returns true (opaque) if the bitmap isn't loaded yet.
+   */
     @Unique
     private static boolean angelica$cellOpaque(int x, int z) {
         final long[] bits = angelica$cellOpaqueBits;
@@ -140,6 +246,177 @@ public abstract class MixinRenderGlobal {
         }
         final int idx = xw + zh * w;
         return ((bits[idx >>> 6] >>> (idx & 63)) & 1L) != 0L;
+    }
+
+    /**
+     * Read {@code count} consecutive opacity bits along the X axis at
+     * row z, starting at world cell x0. Returns bit c = opacity at
+     * column x0 + c.
+     * <p>
+     * The emit loop reads opacity in 10-cell rows (one chunk + border);
+     * pulling them all at once as a single long is much cheaper than 10
+     * separate cellOpaque calls. Falls through to at most two
+     * readContigBits calls.
+     */
+    @Unique
+    private static long angelica$readOpaqueRowBits(int x0, int z) {
+        final long[] bits = angelica$cellOpaqueBits;
+        if (bits == null) return (1L << 10) - 1L;
+        final int cellW = angelica$cellW;
+        final int zMod;
+        final int x0Mod;
+        if (angelica$cellWHPow2) {
+            zMod  = z  & angelica$cellHMask;
+            x0Mod = x0 & angelica$cellWMask;
+        } else {
+            zMod  = Math.floorMod(z,  angelica$cellH);
+            x0Mod = Math.floorMod(x0, cellW);
+        }
+        if (x0Mod + 10 <= cellW) {
+            return angelica$readContigBits(bits, (long) zMod * cellW + x0Mod, 10);
+        }
+        // Bits span the row's right edge and wrap back to column 0.
+        final int colsBeforeWrap = cellW - x0Mod;
+        final long firstPart  = angelica$readContigBits(bits, (long) zMod * cellW + x0Mod, colsBeforeWrap);
+        final long secondPart = angelica$readContigBits(bits, (long) zMod * cellW,         10 - colsBeforeWrap);
+        return firstPart | (secondPart << colsBeforeWrap);
+    }
+
+    /**
+     * Read up to 64 bits from {@code bits}, starting at the absolute bit
+     * index {@code startBitIdx}. May straddle two longs; we always read
+     * the first one and only touch the second if we have to.
+     */
+    @Unique
+    private static long angelica$readContigBits(long[] bits, long startBitIdx, int count) {
+        final int wordIdx = (int) (startBitIdx >>> 6);
+        final int bitOff  = (int) (startBitIdx & 63);
+        final long mask = count == 64 ? -1L : (1L << count) - 1L;
+        final long w0 = bits[wordIdx];
+        if (bitOff + count <= 64) {
+            return (w0 >>> bitOff) & mask;
+        }
+        final long w1 = bits[wordIdx + 1];
+        return ((w0 >>> bitOff) | (w1 << (64 - bitOff))) & mask;
+    }
+
+    /**
+     * Sanity check that GTNHLib's POSITION_TEXTURE_NORMAL still has the
+     * stride we hardcoded in writeCloudVertex. If they ever add a field
+     * to that format, we want a loud failure on first emit rather than
+     * silently writing corrupt geometry. Runs once per session.
+     */
+    @Unique
+    private static void angelica$verifyCloudVertexFormat() {
+        if (angelica$formatVerified) return;
+        final VertexFormat fmt = DefaultVertexFormat.POSITION_TEXTURE_NORMAL;
+        if (fmt.getVertexSize() != ANGELICA_CLOUD_VERTEX_STRIDE) {
+            throw new IllegalStateException(
+                "Cloud vertex format stride mismatch: expected "
+                    + ANGELICA_CLOUD_VERTEX_STRIDE + ", got " + fmt.getVertexSize()
+                    + ". DefaultVertexFormat.POSITION_TEXTURE_NORMAL layout has"
+                    + " changed; the hand-written vertex writer in MixinRenderGlobal"
+                    + "  no longer works, let Eclipse know.");
+        }
+        angelica$formatVerified = true;
+    }
+
+    @Unique
+    private static void angelica$prepareEmitBuffer() {
+        if (angelica$emitBuffer == null) {
+            angelica$emitBufferCapacity = 256 * 1024;
+            angelica$emitBuffer = BufferUtils.createByteBuffer(angelica$emitBufferCapacity);
+            angelica$emitBufferAddr = MemoryUtilities.memAddress(angelica$emitBuffer, 0);
+        }
+        angelica$writeAddr = angelica$emitBufferAddr;
+        angelica$writeEnd  = angelica$emitBufferAddr + angelica$emitBufferCapacity;
+        angelica$quadCount = 0;
+    }
+
+    @Unique
+    private static void angelica$growEmitBuffer(int neededBytes) {
+        final long oldBytes = angelica$writeAddr - angelica$emitBufferAddr;
+        int newCap = angelica$emitBufferCapacity;
+        while (newCap < neededBytes) newCap *= 2;
+        final ByteBuffer newBuf = BufferUtils.createByteBuffer(newCap);
+        final long newAddr = MemoryUtilities.memAddress(newBuf, 0);
+        if (oldBytes > 0) {
+            MemoryUtilities.memCopy(angelica$emitBufferAddr, newAddr, oldBytes);
+        }
+        angelica$emitBuffer         = newBuf;
+        angelica$emitBufferAddr     = newAddr;
+        angelica$emitBufferCapacity = newCap;
+        angelica$writeAddr          = newAddr + oldBytes;
+        angelica$writeEnd           = newAddr + newCap;
+    }
+
+    @Unique
+    private static void angelica$ensureEmitCapacity(int bytes) {
+        if (angelica$writeAddr + bytes > angelica$writeEnd) {
+            angelica$growEmitBuffer((int) (angelica$writeAddr - angelica$emitBufferAddr) + bytes);
+        }
+    }
+
+    /**
+     * Write a single vertex (pos + uv + packed normal) at {@code addr}
+     * and return the address of the next vertex. Direct native byte
+     * writes; this lets us skip Tessellator's per-attribute dispatch.
+     */
+    @Unique
+    private static long angelica$writeCloudVertex(
+        long addr, double x, double y, double z, float u, float v, int normalInt
+    ) {
+        MemoryUtilities.memPutFloat(addr,      (float) x);
+        MemoryUtilities.memPutFloat(addr + 4,  (float) y);
+        MemoryUtilities.memPutFloat(addr + 8,  (float) z);
+        MemoryUtilities.memPutFloat(addr + 12, u);
+        MemoryUtilities.memPutFloat(addr + 16, v);
+        MemoryUtilities.memPutInt  (addr + ANGELICA_CLOUD_NORMAL_OFFSET, normalInt);
+        return addr + ANGELICA_CLOUD_VERTEX_STRIDE;
+    }
+
+    /**
+     * Pack the three signed-byte normal components into a single int
+     * matching the byte layout at the normal offset. The endian split
+     * is so the four bytes land in (nx, ny, nz, 0) order on disk
+     * regardless of host byte order.
+     */
+    @Unique
+    private static int angelica$packNormalInt(byte nx, byte ny, byte nz) {
+        final int x = nx & 0xFF;
+        final int y = ny & 0xFF;
+        final int z = nz & 0xFF;
+        return ANGELICA_BIG_ENDIAN
+            ? (x << 24) | (y << 16) | (z << 8)
+            : (z << 16) | (y << 8) | x;
+    }
+
+    /**
+     * Emit one quad, record its factor, then write 4 vertices sharing
+     * the same packed normal.
+     */
+    @Unique
+    private static void angelica$emitCloudQuad(
+        double x0, double y0, double z0, float u0, float v0,
+        double x1, double y1, double z1, float u1, float v1,
+        double x2, double y2, double z2, float u2, float v2,
+        double x3, double y3, double z3, float u3, float v3,
+        byte factorIdx, byte nx, byte ny, byte nz
+    ) {
+        final int q = angelica$quadCount;
+        if (q == angelica$quadFactor.length) {
+            angelica$quadFactor = java.util.Arrays.copyOf(angelica$quadFactor, angelica$quadFactor.length * 2);
+        }
+        angelica$quadFactor[q] = factorIdx;
+        angelica$quadCount = q + 1;
+
+        final int normalInt = angelica$packNormalInt(nx, ny, nz);
+        long a = angelica$writeAddr;
+        a = angelica$writeCloudVertex(a, x0, y0, z0, u0, v0, normalInt);
+        a = angelica$writeCloudVertex(a, x1, y1, z1, u1, v1, normalInt);
+        a = angelica$writeCloudVertex(a, x2, y2, z2, u2, v2, normalInt);
+        a = angelica$writeCloudVertex(a, x3, y3, z3, u3, v3, normalInt);
+        angelica$writeAddr = a;
     }
 
     /**
@@ -166,6 +443,17 @@ public abstract class MixinRenderGlobal {
     /**
      * @author jss2a98aj
      * @reason Adjust fancy cloud render.
+     * </p>
+     * Flow:
+     * </p>
+     *   1. Set up the GL state, texture bind, and cell bitmap refresh.
+     *   2. Compute cloud color, scale, scroll, camera-relative offsets
+     *      and the per-frame "inside cloud" flag.
+     *   3. If the cache key matches the last build, skip emit entirely
+     *      and draw the existing VBO.
+     *   4. Otherwise, rebuild, do emit, sort by factor, then upload.
+     *   5. Draw a depth prepass followed by a color pass that issues
+     *      one draw per factor with its own tinted glColor4f.
      */
     @Overwrite
     public void renderCloudsFancy(float partialTicks) {
@@ -175,13 +463,13 @@ public abstract class MixinRenderGlobal {
         angelica$setupCloudTexture();
 
         Vec3 color = theWorld.getCloudColour(partialTicks);
-        float red = (float)color.xCoord;
+        float red   = (float)color.xCoord;
         float green = (float)color.yCoord;
-        float blue = (float)color.zCoord;
+        float blue  = (float)color.zCoord;
         if(mc.gameSettings.anaglyph) {
-            float altRed = (red * 30.0F + green * 59.0F + blue * 11.0F) / 100.0F;
-            float altGreen = (red * 30.0F + green * 70.0F) / 100.0F;
-            float altBlue = (red * 30.0F + blue * 70.0F) / 100.0F;
+            float altRed    = (red * 30.0F + green * 59.0F + blue * 11.0F) / 100.0F;
+            float altGreen  = (red * 30.0F + green * 70.0F)                / 100.0F;
+            float altBlue   = (red * 30.0F + blue  * 70.0F)                / 100.0F;
             red = altRed;
             green = altGreen;
             blue = altBlue;
@@ -189,7 +477,7 @@ public abstract class MixinRenderGlobal {
         double cloudTick = ((float)cloudTickCounter + partialTicks);
 
         float cloudScale = (int)Settings.CLOUD_SCALE.option.getStore();
-        float cloudInteriorWidth = 12.0F * cloudScale;
+        float cloudInteriorWidth  = 12.0F * cloudScale;
         float cloudInteriorHeight = 4.0F * cloudScale;
         float cameraOffsetY = (float)(mc.renderViewEntity.lastTickPosY + (mc.renderViewEntity.posY - mc.renderViewEntity.lastTickPosY) * (double)partialTicks);
         double cameraOffsetX = (mc.renderViewEntity.prevPosX + (mc.renderViewEntity.posX - mc.renderViewEntity.prevPosX) * (double)partialTicks + cloudTick * 0.03D) / (double)cloudInteriorWidth;
@@ -213,15 +501,14 @@ public abstract class MixinRenderGlobal {
         final int cloudTargetDistance = Math.max(mc.gameSettings.renderDistanceChunks,
             (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
         int renderRadius = (int)Math.ceil(cloudTargetDistance * 64.0f / (cloudWidth * cloudInteriorWidth));
-        float edgeOverlap = 0.0001f;//0.001F;
+        float edgeOverlap = 0.0001f;
         GLStateManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
 
-        final boolean emitTopFace    = cameraRelativeY + cloudInteriorHeight >= 0.0F;
-        final boolean emitBottomFace = cameraRelativeY                       <= 0.0F;
-        // Render-range radius in cells
-        final int cellsPerChunk = (int)cloudWidth;
-        final int radiusCells   = renderRadius * cellsPerChunk;
-        final int radiusCellsSq = radiusCells * radiusCells;
+        final boolean emitTopFace       = cameraRelativeY + cloudInteriorHeight >= 0.0F;
+        final boolean emitBottomFace    = cameraRelativeY                       <= 0.0F;
+        final int cellsPerChunk         = (int)cloudWidth;
+        final int radiusCells           = renderRadius * cellsPerChunk;
+        final int radiusCellsSq         = radiusCells * radiusCells;
 
         final int floorOffsetX = MathHelper.floor_double(cameraOffsetX);
         final int floorOffsetZ = MathHelper.floor_double(cameraOffsetZ);
@@ -232,73 +519,58 @@ public abstract class MixinRenderGlobal {
             && angelica$cellOpaque(floorOffsetX, floorOffsetZ);
 
         final boolean geomCacheValid = angelica$cloudVao != null
-            && angelica$cachedCellTexId == angelica$cellTexId
-            && angelica$cachedFloorOffsetX == floorOffsetX
-            && angelica$cachedFloorOffsetZ == floorOffsetZ
-            && angelica$cachedEmitTopFace == emitTopFace
-            && angelica$cachedEmitBottomFace == emitBottomFace
-            && angelica$cachedCameraInsideCloud == cameraInsideCloud
-            && angelica$cachedRenderRadius == renderRadius
-            && angelica$cachedCloudInteriorHeight == cloudInteriorHeight
-            && angelica$cachedCloudScrollingX == cloudScrollingX
-            && angelica$cachedCloudScrollingZ == cloudScrollingZ;
+            && angelica$cachedCellTexId             == angelica$cellTexId
+            && angelica$cachedFloorOffsetX          == floorOffsetX
+            && angelica$cachedFloorOffsetZ          == floorOffsetZ
+            && angelica$cachedEmitTopFace           == emitTopFace
+            && angelica$cachedEmitBottomFace        == emitBottomFace
+            && angelica$cachedCameraInsideCloud     == cameraInsideCloud
+            && angelica$cachedRenderRadius          == renderRadius
+            && angelica$cachedCloudInteriorHeight   == cloudInteriorHeight
+            && angelica$cachedCloudScrollingX       == cloudScrollingX
+            && angelica$cachedCloudScrollingZ       == cloudScrollingZ;
 
         if (!geomCacheValid) {
-            if (angelica$cloudVao != null) {
-                angelica$cloudVao.delete();
-                angelica$cloudVao = null;
-            }
-            final DirectTessellator capture = TessellatorManager.startCapturingDirect(
-                DefaultVertexFormat.POSITION_TEXTURE_COLOR_NORMAL);
-            // do this or suffer issues
-            capture.startDrawingQuads();
-            angelica$emitCloudGeometry(capture, renderRadius, cloudWidth, cellsPerChunk,
+            angelica$verifyCloudVertexFormat();
+            angelica$prepareEmitBuffer();
+            angelica$emitCloudGeometry(renderRadius, cloudWidth, cellsPerChunk,
                 radiusCellsSq, floorOffsetX, floorOffsetZ,
                 cloudInteriorHeight,
                 scrollSpeed, cloudScrollingX, cloudScrollingZ, edgeOverlap,
                 emitTopFace, emitBottomFace, cameraInsideCloud);
-            final int vertexCount = capture.getVertexCount();
+            final int totalBytes  = (int) (angelica$writeAddr - angelica$emitBufferAddr);
+            final int vertexCount = totalBytes / ANGELICA_CLOUD_VERTEX_STRIDE;
             if (vertexCount == 0) {
-                angelica$cloudVao = null;
+                if (angelica$cloudVao != null) {
+                    angelica$cloudVao.delete();
+                    angelica$cloudVao = null;
+                }
                 angelica$cachedVertexCount = 0;
             } else {
-                angelica$factorOnlyBytes = capture.allocateBufferCopy();
-                final int totalBytes = vertexCount * ANGELICA_CLOUD_VERTEX_STRIDE;
-                if (angelica$workingBytes == null || angelica$workingBytes.capacity() < totalBytes) {
-                    angelica$workingBytes = BufferUtils.createByteBuffer(totalBytes);
-                }
-                MemoryUtilities.memCopy(
-                    MemoryUtilities.memAddress(angelica$factorOnlyBytes, 0),
-                    MemoryUtilities.memAddress(angelica$workingBytes, 0),
-                    totalBytes);
-                angelica$workingBytes.position(0).limit(totalBytes);
-                angelica$applyTint(vertexCount, red, green, blue);
-                angelica$cloudVao = VertexBufferType.MUTABLE.allocate(
-                    DefaultVertexFormat.POSITION_TEXTURE_COLOR_NORMAL,
-                    GL11.GL_QUADS, angelica$workingBytes, vertexCount);
-                angelica$cachedVertexCount = vertexCount;
-                angelica$appliedTintR = red;
-                angelica$appliedTintG = green;
-                angelica$appliedTintB = blue;
-            }
-            TessellatorManager.stopCapturingDirect();
+                angelica$sortQuadsByFactor();
 
-            angelica$cachedCellTexId = angelica$cellTexId;
-            angelica$cachedFloorOffsetX = floorOffsetX;
-            angelica$cachedFloorOffsetZ = floorOffsetZ;
-            angelica$cachedEmitTopFace = emitTopFace;
-            angelica$cachedEmitBottomFace = emitBottomFace;
-            angelica$cachedCameraInsideCloud = cameraInsideCloud;
-            angelica$cachedRenderRadius = renderRadius;
-            angelica$cachedCloudInteriorHeight = cloudInteriorHeight;
-            angelica$cachedCloudScrollingX = cloudScrollingX;
-            angelica$cachedCloudScrollingZ = cloudScrollingZ;
-        } else if (angelica$tintMovedEnough(red, green, blue)) {
-            angelica$applyTint(angelica$cachedVertexCount, red, green, blue);
-            angelica$cloudVao.getVBO().update(angelica$workingBytes, 0L);
-            angelica$appliedTintR = red;
-            angelica$appliedTintG = green;
-            angelica$appliedTintB = blue;
+                // MUTABLE_RESIZABLE keeps the VAO/VBO id stable across
+                // re-uploads. Otherwise, driver seems to stall?
+                if (angelica$cloudVao == null) {
+                    angelica$cloudVao = VertexBufferType.MUTABLE_RESIZABLE.allocate(
+                        DefaultVertexFormat.POSITION_TEXTURE_NORMAL,
+                        GL11.GL_QUADS, angelica$sortedBuffer, vertexCount);
+                } else {
+                    angelica$cloudVao.getVBO().allocate(angelica$sortedBuffer, vertexCount);
+                }
+                angelica$cachedVertexCount = vertexCount;
+            }
+
+            angelica$cachedCellTexId            = angelica$cellTexId;
+            angelica$cachedFloorOffsetX         = floorOffsetX;
+            angelica$cachedFloorOffsetZ         = floorOffsetZ;
+            angelica$cachedEmitTopFace          = emitTopFace;
+            angelica$cachedEmitBottomFace       = emitBottomFace;
+            angelica$cachedCameraInsideCloud    = cameraInsideCloud;
+            angelica$cachedRenderRadius         = renderRadius;
+            angelica$cachedCloudInteriorHeight  = cloudInteriorHeight;
+            angelica$cachedCloudScrollingX      = cloudScrollingX;
+            angelica$cachedCloudScrollingZ      = cloudScrollingZ;
         }
 
         if (angelica$cloudVao == null) {
@@ -313,7 +585,12 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glDepthMask(true);
-        angelica$cloudVao.draw();
+        // RGB doesn't matter here because color writes are off, but alpha feeds
+        // the cloud shader's discard / alpha-test path. Set it to the
+        // same value the color pass will use so depth coverage matches
+        // what eventually gets shaded.
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, ANGELICA_CLOUD_ALPHA);
+        angelica$cloudVao.draw(0, angelica$cachedVertexCount);
 
         if (mc.gameSettings.anaglyph) {
             if (EntityRenderer.anaglyphField == 0) {
@@ -326,7 +603,9 @@ public abstract class MixinRenderGlobal {
         }
         GLStateManager.glEnable(GL11.GL_BLEND);
         GLStateManager.glDepthMask(false);
-        angelica$cloudVao.draw();
+        // Each call updates the generic COLOR vertex attribute, so the
+        // same VBO renders with different tints across the four sub-ranges.
+        angelica$drawAllFactorGroups(red, green, blue);
         GLStateManager.glPopMatrix();
 
         angelica$cloudVao.unbind();
@@ -337,63 +616,147 @@ public abstract class MixinRenderGlobal {
         GLStateManager.glEnable(GL11.GL_CULL_FACE);
     }
 
+    /**
+     * Bucket sort the natural-order emit into 4 contiguous per-factor
+     * regions inside sortedBuffer.
+     * <p>
+     * Pass 1: Count how many quads landed in each bucket.
+     * Pass 2: For each quad, memcpy its 96-byte block into the next slot
+     * of its bucket. Per-bucket write pointers (factorWriteAddr)
+     * let us advance independently per bucket without a per-quad
+     * prefix sum.
+     * <p>
+     * Done this way rather than emitting straight into 4 buffers because
+     * the emit code already streams sequentially through one buffer and
+     * benefits from the cache locality. One memcpy after emit ends up
+     * cheaper than dirtying 4 cachelines per quad during emit.
+     */
     @Unique
-    private static boolean angelica$tintMovedEnough(float red, float green, float blue) {
-        final float eps = ANGELICA_TINT_UPDATE_EPSILON;
-        return Math.abs(angelica$appliedTintR - red)   > eps
-            || Math.abs(angelica$appliedTintG - green) > eps
-            || Math.abs(angelica$appliedTintB - blue)  > eps;
-    }
+    private static void angelica$sortQuadsByFactor() {
+        final int quadCount = angelica$quadCount;
+        final int[] cnt = angelica$factorQuadCount;
+        cnt[0] = 0; cnt[1] = 0; cnt[2] = 0; cnt[3] = 0;
+        final byte[] qf = angelica$quadFactor;
+        for (int q = 0; q < quadCount; q++) cnt[qf[q]]++;
 
-    @Unique
-    private static void angelica$applyTint(int vertexCount, float tintR, float tintG, float tintB) {
-        final long baseAddr = MemoryUtilities.memAddress(angelica$factorOnlyBytes, 0);
-        final long workAddr = MemoryUtilities.memAddress(angelica$workingBytes, 0);
-        final int stride   = ANGELICA_CLOUD_VERTEX_STRIDE;
-        final int colorOff = ANGELICA_CLOUD_COLOR_OFFSET;
-        for (int i = 0; i < vertexCount; i++) {
-            final long off = (long) i * stride + colorOff;
-            final int rb = MemoryUtilities.memGetByte(baseAddr + off)     & 0xFF;
-            final int gb = MemoryUtilities.memGetByte(baseAddr + off + 1) & 0xFF;
-            final int bb = MemoryUtilities.memGetByte(baseAddr + off + 2) & 0xFF;
-            int rOut = (int)(rb * tintR);
-            int gOut = (int)(gb * tintG);
-            int bOut = (int)(bb * tintB);
-            if (rOut > 255) rOut = 255; else if (rOut < 0) rOut = 0;
-            if (gOut > 255) gOut = 255; else if (gOut < 0) gOut = 0;
-            if (bOut > 255) bOut = 255; else if (bOut < 0) bOut = 0;
-            MemoryUtilities.memPutByte(workAddr + off,     (byte) rOut);
-            MemoryUtilities.memPutByte(workAddr + off + 1, (byte) gOut);
-            MemoryUtilities.memPutByte(workAddr + off + 2, (byte) bOut);
-            // alpha at off+3 stays as written by the seed copy
+        final int quadBytes = ANGELICA_CLOUD_VERTEX_STRIDE * 4;
+        final int totalBytes = quadCount * quadBytes;
+
+        if (angelica$sortedBuffer == null || angelica$sortedBufferCapacity < totalBytes) {
+            int newCap = Math.max(totalBytes, 64 * 1024);
+            int rounded = Integer.highestOneBit(newCap - 1) << 1;
+            if (rounded <= 0) rounded = newCap;
+            angelica$sortedBuffer = BufferUtils.createByteBuffer(rounded);
+            angelica$sortedBufferAddr = MemoryUtilities.memAddress(angelica$sortedBuffer, 0);
+            angelica$sortedBufferCapacity = rounded;
         }
-        angelica$workingBytes.position(0).limit(vertexCount * stride);
+
+        // Prefix-sum the counts to first-vertex index of each bucket in
+        // the uploaded VBO.
+        final int[] off = angelica$factorVertOffset;
+        off[0] = 0;
+        off[1] =  cnt[0] * 4;
+        off[2] = (cnt[0] + cnt[1]) * 4;
+        off[3] = (cnt[0] + cnt[1] + cnt[2]) * 4;
+
+        final long[] dst = angelica$factorWriteAddr;
+        dst[0] = angelica$sortedBufferAddr;
+        dst[1] = dst[0] + (long) cnt[0] * quadBytes;
+        dst[2] = dst[1] + (long) cnt[1] * quadBytes;
+        dst[3] = dst[2] + (long) cnt[2] * quadBytes;
+
+        final long src0 = angelica$emitBufferAddr;
+        for (int q = 0; q < quadCount; q++) {
+            final int f = qf[q];
+            MemoryUtilities.memCopy(src0 + (long) q * quadBytes, dst[f], quadBytes);
+            dst[f] += quadBytes;
+        }
+
+        angelica$sortedBuffer.position(0).limit(totalBytes);
     }
 
+    /**
+     * Issue the four per-factor draw calls during the color pass. Each
+     * call sets the tinted color and draws the matching vertex range.
+     * </p>
+     * glColor4f goes through Angelica's GLStateManager and lands as a
+     * generic vertex attribute write on the next draw (via
+     * flushDeferredVertexAttribs). That feeds gl_Color / iris_Color in
+     * the shader, so we get per-bucket color uniformity without baking
+     * any color bytes into the VBO.
+     */
+    @Unique
+    private static void angelica$drawAllFactorGroups(float tintR, float tintG, float tintB) {
+        for (int f = 0; f < 4; f++) {
+            final int qc = angelica$factorQuadCount[f];
+            if (qc == 0) continue;
+            final float v = ANGELICA_FACTOR_VALUES[f];
+            GLStateManager.glColor4f(v * tintR, v * tintG, v * tintB, ANGELICA_CLOUD_ALPHA);
+            angelica$cloudVao.draw(angelica$factorVertOffset[f], qc * 4);
+        }
+    }
+
+    /**
+     * Walk every chunk in render distance, decide which faces each cell
+     * needs, and emit them into emitBuffer.
+     * </p>
+     * Two output paths:
+     *  1. Side faces and interior faces for the inside-cloud
+     *     case go straight out per-chunk with 1-D greedy runs along the
+     *     run axis.
+     *  2. Top + bottom faces are deferred: each chunk OR's its emittable
+     *     cells into a global grid, then a single greedy pass after the
+     *     chunk loop meshes the whole grid so cloud strips spanning many
+     *     chunks emit as a single big quad each
+     */
     @Unique
     private static void angelica$emitCloudGeometry(
-        Tessellator tessellator,
-        int renderRadius,
-        float cloudWidth,
-        int cellsPerChunk,
-        int radiusCellsSq,
-        int floorOffsetX,
-        int floorOffsetZ,
-        float cloudInteriorHeight,
-        float scrollSpeed,
-        float cloudScrollingX,
-        float cloudScrollingZ,
-        float edgeOverlap,
+        int     renderRadius,
+        float   cloudWidth,
+        int     cellsPerChunk,
+        int     radiusCellsSq,
+        int     floorOffsetX,
+        int     floorOffsetZ,
+        float   cloudInteriorHeight,
+        float   scrollSpeed,
+        float   cloudScrollingX,
+        float   cloudScrollingZ,
+        float   edgeOverlap,
         boolean emitTopFace,
         boolean emitBottomFace,
         boolean cameraInsideCloud
     ) {
-        final float a = 0.8F;
+        // y1 = top face Y, ye = bottom face Y.
         final double y1 = cloudInteriorHeight;
         final double ye = y1 - edgeOverlap;
         final int[] opaqueRows = angelica$chunkOpaqueRows;
+        // When the camera is inside a cloud cell, all we need is a 3×3
+        // cluster of cells centered on the camera.
         final int chunkLo = cameraInsideCloud ? -1 : -renderRadius;
         final int chunkHi = cameraInsideCloud ?  0 :  renderRadius;
+
+        // Allocate / clear the global top/bottom emit grid. It holds one
+        // bit per cell in the visible window, OR-accumulated by each
+        // chunk that contributes to it.
+        final int gridRows = (chunkHi - chunkLo + 1) * cellsPerChunk;
+        final int lpr        = (gridRows + 63) >>> 6; // longs per row
+        final int gridMinX   = chunkLo * cellsPerChunk;
+        final int gridMinZ   = chunkLo * cellsPerChunk;
+        final int gridSize   = gridRows * lpr;
+        if (emitTopFace || emitBottomFace) {
+            if (angelica$globalEmit    == null || angelica$globalEmit.length < gridSize) {
+                angelica$globalEmit     = new long[gridSize];
+                angelica$globalEmitTodo = new long[gridSize];
+            } else {
+                java.util.Arrays.fill(angelica$globalEmit, 0, gridSize, 0L);
+            }
+            angelica$gridStride       = gridRows;
+            angelica$gridRows         = gridRows;
+            angelica$gridLongsPerRow  = lpr;
+            angelica$gridMinX         = gridMinX;
+            angelica$gridMinZ         = gridMinZ;
+        }
+
         for (int chunkX = chunkLo; chunkX <= chunkHi; ++chunkX) {
             for (int chunkZ = chunkLo; chunkZ <= chunkHi; ++chunkZ) {
                 final float chunkOffsetX = (chunkX * cloudWidth);
@@ -401,19 +764,15 @@ public abstract class MixinRenderGlobal {
                 final int baseU = chunkX * cellsPerChunk + floorOffsetX;
                 final int baseV = chunkZ * cellsPerChunk + floorOffsetZ;
 
-                // Build local opacity grid (10×10 = chunk + 1-cell border).
-                // opaqueRows[r] holds 10 bits where bit c = cell at chunk-local
-                // (c-1, r-1) is opaque. Per-cell self/neighbor checks below
-                // shift+AND from this instead of calling the global bitset.
+                // Build the local 10×10 opacity grid where this chunk's 8×8
+                // cells plus a 1-cell border on every side so we can
+                // check neighbor opacity without spilling out into the
+                // global bitset on every cell.
+                //
+                // opaqueRows[r] holds 10 bits where bit c = opaque at
+                // chunk-local (c-1, r-1).
                 for (int row = 0; row < 10; row++) {
-                    final int cv = baseV + row - 1;
-                    int rowBits = 0;
-                    for (int col = 0; col < 10; col++) {
-                        if (angelica$cellOpaque(baseU + col - 1, cv)) {
-                            rowBits |= 1 << col;
-                        }
-                    }
-                    opaqueRows[row] = rowBits;
+                    opaqueRows[row] = (int) angelica$readOpaqueRowBits(baseU - 1, baseV + row - 1);
                 }
 
                 // Mask of cells in this chunk able to emit (opaque + within
@@ -436,98 +795,111 @@ public abstract class MixinRenderGlobal {
 
                 if (emittableBits == 0L) continue;
 
-                // Greedy mesh top + bottom faces.
+                // Place this chunk's emittable cells into the global
+                // grid. The grid is laid out as a row of 64-bit longs;
+                // each 8-bit chunk row either fits inside one long
+                // or straddles two longs.
                 if (emitTopFace || emitBottomFace) {
-                    long meshTodo = emittableBits;
-                    while (meshTodo != 0L) {
-                        final int startBit = Long.numberOfTrailingZeros(meshTodo);
-                        final int k0 = startBit & 7;
-                        final int j0 = startBit >>> 3;
-
-                        // Extend +k while contiguous run of set bits in row.
-                        int w = 1;
-                        while (k0 + w < cellsPerChunk
-                            && ((meshTodo >>> (j0 * cellsPerChunk + k0 + w)) & 1L) != 0L) {
-                            w++;
+                    final int globalColStart = chunkX * cellsPerChunk - gridMinX;
+                    final int globalRowStart = chunkZ * cellsPerChunk - gridMinZ;
+                    final int wordIdx = globalColStart >>> 6;
+                    final int bitOff  = globalColStart & 63;
+                    final long[] gE = angelica$globalEmit;
+                    if (bitOff <= 56) {
+                        for (int j = 0; j < cellsPerChunk; j++) {
+                            final long row8 = (emittableBits >>> (j * cellsPerChunk)) & 0xFFL;
+                            if (row8 == 0L) continue;
+                            gE[(globalRowStart + j) * lpr + wordIdx] |= row8 << bitOff;
                         }
-
-                        // Extend +j while every cell in [k0, k0+w) of next row is set.
-                        final long widthMask = ((1L << w) - 1L);
-                        int h = 1;
-                        while (j0 + h < cellsPerChunk) {
-                            final long rowMask = widthMask << ((j0 + h) * cellsPerChunk + k0);
-                            if ((meshTodo & rowMask) != rowMask) break;
-                            h++;
-                        }
-
-                        long mergedMask = 0L;
-                        for (int dh = 0; dh < h; dh++) {
-                            mergedMask |= widthMask << ((j0 + dh) * cellsPerChunk + k0);
-                        }
-                        meshTodo &= ~mergedMask;
-
-                        final double x0 = chunkOffsetX + k0;
-                        final double x1 = chunkOffsetX + k0 + w;
-                        final double z0 = chunkOffsetZ + j0;
-                        final double z1 = chunkOffsetZ + j0 + h;
-                        final float uL = (chunkOffsetX + k0)     * scrollSpeed + cloudScrollingX;
-                        final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
-                        final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
-                        final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
-
-                        if (emitTopFace) {
-                            tessellator.setColorRGBA_F(0.7F, 0.7F, 0.7F, a);
-                            tessellator.setNormal(0.0F, -1.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, 0.0, z0, uL, vN);
-                            tessellator.addVertexWithUV(x1, 0.0, z0, uR, vN);
-                            tessellator.addVertexWithUV(x1, 0.0, z1, uR, vS);
-                            tessellator.addVertexWithUV(x0, 0.0, z1, uL, vS);
-                        }
-                        if (emitBottomFace) {
-                            tessellator.setColorRGBA_F(1.0F, 1.0F, 1.0F, a);
-                            tessellator.setNormal(0.0F, 1.0F, 0.0F);
-                            tessellator.addVertexWithUV(x0, ye, z1, uL, vS);
-                            tessellator.addVertexWithUV(x1, ye, z1, uR, vS);
-                            tessellator.addVertexWithUV(x1, ye, z0, uR, vN);
-                            tessellator.addVertexWithUV(x0, ye, z0, uL, vN);
+                    } else {
+                        final int hiShift = 64 - bitOff;
+                        for (int j = 0; j < cellsPerChunk; j++) {
+                            final long row8 = (emittableBits >>> (j * cellsPerChunk)) & 0xFFL;
+                            if (row8 == 0L) continue;
+                            final int gRowOff = (globalRowStart + j) * lpr;
+                            gE[gRowOff + wordIdx]     |= row8 << bitOff;
+                            gE[gRowOff + wordIdx + 1] |= row8 >>> hiShift;
                         }
                     }
                 }
 
-                // If every cell in chunk + border is opaque, no cell
-                // has an empty neighbor, so no side faces emit. Skip mask
-                // build + 4 greedy mesh loops.
+                // If every cell in chunk + border is opaque,
+                // skip the mask build.
                 int rowsAnd = 0x3FF;
                 for (int r = 0; r < 10 && rowsAnd == 0x3FF; r++) rowsAnd &= opaqueRows[r];
                 final boolean hasBoundary = rowsAnd != 0x3FF;
 
-                // Build per-direction side face masks. Each cell can emit at
-                // most one X-axis face (-X if relX>0, +X if relX<0) and one
-                // Z-axis face. Greedy meshes below run along the perpendicular
-                // axis (X-faces along Z; Z-faces along X) since the face's
-                // own axis is fixed at the cell boundary.
+                // Build the four side-face bitmasks.
+                // A set bit at position (j*8 + k) means cell (k, j) in
+                // this chunk should emit a face in that direction.
                 long westFace = 0L, eastFace = 0L, northFace = 0L, southFace = 0L;
                 if (hasBoundary) {
-                    long bits = emittableBits;
-                    while (bits != 0L) {
-                        final int bit = Long.numberOfTrailingZeros(bits);
-                        bits &= bits - 1;
-                        final int k = bit & 7;
-                        final int j = bit >>> 3;
-                        final int relX = chunkX * cellsPerChunk + k;
-                        final int relZ = chunkZ * cellsPerChunk + j;
-                        if (relX > 0 && (opaqueRows[j + 1] >>> k & 1) == 0)
-                            westFace  |= 1L << bit;
-                        if (relX < 0 && (opaqueRows[j + 1] >>> (k + 2) & 1) == 0)
-                            eastFace  |= 1L << bit;
-                        if (relZ > 0 && (opaqueRows[j]     >>> (k + 1) & 1) == 0)
-                            northFace |= 1L << bit;
-                        if (relZ < 0 && (opaqueRows[j + 2] >>> (k + 1) & 1) == 0)
-                            southFace |= 1L << bit;
+                    // X-axis allow mask
+                    final long allowWest;
+                    final long allowEast;
+                    if (chunkX > 0) {
+                        // -1L being allow all cells, 0L allows none.
+                        allowWest = -1L;
+                        allowEast = 0L;
+                    } else if (chunkX < 0) {
+                        allowWest = 0L;
+                        allowEast = -1L;
+                    } else {
+                        // when chunkX == 0, this chunk straddles the camera
+                        // on X. relX = k inside this chunk:
+                        //   k = 0 -> relX = 0 -> no X face visible
+                        //   k ≥ 1 -> relX > 0 -> -X (west) face visible
+                        // So we allow -X for every cell except column k = 0.
+                        //
+                        // Cell layout in the 64-bit mask is packed as
+                        // bit (j*8 + k). So column k = 0 occupies bits
+                        // 0, 8, 16, 24, 32, 40, 48, 56,etc... one bit per row.
+                        //
+                        // In hex that's 0x0101010101010101L.
+                        allowWest = ~0x0101010101010101L;
+                        allowEast = 0L;
                     }
+
+                    // Z axis allow mask
+                    final long allowNorth;
+                    final long allowSouth;
+                    if (chunkZ > 0) {
+                        allowNorth = -1L;
+                        allowSouth = 0L;
+                    } else if (chunkZ < 0) {
+                        allowNorth = 0L;
+                        allowSouth = -1L;
+                    } else {
+                        // chunkZ == 0
+                        //
+                        // Cell layout packs ROWS contiguously...row j
+                        // occupies bits j*8...j*8+7. So row j = 0 is
+                        // bits 0...7 = 0xFF.
+                        allowNorth = ~0xFFL;
+                        allowSouth = 0L;
+                    }
+
+                    // Pack each direction's neighbor-opacity bitmap into
+                    // an 8×8 long.
+                    long westOpaque = 0L, eastOpaque = 0L, northOpaque = 0L, southOpaque = 0L;
+                    for (int j = 0; j < cellsPerChunk; j++) {
+                        final int rowShift = j * cellsPerChunk;
+                        westOpaque  |= ((long) (opaqueRows [j + 1]        & 0xFF)) << rowShift;
+                        eastOpaque  |= ((long) ((opaqueRows[j + 1] >>> 2) & 0xFF)) << rowShift;
+                        northOpaque |= ((long) ((opaqueRows[j]     >>> 1) & 0xFF)) << rowShift;
+                        southOpaque |= ((long) ((opaqueRows[j + 2] >>> 1) & 0xFF)) << rowShift;
+                    }
+
+                    // Combine all three filters.
+                    westFace  = emittableBits & ~westOpaque  & allowWest;
+                    eastFace  = emittableBits & ~eastOpaque  & allowEast;
+                    northFace = emittableBits & ~northOpaque & allowNorth;
+                    southFace = emittableBits & ~southOpaque & allowSouth;
                 }
 
-                // Greedy mesh -X face
+                // Per-chunk greedy meshing of side faces.
+
+                // -X (west) face
                 while (westFace != 0L) {
                     final int bit = Long.numberOfTrailingZeros(westFace);
                     final int k = bit & 7;
@@ -548,15 +920,16 @@ public abstract class MixinRenderGlobal {
                     final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
                     final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
-                    tessellator.setNormal(-1.0F, 0.0F, 0.0F);
-                    tessellator.addVertexWithUV(x0, 0.0, z1, cellUF, vS);
-                    tessellator.addVertexWithUV(x0, y1,  z1, cellUF, vS);
-                    tessellator.addVertexWithUV(x0, y1,  z0, cellUF, vN);
-                    tessellator.addVertexWithUV(x0, 0.0, z0, cellUF, vN);
+                    angelica$ensureEmitCapacity(96);
+                    angelica$emitCloudQuad(
+                        x0, 0.0, z1, cellUF, vS,
+                        x0, y1,  z1, cellUF, vS,
+                        x0, y1,  z0, cellUF, vN,
+                        x0, 0.0, z0, cellUF, vN,
+                        ANGELICA_FACTOR_X_IDX, (byte) -127, (byte) 0, (byte) 0);
                 }
 
-                // Greedy mesh +X face
+                // +X (east) face
                 while (eastFace != 0L) {
                     final int bit = Long.numberOfTrailingZeros(eastFace);
                     final int k = bit & 7;
@@ -577,15 +950,16 @@ public abstract class MixinRenderGlobal {
                     final float vN = (chunkOffsetZ + j0)     * scrollSpeed + cloudScrollingZ;
                     final float vS = (chunkOffsetZ + j0 + h) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
-                    tessellator.setNormal(1.0F, 0.0F, 0.0F);
-                    tessellator.addVertexWithUV(xe, 0.0, z0, cellUF, vN);
-                    tessellator.addVertexWithUV(xe, y1,  z0, cellUF, vN);
-                    tessellator.addVertexWithUV(xe, y1,  z1, cellUF, vS);
-                    tessellator.addVertexWithUV(xe, 0.0, z1, cellUF, vS);
+                    angelica$ensureEmitCapacity(96);
+                    angelica$emitCloudQuad(
+                        xe, 0.0, z0, cellUF, vN,
+                        xe, y1,  z0, cellUF, vN,
+                        xe, y1,  z1, cellUF, vS,
+                        xe, 0.0, z1, cellUF, vS,
+                        ANGELICA_FACTOR_X_IDX, (byte) 127, (byte) 0, (byte) 0);
                 }
 
-                // Greedy mesh -Z face
+                // -Z (north) face
                 while (northFace != 0L) {
                     final int bit = Long.numberOfTrailingZeros(northFace);
                     final int k0 = bit & 7;
@@ -604,15 +978,16 @@ public abstract class MixinRenderGlobal {
                     final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
                     final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
-                    tessellator.setNormal(0.0F, 0.0F, -1.0F);
-                    tessellator.addVertexWithUV(x0, y1,  z0, uL, cellVF);
-                    tessellator.addVertexWithUV(x1, y1,  z0, uR, cellVF);
-                    tessellator.addVertexWithUV(x1, 0.0, z0, uR, cellVF);
-                    tessellator.addVertexWithUV(x0, 0.0, z0, uL, cellVF);
+                    angelica$ensureEmitCapacity(96);
+                    angelica$emitCloudQuad(
+                        x0, y1,  z0, uL, cellVF,
+                        x1, y1,  z0, uR, cellVF,
+                        x1, 0.0, z0, uR, cellVF,
+                        x0, 0.0, z0, uL, cellVF,
+                        ANGELICA_FACTOR_Z_IDX, (byte) 0, (byte) 0, (byte) -127);
                 }
 
-                // Greedy mesh +Z face
+                // +Z (south) face
                 while (southFace != 0L) {
                     final int bit = Long.numberOfTrailingZeros(southFace);
                     final int k0 = bit & 7;
@@ -631,12 +1006,13 @@ public abstract class MixinRenderGlobal {
                     final float uR = (chunkOffsetX + k0 + w) * scrollSpeed + cloudScrollingX;
                     final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
 
-                    tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
-                    tessellator.setNormal(0.0F, 0.0F, 1.0F);
-                    tessellator.addVertexWithUV(x0, 0.0, ze, uL, cellVF);
-                    tessellator.addVertexWithUV(x1, 0.0, ze, uR, cellVF);
-                    tessellator.addVertexWithUV(x1, y1,  ze, uR, cellVF);
-                    tessellator.addVertexWithUV(x0, y1,  ze, uL, cellVF);
+                    angelica$ensureEmitCapacity(96);
+                    angelica$emitCloudQuad(
+                        x0, 0.0, ze, uL, cellVF,
+                        x1, 0.0, ze, uR, cellVF,
+                        x1, y1,  ze, uR, cellVF,
+                        x0, y1,  ze, uL, cellVF,
+                        ANGELICA_FACTOR_Z_IDX, (byte) 0, (byte) 0, (byte) 127);
                 }
 
                 // Modern MC's FLAG_INSIDE_FACE....kinda. emit for 3x3 center cluster,
@@ -647,66 +1023,201 @@ public abstract class MixinRenderGlobal {
                     while (bits != 0L) {
                         final int bit = Long.numberOfTrailingZeros(bits);
                         bits &= bits - 1;
-                        final int k = bit & 7;
-                        final int j = bit >>> 3;
-                        final double x0 = chunkOffsetX + k;
-                        final double x1 = chunkOffsetX + k + 1;
-                        final double z0 = chunkOffsetZ + j;
-                        final double z1 = chunkOffsetZ + j + 1;
-                        final double xe = x1 - edgeOverlap;
-                        final double ze = z1 - edgeOverlap;
-                        final float cellUF = (chunkOffsetX + k + 0.5F) * scrollSpeed + cloudScrollingX;
-                        final float cellVF = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
-                        final float uL = (chunkOffsetX + k)     * scrollSpeed + cloudScrollingX;
-                        final float uR = (chunkOffsetX + k + 1) * scrollSpeed + cloudScrollingX;
-                        final float vN = (chunkOffsetZ + j)     * scrollSpeed + cloudScrollingZ;
-                        final float vS = (chunkOffsetZ + j + 1) * scrollSpeed + cloudScrollingZ;
+                        final int k         = bit & 7;
+                        final int j         = bit >>> 3;
+                        final double x0     = chunkOffsetX + k;
+                        final double x1     = chunkOffsetX + k + 1;
+                        final double z0     = chunkOffsetZ + j;
+                        final double z1     = chunkOffsetZ + j + 1;
+                        final double xe     = x1 - edgeOverlap;
+                        final double ze     = z1 - edgeOverlap;
+                        final float cellUF  = (chunkOffsetX + k + 0.5F) * scrollSpeed + cloudScrollingX;
+                        final float cellVF  = (chunkOffsetZ + j + 0.5F) * scrollSpeed + cloudScrollingZ;
+                        final float uL      = (chunkOffsetX + k)        * scrollSpeed + cloudScrollingX;
+                        final float uR      = (chunkOffsetX + k + 1)    * scrollSpeed + cloudScrollingX;
+                        final float vN      = (chunkOffsetZ + j)        * scrollSpeed + cloudScrollingZ;
+                        final float vS      = (chunkOffsetZ + j + 1)    * scrollSpeed + cloudScrollingZ;
+                        angelica$ensureEmitCapacity(6 * 96); // 6 quads
                         // Interior top
-                        tessellator.setColorRGBA_F(0.7F, 0.7F, 0.7F, a);
-                        tessellator.setNormal(0.0F, 1.0F, 0.0F);
-                        tessellator.addVertexWithUV(x0, 0.0, z1, uL, vS);
-                        tessellator.addVertexWithUV(x1, 0.0, z1, uR, vS);
-                        tessellator.addVertexWithUV(x1, 0.0, z0, uR, vN);
-                        tessellator.addVertexWithUV(x0, 0.0, z0, uL, vN);
+                        angelica$emitCloudQuad(
+                            x0, 0.0, z1, uL, vS,
+                            x1, 0.0, z1, uR, vS,
+                            x1, 0.0, z0, uR, vN,
+                            x0, 0.0, z0, uL, vN,
+                            ANGELICA_FACTOR_TOP_IDX, (byte) 0, (byte) 127, (byte) 0);
                         // Interior bottom
-                        tessellator.setColorRGBA_F(1.0F, 1.0F, 1.0F, a);
-                        tessellator.setNormal(0.0F, -1.0F, 0.0F);
-                        tessellator.addVertexWithUV(x0, ye, z0, uL, vN);
-                        tessellator.addVertexWithUV(x1, ye, z0, uR, vN);
-                        tessellator.addVertexWithUV(x1, ye, z1, uR, vS);
-                        tessellator.addVertexWithUV(x0, ye, z1, uL, vS);
+                        angelica$emitCloudQuad(
+                            x0, ye, z0, uL, vN,
+                            x1, ye, z0, uR, vN,
+                            x1, ye, z1, uR, vS,
+                            x0, ye, z1, uL, vS,
+                            ANGELICA_FACTOR_BOTTOM_IDX, (byte) 0, (byte) -127, (byte) 0);
                         // Interior west
-                        tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
-                        tessellator.setNormal(1.0F, 0.0F, 0.0F);
-                        tessellator.addVertexWithUV(x0, 0.0, z0, cellUF, vN);
-                        tessellator.addVertexWithUV(x0, y1,  z0, cellUF, vN);
-                        tessellator.addVertexWithUV(x0, y1,  z1, cellUF, vS);
-                        tessellator.addVertexWithUV(x0, 0.0, z1, cellUF, vS);
+                        angelica$emitCloudQuad(
+                            x0, 0.0, z0, cellUF, vN,
+                            x0, y1,  z0, cellUF, vN,
+                            x0, y1,  z1, cellUF, vS,
+                            x0, 0.0, z1, cellUF, vS,
+                            ANGELICA_FACTOR_X_IDX, (byte) 127, (byte) 0, (byte) 0);
                         // Interior east
-                        tessellator.setColorRGBA_F(0.9F, 0.9F, 0.9F, a);
-                        tessellator.setNormal(-1.0F, 0.0F, 0.0F);
-                        tessellator.addVertexWithUV(xe, 0.0, z1, cellUF, vS);
-                        tessellator.addVertexWithUV(xe, y1,  z1, cellUF, vS);
-                        tessellator.addVertexWithUV(xe, y1,  z0, cellUF, vN);
-                        tessellator.addVertexWithUV(xe, 0.0, z0, cellUF, vN);
+                        angelica$emitCloudQuad(
+                            xe, 0.0, z1, cellUF, vS,
+                            xe, y1,  z1, cellUF, vS,
+                            xe, y1,  z0, cellUF, vN,
+                            xe, 0.0, z0, cellUF, vN,
+                            ANGELICA_FACTOR_X_IDX, (byte) -127, (byte) 0, (byte) 0);
                         // Interior north
-                        tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
-                        tessellator.setNormal(0.0F, 0.0F, 1.0F);
-                        tessellator.addVertexWithUV(x0, 0.0, z0, uL, cellVF);
-                        tessellator.addVertexWithUV(x1, 0.0, z0, uR, cellVF);
-                        tessellator.addVertexWithUV(x1, y1,  z0, uR, cellVF);
-                        tessellator.addVertexWithUV(x0, y1,  z0, uL, cellVF);
+                        angelica$emitCloudQuad(
+                            x0, 0.0, z0, uL, cellVF,
+                            x1, 0.0, z0, uR, cellVF,
+                            x1, y1,  z0, uR, cellVF,
+                            x0, y1,  z0, uL, cellVF,
+                            ANGELICA_FACTOR_Z_IDX, (byte) 0, (byte) 0, (byte) 127);
                         // Interior south
-                        tessellator.setColorRGBA_F(0.8F, 0.8F, 0.8F, a);
-                        tessellator.setNormal(0.0F, 0.0F, -1.0F);
-                        tessellator.addVertexWithUV(x0, y1,  ze, uL, cellVF);
-                        tessellator.addVertexWithUV(x1, y1,  ze, uR, cellVF);
-                        tessellator.addVertexWithUV(x1, 0.0, ze, uR, cellVF);
-                        tessellator.addVertexWithUV(x0, 0.0, ze, uL, cellVF);
+                        angelica$emitCloudQuad(
+                            x0, y1,  ze, uL, cellVF,
+                            x1, y1,  ze, uR, cellVF,
+                            x1, 0.0, ze, uR, cellVF,
+                            x0, 0.0, ze, uL, cellVF,
+                            ANGELICA_FACTOR_Z_IDX, (byte) 0, (byte) 0, (byte) -127);
                     }
                 }
             }
         }
+
+        if (emitTopFace || emitBottomFace) {
+            angelica$emitTopBottomGlobalGreedy(emitTopFace, emitBottomFace,
+                ye, scrollSpeed, cloudScrollingX, cloudScrollingZ);
+        }
+    }
+
+    @Unique
+    private static void angelica$emitTopBottomGlobalGreedy(
+        boolean emitTopFace,
+        boolean emitBottomFace,
+        double  ye,
+        float   scrollSpeed,
+        float   scrollX,
+        float   scrollZ
+    ) {
+        final int stride  = angelica$gridStride;
+        final int rows    = angelica$gridRows;
+        final int lpr     = angelica$gridLongsPerRow;
+        final int minX    = angelica$gridMinX;
+        final int minZ    = angelica$gridMinZ;
+        final long[] todo = angelica$globalEmitTodo;
+        System.arraycopy(angelica$globalEmit, 0, todo, 0, rows * lpr);
+
+        final int bytesPerQuad = 96;
+        final int bytesPerCell = (emitTopFace ? bytesPerQuad : 0)
+                               + (emitBottomFace ? bytesPerQuad : 0);
+
+        for (int row = 0; row < rows; row++) {
+            final int rowOff = row * lpr;
+            for (int wi = 0; wi < lpr; wi++) {
+                long word = todo[rowOff + wi];
+                while (word != 0L) {
+                    final int bit  = Long.numberOfTrailingZeros(word);
+                    final int col0 = wi * 64 + bit;
+                    if (col0 >= stride) break;
+
+                    final int w = angelica$measureRowRun(todo, rowOff, lpr, stride, col0);
+
+                    final int wiStart = col0 >>> 6;
+                    final int wiLast  = (col0 + w - 1) >>> 6;
+                    final int spanWords = wiLast - wiStart + 1;
+                    if (angelica$runMaskScratch.length < spanWords) {
+                        angelica$runMaskScratch = new long[Math.max(spanWords, angelica$runMaskScratch.length * 2)];
+                    }
+                    final long[] mask = angelica$runMaskScratch;
+                    for (int s = 0; s < spanWords; s++) {
+                        final int wIdx = wiStart + s;
+                        final int wordColStart = wIdx * 64;
+                        final int loBit = Math.max(0, col0 - wordColStart);
+                        final int hiBit = Math.min(63, col0 + w - 1 - wordColStart);
+                        final int bits = hiBit - loBit + 1;
+                        mask[s] = (bits == 64) ? -1L : (((1L << bits) - 1L) << loBit);
+                    }
+
+                    int h = 1;
+                    extendRow:
+                    while (row + h < rows) {
+                        final int rOff = (row + h) * lpr;
+                        for (int s = 0; s < spanWords; s++) {
+                            final long m = mask[s];
+                            if ((todo[rOff + wiStart + s] & m) != m) break extendRow;
+                        }
+                        h++;
+                    }
+                    // Claim all cells in the rectangle so they don't
+                    // get emitted again by a later row's pass.
+                    for (int rr = 0; rr < h; rr++) {
+                        final int rOff = (row + rr) * lpr;
+                        for (int s = 0; s < spanWords; s++) {
+                            todo[rOff + wiStart + s] &= ~mask[s];
+                        }
+                    }
+
+                    final int       relX0 = col0 + minX;
+                    final int       relX1 = relX0 + w;
+                    final int       relZ0 = row  + minZ;
+                    final int       relZ1 = relZ0 + h;
+                    final double    x0    = relX0;
+                    final double    x1    = relX1;
+                    final double    z0    = relZ0;
+                    final double    z1    = relZ1;
+                    final float     uL    = relX0 * scrollSpeed + scrollX;
+                    final float     uR    = relX1 * scrollSpeed + scrollX;
+                    final float     vN    = relZ0 * scrollSpeed + scrollZ;
+                    final float     vS    = relZ1 * scrollSpeed + scrollZ;
+
+                    if (bytesPerCell > 0) angelica$ensureEmitCapacity(bytesPerCell);
+
+                    if (emitTopFace) {
+                        angelica$emitCloudQuad(
+                            x0, 0.0, z0, uL, vN,
+                            x1, 0.0, z0, uR, vN,
+                            x1, 0.0, z1, uR, vS,
+                            x0, 0.0, z1, uL, vS,
+                            ANGELICA_FACTOR_TOP_IDX, (byte) 0, (byte) -127, (byte) 0);
+                    }
+                    if (emitBottomFace) {
+                        angelica$emitCloudQuad(
+                            x0, ye, z1, uL, vS,
+                            x1, ye, z1, uR, vS,
+                            x1, ye, z0, uR, vN,
+                            x0, ye, z0, uL, vN,
+                            ANGELICA_FACTOR_BOTTOM_IDX, (byte) 0, (byte) 127, (byte) 0);
+                    }
+
+                    word = todo[rowOff + wi];
+                }
+            }
+        }
+    }
+
+    @Unique
+    private static int angelica$measureRowRun(long[] arr, int rowOff, int lpr, int stride, int col0) {
+        int wi = col0 >>> 6;
+        final int bit = col0 & 63;
+        final long highMask = -1L << bit;
+        final long inv = ~arr[rowOff + wi] & highMask;
+        if (inv != 0L) {
+            final int zeroBit = Long.numberOfTrailingZeros(inv);
+            return Math.min(zeroBit - bit, stride - col0);
+        }
+        int run = 64 - bit;
+        wi++;
+        while (wi < lpr) {
+            final long w = arr[rowOff + wi];
+            if (w != -1L) {
+                run += Long.numberOfTrailingZeros(~w);
+                return Math.min(run, stride - col0);
+            }
+            run += 64;
+            wi++;
+        }
+        return Math.min(run, stride - col0);
     }
 
     public void renderCloudsFast(float partialTicks) {
