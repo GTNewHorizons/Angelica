@@ -1,10 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.client.model.NormalHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.DirectDrawCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorCallback;
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.tessellator.VertexTransformCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
@@ -12,19 +12,19 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
-import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBOBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
+import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
-import com.mojang.brigadier.Command;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.experimental.UtilityClass;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
@@ -1191,12 +1191,101 @@ public class DisplayListManager {
 
     private static final class DisplayListCallback extends VertexTransformCallback {
 
+
+        private int matrixMode = GL11.GL_MODELVIEW;
+
+        private final Matrix3f normalMatrix = new Matrix3f();
+
+        private final Matrix4f transformMatrix = new Matrix4f();
+
+        public void scale(float x, float y, float z) {
+            transformMatrix.scale(x, y, z);
+            markDirty();
+        }
+
+        public void translate(float x, float y, float z) {
+            transformMatrix.translate(x, y, z);
+            markDirty();
+        }
+
+        public void rotate(float rad, float x, float y, float z) {
+            transformMatrix.rotate(rad, x, y, z);
+            markDirty();
+        }
+
+        public void multMatrix(Matrix4f matrix4f) {
+            transformMatrix.mul(matrix4f);
+            markDirty();
+        }
+
+        public void setIdentity() {
+            transformMatrix.identity();
+            markDirty();
+        }
+
+        public Vector3f getScale(Vector3f dest) {
+            return transformMatrix.getScale(dest);
+        }
+
+        public Vector3f getTranslation(Vector3f dest) {
+            return transformMatrix.getTranslation(dest);
+        }
+
+        /**
+         * WARNING: If you apply transformations to this matrix, make sure to call markDirty() afterward!
+         */
+        public Matrix4f getReadMatrix() {
+            return transformMatrix;
+        }
+
+        public void markDirty() {
+            if (matrixMode == GL11.GL_MODELVIEW) {
+                NormalHelper.getNormalMatrix(transformMatrix, normalMatrix);
+            }
+        }
+
+        /**
+         * @param mode accepts either GL11.GL_MODELVIEW, GL11.GL_PROJECTION, GL11.GL_TEXTURE, GL11.GL_COLOR
+         */
+        public void setMatrixMode(int mode) {
+            this.matrixMode = mode;
+            markDirty();
+        }
+
+        public int getMatrixMode() {
+            return this.matrixMode;
+        }
+
+        public boolean isIdentity() {
+            return MatrixHelper.isIdentity(transformMatrix);
+        }
+
         @Override
         public boolean onDraw(CallbackTessellator tessellator) {
             if (!tessellator.isEmpty()) {
                 addAccumulatedDraw(tessellator, false);
             }
             return true;
+        }
+
+        @Override
+        protected Matrix4f getMVPMatrix() {
+            return matrixMode <= GL11.GL_PROJECTION ? transformMatrix : null;
+        }
+
+        @Override
+        protected Matrix4f getTextureMatrix() {
+            return matrixMode == GL11.GL_TEXTURE ? transformMatrix : null;
+        }
+
+        @Override
+        protected Matrix4f getColorMatrix() {
+            return matrixMode == GL11.GL_COLOR ? transformMatrix : null;
+        }
+
+        @Override
+        protected Matrix3f getNormalMatrix() {
+            return matrixMode == GL11.GL_MODELVIEW ? normalMatrix : null; // GL_PROJECTION doesn't transform normals
         }
     }
 }
