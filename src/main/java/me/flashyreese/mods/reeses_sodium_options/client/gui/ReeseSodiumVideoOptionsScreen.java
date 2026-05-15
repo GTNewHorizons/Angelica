@@ -33,6 +33,9 @@ import java.util.function.Predicate;
 import java.util.stream.Stream;
 
 public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
+    private static final float ASPECT_RATIO = 5f / 4f;
+    private static final int MINIMUM_WIDTH = 550;
+
     @Nullable
     private Element focused;
 
@@ -88,10 +91,10 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     protected BasicFrame.Builder parentFrameBuilder() {
         final BasicFrame.Builder basicFrameBuilder;
 
-        // Calculates if resolution exceeds 16:9 ratio, force 16:9
+        // Clamp width on wide screens
         int newWidth = this.width;
-        if ((float) this.width / (float) this.height > 1.77777777778) {
-            newWidth = (int) (this.height * 1.77777777778);
+        if (this.width > MINIMUM_WIDTH && (float) this.width / (float) this.height > ASPECT_RATIO) {
+            newWidth = Math.max(MINIMUM_WIDTH, (int) (this.height * ASPECT_RATIO));
         }
 
         final Dim2i basicFrameDim = new Dim2i((this.width - newWidth) / 2, 0, newWidth, this.height);
