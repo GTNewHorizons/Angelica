@@ -40,10 +40,13 @@ import java.nio.ByteBuffer;
  *   1. A cell-opacity bitmap, extracted once from the clouds.png alpha
  *      channel. Used for neighbor lookups + face culling.
  *
- *   2. A cached VBO, geometry is held in cell-local coordinates and
- *      translated by the camera position around the draw, so camera motion
- *      within a cell doesn't dirty it. Cache invalidates on cell crossings,
- *      render-distance changes, and a few other params.
+ *   2. A cached VBO with an anchor and chunk margin. Geometry is emitted in
+ *      anchor-relative cell coords covering the visible radius plus a
+ *      margin in every direction. Each frame the geometry is translated
+ *      by (cameraCell - anchor) at draw time, so camera motion within
+ *      the chunk margin doesn't dirty the VBO. Rebuild only fires when the
+ *      camera leaves the margin, render distance changes, the
+ *      inside-cloud state flips, or a few other params change.
  *
  *   3. Greedy meshing of top + bottom faces across the entire visible grid.
  *      Side faces use per-chunk 1-D greedy runs.
@@ -70,22 +73,16 @@ public abstract class MixinRenderGlobal {
     @Unique private static boolean      angelica$cellWHPow2;
     @Unique private static int          angelica$cellTexId            = -1;
     @Unique private static final int    ANGELICA_CELL_EMPTY_THRESHOLD = 10;
-    // The VAO holds cell-local geometry: vertex positions are in
-    // (cell-X, 0/cloudHeight, cell-Z) world space, with camera offset
-    // applied as a translation around the draw call.
-    // The cache key below covers every input that would actually change the geometry
-    // (cell offset, render radius, face visibility, etc.).
     @Unique private static IVertexArrayObject angelica$cloudVao;
     @Unique private static int      angelica$cachedCellTexId            = Integer.MIN_VALUE;
-    @Unique private static int      angelica$cachedFloorOffsetX         = Integer.MIN_VALUE;
-    @Unique private static int      angelica$cachedFloorOffsetZ         = Integer.MIN_VALUE;
+    @Unique private static int      angelica$anchorOffsetX              = Integer.MIN_VALUE;
+    @Unique private static int      angelica$anchorOffsetZ              = Integer.MIN_VALUE;
+    @Unique private static int      angelica$anchorMarginCells          = 0;
     @Unique private static boolean  angelica$cachedEmitTopFace;
     @Unique private static boolean  angelica$cachedEmitBottomFace;
     @Unique private static boolean  angelica$cachedCameraInsideCloud;
     @Unique private static int      angelica$cachedRenderRadius         = -1;
     @Unique private static float    angelica$cachedCloudInteriorHeight  = -1f;
-    @Unique private static float    angelica$cachedCloudScrollingX      = Float.NaN;
-    @Unique private static float    angelica$cachedCloudScrollingZ      = Float.NaN;
     @Unique private static int      angelica$cachedVertexCount;
 
     // The factor index that picks its darkening factor.
@@ -197,10 +194,10 @@ public abstract class MixinRenderGlobal {
         if (bound != angelica$cloudMipmapTexId) {
             GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 4);
             GLStateManager.glGenerateMipmap(GL11.GL_TEXTURE_2D);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
             angelica$cloudMipmapTexId = bound;
         }
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
 
         if (bound != angelica$cellTexId || angelica$cellOpaqueBits == null) {
             final int w = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH);
@@ -457,8 +454,7 @@ public abstract class MixinRenderGlobal {
      */
     @Overwrite
     public void renderCloudsFancy(float partialTicks) {
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
-        OpenGlHelper.glBlendFunc(770, 771, 1, 0);
+        GLStateManager.tryBlendFuncSeparate(770, 771, 1, 0);
         renderEngine.bindTexture(locationCloudsPng);
         angelica$setupCloudTexture();
 
@@ -493,50 +489,57 @@ public abstract class MixinRenderGlobal {
         float cameraRelativeX = (float)(cameraOffsetX - (double)MathHelper.floor_double(cameraOffsetX));
         float cameraRelativeZ = (float)(cameraOffsetZ - (double)MathHelper.floor_double(cameraOffsetZ));
 
-        float scrollSpeed = 0.00390625F;
-        float cloudScrollingX = (float)MathHelper.floor_double(cameraOffsetX) * scrollSpeed;
-        float cloudScrollingZ = (float)MathHelper.floor_double(cameraOffsetZ) * scrollSpeed;
+        final float scrollSpeed = 0.00390625F;
 
         float cloudWidth = 8f;
         final int cloudTargetDistance = Math.max(mc.gameSettings.renderDistanceChunks,
             (int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
         int renderRadius = (int)Math.ceil(cloudTargetDistance * 64.0f / (cloudWidth * cloudInteriorWidth));
         float edgeOverlap = 0.0001f;
-        GLStateManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
 
         final boolean emitTopFace       = cameraRelativeY + cloudInteriorHeight >= 0.0F;
         final boolean emitBottomFace    = cameraRelativeY                       <= 0.0F;
         final int cellsPerChunk         = (int)cloudWidth;
-        final int radiusCells           = renderRadius * cellsPerChunk;
-        final int radiusCellsSq         = radiusCells * radiusCells;
 
-        final int floorOffsetX = MathHelper.floor_double(cameraOffsetX);
-        final int floorOffsetZ = MathHelper.floor_double(cameraOffsetZ);
+        final int anchorX = MathHelper.floor_double(cameraOffsetX);
+        final int anchorZ = MathHelper.floor_double(cameraOffsetZ);
 
         final boolean cameraInsideY = cameraRelativeY <= 0.0F
             && cameraRelativeY + cloudInteriorHeight >= 0.0F;
         final boolean cameraInsideCloud = cameraInsideY
-            && angelica$cellOpaque(floorOffsetX, floorOffsetZ);
+            && angelica$cellOpaque(anchorX, anchorZ);
 
-        final boolean geomCacheValid = angelica$cloudVao != null
+        final boolean anchorInRange = angelica$cloudVao != null
+            && Math.abs(anchorX - angelica$anchorOffsetX) <= angelica$anchorMarginCells
+            && Math.abs(anchorZ - angelica$anchorOffsetZ) <= angelica$anchorMarginCells;
+
+        final boolean geomCacheValid = anchorInRange
             && angelica$cachedCellTexId             == angelica$cellTexId
-            && angelica$cachedFloorOffsetX          == floorOffsetX
-            && angelica$cachedFloorOffsetZ          == floorOffsetZ
             && angelica$cachedEmitTopFace           == emitTopFace
             && angelica$cachedEmitBottomFace        == emitBottomFace
             && angelica$cachedCameraInsideCloud     == cameraInsideCloud
             && angelica$cachedRenderRadius          == renderRadius
-            && angelica$cachedCloudInteriorHeight   == cloudInteriorHeight
-            && angelica$cachedCloudScrollingX       == cloudScrollingX
-            && angelica$cachedCloudScrollingZ       == cloudScrollingZ;
+            && angelica$cachedCloudInteriorHeight   == cloudInteriorHeight;
 
         if (!geomCacheValid) {
+            // Pick new anchor because camera left the current margin
+            final int marginCells = cameraInsideCloud
+                ? 0
+                : Math.max(cellsPerChunk, renderRadius * cellsPerChunk / 4);
+            final int marginChunks = (marginCells + cellsPerChunk - 1) / cellsPerChunk;
+            final int chunkRange = renderRadius + marginChunks;
+            final int radiusCellsWithMargin = chunkRange * cellsPerChunk;
+            final int radiusCellsSq = radiusCellsWithMargin * radiusCellsWithMargin;
+
+            final float anchorScrollingX = anchorX * scrollSpeed;
+            final float anchorScrollingZ = anchorZ * scrollSpeed;
+
             angelica$verifyCloudVertexFormat();
             angelica$prepareEmitBuffer();
-            angelica$emitCloudGeometry(renderRadius, cloudWidth, cellsPerChunk,
-                radiusCellsSq, floorOffsetX, floorOffsetZ,
+            angelica$emitCloudGeometry(chunkRange, cloudWidth, cellsPerChunk,
+                radiusCellsSq, anchorX, anchorZ,
                 cloudInteriorHeight,
-                scrollSpeed, cloudScrollingX, cloudScrollingZ, edgeOverlap,
+                scrollSpeed, anchorScrollingX, anchorScrollingZ, edgeOverlap,
                 emitTopFace, emitBottomFace, cameraInsideCloud);
             final int totalBytes  = (int) (angelica$writeAddr - angelica$emitBufferAddr);
             final int vertexCount = totalBytes / ANGELICA_CLOUD_VERTEX_STRIDE;
@@ -562,15 +565,14 @@ public abstract class MixinRenderGlobal {
             }
 
             angelica$cachedCellTexId            = angelica$cellTexId;
-            angelica$cachedFloorOffsetX         = floorOffsetX;
-            angelica$cachedFloorOffsetZ         = floorOffsetZ;
+            angelica$anchorOffsetX              = anchorX;
+            angelica$anchorOffsetZ              = anchorZ;
+            angelica$anchorMarginCells          = marginCells;
             angelica$cachedEmitTopFace          = emitTopFace;
             angelica$cachedEmitBottomFace       = emitBottomFace;
             angelica$cachedCameraInsideCloud    = cameraInsideCloud;
             angelica$cachedRenderRadius         = renderRadius;
             angelica$cachedCloudInteriorHeight  = cloudInteriorHeight;
-            angelica$cachedCloudScrollingX      = cloudScrollingX;
-            angelica$cachedCloudScrollingZ      = cloudScrollingZ;
         }
 
         if (angelica$cloudVao == null) {
@@ -579,8 +581,29 @@ public abstract class MixinRenderGlobal {
 
         angelica$cloudVao.bind();
 
+        final float anchorDriftX = (float)(anchorX - angelica$anchorOffsetX);
+        final float anchorDriftZ = (float)(anchorZ - angelica$anchorOffsetZ);
+
+        // Not sure if this works but this should make it so that clouds
+        // aren't incorrectly obscured by vanilla fog if a shaderpack wants to use it
+        final float origFogStart = GLStateManager.getFogState().getStart();
+        final float origFogEnd   = GLStateManager.getFogState().getEnd();
+        final float cloudExtentBlocks = renderRadius * cloudWidth * cloudInteriorWidth;
+        final boolean pushFog = GLStateManager.getFogMode().isEnabled()
+            && GLStateManager.getFogState().getFogMode() == GL11.GL_LINEAR
+            && origFogEnd < cloudExtentBlocks;
+        if (pushFog) {
+            final float ratio = cloudExtentBlocks / origFogEnd;
+            GLStateManager.glFogf(GL11.GL_FOG_START, origFogStart * ratio);
+            GLStateManager.glFogf(GL11.GL_FOG_END,   cloudExtentBlocks);
+        }
+
         GLStateManager.glPushMatrix();
-        GLStateManager.glTranslatef(-cameraRelativeX, cameraRelativeY, -cameraRelativeZ);
+        GLStateManager.glScalef(cloudInteriorWidth, 1.0F, cloudInteriorWidth);
+        GLStateManager.glTranslatef(
+            -(cameraRelativeX + anchorDriftX),
+            cameraRelativeY,
+            -(cameraRelativeZ + anchorDriftZ));
 
         GLStateManager.glDisable(GL11.GL_BLEND);
         GLStateManager.glColorMask(false, false, false, false);
@@ -610,10 +633,14 @@ public abstract class MixinRenderGlobal {
 
         angelica$cloudVao.unbind();
 
+        if (pushFog) {
+            GLStateManager.glFogf(GL11.GL_FOG_START, origFogStart);
+            GLStateManager.glFogf(GL11.GL_FOG_END,   origFogEnd);
+        }
+
         GLStateManager.glDepthMask(true);
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GLStateManager.glDisable(GL11.GL_BLEND);
-        GLStateManager.glEnable(GL11.GL_CULL_FACE);
     }
 
     /**
@@ -711,12 +738,12 @@ public abstract class MixinRenderGlobal {
      */
     @Unique
     private static void angelica$emitCloudGeometry(
-        int     renderRadius,
+        int     chunkRange,
         float   cloudWidth,
         int     cellsPerChunk,
         int     radiusCellsSq,
-        int     floorOffsetX,
-        int     floorOffsetZ,
+        int     anchorOffsetX,
+        int     anchorOffsetZ,
         float   cloudInteriorHeight,
         float   scrollSpeed,
         float   cloudScrollingX,
@@ -732,8 +759,8 @@ public abstract class MixinRenderGlobal {
         final int[] opaqueRows = angelica$chunkOpaqueRows;
         // When the camera is inside a cloud cell, all we need is a 3×3
         // cluster of cells centered on the camera.
-        final int chunkLo = cameraInsideCloud ? -1 : -renderRadius;
-        final int chunkHi = cameraInsideCloud ?  0 :  renderRadius;
+        final int chunkLo = cameraInsideCloud ? -1 : -chunkRange;
+        final int chunkHi = cameraInsideCloud ?  0 :  chunkRange;
 
         // Allocate / clear the global top/bottom emit grid. It holds one
         // bit per cell in the visible window, OR-accumulated by each
@@ -761,8 +788,8 @@ public abstract class MixinRenderGlobal {
             for (int chunkZ = chunkLo; chunkZ <= chunkHi; ++chunkZ) {
                 final float chunkOffsetX = (chunkX * cloudWidth);
                 final float chunkOffsetZ = (chunkZ * cloudWidth);
-                final int baseU = chunkX * cellsPerChunk + floorOffsetX;
-                final int baseV = chunkZ * cellsPerChunk + floorOffsetZ;
+                final int baseU = chunkX * cellsPerChunk + anchorOffsetX;
+                final int baseV = chunkZ * cellsPerChunk + anchorOffsetZ;
 
                 // Build the local 10×10 opacity grid where this chunk's 8×8
                 // cells plus a 1-cell border on every side so we can
@@ -832,69 +859,27 @@ public abstract class MixinRenderGlobal {
                 // Build the four side-face bitmasks.
                 // A set bit at position (j*8 + k) means cell (k, j) in
                 // this chunk should emit a face in that direction.
+                //
+                // Here lies what used to be very clever bitmasks. If someone could figure out
+                // how to enable and disable specific quads rendering without dirtying the cache,
+                // refer to PR #1685's previous iterations.
                 long westFace = 0L, eastFace = 0L, northFace = 0L, southFace = 0L;
                 if (hasBoundary) {
-                    // X-axis allow mask
-                    final long allowWest;
-                    final long allowEast;
-                    if (chunkX > 0) {
-                        // -1L being allow all cells, 0L allows none.
-                        allowWest = -1L;
-                        allowEast = 0L;
-                    } else if (chunkX < 0) {
-                        allowWest = 0L;
-                        allowEast = -1L;
-                    } else {
-                        // when chunkX == 0, this chunk straddles the camera
-                        // on X. relX = k inside this chunk:
-                        //   k = 0 -> relX = 0 -> no X face visible
-                        //   k ≥ 1 -> relX > 0 -> -X (west) face visible
-                        // So we allow -X for every cell except column k = 0.
-                        //
-                        // Cell layout in the 64-bit mask is packed as
-                        // bit (j*8 + k). So column k = 0 occupies bits
-                        // 0, 8, 16, 24, 32, 40, 48, 56,etc... one bit per row.
-                        //
-                        // In hex that's 0x0101010101010101L.
-                        allowWest = ~0x0101010101010101L;
-                        allowEast = 0L;
-                    }
-
-                    // Z axis allow mask
-                    final long allowNorth;
-                    final long allowSouth;
-                    if (chunkZ > 0) {
-                        allowNorth = -1L;
-                        allowSouth = 0L;
-                    } else if (chunkZ < 0) {
-                        allowNorth = 0L;
-                        allowSouth = -1L;
-                    } else {
-                        // chunkZ == 0
-                        //
-                        // Cell layout packs ROWS contiguously...row j
-                        // occupies bits j*8...j*8+7. So row j = 0 is
-                        // bits 0...7 = 0xFF.
-                        allowNorth = ~0xFFL;
-                        allowSouth = 0L;
-                    }
-
                     // Pack each direction's neighbor-opacity bitmap into
                     // an 8×8 long.
                     long westOpaque = 0L, eastOpaque = 0L, northOpaque = 0L, southOpaque = 0L;
                     for (int j = 0; j < cellsPerChunk; j++) {
                         final int rowShift = j * cellsPerChunk;
-                        westOpaque  |= ((long) (opaqueRows [j + 1]        & 0xFF)) << rowShift;
+                        westOpaque  |= ((long) ( opaqueRows[j + 1]        & 0xFF)) << rowShift;
                         eastOpaque  |= ((long) ((opaqueRows[j + 1] >>> 2) & 0xFF)) << rowShift;
                         northOpaque |= ((long) ((opaqueRows[j]     >>> 1) & 0xFF)) << rowShift;
                         southOpaque |= ((long) ((opaqueRows[j + 2] >>> 1) & 0xFF)) << rowShift;
                     }
 
-                    // Combine all three filters.
-                    westFace  = emittableBits & ~westOpaque  & allowWest;
-                    eastFace  = emittableBits & ~eastOpaque  & allowEast;
-                    northFace = emittableBits & ~northOpaque & allowNorth;
-                    southFace = emittableBits & ~southOpaque & allowSouth;
+                    westFace  = emittableBits & ~westOpaque;
+                    eastFace  = emittableBits & ~eastOpaque;
+                    northFace = emittableBits & ~northOpaque;
+                    southFace = emittableBits & ~southOpaque;
                 }
 
                 // Per-chunk greedy meshing of side faces.
