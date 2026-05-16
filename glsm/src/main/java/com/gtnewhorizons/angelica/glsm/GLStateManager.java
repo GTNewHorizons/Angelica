@@ -5914,4 +5914,14 @@ public class GLStateManager {
     public static void glGetTexImage(int target, int level, int format, int type, long pixels) {
         GL11.glGetTexImage(target, level, format, type, pixels);
     }
+
+    /**
+     * Draw modes that rely on the previous vertex data cannot be merged currently.
+     * It is possible to merge them using Index Buffers, but currently unimplemented.
+     */
+    public static boolean isContinuousDraw(int drawMode) {
+        return drawMode == GL11.GL_TRIANGLE_STRIP || drawMode == GL11.GL_TRIANGLE_FAN
+            || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP
+            || drawMode == GL11.GL_QUAD_STRIP || drawMode == GL11.GL_POLYGON;
+    }
 }

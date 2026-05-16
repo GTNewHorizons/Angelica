@@ -1,9 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.DirectDrawCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
-import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -121,7 +119,6 @@ public final class ImmediateModeRecorder {
         }
 
         t.isDrawing = false;
-        t.color = 0xFFFFFFFF;
 
         if (t.isEmpty()) return null;
 

@@ -581,22 +581,6 @@ public final class CommandRecorder {
         writeFloat(restoreData.lastTexCoordV);
     }
 
-    public void writeDrawRangeRestore(
-        int vboIndex, int flags, int lastColor, int lastNormal, float lastTexCoordU, float lastTexCoordV
-    ) {
-        ensureCapacity(28);
-        writeInt(GLCommand.DRAW_RANGE_RESTORE);
-        writeInt(vboIndex);
-        writeInt(flags);
-        // Last color (4 bytes)
-        writeInt(lastColor);
-        // Last normal (4 bytes)
-        writeInt(lastNormal);
-        // Last texcoord (2 floats = 8 bytes)
-        writeFloat(lastTexCoordU);
-        writeFloat(lastTexCoordV);
-    }
-
 
     public void writeCallList(int listId) {
         ensureCapacity(8);
@@ -659,68 +643,6 @@ public final class CommandRecorder {
         writeInt(index);
     }
 
-    // === Reading methods for optimization pass ===
-
-    private long readPointer = 0;
-
-    /**
-     * Reset read position to the beginning of the buffer.
-     */
-    public void resetRead() {
-        readPointer = basePointer;
-    }
-
-    /**
-     * Check if there's more data to read.
-     */
-    public boolean hasRemaining() {
-        return readPointer < writePointer;
-    }
-
-    /**
-     * Read an int from the current position.
-     */
-    public int readInt() {
-        final int value = memGetInt(readPointer);
-        readPointer += 4;
-        return value;
-    }
-
-    public long readLong() {
-        final long value = memGetLong(readPointer);
-        readPointer += 8;
-        return value;
-    }
-
-    /**
-     * Read a float from the current position.
-     */
-    public float readFloat() {
-        final float value = memGetFloat(readPointer);
-        readPointer += 4;
-        return value;
-    }
-
-    /**
-     * Read a double from the current position.
-     */
-    public double readDouble() {
-        final double value = memGetDouble(readPointer);
-        readPointer += 8;
-        return value;
-    }
-
-    /**
-     * Read a Matrix4f from the current position (16 floats in column-major order).
-     */
-    public Matrix4f readMatrix4f(Matrix4f dest) {
-        dest.m00(readFloat()); dest.m01(readFloat()); dest.m02(readFloat()); dest.m03(readFloat());
-        dest.m10(readFloat()); dest.m11(readFloat()); dest.m12(readFloat()); dest.m13(readFloat());
-        dest.m20(readFloat()); dest.m21(readFloat()); dest.m22(readFloat()); dest.m23(readFloat());
-        dest.m30(readFloat()); dest.m31(readFloat()); dest.m32(readFloat()); dest.m33(readFloat());
-        return dest;
-    }
-
     // === Lifecycle ===
 
     public int size() {
@@ -735,8 +657,8 @@ public final class CommandRecorder {
     }
 
     /**
-     * Deletes every allocated object & returns a ByteBuffer with the capacity equal to
-     * its limit (to save on memory). This object cannot be used after calling this anymore.
+     * Deletes every allocated object & returns a ByteBuffer with the capacity equal to its limit.
+     * This CommandRecorder object cannot be used after calling this anymore.
      */
     public ByteBuffer finish() {
         for (IndexedDrawCapture c : indexedDraws.getCaptures()) {

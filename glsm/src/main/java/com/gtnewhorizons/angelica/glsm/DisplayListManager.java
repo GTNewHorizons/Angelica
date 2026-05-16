@@ -876,7 +876,7 @@ public class DisplayListManager {
         }
         if (pendingDraw.drawMode != tessellator.drawMode
             || pendingDraw.format != tessellator.getVertexFormat()
-            || isContinuous(tessellator.drawMode)
+            || GLStateManager.isContinuousDraw(tessellator.drawMode)
         ) {
             drawBarrier();
             createNewDraw(tessellator, copyLast);
@@ -893,16 +893,6 @@ public class DisplayListManager {
         if (DEBUG_DISPLAY_LISTS) {
             drawBarrier();
         }
-    }
-
-    /**
-     * Draw modes that rely on the previous vertex data cannot be merged currently.
-     * It is possible to merge them using Index Buffers, but currently unimplemented.
-     */
-    private static boolean isContinuous(int drawMode) {
-        return drawMode == GL11.GL_TRIANGLE_STRIP || drawMode == GL11.GL_TRIANGLE_FAN
-            || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP
-            || drawMode == GL11.GL_QUAD_STRIP || drawMode == GL11.GL_POLYGON;
     }
 
     /**
@@ -1111,6 +1101,7 @@ public class DisplayListManager {
                             .append(", drawMode=").append(vbo.getDrawMode())
                             .append(", start=").append(vbo.getStart())
                             .append(", count=").append(vbo.getCount())
+                            .append(", format=").append(vbo.getVAO().getVBO().getVertexFormat())
                             .append(")");
                         // Show draw source if available
                         if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
@@ -1120,11 +1111,23 @@ public class DisplayListManager {
                     }
                     case GLCommand.DRAW_RANGE_RESTORE -> {
                         final int vboIdx = memGetInt(ptr + 4);
-                        final int start = memGetInt(ptr + 8);
-                        final int count = memGetInt(ptr + 12);
-                        final int brightness = memGetInt(ptr + 16);
-                        sb.append("(vbo=").append(vboIdx).append(", start=").append(start)
-                            .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
+                        final int flags = memGetInt(ptr + 8);
+                        final int lastColor = memGetInt(ptr + 12);
+                        final int lastNormal = memGetInt(ptr + 16);
+                        final float lastTexCoordU = memGetFloat(ptr + 20);
+                        final float lastTexCoordV = memGetFloat(ptr + 24);
+                        final DisplayListVBO.SubVBO vbo = vbos.getVBO(vboIdx);
+                        sb.append("(vbo=").append(vboIdx)
+                            .append(", drawMode=").append(vbo.getDrawMode())
+                            .append(", start=").append(vbo.getStart())
+                            .append(", count=").append(vbo.getCount())
+                            .append(", format=").append(vbo.getVAO().getVBO().getVertexFormat())
+                            .append(", flags=").append(flags)
+                            .append(", lastColor=").append(lastColor)
+                            .append(", lastNormal=").append(lastNormal)
+                            .append(", lastTexCoordU=").append(lastTexCoordU)
+                            .append(", lastTexCoordV=").append(lastTexCoordV)
+                            .append(")");
                         // Show draw source if available
                         if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
                             sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
@@ -1266,6 +1269,12 @@ public class DisplayListManager {
                 addAccumulatedDraw(tessellator, false);
             }
             return true;
+        }
+
+        @Override
+        public void onVertex(CallbackTessellator tessellator, double x, double y, double z) {
+            tessellator.syncVanillaTessellator();
+            super.onVertex(tessellator, x, y, z);
         }
 
         @Override
