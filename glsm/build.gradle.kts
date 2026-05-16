@@ -146,6 +146,10 @@ tasks.test {
 
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(8)
+        if (System.getProperty("os.name").lowercase().contains("mac")
+            && System.getProperty("os.arch") == "aarch64") {
+            vendor = JvmVendorSpec.AZUL
+        }
     }
 
     dependsOn(downgradeMainClasses, downgradeTestClasses, downgradeDepsForTest)

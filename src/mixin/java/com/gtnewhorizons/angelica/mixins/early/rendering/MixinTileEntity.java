@@ -9,6 +9,7 @@ import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.world.World;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -23,7 +24,7 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Shadow public int yCoord;
     @Shadow public int zCoord;
 
-    @Shadow(remap = false) public static final AxisAlignedBB INFINITE_EXTENT_AABB = null;
+    @Shadow(remap = false) @Final public static AxisAlignedBB INFINITE_EXTENT_AABB;
 
     /**
      * @author mitchej123

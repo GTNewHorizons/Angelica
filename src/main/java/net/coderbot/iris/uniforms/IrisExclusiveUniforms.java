@@ -138,9 +138,9 @@ public class IrisExclusiveUniforms {
 
 	public static class WorldInfoUniforms {
 		public static void addWorldInfoUniforms(UniformHolder uniforms) {
-			final WorldClient level = Minecraft.getMinecraft().theWorld;
 			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "bedrockLevel", () -> 0);
             uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "cloudHeight", () -> {
+                final WorldClient level = Minecraft.getMinecraft().theWorld;
                 if (level != null && level.provider != null) {
                     return level.provider.getCloudHeight();
                 } else {
@@ -148,6 +148,7 @@ public class IrisExclusiveUniforms {
                 }
             });
 			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "heightLimit", () -> {
+                final WorldClient level = Minecraft.getMinecraft().theWorld;
                 if (level != null && level.provider != null) {
                     return level.provider.getHeight();
 				} else {
@@ -155,6 +156,7 @@ public class IrisExclusiveUniforms {
 				}
 			});
 			uniforms.uniform1b(UniformUpdateFrequency.PER_FRAME, "hasCeiling", () -> {
+                final WorldClient level = Minecraft.getMinecraft().theWorld;
 				if (level != null && level.provider != null) {
 					return level.provider.hasNoSky;
 				} else {
@@ -162,6 +164,7 @@ public class IrisExclusiveUniforms {
 				}
 			});
 			uniforms.uniform1b(UniformUpdateFrequency.PER_FRAME, "hasSkylight", () -> {
+                final WorldClient level = Minecraft.getMinecraft().theWorld;
 				if (level != null && level.provider != null) {
 					return !level.provider.hasNoSky;
 				} else {
@@ -169,6 +172,7 @@ public class IrisExclusiveUniforms {
 				}
 			});
 			uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "ambientLight", () -> {
+                final WorldClient level = Minecraft.getMinecraft().theWorld;
 				if (level != null && level.provider != null) {
                     return level.provider.lightBrightnessTable[0];
 				} else {

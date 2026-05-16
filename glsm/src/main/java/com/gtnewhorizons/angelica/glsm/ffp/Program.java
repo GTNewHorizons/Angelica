@@ -178,7 +178,7 @@ public class Program {
     }
 
     public void destroy() {
-        RENDER_BACKEND.deleteProgram(programId);
+        GLStateManager.glDeleteProgram(programId);
     }
 
     /**

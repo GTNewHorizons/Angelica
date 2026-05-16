@@ -108,13 +108,6 @@ public class VertexAttribState {
         clientSideEnabledCount = count;
     }
 
-    public static boolean hasVBOBoundAttrib() {
-        for (int i = 0; i < MAX_ATTRIBS; i++) {
-            if (current[i].enabled && current[i].vboId != 0) return true;
-        }
-        return false;
-    }
-
     /**
      * Returns true if any currently enabled vertex attribute was registered without a VBO
      * (i.e. as a client-side pointer). In core profile, such attribs are treated as null
@@ -167,6 +160,10 @@ public class VertexAttribState {
         }
 
         public float readComponent(ByteBuffer buf, int base, int component) {
+            return readComponent(type, normalized, buf, base, component);
+        }
+
+        public static float readComponent(int type, boolean normalized, ByteBuffer buf, int base, int component) {
             return switch (type) {
                 case GL11.GL_FLOAT -> buf.getFloat(base + component * 4);
                 case GL11.GL_DOUBLE -> (float) buf.getDouble(base + component * 8);

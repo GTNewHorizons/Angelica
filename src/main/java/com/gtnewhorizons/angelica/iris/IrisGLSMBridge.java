@@ -16,7 +16,6 @@ import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
-import net.coderbot.iris.vertices.ImmediateState;
 
 public class IrisGLSMBridge {
 
@@ -149,20 +148,37 @@ public class IrisGLSMBridge {
             }
         });
 
-        GLSMHooks.PROGRAM_CHANGE.addListener(event -> ProgramUniforms.clearActiveUniforms());
+        GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
+            if (!Iris.enabled) return;
+            if (event.postBind) return;
+            ProgramUniforms.clearActiveUniforms();
+        });
 
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
+            if (event.postBind) return;
+            
             final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (!(pipeline instanceof DeferredWorldRenderingPipeline drp)) return;
             if (!drp.shouldOverrideShaders()) return;
             if (drp.getActivePassProgramId() == -1) return;
-
-            if (!ImmediateState.isRenderingLevel || DepthColorStorage.isOwnedProgram(event.newProgram)) {
+            
+            if (DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 DepthColorStorage.unlockDepthColor();
-            } else {
-                drp.onModProgramOverride();
             }
         });
+        
+        GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
+            if (!Iris.enabled) return;
+            if (!event.postBind) return;
+            WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+            if (pipeline instanceof DeferredWorldRenderingPipeline drp) {
+                DeferredWorldRenderingPipeline.Pass activePass = drp.getActivePassProgram();
+                if (activePass != null && activePass.getProgram() != null && activePass.getProgram().getProgramId() == event.newProgram) {
+                    activePass.getProgram().getUniforms().update();
+                }
+            }
+        });
+
     }
 }

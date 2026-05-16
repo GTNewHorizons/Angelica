@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSACore;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -61,7 +62,13 @@ public class RenderSystem {
         if (rendererInitialized) return;
         rendererInitialized = true;
         try {
-            if (GLStateManager.capabilities.OpenGL45) {
+            if (GLStateManager.vendorIsIntel() && GLStateManager.isWindows()) {
+                dsaState = new DSAUnsupported();
+                GLStateManager.LOGGER.info("Detected Intel drivers on Windows, disabling DSA.");
+            } else if (!GLStateManager.getInitConfig().isDSAEnabled()) {
+                dsaState = new DSAUnsupported();
+                GLStateManager.LOGGER.info("enableDSA is set to false, disabling DSA.");
+            } else if (GLStateManager.capabilities.OpenGL45) {
                 dsaState = (Runtime.version().feature() > 8 && GLStateManager.capabilities.GL_EXT_direct_state_access) ? new DSAEXT() : new DSACore();
                 GLStateManager.LOGGER.info("OpenGL 4.5 detected, enabling DSA.");
             }
@@ -432,7 +439,7 @@ public class RenderSystem {
     }
 
     public static void deleteBuffers(int buffer) {
-        RENDER_BACKEND.deleteBuffers(buffer);
+        GLStateManager.glDeleteBuffers(buffer);
     }
 
     public static long getVRAM() {
@@ -491,7 +498,7 @@ public class RenderSystem {
 
     public static void destroySampler(int sampler) {
         if (!supportsSamplerObjects || sampler == 0) return;
-        RENDER_BACKEND.deleteSamplers(sampler);
+        GLStateManager.glDeleteSamplers(sampler);
     }
 
     public static void samplerParameteri(int sampler, int pname, int param) {

@@ -600,23 +600,6 @@ public final class CommandBuffer {
         writeInt(listId);
     }
 
-    public void writeDrawArrays(int mode, int start, int count) {
-        ensureCapacity(16);
-        writeInt(GLCommand.DRAW_ARRAYS);
-        writeInt(mode);
-        writeInt(start);
-        writeInt(count);
-    }
-
-    public void writeDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        ensureCapacity(24);
-        writeInt(GLCommand.DRAW_ELEMENTS);
-        writeInt(mode);
-        writeInt(indices_count);
-        writeInt(type);
-        writeLong(indices_buffer_offset);
-    }
-
     public void writeBindVBO(int vbo) {
         ensureCapacity(8);
         writeInt(GLCommand.BIND_VBO);

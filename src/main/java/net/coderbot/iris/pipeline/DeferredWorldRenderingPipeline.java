@@ -181,9 +181,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
 	private final CloudSetting dhCloudSetting;
-
 	private Pass current = null;
-
 	private WorldRenderingPhase overridePhase = null;
 	private WorldRenderingPhase phase = WorldRenderingPhase.NONE;
 	private boolean isBeforeTranslucent;
@@ -279,7 +277,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
         );
 
-		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(BlockMaterialMapping.createBlockMetaIdMap(programs.getPack().getIdMap().getBlockProperties()));
+		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(BlockMaterialMapping.createBlockMetaIdMap(
+			programs.getPack().getIdMap().getBlockProperties(),
+			programs.getPack().getIdMap().hasLegacySection()));
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
 
 		BlockRenderingSettings.INSTANCE.setEntityIds(programs.getPack().getIdMap().getEntityIdMap());
@@ -767,7 +767,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public boolean shouldOverrideShaders() {
 		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
 	}
-
+	
+	public Pass getActivePassProgram() {
+		return current;
+	}
+	
 	public int getActivePassProgramId() {
 		if (current == null) return -1;
 		final Program p = current.getProgram();
@@ -1048,7 +1052,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return shadowRenderTargets != null;
 	}
 
-	private final class Pass {
+	public final class Pass {
 		@Nullable
 		private final Program program;
 		private final GlFramebuffer framebufferBeforeTranslucents;
