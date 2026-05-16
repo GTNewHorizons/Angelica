@@ -63,9 +63,6 @@ configurations {
 // Exclude self-reference from all configurations - prevents transitive Angelica deps from resolving against this project
 configurations.all {
     exclude group: "com.github.GTNewHorizons", module: "Angelica"
-    resolutionStrategy {
-        force "com.github.GTNewHorizons:GTNHLib:9:dev"
-    }
 }
 
 dependencies {
@@ -79,12 +76,7 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    implementation("com.github.GTNewHorizons:GTNHLib:9:dev") {
-        version {
-            strictly '9'
-            reject '0.9.36'
-        }
-    }
+    api("com.github.GTNewHorizons:GTNHLib:9:dev")
 
     shadowImplementation(project(":glsm")) { transitive = false }
     shadowImplementation(project(":lwjgl3-backend")) { transitive = false }
@@ -106,6 +98,7 @@ dependencies {
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
     // Display List Testing
+    /*
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-749-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:ae2stuff:0.10.14-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:BuildCraft:7.1.54:dev")
@@ -120,6 +113,7 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Mobs-Info:0.5.10-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Draconic-Evolution:1.5.18-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:HoloInventory:2.5.8-GTNH:dev")
+     */
 
     //devOnlyNonPublishable('com.github.GTNewHorizons:worldedit-gtnh:v0.0.9')
 
