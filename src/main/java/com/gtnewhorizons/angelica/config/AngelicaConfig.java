@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
+import com.gtnewhorizons.angelica.stereo.StereoDebugEye;
 import com.gtnewhorizons.angelica.stereo.StereoHudMode;
 import com.gtnewhorizons.angelica.stereo.StereoMode;
 
@@ -53,6 +54,14 @@ public class AngelicaConfig {
     })
     @Config.DefaultEnum("DUPLICATE")
     public static StereoHudMode stereoHudMode;
+
+    @Config.Comment({
+        "Debug-only: force the camera to act as if rendering one eye, without the two-pass loop.",
+        "Used to validate the stereo camera offset in isolation. Set to LEFT or RIGHT to see",
+        "the world shift; OFF disables the override. Removed once two-pass rendering ships."
+    })
+    @Config.DefaultEnum("OFF")
+    public static StereoDebugEye stereoDebugForceEye;
 
     @Config.Comment("Enable Reese's Sodium Options")
     @Config.DefaultBoolean(true)

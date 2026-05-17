@@ -57,6 +57,13 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_STEREO(new MixinBuilder("Stereoscopic side-by-side rendering for VR virtual monitors")
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.stereo.MixinEntityRenderer_StereoCamera"
+        )
+    ),
+
     ANGELICA_VBO_CLOUDS(
         new MixinBuilder()
             .setApplyIf(() -> AngelicaConfig.enableVBOClouds)
