@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
+import org.joml.Math;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
@@ -42,8 +43,8 @@ public class Uniforms {
     private final org.joml.Vector3f tempVec3 = new org.joml.Vector3f();
 
     // Pre-computed constants for fog params (Mesa STATE_FOG_PARAMS_OPTIMIZED)
-    private static final double LN2 = Math.log(2.0);
-    private static final double SQRT_LN2 = Math.sqrt(LN2);
+    private static final double LN2 = java.lang.Math.log(2.0);
+    private static final double SQRT_LN2 = java.lang.Math.sqrt(LN2);
 
     // Dirty tracking: last-uploaded generation per category + program ID.
     // Program change forces full re-upload since uniform locations differ.
@@ -315,10 +316,10 @@ public class Uniforms {
         // Upload the current color from GLSM
         final var color = GLStateManager.getColor();
         vec4Buf.clear();
-        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getRed()));
-        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getGreen()));
-        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getBlue()));
-        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getAlpha()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getRed()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getGreen()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getBlue()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getAlpha()));
         vec4Buf.flip();
         RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
