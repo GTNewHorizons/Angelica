@@ -1991,7 +1991,9 @@ public class GLStateManager {
         }
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
         RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, 1, 1, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        restorePixelUnpackBuffer();
 
         // Restore previous binding on active unit
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
@@ -4964,25 +4966,25 @@ public class GLStateManager {
         RENDER_BACKEND.bindBuffer(target, buffer);
     }
 
-    private static void suspendPixelUnpackBuffer() {
+    static void suspendPixelUnpackBuffer() {
         if (boundPixelUnpackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
         }
     }
 
-    private static void restorePixelUnpackBuffer() {
+    static void restorePixelUnpackBuffer() {
         if (boundPixelUnpackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, boundPixelUnpackBuffer);
         }
     }
 
-    private static void suspendPixelPackBuffer() {
+    static void suspendPixelPackBuffer() {
         if (boundPixelPackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
         }
     }
 
-    private static void restorePixelPackBuffer() {
+    static void restorePixelPackBuffer() {
         if (boundPixelPackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, boundPixelPackBuffer);
         }
