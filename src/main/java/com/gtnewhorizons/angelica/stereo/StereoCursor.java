@@ -27,18 +27,13 @@ public final class StereoCursor {
         final boolean shouldOverride = shouldRemap() && Display.isActive();
 
         if (shouldOverride && !weAreGrabbing) {
-            // Entering stereo+GUI: grab the mouse and seed the virtual cursor from the OS cursor
-            // position (clamped into left-half coords).
+            // Entering stereo+GUI: grab the OS cursor and seed at the left-eye center. MC
+            // re-centers Mouse to (displayW/2, displayH/2) on GUI open, which lands on the
+            // seam between eyes (rightmost pixel of left eye).
             final Minecraft mc = Minecraft.getMinecraft();
             final int halfW = mc.displayWidth / 2;
-            int seedX = Mouse.getX();
-            int seedY = Mouse.getY();
-            if (seedX > halfW - 1) seedX = halfW - 1;
-            if (seedX < 0) seedX = 0;
-            if (seedY < 0) seedY = 0;
-            if (seedY > mc.displayHeight - 1) seedY = mc.displayHeight - 1;
-            vX = seedX;
-            vY = seedY;
+            vX = halfW / 2;
+            vY = mc.displayHeight / 2;
             Mouse.setGrabbed(true);
             weAreGrabbing = true;
         } else if (!shouldOverride && weAreGrabbing) {
