@@ -580,6 +580,13 @@ public class SodiumGameOptionPages {
                                     opts -> AngelicaConfig.enableDinnerboneText)
                         .build())
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Drop Shadow")
+                        .setTooltip("Per-segment drop shadow via &u, colored shadow via &u&#RRGGBB")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableDropShadow = value,
+                                    opts -> AngelicaConfig.enableDropShadow)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                         .setName("Ampersand Conversion")
                         .setTooltip("Convert & prefix codes to formatting codes at render time")
                         .setControl(TickBoxControl::new)
