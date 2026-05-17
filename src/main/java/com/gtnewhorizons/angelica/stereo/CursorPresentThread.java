@@ -15,7 +15,10 @@ import org.lwjgl.opengl.GL43;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.GLSync;
 
+import java.lang.reflect.Constructor;
 import java.lang.reflect.Method;
+import java.nio.ByteBuffer;
+import java.nio.ByteOrder;
 import java.nio.IntBuffer;
 import java.util.concurrent.atomic.AtomicReference;
 
@@ -38,6 +41,8 @@ public final class CursorPresentThread {
     private static final int WGL_CONTEXT_COMPATIBILITY_PROFILE_BIT_ARB = 0x0002;
     private static final int GL_MAJOR_VERSION = 0x821B;
     private static final int GL_MINOR_VERSION = 0x821C;
+    // Win32 IDC_ARROW resource ID — passed to LoadCursorW as MAKEINTRESOURCE-style integer pointer
+    private static final long IDC_ARROW = 32512L;
 
     private static volatile CursorPresentThread INSTANCE;
 
@@ -56,6 +61,32 @@ public final class CursorPresentThread {
     private static volatile Method REAL_WGLEXTSwapControl_wglSwapIntervalEXT;
     private static volatile boolean reflectionInitialized = false;
     private static volatile boolean reflectionOk = false;
+
+    private static volatile long PFN_LoadCursorW;
+    private static volatile long PFN_GetIconInfo;
+    private static volatile long PFN_CreateCompatibleDC;
+    private static volatile long PFN_DeleteDC;
+    private static volatile long PFN_DeleteObject;
+    private static volatile long PFN_GetObject;
+    private static volatile long PFN_SelectObject;
+    private static volatile long PFN_GetPixel;
+
+    private static volatile Method JNI_invokePI;
+    private static volatile Method JNI_invokePI_PII;
+    private static volatile Method JNI_invokePP;
+    private static volatile Method JNI_invokePPI;
+    private static volatile Method JNI_invokePPI_PIP;
+    private static volatile Method JNI_invokePPP;
+    private static volatile Method MEMUTIL_memAddress;
+    private static volatile boolean cursorReflectionInitialized = false;
+    private static volatile boolean cursorReflectionOk = false;
+
+    private static volatile boolean cursorTextureTried = false;
+    private static volatile int cursorTexId = 0;
+    private static volatile int cursorTexW = 0;
+    private static volatile int cursorTexH = 0;
+    private static volatile int cursorHotspotX = 0;
+    private static volatile int cursorHotspotY = 0;
 
     private static synchronized void ensureReflectionInitialized() {
         if (reflectionInitialized) return;
@@ -107,6 +138,58 @@ public final class CursorPresentThread {
             LOGGER.error("Could not resolve LWJGL3 reflection helpers; async cursor disabled.", t);
         }
         reflectionInitialized = true;
+    }
+
+    private static synchronized void ensureCursorReflectionInitialized() {
+        if (cursorReflectionInitialized) return;
+        try {
+            final Class<?> winLibCls = Class.forName("org.lwjgl.system.windows.WindowsLibrary");
+            final Class<?> funcProvCls = Class.forName("org.lwjgl.system.FunctionProvider");
+            final Class<?> jniCls = Class.forName("org.lwjgl.system.JNI");
+            final Class<?> memUtilCls = Class.forName("org.lwjgl.system.MemoryUtil");
+
+            final Constructor<?> winLibCtor = winLibCls.getConstructor(String.class);
+            final Object user32 = winLibCtor.newInstance("user32");
+            final Object gdi32 = winLibCtor.newInstance("gdi32");
+
+            final Method getFnAddr = funcProvCls.getMethod("getFunctionAddress", CharSequence.class);
+            // LoadCursorW(NULL, IDC_ARROW) reliably returns the standard arrow regardless of
+            // what the system happens to be showing at the moment of capture. GetCursor() would
+            // return whatever's currently displayed — e.g., the wait spinner if a background
+            // process briefly took over — and we'd be stuck with that for the session.
+            PFN_LoadCursorW        = (Long) getFnAddr.invoke(user32, "LoadCursorW");
+            PFN_GetIconInfo        = (Long) getFnAddr.invoke(user32, "GetIconInfo");
+            PFN_CreateCompatibleDC = (Long) getFnAddr.invoke(gdi32, "CreateCompatibleDC");
+            PFN_DeleteDC           = (Long) getFnAddr.invoke(gdi32, "DeleteDC");
+            PFN_DeleteObject       = (Long) getFnAddr.invoke(gdi32, "DeleteObject");
+            PFN_GetObject          = (Long) getFnAddr.invoke(gdi32, "GetObjectW");
+            PFN_SelectObject       = (Long) getFnAddr.invoke(gdi32, "SelectObject");
+            PFN_GetPixel           = (Long) getFnAddr.invoke(gdi32, "GetPixel");
+
+            if (PFN_LoadCursorW == 0L || PFN_GetIconInfo == 0L || PFN_CreateCompatibleDC == 0L
+                || PFN_DeleteDC == 0L || PFN_DeleteObject == 0L || PFN_GetObject == 0L
+                || PFN_SelectObject == 0L || PFN_GetPixel == 0L) {
+                LOGGER.warn("One or more Win32 cursor function pointers failed to resolve;"
+                          + " LoadCursorW={}, GetIconInfo={}, CreateCompatibleDC={}, DeleteDC={},"
+                          + " DeleteObject={}, GetObjectW={}, SelectObject={}, GetPixel={}.",
+                          PFN_LoadCursorW, PFN_GetIconInfo, PFN_CreateCompatibleDC, PFN_DeleteDC,
+                          PFN_DeleteObject, PFN_GetObject, PFN_SelectObject, PFN_GetPixel);
+                return;
+            }
+
+            JNI_invokePI      = jniCls.getMethod("invokePI",  long.class, long.class);
+            JNI_invokePI_PII  = jniCls.getMethod("invokePI",  long.class, int.class, int.class, long.class);
+            JNI_invokePP      = jniCls.getMethod("invokePP",  long.class, long.class);
+            JNI_invokePPI     = jniCls.getMethod("invokePPI", long.class, long.class, long.class);
+            JNI_invokePPI_PIP = jniCls.getMethod("invokePPI", long.class, int.class, long.class, long.class);
+            JNI_invokePPP     = jniCls.getMethod("invokePPP", long.class, long.class, long.class);
+            MEMUTIL_memAddress = memUtilCls.getMethod("memAddress", ByteBuffer.class);
+
+            cursorReflectionOk = true;
+        } catch (Throwable t) {
+            LOGGER.warn("Could not resolve cursor capture reflection; falling back to drawn arrow.", t);
+        }
+        cursorReflectionInitialized = true;
     }
 
     private static long invokeLong(Method m, Object... args) throws Throwable {
@@ -253,9 +336,12 @@ public final class CursorPresentThread {
         try {
             if (it.texA != 0) GL11.glDeleteTextures(it.texA);
             if (it.texB != 0) GL11.glDeleteTextures(it.texB);
+            if (cursorTexId != 0) GL11.glDeleteTextures(cursorTexId);
         } catch (Throwable t) {
             LOGGER.warn("Error freeing present textures on stop.", t);
         }
+        cursorTexId = 0;
+        cursorTextureTried = false;
         if (it.previousFrameFence != null) {
             deleteSyncReflective(it.previousFrameFence);
             it.previousFrameFence = null;
@@ -520,8 +606,14 @@ public final class CursorPresentThread {
         final int leftY = fullH - StereoCursor.virtualY() - 1;
         final int rightX = leftX + halfW;
         final int rightY = leftY;
-        drawArrowAt(leftX, leftY);
-        drawArrowAt(rightX, rightY);
+        ensureCursorTexture();
+        if (cursorTexId != 0) {
+            drawCursorTextureAt(leftX, leftY);
+            drawCursorTextureAt(rightX, rightY);
+        } else {
+            drawArrowAt(leftX, leftY);
+            drawArrowAt(rightX, rightY);
+        }
     }
 
     private static void drawArrowAt(int x, int y) {
@@ -536,5 +628,203 @@ public final class CursorPresentThread {
             GL11.glRecti(x, y + i, x + i + 1, y + i + 1);
         }
         GL11.glEnable(GL11.GL_TEXTURE_2D);
+    }
+
+    private static void drawCursorTextureAt(int x, int y) {
+        // Half X width: each SBS half is stretched 2× horizontally by the display, so a sprite
+        // drawn at natural pixel width here would render as a 2× wide oval. Pre-compress on X
+        // (size and hotspot offset) so it lands at native dimensions after stretching. Y is
+        // unaffected — SBS only compresses horizontally.
+        final int halfW = Math.max(1, cursorTexW / 2);
+        final int halfHotX = cursorHotspotX / 2;
+        final int x0 = x - halfHotX;
+        final int y0 = y - cursorHotspotY;
+        final int x1 = x0 + halfW;
+        final int y1 = y0 + cursorTexH;
+        GL11.glEnable(GL11.GL_TEXTURE_2D);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, cursorTexId);
+        GL11.glEnable(GL11.GL_BLEND);
+        GL11.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GL11.glColor4f(1f, 1f, 1f, 1f);
+        GL11.glBegin(GL11.GL_QUADS);
+        GL11.glTexCoord2f(0f, 0f); GL11.glVertex2f(x0, y0);
+        GL11.glTexCoord2f(1f, 0f); GL11.glVertex2f(x1, y0);
+        GL11.glTexCoord2f(1f, 1f); GL11.glVertex2f(x1, y1);
+        GL11.glTexCoord2f(0f, 1f); GL11.glVertex2f(x0, y1);
+        GL11.glEnd();
+        GL11.glDisable(GL11.GL_BLEND);
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+    }
+
+    private static void ensureCursorTexture() {
+        if (cursorTextureTried) return;
+        cursorTextureTried = true;
+        ensureCursorReflectionInitialized();
+        if (!cursorReflectionOk) return;
+        try {
+            // LoadCursorW(hInstance=NULL, lpCursorName=MAKEINTRESOURCE(IDC_ARROW)). Win32 detects
+            // resource-ID-as-pointer by zero high bits.
+            final long hCursor = (Long) JNI_invokePPP.invoke(null, 0L, IDC_ARROW, PFN_LoadCursorW);
+            if (hCursor == 0L) {
+                LOGGER.warn("LoadCursorW(IDC_ARROW) returned NULL; cursor capture aborted.");
+                return;
+            }
+            // ICONINFO on x64 (32 bytes total):
+            //   off  0: BOOL  fIcon       (4)
+            //   off  4: DWORD xHotspot    (4)
+            //   off  8: DWORD yHotspot    (4)
+            //   off 12: pad for HBITMAP alignment (4)
+            //   off 16: HBITMAP hbmMask   (8)
+            //   off 24: HBITMAP hbmColor  (8)
+            final ByteBuffer iconBuf = ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder());
+            final long iconAddr = (Long) MEMUTIL_memAddress.invoke(null, iconBuf);
+            final int rc = (Integer) JNI_invokePPI.invoke(null, hCursor, iconAddr, PFN_GetIconInfo);
+            if (rc == 0) {
+                LOGGER.warn("GetIconInfo failed; cursor capture aborted.");
+                return;
+            }
+            final int xHot = iconBuf.getInt(4);
+            final int yHot = iconBuf.getInt(8);
+            final long hbmMask = iconBuf.getLong(16);
+            final long hbmColor = iconBuf.getLong(24);
+            try {
+                captureToTexture(hbmColor, hbmMask, xHot, yHot);
+            } finally {
+                // GetIconInfo docs: caller owns hbmColor and hbmMask — must DeleteObject them.
+                if (hbmColor != 0L) try { JNI_invokePI.invoke(null, hbmColor, PFN_DeleteObject); } catch (Throwable t) {}
+                if (hbmMask  != 0L) try { JNI_invokePI.invoke(null, hbmMask,  PFN_DeleteObject); } catch (Throwable t) {}
+            }
+        } catch (Throwable t) {
+            LOGGER.warn("OS cursor capture failed; falling back to drawn arrow.", t);
+        }
+    }
+
+    private static void captureToTexture(long hbmColor, long hbmMask, int xHot, int yHot) throws Throwable {
+        final boolean useColor = hbmColor != 0L;
+        final long primary = useColor ? hbmColor : hbmMask;
+        if (primary == 0L) return;
+
+        // BITMAP on x64 (32 bytes): bmType (4), bmWidth (4), bmHeight (4), bmWidthBytes (4),
+        // bmPlanes (2), bmBitsPixel (2), pad (4), bmBits (8).
+        final ByteBuffer bmpBuf = ByteBuffer.allocateDirect(32).order(ByteOrder.nativeOrder());
+        final long bmpAddr = (Long) MEMUTIL_memAddress.invoke(null, bmpBuf);
+        final int got = (Integer) JNI_invokePPI_PIP.invoke(null, primary, 32, bmpAddr, PFN_GetObject);
+        if (got == 0) {
+            LOGGER.warn("GetObjectW on cursor bitmap returned 0.");
+            return;
+        }
+        final int w = bmpBuf.getInt(4);
+        final int rawH = bmpBuf.getInt(8);
+        final int absH = Math.abs(rawH);
+        if (w <= 0 || absH == 0) {
+            LOGGER.warn("Cursor bitmap has invalid dimensions {}x{}.", w, rawH);
+            return;
+        }
+        if (!useColor && (absH % 2 != 0)) {
+            LOGGER.warn("Mono cursor mask has odd height {}; cannot split AND/XOR.", absH);
+            return;
+        }
+        final int finalH = useColor ? absH : (absH / 2);
+
+        final long memDC = (Long) JNI_invokePP.invoke(null, 0L, PFN_CreateCompatibleDC);
+        if (memDC == 0L) {
+            LOGGER.warn("CreateCompatibleDC failed; cursor capture aborted.");
+            return;
+        }
+
+        final byte[] colorRGB = new byte[w * finalH * 3];
+        final byte[] alpha = new byte[w * finalH];
+
+        try {
+            final long colorSrc = useColor ? hbmColor : hbmMask;
+            final long prevColor = (Long) JNI_invokePPP.invoke(null, memDC, colorSrc, PFN_SelectObject);
+            if (prevColor == 0L) {
+                LOGGER.warn("SelectObject(color) failed.");
+                return;
+            }
+            try {
+                for (int y = 0; y < finalH; y++) {
+                    final int srcY = useColor ? y : (y + finalH);
+                    for (int x = 0; x < w; x++) {
+                        final int c = (Integer) JNI_invokePI_PII.invoke(null, memDC, x, srcY, PFN_GetPixel);
+                        final int o = (y * w + x) * 3;
+                        colorRGB[o]     = (byte) (c & 0xFF);
+                        colorRGB[o + 1] = (byte) ((c >> 8) & 0xFF);
+                        colorRGB[o + 2] = (byte) ((c >> 16) & 0xFF);
+                    }
+                }
+            } finally {
+                JNI_invokePPP.invoke(null, memDC, prevColor, PFN_SelectObject);
+            }
+
+            if (hbmMask != 0L) {
+                final long prevMask = (Long) JNI_invokePPP.invoke(null, memDC, hbmMask, PFN_SelectObject);
+                if (prevMask == 0L) {
+                    LOGGER.warn("SelectObject(mask) failed; assuming fully opaque.");
+                    for (int i = 0; i < alpha.length; i++) alpha[i] = (byte) 0xFF;
+                } else {
+                    try {
+                        for (int y = 0; y < finalH; y++) {
+                            for (int x = 0; x < w; x++) {
+                                final int m = (Integer) JNI_invokePI_PII.invoke(null, memDC, x, y, PFN_GetPixel);
+                                alpha[y * w + x] = (m == 0) ? (byte) 0xFF : 0;
+                            }
+                        }
+                    } finally {
+                        JNI_invokePPP.invoke(null, memDC, prevMask, PFN_SelectObject);
+                    }
+                }
+            } else {
+                for (int i = 0; i < alpha.length; i++) alpha[i] = (byte) 0xFF;
+            }
+
+            final ByteBuffer rgba = ByteBuffer.allocateDirect(w * finalH * 4).order(ByteOrder.nativeOrder());
+            if (useColor) {
+                for (int i = 0; i < w * finalH; i++) {
+                    final int co = i * 3;
+                    final int ro = i * 4;
+                    rgba.put(ro,     colorRGB[co]);
+                    rgba.put(ro + 1, colorRGB[co + 1]);
+                    rgba.put(ro + 2, colorRGB[co + 2]);
+                    rgba.put(ro + 3, alpha[i]);
+                }
+            } else {
+                for (int i = 0; i < w * finalH; i++) {
+                    final boolean opaque = alpha[i] != 0;
+                    final boolean xorWhite = (colorRGB[i * 3] & 0xFF) != 0;
+                    final byte v, a;
+                    if (!opaque && !xorWhite) { v = 0;           a = 0; }
+                    else if (!opaque)         { v = (byte) 0xFF; a = (byte) 0xFF; }
+                    else if (!xorWhite)       { v = 0;           a = (byte) 0xFF; }
+                    else                      { v = (byte) 0xFF; a = (byte) 0xFF; }
+                    final int ro = i * 4;
+                    rgba.put(ro,     v);
+                    rgba.put(ro + 1, v);
+                    rgba.put(ro + 2, v);
+                    rgba.put(ro + 3, a);
+                }
+            }
+            rgba.position(0);
+
+            final int texId = GL11.glGenTextures();
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, finalH, 0,
+                              GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, rgba);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+            GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+            GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+
+            cursorTexId = texId;
+            cursorTexW = w;
+            cursorTexH = finalH;
+            cursorHotspotX = xHot;
+            cursorHotspotY = yHot;
+            LOGGER.info("OS cursor captured: {}x{}, hotspot=({},{}), color={}, texId={}",
+                        w, finalH, xHot, yHot, useColor, texId);
+        } finally {
+            try { JNI_invokePI.invoke(null, memDC, PFN_DeleteDC); } catch (Throwable t) {}
+        }
     }
 }
