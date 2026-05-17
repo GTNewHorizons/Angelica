@@ -169,7 +169,6 @@ public class NotFineGameOptionPages {
                 .build());
         }
 
-
         return new OptionPage(I18n.format("options.video"), ImmutableList.copyOf(groups));
     }
 

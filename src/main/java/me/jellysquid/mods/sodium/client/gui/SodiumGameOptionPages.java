@@ -4,6 +4,8 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import com.gtnewhorizons.angelica.stereo.StereoMode;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
@@ -148,6 +150,44 @@ public class SodiumGameOptionPages {
                 .add(Settings.MODE_WATER.option)
                 .add(Settings.MODE_DROPPED_ITEMS.option)
                 .build());
+
+        // Stereoscopic SBS_HALF on/off toggle. Iris RenderTargets.eyeCount is captured at
+        // pipeline-init time, so flipping the mode requires destroying and re-creating the
+        // pipeline so the per-eye textures get allocated/freed correctly.
+        groups.add(OptionGroup.createBuilder()
+            .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                .setName("Stereoscopic SBS (Side-by-Side)")
+                .setTooltip("Splits the screen into two eye views for VR headset use via Virtual Desktop / Steam Link. Roughly halves framerate.")
+                .setControl(TickBoxControl::new)
+                .setBinding(
+                    (opts, value) -> {
+                        final StereoMode newMode = value
+                            ? StereoMode.SBS_HALF
+                            : StereoMode.OFF;
+                        if (AngelicaConfig.stereoscopicMode == newMode) return;
+                        AngelicaConfig.stereoscopicMode = newMode;
+                        // Force the StereoState frame-cache to pick up the new config NOW. Without
+                        // this, isActive() / stereoEyeCount() still return the cached value from
+                        // the last frame and the pipeline rebuild below would allocate the wrong
+                        // number of per-eye textures.
+                        StereoState.INSTANCE.beginFrame();
+                        if (AngelicaConfig.enableIris && Minecraft.getMinecraft().theWorld != null) {
+                            // Iris RenderTargets.eyeCount is captured at pipeline init, so we have
+                            // to drop the pipeline and rebuild it for the new eye count to take
+                            // effect. Then force a chunk reload so Sodium's terrain renderer drops
+                            // its stale per-chunk texture references and rebinds against the new
+                            // pipeline's render targets — otherwise the world stops rendering
+                            // until the user reloads shaders manually.
+                            Iris.getPipelineManager().destroyPipeline();
+                            Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
+                            Minecraft.getMinecraft().renderGlobal.loadRenderers();
+                        }
+                    },
+                    opts -> AngelicaConfig.stereoscopicMode != null
+                        && AngelicaConfig.stereoscopicMode != StereoMode.OFF)
+                .setImpact(OptionImpact.HIGH)
+                .build())
+            .build());
 
         return new OptionPage(I18n.format("stat.generalButton"), ImmutableList.copyOf(groups));
     }
