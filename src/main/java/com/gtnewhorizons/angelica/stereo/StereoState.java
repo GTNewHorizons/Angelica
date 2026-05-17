@@ -146,10 +146,17 @@ public class StereoState {
         return getCurrentEye() == Eye.RIGHT ? 1 : 0;
     }
 
-    /** 2 when stereo active for current frame, otherwise 1. Used by Iris RenderTargets to decide
-     *  whether to duplicate per-eye resources. */
+    /** 2 when stereo is enabled in config, otherwise 1. Used by Iris RenderTargets to decide
+     *  whether to duplicate per-eye resources. Reads config directly, not the cached {@link #active}
+     *  flag, because RenderTargets is built at pipeline-init time which can fire before the first
+     *  {@link #beginFrame()} — a cached value would still be false there and allocate mono targets,
+     *  cross-contaminating the first stereo frame until a manual shader reload. */
     public int stereoEyeCount() {
-        return isActive() ? 2 : 1;
+        // Debug-force-eye also wants 2-eye allocation so the debug paths work.
+        final StereoDebugEye debug = AngelicaConfig.stereoDebugForceEye;
+        if (debug != null && debug != StereoDebugEye.OFF) return 2;
+        final StereoMode mode = AngelicaConfig.stereoscopicMode;
+        return (mode != null && mode.isActive()) ? 2 : 1;
     }
 
     // Iris-facing helpers: return the FB dimensions Iris should use for sizing render targets,
