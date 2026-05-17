@@ -1258,7 +1258,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 		final Vector4f emptyClearColor = new Vector4f(1.0F);
 
-		if (shadowRenderTargets != null) {
+		// Pairs with the RIGHT-eye skip of renderShadows in MixinEntityRenderer: clearing the
+		// shadow target here on the RIGHT eye would wipe the LEFT eye's shadow output and the
+		// right eye would sample an empty shadow map.
+		final boolean skipShadowClear = shadowRenderTargets != null
+			&& StereoState.INSTANCE.isActive()
+			&& StereoState.INSTANCE.getCurrentEye()
+			   == StereoState.Eye.RIGHT;
+
+		if (shadowRenderTargets != null && !skipShadowClear) {
 			if (packDirectives.getShadowDirectives().isShadowEnabled() == OptionalBoolean.FALSE) {
 				if (shadowRenderTargets.isFullClearRequired()) {
 					shadowRenderTargets.onFullClear();

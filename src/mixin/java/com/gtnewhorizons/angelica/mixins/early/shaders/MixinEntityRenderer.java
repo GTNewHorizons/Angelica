@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
@@ -74,6 +75,14 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V"), method = "renderWorld(FJ)V")
     private void iris$renderShadows(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        // Shadow map is rendered from the sun/moon's POV, not the player camera's, so it's
+        // identical for both eyes; re-running on the RIGHT eye was ~35% of frame time. LEFT
+        // eye's shadow map is still bound when the second eye runs.
+        if (StereoState.INSTANCE.isActive()
+            && StereoState.INSTANCE.getCurrentEye()
+               == StereoState.Eye.RIGHT) {
+            return;
+        }
         pipeline.get().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 
