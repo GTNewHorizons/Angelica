@@ -315,10 +315,10 @@ public class Uniforms {
         // Upload the current color from GLSM
         final var color = GLStateManager.getColor();
         vec4Buf.clear();
-        vec4Buf.put(color.getRed());
-        vec4Buf.put(color.getGreen());
-        vec4Buf.put(color.getBlue());
-        vec4Buf.put(color.getAlpha());
+        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getRed()));
+        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getGreen()));
+        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getBlue()));
+        vec4Buf.put(org.joml.Math.clamp(0f, 1f, color.getAlpha()));
         vec4Buf.flip();
         RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
