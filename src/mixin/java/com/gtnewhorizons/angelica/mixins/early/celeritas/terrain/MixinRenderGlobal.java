@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -178,6 +179,17 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public void clipRenderersByFrustum(ICamera camera, float partialTicks) {
+        // In SBS stereo, renderWorld runs twice (once per eye). The chunk visibility graph
+        // is keyed on camera position + frustum — both of which are identical between eyes
+        // (IPD offset lives in the modelview matrix, not in the camera position or the
+        // frustum used by Sodium). Skip the second eye's call entirely so we don't redo
+        // the BFS/cull/upload work. The visible-chunks list from eye 0 is correct for eye 1.
+        if (StereoState.INSTANCE.isActive()
+            && StereoState.INSTANCE.getCurrentEye()
+               == StereoState.Eye.RIGHT) {
+            return;
+        }
+
         RenderDevice.enterManagedCode();
 
         try {
