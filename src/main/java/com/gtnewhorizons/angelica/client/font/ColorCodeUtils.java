@@ -25,7 +25,7 @@ public final class ColorCodeUtils {
     public static final int GRADIENT_LENGTH = 30;
 
     /** Valid single {@code &} codes. {@code g} is excluded; {@code &g} only converts as part of a gradient. */
-    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
+    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzvu";
 
     private static final String[] SECTION_PREFIX = new String[128];
     static {

@@ -127,6 +127,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean enableDinnerboneText;
 
+    @Config.Comment("Enable per-segment drop shadow toggle (&u) and colored shadow (&u&#RRGGBB)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableDropShadow;
+
     @Config.Comment("Wave text amplitude (how far characters bounce)")
     @Config.DefaultFloat(2.0f)
     @Config.RangeFloat(min = 1.0f, max = 8.0f)
