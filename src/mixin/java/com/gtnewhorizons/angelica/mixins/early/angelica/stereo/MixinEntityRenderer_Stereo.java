@@ -5,7 +5,10 @@ import com.gtnewhorizons.angelica.stereo.StereoMode;
 import com.gtnewhorizons.angelica.stereo.StereoState;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiIngame;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.EntityRenderer;
+import org.lwjgl.input.Mouse;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -15,11 +18,11 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Priority 900 (lower than HUD_CACHING's default) so our renderGameOverlay redirect wins over
- * the HUD-caching one when stereo is active. HUD caching is also force-disabled at config load
- * when stereo is enabled (see step 7 in the rebase plan).
+ * Priority 1100 (above HUD_CACHING's default) so our renderGameOverlay redirect wins over the
+ * HUD-caching one when stereo is active. HUD caching is also force-disabled at config load when
+ * stereo is enabled (see step 7 in the rebase plan).
  */
-@Mixin(value = EntityRenderer.class, priority = 900)
+@Mixin(value = EntityRenderer.class, priority = 1100)
 public abstract class MixinEntityRenderer_Stereo {
 
     @Shadow public abstract void renderWorld(float partialTicks, long finishTimeNano);
@@ -27,6 +30,25 @@ public abstract class MixinEntityRenderer_Stereo {
     @Inject(method = "updateCameraAndRender", at = @At("HEAD"))
     private void angelica$stereoBeginFrame(float partialTicks, CallbackInfo ci) {
         StereoState.INSTANCE.beginFrame();
+        angelica$constrainCursorToLeftEye();
+    }
+
+    /**
+     * For SBS_HALF + DUPLICATE, snap the OS cursor back into the left half whenever the user
+     * drags it past the seam. Hover/click hit-tests are calibrated to the left eye's view.
+     */
+    private static void angelica$constrainCursorToLeftEye() {
+        if (!Display.isActive()) return;
+        final StereoMode mode = StereoState.INSTANCE.getFrameMode();
+        if (mode == null || !mode.isActive()) return;
+        if (StereoState.INSTANCE.getFrameHudMode() != StereoHudMode.DUPLICATE) return;
+        if (!mode.isSideBySide() || !mode.isHalf()) return;
+        final Minecraft mc = Minecraft.getMinecraft();
+        if (mc.currentScreen == null) return;
+        final int halfW = mc.displayWidth / 2;
+        if (Mouse.getX() > halfW - 1) {
+            Mouse.setCursorPosition(halfW - 1, Mouse.getY());
+        }
     }
 
     @Inject(method = "updateCameraAndRender", at = @At("RETURN"))
@@ -130,6 +152,53 @@ public abstract class MixinEntityRenderer_Stereo {
 
         GL11.glViewport(sbs ? eyeW : 0, 0, eyeW, eyeH);
         ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+
+        GL11.glViewport(0, 0, fullW, fullH);
+    }
+
+    @Redirect(
+        method = "updateCameraAndRender",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/gui/GuiScreen;drawScreen(IIF)V"
+        )
+    )
+    private void angelica$stereoDrawScreen(GuiScreen screen, int mouseX, int mouseY, float partialTicks) {
+        final StereoMode mode = StereoState.INSTANCE.getFrameMode();
+        if (mode == null || !mode.isActive()) {
+            screen.drawScreen(mouseX, mouseY, partialTicks);
+            return;
+        }
+
+        final StereoHudMode hudMode = StereoState.INSTANCE.getFrameHudMode();
+        if (hudMode == StereoHudMode.HIDE) {
+            return;
+        }
+        if (hudMode == StereoHudMode.STRETCH) {
+            screen.drawScreen(mouseX, mouseY, partialTicks);
+            return;
+        }
+
+        final Minecraft mc = Minecraft.getMinecraft();
+        final int fullW = mc.displayWidth;
+        final int fullH = mc.displayHeight;
+        final boolean sbs = mode.isSideBySide();
+        final boolean half = mode.isHalf();
+        final int eyeW = sbs ? (half ? fullW / 2 : fullW) : fullW;
+        final int eyeH = sbs ? fullH               : (half ? fullH / 2 : fullH);
+
+        // The GUI renders into a half-width viewport with a full-screen ScaledResolution, so a
+        // slot at GUI-x N appears at screen pixel N/2. Vanilla already passes
+        // mouseX = Mouse.getX() * scaledWidth / fullW; doubling lifts cursor coords (clamped to
+        // the left half) back into the GUI-x range of the left eye's view.
+        final int adjMouseX = (sbs && half) ? (mouseX * 2) : mouseX;
+        final int adjMouseY = (!sbs && half) ? (mouseY * 2) : mouseY; // OU stub; we focus on SBS
+
+        GL11.glViewport(0, sbs ? 0 : fullH - eyeH, eyeW, eyeH);
+        screen.drawScreen(adjMouseX, adjMouseY, partialTicks);
+
+        GL11.glViewport(sbs ? eyeW : 0, 0, eyeW, eyeH);
+        screen.drawScreen(adjMouseX, adjMouseY, partialTicks);
 
         GL11.glViewport(0, 0, fullW, fullH);
     }

@@ -63,6 +63,7 @@ public enum Mixins implements IMixins {
             "angelica.stereo.MixinEntityRenderer_StereoCamera"
             , "angelica.stereo.MixinEntityRenderer_Stereo"
             , "angelica.stereo.MixinFramebuffer_Stereo"
+            , "angelica.stereo.MixinGuiScreen_Stereo"
         )
     ),
 
