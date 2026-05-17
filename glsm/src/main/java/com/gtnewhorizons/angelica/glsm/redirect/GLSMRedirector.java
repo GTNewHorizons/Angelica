@@ -46,6 +46,7 @@ public class GLSMRedirector {
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String ARBShaderObjects = "org/lwjgl/opengl/ARBShaderObjects";
     private static final String ARBInstancedArrays = "org/lwjgl/opengl/ARBInstancedArrays";
+    private static final String Mouse = "org/lwjgl/input/Mouse";
 
     // Redirect VAO related calls from NHLib
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -465,6 +466,14 @@ public class GLSMRedirector {
         methodRedirects.put(UniversalVAO, RedirectMap.newMap()
             .add("bindVertexArray", "glBindVertexArray")
             .add("deleteVertexArrays", "glDeleteVertexArrays")
+        );
+
+        // Stereo SBS virtual cursor — see StereoHook / StereoGLSMBridge in the main mod.
+        methodRedirects.put(Mouse, RedirectMap.newMap()
+            .add("getX", "stereoMouseGetX")
+            .add("getY", "stereoMouseGetY")
+            .add("getEventX", "stereoMouseGetEventX")
+            .add("getEventY", "stereoMouseGetEventY")
         );
 
         // GLU

@@ -19,6 +19,7 @@ import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
+import com.gtnewhorizons.angelica.stereo.StereoGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
@@ -121,6 +122,7 @@ public final class ClientProxy extends CommonProxy {
         } else {
             LOGGER.info("Celeritas is disabled, skipping initialization from init()");
         }
+        StereoGLSMBridge.register();
         if (AngelicaConfig.enableIris) {
             IrisGLSMBridge.register();
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);

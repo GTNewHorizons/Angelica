@@ -8,6 +8,7 @@ public final class GLSMHooks {
     public static DeferredBlendHandler blendHandler;
     public static DeferredAlphaHandler alphaHandler;
     public static DeferredDepthColorHandler depthColorHandler;
+    public static StereoHook stereoHook;
 
     // EventBus instances
     public static final EventBus<TextureBindEvent> TEXTURE_BIND = EventBus.create(TextureBindEvent.class);

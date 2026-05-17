@@ -22,6 +22,7 @@ public final class AngelicaRedirector {
         final List<String> exclusions = new ArrayList<>(Arrays.asList(core.getCoreExclusions()));
         exclusions.add("com.gtnewhorizons.angelica.lwjgl3.");
         exclusions.add("com.gtnewhorizons.angelica.transform");
+        exclusions.add("com.gtnewhorizons.angelica.stereo.");
         allExclusions = exclusions.toArray(new String[0]);
     }
 

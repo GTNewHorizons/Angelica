@@ -1,14 +1,20 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.stereo;
 
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.stereo.StereoCursor;
 import com.gtnewhorizons.angelica.stereo.StereoHudMode;
 import com.gtnewhorizons.angelica.stereo.StereoMode;
 import com.gtnewhorizons.angelica.stereo.StereoState;
+import cpw.mods.fml.common.eventhandler.Event;
+import cpw.mods.fml.common.eventhandler.EventBus;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraftforge.client.event.GuiScreenEvent;
 import org.lwjgl.input.Mouse;
-import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,9 +24,9 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Priority 1100 (above HUD_CACHING's default) so our renderGameOverlay redirect wins over the
- * HUD-caching one when stereo is active. HUD caching is also force-disabled at config load when
- * stereo is enabled (see step 7 in the rebase plan).
+ * Priority 1100 (above HUD_CACHING's default) so our renderGameOverlay redirect wins. The
+ * non-stereo / STRETCH paths delegate to {@link HUDCaching#renderCachedHud} to preserve
+ * HUD-caching perf for users who didn't enable stereo.
  */
 @Mixin(value = EntityRenderer.class, priority = 1100)
 public abstract class MixinEntityRenderer_Stereo {
@@ -30,25 +36,7 @@ public abstract class MixinEntityRenderer_Stereo {
     @Inject(method = "updateCameraAndRender", at = @At("HEAD"))
     private void angelica$stereoBeginFrame(float partialTicks, CallbackInfo ci) {
         StereoState.INSTANCE.beginFrame();
-        angelica$constrainCursorToLeftEye();
-    }
-
-    /**
-     * For SBS_HALF + DUPLICATE, snap the OS cursor back into the left half whenever the user
-     * drags it past the seam. Hover/click hit-tests are calibrated to the left eye's view.
-     */
-    private static void angelica$constrainCursorToLeftEye() {
-        if (!Display.isActive()) return;
-        final StereoMode mode = StereoState.INSTANCE.getFrameMode();
-        if (mode == null || !mode.isActive()) return;
-        if (StereoState.INSTANCE.getFrameHudMode() != StereoHudMode.DUPLICATE) return;
-        if (!mode.isSideBySide() || !mode.isHalf()) return;
-        final Minecraft mc = Minecraft.getMinecraft();
-        if (mc.currentScreen == null) return;
-        final int halfW = mc.displayWidth / 2;
-        if (Mouse.getX() > halfW - 1) {
-            Mouse.setCursorPosition(halfW - 1, Mouse.getY());
-        }
+        StereoCursor.update();
     }
 
     @Inject(method = "updateCameraAndRender", at = @At("RETURN"))
@@ -124,7 +112,9 @@ public abstract class MixinEntityRenderer_Stereo {
     private void angelica$stereoRenderHud(GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         final StereoMode mode = StereoState.INSTANCE.getFrameMode();
         if (mode == null || !mode.isActive()) {
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            // Stereo off — defer to HUDCaching since we won the @Redirect priority fight.
+            HUDCaching.renderCachedHud(
+                Minecraft.getMinecraft().entityRenderer, ingame, partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
 
@@ -133,7 +123,8 @@ public abstract class MixinEntityRenderer_Stereo {
             return;
         }
         if (hudMode == StereoHudMode.STRETCH) {
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            HUDCaching.renderCachedHud(
+                Minecraft.getMinecraft().entityRenderer, ingame, partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
 
@@ -147,11 +138,19 @@ public abstract class MixinEntityRenderer_Stereo {
         final int eyeW = sbs ? (half ? fullW / 2 : fullW) : fullW;
         final int eyeH = sbs ? fullH               : (half ? fullH / 2 : fullH);
 
-        GL11.glViewport(0, sbs ? 0 : fullH - eyeH, eyeW, eyeH);
+        // LEFT
+        final int leftY = sbs ? 0 : fullH - eyeH;
+        GL11.glViewport(0, leftY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
         ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
 
-        GL11.glViewport(sbs ? eyeW : 0, 0, eyeW, eyeH);
+        // RIGHT
+        final int rightX = sbs ? eyeW : 0;
+        GL11.glViewport(rightX, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
         ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
 
         GL11.glViewport(0, 0, fullW, fullH);
     }
@@ -187,19 +186,112 @@ public abstract class MixinEntityRenderer_Stereo {
         final int eyeW = sbs ? (half ? fullW / 2 : fullW) : fullW;
         final int eyeH = sbs ? fullH               : (half ? fullH / 2 : fullH);
 
-        // The GUI renders into a half-width viewport with a full-screen ScaledResolution, so a
-        // slot at GUI-x N appears at screen pixel N/2. Vanilla already passes
-        // mouseX = Mouse.getX() * scaledWidth / fullW; doubling lifts cursor coords (clamped to
-        // the left half) back into the GUI-x range of the left eye's view.
-        final int adjMouseX = (sbs && half) ? (mouseX * 2) : mouseX;
-        final int adjMouseY = (!sbs && half) ? (mouseY * 2) : mouseY; // OU stub; we focus on SBS
+        // mouseX/mouseY are already remapped: the upstream call site computed them from
+        // Mouse.getX() * scaledWidth / displayWidth, and GLSMRedirector has rewritten
+        // Mouse.getX/getEventX to StereoCursor's virtual coords (already left-eye GUI space).
 
-        GL11.glViewport(0, sbs ? 0 : fullH - eyeH, eyeW, eyeH);
-        screen.drawScreen(adjMouseX, adjMouseY, partialTicks);
+        // LEFT
+        final int leftY = sbs ? 0 : fullH - eyeH;
+        GL11.glViewport(0, leftY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
+        screen.drawScreen(mouseX, mouseY, partialTicks);
+        StereoState.INSTANCE.exitGuiPass();
 
-        GL11.glViewport(sbs ? eyeW : 0, 0, eyeW, eyeH);
-        screen.drawScreen(adjMouseX, adjMouseY, partialTicks);
+        // RIGHT
+        final int rightX = sbs ? eyeW : 0;
+        GL11.glViewport(rightX, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
+        screen.drawScreen(mouseX, mouseY, partialTicks);
+        StereoState.INSTANCE.exitGuiPass();
+
+        // Cursor drawing happens in angelica$stereoPostEvent after NEI's overlay (drawn during
+        // the DrawScreenEvent.Post that fires after this redirect's call site).
+        GL11.glViewport(0, 0, fullW, fullH);
+    }
+
+    /**
+     * Wrap the {@code DrawScreenEvent.Post} dispatch. NEI and other mods render tooltips,
+     * overlay buttons, and item icons during that event; we post it twice (once per eye
+     * viewport) so the items appear in both eyes, then draw the synthetic cursor on top.
+     * The {@code ordinal = 1} targets the second {@code EVENT_BUS.post} in
+     * {@code updateCameraAndRender} — Pre is ordinal 0, Post is ordinal 1.
+     */
+    @Redirect(
+        method = "updateCameraAndRender",
+        at = @At(
+            value = "INVOKE",
+            target = "Lcpw/mods/fml/common/eventhandler/EventBus;post(Lcpw/mods/fml/common/eventhandler/Event;)Z",
+            ordinal = 1,
+            remap = false
+        )
+    )
+    private boolean angelica$stereoPostEvent(EventBus bus, Event event) {
+        final StereoMode mode = StereoState.INSTANCE.getFrameMode();
+        final boolean stereoActive = mode != null && mode.isActive()
+            && StereoState.INSTANCE.getFrameHudMode() == StereoHudMode.DUPLICATE
+            && mode.isSideBySide() && mode.isHalf();
+        if (!stereoActive) {
+            return bus.post(event);
+        }
+
+        final Minecraft mc = Minecraft.getMinecraft();
+        final int fullW = mc.displayWidth;
+        final int fullH = mc.displayHeight;
+        final int eyeW = fullW / 2;
+        final int eyeH = fullH;
+
+        // LEFT eye: post the event so NEI's overlay + tooltip items render here.
+        GL11.glViewport(0, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(0, 0, eyeW, eyeH);
+        final boolean result = bus.post(event);
+        StereoState.INSTANCE.exitGuiPass();
+
+        // RIGHT eye: Forge phase-tracking refuses a re-post of the same event instance, so build
+        // a fresh DrawScreenEvent.Post with the same params.
+        GL11.glViewport(eyeW, 0, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(eyeW, 0, eyeW, eyeH);
+        if (event instanceof GuiScreenEvent.DrawScreenEvent.Post) {
+            final GuiScreenEvent.DrawScreenEvent.Post original = (GuiScreenEvent.DrawScreenEvent.Post) event;
+            final GuiScreenEvent.DrawScreenEvent.Post copy =
+                new GuiScreenEvent.DrawScreenEvent.Post(
+                    original.gui, original.mouseX, original.mouseY, original.renderPartialTicks);
+            bus.post(copy);
+        }
+        StereoState.INSTANCE.exitGuiPass();
+
+        // Synthetic cursor on top of everything, in both halves. OS cursor is hidden by
+        // Mouse.setGrabbed when stereo+GUI is active, so this is the only visible cursor.
+        final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+        final int scaledWidth = sr.getScaledWidth();
+        final int scaledHeight = sr.getScaledHeight();
+        final int cursorX = Mouse.getX() * scaledWidth / mc.displayWidth;
+        final int cursorY = scaledHeight - Mouse.getY() * scaledHeight / mc.displayHeight - 1;
+
+        // RIGHT half cursor (viewport still right).
+        angelica$drawSyntheticCursor(cursorX, cursorY);
+        // LEFT half cursor.
+        GL11.glViewport(0, 0, eyeW, eyeH);
+        angelica$drawSyntheticCursor(cursorX, cursorY);
 
         GL11.glViewport(0, 0, fullW, fullH);
+        return result;
+    }
+
+    /**
+     * White arrow with 1px black outline; tip at (x, y). Item icons drawn earlier in the frame
+     * leave depth values that would occlude this rect, so depth-test is toggled around it.
+     */
+    private static void angelica$drawSyntheticCursor(int x, int y) {
+        final int B = 0xFF000000;
+        final int F = 0xFFFFFFFF;
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        for (int i = 0; i < 9; i++) {
+            Gui.drawRect(x - 1, y + i - 1, x + i + 2, y + i, B);
+        }
+        Gui.drawRect(x - 1, y + 8, x + 9, y + 9, B);
+        for (int i = 0; i < 8; i++) {
+            Gui.drawRect(x, y + i, x + i + 1, y + i + 1, F);
+        }
+        GL11.glEnable(GL11.GL_DEPTH_TEST);
     }
 }

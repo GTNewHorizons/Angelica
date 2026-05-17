@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import com.gtnewhorizons.angelica.glsm.hooks.StereoHook;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
@@ -62,6 +63,7 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
+import org.lwjgl.input.Mouse;
 
 import org.lwjgl.opengl.ARBShaderObjects;
 import org.lwjgl.opengl.ContextCapabilities;
@@ -4646,7 +4648,40 @@ public class GLStateManager {
         RENDER_BACKEND.readBuffer(mode);
     }
 
+    // Single-threaded scratch buffer for StereoHook.remapScissor. glScissor is render-thread-only.
+    private static final int[] STEREO_SCISSOR_SCRATCH = new int[4];
+
+    // AngelicaRedirector rewrites org.lwjgl.input.Mouse.getX/getY/getEventX/getEventY call sites
+    // to these methods so the main mod's stereo virtual cursor is transparent to mod code.
+
+    public static int stereoMouseGetX() {
+        final StereoHook stereo = GLSMHooks.stereoHook;
+        return stereo == null ? Mouse.getX() : stereo.stereoMouseGetX();
+    }
+
+    public static int stereoMouseGetY() {
+        final StereoHook stereo = GLSMHooks.stereoHook;
+        return stereo == null ? Mouse.getY() : stereo.stereoMouseGetY();
+    }
+
+    public static int stereoMouseGetEventX() {
+        final StereoHook stereo = GLSMHooks.stereoHook;
+        return stereo == null ? Mouse.getEventX() : stereo.stereoMouseGetEventX();
+    }
+
+    public static int stereoMouseGetEventY() {
+        final StereoHook stereo = GLSMHooks.stereoHook;
+        return stereo == null ? Mouse.getEventY() : stereo.stereoMouseGetEventY();
+    }
+
     public static void glScissor(int x, int y, int width, int height) {
+        final StereoHook stereo = GLSMHooks.stereoHook;
+        if (stereo != null && stereo.remapScissor(x, y, width, height, STEREO_SCISSOR_SCRATCH)) {
+            x = STEREO_SCISSOR_SCRATCH[0];
+            y = STEREO_SCISSOR_SCRATCH[1];
+            width = STEREO_SCISSOR_SCRATCH[2];
+            height = STEREO_SCISSOR_SCRATCH[3];
+        }
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordScissor(x, y, width, height);
