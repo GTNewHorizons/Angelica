@@ -15,6 +15,7 @@ import net.minecraft.client.gui.GuiIngame;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.renderer.RenderHelper;
 import net.minecraftforge.client.event.GuiScreenEvent;
 import org.lwjgl.input.Mouse;
 import org.lwjgl.opengl.GL11;
@@ -207,10 +208,19 @@ public abstract class MixinEntityRenderer_Stereo {
         // Mouse.getX() * scaledWidth / displayWidth, and GLSMRedirector has rewritten
         // Mouse.getX/getEventX to StereoCursor's virtual coords (already left-eye GUI space).
 
+        // Before each eye's drawScreen, reset color/lighting state. GuiContainer.drawScreen leaves
+        // GUI item lighting enabled at exit (RenderHelper.enableGUIStandardItemLighting on line 99 of
+        // vanilla GuiContainer.drawScreen), which is fine when drawScreen is called once per frame —
+        // the next frame's renderGameOverlay resets it. But in stereo we call drawScreen TWICE
+        // back-to-back, so the RIGHT eye enters with lighting still on from LEFT eye's exit. That
+        // causes the chest panel's drawGuiContainerBackgroundLayer (which sets color white but
+        // doesn't disable lighting) to be lit, dimming the panel relative to the LEFT eye.
         // LEFT
         final int leftY = sbs ? 0 : fullH - eyeH;
         GL11.glViewport(0, leftY, eyeW, eyeH);
         StereoState.INSTANCE.enterGuiPass(0, leftY, eyeW, eyeH);
+        RenderHelper.disableStandardItemLighting();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         screen.drawScreen(mouseX, mouseY, partialTicks);
         StereoState.INSTANCE.exitGuiPass();
 
@@ -218,6 +228,8 @@ public abstract class MixinEntityRenderer_Stereo {
         final int rightX = sbs ? eyeW : 0;
         GL11.glViewport(rightX, 0, eyeW, eyeH);
         StereoState.INSTANCE.enterGuiPass(rightX, 0, eyeW, eyeH);
+        RenderHelper.disableStandardItemLighting();
+        GL11.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         screen.drawScreen(mouseX, mouseY, partialTicks);
         StereoState.INSTANCE.exitGuiPass();
 
