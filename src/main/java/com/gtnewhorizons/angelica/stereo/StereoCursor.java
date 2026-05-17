@@ -52,7 +52,10 @@ public final class StereoCursor {
             final Minecraft mc = Minecraft.getMinecraft();
             final int halfW = mc.displayWidth / 2;
             final int fullH = mc.displayHeight;
-            vX += Mouse.getDX();
+            // SBS_HALF compresses each eye horizontally to half the screen width, so the
+            // mouse-pixel to on-screen-cursor-pixel ratio must be halved on X to match mono
+            // feel; Y is uncompressed.
+            vX += Mouse.getDX() * 0.5;
             vY += Mouse.getDY();
             if (vX < 0)              vX = 0;
             if (vX > halfW - 1)      vX = halfW - 1;
