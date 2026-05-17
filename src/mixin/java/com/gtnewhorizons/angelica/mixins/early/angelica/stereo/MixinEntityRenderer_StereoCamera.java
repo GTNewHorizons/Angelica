@@ -34,6 +34,10 @@ public abstract class MixinEntityRenderer_StereoCamera {
         )
     )
     private void angelica$applyStereoProjectionOffset(float partialTicks, int pass, CallbackInfo ci) {
+        // === DISABLED: parallel-axis stereo avoids the asymmetric-frustum gap between eyes ===
+        // Re-enable if/when we move to proper toed-in / asymmetric-frustum stereo.
+        if (true) return; // intentional disable — see fence above
+        // === END DISABLED ===
         if (!StereoState.INSTANCE.isActive()) return;
         float dx = StereoState.INSTANCE.getEyeOffset();
         if (dx == 0f) return;
