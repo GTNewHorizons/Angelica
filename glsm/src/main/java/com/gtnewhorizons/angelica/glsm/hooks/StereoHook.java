@@ -21,6 +21,14 @@ public interface StereoHook {
      */
     boolean remapScissor(int x, int y, int width, int height, int[] outXYWH);
 
+    /**
+     * If a world-pass eye render is active and the caller is asking for the full main-FB viewport
+     * (the pattern Iris's Pass.use() and CompositeRenderer fall into at every shader phase change),
+     * write the eye-sized viewport into {@code outXYWH} and return {@code true}. Otherwise return
+     * {@code false} and the caller forwards the original args.
+     */
+    boolean remapWorldPassViewport(int x, int y, int width, int height, int[] outXYWH);
+
     int stereoMouseGetX();
     int stereoMouseGetY();
     int stereoMouseGetEventX();
@@ -29,6 +37,7 @@ public interface StereoHook {
     /** Pass-through impl used when no stereo hook is registered. */
     StereoHook NONE = new StereoHook() {
         @Override public boolean remapScissor(int x, int y, int w, int h, int[] out) { return false; }
+        @Override public boolean remapWorldPassViewport(int x, int y, int w, int h, int[] out) { return false; }
         @Override public int stereoMouseGetX() { return Mouse.getX(); }
         @Override public int stereoMouseGetY() { return Mouse.getY(); }
         @Override public int stereoMouseGetEventX() { return Mouse.getEventX(); }

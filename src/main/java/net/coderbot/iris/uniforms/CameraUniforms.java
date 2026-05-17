@@ -1,7 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.rendering.RenderingState;
-import lombok.Getter;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix3f;
@@ -75,23 +75,34 @@ public class CameraUniforms {
 		private static final double WALK_RANGE = 30000;
 		private static final double TP_RANGE = 1000;
 
-		@Getter
-		private Vector3d previousCameraPosition = new Vector3d();
-		@Getter
-		private Vector3d currentCameraPosition = new Vector3d();
+		// Per-eye storage: LEFT/MONO = slot 0, RIGHT = slot 1. update() fires once per renderWorld
+		// call (twice per frame in stereo). Without per-eye slots, the RIGHT eye's update would
+		// overwrite previousCameraPosition with LEFT eye's current-frame position, so RIGHT eye
+		// shaders see zero motion between previous and current — temporal effects desync per eye.
+		private final Vector3d[] previousCameraPositionPerEye = new Vector3d[] { new Vector3d(), new Vector3d() };
+		private final Vector3d[] currentCameraPositionPerEye  = new Vector3d[] { new Vector3d(), new Vector3d() };
 		private final Vector3d shift = new Vector3d();
-		private Vector3d previousCameraPositionUnshifted = new Vector3d();
-		private Vector3d currentCameraPositionUnshifted = new Vector3d();
+		private final Vector3d[] previousCameraPositionUnshiftedPerEye = new Vector3d[] { new Vector3d(), new Vector3d() };
+		private final Vector3d[] currentCameraPositionUnshiftedPerEye  = new Vector3d[] { new Vector3d(), new Vector3d() };
 
 		CameraPositionTracker(FrameUpdateNotifier notifier) {
 			notifier.addListener(this::update);
 		}
 
+		public Vector3d getPreviousCameraPosition() {
+			return previousCameraPositionPerEye[StereoState.INSTANCE.currentEyeIndex()];
+		}
+
+		public Vector3d getCurrentCameraPosition() {
+			return currentCameraPositionPerEye[StereoState.INSTANCE.currentEyeIndex()];
+		}
+
 		private void update() {
-			previousCameraPosition.set(currentCameraPosition);
-			previousCameraPositionUnshifted = currentCameraPositionUnshifted;
-			currentCameraPosition.set(getUnshiftedCameraPosition()).add(shift);
-			currentCameraPositionUnshifted.set(getUnshiftedCameraPosition());
+			final int eye = StereoState.INSTANCE.currentEyeIndex();
+			previousCameraPositionPerEye[eye].set(currentCameraPositionPerEye[eye]);
+			previousCameraPositionUnshiftedPerEye[eye].set(currentCameraPositionUnshiftedPerEye[eye]);
+			currentCameraPositionPerEye[eye].set(getUnshiftedCameraPosition()).add(shift);
+			currentCameraPositionUnshiftedPerEye[eye].set(getUnshiftedCameraPosition());
 
 			updateShift();
 		}
@@ -102,8 +113,11 @@ public class CameraUniforms {
 		 * around a chunk border.
 		 */
 		private void updateShift() {
-			final double dX = getShift(currentCameraPosition.x, previousCameraPosition.x);
-			final double dZ = getShift(currentCameraPosition.z, previousCameraPosition.z);
+			final int eye = StereoState.INSTANCE.currentEyeIndex();
+			final Vector3d cur = currentCameraPositionPerEye[eye];
+			final Vector3d prev = previousCameraPositionPerEye[eye];
+			final double dX = getShift(cur.x, prev.x);
+			final double dZ = getShift(cur.z, prev.z);
 
 			if (dX != 0.0 || dZ != 0.0) {
 				applyShift(dX, dZ);
@@ -120,26 +134,26 @@ public class CameraUniforms {
 		}
 
 		/**
-		 * Shifts all current and future positions by the given amount. This is done in such a way that the difference
-		 * between cameraPosition and previousCameraPosition remains the same, since they are completely arbitrary
-		 * to the shader for the most part.
+		 * Shifts all current and future positions by the given amount. The shift is global (applied
+		 * to both eye slots) so per-eye motion remains consistent across the precision-wraparound.
 		 */
 		private void applyShift(double dX, double dZ) {
 			shift.x += dX;
-			currentCameraPosition.x += dX;
-			previousCameraPosition.x += dX;
-
 			shift.z += dZ;
-			currentCameraPosition.z += dZ;
-			previousCameraPosition.z += dZ;
+			for (int e = 0; e < currentCameraPositionPerEye.length; e++) {
+				currentCameraPositionPerEye[e].x  += dX;
+				previousCameraPositionPerEye[e].x += dX;
+				currentCameraPositionPerEye[e].z  += dZ;
+				previousCameraPositionPerEye[e].z += dZ;
+			}
 		}
 
 		public double getCurrentCameraPositionY() {
-			return currentCameraPosition.y;
+			return currentCameraPositionPerEye[StereoState.INSTANCE.currentEyeIndex()].y;
 		}
 
 		public Vector3d getPreviousCameraPositionUnshifted() {
-			return previousCameraPositionUnshifted;
+			return previousCameraPositionUnshiftedPerEye[StereoState.INSTANCE.currentEyeIndex()];
 		}
 	}
 }

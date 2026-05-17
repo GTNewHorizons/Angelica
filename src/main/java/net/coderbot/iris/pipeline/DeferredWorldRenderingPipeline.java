@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.Iris;
@@ -254,9 +255,19 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
 		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		this.renderTargets = new RenderTargets(main.framebufferWidth, main.framebufferHeight, depthTextureId,
+		// Size Iris's render targets to the eye's effective viewport when stereo is active so
+		// each pass operates on a framebuffer that exactly matches the eye's content. When
+		// eyeCount == 2 we also allocate per-eye depth+stencil internally so kernel-based
+		// composite shaders (bloom, blur) don't read across the eye boundary; blit-back at the
+		// end of each eye preserves stencil for stencil-using mods.
+		final StereoState stereoState = StereoState.INSTANCE;
+		final int eyeCount = stereoState.stereoEyeCount();
+		this.renderTargets = new RenderTargets(
+			stereoState.irisFbWidth(main.framebufferWidth),
+			stereoState.irisFbHeight(main.framebufferHeight),
+			depthTextureId,
             ((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthBufferFormat,
-			programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives());
+			programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives(), eyeCount);
 
 		this.sunPathRotation = programs.getPackDirectives().getSunPathRotation();
 
@@ -1089,7 +1100,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				GLStateManager.glViewport(0, 0, shadowMapResolution, shadowMapResolution);
 			} else {
                 final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
-				GLStateManager.glViewport(0, 0, main.framebufferWidth, main.framebufferHeight);
+				final StereoState s = StereoState.INSTANCE;
+				GLStateManager.glViewport(0, 0,
+					s.irisFbWidth(main.framebufferWidth),
+					s.irisFbHeight(main.framebufferHeight));
 			}
 
 			// Apply state overrides before program.use() so that uniforms (e.g. iris_currentAlphaTest)
@@ -1290,8 +1304,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final int internalFormat = TextureInfoCache.INSTANCE.getInfo(depthTextureId).getInternalFormat();
 		final DepthBufferFormat depthBufferFormat = DepthBufferFormat.fromGlEnumOrDefault(internalFormat);
 
-		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthTextureId, main.framebufferWidth,
-            main.framebufferHeight, depthBufferFormat, packDirectives);
+		final StereoState stereoResize = StereoState.INSTANCE;
+		final boolean changed = renderTargets.resizeIfNeeded(((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthTextureId,
+			stereoResize.irisFbWidth(main.framebufferWidth),
+			stereoResize.irisFbHeight(main.framebufferHeight),
+			depthBufferFormat, packDirectives);
 
 		if (changed) {
 			beginRenderer.recalculateSizes();
@@ -1349,6 +1366,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		for (ClearPass clearPass : passes) {
 			clearPass.execute(fogColor);
+		}
+
+		// Stereo: Iris's ClearPass only clears color targets, and the per-eye depth+stencil
+		// texture is private to Iris (the main FB's glClear in renderWorld doesn't touch it).
+		// Clear it explicitly so each eye's pass starts against a clean depth/stencil.
+		if (StereoState.INSTANCE.isInWorldPass()
+			&& renderTargets.getEyeCount() > 1) {
+			renderTargets.clearCurrentEyeDepthStencil();
 		}
 
 		// Reset framebuffer and viewport
@@ -1560,6 +1585,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginLevelRendering() {
+		// Stereo: the renderWorld redirect enables scissor (in main-FB pixel coords) to protect
+		// each eye's region of the main framebuffer from vanilla MC's glClear at the top of
+		// renderWorld. By the time Iris takes over, that clear has happened and we're about to
+		// write into Iris's *own* half-width framebuffers — where the outer scissor would clip
+		// every right-eye fragment to nothing. Disable scissor now; the renderWorld redirect
+		// will re-enable it after renderWorld returns.
+		if (StereoState.INSTANCE.isInWorldPass()) {
+			GL11.glDisable(GL11.GL_SCISSOR_TEST);
+		}
+
 		isRenderingFullScreenPass = false;
 		isRenderingWorld = true;
 		isBeforeTranslucent = true;
@@ -1640,12 +1675,33 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		compositeRenderer.renderAll();
 		finalPassRenderer.renderFinalPass();
 
+		// Stereo: this eye's full deferred + composite + final pipeline rendered into its own
+		// per-eye depth+stencil texture (so mods like Avaritia cosmic textures and Forge stencil
+		// effects had a real per-eye stencil to write into during world rendering). Now copy that
+		// depth+stencil into the eye's region of the MAIN FB's combined depth-stencil texture so
+		// post-world rendering (HUD, particles, hand) sees coherent depth/stencil for this eye's
+		// half of the screen, and so the next eye's pass starts against a fresh per-eye depth.
+		final StereoState stereoFinal = StereoState.INSTANCE;
+		if (stereoFinal.isInWorldPass() && stereoFinal.isActive()) {
+			final Framebuffer mainFb = Minecraft.getMinecraft().getFramebuffer();
+			final int dx0 = stereoFinal.getEyeVpX();
+			final int dy0 = stereoFinal.getEyeVpY();
+			final int dx1 = dx0 + stereoFinal.getEyeVpW();
+			final int dy1 = dy0 + stereoFinal.getEyeVpH();
+			renderTargets.blitEyeDepthStencilToMain(mainFb.framebufferObject, dx0, dy0, dx1, dy1);
+		}
+
 		isRenderingFullScreenPass = false;
 	}
 
 	@Override
 	public CeleritasTerrainPipeline getCeleritasTerrainPipeline() {
 		return celeritasTerrainPipeline;
+	}
+
+	@Override
+	public void setActiveEye(int eye) {
+		renderTargets.setActiveEye(eye);
 	}
 
 	@Override

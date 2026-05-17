@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.features.FeatureFlags;
@@ -39,10 +40,12 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
 
+import java.nio.IntBuffer;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
@@ -68,6 +71,15 @@ public class FinalPassRenderer {
 	@Nullable private final Set<GlImage> customImages;
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
+
+	// Stereo: an eye-sized scratch color texture used as the final-pass shader's output target
+	// instead of the main FB color, so the shader's gl_FragCoord-based UV sampling stays correct
+	// at viewport (0,0,halfW,fullH). After the shader runs we blit the scratch into the eye's
+	// region of the main FB color. Lazily (re-)allocated to match the current eye size.
+	private int stereoScratchTexture = -1;
+	private GlFramebuffer stereoScratchFb;
+	private int stereoScratchW;
+	private int stereoScratchH;
 
 	public FinalPassRenderer(ProgramSet pack, RenderTargets renderTargets, TextureAccess noiseTexture,
 							 FrameUpdateNotifier updateNotifier, ImmutableSet<Integer> flippedBuffers,
@@ -192,8 +204,15 @@ public class FinalPassRenderer {
         GLStateManager.glDepthMask(false);
 
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
-		final int baseWidth = main.framebufferWidth;
-		final int baseHeight = main.framebufferHeight;
+		// During a stereo eye pass, Iris's intermediate framebuffers are sized to the eye's
+		// viewport (half the display width for SBS_HALF). The compute dispatch and copy sizes
+		// below match that. When a shader final pass exists, we direct it to an eye-sized
+		// scratch texture (so its viewport-relative gl_FragCoord math stays correct) and blit
+		// the scratch into the eye's region of the main FB color afterwards.
+		final StereoState stereoFinal = StereoState.INSTANCE;
+		final int baseWidth = stereoFinal.irisFbWidth(main.framebufferWidth);
+		final int baseHeight = stereoFinal.irisFbHeight(main.framebufferHeight);
+		final boolean stereoActive = stereoFinal.isInWorldPass() && stereoFinal.isActive();
 
 		// Note that since DeferredWorldRenderingPipeline uses the depth texture of the main Minecraft framebuffer,
 		// we'll be writing to that depth buffer directly automatically and won't need to futz around with copying
@@ -217,7 +236,18 @@ public class FinalPassRenderer {
 		if (this.finalPass != null) {
 			// If there is a final pass, we use the shader-based full screen quad rendering pathway instead of just copying the color buffer.
 
-			colorHolder.bind();
+			if (stereoActive) {
+				ensureStereoScratch(baseWidth, baseHeight);
+				stereoScratchFb.bind();
+				// CompositeRenderer.renderAll's final bindFramebuffer fires MixinFramebuffer_Stereo's
+				// viewport restore, leaving us with an *eye-region* viewport in main-FB coords. That's
+				// wrong for writing into the per-eye scratch — it would only fill the eye's sub-rect of
+				// scratch (leaving the rest from the other eye or the previous frame). Reset to fill
+				// the full scratch so the shader writes the complete eye view.
+				GL11.glViewport(0, 0, baseWidth, baseHeight);
+			} else {
+				colorHolder.bind();
+			}
 
 			FullScreenQuadRenderer.INSTANCE.begin();
 
@@ -247,6 +277,18 @@ public class FinalPassRenderer {
 			FullScreenQuadRenderer.INSTANCE.renderQuad();
 
 			FullScreenQuadRenderer.end();
+
+			if (stereoActive) {
+				// Blit the eye-sized scratch into the eye's region of the main FB color texture.
+				final int dx0 = stereoFinal.getEyeVpX();
+				final int dy0 = stereoFinal.getEyeVpY();
+				final int dx1 = dx0 + stereoFinal.getEyeVpW();
+				final int dy1 = dy0 + stereoFinal.getEyeVpH();
+				RenderSystem.blitFramebuffer(stereoScratchFb.getId(), main.framebufferObject,
+					0, 0, baseWidth, baseHeight,
+					dx0, dy0, dx1, dy1,
+					GL11.GL_COLOR_BUFFER_BIT, GL11.GL_LINEAR);
+			}
 		} else {
 			// If there are no passes, we somehow need to transfer the content of the Iris color render targets into
 			// the main Minecraft framebuffer.
@@ -260,7 +302,9 @@ public class FinalPassRenderer {
 			// https://stackoverflow.com/a/23994979/18166885
 			this.baseline.bindAsReadBuffer();
 
-			RenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
+			final int destX = stereoActive ? stereoFinal.getEyeVpX() : 0;
+			final int destY = stereoActive ? stereoFinal.getEyeVpY() : 0;
+			RenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, destX, destY, 0, 0, baseWidth, baseHeight);
 		}
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -281,7 +325,12 @@ public class FinalPassRenderer {
 			// Also note that RenderTargets already calls readBuffer(0) for us.
 			swapPass.from.bind();
 
-			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
+			// Resolve the destination texture dynamically per eye: in stereo, renderTargets.get(...)
+			// returns the current eye's RenderTarget, whereas a pre-captured texture ID would point
+			// at the eye that was active when the SwapPass was first built — causing each eye to
+			// scribble into the other eye's color target each frame.
+			final RenderTarget target = renderTargets.get(swapPass.target);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, target.getMainTexture());
             GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
 		}
 
@@ -300,6 +349,37 @@ public class FinalPassRenderer {
 		}
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+	}
+
+	/**
+	 * Lazily allocates (or resizes) the eye-sized scratch color texture and its framebuffer.
+	 * Used as the final-pass shader's output target during stereo so its viewport-relative
+	 * sampling stays correct. We re-attach to the framebuffer on resize since GlFramebuffer's
+	 * addColorAttachment is idempotent for the same attachment index.
+	 */
+	private void ensureStereoScratch(int width, int height) {
+		if (stereoScratchTexture < 0) {
+			stereoScratchTexture = GL11.glGenTextures();
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, stereoScratchTexture);
+			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+			GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+			GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width, height, 0,
+				GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (IntBuffer) null);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+			stereoScratchW = width;
+			stereoScratchH = height;
+			stereoScratchFb = new GlFramebuffer();
+			stereoScratchFb.addColorAttachment(0, stereoScratchTexture);
+		} else if (width != stereoScratchW || height != stereoScratchH) {
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, stereoScratchTexture);
+			GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, width, height, 0,
+				GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (IntBuffer) null);
+			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+			stereoScratchW = width;
+			stereoScratchH = height;
+		}
 	}
 
 	public void recalculateSwapPassSize() {
@@ -468,5 +548,13 @@ public class FinalPassRenderer {
 			finalPass.destroy();
 		}
 		colorHolder.destroy();
+		if (stereoScratchFb != null) {
+			stereoScratchFb.destroy();
+			stereoScratchFb = null;
+		}
+		if (stereoScratchTexture >= 0) {
+			GLStateManager.glDeleteTextures(stereoScratchTexture);
+			stereoScratchTexture = -1;
+		}
 	}
 }

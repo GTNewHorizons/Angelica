@@ -30,6 +30,20 @@ public final class StereoGLSMBridge {
                 return true;
             }
 
+            @Override
+            public boolean remapWorldPassViewport(int x, int y, int width, int height, int[] out) {
+                final StereoState state = StereoState.INSTANCE;
+                if (!state.isInWorldPass()) return false;
+                final Minecraft mc = Minecraft.getMinecraft();
+                if (mc == null) return false;
+                if (x != 0 || y != 0 || width != mc.displayWidth || height != mc.displayHeight) return false;
+                out[0] = 0;
+                out[1] = 0;
+                out[2] = state.irisFbWidth(mc.displayWidth);
+                out[3] = state.irisFbHeight(mc.displayHeight);
+                return true;
+            }
+
             @Override public int stereoMouseGetX()      { return StereoState.INSTANCE.isActive() ? StereoCursor.getX()      : Mouse.getX(); }
             @Override public int stereoMouseGetY()      { return StereoState.INSTANCE.isActive() ? StereoCursor.getY()      : Mouse.getY(); }
             @Override public int stereoMouseGetEventX() { return StereoState.INSTANCE.isActive() ? StereoCursor.getEventX() : Mouse.getEventX(); }

@@ -7,6 +7,8 @@ import com.gtnewhorizons.angelica.stereo.StereoMode;
 import com.gtnewhorizons.angelica.stereo.StereoState;
 import cpw.mods.fml.common.eventhandler.Event;
 import cpw.mods.fml.common.eventhandler.EventBus;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiIngame;
@@ -81,18 +83,38 @@ public abstract class MixinEntityRenderer_Stereo {
         final int rightX = sbs ? eyeW : 0;
         final int rightY = 0;
 
-        // Scissor confines the second pass's glClear so it doesn't erase the first eye.
+        // Scissor protects each eye's region of the main framebuffer from vanilla MC's glClear
+        // at the start of renderWorld — without it, the right eye's clear would wipe the left
+        // eye's already-rendered content from the main FB. With shaders, Iris binds its own
+        // half-width intermediate FBOs partway through renderWorld; an active scissor in
+        // main-FB pixel coords would clip every fragment written into those FBOs to nothing.
+        // DeferredWorldRenderingPipeline.beginLevelRendering disables scissor at that handoff
+        // point, so scissor is only "live" during the vanilla pre-Iris portion of renderWorld.
         GL11.glEnable(GL11.GL_SCISSOR_TEST);
 
         StereoState.INSTANCE.setEye(StereoState.Eye.LEFT);
         GL11.glViewport(leftX, leftY, eyeW, eyeH);
         GL11.glScissor(leftX, leftY, eyeW, eyeH);
+        // enterWorldPass: any subsequent glViewport call that asks for the main FB's full size
+        // (Iris's Pass.use, CompositeRenderer, ClearPass) gets remapped to this eye's viewport.
+        StereoState.INSTANCE.enterWorldPass(leftX, leftY, eyeW, eyeH);
+        // Tell Iris (if a shaderpack is loaded) to swap its render targets to this eye's set,
+        // so all subsequent FBO binds + samplers resolve to the LEFT eye's textures.
+        angelica$setIrisActiveEye(0);
         self.renderWorld(partialTicks, finishTimeNano);
+        StereoState.INSTANCE.exitWorldPass();
 
         StereoState.INSTANCE.setEye(StereoState.Eye.RIGHT);
         GL11.glViewport(rightX, rightY, eyeW, eyeH);
+        // Re-enable scissor here — beginLevelRendering may have disabled it for the left eye.
+        GL11.glEnable(GL11.GL_SCISSOR_TEST);
         GL11.glScissor(rightX, rightY, eyeW, eyeH);
+        StereoState.INSTANCE.enterWorldPass(rightX, rightY, eyeW, eyeH);
+        angelica$setIrisActiveEye(1);
         self.renderWorld(partialTicks, finishTimeNano);
+        StereoState.INSTANCE.exitWorldPass();
+        // Restore eye 0 as the "active" eye for any post-world Iris state lookups.
+        angelica$setIrisActiveEye(0);
 
         // Restore full viewport and disable scissor so the HUD redirect (and vanilla overlay
         // code) see consistent default state.
@@ -272,10 +294,24 @@ public abstract class MixinEntityRenderer_Stereo {
         return result;
     }
 
-    /**
-     * White arrow with 1px black outline; tip at (x, y). Item icons drawn earlier in the frame
-     * leave depth values that would occlude this rect, so depth-test is toggled around it.
-     */
+    // When stereo is active each eye has its own set of color and depth+stencil textures in
+    // Iris's RenderTargets; this rebinds the owned framebuffer attachments to the requested
+    // eye's textures so subsequent Iris passes write into and sample from the right bubble.
+    // No-op if no pipeline (no shaderpack loaded).
+    private static void angelica$setIrisActiveEye(int eyeIndex) {
+        try {
+            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+            if (pipeline != null) {
+                pipeline.setActiveEye(eyeIndex);
+            }
+        } catch (Throwable ignored) {
+            // Iris not present or pipeline not yet constructed — best-effort fall-through keeps
+            // the stereo path working when no shaderpack is loaded.
+        }
+    }
+
+    /** White arrow with 1px black outline; tip at (x, y). Item icons drawn earlier in the frame
+     *  leave depth values that would occlude this rect, so depth-test is toggled around it. */
     private static void angelica$drawSyntheticCursor(int x, int y) {
         final int B = 0xFF000000;
         final int F = 0xFFFFFFFF;

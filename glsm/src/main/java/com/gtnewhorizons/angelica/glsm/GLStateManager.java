@@ -3646,7 +3646,20 @@ public class GLStateManager {
         GLStateManager.glScalef(viewport.get(viewport.position() + 2) / deltaX, viewport.get(viewport.position() + 3) / deltaY, 1.0f);
     }
 
+    // Single-threaded scratch buffer for StereoHook.remapWorldPassViewport. glViewport is render-thread-only.
+    private static final int[] STEREO_VIEWPORT_SCRATCH = new int[4];
+
     public static void glViewport(int x, int y, int width, int height) {
+        // Safety net for any Iris call site we didn't patch directly. During a stereo world-render
+        // eye pass, asks for the full main-FB viewport are redirected to the eye-sized viewport so
+        // geometry isn't rendered outside the per-eye FBO bounds.
+        final StereoHook stereo = GLSMHooks.stereoHook;
+        if (stereo != null && stereo.remapWorldPassViewport(x, y, width, height, STEREO_VIEWPORT_SCRATCH)) {
+            x = STEREO_VIEWPORT_SCRATCH[0];
+            y = STEREO_VIEWPORT_SCRATCH[1];
+            width = STEREO_VIEWPORT_SCRATCH[2];
+            height = STEREO_VIEWPORT_SCRATCH[3];
+        }
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordViewport(x, y, width, height);

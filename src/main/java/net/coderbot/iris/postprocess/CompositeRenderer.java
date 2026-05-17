@@ -5,6 +5,7 @@ import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.features.FeatureFlags;
@@ -258,7 +259,10 @@ public class CompositeRenderer {
                     final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
                     computeProgram.use();
                     this.customUniforms.push(computeProgram);
-					computeProgram.dispatch(main.framebufferWidth, main.framebufferHeight);
+                    final StereoState s = StereoState.INSTANCE;
+					computeProgram.dispatch(
+						s.irisFbWidth(main.framebufferWidth),
+						s.irisFbHeight(main.framebufferHeight));
 				}
 			}
 
