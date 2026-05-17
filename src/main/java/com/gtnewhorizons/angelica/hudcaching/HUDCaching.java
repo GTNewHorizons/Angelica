@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameForgeAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderGameOverlayEventAccessor;
+import com.gtnewhorizons.angelica.stereo.StereoState;
 import com.kentington.thaumichorizons.common.ThaumicHorizons;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.Gui;
@@ -81,28 +82,90 @@ public class HUDCaching {
             return;
         }
 
+        final boolean justUpdated = maybeUpdateCache(ingame, partialTicks, hasScreen, mouseX, mouseY);
+        if (!justUpdated) {
+            renderer.setupOverlayRendering();
+        }
+        blitCachedHud(ingame, partialTicks, hasScreen, mouseX, mouseY);
+    }
+
+    @SuppressWarnings("unused")
+    public static void renderCachedHudStereo(EntityRenderer renderer, GuiIngame ingame,
+                                              float partialTicks, boolean hasScreen, int mouseX, int mouseY,
+                                              int leftX, int leftY, int rightX, int rightY, int eyeW, int eyeH) {
+        if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
+            XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
+        }
+
+        GLStateManager.disableLighting();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.disableTexture();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.enableTexture();
+
+        final int fullW = mc.displayWidth;
+        final int fullH = mc.displayHeight;
+
+        if (!AngelicaConfig.hudCachingActive) {
+            // No HUD caching: render the HUD uncached twice per frame.
+            GL11.glViewport(leftX, leftY, eyeW, eyeH);
+            StereoState.INSTANCE.enterGuiPass(leftX, leftY, eyeW, eyeH);
+            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            StereoState.INSTANCE.exitGuiPass();
+            GL11.glViewport(rightX, rightY, eyeW, eyeH);
+            StereoState.INSTANCE.enterGuiPass(rightX, rightY, eyeW, eyeH);
+            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            StereoState.INSTANCE.exitGuiPass();
+            GL11.glViewport(0, 0, fullW, fullH);
+            return;
+        }
+
+        // Cache update needs the full framebuffer viewport so the HUD fills the cache FBO.
+        // maybeUpdateCache binds the cache FBO (without changing viewport) and renders the HUD —
+        // so we must temporarily set the viewport to full before the call and restore after.
+        GL11.glViewport(0, 0, fullW, fullH);
+        maybeUpdateCache(ingame, partialTicks, hasScreen, mouseX, mouseY);
+
+        // Blit the cached HUD into each eye's viewport.
+        GL11.glViewport(leftX, leftY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(leftX, leftY, eyeW, eyeH);
+        renderer.setupOverlayRendering();
+        blitCachedHud(ingame, partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
+
+        GL11.glViewport(rightX, rightY, eyeW, eyeH);
+        StereoState.INSTANCE.enterGuiPass(rightX, rightY, eyeW, eyeH);
+        renderer.setupOverlayRendering();
+        blitCachedHud(ingame, partialTicks, hasScreen, mouseX, mouseY);
+        StereoState.INSTANCE.exitGuiPass();
+
+        GL11.glViewport(0, 0, fullW, fullH);
+    }
+
+    private static boolean maybeUpdateCache(GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         if (System.currentTimeMillis() > nextHudRefresh) {
             dirty = true;
         }
-
-        if (dirty) {
-            dirty = false;
-            nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
-            if (framebuffer.framebufferWidth != mc.displayWidth || framebuffer.framebufferHeight != mc.displayHeight) {
-                framebuffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
-            } else {
-                framebuffer.clearBindFramebuffer();
-            }
-            renderingCacheOverride = true;
-            GLSMConfig.hudCacheOverride = true;
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
-            renderingCacheOverride = false;
-            GLSMConfig.hudCacheOverride = false;
-            mc.getFramebuffer().bindFramebuffer(false);
-        } else {
-            renderer.setupOverlayRendering();
+        if (!dirty) {
+            return false;
         }
+        dirty = false;
+        nextHudRefresh = System.currentTimeMillis() + (1000 / AngelicaConfig.hudCachingFPS);
+        if (framebuffer.framebufferWidth != mc.displayWidth || framebuffer.framebufferHeight != mc.displayHeight) {
+            framebuffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
+        } else {
+            framebuffer.clearBindFramebuffer();
+        }
+        renderingCacheOverride = true;
+        GLSMConfig.hudCacheOverride = true;
+        ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+        renderingCacheOverride = false;
+        GLSMConfig.hudCacheOverride = false;
+        mc.getFramebuffer().bindFramebuffer(false);
+        return true;
+    }
 
+    private static void blitCachedHud(GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
         int width = resolution.getScaledWidth();
         int height = resolution.getScaledHeight();
