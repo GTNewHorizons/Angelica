@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.stereo;
 
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.stereo.CursorPresentThread;
 import com.gtnewhorizons.angelica.stereo.StereoCursor;
 import com.gtnewhorizons.angelica.stereo.StereoHudMode;
 import com.gtnewhorizons.angelica.stereo.StereoMode;
@@ -50,6 +51,10 @@ public abstract class MixinEntityRenderer_Stereo {
             Minecraft mc = Minecraft.getMinecraft();
             GL11.glViewport(0, 0, mc.displayWidth, mc.displayHeight);
         }
+        // Note: cursor thread's publishFrame() is intentionally NOT called here. It is called
+        // later in the frame at framebufferRender HEAD (see MixinFramebuffer_AsyncCursor), so
+        // we capture framebufferMc after onRenderTickEnd has had a chance to add its content
+        // (WAILA HUD, achievement popups, etc.). Capturing here would miss those.
         StereoState.INSTANCE.endFrame();
     }
 
@@ -288,19 +293,19 @@ public abstract class MixinEntityRenderer_Stereo {
         }
         StereoState.INSTANCE.exitGuiPass();
 
-        // Synthetic cursor on top of everything, in both halves. OS cursor is hidden by
-        // Mouse.setGrabbed when stereo+GUI is active, so this is the only visible cursor.
-        final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
-        final int scaledWidth = sr.getScaledWidth();
-        final int scaledHeight = sr.getScaledHeight();
-        final int cursorX = Mouse.getX() * scaledWidth / mc.displayWidth;
-        final int cursorY = scaledHeight - Mouse.getY() * scaledHeight / mc.displayHeight - 1;
+        if (!CursorPresentThread.isRunning()) {
+            final ScaledResolution sr = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            final int scaledWidth = sr.getScaledWidth();
+            final int scaledHeight = sr.getScaledHeight();
+            final int cursorX = Mouse.getX() * scaledWidth / mc.displayWidth;
+            final int cursorY = scaledHeight - Mouse.getY() * scaledHeight / mc.displayHeight - 1;
 
-        // RIGHT half cursor (viewport still right).
-        angelica$drawSyntheticCursor(cursorX, cursorY);
-        // LEFT half cursor.
-        GL11.glViewport(0, 0, eyeW, eyeH);
-        angelica$drawSyntheticCursor(cursorX, cursorY);
+            // RIGHT half cursor (viewport still right).
+            angelica$drawSyntheticCursor(cursorX, cursorY);
+            // LEFT half cursor.
+            GL11.glViewport(0, 0, eyeW, eyeH);
+            angelica$drawSyntheticCursor(cursorX, cursorY);
+        }
 
         GL11.glViewport(0, 0, fullW, fullH);
         return result;

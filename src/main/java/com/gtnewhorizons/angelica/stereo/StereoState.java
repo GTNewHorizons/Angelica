@@ -85,6 +85,7 @@ public class StereoState {
             active = false;
             currentEye = Eye.MONO;
             frameMode = StereoMode.OFF;
+            CursorPresentThread.stop();
             return false;
         }
         active = true;
@@ -94,6 +95,7 @@ public class StereoState {
             ? AngelicaConfig.stereoHudMode
             : StereoHudMode.DUPLICATE;
         currentEye = Eye.MONO;
+        CursorPresentThread.ensureStarted();
         return true;
     }
 
