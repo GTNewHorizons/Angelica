@@ -700,6 +700,8 @@ public class BatchingFontRenderer {
                     continue;
                 }
 
+                if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
+
                 if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
                     String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
                     if (chrReplacement != null) {
@@ -846,6 +848,7 @@ public class BatchingFontRenderer {
     }
 
     public float getCharWidthFine(char chr) {
+        if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
         if (chr == FORMATTING_CHAR) { return -1; }
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
