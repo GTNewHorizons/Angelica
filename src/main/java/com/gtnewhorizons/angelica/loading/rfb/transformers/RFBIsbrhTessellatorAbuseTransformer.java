@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.loading.rfb.transformers;
 
 import com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseClassTransformer;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
+import com.gtnewhorizons.retrofuturabootstrap.api.ClassHeaderMetadata;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
@@ -40,7 +41,8 @@ public class RFBIsbrhTessellatorAbuseTransformer implements RfbClassTransformer 
         @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest, @NotNull String className,
         @NotNull ClassNodeHandle classNode) {
         if (!classNode.isPresent()) return false;
-        return inner.shouldTransform(classNode.getOriginalBytes());
+        final ClassHeaderMetadata metadata = classNode.getOriginalMetadata();
+        return metadata != null && metadata.binaryInterfaceNames.contains(IsbrhTessellatorAbuseClassTransformer.ISBRH);
     }
 
     @Override

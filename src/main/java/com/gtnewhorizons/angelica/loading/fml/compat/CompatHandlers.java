@@ -56,7 +56,6 @@ public enum CompatHandlers {
         if (!handlers.isEmpty()) {
             transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.GenericCompatTransformer");
         }
-        transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseClassTransformer");
         return transformers;
     }
 }
