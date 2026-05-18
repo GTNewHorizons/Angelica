@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
 import org.joml.Vector3i;
@@ -48,6 +49,9 @@ public class RenderSystem {
     private static int maxSSBOBindings;
     private static int maxGlslVersion;
     private static boolean supportsGpuShader4;
+    @Getter private static int glMajor;
+    @Getter private static int glMinor;
+    @Getter private static boolean coreProfile;
 
     // Sampler object state tracking (null if unsupported)
     private static int[] samplers;
@@ -140,9 +144,16 @@ public class RenderSystem {
         if (GLStateManager.capabilities.OpenGL32) {
             final int profileMask = RENDER_BACKEND.getInteger(GL32.GL_CONTEXT_PROFILE_MASK);
             if ((profileMask & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0) {
+                coreProfile = true;
                 GLStateManager.LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
                 ShaderManager.getInstance().enable();
             }
+        }
+
+        final Matcher glVerMatcher = SEMVER_PATTERN.matcher(RENDER_BACKEND.getString(GL11.GL_VERSION));
+        if (glVerMatcher.matches()) {
+            glMajor = Integer.parseInt(glVerMatcher.group("major"));
+            glMinor = Integer.parseInt(glVerMatcher.group("minor"));
         }
     }
 

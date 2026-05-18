@@ -71,6 +71,12 @@ public enum Mixins implements IMixins {
             .addClientMixins("angelica.gui.MixinGuiMainMenu")
     ),
 
+    ANGELICA_GL_SPLASH_TEXT(
+        new MixinBuilder("Rewrite 'OpenGL 1.2!' splash to reflect the actual GL context")
+            .setPhase(Phase.EARLY)
+            .addClientMixins("angelica.gui.MixinGuiMainMenuSplash")
+    ),
+
     ANGELICA_FONT_RENDERER(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableFontRenderer)
