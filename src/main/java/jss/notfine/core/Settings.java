@@ -50,6 +50,7 @@ public enum Settings {
             SettingsManager.downfallDistanceUpdated();
         }
     },
+    BOBVIEW_MODE(new NotFineOptionCycling<>(BobviewMode.DEFAULT, null)),
     DYNAMIC_FOV(new NotFineOptionCycling<>(FOVMode.ALL, OptionImpact.VARIES)),
     HURT_SHAKE(new NotFineOptionSliderPercentage(100, 0, 300, 5, OptionImpact.LOW)),
     DYNAMIC_LIGHTS(new NotFineOptionCycling<>(DynamicLightsMode.FANCY, OptionImpact.VARIES)){
