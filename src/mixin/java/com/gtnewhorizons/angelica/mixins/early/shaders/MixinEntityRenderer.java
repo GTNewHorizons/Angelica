@@ -44,9 +44,15 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         DHCompat.checkFrame();
         Iris.tryLoadShaderpackWhenPossible();
 
-        CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
+        // COUNTER must tick per eye to invalidate ProgramUniforms.update()'s PER_FRAME gate.
+        // TIMER and tickDelta feed time-continuous shader math (sun position, frameTimeCounter);
+        // advancing them per eye drifts both by the inter-eye wall-clock delta and breaks
+        // eye-symmetric fog at sunrise/sunset. Freeze on the RIGHT eye to LEFT's snapshot.
         SystemTimeUniforms.COUNTER.beginFrame();
-        SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
+        if (StereoState.INSTANCE.getCurrentEye() != StereoState.Eye.RIGHT) {
+            CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
+            SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
+        }
 
         Program.unbind();
 
