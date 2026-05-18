@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.stereo;
 
+import com.gtnewhorizons.angelica.compat.chromatictooltips.ChromaticTooltipsCompat;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.stereo.CursorPresentThread;
 import com.gtnewhorizons.angelica.stereo.StereoCursor;
@@ -220,6 +221,7 @@ public abstract class MixinEntityRenderer_Stereo {
         // back-to-back, so the RIGHT eye enters with lighting still on from LEFT eye's exit. That
         // causes the chest panel's drawGuiContainerBackgroundLayer (which sets color white but
         // doesn't disable lighting) to be lit, dimming the panel relative to the LEFT eye.
+
         // LEFT
         final int leftY = sbs ? 0 : fullH - eyeH;
         GL11.glViewport(0, leftY, eyeW, eyeH);
@@ -279,6 +281,9 @@ public abstract class MixinEntityRenderer_Stereo {
         StereoState.INSTANCE.enterGuiPass(0, 0, eyeW, eyeH);
         final boolean result = bus.post(event);
         StereoState.INSTANCE.exitGuiPass();
+
+        // Re-arm ChromaticTooltips' deferred-render flag so the RIGHT eye Post draws too.
+        ChromaticTooltipsCompat.rearm();
 
         // RIGHT eye: Forge phase-tracking refuses a re-post of the same event instance, so build
         // a fresh DrawScreenEvent.Post with the same params.

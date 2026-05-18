@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
+import com.gtnewhorizons.angelica.compat.chromatictooltips.ChromaticTooltipsCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
@@ -140,6 +141,13 @@ public final class ClientProxy extends CommonProxy {
 
         if (ModStatus.isBetterCrashesLoaded) {
             BetterCrashesCompat.init();
+        }
+        try {
+            ChromaticTooltipsCompat.init();
+        } catch (ReflectiveOperationException e) {
+            // Forge's @EventHandler init signature can't propagate checked exceptions; surface
+            // ChromaticTooltips API drift as a fatal mod-init failure rather than degrade silently.
+            throw new RuntimeException(e);
         }
         if (AngelicaConfig.enableZoom) {
             Zoom.init();
