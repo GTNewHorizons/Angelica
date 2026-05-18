@@ -106,8 +106,8 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
                 "/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class",
                 "Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib"),
             new DependencyVerifier.Check(
-                "/xyz/wagyourtail/jvmdg/exc/MissingStubError.class",
-                "GTNHLib is outdated: Angelica requires GTNHLib 0.9.0 or newer! Download: https://modrinth.com/mod/gtnhlib")
+                "/com/gtnewhorizon/gtnhlib/client/renderer/VertexCallbackManager.class",
+                "GTNHLib is outdated: Angelica requires GTNHLib 0.10.0 or newer! Download: https://modrinth.com/mod/gtnhlib")
         ));
     }
 
