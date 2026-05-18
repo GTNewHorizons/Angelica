@@ -8,7 +8,6 @@ import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ThaumcraftCompatHa
 import com.gtnewhorizons.angelica.loading.fml.compat.handlers.ThaumicHorizonsCompatHandler;
 
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 import java.util.function.Supplier;
 
@@ -45,20 +44,19 @@ public enum CompatHandlers {
 
     /**
      * Returns extra transformers as well as the main transformer.
-     * Returns an empty list if no handlers registered.
      */
     public static List<String> getTransformers() {
         final List<ICompatHandler> handlers = getHandlers();
-        if (handlers.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<String> transformers =  new ArrayList<>();
+        List<String> transformers = new ArrayList<>();
         for (ICompatHandler handler : handlers) {
             if (handler.extraTransformers() != null) {
                 transformers.addAll(handler.extraTransformers());
             }
         }
-        transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.GenericCompatTransformer");
+        if (!handlers.isEmpty()) {
+            transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.GenericCompatTransformer");
+        }
+        transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseClassTransformer");
         return transformers;
     }
 }
