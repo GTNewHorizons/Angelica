@@ -414,9 +414,13 @@ public final class CursorPresentThread {
                         major, minor, hasCore ? "GL4.3" : "ARB_copy_image");
         } catch (Throwable t) {
             LOGGER.error("Failed to set up async cursor context; feature disabled.", t);
-            try {
-                if (cursorHglrc != 0L) JNI_invokePI.invoke(null, cursorHglrc, PFN_wglDeleteContext);
-            } catch (Throwable ignored) {}
+            if (cursorHglrc != 0L) {
+                try {
+                    JNI_invokePI.invoke(null, cursorHglrc, PFN_wglDeleteContext);
+                } catch (Throwable cleanup) {
+                    LOGGER.warn("wglDeleteContext cleanup also failed after init failure.", cleanup);
+                }
+            }
         }
     }
 
@@ -549,6 +553,10 @@ public final class CursorPresentThread {
             lastRawCursor[1] = curY;
             return true;
         } catch (Throwable t) {
+            // Zero the fn ptr so we don't keep retrying — pollCursorDelta runs per frame on the
+            // cursor thread and a persistent invoke failure would otherwise spam logs.
+            LOGGER.warn("GetCursorPos invoke failed; disabling further cursor polling.", t);
+            PFN_GetCursorPos = 0L;
             return false;
         }
     }
@@ -1090,8 +1098,20 @@ public final class CursorPresentThread {
                 captureToTexture(hbmColor, hbmMask, xHot, yHot);
             } finally {
                 // GetIconInfo docs: caller owns hbmColor and hbmMask — must DeleteObject them.
-                if (hbmColor != 0L) try { JNI_invokePI.invoke(null, hbmColor, PFN_DeleteObject); } catch (Throwable t) {}
-                if (hbmMask  != 0L) try { JNI_invokePI.invoke(null, hbmMask,  PFN_DeleteObject); } catch (Throwable t) {}
+                if (hbmColor != 0L) {
+                    try {
+                        JNI_invokePI.invoke(null, hbmColor, PFN_DeleteObject);
+                    } catch (Throwable t) {
+                        LOGGER.warn("DeleteObject failed on hbmColor; GDI handle leak.", t);
+                    }
+                }
+                if (hbmMask != 0L) {
+                    try {
+                        JNI_invokePI.invoke(null, hbmMask, PFN_DeleteObject);
+                    } catch (Throwable t) {
+                        LOGGER.warn("DeleteObject failed on hbmMask; GDI handle leak.", t);
+                    }
+                }
             }
         } catch (Throwable t) {
             LOGGER.warn("OS cursor capture failed; falling back to drawn arrow.", t);
@@ -1223,7 +1243,11 @@ public final class CursorPresentThread {
             LOGGER.info("OS cursor captured: {}x{}, hotspot=({},{}), color={}, texId={}",
                         w, finalH, xHot, yHot, useColor, texId);
         } finally {
-            try { JNI_invokePI.invoke(null, memDC, PFN_DeleteDC); } catch (Throwable t) {}
+            try {
+                JNI_invokePI.invoke(null, memDC, PFN_DeleteDC);
+            } catch (Throwable t) {
+                LOGGER.warn("DeleteDC failed; GDI handle leak.", t);
+            }
         }
     }
 }

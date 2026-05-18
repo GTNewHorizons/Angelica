@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.stereo;
 
 import com.gtnewhorizons.angelica.compat.chromatictooltips.ChromaticTooltipsCompat;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.stereo.CursorPresentThread;
 import com.gtnewhorizons.angelica.stereo.StereoCursor;
@@ -319,16 +320,12 @@ public abstract class MixinEntityRenderer_Stereo {
     // When stereo is active each eye has its own set of color and depth+stencil textures in
     // Iris's RenderTargets; this rebinds the owned framebuffer attachments to the requested
     // eye's textures so subsequent Iris passes write into and sample from the right bubble.
-    // No-op if no pipeline (no shaderpack loaded).
+    // No-op if Iris is disabled in config or no shaderpack is loaded.
     private static void angelica$setIrisActiveEye(int eyeIndex) {
-        try {
-            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-            if (pipeline != null) {
-                pipeline.setActiveEye(eyeIndex);
-            }
-        } catch (Throwable ignored) {
-            // Iris not present or pipeline not yet constructed — best-effort fall-through keeps
-            // the stereo path working when no shaderpack is loaded.
+        if (!AngelicaConfig.enableIris) return;
+        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        if (pipeline != null) {
+            pipeline.setActiveEye(eyeIndex);
         }
     }
 
