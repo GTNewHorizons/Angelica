@@ -1,42 +1,45 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
+import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
-
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Setter;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
-import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 
-
 import java.nio.ByteBuffer;
-import java.nio.FloatBuffer;
-
 import java.util.Comparator;
 import java.util.Objects;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutShort;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -61,7 +64,7 @@ public class BatchingFontRenderer {
     private final int AAStrength;
     private final int alphaTestRefLocation;
     private final int mvpMatrixLocation;
-    private final int fontShaderId;
+    private static int fontShaderId;
 
     final boolean isSGA;
     final boolean isSplash;
@@ -99,7 +102,6 @@ public class BatchingFontRenderer {
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
-        //noinspection deprecation
         fontShaderId = FontAAShader.getProgram().getProgramId();
         AAMode = GLStateManager.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
@@ -235,11 +237,41 @@ public class BatchingFontRenderer {
         idxWriterIndex += 6;
     }
 
+    private void pushShaderCmd(
+        int startIdx,
+        int idxCount,
+        ResourceLocation texture,
+        float x, float y,
+        float width, float height
+    ) {
+        if (!batchCommands.isEmpty()) {
+            final FontDrawCmd lastCmd = batchCommands.get(batchCommands.size() - 1);
+            final int prevEndVtx = lastCmd.startVtx + lastCmd.idxCount;
+            if (lastCmd instanceof ShaderDrawCmd shaderCmd) {
+                if (prevEndVtx == startIdx && lastCmd.texture == texture) {
+                    // Coalesce into one
+                    lastCmd.idxCount += idxCount;
+                    shaderCmd.xEnd = x + width;
+                    shaderCmd.yEnd = y + height;
+                    return;
+                }
+            }
+
+        }
+        final ShaderDrawCmd cmd = new ShaderDrawCmd();
+        cmd.reset(startIdx, idxCount, texture, true);
+        cmd.xStart = x;
+        cmd.yStart = y;
+        cmd.xEnd = x + width;
+        cmd.yEnd = y + height;
+        batchCommands.add(cmd);
+    }
+
     private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture, boolean isUnicode) {
         if (!batchCommands.isEmpty()) {
             final FontDrawCmd lastCmd = batchCommands.get(batchCommands.size() - 1);
             final int prevEndVtx = lastCmd.startVtx + lastCmd.idxCount;
-            if (prevEndVtx == startIdx && lastCmd.texture == texture) {
+            if (!(lastCmd instanceof ShaderDrawCmd) && prevEndVtx == startIdx && lastCmd.texture == texture) {
                 // Coalesce into one
                 lastCmd.idxCount += idxCount;
                 return;
@@ -251,31 +283,29 @@ public class BatchingFontRenderer {
             }
         }
         final FontDrawCmd cmd = batchCommandPool.pop();
-        cmd.reset(startIdx, idxCount, texture, isUnicode);
+        cmd.reset(startIdx, idxCount, texture, false);
         batchCommands.add(cmd);
     }
 
-    private static final class FontDrawCmd {
+    public static class FontDrawCmd {
 
         public int startVtx;
         public int idxCount;
-        public boolean isUnicode;
         public ResourceLocation texture;
 
-        public void reset(int startVtx, int vtxCount, ResourceLocation texture, boolean isUnicode) {
+        public void reset(int startVtx, int vtxCount, ResourceLocation texture, boolean isShader) {
             this.startVtx = startVtx;
             this.idxCount = vtxCount;
             this.texture = texture;
-            this.isUnicode = isUnicode;
         }
 
         @Override
         public boolean equals(Object obj) {
             if (obj == this) return true;
-            if (obj == null || obj.getClass() != this.getClass()) return false;
-            var that = (FontDrawCmd) obj;
-            return this.startVtx == that.startVtx && this.idxCount == that.idxCount && Objects.equals(this.texture,
-                that.texture);
+            if (!(obj instanceof FontDrawCmd that)) return false;
+            return this.startVtx == that.startVtx
+                && this.idxCount == that.idxCount
+                && Objects.equals(this.texture, that.texture);
         }
 
         @Override
@@ -297,9 +327,106 @@ public class BatchingFontRenderer {
                 + ']';
         }
 
-        public static final Comparator<FontDrawCmd> DRAW_ORDER_COMPARATOR = Comparator.comparing((FontDrawCmd fdc) -> fdc.texture,
-            Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
-                .thenComparing(ResourceLocation::getResourcePath))).thenComparing(fdc -> fdc.startVtx);
+        public void render() {
+            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idxCount, GL11.GL_UNSIGNED_SHORT, startVtx * 2L);
+        }
+    }
+
+    private static final class ShaderDrawCmd extends FontDrawCmd {
+
+        private static final CustomFramebuffer framebuffer = new CustomFramebuffer(0);
+        private static int vao;
+        private static int vbo;
+
+        private static long test;
+
+        public float xStart;
+        public float xEnd;
+        public float yStart;
+        public float yEnd;
+
+        @Override
+        public boolean equals(Object obj) {
+            return obj instanceof ShaderDrawCmd && super.equals(obj);
+        }
+
+        @Override
+        public void render() {
+            Minecraft mc = Minecraft.getMinecraft();
+            if (framebuffer.framebufferWidth != mc.displayWidth || framebuffer.framebufferHeight != mc.displayHeight) {
+                framebuffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
+            }
+
+            framebuffer.clearBindFramebuffer();
+            super.render();
+            framebuffer.unbindFramebuffer();
+
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, mc.getFramebuffer().framebufferTexture);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            framebuffer.bindFramebufferTexture();
+
+            final float padding = getPadding();
+            FontOverlayShader.getInstance().use();
+            GLStateManager.disableCull();
+
+            ByteBuffer buffer = memAlloc(64);
+            long address = memAddress0(buffer);
+            buffer.limit(64);
+            addVertex(address, xStart - padding, yStart - padding);
+            addVertex(address + 16, xEnd + padding, yStart - padding);
+            addVertex(address + 32, xStart - padding, yEnd + padding);
+            addVertex(address + 48, xEnd + padding, yEnd + padding);
+
+
+            if (vao == 0) {
+                vao = GLStateManager.glGenVertexArrays();
+                GLStateManager.glBindVertexArray(vao);
+                vbo = GL15.glGenBuffers();
+
+                ebo.bind();
+
+                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+                // position
+                GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 16, 0);
+                GLStateManager.glEnableVertexAttribArray(0);
+
+                // texcoords
+                GLStateManager.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, 16, 8);
+                GLStateManager.glEnableVertexAttribArray(1);
+            }
+
+            GLStateManager.glBindVertexArray(vao);
+
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, buffer, GL15.GL_STREAM_DRAW);
+            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_SHORT, 0);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+
+            GLStateManager.glUseProgram(fontShaderId);
+            GLStateManager.glBindVertexArray(fontVAO);
+
+//                FontOverlayShader.getInstance().use();
+//                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
+//                GLStateManager.glUseProgram(fontShaderId);
+
+        }
+
+        private void addVertex(long ptr, float x, float y) {
+            // v, v
+            memPutFloat(ptr, x);
+            memPutFloat(ptr + 4, y);
+
+            // t, t
+            final ScaledResolution res = new ScaledResolution(Minecraft.getMinecraft(), Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight);
+            memPutFloat(ptr + 8, x / res.getScaledWidth());
+            memPutFloat(ptr + 12, 1.0f - (y / res.getScaledHeight()));
+        }
+
+        private float getPadding() {
+            return 6;
+        }
     }
 
     /**
@@ -322,9 +449,12 @@ public class BatchingFontRenderer {
         }
     }
 
-    private static final Matrix4f scratchMvp = new Matrix4f();
     private int fontAAModeLast = -1;
     private int fontAAStrengthLast = -1;
+
+    private static final Comparator<FontDrawCmd> DRAW_ORDER_COMPARATOR = Comparator.comparing((FontDrawCmd fdc) -> fdc.texture,
+        Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
+            .thenComparing(ResourceLocation::getResourcePath))).thenComparing(fdc -> fdc.startVtx);
 
     private void flushBatch() {
         if (vertexDataPos == 0) {
@@ -340,7 +470,7 @@ public class BatchingFontRenderer {
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         // Sort&Draw
-        batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
+        batchCommands.sort(DRAW_ORDER_COMPARATOR);
 
         final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
@@ -364,12 +494,7 @@ public class BatchingFontRenderer {
             GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
         }
         GLStateManager.glUniform1f(alphaTestRefLocation, GLStateManager.getAlphaState().getReference());
-        try (MemoryStack stack = stackPush()) {
-            final FloatBuffer mvpBuf = stack.mallocFloat(16);
-            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
-            scratchMvp.get(mvpBuf);
-            GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
-        }
+        GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
 
         if (fontVAO == 0) {
             fontVAO = GLStateManager.glGenVertexArrays();
@@ -409,13 +534,14 @@ public class BatchingFontRenderer {
                 } else if (cmd.texture == null) {
                     GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
                 }
+
                 if (cmd.texture != null) {
                     ((FontRendererAccessor) underlying).angelica$bindTexture(cmd.texture);
                     textureChanged = true;
                 }
                 lastTexture = cmd.texture;
             }
-            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
+            cmd.render();
         }
 
 
@@ -439,7 +565,7 @@ public class BatchingFontRenderer {
 
     private void clearBatch() {
         // Clear for the next batch
-        batchCommandPool.addAll(batchCommands);
+        // batchCommandPool.addAll(batchCommands);
         batchCommands.clear();
         vertexDataPos = 0;
         idxWriterIndex = 0;
@@ -560,6 +686,7 @@ public class BatchingFontRenderer {
             boolean curWave = false;
             boolean curDinnerbone = false;
             boolean curGradient = false;
+            boolean curShader = false;
             int gradientStartRgb = 0, gradientEndRgb = 0;
             int gradientCharIndex = 0, gradientTotalChars = 0;
             float gradientStep = 0f;
@@ -577,6 +704,12 @@ public class BatchingFontRenderer {
             final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
+
+
+            if (string.toString().toLowerCase().contains("eye of ")) {
+                System.out.println("String: " + string);
+                new Exception().printStackTrace();
+            }
 
             for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
                 char chr = string.charAt(charIdx);
@@ -676,6 +809,10 @@ public class BatchingFontRenderer {
                         curGradient = false;
                         curColor = color;
                         curShadowColor = shadowColor;
+                        curShader = false;
+                    } else if (fmtCode == 'y') {
+                        System.out.println("testtttttttt");
+                        curShader = true;
                     }
                     } // close else block for non-§x codes
 
@@ -744,6 +881,39 @@ public class BatchingFontRenderer {
 
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
+
+                if (curShader) {
+//                    int padding = 3;
+//                    float du = padding / 128f;
+//                    float dv = padding / 128f;
+                    pushTexRect(
+                        curX,
+                        renderY,
+                        glyphW - 1.0f,
+                        heightSouth,
+                        itOff,
+                        0xFFFFFFFF, //0xFF000000,
+                        uStart, vStart, uSz, vSz,
+                        curDinnerbone
+                    );
+                    final int vtxCount = 4;
+                    pushShaderCmd(
+                        idxId,
+                        vtxCount / 2 * 3,
+                        texture,
+                        curX,
+                        renderY,
+                        glyphW - 1.0f,
+                        heightSouth
+                    );
+
+                    curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
+                    if (bookMode) { curX = (int) curX; }
+                    underlineEndX = curX;
+                    strikethroughEndX = curX;
+                    continue;
+                }
+
                 if (curWave) {
                     float time = HUDCaching.renderingCacheOverride ? 0f : (float)((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
                     renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;

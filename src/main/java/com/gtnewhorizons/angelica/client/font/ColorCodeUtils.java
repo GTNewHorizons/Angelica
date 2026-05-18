@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
-
 /**
  * Utility for converting {@code &}-based shorthand into {@code §}-based
  * format codes understood by the batched font renderer.
@@ -25,7 +23,7 @@ public final class ColorCodeUtils {
     public static final int GRADIENT_LENGTH = 30;
 
     /** Valid single {@code &} codes. {@code g} is excluded; {@code &g} only converts as part of a gradient. */
-    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
+    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqvz";
 
     private static final String[] SECTION_PREFIX = new String[128];
     static {
@@ -69,14 +67,15 @@ public final class ColorCodeUtils {
     private static String lastConversionOutput;
 
     public static String convertAmpersandToSectionX(String text) {
-        if (text == null || !AngelicaConfig.enableAmpersandConversion) return text;
-
-        if (text == lastConversionInput) return lastConversionOutput;
-
-        final String out = convertImpl(text);
-        lastConversionInput = text;
-        lastConversionOutput = out;
-        return out;
+        return text;
+//        if (text == null || !AngelicaConfig.enableAmpersandConversion) return text;
+//
+//        if (text == lastConversionInput) return lastConversionOutput;
+//
+//        final String out = convertImpl(text);
+//        lastConversionInput = text;
+//        lastConversionOutput = out;
+//        return out;
     }
 
     private static String convertImpl(String text) {

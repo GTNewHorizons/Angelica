@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
@@ -96,6 +97,7 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.IntSupplier;
 
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
 import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
@@ -5887,6 +5889,17 @@ public class GLStateManager {
 
     public static void glUniformMatrix4(int location, boolean transpose, FloatBuffer matrices) {
         RENDER_BACKEND.uniformMatrix4(location, transpose, matrices);
+    }
+
+    public static final Matrix4f scratchMvp = new Matrix4f();
+
+    public static void uploadMVPMatrix(int mvpMatrixLocation) {
+        try (MemoryStack stack = stackPush()) {
+            final FloatBuffer mvpBuf = stack.mallocFloat(16);
+            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
+            scratchMvp.get(mvpBuf);
+            GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+        }
     }
 
     public static void glGetActiveUniform(int program, int index, IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name) {
