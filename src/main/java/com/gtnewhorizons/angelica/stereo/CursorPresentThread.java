@@ -80,16 +80,19 @@ public final class CursorPresentThread {
     private static volatile Method REAL_GL32_glClientWaitSync;
     private static volatile Method REAL_GL32_glDeleteSync;
     private static volatile Method REAL_GL_createCapabilities;
-    private static volatile Method REAL_GLFW_glfwGetCurrentContext;
-    private static volatile Method REAL_GLFWNativeWin32_getWin32Window;
-    private static volatile Method REAL_GLFWNativeWGL_getWGLContext;
-    private static volatile Method REAL_User32_GetDC;
-    private static volatile Method REAL_User32_ReleaseDC;
-    private static volatile Method REAL_WGL_wglMakeCurrent;
-    private static volatile Method REAL_WGL_wglDeleteContext;
     private static volatile Method REAL_WGLARBCreateContext_wglCreateContextAttribsARB;
-    private static volatile Method REAL_GDI32_SwapBuffers;
     private static volatile Method REAL_WGLEXTSwapControl_wglSwapIntervalEXT;
+    // Win32 entry points loaded as raw function pointers because the LWJGL3 wrapper signatures for
+    // WGL/GDI32 changed shape between 3.3.x and 3.4.x (added an IntBuffer function table). Going
+    // through dynamic opengl32.dll/gdi32.dll/user32.dll exports sidesteps that drift. lwjgl3ify
+    // 3.0.17 ships SDL3 — there is no GLFW at all in this runtime, so HWND/HDC/HGLRC come from
+    // wglGetCurrentDC / wglGetCurrentContext / WindowFromDC instead of glfwGetWGLContext &c.
+    private static volatile long PFN_wglGetCurrentContext;
+    private static volatile long PFN_wglGetCurrentDC;
+    private static volatile long PFN_wglMakeCurrent;
+    private static volatile long PFN_wglDeleteContext;
+    private static volatile long PFN_SwapBuffers;
+    private static volatile long PFN_WindowFromDC;
     private static volatile boolean reflectionInitialized = false;
     private static volatile boolean reflectionOk = false;
 
@@ -106,10 +109,11 @@ public final class CursorPresentThread {
     private static volatile long PFN_GetClientRect;
     private static volatile long PFN_ClientToScreen;
     private static volatile long PFN_GetForegroundWindow;
-    private static volatile Method REAL_GLFW_glfwSetInputMode;
-    private static volatile Method JNI_invokeP_singleArg;  // (funcPtr) → long — GetForegroundWindow
-    private static volatile long mainGlfwWindow = 0L;
+    private static volatile long PFN_SDL_HideCursor;
+    private static volatile long PFN_SDL_ShowCursor;
 
+    private static volatile Method JNI_invokeP_singleArg;  // (funcPtr) → long — GetForegroundWindow, wglGetCurrentDC, wglGetCurrentContext
+    private static volatile Method JNI_invokeZ_singleArg;  // (funcPtr) → boolean — SDL_HideCursor, SDL_ShowCursor
     private static volatile Method JNI_invokePI;
     private static volatile Method JNI_invokePI_PII;
     private static volatile Method JNI_invokePP;
@@ -120,6 +124,8 @@ public final class CursorPresentThread {
     private static volatile boolean cursorReflectionInitialized = false;
     private static volatile boolean cursorReflectionOk = false;
 
+    private static boolean osCursorHiddenByUs = false;
+
     private static volatile boolean cursorTextureTried = false;
     private static volatile int cursorTexId = 0;
     private static volatile int cursorTexW = 0;
@@ -127,48 +133,75 @@ public final class CursorPresentThread {
     private static volatile int cursorHotspotX = 0;
     private static volatile int cursorHotspotY = 0;
 
+    // RFB's launchClassLoader is FML's LaunchClassLoader — the same loader that successfully
+    // resolves LWJGL3 references from {@code Lwjgl3GLRenderBackend} (also in this jar) at
+    // bytecode-link time. {@code compatClassLoader} (RfbSystemClassLoader) reports "Class bytes
+    // are null" for these names; {@code originalSystemClassLoader} (JDK AppClassLoader) doesn't
+    // have the LWJGL3 URLs.
+    private static Class<?> loadLwjgl3(String name) throws ClassNotFoundException {
+        return Class.forName(name, false,
+            (ClassLoader) com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap.API.launchClassLoader());
+    }
+
     private static synchronized void ensureReflectionInitialized() {
         if (reflectionInitialized) return;
         try {
-            final Class<?> gl32 = Class.forName("org.lwjgl.opengl.GL32");
+            final Class<?> gl32 = loadLwjgl3("org.lwjgl.opengl.GL32");
             REAL_GL32_glClientWaitSync = gl32.getMethod("glClientWaitSync", long.class, int.class, long.class);
             REAL_GL32_glDeleteSync = gl32.getMethod("glDeleteSync", long.class);
 
-            final Class<?> gl = Class.forName("org.lwjgl.opengl.GL");
+            final Class<?> gl = loadLwjgl3("org.lwjgl.opengl.GL");
             REAL_GL_createCapabilities = gl.getMethod("createCapabilities");
 
-            final Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW");
-            REAL_GLFW_glfwGetCurrentContext = glfw.getMethod("glfwGetCurrentContext");
-
-            final Class<?> nWin32 = Class.forName("org.lwjgl.glfw.GLFWNativeWin32");
-            REAL_GLFWNativeWin32_getWin32Window = nWin32.getMethod("glfwGetWin32Window", long.class);
-
-            final Class<?> nWGL = Class.forName("org.lwjgl.glfw.GLFWNativeWGL");
-            REAL_GLFWNativeWGL_getWGLContext = nWGL.getMethod("glfwGetWGLContext", long.class);
-
-            final Class<?> user32 = Class.forName("org.lwjgl.system.windows.User32");
-            REAL_User32_GetDC = user32.getMethod("GetDC", long.class);
-            REAL_User32_ReleaseDC = user32.getMethod("ReleaseDC", long.class, long.class);
-
-            final Class<?> wgl = Class.forName("org.lwjgl.opengl.WGL");
-            REAL_WGL_wglMakeCurrent = wgl.getMethod("wglMakeCurrent", long.class, long.class);
-            REAL_WGL_wglDeleteContext = wgl.getMethod("wglDeleteContext", long.class);
-
-            final Class<?> wglAttribs = Class.forName("org.lwjgl.opengl.WGLARBCreateContext");
+            final Class<?> wglAttribs = loadLwjgl3("org.lwjgl.opengl.WGLARBCreateContext");
             REAL_WGLARBCreateContext_wglCreateContextAttribsARB =
                 wglAttribs.getMethod("wglCreateContextAttribsARB", long.class, long.class, int[].class);
-
-            final Class<?> gdi32 = Class.forName("org.lwjgl.system.windows.GDI32");
-            REAL_GDI32_SwapBuffers = gdi32.getMethod("SwapBuffers", long.class);
 
             // Optional — only present if the WGL_EXT_swap_control extension is exposed.
             // We don't fail reflection setup if it's missing; we just won't vsync.
             try {
-                final Class<?> wglSwapCtl = Class.forName("org.lwjgl.opengl.WGLEXTSwapControl");
+                final Class<?> wglSwapCtl = loadLwjgl3("org.lwjgl.opengl.WGLEXTSwapControl");
                 REAL_WGLEXTSwapControl_wglSwapIntervalEXT =
                     wglSwapCtl.getMethod("wglSwapIntervalEXT", int.class);
             } catch (Throwable t) {
                 LOGGER.warn("wglSwapIntervalEXT not available — cursor thread will not vsync.", t);
+            }
+
+            final Class<?> winLibCls = loadLwjgl3("org.lwjgl.system.windows.WindowsLibrary");
+            final Class<?> funcProvCls = loadLwjgl3("org.lwjgl.system.FunctionProvider");
+            final Class<?> jniCls = loadLwjgl3("org.lwjgl.system.JNI");
+
+            final Constructor<?> winLibCtor = winLibCls.getConstructor(String.class);
+            final Method getFnAddr = funcProvCls.getMethod("getFunctionAddress", CharSequence.class);
+
+            final Object opengl32lib = winLibCtor.newInstance("opengl32");
+            PFN_wglGetCurrentContext = (Long) getFnAddr.invoke(opengl32lib, "wglGetCurrentContext");
+            PFN_wglGetCurrentDC = (Long) getFnAddr.invoke(opengl32lib, "wglGetCurrentDC");
+            PFN_wglMakeCurrent = (Long) getFnAddr.invoke(opengl32lib, "wglMakeCurrent");
+            PFN_wglDeleteContext = (Long) getFnAddr.invoke(opengl32lib, "wglDeleteContext");
+
+            final Object gdi32lib = winLibCtor.newInstance("gdi32");
+            PFN_SwapBuffers = (Long) getFnAddr.invoke(gdi32lib, "SwapBuffers");
+
+            final Object user32lib = winLibCtor.newInstance("user32");
+            PFN_WindowFromDC = (Long) getFnAddr.invoke(user32lib, "WindowFromDC");
+
+            // Other JNI invoke variants are populated lazily in ensureCursorReflectionInitialized()
+            // since they're only needed for cursor capture.
+            JNI_invokeP_singleArg = jniCls.getMethod("invokeP", long.class);
+            JNI_invokePI = jniCls.getMethod("invokePI", long.class, long.class);
+            JNI_invokePP = jniCls.getMethod("invokePP", long.class, long.class);
+            JNI_invokePPI = jniCls.getMethod("invokePPI", long.class, long.class, long.class);
+
+            if (PFN_wglGetCurrentContext == 0L || PFN_wglGetCurrentDC == 0L
+                || PFN_wglMakeCurrent == 0L || PFN_wglDeleteContext == 0L
+                || PFN_SwapBuffers == 0L || PFN_WindowFromDC == 0L) {
+                LOGGER.error("Win32 GL/GDI entry points failed to resolve;"
+                          + " wglGetCurrentContext={}, wglGetCurrentDC={}, wglMakeCurrent={},"
+                          + " wglDeleteContext={}, SwapBuffers={}, WindowFromDC={}.",
+                          PFN_wglGetCurrentContext, PFN_wglGetCurrentDC, PFN_wglMakeCurrent,
+                          PFN_wglDeleteContext, PFN_SwapBuffers, PFN_WindowFromDC);
+                return;
             }
 
             reflectionOk = true;
@@ -181,11 +214,18 @@ public final class CursorPresentThread {
 
     private static synchronized void ensureCursorReflectionInitialized() {
         if (cursorReflectionInitialized) return;
+        // Reuses the JNI/FunctionProvider/WindowsLibrary plumbing already established by
+        // ensureReflectionInitialized — call it first so opengl32/user32/gdi32 are all loaded.
+        ensureReflectionInitialized();
+        if (!reflectionOk) {
+            cursorReflectionInitialized = true;
+            return;
+        }
         try {
-            final Class<?> winLibCls = Class.forName("org.lwjgl.system.windows.WindowsLibrary");
-            final Class<?> funcProvCls = Class.forName("org.lwjgl.system.FunctionProvider");
-            final Class<?> jniCls = Class.forName("org.lwjgl.system.JNI");
-            final Class<?> memUtilCls = Class.forName("org.lwjgl.system.MemoryUtil");
+            final Class<?> winLibCls = loadLwjgl3("org.lwjgl.system.windows.WindowsLibrary");
+            final Class<?> funcProvCls = loadLwjgl3("org.lwjgl.system.FunctionProvider");
+            final Class<?> jniCls = loadLwjgl3("org.lwjgl.system.JNI");
+            final Class<?> memUtilCls = loadLwjgl3("org.lwjgl.system.MemoryUtil");
 
             final Constructor<?> winLibCtor = winLibCls.getConstructor(String.class);
             final Object user32 = winLibCtor.newInstance("user32");
@@ -205,8 +245,9 @@ public final class CursorPresentThread {
             PFN_SelectObject       = (Long) getFnAddr.invoke(gdi32, "SelectObject");
             PFN_GetPixel           = (Long) getFnAddr.invoke(gdi32, "GetPixel");
             // Cursor thread polls GetCursorPos every iteration to drive vX/vY at its own rate
-            // (decoupled from main's input poll cadence). Requires the GLFW cursor mode to be
-            // HIDDEN, not DISABLED, so GetCursorPos returns the real moving cursor position.
+            // (decoupled from main's input poll cadence). Requires the OS cursor to remain in
+            // tracking mode (not lock-centered) so GetCursorPos returns live motion. SDL3-backed
+            // lwjgl3ify never DISABLES it on our behalf; we hide-but-track via SDL_HideCursor.
             PFN_GetCursorPos       = (Long) getFnAddr.invoke(user32, "GetCursorPos");
             // ClipCursor confines the cursor to MC's client rect while MC has focus, so
             // motion can't accidentally drag the cursor into another window/monitor.
@@ -215,25 +256,33 @@ public final class CursorPresentThread {
             PFN_ClientToScreen     = (Long) getFnAddr.invoke(user32, "ClientToScreen");
             PFN_GetForegroundWindow = (Long) getFnAddr.invoke(user32, "GetForegroundWindow");
 
-            final Class<?> glfw = Class.forName("org.lwjgl.glfw.GLFW");
-            REAL_GLFW_glfwSetInputMode = glfw.getMethod("glfwSetInputMode", long.class, int.class, int.class);
-            JNI_invokeP_singleArg = jniCls.getMethod("invokeP", long.class);
+            // lwjgl3ify-3.0.17 swapped GLFW for SDL3 as the window/input backend. SDL handles
+            // WM_SETCURSOR itself with explicit SetCursor() calls each event from its own
+            // visibility state, so neither Win32 ShowCursor (counter fight) nor SetClassLongPtrW
+            // (DefWindowProc bypass) actually hide the cursor. Drive SDL directly.
+            try {
+                final Object sdl3lib = winLibCtor.newInstance("SDL3");
+                PFN_SDL_HideCursor = (Long) getFnAddr.invoke(sdl3lib, "SDL_HideCursor");
+                PFN_SDL_ShowCursor = (Long) getFnAddr.invoke(sdl3lib, "SDL_ShowCursor");
+            } catch (Throwable t) {
+                LOGGER.warn("Could not resolve SDL3 cursor entry points; OS cursor will stay visible in stereo+GUI.", t);
+            }
+            JNI_invokeZ_singleArg = jniCls.getMethod("invokeZ", long.class);
 
             if (PFN_LoadCursorW == 0L || PFN_GetIconInfo == 0L || PFN_CreateCompatibleDC == 0L
                 || PFN_DeleteDC == 0L || PFN_DeleteObject == 0L || PFN_GetObject == 0L
                 || PFN_SelectObject == 0L || PFN_GetPixel == 0L || PFN_GetCursorPos == 0L) {
                 LOGGER.warn("One or more Win32 cursor function pointers failed to resolve;"
                           + " LoadCursorW={}, GetIconInfo={}, CreateCompatibleDC={}, DeleteDC={},"
-                          + " DeleteObject={}, GetObjectW={}, SelectObject={}, GetPixel={}, GetCursorPos={}.",
+                          + " DeleteObject={}, GetObjectW={}, SelectObject={}, GetPixel={},"
+                          + " GetCursorPos={}.",
                           PFN_LoadCursorW, PFN_GetIconInfo, PFN_CreateCompatibleDC, PFN_DeleteDC,
-                          PFN_DeleteObject, PFN_GetObject, PFN_SelectObject, PFN_GetPixel, PFN_GetCursorPos);
+                          PFN_DeleteObject, PFN_GetObject, PFN_SelectObject, PFN_GetPixel,
+                          PFN_GetCursorPos);
                 return;
             }
 
-            JNI_invokePI      = jniCls.getMethod("invokePI",  long.class, long.class);
             JNI_invokePI_PII  = jniCls.getMethod("invokePI",  long.class, int.class, int.class, long.class);
-            JNI_invokePP      = jniCls.getMethod("invokePP",  long.class, long.class);
-            JNI_invokePPI     = jniCls.getMethod("invokePPI", long.class, long.class, long.class);
             JNI_invokePPI_PIP = jniCls.getMethod("invokePPI", long.class, int.class, long.class, long.class);
             JNI_invokePPP     = jniCls.getMethod("invokePPP", long.class, long.class, long.class);
             MEMUTIL_memAddress = memUtilCls.getMethod("memAddress", ByteBuffer.class);
@@ -326,21 +375,21 @@ public final class CursorPresentThread {
             return;
         }
 
-        long mainHwnd = 0, mainHdc = 0, cursorHglrc = 0;
+        long cursorHglrc = 0;
         try {
-            final long mainGlfw = invokeLong(REAL_GLFW_glfwGetCurrentContext);
-            if (mainGlfw == 0L) throw new IllegalStateException("glfwGetCurrentContext() returned NULL");
-            // Cache for setCursorHidden() which also runs on main thread but in a different stack.
-            mainGlfwWindow = mainGlfw;
+            // wglGetCurrentDC returns the HDC that wglMakeCurrent was last called with on this
+            // thread. The main thread's GL context is bound to MC's main window, so the HDC IS
+            // the window's device context — no GetDC/ReleaseDC dance needed (and no leak to clean
+            // up on shutdown). HGLRC likewise comes straight from wglGetCurrentContext, and HWND
+            // from WindowFromDC(hdc). All three avoid GLFW, which lwjgl3ify-3.0.17 no longer ships.
+            final long mainHglrc = ((Number) JNI_invokeP_singleArg.invoke(null, PFN_wglGetCurrentContext)).longValue();
+            if (mainHglrc == 0L) throw new IllegalStateException("wglGetCurrentContext() returned NULL");
 
-            mainHwnd = invokeLong(REAL_GLFWNativeWin32_getWin32Window, mainGlfw);
-            if (mainHwnd == 0L) throw new IllegalStateException("glfwGetWin32Window returned NULL");
+            final long mainHdc = ((Number) JNI_invokeP_singleArg.invoke(null, PFN_wglGetCurrentDC)).longValue();
+            if (mainHdc == 0L) throw new IllegalStateException("wglGetCurrentDC() returned NULL");
 
-            mainHdc = invokeLong(REAL_User32_GetDC, mainHwnd);
-            if (mainHdc == 0L) throw new IllegalStateException("User32.GetDC returned NULL");
-
-            final long mainHglrc = invokeLong(REAL_GLFWNativeWGL_getWGLContext, mainGlfw);
-            if (mainHglrc == 0L) throw new IllegalStateException("glfwGetWGLContext returned NULL");
+            final long mainHwnd = ((Number) JNI_invokePP.invoke(null, mainHdc, PFN_WindowFromDC)).longValue();
+            if (mainHwnd == 0L) throw new IllegalStateException("WindowFromDC(hdc) returned NULL");
 
             int major = GL11.glGetInteger(GL_MAJOR_VERSION);
             int minor = GL11.glGetInteger(GL_MINOR_VERSION);
@@ -366,10 +415,7 @@ public final class CursorPresentThread {
         } catch (Throwable t) {
             LOGGER.error("Failed to set up async cursor context; feature disabled.", t);
             try {
-                if (cursorHglrc != 0L) invokeBool(REAL_WGL_wglDeleteContext, cursorHglrc);
-            } catch (Throwable ignored) {}
-            try {
-                if (mainHdc != 0L && mainHwnd != 0L) invokeBool(REAL_User32_ReleaseDC, mainHwnd, mainHdc);
+                if (cursorHglrc != 0L) JNI_invokePI.invoke(null, cursorHglrc, PFN_wglDeleteContext);
             } catch (Throwable ignored) {}
         }
     }
@@ -389,15 +435,11 @@ public final class CursorPresentThread {
             Thread.currentThread().interrupt();
         }
         try {
-            invokeBool(REAL_WGL_wglDeleteContext, it.cursorHglrc);
+            JNI_invokePI.invoke(null, it.cursorHglrc, PFN_wglDeleteContext);
         } catch (Throwable t) {
             LOGGER.warn("wglDeleteContext failed on stop.", t);
         }
-        try {
-            invokeBool(REAL_User32_ReleaseDC, it.mainHwnd, it.mainHdc);
-        } catch (Throwable t) {
-            LOGGER.warn("User32.ReleaseDC failed on stop.", t);
-        }
+        // No ReleaseDC: mainHdc came from wglGetCurrentDC, not GetDC, so it isn't ours to release.
         try {
             for (int i = 0; i < it.tex.length; i++) {
                 if (it.tex[i] != 0) {
@@ -427,49 +469,50 @@ public final class CursorPresentThread {
         return INSTANCE != null;
     }
 
-    // GLFW cursor mode constants (from GLFW/glfw3.h). Public so callers can request a specific
-    // mode via setCursorMode (used to forcibly resync GLFW + MC's cached grab flag).
-    private static final int GLFW_CURSOR = 0x33001;
-    public static final int CURSOR_NORMAL = 0x34001;
-    public static final int CURSOR_HIDDEN = 0x34002;
-    public static final int CURSOR_DISABLED = 0x34003;
+    // Caller-facing cursor mode tags. Under lwjgl3ify-3.0.17 (SDL3, no GLFW) we can no longer
+    // call glfwSetInputMode, so HIDDEN/NORMAL collapse to Win32 ShowCursor and DISABLED is a
+    // pass-through (SDL owns grab/centering when MC's Mouse.setGrabbed is called separately).
+    public static final int CURSOR_NORMAL = 0;
+    public static final int CURSOR_HIDDEN = 1;
+    public static final int CURSOR_DISABLED = 2;
 
     /**
-     * Toggle the OS cursor mode on the main window between visible-normal and hidden-but-tracking.
-     * HIDDEN (vs DISABLED) is load-bearing: with DISABLED, GetCursorPos returns the locked center
-     * forever and the cursor present thread can't observe live motion. With HIDDEN, the OS cursor
-     * is invisible but its position tracks the mouse normally, so the cursor thread can poll
-     * GetCursorPos each iter to drive the virtual cursor at its own rate (decoupled from main's
-     * framerate).
+     * Hide or show the OS cursor on the main window. lwjgl3ify-3.0.17 uses SDL3 as the windowing
+     * layer, which handles {@code WM_SETCURSOR} itself and explicitly calls {@code SetCursor()}
+     * each event based on SDL's own visibility state — so neither {@code ShowCursor()}'s global
+     * counter nor {@code SetClassLongPtrW(GCLP_HCURSOR, NULL)} actually hide the cursor. We call
+     * SDL's own {@code SDL_HideCursor} / {@code SDL_ShowCursor} via {@code SDL3.dll} directly.
      */
     public static void setCursorHidden(boolean hidden) {
-        setCursorMode(hidden ? CURSOR_HIDDEN : CURSOR_NORMAL);
+        ensureCursorReflectionInitialized();
+        if (!cursorReflectionOk || JNI_invokeZ_singleArg == null) return;
+        final long pfn = hidden ? PFN_SDL_HideCursor : PFN_SDL_ShowCursor;
+        if (pfn == 0L) return;
+        synchronized (CursorPresentThread.class) {
+            if (hidden == osCursorHiddenByUs) return;
+            try {
+                JNI_invokeZ_singleArg.invoke(null, pfn);
+                osCursorHiddenByUs = hidden;
+            } catch (Throwable t) {
+                LOGGER.warn("SDL_{}Cursor() failed.", hidden ? "Hide" : "Show", t);
+            }
+        }
     }
 
     /**
-     * Force the GLFW cursor mode on the main window. Needed to override MC's cached grab flag —
-     * {@code Mouse.setGrabbed} no-ops when MC thinks the requested state matches its cache, but
-     * we may have changed GLFW behind its back.
+     * Coarse mode hook kept for API compatibility with {@link StereoCursor}. NORMAL/HIDDEN map to
+     * {@link #setCursorHidden}; DISABLED is a no-op here — under SDL3 the grab/center is owned by
+     * MC's {@code Mouse.setGrabbed}, not by us, so there's no GLFW state to forcibly resync.
      */
     public static void setCursorMode(int mode) {
-        ensureCursorReflectionInitialized();
-        if (!cursorReflectionOk || REAL_GLFW_glfwSetInputMode == null) return;
-        if (mainGlfwWindow == 0L) {
-            try {
-                ensureReflectionInitialized();
-                if (REAL_GLFW_glfwGetCurrentContext != null) {
-                    mainGlfwWindow = ((Number) REAL_GLFW_glfwGetCurrentContext.invoke(null)).longValue();
-                }
-            } catch (Throwable t) {
-                LOGGER.warn("Failed to resolve GLFW window handle for cursor-mode set.", t);
-                return;
-            }
-        }
-        if (mainGlfwWindow == 0L) return;
-        try {
-            REAL_GLFW_glfwSetInputMode.invoke(null, mainGlfwWindow, GLFW_CURSOR, mode);
-        } catch (Throwable t) {
-            LOGGER.warn("Failed to set cursor mode (mode=0x{}).", Integer.toHexString(mode), t);
+        if (mode == CURSOR_NORMAL) {
+            setCursorHidden(false);
+        } else if (mode == CURSOR_HIDDEN) {
+            setCursorHidden(true);
+        } else {
+            // CURSOR_DISABLED: MC.Mouse.setGrabbed(true) will configure SDL's relative/centered mode.
+            // We just need to stop hiding the cursor ourselves so SDL's visibility wins.
+            setCursorHidden(false);
         }
     }
 
@@ -779,7 +822,7 @@ public final class CursorPresentThread {
         // Make our wgl context current on the main window. Our default framebuffer is now the
         // main window's framebuffer; SwapBuffers(mainHdc) swaps what the user sees.
         try {
-            if (!invokeBool(REAL_WGL_wglMakeCurrent, mainHdc, cursorHglrc)) {
+            if (((Number) JNI_invokePPI.invoke(null, mainHdc, cursorHglrc, PFN_wglMakeCurrent)).intValue() == 0) {
                 LOGGER.error("wglMakeCurrent failed on cursor thread; exiting.");
                 return;
             }
@@ -825,7 +868,7 @@ public final class CursorPresentThread {
         } finally {
             // Release our context so main can wglDeleteContext it safely.
             try {
-                invokeBool(REAL_WGL_wglMakeCurrent, 0L, 0L);
+                JNI_invokePPI.invoke(null, 0L, 0L, PFN_wglMakeCurrent);
             } catch (Throwable t) {
                 LOGGER.warn("Error releasing async cursor context.", t);
             }
@@ -929,7 +972,7 @@ public final class CursorPresentThread {
 
         final long swapStartNs = System.nanoTime();
         try {
-            invokeBool(REAL_GDI32_SwapBuffers, mainHdc);
+            JNI_invokePI.invoke(null, mainHdc, PFN_SwapBuffers);
         } catch (Throwable t) {
             LOGGER.warn("GDI32.SwapBuffers failed.", t);
         }

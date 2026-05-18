@@ -32,6 +32,22 @@ public class MixinMinecraft_AsyncCursor {
         if (CursorPresentThread.isRunning()) {
             // Pump window/input events without swapping. Cursor thread does the swap.
             Display.processMessages();
+            // lwjglx's Display.update() transfers an internal "latestResized" flag onto the
+            // "displayResized" flag that Display.wasResized() reads; processMessages() doesn't.
+            // With the swap-bypass, MC's wasResized() check that follows this call always reads
+            // false, mc.displayWidth/Height stays at the old size, and the cursor present
+            // textures keep rendering into a tiny region of the resized window. Detect the size
+            // change ourselves and drive MC's resize handler directly — that re-allocates the
+            // main framebuffer, after which the cursor thread's allocatePresentTextures sees the
+            // new size on its next iteration.
+            final Minecraft mc = Minecraft.getMinecraft();
+            if (mc != null && !mc.isFullScreen()) {
+                final int w = Display.getWidth();
+                final int h = Display.getHeight();
+                if (w > 0 && h > 0 && (w != mc.displayWidth || h != mc.displayHeight)) {
+                    mc.resize(w, h);
+                }
+            }
         } else {
             Display.update();
         }
