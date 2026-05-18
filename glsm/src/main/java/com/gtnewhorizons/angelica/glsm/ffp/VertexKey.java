@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
@@ -182,7 +183,7 @@ public final class VertexKey {
 
         // Check if texture matrix unit 0 is non-identity
         final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
-        if (!DisplayListManager.isIdentity(texMat)) {
+        if (!MatrixHelper.isIdentity(texMat)) {
             bits |= (1L << BIT_TEX_MATRIX);
         }
 

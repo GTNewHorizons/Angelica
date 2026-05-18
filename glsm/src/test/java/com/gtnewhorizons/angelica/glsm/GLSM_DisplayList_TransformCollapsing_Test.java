@@ -61,7 +61,6 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         Int2IntMap counts = compiled.getCommandCounts();
         int multMatrixCount = counts.getOrDefault(GLCommand.MULT_MATRIX, 0);
         int individualTransformCount = counts.getOrDefault(GLCommand.TRANSLATE, 0)
-            + counts.getOrDefault(GLCommand.ROTATE, 0)
             + counts.getOrDefault(GLCommand.SCALE, 0);
 
         assertEquals(1, multMatrixCount,
@@ -420,7 +419,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         // Count MultMatrix commands before first PushMatrix
         int multMatrixBeforePushCount = 0;
         for (int i = 0; i < opcodes.size() && i < pushIndex; i++) {
-            if (opcodes.get(i) == GLCommand.MULT_MATRIX) {
+            if (opcodes.get(i) == GLCommand.TRANSLATE) {
                 multMatrixBeforePushCount++;
             }
         }
@@ -666,13 +665,11 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         assertNotNull(compiled);
 
         IntList opcodes = compiled.getCommandOpcodes();
-        int pushIndex = opcodes.indexOf(GLCommand.PUSH_MATRIX);
         int popIndex = opcodes.indexOf(GLCommand.POP_MATRIX);
-        int multMatrixIndex = opcodes.indexOf(GLCommand.MULT_MATRIX);
+        int scaleIndex = opcodes.indexOf(GLCommand.SCALE);
         int drawRangeIndex = opcodes.indexOf(GLCommand.DRAW_RANGE);
 
-        assertTrue(pushIndex < multMatrixIndex, "Push before MultMatrix");
-        assertTrue(multMatrixIndex < drawRangeIndex, "MultMatrix before DrawRange");
+        assertTrue(scaleIndex == -1, "Scale gets prebaked");
         assertTrue(drawRangeIndex < popIndex, "DrawRange before Pop");
     }
 
@@ -800,6 +797,7 @@ class GLSM_DisplayList_TransformCollapsing_Test {
             GLStateManager.glNewList(testList, mode);
 
             GLStateManager.glScalef(0.5f, 0.5f, 1.0f);
+            GLStateManager.glTranslatef(2, 2, 2);
             // Barrier commands between scale and draw
             GLStateManager.glDepthMask(true);
             GLStateManager.disableLighting();
@@ -824,8 +822,8 @@ class GLSM_DisplayList_TransformCollapsing_Test {
             assertEquals(1, counts.getOrDefault(GLCommand.DRAW_RANGE, 0), "1 DrawRange for mode " + mode);
 
             IntList opcodes = compiled.getCommandOpcodes();
-            assertTrue(opcodes.indexOf(GLCommand.MULT_MATRIX) < opcodes.indexOf(GLCommand.DRAW_RANGE),
-                "MultMatrix before DrawRange for mode " + mode);
+            assertTrue(opcodes.indexOf(GLCommand.MULT_MATRIX) > opcodes.indexOf(GLCommand.DRAW_RANGE),
+                "MultMatrix after DrawRange for mode " + mode);
 
             GLStateManager.glPushMatrix();
             GLStateManager.glLoadIdentity();
@@ -874,10 +872,10 @@ class GLSM_DisplayList_TransformCollapsing_Test {
         Int2IntMap counts = compiled.getCommandCounts();
         IntList opcodes = compiled.getCommandOpcodes();
 
-        // Should have exactly 2 MULT_MATRIX (T1 before push, T2 after push)
-        // Bug would produce 3 (T1, T2, spurious T1^-1)
-        assertEquals(2, counts.getOrDefault(GLCommand.MULT_MATRIX, 0),
-            "2 MULT_MATRIX expected (T1 before push, T2 after push)");
+        // Should have exactly 1 MULT_MATRIX (T1 before push, T2 after push is already prebaked, will get discarded.)
+        // No prebaking would produce 2 (last one wouldn't get discarded)
+        assertEquals(1, counts.getOrDefault(GLCommand.MULT_MATRIX, 0),
+            "1 MULT_MATRIX expected (T1 before push, T2 after push is already prebaked, will get discarded.)");
 
         // Verify ordering
         int firstMultMatrix = opcodes.indexOf(GLCommand.MULT_MATRIX);

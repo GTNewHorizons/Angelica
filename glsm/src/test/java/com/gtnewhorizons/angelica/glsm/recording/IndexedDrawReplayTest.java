@@ -207,7 +207,7 @@ class IndexedDrawReplayTest extends DisplayListTestFixture {
             new AttribLayoutKey(new int[]{0}, new int[]{2}, new int[]{GL11.GL_FLOAT}, new boolean[]{false}),
             GL11.GL_TRIANGLES, 4, 6, vtx, idx, new BatchedIndexedDrawCmd());
 
-        rec.recordIndexedDrawCapture(cap);
+        rec.writeIndexedDrawCapture(cap);
         assertFalse(cap.isFreed());
 
         rec.free();
