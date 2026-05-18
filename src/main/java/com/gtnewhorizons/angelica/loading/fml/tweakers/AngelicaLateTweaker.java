@@ -67,6 +67,10 @@ public class AngelicaLateTweaker implements ITweaker {
         final String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.AngelicaRedirectorTransformer";
         FMLRelaunchLog.finer("Registering transformer %s", transformer);
         Launch.classLoader.registerTransformer(transformer);
+
+        final String isbrhAbuse = "com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseClassTransformer";
+        FMLRelaunchLog.finer("Registering transformer %s", isbrhAbuse);
+        Launch.classLoader.registerTransformer(isbrhAbuse);
         return new String[0];
     }
 }
