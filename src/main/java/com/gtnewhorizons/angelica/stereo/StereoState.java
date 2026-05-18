@@ -115,7 +115,7 @@ public class StereoState {
     // Signs are flipped relative to vanilla's anaglyph convention (EntityRenderer.setupCameraTransform
     // uses -0.1 for LEFT, +0.1 for RIGHT). Vanilla renders each eye from the OPPOSITE camera
     // position, which works for red/cyan anaglyph because the brain doesn't see real per-eye
-    // images, but is backwards for SBS VR where each eye directly sees its half of the screen.
+    // images, but is backwards for SBS where each eye directly sees its half of the screen.
     public float getEyeOffset() {
         if (!isActive()) return 0f;
         float ipd = AngelicaConfig.stereoIpd > 0f ? AngelicaConfig.stereoIpd : frameIpd;
@@ -127,7 +127,7 @@ public class StereoState {
         }
     }
 
-    /** Hand-specific offset, currently not applied (HandRenderer uses getEyeOffset instead for VR comfort). */
+    /** Hand-specific offset, currently not applied (HandRenderer uses getEyeOffset instead for viewer comfort). */
     public float getHandEyeOffset() {
         if (!isActive()) return 0f;
         float ipd = AngelicaConfig.stereoIpd > 0f ? AngelicaConfig.stereoIpd : frameIpd;

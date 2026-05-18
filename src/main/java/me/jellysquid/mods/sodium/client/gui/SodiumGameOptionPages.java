@@ -157,7 +157,7 @@ public class SodiumGameOptionPages {
         groups.add(OptionGroup.createBuilder()
             .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                 .setName("Stereoscopic SBS (Side-by-Side)")
-                .setTooltip("Splits the screen into two eye views for VR headset use via Virtual Desktop / Steam Link. Roughly halves framerate.")
+                .setTooltip("Splits the screen into per-eye images for 3D TVs, 3D monitors, and SBS-compatible displays. Roughly halves framerate.")
                 .setControl(TickBoxControl::new)
                 .setBinding(
                     (opts, value) -> {

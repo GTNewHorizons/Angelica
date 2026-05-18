@@ -40,7 +40,7 @@ public class HandRenderer {
         GLStateManager.glScalef(1.0F, 1.0F, DEPTH);
 
         // Stereoscopic projection-space offset for the held item: disabled. The vanilla anaglyph
-        // value (0.07f) was tuned for red/cyan glasses' subtle 3D pop, not for SBS VR fusion —
+        // value (0.07f) was tuned for red/cyan glasses' subtle 3D pop, not for SBS stereo fusion —
         // combined with the modelview offset below and the hand's close camera distance, it
         // produced hundreds of pixels of per-eye disparity that the eyes can't converge on.
         // Leaving the hand at the same projection in both eyes makes it render at screen depth.
@@ -63,7 +63,7 @@ public class HandRenderer {
         // Stereoscopic modelview offset for the held item: use the WORLD's per-eye offset
         // (getEyeOffset, ipd/2) rather than vanilla anaglyph's hand-specific 0.1f. That keeps
         // the hand's disparity consistent with the world geometry around it — so an item the
-        // player holds appears at its correct VR depth instead of "flat at screen depth" or
+        // player holds appears at its correct stereo depth instead of "flat at screen depth" or
         // (with vanilla's exaggerated magnitudes) impossible-to-converge.
         if (StereoState.INSTANCE.isActive()) {
             final float dx = StereoState.INSTANCE.getEyeOffset();

@@ -30,9 +30,9 @@ public class AngelicaConfig {
     // ---------- Stereoscopic rendering (experimental) ----------
 
     @Config.Comment({
-        "Stereoscopic rendering mode for VR virtual monitors and 3D displays.",
-        "OFF disables stereo rendering. SBS_HALF is recommended for Quest/Index/Vive in",
-        "side-by-side 3D mode via Virtual Desktop or Steam Link. Roughly halves framerate.",
+        "Side-by-side (SBS) stereoscopic 3D rendering for 3D TVs, 3D monitors, and",
+        "SBS-compatible displays. OFF disables stereo rendering. SBS_HALF is the typical",
+        "setting for SBS displays. Roughly halves framerate.",
         "Incompatible with HUD caching (auto-disabled when active)."
     })
     @Config.DefaultEnum("OFF")

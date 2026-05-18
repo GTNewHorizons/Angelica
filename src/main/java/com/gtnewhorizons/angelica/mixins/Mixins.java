@@ -57,7 +57,7 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_STEREO(new MixinBuilder("Stereoscopic side-by-side rendering for VR virtual monitors")
+    ANGELICA_STEREO(new MixinBuilder("Side-by-side (SBS) stereoscopic 3D rendering for 3D TVs, 3D monitors, and SBS-compatible displays")
         .setPhase(Phase.EARLY)
         .addClientMixins(
             "angelica.stereo.MixinEntityRenderer_StereoCamera"
