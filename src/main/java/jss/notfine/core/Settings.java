@@ -10,6 +10,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import jss.notfine.gui.options.control.NotFineControlValueFormatter;
 import jss.notfine.gui.options.named.AlwaysNever;
 import jss.notfine.gui.options.named.BackgroundSelect;
+import jss.notfine.gui.options.named.BobviewMode;
 import jss.notfine.gui.options.named.DownfallQuality;
 import jss.notfine.gui.options.named.FOVMode;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
