@@ -423,6 +423,9 @@ public final class CursorPresentThread {
     public static synchronized void stop() {
         final CursorPresentThread it = INSTANCE;
         if (it == null) return;
+        // Restore SDL cursor visibility — SDL_HideCursor is persistent process state, so a stop()
+        // mid-session (stereo toggled off) without this would leave the OS cursor invisible.
+        setCursorHidden(false);
         // Release ClipCursor confinement before tearing down. Without this, the OS clip stays
         // applied until the window loses focus — trapping the cursor inside MC's client rect
         // even after stereo is disabled.
@@ -469,9 +472,8 @@ public final class CursorPresentThread {
         return INSTANCE != null;
     }
 
-    // Caller-facing cursor mode tags. Under lwjgl3ify-3.0.17 (SDL3, no GLFW) we can no longer
-    // call glfwSetInputMode, so HIDDEN/NORMAL collapse to Win32 ShowCursor and DISABLED is a
-    // pass-through (SDL owns grab/centering when MC's Mouse.setGrabbed is called separately).
+    // Caller-facing cursor mode tags. NORMAL/HIDDEN map to SDL_ShowCursor/SDL_HideCursor;
+    // DISABLED is a pass-through (SDL owns grab+center via MC.Mouse.setGrabbed independently).
     public static final int CURSOR_NORMAL = 0;
     public static final int CURSOR_HIDDEN = 1;
     public static final int CURSOR_DISABLED = 2;
