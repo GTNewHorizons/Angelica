@@ -44,6 +44,20 @@ public final class StereoGLSMBridge {
                 return true;
             }
 
+            @Override
+            public boolean remapGuiPassViewport(int x, int y, int width, int height, int[] out) {
+                final StereoState state = StereoState.INSTANCE;
+                if (!state.isInGuiPass()) return false;
+                final Minecraft mc = Minecraft.getMinecraft();
+                if (mc == null) return false;
+                if (x != 0 || y != 0 || width != mc.displayWidth || height != mc.displayHeight) return false;
+                out[0] = state.getEyeVpX();
+                out[1] = state.getEyeVpY();
+                out[2] = state.getEyeVpW();
+                out[3] = state.getEyeVpH();
+                return true;
+            }
+
             @Override public int stereoMouseGetX()      { return StereoState.INSTANCE.isActive() ? StereoCursor.getX()      : Mouse.getX(); }
             @Override public int stereoMouseGetY()      { return StereoState.INSTANCE.isActive() ? StereoCursor.getY()      : Mouse.getY(); }
             @Override public int stereoMouseGetEventX() { return StereoState.INSTANCE.isActive() ? StereoCursor.getEventX() : Mouse.getEventX(); }

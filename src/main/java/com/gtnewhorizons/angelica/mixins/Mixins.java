@@ -65,6 +65,7 @@ public enum Mixins implements IMixins {
             , "angelica.stereo.MixinFramebuffer_Stereo"
             , "angelica.stereo.MixinFramebuffer_AsyncCursor"
             , "angelica.stereo.MixinMinecraft_AsyncCursor"
+            , "angelica.stereo.MixinMinecraft_StereoAchievement"
             , "angelica.stereo.MixinFMLCommonHandler_Stereo"
         )
     ),

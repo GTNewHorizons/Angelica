@@ -29,6 +29,14 @@ public interface StereoHook {
      */
     boolean remapWorldPassViewport(int x, int y, int width, int height, int[] outXYWH);
 
+    /**
+     * If a GUI-pass eye render is active and the caller is asking for the full main-FB viewport
+     * (vanilla {@code GuiAchievement.updateAchievementWindow} does this every frame the popup is
+     * visible), write the eye-region viewport into {@code outXYWH} and return {@code true}.
+     * Otherwise return {@code false}.
+     */
+    boolean remapGuiPassViewport(int x, int y, int width, int height, int[] outXYWH);
+
     int stereoMouseGetX();
     int stereoMouseGetY();
     int stereoMouseGetEventX();
@@ -38,6 +46,7 @@ public interface StereoHook {
     StereoHook NONE = new StereoHook() {
         @Override public boolean remapScissor(int x, int y, int w, int h, int[] out) { return false; }
         @Override public boolean remapWorldPassViewport(int x, int y, int w, int h, int[] out) { return false; }
+        @Override public boolean remapGuiPassViewport(int x, int y, int w, int h, int[] out) { return false; }
         @Override public int stereoMouseGetX() { return Mouse.getX(); }
         @Override public int stereoMouseGetY() { return Mouse.getY(); }
         @Override public int stereoMouseGetEventX() { return Mouse.getEventX(); }
