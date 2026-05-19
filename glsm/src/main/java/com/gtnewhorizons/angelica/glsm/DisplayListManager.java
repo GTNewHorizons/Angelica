@@ -153,6 +153,15 @@ public class DisplayListManager {
         flushMatrix();
     }
 
+
+    /**
+     * Allows you to discard any pending matrix transforms.
+     * Only use this if you are 100% that the transforms will not be of any use after the display list draw call.
+     */
+    public static void discardMatrixTransforms() {
+        resetRelativeTransform();
+    }
+
     /**
      * Emit accumulated transform as MultMatrix if non-identity, then reset.
      */

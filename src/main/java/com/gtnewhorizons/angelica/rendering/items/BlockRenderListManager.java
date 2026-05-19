@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.items;
 
-import com.gtnewhorizon.gtnhlib.util.data.BlockMeta;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
@@ -41,6 +41,7 @@ public class BlockRenderListManager {
     }
 
     public static void endCompiling(int list, Block block, int meta) {
+        DisplayListManager.discardMatrixTransforms();
         GLStateManager.glEndList();
         displayListMap.put(new BlockMeta(block, meta), list);
     }

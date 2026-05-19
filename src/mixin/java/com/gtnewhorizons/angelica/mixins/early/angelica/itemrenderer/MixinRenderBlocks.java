@@ -6,7 +6,6 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
-import net.minecraft.init.Blocks;
 import net.minecraft.util.IIcon;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -30,7 +29,6 @@ public abstract class MixinRenderBlocks {
             || enableAO
             || this.overrideBlockTexture != null
             || brightness != 1.0F
-            || block == Blocks.grass //TODO make it work on grass
             || !this.useInventoryTint
         ) {
             // Do not cache those

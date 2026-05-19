@@ -150,8 +150,16 @@ public final class CompiledDisplayList {
         return DisplayListManager.getCompiledDisplayListString(listId, this, stackTrace);
     }
 
+    public String toString(int listId, StackTraceElement[] stackTrace) {
+        return getCompiledDisplayListString(listId, stackTrace);
+    }
+
+    public String toString(int listId) {
+        return toString(listId, null);
+    }
+
     @Override
     public String toString() {
-        return DisplayListManager.getCompiledDisplayListString(0, this, null);
+        return toString(0);
     }
 }
