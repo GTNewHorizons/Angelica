@@ -1,29 +1,31 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.client.model.NormalHelper;
+import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizon.gtnhlib.client.renderer.tessellator.VertexTransformCallback;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
-import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
-import com.gtnewhorizons.angelica.glsm.recording.CommandBuffer;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBOBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
+import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatchBuilder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawCapture;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import lombok.Getter;
 import lombok.experimental.UtilityClass;
+import org.joml.Matrix3f;
 import org.joml.Matrix4f;
-import org.joml.Matrix4fStack;
 import org.joml.Vector3f;
 import org.lwjgl.opengl.GL11;
 
@@ -35,6 +37,7 @@ import java.util.Deque;
 import java.util.List;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 
 /**
@@ -46,34 +49,24 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
  *
  * <p><b>Format-Based Batching:</b> Draws with same vertex format share a VBO via {@link DisplayListVBO}.
  * Consecutive same-transform draws merge.
- * Delta transforms handled via {@link TransformOptimizer}.
  */
 @UtilityClass
 public class DisplayListManager {
     // -Dangelica.debugDisplayLists: disable transform collapsing and draw merging
-    private static final boolean DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debugDisplayLists");
+    private static final boolean DEBUG_DISPLAY_LISTS;
 
     // -Dangelica.logDisplayListCompilation: log compiled display list commands
     private static final boolean LOG_DISPLAY_LIST_COMPILATION;
 
     static {
+        DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debugDisplayLists");
+
         LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
         if (LOG_DISPLAY_LIST_COMPILATION) {
             GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
         }
     }
 
-    // Track which display list is currently being rendered
-    @Getter private static int currentRenderingList = -1;
-
-    private static final Matrix4f IDENTITY = new Matrix4f();
-
-    public static boolean isIdentity(Matrix4f m) {
-        return (m.properties() & Matrix4f.PROPERTY_IDENTITY) != 0 || m.equals(IDENTITY, 1e-6f);
-    }
-
-    /** Transform operation types for relative transform tracking. */
-    public enum TransformOp { TRANSLATE, SCALE, ROTATE }
 
     /** Recording mode for display list compilation. */
     public enum RecordMode {
@@ -88,13 +81,14 @@ public class DisplayListManager {
     private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
-    private static Matrix4fStack relativeTransform = null;  // Tracks relative transforms during compilation (with push/pop support)
-    /**
-     * -- GETTER --
-     * Get the current state generation (for draw merging).
-     */
-    @Getter
-    private static int stateGeneration = 0;  // Increments at draw barriers (state commands); used for draw merging
+    private static AccumulatedDraw pendingDraw = null;
+    private static DisplayListCallback transformCallback = null;
+    private static int relativeTransformType;
+
+    private static final int TRANSFORM_SCALE = 0x1; // Can be extracted to a glScale easily
+    private static final int TRANSFORM_TRANSLATE = 0x2; // Can be extracted to a glTranslate easily
+    private static final int TRANSFORM_COMPLEX = 0x4; // Cannot easily be extracted, will record a mult matrix call.
+
     private static StackTraceElement[] compilationStackTrace = null;  // For logging: captured at glNewList()
 
     // Debug logging: track sources of MULT_MATRIX commands and draw origins; only populated when LOG_DISPLAY_LIST_COMPILATION is true
@@ -117,7 +111,6 @@ public class DisplayListManager {
         int listMode,
         CommandRecorder recorder,
         List<AccumulatedDraw> draws,
-        Matrix4fStack transform,
         StackTraceElement[] stackTrace,
 
         // Debug logging fields (only used when LOG_DISPLAY_LIST_COMPILATION)
@@ -152,11 +145,19 @@ public class DisplayListManager {
         currentRecorder = r;
     }
 
+
+    private static final Vector3f transformVector = new Vector3f();
+
+    static void flushAll() {
+        drawBarrier();
+        flushMatrix();
+    }
+
     /**
      * Emit accumulated transform as MultMatrix if non-identity, then reset.
      */
-    public static void flushMatrix() {
-        if (relativeTransform == null || isIdentity(relativeTransform)) {
+    static void flushMatrix() {
+        if (transformCallback.isIdentity()) {
             // Clear pending ops even if we don't emit - they were no-ops (identity)
             if (pendingTransformOps != null) {
                 pendingTransformOps.clear();
@@ -177,18 +178,22 @@ public class DisplayListManager {
         }
 
         // Record the collapsed MultMatrix command (for playback)
-        if (currentRecorder != null) {
-            currentRecorder.recordMultMatrix(relativeTransform);
-            stateGeneration++;
+        // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
+        drawBarrier();
+        if (relativeTransformType == TRANSFORM_SCALE) {
+            currentRecorder.writeScale(transformCallback.getScale(transformVector));
+        } else if (relativeTransformType == TRANSFORM_TRANSLATE) {
+            currentRecorder.writeTranslate(transformCallback.getTranslation(transformVector));
+        } else {
+            currentRecorder.writeMultMatrix(transformCallback.getReadMatrix());
+        }
+        if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
+            GLStateManager.applyMultMatrix(transformCallback.getReadMatrix());
         }
 
+
         // Reset to identity - we're now synchronized with GL
-        relativeTransform.identity();
-
-    }
-
-    public static void matrixBarrier() {
-        flushMatrix();
+        resetRelativeTransform();
     }
 
     public static int getRecordingListId() {
@@ -199,396 +204,367 @@ public class DisplayListManager {
         return glListMode;
     }
 
-    public static int getCommandCount() {
-        return currentRecorder != null ? currentRecorder.getCommandCount() : 0;
-    }
-
     public static void trackDrawRangeSource(String source) {
         if (drawRangeSources != null) {
             drawRangeSources.add(source);
         }
     }
 
+
     // Draw barriers: state commands that prevent draw merging
     static void drawBarrier() {
-        stateGeneration++;
+        if (pendingDraw != null) {
+            emitDrawRangeToBuffer(pendingDraw, currentRecorder, accumulatedDraws.size() - 1);
+            pendingDraw = null;
+        }
+    }
+
+    private static void emitDrawRangeToBuffer(
+        AccumulatedDraw draw,
+        CommandRecorder out,
+        int vboIdx) {
+
+        if (draw.restoreData != null) {
+            out.writeDrawRangeRestore(vboIdx, draw.restoreData);
+            return;
+        }
+
+        // Write the draw range command
+        out.writeDrawRange(vboIdx);
     }
 
     public static void recordEnable(int cap) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordEnable(cap);
+        currentRecorder.writeEnable(cap);
     }
 
     public static void recordDisable(int cap) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordDisable(cap);
+        currentRecorder.writeDisable(cap);
     }
 
     // ==================== NON-BARRIER COMMANDS ====================
     // Clear commands don't affect subsequent draws, just clear buffers.
 
     public static void recordClear(int mask) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordClear(mask);
+        drawBarrier(); // glClear changes the FBO values, needs a draw barrier.
+        currentRecorder.writeClear(mask);
     }
 
     public static void recordClearColor(float r, float g, float b, float a) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordClearColor(r, g, b, a);
+        currentRecorder.writeClearColor(r, g, b, a);
     }
 
     public static void recordClearDepth(double depth) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordClearDepth(depth);
+        currentRecorder.writeClearDepth(depth);
     }
 
     public static void recordClearStencil(int s) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordClearStencil(s);
+        currentRecorder.writeClearStencil(s);
     }
 
     // ==================== MORE DRAW BARRIER COMMANDS ====================
 
     public static void recordBlendColor(float r, float g, float b, float a) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordBlendColor(r, g, b, a);
+        currentRecorder.writeBlendColor(r, g, b, a);
     }
 
     public static void recordColor(float r, float g, float b, float a) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordColor(r, g, b, a);
+        currentRecorder.writeColor(r, g, b, a);
         if (ImmediateModeRecorder.isDrawing()) {
             ImmediateModeRecorder.setColor(r, g, b, a);
         }
     }
 
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordColorMask(r, g, b, a);
+        currentRecorder.writeColorMask(r, g, b, a);
     }
 
     public static void recordDepthMask(boolean flag) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordDepthMask(flag);
+        currentRecorder.writeDepthMask(flag);
     }
 
     public static void recordFrontFace(int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordFrontFace(mode);
+        currentRecorder.writeFrontFace(mode);
     }
 
     public static void recordDepthFunc(int func) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordDepthFunc(func);
+        currentRecorder.writeDepthFunc(func);
     }
 
     public static void recordBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
+        currentRecorder.writeBlendFunc(srcRgb, dstRgb, srcAlpha, dstAlpha);
     }
 
     public static void recordAlphaFunc(int func, float ref) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordAlphaFunc(func, ref);
+        currentRecorder.writeAlphaFunc(func, ref);
     }
 
     public static void recordCullFace(int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordCullFace(mode);
+        currentRecorder.writeCullFace(mode);
     }
 
     public static void recordShadeModel(int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordShadeModel(mode);
+        currentRecorder.writeShadeModel(mode);
     }
 
     public static void recordBindTexture(int target, int texture) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordBindTexture(target, texture);
+        currentRecorder.writeBindTexture(target, texture);
     }
 
     public static void recordTexParameteri(int target, int pname, int param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordTexParameteri(target, pname, param);
+        currentRecorder.writeTexParameteri(target, pname, param);
     }
 
     public static void recordTexParameterf(int target, int pname, float param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordTexParameterf(target, pname, param);
+        currentRecorder.writeTexParameterf(target, pname, param);
     }
 
     public static void recordMatrixMode(int mode) {
-        if (currentRecorder == null) return;
-        matrixBarrier();  // Matrix barrier: flush and reset
-        currentRecorder.recordMatrixMode(mode);
+        flushMatrix();  // Matrix barrier: flush and reset
+        transformCallback.setMatrixMode(mode);
+        currentRecorder.writeMatrixMode(mode);
     }
 
     public static void recordPushMatrix() {
-        if (currentRecorder == null) return;
         // Flush any pending delta, then record push.
         flushMatrix();
-        currentRecorder.recordPushMatrix();
+        currentRecorder.writePushMatrix();
     }
 
     public static void recordPopMatrix() {
-        if (currentRecorder == null) return;
-        // Flush any pending delta, then record pop.
-        flushMatrix();
-        currentRecorder.recordPopMatrix();
+        // Discard any transformations & flush any pending draw operations
+        drawBarrier();
+        resetRelativeTransform();
+        currentRecorder.writePopMatrix();
     }
 
     public static void recordViewport(int x, int y, int width, int height) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordViewport(x, y, width, height);
+        currentRecorder.writeViewport(x, y, width, height);
     }
 
     public static void recordScissor(int x, int y, int width, int height) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordScissor(x, y, width, height);
+        currentRecorder.writeScissor(x, y, width, height);
     }
 
     public static void recordPointSize(float size) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordPointSize(size);
+        currentRecorder.writePointSize(size);
     }
 
     public static void recordLineWidth(float width) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLineWidth(width);
+        currentRecorder.writeLineWidth(width);
     }
 
     public static void recordLineStipple(int factor, int pattern) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLineStipple(factor, pattern);
+        currentRecorder.writeLineStipple(factor, pattern);
     }
 
     public static void recordPolygonOffset(float factor, float units) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordPolygonOffset(factor, units);
+        currentRecorder.writePolygonOffset(factor, units);
     }
 
     public static void recordPolygonMode(int face, int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordPolygonMode(face, mode);
+        currentRecorder.writePolygonMode(face, mode);
     }
 
     public static void recordColorMaterial(int face, int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordColorMaterial(face, mode);
+        currentRecorder.writeColorMaterial(face, mode);
     }
 
     public static void recordLogicOp(int opcode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLogicOp(opcode);
+        currentRecorder.writeLogicOp(opcode);
     }
 
     public static void recordActiveTexture(int texture) {
-        if (currentRecorder == null) return;
-        drawBarrier();
-        currentRecorder.recordActiveTexture(texture);
+        currentRecorder.writeActiveTexture(texture);
     }
 
     public static void recordUseProgram(int program) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordUseProgram(program);
+        currentRecorder.writeUseProgram(program);
     }
 
     // PushAttrib saves state but doesn't change it - not a draw barrier
     public static void recordPushAttrib(int mask) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordPushAttrib(mask);
+        currentRecorder.writePushAttrib(mask);
     }
 
     // PopAttrib restores potentially any state - draw barrier
     public static void recordPopAttrib() {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordPopAttrib();
+        currentRecorder.writePopAttrib();
     }
 
     public static void recordFogf(int pname, float param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordFogf(pname, param);
+        currentRecorder.writeFogf(pname, param);
     }
 
     public static void recordFogi(int pname, int param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordFogi(pname, param);
+        currentRecorder.writeFogi(pname, param);
     }
 
     public static void recordHint(int target, int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordHint(target, mode);
+        currentRecorder.writeHint(target, mode);
     }
 
     public static void recordFog(int pname, java.nio.FloatBuffer params) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordFog(pname, params);
+        currentRecorder.writeFog(pname, params);
     }
 
     public static void recordLightf(int light, int pname, float param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLightf(light, pname, param);
+        currentRecorder.writeLightf(light, pname, param);
     }
 
     public static void recordLighti(int light, int pname, int param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLighti(light, pname, param);
+        currentRecorder.writeLighti(light, pname, param);
     }
 
     public static void recordLight(int light, int pname, java.nio.FloatBuffer params) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLight(light, pname, params);
+        currentRecorder.writeLight(light, pname, params);
     }
 
     public static void recordLightModelf(int pname, float param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLightModelf(pname, param);
+        currentRecorder.writeLightModelf(pname, param);
     }
 
     public static void recordLightModeli(int pname, int param) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLightModeli(pname, param);
+        currentRecorder.writeLightModeli(pname, param);
     }
 
     public static void recordLightModel(int pname, java.nio.FloatBuffer params) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordLightModel(pname, params);
+        currentRecorder.writeLightModel(pname, params);
     }
 
     public static void recordMaterialf(int face, int pname, float val) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordMaterialf(face, pname, val);
+        currentRecorder.writeMaterialf(face, pname, val);
     }
 
     public static void recordMaterial(int face, int pname, java.nio.FloatBuffer params) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordMaterial(face, pname, params);
+        currentRecorder.writeMaterial(face, pname, params);
     }
 
     public static void recordClipPlane(int plane, double a, double b, double c, double d) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordClipPlane(plane, a, b, c, d);
+        currentRecorder.writeClipPlane(plane, a, b, c, d);
     }
 
     public static void recordStencilFunc(int func, int ref, int mask) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordStencilFunc(func, ref, mask);
+        currentRecorder.writeStencilFunc(func, ref, mask);
     }
 
     public static void recordStencilFuncSeparate(int face, int func, int ref, int mask) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordStencilFuncSeparate(face, func, ref, mask);
+        currentRecorder.writeStencilFuncSeparate(face, func, ref, mask);
     }
 
     public static void recordStencilOp(int fail, int zfail, int zpass) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordStencilOp(fail, zfail, zpass);
+        currentRecorder.writeStencilOp(fail, zfail, zpass);
     }
 
     public static void recordStencilOpSeparate(int face, int sfail, int dpfail, int dppass) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordStencilOpSeparate(face, sfail, dpfail, dppass);
+        currentRecorder.writeStencilOpSeparate(face, sfail, dpfail, dppass);
     }
 
     public static void recordStencilMask(int mask) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordStencilMask(mask);
+        currentRecorder.writeStencilMask(mask);
     }
 
     public static void recordStencilMaskSeparate(int face, int mask) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordStencilMaskSeparate(face, mask);
+        currentRecorder.writeStencilMaskSeparate(face, mask);
     }
 
     public static void recordCallList(int listId) {
-        if (currentRecorder == null) return;
-        matrixBarrier();  // Matrix barrier: nested list has own transforms
-        currentRecorder.recordCallList(listId);
+        // Flush all pending draws & transformations
+        flushAll();
+        currentRecorder.writeCallList(listId);
     }
 
     public static void recordDrawBuffer(int mode) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordDrawBuffer(mode);
+        currentRecorder.writeDrawBuffer(mode);
     }
 
     public static void recordDrawBuffers(int count, int buf) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordDrawBuffers(count, buf);
+        currentRecorder.writeDrawBuffers(count, buf);
     }
 
     public static void recordDrawBuffers(int count, java.nio.IntBuffer bufs) {
-        if (currentRecorder == null) return;
         drawBarrier();
-        currentRecorder.recordDrawBuffers(count, bufs);
+        currentRecorder.writeDrawBuffers(count, bufs);
     }
 
     public static void recordComplexCommand(DisplayListCommand cmd) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordComplexCommand(cmd);
+        flushAll(); //TODO
+        currentRecorder.writeComplexCommand(cmd);
     }
 
     public static void recordIndexedDrawCapture(IndexedDrawCapture capture) {
-        if (currentRecorder == null) return;
-        currentRecorder.recordIndexedDrawCapture(capture);
+        flushAll(); //TODO
+        currentRecorder.writeIndexedDrawCapture(capture);
     }
 
     public static void recordLoadMatrix(Matrix4f matrix) {
-        if (currentRecorder != null) currentRecorder.recordLoadMatrix(matrix);
+        drawBarrier();
+        resetRelativeTransform();
+        currentRecorder.writeLoadMatrix(matrix);
     }
 
     public static void recordLoadIdentity() {
-        if (currentRecorder != null) currentRecorder.recordLoadIdentity();
+        drawBarrier();
+        resetRelativeTransform();
+        currentRecorder.writeLoadIdentity();
+
     }
 
-    public static void recordBindVBO(int vbo) { if (currentRecorder != null) currentRecorder.recordBindVBO(vbo); }
-    public static void recordBindVAO(int vao) { if (currentRecorder != null) currentRecorder.recordBindVAO(vao); }
+    public static void recordBindVBO(int vbo) {
+        drawBarrier();
+        currentRecorder.writeBindVBO(vbo);
+    }
+
+    public static void recordBindVAO(int vao) {
+        drawBarrier();
+        currentRecorder.writeBindVAO(vao);
+    }
 
 
     // recordOrtho/recordFrustum removed - these now accumulate into relativeTransform
@@ -611,33 +587,47 @@ public class DisplayListManager {
         tessellator.reset();
     }
 
-    private static void applyTransformOp(Matrix4f m, float x, float y, float z, TransformOp op, Vector3f axis) {
-        switch (op) {
-            case TRANSLATE -> m.translate(x, y, z);
-            case SCALE -> m.scale(x, y, z);
-            case ROTATE -> { if (axis != null) m.rotate((float) Math.toRadians(x), axis); }
+    public static void applyMatrixTranslation(float x, float y, float z) {
+        transformCallback.translate(x, y, z);
+        relativeTransformType |= TRANSFORM_TRANSLATE;
+
+        if (pendingTransformOps != null) {
+            pendingTransformOps.add(String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z));
+        }
+
+        if (DEBUG_DISPLAY_LISTS) {
+            flushMatrix();
         }
     }
 
-    public static void updateRelativeTransform(float x, float y, float z, TransformOp op, Vector3f rotationAxis) {
-        if (relativeTransform == null) return;
-
-        if (DEBUG_DISPLAY_LISTS) {
-            final Matrix4f singleTransform = new Matrix4f();
-            applyTransformOp(singleTransform, x, y, z, op, rotationAxis);
-            if (currentRecorder != null) currentRecorder.recordMultMatrix(singleTransform);
-            return;
-        }
-
-        applyTransformOp(relativeTransform, x, y, z, op, rotationAxis);
+    public static void applyMatrixScale(float x, float y, float z) {
+        transformCallback.scale(x, y, z);
+        relativeTransformType |= TRANSFORM_SCALE;
 
         if (pendingTransformOps != null) {
-            final String log = switch (op) {
-                case TRANSLATE -> String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z);
-                case SCALE -> String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z);
-                case ROTATE -> rotationAxis != null ? String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", x, rotationAxis.x, rotationAxis.y, rotationAxis.z) : null;
-            };
-            if (log != null) pendingTransformOps.add(log);
+            pendingTransformOps.add(String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z));
+        }
+
+        if (DEBUG_DISPLAY_LISTS) {
+            flushMatrix();
+        }
+    }
+
+    /**
+     * Records a matrix rotation.
+     * <p>
+     * Requires the angle to be in radians & the coordinates to be normalized.
+     */
+    public static void applyMatrixRotation(float rad, float x, float y, float z) {
+        transformCallback.rotate(rad, x, y, z);
+        relativeTransformType |= TRANSFORM_COMPLEX;
+
+        if (pendingTransformOps != null) {
+            pendingTransformOps.add(String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", Math.toDegrees(rad), x, y, z));
+        }
+
+        if (DEBUG_DISPLAY_LISTS) {
+            flushMatrix();
         }
     }
 
@@ -651,64 +641,48 @@ public class DisplayListManager {
      * @param matrix The matrix to multiply
      */
     public static void updateRelativeTransform(Matrix4f matrix) {
-        if (relativeTransform == null) {
-            return;
-        }
-
-        if (DEBUG_DISPLAY_LISTS) {
-            if (currentRecorder != null) {
-                currentRecorder.recordMultMatrix(matrix);
-            }
-            return;
-        }
-
-        relativeTransform.mul(matrix);
+        transformCallback.multMatrix(matrix);
+        relativeTransformType |= TRANSFORM_COMPLEX;
 
         if (pendingTransformOps != null) {
             pendingTransformOps.add("glMultMatrixf(...)");
+        }
+
+        if (DEBUG_DISPLAY_LISTS) {
+            flushMatrix();
         }
     }
 
     // Reusable matrix for ortho/frustum computation
     private static final Matrix4f orthoFrustumTemp = new Matrix4f();
 
-    /** Accumulate ortho projection into relativeTransform. */
     public static void updateRelativeTransformOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
-        if (relativeTransform == null) return;
-
         orthoFrustumTemp.identity().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        if (DEBUG_DISPLAY_LISTS) {
-            if (currentRecorder != null) currentRecorder.recordMultMatrix(orthoFrustumTemp);
-            if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-                GLStateManager.getMatrixStack().mul(orthoFrustumTemp);
-            }
-            return;
-        }
+        transformCallback.multMatrix(orthoFrustumTemp);
+        relativeTransformType |= TRANSFORM_COMPLEX;
 
-        relativeTransform.mul(orthoFrustumTemp);
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glOrtho(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
-    }
-
-    /** Accumulate frustum projection into relativeTransform. */
-    public static void updateRelativeTransformFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
-        if (relativeTransform == null) return;
-
-        orthoFrustumTemp.identity().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
         if (DEBUG_DISPLAY_LISTS) {
-            if (currentRecorder != null) currentRecorder.recordMultMatrix(orthoFrustumTemp);
-            if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-                GLStateManager.getMatrixStack().mul(orthoFrustumTemp);
-            }
-            return;
+            flushMatrix();
         }
+    }
 
-        relativeTransform.mul(orthoFrustumTemp);
+    public static void updateRelativeTransformFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
+        orthoFrustumTemp.identity().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
+
+        transformCallback.multMatrix(orthoFrustumTemp);
+        relativeTransformType |= TRANSFORM_COMPLEX;
+
         if (pendingTransformOps != null) {
             pendingTransformOps.add(String.format("glFrustum(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
+        }
+
+        if (DEBUG_DISPLAY_LISTS) {
+            flushMatrix();
         }
     }
 
@@ -717,11 +691,9 @@ public class DisplayListManager {
      * Called by GLStateManager.glLoadMatrix() - after loading an absolute matrix,
      * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
      */
-    public static void resetRelativeTransform() {
-        if (relativeTransform == null) {
-            return;
-        }
-        relativeTransform.identity();
+    static void resetRelativeTransform() {
+        transformCallback.setIdentity();
+        relativeTransformType = 0;
     }
 
     /**
@@ -763,10 +735,11 @@ public class DisplayListManager {
         final boolean isNested = glListMode > 0;
 
         if (isNested) {
+            flushAll();
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws, relativeTransform,
+                glListId, glListMode, currentRecorder, accumulatedDraws,
                 compilationStackTrace, pendingTransformOps, multMatrixSources, drawRangeSources
             );
             compilationStack.push(parentContext);
@@ -777,9 +750,8 @@ public class DisplayListManager {
         glListMode = mode;
         recordingThread = Thread.currentThread();  // Track which thread is recording
         currentRecorder = new CommandRecorder();  // Create command recorder
-        accumulatedDraws = new ArrayList<>(16);   // Fewer draws than commands typically
-        relativeTransform = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
-        stateGeneration = 0;  // Reset state generation for fresh list
+        accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
+        transformCallback = new DisplayListCallback();
         compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
         // Initialize debug logging fields (only when logging enabled)
@@ -793,12 +765,7 @@ public class DisplayListManager {
             drawRangeSources = null;
         }
 
-        TessellatorManager.startCapturingDirect((tessellator) -> {
-            if (!tessellator.isEmpty()) {
-                addAccumulatedDraw(tessellator, false);
-            }
-            return true;
-        });
+        TessellatorManager.startCapturingDirect(transformCallback);
     }
 
     /**
@@ -808,25 +775,28 @@ public class DisplayListManager {
         if (glListMode == 0) {
             throw new RuntimeException("glEndList called outside of a display list!");
         }
-        flushMatrix();
+
         final boolean isNested = !compilationStack.isEmpty();
 
         // Stop compiling mode (works for both root and nested lists now)
         TessellatorManager.stopCapturingDirect();
 
+        flushAll();
+
+        // Reset back to MODELVIEW (default state)
+        if (transformCallback.getMatrixMode() != GL11.GL_MODELVIEW) {
+            recordMatrixMode(GL11.GL_MODELVIEW);
+        }
+
         final CompiledDisplayList compiled;
         // Create CompiledDisplayList with both unoptimized and optimized versions
-        final CommandBuffer rawCommandBuffer = currentRecorder.getBuffer();
-        final boolean hasCommands = !rawCommandBuffer.isEmpty();
-        final boolean hasDraws = accumulatedDraws != null && !accumulatedDraws.isEmpty();
+        final CommandRecorder commandBuffer = currentRecorder;
+        final boolean hasCommands = !commandBuffer.isEmpty();
 
-        if (hasCommands || hasDraws) {
+        if (hasCommands) {
             final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
             try {
-                final CommandBuffer finalBuffer = new CommandBuffer();
-                CommandBufferBuilder.buildFromRawBuffer(rawCommandBuffer, accumulatedDraws, finalBuffer);
-
-                final IndexedDrawBatchBuilder indexedBuilder = currentRecorder.getIndexedDraws();
+                final IndexedDrawBatchBuilder indexedBuilder = commandBuffer.getIndexedDraws();
                 final List<IndexedDrawBatch> indexedBatches;
                 if (indexedBuilder.isEmpty()) {
                     indexedBatches = Collections.emptyList();
@@ -845,15 +815,16 @@ public class DisplayListManager {
                     }
                 }
 
-                compiled = new CompiledDisplayList(finalBuffer.toBuffer(), finalBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
-            } finally {
-                currentRecorder.free();
+                compiled = new CompiledDisplayList(commandBuffer.finish(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
+            } catch (Exception e) {
+                GLStateManager.LOGGER.error("Encountered a fatal issue while trying to compile a display list.");
+                e.printStackTrace();
+                commandBuffer.delete();
+                return;
             }
         } else {
             // Free the recorder even if empty
-            if (currentRecorder != null) {
-                currentRecorder.free();
-            }
+            commandBuffer.delete();
             // Empty display list - per OpenGL spec, still valid after glNewList/glEndList
             compiled = CompiledDisplayList.EMPTY;
         }
@@ -876,7 +847,6 @@ public class DisplayListManager {
             glListMode = parentContext.listMode;
             currentRecorder = parentContext.recorder;
             accumulatedDraws = parentContext.draws;
-            relativeTransform = parentContext.transform;
             compilationStackTrace = parentContext.stackTrace;
             pendingTransformOps = parentContext.pendingOps;
             multMatrixSources = parentContext.matrixSources;
@@ -889,7 +859,7 @@ public class DisplayListManager {
             currentRecorder = null;
             recordingThread = null;
             accumulatedDraws = null;
-            relativeTransform = null;
+            pendingDraw = null;
             compilationStackTrace = null;
             pendingTransformOps = null;
             multMatrixSources = null;
@@ -900,28 +870,29 @@ public class DisplayListManager {
     }
 
     private static void addAccumulatedDraw(DirectTessellator tessellator, boolean copyLast) {
-        final int cmdIndex = getCommandCount();
-        matrixBarrier();
-
-        if (accumulatedDraws.isEmpty()) {
-            accumulatedDraws.add(
-                new AccumulatedDraw(
-                    tessellator, cmdIndex, stateGeneration, copyLast
-                )
-            );
+        if (pendingDraw == null) {
+            createNewDraw(tessellator, copyLast);
             return;
         }
-
-        // Merge the previous draw call if possible
-        final AccumulatedDraw previous = accumulatedDraws.getLast();
-        if (previous.format == tessellator.getVertexFormat() && previous.stateGeneration == stateGeneration) {
-            previous.mergeDraw(tessellator, copyLast);
+        if (pendingDraw.drawMode != tessellator.drawMode
+            || pendingDraw.format != tessellator.getVertexFormat()
+            || GLStateManager.isContinuousDraw(tessellator.drawMode)
+        ) {
+            drawBarrier();
+            createNewDraw(tessellator, copyLast);
             return;
         }
+        pendingDraw.mergeDraw(tessellator, copyLast);
+    }
 
-        accumulatedDraws.add(
-            new AccumulatedDraw(tessellator, cmdIndex, stateGeneration, copyLast)
+    private static void createNewDraw(DirectTessellator tessellator, boolean copyLast) {
+        pendingDraw = new AccumulatedDraw(
+            tessellator, copyLast
         );
+        accumulatedDraws.add(pendingDraw);
+        if (DEBUG_DISPLAY_LISTS) {
+            drawBarrier();
+        }
     }
 
     /**
@@ -949,10 +920,7 @@ public class DisplayListManager {
     private static void executeDisplayList(int list) {
         final CompiledDisplayList compiled = displayListCache.get(list);
         if (compiled != null) {
-            final int prevList = currentRenderingList;
-            currentRenderingList = list;
-            compiled.render();
-            currentRenderingList = prevList;
+            compiled.render(list);
             return;
         }
 
@@ -983,7 +951,7 @@ public class DisplayListManager {
     // ==================== DEBUG LOGGING ====================
 
     public static void logCompiledDisplayList(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {
-        GLStateManager.LOGGER.debug(getCompiledDisplayListString(listId, compiled, stackTrace));
+        GLStateManager.LOGGER.info(getCompiledDisplayListString(listId, compiled, stackTrace));
     }
 
     public static String getCompiledDisplayListString(int listId, CompiledDisplayList compiled, StackTraceElement[] stackTrace) {
@@ -1002,7 +970,7 @@ public class DisplayListManager {
                 sb.append("Contents: No commands\n");
             } else {
                 sb.append("Commands (").append(buffer.limit()).append(" bytes):\n");
-                dumpCommandBuffer(buffer, compiled.getComplexObjects(), sb);
+                dumpCommandBuffer(buffer, compiled, sb);
             }
         }
 
@@ -1098,97 +1066,235 @@ public class DisplayListManager {
         return className;
     }
 
-    private static void dumpCommandBuffer(ByteBuffer buffer, Object[] complexObjects, StringBuilder sb) {
+    private static void dumpCommandBuffer(ByteBuffer buffer, CompiledDisplayList compiledList, StringBuilder sb) {
         if (buffer == null) return;
 
+        DisplayListCommand[] complexObjects = compiledList.getComplexObjects();
+        DisplayListVBO vbos = compiledList.getOwnedVbos();
         final long basePtr = memAddress(buffer);
         long ptr = basePtr;
         final long end = basePtr + buffer.limit();
         int cmdNum = 0;
         int drawRangeIdx = 0;   // Index into drawRangeSources for source tracking
 
-        while (ptr < end) {
-            final int opcode = memGetInt(ptr);
-            final String cmdName = GLCommand.getName(opcode);
-            sb.append("  ").append(cmdNum++).append(": ").append(cmdName);
+        try {
+            while (ptr < end) {
+                final int opcode = memGetInt(ptr);
+                final String cmdName = GLCommand.getName(opcode);
+                sb.append("  ").append(cmdNum++).append(": ").append(cmdName);
 
-            // Add command-specific details
-            switch (opcode) {
-                case GLCommand.ENABLE, GLCommand.DISABLE -> {
-                    final int cap = memGetInt(ptr + 4);
-                    sb.append("(").append(GLDebug.getCapabilityName(cap)).append(")");
-                }
-                case GLCommand.BIND_TEXTURE -> {
-                    final int target = memGetInt(ptr + 4);
-                    final int texture = memGetInt(ptr + 8);
-                    sb.append("(target=").append(target).append(", texture=").append(texture).append(")");
-                }
-                case GLCommand.DRAW_RANGE -> {
-                    final int vboIdx = memGetInt(ptr + 4);
-                    sb.append("(vbo=").append(vboIdx).append(")");
-                    // Show draw source if available
-                    if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
-                        sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
+                // Add command-specific details
+                switch (opcode) {
+                    case GLCommand.ENABLE, GLCommand.DISABLE -> {
+                        final int cap = memGetInt(ptr + 4);
+                        sb.append("(").append(GLDebug.getCapabilityName(cap)).append(")");
                     }
-                    drawRangeIdx++;
-                }
-                case GLCommand.DRAW_RANGE_RESTORE -> {
-                    final int vboIdx = memGetInt(ptr + 4);
-                    final int start = memGetInt(ptr + 8);
-                    final int count = memGetInt(ptr + 12);
-                    final int brightness = memGetInt(ptr + 16);
-                    sb.append("(vbo=").append(vboIdx).append(", start=").append(start)
-                        .append(", count=").append(count).append(", brightness=").append(brightness != 0).append(")");
-                    // Show draw source if available
-                    if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
-                        sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
+                    case GLCommand.BIND_TEXTURE -> {
+                        final int target = memGetInt(ptr + 4);
+                        final int texture = memGetInt(ptr + 8);
+                        sb.append("(target=").append(target).append(", texture=").append(texture).append(")");
                     }
-                    drawRangeIdx++;
-                }
-                case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> {
-                    sb.append("(");
-                    for (int i = 0; i < 16; i++) {
-                        float value = MemoryUtilities.memGetFloat(ptr + 4 + i * 4);
-                        sb.append(i == 0 ? value : ", " + value);
+                    case GLCommand.DRAW_RANGE -> {
+                        final int vboIdx = memGetInt(ptr + 4);
+                        final DisplayListVBO.SubVBO vbo = vbos.getVBO(vboIdx);
+                        sb.append("(vbo=").append(vboIdx)
+                            .append(", drawMode=").append(vbo.getDrawMode())
+                            .append(", start=").append(vbo.getStart())
+                            .append(", count=").append(vbo.getCount())
+                            .append(", format=").append(vbo.getVAO().getVBO().getVertexFormat())
+                            .append(")");
+                        // Show draw source if available
+                        if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
+                            sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
+                        }
+                        drawRangeIdx++;
                     }
-                    sb.append(")");
+                    case GLCommand.DRAW_RANGE_RESTORE -> {
+                        final int vboIdx = memGetInt(ptr + 4);
+                        final int flags = memGetInt(ptr + 8);
+                        final int lastColor = memGetInt(ptr + 12);
+                        final int lastNormal = memGetInt(ptr + 16);
+                        final float lastTexCoordU = memGetFloat(ptr + 20);
+                        final float lastTexCoordV = memGetFloat(ptr + 24);
+                        final DisplayListVBO.SubVBO vbo = vbos.getVBO(vboIdx);
+                        sb.append("(vbo=").append(vboIdx)
+                            .append(", drawMode=").append(vbo.getDrawMode())
+                            .append(", start=").append(vbo.getStart())
+                            .append(", count=").append(vbo.getCount())
+                            .append(", format=").append(vbo.getVAO().getVBO().getVertexFormat())
+                            .append(", flags=").append(flags)
+                            .append(", lastColor=").append(lastColor)
+                            .append(", lastNormal=").append(lastNormal)
+                            .append(", lastTexCoordU=").append(lastTexCoordU)
+                            .append(", lastTexCoordV=").append(lastTexCoordV)
+                            .append(")");
+                        // Show draw source if available
+                        if (drawRangeSources != null && drawRangeIdx < drawRangeSources.size()) {
+                            sb.append(" [from: ").append(drawRangeSources.get(drawRangeIdx)).append("]");
+                        }
+                        drawRangeIdx++;
+                    }
+                    case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> {
+                        sb.append("(");
+                        for (int i = 0; i < 16; i++) {
+                            float value = MemoryUtilities.memGetFloat(ptr + 4 + i * 4);
+                            sb.append(i == 0 ? value : ", " + value);
+                        }
+                        sb.append(")");
+                    }
+                    case GLCommand.SCALE, GLCommand.TRANSLATE -> {
+                        final float x = memGetFloat(ptr + 4);
+                        final float y = memGetFloat(ptr + 8);
+                        final float z = memGetFloat(ptr + 12);
+                        sb.append("(x=").append(x)
+                            .append(", y=").append(y)
+                            .append(", z=").append(z)
+                            .append(")");
+                    }
+                    case GLCommand.COLOR -> {
+                        final float r = Float.intBitsToFloat(memGetInt(ptr + 4));
+                        final float g = Float.intBitsToFloat(memGetInt(ptr + 8));
+                        final float b = Float.intBitsToFloat(memGetInt(ptr + 12));
+                        final float a = Float.intBitsToFloat(memGetInt(ptr + 16));
+                        sb.append("(").append(r).append(", ").append(g).append(", ").append(b).append(", ").append(a).append(")");
+                    }
+                    case GLCommand.DEPTH_MASK -> {
+                        final int flag = memGetInt(ptr + 4);
+                        sb.append("(").append(flag != 0).append(")");
+                    }
+                    case GLCommand.BLEND_FUNC -> {
+                        final int srcRgb = memGetInt(ptr + 4);
+                        final int dstRgb = memGetInt(ptr + 8);
+                        final int srcAlpha = memGetInt(ptr + 12);
+                        final int dstAlpha = memGetInt(ptr + 16);
+                        sb.append("(srcRgb=").append(srcRgb).append(", dstRgb=").append(dstRgb)
+                            .append(", srcAlpha=").append(srcAlpha).append(", dstAlpha=").append(dstAlpha).append(")");
+                    }
+                    case GLCommand.CALL_LIST -> {
+                        final int calledList = memGetInt(ptr + 4);
+                        sb.append("(").append(calledList).append(")");
+                    }
+                    case GLCommand.MATRIX_MODE -> {
+                        final int mode = memGetInt(ptr + 4);
+                        sb.append("(").append(mode == GL11.GL_MODELVIEW ? "MODELVIEW" : mode == GL11.GL_PROJECTION ? "PROJECTION" : mode).append(")");
+                    }
+                    case GLCommand.COMPLEX_REF -> {
+                        final int idx = memGetInt(ptr + 4);
+                        final Object obj = complexObjects != null && idx < complexObjects.length ? complexObjects[idx] : null;
+                        sb.append("(idx=").append(idx).append(", type=").append(obj != null ? obj.getClass().getSimpleName() : "null").append(")");
+                    }
                 }
-                case GLCommand.COLOR -> {
-                    final float r = Float.intBitsToFloat(memGetInt(ptr + 4));
-                    final float g = Float.intBitsToFloat(memGetInt(ptr + 8));
-                    final float b = Float.intBitsToFloat(memGetInt(ptr + 12));
-                    final float a = Float.intBitsToFloat(memGetInt(ptr + 16));
-                    sb.append("(").append(r).append(", ").append(g).append(", ").append(b).append(", ").append(a).append(")");
-                }
-                case GLCommand.DEPTH_MASK -> {
-                    final int flag = memGetInt(ptr + 4);
-                    sb.append("(").append(flag != 0).append(")");
-                }
-                case GLCommand.BLEND_FUNC -> {
-                    final int srcRgb = memGetInt(ptr + 4);
-                    final int dstRgb = memGetInt(ptr + 8);
-                    final int srcAlpha = memGetInt(ptr + 12);
-                    final int dstAlpha = memGetInt(ptr + 16);
-                    sb.append("(srcRgb=").append(srcRgb).append(", dstRgb=").append(dstRgb)
-                      .append(", srcAlpha=").append(srcAlpha).append(", dstAlpha=").append(dstAlpha).append(")");
-                }
-                case GLCommand.CALL_LIST -> {
-                    final int calledList = memGetInt(ptr + 4);
-                    sb.append("(").append(calledList).append(")");
-                }
-                case GLCommand.MATRIX_MODE -> {
-                    final int mode = memGetInt(ptr + 4);
-                    sb.append("(").append(mode == GL11.GL_MODELVIEW ? "MODELVIEW" : mode == GL11.GL_PROJECTION ? "PROJECTION" : mode).append(")");
-                }
-                case GLCommand.COMPLEX_REF -> {
-                    final int idx = memGetInt(ptr + 4);
-                    final Object obj = complexObjects != null && idx < complexObjects.length ? complexObjects[idx] : null;
-                    sb.append("(idx=").append(idx).append(", type=").append(obj != null ? obj.getClass().getSimpleName() : "null").append(")");
-                }
+                ptr += GLCommand.getCommandSize(opcode, ptr);
+                sb.append("\n");
             }
-            ptr += GLCommand.getCommandSize(opcode, ptr);
-            sb.append("\n");
+        } catch (Exception e) {
+            sb.append("Unknown commands.\n");
         }
     }
 
+    private static final class DisplayListCallback extends VertexTransformCallback {
+
+
+        private int matrixMode = GL11.GL_MODELVIEW;
+
+        private final Matrix3f normalMatrix = new Matrix3f();
+
+        private final Matrix4f transformMatrix = new Matrix4f();
+
+        public void scale(float x, float y, float z) {
+            transformMatrix.scale(x, y, z);
+            markDirty();
+        }
+
+        public void translate(float x, float y, float z) {
+            transformMatrix.translate(x, y, z);
+            markDirty();
+        }
+
+        public void rotate(float rad, float x, float y, float z) {
+            transformMatrix.rotate(rad, x, y, z);
+            markDirty();
+        }
+
+        public void multMatrix(Matrix4f matrix4f) {
+            transformMatrix.mul(matrix4f);
+            markDirty();
+        }
+
+        public void setIdentity() {
+            transformMatrix.identity();
+            markDirty();
+        }
+
+        public Vector3f getScale(Vector3f dest) {
+            return transformMatrix.getScale(dest);
+        }
+
+        public Vector3f getTranslation(Vector3f dest) {
+            return transformMatrix.getTranslation(dest);
+        }
+
+        /**
+         * WARNING: If you apply transformations to this matrix, make sure to call markDirty() afterward!
+         */
+        public Matrix4f getReadMatrix() {
+            return transformMatrix;
+        }
+
+        public void markDirty() {
+            if (matrixMode == GL11.GL_MODELVIEW) {
+                NormalHelper.getNormalMatrix(transformMatrix, normalMatrix);
+            }
+        }
+
+        /**
+         * @param mode accepts either GL11.GL_MODELVIEW, GL11.GL_PROJECTION, GL11.GL_TEXTURE, GL11.GL_COLOR
+         */
+        public void setMatrixMode(int mode) {
+            this.matrixMode = mode;
+            markDirty();
+        }
+
+        public int getMatrixMode() {
+            return this.matrixMode;
+        }
+
+        public boolean isIdentity() {
+            return MatrixHelper.isIdentity(transformMatrix);
+        }
+
+        @Override
+        public boolean onDraw(CallbackTessellator tessellator) {
+            if (!tessellator.isEmpty()) {
+                addAccumulatedDraw(tessellator, false);
+            }
+            return true;
+        }
+
+        @Override
+        public void onVertex(CallbackTessellator tessellator, double x, double y, double z) {
+            tessellator.syncVanillaTessellator();
+            super.onVertex(tessellator, x, y, z);
+        }
+
+        @Override
+        protected Matrix4f getMVPMatrix() {
+            return matrixMode <= GL11.GL_PROJECTION ? transformMatrix : null;
+        }
+
+        @Override
+        protected Matrix4f getTextureMatrix() {
+            return matrixMode == GL11.GL_TEXTURE ? transformMatrix : null;
+        }
+
+        @Override
+        protected Matrix4f getColorMatrix() {
+            return matrixMode == GL11.GL_COLOR ? transformMatrix : null;
+        }
+
+        @Override
+        protected Matrix3f getNormalMatrix() {
+            return matrixMode == GL11.GL_MODELVIEW ? normalMatrix : null; // GL_PROJECTION doesn't transform normals
+        }
+    }
 }

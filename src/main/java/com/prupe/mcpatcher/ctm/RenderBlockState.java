@@ -139,4 +139,6 @@ abstract public class RenderBlockState {
 
     abstract public boolean shouldConnectByTile(Block neighbor, IIcon origIcon, int neighborX, int neighborY,
         int neighborZ);
+
+    abstract public RenderBlockState copy();
 }

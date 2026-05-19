@@ -38,6 +38,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
             , "angelica.bugfixes.MixinModelCreeper_AuraBodyInflate"
+            , "angelica.bugfixes.MixinModelSkeleton_LegPelvisZFight"
             , "angelica.bugfixes.MixinModelWither_ArmorCentering"
             , "angelica.bugfixes.MixinRenderBlocks_CrossedSquaresNormal"
             , "angelica.bugfixes.MixinRenderCreeper_AuraDepth"
@@ -68,6 +69,12 @@ public enum Mixins implements IMixins {
             .setPhase(Phase.EARLY)
             .setApplyIf(() -> AngelicaConfig.enablePanoramaBlurShader)
             .addClientMixins("angelica.gui.MixinGuiMainMenu")
+    ),
+
+    ANGELICA_GL_SPLASH_TEXT(
+        new MixinBuilder("Rewrite 'OpenGL 1.2!' splash to reflect the actual GL context")
+            .setPhase(Phase.EARLY)
+            .addClientMixins("angelica.gui.MixinGuiMainMenuSplash")
     ),
 
     ANGELICA_FONT_RENDERER(new MixinBuilder()
@@ -197,6 +204,7 @@ public enum Mixins implements IMixins {
             , "rendering.MixinTileEntity"
             , "rendering.MixinTileEntityMobSpawner"
             , "rendering.MixinTileEntityRendererDispatcher"
+            , "rendering.MixinRenderBlocksEmissive"
         )
     ),
 
@@ -391,7 +399,7 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.MINEFACTORY_RELOADED)
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
-    
+
     NTM_SPACE_COMPAT(new MixinBuilder("Multiple fixes for NTM:Space")
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
