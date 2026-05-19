@@ -14,6 +14,7 @@ import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -283,8 +284,9 @@ public class ShadowRenderTargets {
 		framebuffer.drawBuffers(actualDrawBuffers);
 		framebuffer.readBuffer(0);
 
-		if (!framebuffer.isComplete()) {
-			throw new IllegalStateException("Unexpected error while creating framebuffer");
+		final int status = framebuffer.getStatus();
+		if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+			throw new IllegalStateException(String.format( "Unexpected error while creating shadow framebuffer: glCheckFramebufferStatus=0x%X, resolution=%d, drawBuffers=%d", status, resolution, drawBuffers.length));
 		}
 
 		return framebuffer;

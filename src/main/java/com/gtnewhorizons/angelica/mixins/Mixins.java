@@ -35,6 +35,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraft_FrameHook"
+            , "angelica.MixinMinecraft_IconifyGuard"
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
             , "angelica.bugfixes.MixinModelCreeper_AuraBodyInflate"
