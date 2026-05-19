@@ -2,11 +2,10 @@
 
 uniform sampler2D textFBO;
 uniform sampler2D sceneFBO;
-uniform float alphaTestRef;
 uniform vec2 uTexelSize;
 uniform float uTime;
 
-const int MAX_RADIUS = 32;
+const int MAX_RADIUS = 16;
 
 in vec2 texCoord;
 
@@ -15,9 +14,8 @@ out vec4 fragColor;
 float totalWt;
 
 float txSample(float finalU, float finalV) {
-    if (finalU < 0 || finalU > 1 || finalV < 0 || finalV > 1) {
-        return 0.0f;
-    }
+    //TODO
+   //if (finalU < 0 || finalU > 1 || finalV < 0 || finalV > 1) return 0.0f;
     return texture(textFBO, vec2(finalU, finalV)).a;
 }
 
@@ -183,7 +181,12 @@ void main() {
     float glowVal = glow(texCoord);
     glowVal = glowVal > 0.1 ? glowVal : 0;
 
-    vec3 glowColor = mixHexColors(0xb387cb, 0xfda63a, 1);
+    //0xd0a4fa orang
+
+
+    //0xfda63a
+    //0xe1afff
+    vec3 glowColor = mixHexColors(0, 0xfda63a, 1);
 
     vec3 light = glowColor * glowVal;
 

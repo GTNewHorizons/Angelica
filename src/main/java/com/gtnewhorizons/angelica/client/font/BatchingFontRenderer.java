@@ -16,7 +16,6 @@ import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
@@ -36,6 +35,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutShort;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.nmemFree;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
@@ -370,13 +370,13 @@ public class BatchingFontRenderer {
             FontOverlayShader.getInstance().use();
             GLStateManager.disableCull();
 
-            ByteBuffer buffer = memAlloc(64);
+            ByteBuffer buffer = memAlloc(32);
             long address = memAddress0(buffer);
-            buffer.limit(64);
+            buffer.limit(32);
             addVertex(address, xStart - padding, yStart - padding);
-            addVertex(address + 16, xEnd + padding, yStart - padding);
-            addVertex(address + 32, xStart - padding, yEnd + padding);
-            addVertex(address + 48, xEnd + padding, yEnd + padding);
+            addVertex(address + 8, xEnd + padding, yStart - padding);
+            addVertex(address + 16, xStart - padding, yEnd + padding);
+            addVertex(address + 24, xEnd + padding, yEnd + padding);
 
 
             if (vao == 0) {
@@ -389,12 +389,8 @@ public class BatchingFontRenderer {
                 GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
                 // position
-                GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 16, 0);
+                GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 8, 0);
                 GLStateManager.glEnableVertexAttribArray(0);
-
-                // texcoords
-                GLStateManager.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, 16, 8);
-                GLStateManager.glEnableVertexAttribArray(1);
             }
 
             GLStateManager.glBindVertexArray(vao);
@@ -407,9 +403,7 @@ public class BatchingFontRenderer {
             GLStateManager.glUseProgram(fontShaderId);
             GLStateManager.glBindVertexArray(fontVAO);
 
-//                FontOverlayShader.getInstance().use();
-//                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, cmd.idxCount, GL11.GL_UNSIGNED_SHORT, (long) cmd.startVtx * 2L);
-//                GLStateManager.glUseProgram(fontShaderId);
+            nmemFree(address);
 
         }
 
@@ -417,11 +411,6 @@ public class BatchingFontRenderer {
             // v, v
             memPutFloat(ptr, x);
             memPutFloat(ptr + 4, y);
-
-            // t, t
-            final ScaledResolution res = new ScaledResolution(Minecraft.getMinecraft(), Minecraft.getMinecraft().displayWidth, Minecraft.getMinecraft().displayHeight);
-            memPutFloat(ptr + 8, x / res.getScaledWidth());
-            memPutFloat(ptr + 12, 1.0f - (y / res.getScaledHeight()));
         }
 
         private float getPadding() {
