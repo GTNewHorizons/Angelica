@@ -1560,6 +1560,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginLevelRendering() {
+		final Framebuffer mainFb = Minecraft.getMinecraft().getFramebuffer();
+		if (mainFb == null || mainFb.framebufferWidth < 16 || mainFb.framebufferHeight < 16) {
+			return;
+		}
+
 		isRenderingFullScreenPass = false;
 		isRenderingWorld = true;
 		isBeforeTranslucent = true;

@@ -76,7 +76,7 @@ public class HUDCaching {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.enableTexture();
 
-        if (!AngelicaConfig.hudCachingActive) {
+        if (!AngelicaConfig.hudCachingActive || mc.displayWidth < 16 || mc.displayHeight < 16) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
             return;
         }
