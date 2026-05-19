@@ -130,7 +130,10 @@ public enum Mixins implements IMixins {
 
     ANGELICA_ITEM_RENDERER_OPTIMIZATION(new MixinBuilder("Optimizes in-world item rendering")
         .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.itemrenderer.MixinItemRenderer")
+        .addClientMixins(
+            "angelica.itemrenderer.MixinItemRenderer",
+            "angelica.itemrenderer.MixinRenderBlocks"
+        )
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
 
     ANGELICA_OPTIMIZE_GLALLOCATION(new MixinBuilder("Replace HashMap with fastutil Int2IntMap in GLAllocation")
