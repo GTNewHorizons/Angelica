@@ -35,6 +35,7 @@ public enum Mixins implements IMixins {
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraft_FrameHook"
+            , "angelica.MixinMinecraft_IconifyGuard"
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
             , "angelica.bugfixes.MixinModelCreeper_AuraBodyInflate"
@@ -69,6 +70,12 @@ public enum Mixins implements IMixins {
             .setPhase(Phase.EARLY)
             .setApplyIf(() -> AngelicaConfig.enablePanoramaBlurShader)
             .addClientMixins("angelica.gui.MixinGuiMainMenu")
+    ),
+
+    ANGELICA_GL_SPLASH_TEXT(
+        new MixinBuilder("Rewrite 'OpenGL 1.2!' splash to reflect the actual GL context")
+            .setPhase(Phase.EARLY)
+            .addClientMixins("angelica.gui.MixinGuiMainMenuSplash")
     ),
 
     ANGELICA_FONT_RENDERER(new MixinBuilder()
@@ -123,7 +130,10 @@ public enum Mixins implements IMixins {
 
     ANGELICA_ITEM_RENDERER_OPTIMIZATION(new MixinBuilder("Optimizes in-world item rendering")
         .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.itemrenderer.MixinItemRenderer")
+        .addClientMixins(
+            "angelica.itemrenderer.MixinItemRenderer",
+            "angelica.itemrenderer.MixinRenderBlocks"
+        )
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
 
     ANGELICA_OPTIMIZE_GLALLOCATION(new MixinBuilder("Replace HashMap with fastutil Int2IntMap in GLAllocation")

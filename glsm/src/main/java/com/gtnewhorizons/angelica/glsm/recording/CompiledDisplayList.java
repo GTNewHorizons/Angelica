@@ -32,11 +32,11 @@ public final class CompiledDisplayList {
     public static final CompiledDisplayList EMPTY = new CompiledDisplayList(null, null, null, Collections.emptyList());
 
     private final ByteBuffer commandBuffer;     // Off-heap command storage, must be freed
-    private final Object[] complexObjects;      // Complex commands (TexImage2D, etc.)
+    private final DisplayListCommand[] complexObjects;      // Complex commands (TexImage2D, etc.)
     private final DisplayListVBO ownedVbos;     // GPU resources referenced by index
     private final List<IndexedDrawBatch> indexedBatches; // Shared VAO/VBO/EBO triples per layout group
 
-    public CompiledDisplayList(ByteBuffer commandBuffer, Object[] complexObjects, DisplayListVBO ownedVbos, List<IndexedDrawBatch> indexedBatches) {
+    public CompiledDisplayList(ByteBuffer commandBuffer, DisplayListCommand[] complexObjects, DisplayListVBO ownedVbos, List<IndexedDrawBatch> indexedBatches) {
         this.commandBuffer = commandBuffer;
         this.complexObjects = complexObjects;
         this.ownedVbos = ownedVbos;
@@ -47,8 +47,12 @@ public final class CompiledDisplayList {
      * Render this display list by executing all commands.
      */
     public void render() {
+        render(-1);
+    }
+
+    public void render(int list) {
         if (commandBuffer != null && commandBuffer.limit() > 0) {
-            CommandBufferExecutor.execute(commandBuffer, complexObjects, ownedVbos);
+            CommandBufferExecutor.execute(commandBuffer, complexObjects, ownedVbos, list, this);
         }
     }
 
@@ -57,10 +61,8 @@ public final class CompiledDisplayList {
      */
     public void delete() {
         if (complexObjects != null) {
-            for (Object obj : complexObjects) {
-                if (obj instanceof DisplayListCommand cmd) {
-                    cmd.delete();
-                }
+            for (DisplayListCommand cmd : complexObjects) {
+                cmd.delete();
             }
         }
 
@@ -92,7 +94,7 @@ public final class CompiledDisplayList {
     /**
      * Get complex objects for inlining into another display list (nested lists).
      */
-    public Object[] getComplexObjects() {
+    public DisplayListCommand[] getComplexObjects() {
         return complexObjects;
     }
 
@@ -144,8 +146,20 @@ public final class CompiledDisplayList {
         return opcodes;
     }
 
+    public String getCompiledDisplayListString(int listId, StackTraceElement[] stackTrace) {
+        return DisplayListManager.getCompiledDisplayListString(listId, this, stackTrace);
+    }
+
+    public String toString(int listId, StackTraceElement[] stackTrace) {
+        return getCompiledDisplayListString(listId, stackTrace);
+    }
+
+    public String toString(int listId) {
+        return toString(listId, null);
+    }
+
     @Override
     public String toString() {
-        return DisplayListManager.getCompiledDisplayListString(0, this, null);
+        return toString(0);
     }
 }
