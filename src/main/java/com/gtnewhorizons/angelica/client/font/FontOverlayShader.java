@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.AutoShaderUpdater;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderDefinesWriter;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderReloadRunnable;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -31,18 +33,25 @@ public final class FontOverlayShader extends ShaderProgram {
             this,
             AngelicaMod.MOD_ID,
             "shaders/font/fontOutline.vsh", "shaders/font/fontOutline.fsh",
-            (program, vert, frag) -> {
+            new IShaderReloadRunnable() {
+                @Override
+                public void run(ShaderProgram shader) {
+                    mvpMatrixLocation = shader.getUniformLocation("u_MVPMatrix");
+                    uTexelSize = shader.getUniformLocation("uTexelSize");
+                    uTime = shader.getUniformLocation("uTime");
+                    uTexBounds = shader.getUniformLocation("uTexBounds");
+                    shader.use();
+                    shader.bindTextureSlot("textFBO", 0);
+                    shader.bindTextureSlot("sceneFBO", 1);
+                    clear();
+                }
 
-                mvpMatrixLocation = program.getUniformLocation("u_MVPMatrix");
-                uTexelSize = this.getUniformLocation("uTexelSize");
-                uTime = this.getUniformLocation("uTime");
-                uTexBounds = this.getUniformLocation("uTexBounds");
-                program.use();
-                this.bindTextureSlot("textFBO", 0);
-                this.bindTextureSlot("sceneFBO", 1);
-                clear();
+                @Override
+                public IShaderDefinesWriter[] getDefines() {
+                    return new IShaderDefinesWriter[0];
+                }
             }
-            );
+        );
 
         startTime = System.currentTimeMillis();
     }

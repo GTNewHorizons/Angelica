@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.SimpleShaderDefine;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -63,9 +65,7 @@ public final class BatchingFontRenderer {
     /** Location of the primary font atlas to bind. */
     protected final ResourceLocation locationFontTexture;
 
-    private final int AAMode;
     private final int AAStrength;
-    private final int alphaTestRefLocation;
     private final int mvpMatrixLocation;
     private static int fontShaderId;
 
@@ -81,6 +81,7 @@ public final class BatchingFontRenderer {
         private static Program fontShader = null;
         public static Program getProgram() {
             if (fontShader == null) {
+
                 final String vsh = ShaderLoader.getShaderSource("angelica:fontFilter.vsh");
                 final String fsh = ShaderLoader.getShaderSource("angelica:fontFilter.fsh");
                 fontShader = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0)).build();
@@ -105,10 +106,16 @@ public final class BatchingFontRenderer {
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
-        fontShaderId = FontAAShader.getProgram().getProgramId();
-        AAMode = GLStateManager.glGetUniformLocation(fontShaderId, "aaMode");
+        final String vsh = ShaderProgram.loadShaderSource(
+            FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/font/fontFilter.vsh")
+        );
+        final String fsh = ShaderProgram.loadShaderSource(
+            FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/font/fontFilter.fsh"),
+            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode)
+        );
+
+        fontShaderId = ShaderProgram.createProgramFromSource(vsh, fsh);
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
-        alphaTestRefLocation = GLStateManager.glGetUniformLocation(fontShaderId, "alphaTestRef");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
         if (ebo == null) {
             ebo = new IndexBuffer();
@@ -462,7 +469,6 @@ public final class BatchingFontRenderer {
         }
     }
 
-    private int fontAAModeLast = -1;
     private int fontAAStrengthLast = -1;
 
     private static final Comparator<FontDrawCmd> DRAW_ORDER_COMPARATOR = Comparator.comparing((FontDrawCmd fdc) -> fdc.texture,
@@ -498,15 +504,10 @@ public final class BatchingFontRenderer {
         GLStateManager.glShadeModel(GL11.GL_FLAT);
 
         GLStateManager.glUseProgram(fontShaderId);
-        if (FontConfig.fontAAMode != fontAAModeLast) {
-            fontAAModeLast = FontConfig.fontAAMode;
-            GLStateManager.glUniform1i(AAMode, FontConfig.fontAAMode);
-        }
         if (FontConfig.fontAAStrength != fontAAStrengthLast) {
             fontAAStrengthLast = FontConfig.fontAAStrength;
             GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
         }
-        GLStateManager.glUniform1f(alphaTestRefLocation, GLStateManager.getAlphaState().getReference());
         GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
 
         if (fontVAO == 0) {

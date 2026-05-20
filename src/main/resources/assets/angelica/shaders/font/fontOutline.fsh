@@ -1,13 +1,22 @@
 #version 330 core
 
-/*
+
 // ----- GLOW -----
+#define USE_GLOW
+#define RGB_GLOW
+#define GLOW_COLOR vec3(0, 1, 1)
 
-#define test 0
+// ----- SPARKLES -----
+#define USE_SPARKLES
+#define SPARKLE_COLOR vec3(1)
+
+// ----- WAVE -----
+#define USE_WAVE
+
+// ----- TEXT -----
+#define TEXT_COLOR vec3(0, 0, 0)
 
 
-
-*/
 
 
 uniform sampler2D textFBO;
@@ -57,8 +66,6 @@ float glow(vec2 uv) {
             // Manhatten for better readability
             float currDist = abs(x) + abs(y);
 
-            float weight = 1;
-
             vec2 offset = vec2(x, y) * uTexelSize;
 
             if (texture(textFBO, vec2(uv.x + offset.x, uv.y + offset.y)).a > 0.1) {
@@ -74,8 +81,8 @@ float glow(vec2 uv) {
     dist = dist - 1.5;
 
     //TODO
-    float jitter = (fract(sin(uTime + (texCoord.x + texCoord.y) * 2) * 43758.0) - 0.5) * 5;
-    dist += jitter;
+    //float jitter = (fract(sin(uTime + (texCoord.x + texCoord.y) * 2) * 43758.0) - 0.5) * 5;
+    //dist += jitter;
     //TODO
 
     if (dist <= 0) return 1;
@@ -98,7 +105,7 @@ vec2 random2(vec2 p) {
 }
 
 // Adapted from https://www.shadertoy.com/view/3d33zM
-vec4 starfield(vec2 uv) {
+float starfield(vec2 uv) {
     vec2 resolution = 1.0 / uTexelSize;
     vec2 fragCoord  = uv * resolution;
 
@@ -176,7 +183,7 @@ vec4 starfield(vec2 uv) {
         dist += sparkle * twinkle * brightness * depth;
     }
 
-    return vec4(1, 1, 1, dist * 2);
+    return dist * 2;
 }
 
 vec3 hsv2rgb(vec3 c) {
@@ -185,7 +192,7 @@ vec3 hsv2rgb(vec3 c) {
     return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
 }
 
-vec3 rainbow(vec2 uv) {
+vec3 rgb(vec2 uv) {
     float h = (uv.x + uv.y) * 4 + uTime / 10; // 0 → 1 hue
     return hsv2rgb(vec3(h, 1.0, 1.0));
 }
@@ -208,62 +215,68 @@ float wave(vec2 uv) {
     return 1.0 - smoothstep(0.0, thickness, dist);
 }
 
+//0xfda63a orang
+
+
+//0xfda63a
+//0xe1afff
+
 void main() {
-    float minX = uTexBounds.x - uTexelSize.x * 6;
-    float maxX = uTexBounds.y + uTexelSize.x * 6;
-    float minY = uTexBounds.z - uTexelSize.y * 6;
-    float maxY = uTexBounds.w + uTexelSize.y * 6;
-    vec2 relativeUV = vec2(texCoord.x - minX, texCoord.y - maxX);
-    //float middleY = (minY + maxY) / 2;
-    float middleY = 0;
-    float yWidth = (maxY - minY) * 2;
+    float minX = uTexBounds.x - uTexelSize.x * 3;
+    float maxX = uTexBounds.y + uTexelSize.x * 3;
+    float minY = uTexBounds.z - uTexelSize.y * 3;
+    float maxY = uTexBounds.w + uTexelSize.y * 3;
+    vec2 relativeUV = vec2(texCoord.x - minX, texCoord.y - minY);
 
-    vec4 scene = texture(sceneFBO, texCoord);
-    vec4 textColor = texture(textFBO, texCoord);
+    vec3 overlay = vec3(0);
 
-    // ─────────────────────────────
-    // LIGHT (independent)
-    // ─────────────────────────────
-    float glowVal = glow(texCoord);
-    glowVal = glowVal > 0.2 ? glowVal : 0;
-
-    //0xfda63a orang
-
-
-    //0xfda63a
-    //0xe1afff
-    vec3 glowColor = mixHexColors(0xe1afff, 0xd0a4fa, 0);
-    //vec3 glowColor = rainbow(texCoord);
-    //glowColor = mix(glowColor, vec3(1, 1, 1), wave(relativeUV));
-
-
-
-    vec3 light = glowColor * glowVal;
+    #ifdef USE_SPARKLES
     if (
         texCoord.x >= minX &&
         texCoord.x <= maxX &&
         texCoord.y >= minY &&
         texCoord.y <= maxY
     ) {
-        vec4 sparkle = starfield(vec2(texCoord.x - minX, texCoord.y - minY));
-        if (sparkle.a > 0.1) {
-            vec3 sparkleLayer = sparkle.rgb * sparkle.a;
-
+        float sparkle = starfield(vec2(texCoord.x - minX, texCoord.y - minY));
+        if (sparkle > 0.1) {
             // glow sits in front of sparkle
-            light = mix(sparkleLayer, glowColor, glowVal);
+            overlay = mix(overlay, SPARKLE_COLOR, sparkle);
         }
     }
+    #endif
 
+    //vec3 glowColor = mixHexColors(0xe1afff, 0xd0a4fa, 0);
 
-    float mask = 1.0 - textColor.a;
-    if (textColor.a > 0.1) {
-        light = vec3(0);
+    #ifdef USE_GLOW
+    float glowVal = glow(texCoord);
+    if (glowVal > 0.1) {
+        #ifdef RGB_GLOW
+        vec3 glowColor = rgb(relativeUV);
+        #else
+        vec3 glowColor = GLOW_COLOR;
+        #endif
+        #ifdef USE_WAVE
+        glowColor = mix(glowColor, vec3(1, 1, 1), wave(relativeUV));
+        #endif
+        overlay = mix(overlay, glowColor, glowVal);
     }
 
+    #endif
+
+
+
+    // Mix based on text color
+    vec4 textColor = texture(textFBO, texCoord);
+    if (textColor.a > 0.1) {
+        overlay = mix(overlay, TEXT_COLOR, textColor.a);
+    }
+
+
+    // Blend scene together
+    vec4 scene = texture(sceneFBO, texCoord);
     vec3 base = scene.rgb;
 
-    vec3 finalColor = vec3(1.0) - (vec3(1.0) - base) * (vec3(1.0) - light);
-    finalColor = mix(finalColor, vec3(0, 0, 0), textColor.a);
+    vec3 finalColor = vec3(1.0) - (vec3(1.0) - base) * (vec3(1.0) - overlay);
 
     fragColor = vec4(finalColor, 1.0);
 }
