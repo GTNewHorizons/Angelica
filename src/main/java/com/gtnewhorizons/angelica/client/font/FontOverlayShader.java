@@ -13,6 +13,7 @@ public final class FontOverlayShader extends ShaderProgram {
     private static int mvpMatrixLocation;
     private static int uTexelSize;
     private static int uTime;
+    private static int uTexBounds;
 
     private static long startTime;
 
@@ -25,6 +26,7 @@ public final class FontOverlayShader extends ShaderProgram {
         mvpMatrixLocation = this.getUniformLocation("u_MVPMatrix");
         uTexelSize = this.getUniformLocation("uTexelSize");
         uTime = this.getUniformLocation("uTime");
+        uTexBounds = this.getUniformLocation("uTexBounds");
         AutoShaderUpdater.getInstance().registerShaderReload(
             this,
             AngelicaMod.MOD_ID,
@@ -34,6 +36,7 @@ public final class FontOverlayShader extends ShaderProgram {
                 mvpMatrixLocation = program.getUniformLocation("u_MVPMatrix");
                 uTexelSize = this.getUniformLocation("uTexelSize");
                 uTime = this.getUniformLocation("uTime");
+                uTexBounds = this.getUniformLocation("uTexBounds");
                 program.use();
                 this.bindTextureSlot("textFBO", 0);
                 this.bindTextureSlot("sceneFBO", 1);
@@ -57,8 +60,14 @@ public final class FontOverlayShader extends ShaderProgram {
         super.use();
         GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
         final Minecraft mc = Minecraft.getMinecraft();
-        GLStateManager.glUniform2f(uTexelSize, 1f / mc.displayWidth, 1f / mc.displayHeight);
+        if (uTexelSize != -1)
+            GLStateManager.glUniform2f(uTexelSize, 1f / mc.displayWidth, 1f / mc.displayHeight);
 
-        GLStateManager.glUniform1f(uTime, (System.currentTimeMillis() - startTime) / 1000f);
+        if (uTime != -1)
+            GLStateManager.glUniform1f(uTime, (System.currentTimeMillis() - startTime) / 1000f);
+    }
+
+    public void uploadBounds(float minX, float maxX, float minY, float maxY) {
+        GLStateManager.glUniform4f(uTexBounds, minX, maxX, minY, maxY);
     }
 }

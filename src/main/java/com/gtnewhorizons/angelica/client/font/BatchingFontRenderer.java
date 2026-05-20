@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
@@ -19,6 +20,8 @@ import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
@@ -46,7 +49,7 @@ import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PA
  *
  * @author eigenraven
  */
-public class BatchingFontRenderer {
+public final class BatchingFontRenderer {
 
     /** The underlying FontRenderer object that's being accelerated */
     protected FontRenderer underlying;
@@ -256,7 +259,6 @@ public class BatchingFontRenderer {
                     return;
                 }
             }
-
         }
         final ShaderDrawCmd cmd = new ShaderDrawCmd();
         cmd.reset(startIdx, idxCount, texture, true);
@@ -378,6 +380,28 @@ public class BatchingFontRenderer {
             addVertex(address + 16, xStart - padding, yEnd + padding);
             addVertex(address + 24, xEnd + padding, yEnd + padding);
 
+            Matrix4f mvp = GLStateManager.getMVPMatrix(new Matrix4f());
+            Vector4f temp = new Vector4f();
+            temp.x = xStart;
+            temp.y = yEnd;
+            temp.z = 0;
+            temp.w = 1;
+            MatrixHelper.transformVertex(mvp, temp);
+
+            float boundXStart = temp.x * 0.5f + 0.5f;
+            float boundYStart = temp.y * 0.5f + 0.5f;
+
+            temp.x = xEnd;
+            temp.y = yStart;
+            temp.z = 0;
+            temp.w = 1;
+            MatrixHelper.transformVertex(mvp, temp);
+
+            float boundXEnd = temp.x * 0.5f + 0.5f;
+            float boundYEnd = temp.y * 0.5f + 0.5f;
+
+            FontOverlayShader.getInstance().uploadBounds(boundXStart, boundXEnd, boundYStart, boundYEnd);
+
 
             if (vao == 0) {
                 vao = GLStateManager.glGenVertexArrays();
@@ -414,7 +438,7 @@ public class BatchingFontRenderer {
         }
 
         private float getPadding() {
-            return 6;
+            return 8;
         }
     }
 
@@ -643,7 +667,7 @@ public class BatchingFontRenderer {
     private static final float WAVE_FREQUENCY = 0.5f;
 
     public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
-        final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
+        final boolean unicodeFlag, final String string, int stringOffset, int stringLength) {
         // noinspection SizeReplaceableByIsEmpty
         if (string == null || string.length() == 0) {
             return anchorX + (enableShadow ? 1.0f : 0.0f);
@@ -694,11 +718,6 @@ public class BatchingFontRenderer {
             float strikethroughStartX = 0.0f;
             float strikethroughEndX = 0.0f;
 
-
-            if (string.toString().toLowerCase().contains("eye of ")) {
-                System.out.println("String: " + string);
-                new Exception().printStackTrace();
-            }
 
             for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
                 char chr = string.charAt(charIdx);
@@ -800,7 +819,6 @@ public class BatchingFontRenderer {
                         curShadowColor = shadowColor;
                         curShader = false;
                     } else if (fmtCode == 'y') {
-                        System.out.println("testtttttttt");
                         curShader = true;
                     }
                     } // close else block for non-§x codes
@@ -872,9 +890,6 @@ public class BatchingFontRenderer {
                 float renderY = heightNorth;
 
                 if (curShader) {
-//                    int padding = 3;
-//                    float du = padding / 128f;
-//                    float dv = padding / 128f;
                     pushTexRect(
                         curX,
                         renderY,

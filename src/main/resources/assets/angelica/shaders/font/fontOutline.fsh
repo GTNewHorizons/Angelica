@@ -1,9 +1,21 @@
 #version 330 core
 
+/*
+// ----- GLOW -----
+
+#define test 0
+
+
+
+*/
+
+
 uniform sampler2D textFBO;
 uniform sampler2D sceneFBO;
 uniform vec2 uTexelSize;
 uniform float uTime;
+uniform float uScale; //TODO
+uniform vec4 uTexBounds;
 
 const int MAX_RADIUS = 16;
 
@@ -11,59 +23,9 @@ in vec2 texCoord;
 
 out vec4 fragColor;
 
-float totalWt;
-
-float txSample(float finalU, float finalV) {
-    //TODO
-   //if (finalU < 0 || finalU > 1 || finalV < 0 || finalV > 1) return 0.0f;
-    return texture(textFBO, vec2(finalU, finalV)).a;
-}
-
-float gaussian(int x, int y, float sigma) {
-    float sx = float(x * x);
-    float sy = float(y * y);
-
-    float sigma2 = sigma * sigma;
-
-    return exp(-(sx + sy) / (2.0 * sigma2));
-}
 
 
-float glow(vec2 uv) {
-    int uRadius = 6;
-
-    float dist = 9999;
-
-    for (int y = -MAX_RADIUS; y <= MAX_RADIUS; y++)
-    {
-        for (int x = -MAX_RADIUS; x <= MAX_RADIUS; x++)
-        {
-            // Skip outside current radius
-            if (abs(x) > uRadius || abs(y) > uRadius)
-            continue;
-
-            float currDist = sqrt(x * x + y * y);
-
-            float weight = 1;
-
-            vec2 offset = vec2(x, y) * uTexelSize;
-
-            if (txSample(uv.x + offset.x, uv.y + offset.y) > 0.1) {
-                if (dist > currDist) {
-                    dist = currDist;
-                }
-            }
-        }
-    }
-
-    if (dist == 9999) return 0;
-
-    float d = dist / (2 + (sin(uTime * 2.0) + 1) * 0.4);
-    return min(1.0 / pow(d, 2.5), 1);
-}
-
-vec3 mixHexColors(int colorA, int colorB, float t)
-{
+vec3 mixHexColors(int colorA, int colorB, float t) {
     t = clamp(t, 0.0, 1.0);
 
     // Convert packed hex ints to normalized RGB vec3
@@ -83,94 +45,178 @@ vec3 mixHexColors(int colorA, int colorB, float t)
 }
 
 
-vec2 rand2(vec2 p)
-{
-    p = vec2(dot(p, vec2(12.9898,78.233)), dot(p, vec2(26.65125, 83.054543)));
-    return fract(sin(p) * 43758.5453);
-}
+float glow(vec2 uv) {
+    int uRadius = 6;
 
-float rand(vec2 p)
-{
-    return fract(sin(dot(p.xy ,vec2(54.90898,18.233))) * 4337.5453);
-}
+    float dist = 9999;
 
+    for (int y = -MAX_RADIUS; y <= MAX_RADIUS; y++) {
+        for (int x = -MAX_RADIUS; x <= MAX_RADIUS; x++) {
+            if (abs(x) > uRadius || abs(y) > uRadius) continue;
 
+            // Manhatten for better readability
+            float currDist = abs(x) + abs(y);
 
-float starSDF(vec2 p)
-{
-    float r = length(p);
-    float a = atan(p.y, p.x);
+            float weight = 1;
 
-    float k = 0.45; // star indentation strength
+            vec2 offset = vec2(x, y) * uTexelSize;
 
-    float starRadius = 1.0 + k * cos(4.0 * a);
-
-    return r - starRadius;
-}
-
-
-float stars(in vec2 x, float numCells, float size, float br)
-{
-    float aspect = uTexelSize.y / uTexelSize.x;
-    x.x *= aspect;
-    vec2 n = x * numCells;
-
-    // conveyor belt drift (UPWARD)
-    n.y -= uTime * 0.5;
-
-    vec2 f = floor(n);
-
-    float d = 1.0e10;
-
-    for (int i = -1; i <= 1; ++i)
-    for (int j = -1; j <= 1; ++j)
-    {
-        vec2 g = f + vec2(float(i), float(j));
-
-        // stable per-cell randomness
-        vec2 jitter = rand2(mod(g, 1280.0)) - 0.5;
-
-        vec2 p = n - g - jitter;
-
-        // scale into star space
-        p *= 1.0 / size;
-
-        float s = starSDF(p);
-
-        d = min(d, s);
+            if (texture(textFBO, vec2(uv.x + offset.x, uv.y + offset.y)).a > 0.1) {
+                if (dist > currDist) {
+                    dist = currDist;
+                }
+            }
+        }
     }
 
-    // ─────────────────────────────
-    // ORIGINAL LOOK (kept intentionally)
-    // ─────────────────────────────
-    float sparkle = 1.0 / (0.1 + abs(d));
+    if (dist == 9999) return 0;
 
-    return br * sparkle;
+    dist = dist - 1.5;
+
+    //TODO
+    float jitter = (fract(sin(uTime + (texCoord.x + texCoord.y) * 2) * 43758.0) - 0.5) * 5;
+    dist += jitter;
+    //TODO
+
+    if (dist <= 0) return 1;
+    float timeGlow = (sin(uTime * 2.0)) * 0.1;
+    float d = dist;
+    d = d / (2 + timeGlow);
+    float glow = exp(-d);
+    //float d = (dist / (1 + (sin(uTime * 2.0)) * 0.1));
+    //return min(1.0 / pow(d, 1.2), 1);
+    return min(glow, 1);
 }
 
-/*
-void main() {
-    vec4 scene = texture(sceneFBO, texCoord);
-    vec4 textColor = texture(textFBO, texCoord);
-
-    // Calculate glow
-    float glow = glow(texCoord);
-    vec3 glowColor = mixHexColors(0xb387cb, 0xba56f0, sin(uTime + uTexelSize.x));
-
-    // Calculate stars
-    float sparkleAlpha = stars(vec2(texCoord.x, texCoord.y), 32, 0.01, 2);
-    vec3 sparkleColor = vec3(1.0);
-
-    vec3 light = glow > 0.1 ? glowColor * glow : vec3(0, 0, 0);
-    light += sparkleColor * sparkleAlpha;
-
-    light = clamp(mix(light, textColor.rgb, textColor.a), 0, 1);
-
-    fragColor = vec4(vec3(1.0) - (vec3(1.0) - scene.rgb) * (vec3(1.0) - light), 1);
+float random(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
 }
-*/
+
+vec2 random2(vec2 p) {
+    float r = random(p);
+    return vec2(r, random(p + r));
+}
+
+// Adapted from https://www.shadertoy.com/view/3d33zM
+vec4 starfield(vec2 uv) {
+    vec2 resolution = 1.0 / uTexelSize;
+    vec2 fragCoord  = uv * resolution;
+
+    float widthHeightRatio = resolution.x / resolution.y;
+
+    float t = uTime * 0.01;
+
+    float dist = 0.0;
+
+    const float layers = 4.0;
+    const float scale  = 256.0;
+    const float star_size = 1.0 / 10;
+
+    vec2 centre = vec2(0.5);
+
+    for (float i = 0.0; i < layers; i++) {
+        float depth = fract(i/layers);
+
+        centre.x = 0.5 + 0.1 * t * depth;
+        centre.y = 0.5 + 0.1 * t * depth;
+
+        vec2 uv = centre - fragCoord / resolution;
+
+        uv.y /= widthHeightRatio;
+
+        uv *= mix(scale, 0.0, depth);
+
+        vec2 index = floor(uv);
+
+        vec2 seed = 20.0 * i + index;
+
+        vec2 local_uv = fract(i + uv) - 0.5;
+
+        vec2 pos = 0.8 * (random2(seed) - 0.5);
+
+        float phase = 128.0 * random(seed);
+
+        vec2 d = (local_uv - pos) * star_size;
+        float len = length(d);
+
+        // Core
+        float radial = max(0.0, 1.0 - len * 3.5);
+        radial = pow(radial, 30.0);
+
+        // Fade spikes with distance from center
+        float spikeFade = pow(max(0.0, 1.0 - len * 6.0), 4.0);
+
+        // Compact sparkle spikes
+        float spikeX = pow(max(0.0, 1.0 - abs(d.x) * 35.0), 8.0);
+        float spikeY = pow(max(0.0, 1.0 - abs(d.y) * 35.0), 8.0);
+
+        float spikeD1 = pow(max(0.0, 1.0 - abs(d.x + d.y) * 25.0), 8.0);
+        float spikeD2 = pow(max(0.0, 1.0 - abs(d.x - d.y) * 25.0), 8.0);
+
+        // Apply radial fade to spikes
+        float spikes =
+        (spikeX + spikeY) * 0.12 +
+        (spikeD1 + spikeD2) * 0.05;
+
+        spikes *= spikeFade;
+
+        // Final sparkle
+        float sparkle = radial * 0.9 + spikes;
+
+        float speed = mix(0.5, 3.0, random(seed + 17.0));
+
+        float twinkle =
+        sin(uTime * speed + phase) * 0.5 + 0.5;
+
+        twinkle = pow(twinkle, 6.0);
+
+        float brightness =
+        mix(0.2, 1.0, random(seed + 42.0));
+
+        dist += sparkle * twinkle * brightness * depth;
+    }
+
+    return vec4(1, 1, 1, dist * 2);
+}
+
+vec3 hsv2rgb(vec3 c) {
+    vec4 K = vec4(1.0, 2.0/3.0, 1.0/3.0, 3.0);
+    vec3 p = abs(fract(c.xxx + K.xyz) * 6.0 - K.www);
+    return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
+}
+
+vec3 rainbow(vec2 uv) {
+    float h = (uv.x + uv.y) * 4 + uTime / 10; // 0 → 1 hue
+    return hsv2rgb(vec3(h, 1.0, 1.0));
+}
+
+float wave(vec2 uv) {
+    float speed = 0.25;
+    float pos = fract(uTime * speed);
+
+    float lines = 5.0;
+
+    float x = uv.x * lines;
+
+    float id = floor(x);
+    float local = fract(x);
+
+    float dist = abs(local - pos);
+
+    float thickness = 0.1;
+
+    return 1.0 - smoothstep(0.0, thickness, dist);
+}
 
 void main() {
+    float minX = uTexBounds.x - uTexelSize.x * 6;
+    float maxX = uTexBounds.y + uTexelSize.x * 6;
+    float minY = uTexBounds.z - uTexelSize.y * 6;
+    float maxY = uTexBounds.w + uTexelSize.y * 6;
+    vec2 relativeUV = vec2(texCoord.x - minX, texCoord.y - maxX);
+    //float middleY = (minY + maxY) / 2;
+    float middleY = 0;
+    float yWidth = (maxY - minY) * 2;
 
     vec4 scene = texture(sceneFBO, texCoord);
     vec4 textColor = texture(textFBO, texCoord);
@@ -179,31 +225,42 @@ void main() {
     // LIGHT (independent)
     // ─────────────────────────────
     float glowVal = glow(texCoord);
-    glowVal = glowVal > 0.1 ? glowVal : 0;
+    glowVal = glowVal > 0.2 ? glowVal : 0;
 
-    //0xd0a4fa orang
+    //0xfda63a orang
 
 
     //0xfda63a
     //0xe1afff
-    vec3 glowColor = mixHexColors(0, 0xfda63a, 1);
+    vec3 glowColor = mixHexColors(0xe1afff, 0xd0a4fa, 0);
+    //vec3 glowColor = rainbow(texCoord);
+    //glowColor = mix(glowColor, vec3(1, 1, 1), wave(relativeUV));
+
+
 
     vec3 light = glowColor * glowVal;
+    if (
+        texCoord.x >= minX &&
+        texCoord.x <= maxX &&
+        texCoord.y >= minY &&
+        texCoord.y <= maxY
+    ) {
+        vec4 sparkle = starfield(vec2(texCoord.x - minX, texCoord.y - minY));
+        if (sparkle.a > 0.1) {
+            vec3 sparkleLayer = sparkle.rgb * sparkle.a;
 
-    //float sparkle = stars(texCoord, 32.0, 0.01, 2.0);
-    //sparkle = sparkle > 0.3 ? sparkle : 0;
-    //light += vec3(1.0) * sparkle;
+            // glow sits in front of sparkle
+            light = mix(sparkleLayer, glowColor, glowVal);
+        }
+    }
 
-    // ─────────────────────────────
-    // TEXT ONLY MASKS LIGHT
-    // ─────────────────────────────
+
     float mask = 1.0 - textColor.a;
-    light *= mask;
+    if (textColor.a > 0.1) {
+        light = vec3(0);
+    }
 
-    // ─────────────────────────────
-    // COMPOSITE ON SCENE (SCREEN BLEND)
-    // ─────────────────────────────
-    vec3 base = scene.rgb * scene.a;
+    vec3 base = scene.rgb;
 
     vec3 finalColor = vec3(1.0) - (vec3(1.0) - base) * (vec3(1.0) - light);
     finalColor = mix(finalColor, vec3(0, 0, 0), textColor.a);

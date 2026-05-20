@@ -5902,6 +5902,10 @@ public class GLStateManager {
         }
     }
 
+    public static Matrix4f getMVPMatrix(Matrix4f dest) {
+        return GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), dest);
+    }
+
     public static void glGetActiveUniform(int program, int index, IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name) {
         RENDER_BACKEND.getActiveUniform(program, index, length, size, type, name);
     }
