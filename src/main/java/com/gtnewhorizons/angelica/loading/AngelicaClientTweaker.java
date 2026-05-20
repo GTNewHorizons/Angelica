@@ -149,6 +149,10 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             final List<String> notFineTransformers = Arrays.asList(ITransformers.getTransformers(AsmTransformers.class));
             if (!notFineTransformers.isEmpty()) Namer.initNames();
             transformers.addAll(notFineTransformers);
+            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+            if (!rfbLoaded) {
+                transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseTransformer");
+            }
             transformerClasses = transformers.toArray(new String[0]);
         }
         return transformerClasses;
