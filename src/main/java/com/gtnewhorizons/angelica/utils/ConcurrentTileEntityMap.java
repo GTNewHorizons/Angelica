@@ -42,6 +42,14 @@ public class ConcurrentTileEntityMap implements Map<ChunkPosition, TileEntity> {
         }
     }
 
+    public void readLock() {
+        lock.readLock().lock();
+    }
+
+    public void readUnlock() {
+        lock.readLock().unlock();
+    }
+
     public void withWriteLock(Runnable action) {
         lock.writeLock().lock();
         try {

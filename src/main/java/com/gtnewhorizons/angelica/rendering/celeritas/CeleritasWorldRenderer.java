@@ -74,6 +74,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return instance;
     }
 
+    public static CeleritasWorldRenderer getInstanceOrNull() {
+        return instance;
+    }
+
     public AngelicaRenderSectionManager getRenderSectionManager() {
         return this.renderSectionManager;
     }

@@ -21,7 +21,13 @@ public class ClonedChunkSectionCache {
 
     public synchronized void cleanup() {
         this.time = getMonotonicTimeSource();
-        this.byPosition.values().removeIf(entry -> this.time > (entry.getLastUsedTimestamp() + MAX_CACHE_DURATION));
+        while (!this.byPosition.isEmpty()) {
+            final ClonedChunkSection oldest = this.byPosition.get(this.byPosition.firstLongKey());
+            if (this.time <= oldest.getLastUsedTimestamp() + MAX_CACHE_DURATION) {
+                break;
+            }
+            this.byPosition.removeFirst();
+        }
     }
 
     public synchronized ClonedChunkSection acquire(int x, int y, int z) {
@@ -32,20 +38,17 @@ public class ClonedChunkSectionCache {
             while (this.byPosition.size() >= MAX_CACHE_SIZE) {
                 this.byPosition.removeFirst();
             }
-            section = this.createSection(x, y, z);
-        } else {
-            section.refreshBiomeData();
+            section = this.createSection(key, x, y, z);
         }
 
         section.setLastUsedTimestamp(this.time);
         return section;
     }
 
-    private ClonedChunkSection createSection(int x, int y, int z) {
+    private ClonedChunkSection createSection(long key, int x, int y, int z) {
         final ClonedChunkSection section = new ClonedChunkSection(this, this.world);
-        final ChunkSectionPos pos = ChunkSectionPos.from(x, y, z);
-        section.init(pos);
-        this.byPosition.putAndMoveToLast(pos.asLong(), section);
+        section.init(ChunkSectionPos.from(x, y, z));
+        this.byPosition.putAndMoveToLast(key, section);
         return section;
     }
 
