@@ -1,12 +1,8 @@
-package com.gtnewhorizons.angelica.loading.fml.transformers;
+package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
-import net.minecraft.launchwrapper.IClassTransformer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.objectweb.asm.ClassReader;
-import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
@@ -14,7 +10,8 @@ import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-public class IsbrhTessellatorAbuseClassTransformer implements IClassTransformer {
+public final class IsbrhTessellatorAbuseTransform {
+
     public static final String ISBRH = "cpw/mods/fml/client/registry/ISimpleBlockRenderingHandler";
 
     private static final Logger LOGGER = LogManager.getLogger("IsbrhTessellatorAbuse");
@@ -22,21 +19,11 @@ public class IsbrhTessellatorAbuseClassTransformer implements IClassTransformer 
     private static final String TESSELLATOR = "net/minecraft/client/renderer/Tessellator";
     private static final String RENDER_WORLD_BLOCK_DESC = "(Lnet/minecraft/world/IBlockAccess;IIILnet/minecraft/block/Block;ILnet/minecraft/client/renderer/RenderBlocks;)Z";
 
-    private final String draw;
-    private final String startDrawingQuads;
-    private final String startDrawing;
-
-    public IsbrhTessellatorAbuseClassTransformer(boolean isObf) {
-        this.draw = isObf ? "func_78381_a" : "draw";
-        this.startDrawingQuads = isObf ? "func_78382_b" : "startDrawingQuads";
-        this.startDrawing = isObf ? "func_78371_b" : "startDrawing";
-    }
-
     public boolean shouldTransform(byte[] classBytes) {
         return CST_POOL_PARSER.find(classBytes);
     }
 
-    public boolean transformClassNode(String transformedName, ClassNode cn) {
+    public boolean transformClassNode(ClassNode cn, boolean isObf) {
         MethodNode target = null;
         for (int i = 0, n = cn.methods.size(); i < n; i++) {
             final MethodNode mn = cn.methods.get(i);
@@ -46,6 +33,10 @@ public class IsbrhTessellatorAbuseClassTransformer implements IClassTransformer 
             }
         }
         if (target == null) return false;
+
+        final String draw = isObf ? "func_78381_a" : "draw";
+        final String startDrawingQuads = isObf ? "func_78382_b" : "startDrawingQuads";
+        final String startDrawing = isObf ? "func_78371_b" : "startDrawing";
 
         boolean changed = false;
         AbstractInsnNode insn = target.instructions.getFirst();
@@ -78,21 +69,5 @@ public class IsbrhTessellatorAbuseClassTransformer implements IClassTransformer 
             insn = next;
         }
         return changed;
-    }
-
-    @Override
-    public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        if (basicClass == null || !shouldTransform(basicClass)) return basicClass;
-
-        final ClassReader cr = new ClassReader(basicClass);
-        final ClassNode cn = new ClassNode();
-        cr.accept(cn, 0);
-        if (!transformClassNode(transformedName, cn)) return basicClass;
-
-        final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_MAXS);
-        cn.accept(cw);
-        final byte[] bytes = cw.toByteArray();
-        AngelicaClassDump.dumpClass(transformedName, basicClass, bytes, this);
-        return bytes;
     }
 }

@@ -2,8 +2,6 @@ package com.gtnewhorizons.angelica.loading.fml.tweakers;
 
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.glsm.loading.TransformerNarrower;
-import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
-import com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseClassTransformer;
 import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import net.minecraft.launchwrapper.IClassTransformer;
 import net.minecraft.launchwrapper.ITweaker;
@@ -62,10 +60,6 @@ public class AngelicaLateTweaker implements ITweaker {
             final List<IClassTransformer> transformers = (List<IClassTransformer>) transformersField.get(Launch.classLoader);
 
             transformers.removeIf(t -> t.getClass().getName().equals(EARLY_REDIRECTOR_CLASS));
-
-            final IClassTransformer isbrhAbuse = new IsbrhTessellatorAbuseClassTransformer(AngelicaClientTweaker.isObfEnv());
-            FMLRelaunchLog.finer("Registering transformer %s", isbrhAbuse.getClass().getName());
-            transformers.add(isbrhAbuse);
         } catch (Exception e) {
             FMLRelaunchLog.warning("[Angelica] Failed to remove EarlyRedirectorTransformer: %s", e.getMessage());
         }
