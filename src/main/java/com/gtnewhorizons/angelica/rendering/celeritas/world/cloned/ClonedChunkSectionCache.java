@@ -33,6 +33,8 @@ public class ClonedChunkSectionCache {
                 this.byPosition.removeFirst();
             }
             section = this.createSection(x, y, z);
+        } else {
+            section.refreshBiomeData();
         }
 
         section.setLastUsedTimestamp(this.time);

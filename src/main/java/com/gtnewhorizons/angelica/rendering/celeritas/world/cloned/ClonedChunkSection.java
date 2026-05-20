@@ -72,14 +72,18 @@ public class ClonedChunkSection {
 
         copyBlockEntities(chunk, pos);
 
-        // Fill biome data
+        refreshBiomeData();
+
+        this.sectionLightData = BlockLightProvider.getInstance().prepareSectionData(chunk, pos.y);
+    }
+
+    // Re-read on every acquire: transient 0xFF biome bytes during chunk load resolve to plains and stick otherwise. Main thread only.
+    public void refreshBiomeData() {
         for (int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
             for (int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
                 this.biomeData[(x & 15) | ((z & 15) << 4)] = world.getBiomeGenForCoords(x, z);
             }
         }
-
-        this.sectionLightData = BlockLightProvider.getInstance().prepareSectionData(chunk, pos.y);
     }
 
     @SuppressWarnings("unchecked")
