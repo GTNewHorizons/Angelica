@@ -8,7 +8,9 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
+import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
@@ -268,7 +270,13 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             if (isFluid) {
                 contextEncoder.prepareToRenderFluid(blockRenderContext, block, lightValue);
             } else {
-                contextEncoder.prepareToRenderBlock(blockRenderContext, block, metadata,
+                int effectiveMeta = metadata;
+                if (BlockRenderingSettings.INSTANCE.hasSnowyEntries()
+                    && BlockRenderingSettings.INSTANCE.getSnowyBlocks().contains(block)
+                    && RenderBlocksUtils.isSnowCovered(renderBlocks.blockAccess, x, y, z)) {
+                    effectiveMeta |= BlockMaterialMapping.SNOWY_META_BIT;
+                }
+                contextEncoder.prepareToRenderBlock(blockRenderContext, block, effectiveMeta,
                     ExtendedDataHelper.BLOCK_RENDER_TYPE, lightValue);
                 // Check for TileEntity NBT-conditional shader block ID override
                 if (teMap != null && teMap.hasConditions(block)) {

@@ -5,6 +5,8 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSets;
 import lombok.Getter;
 import lombok.Setter;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
@@ -88,6 +90,10 @@ public class BlockRenderingSettings {
 	private boolean disableDirectionalShading;
 	private boolean useSeparateAo;
 	private boolean useExtendedVertexFormat;
+	@Setter
+    private boolean hasSnowyEntries;
+	@Getter
+    private ReferenceSet<Block> snowyBlocks = ReferenceSets.emptySet();
 
 	public BlockRenderingSettings() {
 		reloadRequired = false;
@@ -98,6 +104,7 @@ public class BlockRenderingSettings {
 		disableDirectionalShading = false;
 		useSeparateAo = false;
 		useExtendedVertexFormat = false;
+		hasSnowyEntries = false;
 	}
 
     public void clearReloadRequired() {
@@ -159,7 +166,15 @@ public class BlockRenderingSettings {
 		clearTeNbtCache();
 	}
 
-    public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
+	public boolean hasSnowyEntries() {
+		return hasSnowyEntries;
+	}
+
+    public void setSnowyBlocks(ReferenceSet<Block> snowyBlocks) {
+		this.snowyBlocks = snowyBlocks != null ? snowyBlocks : ReferenceSets.emptySet();
+	}
+
+	public void setBlockTypeIds(Map<Block, BlockRenderLayer> blockTypeIds) {
 		if (this.blockTypeIds != null && this.blockTypeIds.equals(blockTypeIds)) {
 			return;
 		}

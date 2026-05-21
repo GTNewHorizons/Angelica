@@ -181,9 +181,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
 	private final CloudSetting dhCloudSetting;
-
 	private Pass current = null;
-
 	private WorldRenderingPhase overridePhase = null;
 	private WorldRenderingPhase phase = WorldRenderingPhase.NONE;
 	private boolean isBeforeTranslucent;
@@ -279,7 +277,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
         );
 
-		final var blockIdMaps = BlockMaterialMapping.createBlockIdMaps(programs.getPack().getIdMap().getBlockProperties());
+		final var blockIdMaps = BlockMaterialMapping.createBlockIdMaps(
+			programs.getPack().getIdMap().getBlockProperties(),
+			programs.getPack().getIdMap().hasLegacySection());
 		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(blockIdMaps.blockMetaMap());
 		BlockRenderingSettings.INSTANCE.setBlockNbtMap(blockIdMaps.tileEntityMap());
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
@@ -771,7 +771,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public boolean shouldOverrideShaders() {
 		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
 	}
-
+	
+	public Pass getActivePassProgram() {
+		return current;
+	}
+	
 	public int getActivePassProgramId() {
 		if (current == null) return -1;
 		final Program p = current.getProgram();
@@ -1052,7 +1056,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return shadowRenderTargets != null;
 	}
 
-	private final class Pass {
+	public final class Pass {
 		@Nullable
 		private final Program program;
 		private final GlFramebuffer framebufferBeforeTranslucents;
@@ -1560,6 +1564,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginLevelRendering() {
+		final Framebuffer mainFb = Minecraft.getMinecraft().getFramebuffer();
+		if (mainFb == null || mainFb.framebufferWidth < 16 || mainFb.framebufferHeight < 16) {
+			return;
+		}
+
 		isRenderingFullScreenPass = false;
 		isRenderingWorld = true;
 		isBeforeTranslucent = true;

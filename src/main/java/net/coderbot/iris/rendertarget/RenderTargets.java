@@ -12,6 +12,7 @@ import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import org.joml.Vector2i;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -320,8 +321,9 @@ public class RenderTargets {
 		framebuffer.drawBuffers(actualDrawBuffers);
         framebuffer.readBuffer(0);
 
-		if (!framebuffer.isComplete()) {
-			throw new IllegalStateException("Unexpected error while creating framebuffer");
+		final int status = framebuffer.getStatus();
+		if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+			throw new IllegalStateException(String.format( "Unexpected error while creating framebuffer: glCheckFramebufferStatus=0x%X, size=%dx%d, drawBuffers=%d", status, cachedWidth, cachedHeight, drawBuffers.length));
 		}
 
 		return framebuffer;

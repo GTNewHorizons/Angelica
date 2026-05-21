@@ -7,7 +7,8 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
-import net.coderbot.iris.Iris;
+import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
+import it.unimi.dsi.fastutil.objects.ReferenceSet;
 import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.FlatteningMap;
@@ -24,49 +25,51 @@ public class BlockMaterialMapping {
 
 	public record BlockIdMaps(Reference2ObjectMap<Block, Int2IntMap> blockMetaMap, NbtConditionalIdMap<Block> tileEntityMap) {}
 
+	/** Meta-key bit OR'd in at runtime when a snowy-tagged block has snow above it. */
+	public static final int SNOWY_META_BIT = 0x10;
+
 	/**
-	 * Creates both the standard block meta ID map and the TileEntity NBT-conditional map.
+	 * Creates the standard block meta ID map, the TileEntity NBT-conditional map, and registers
+	 * snowy blocks on {@link BlockRenderingSettings}.
 	 */
-	public static BlockIdMaps createBlockIdMaps(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap) {
-		Reference2ObjectMap<Block, Int2IntMap> blockMatches = new Reference2ObjectOpenHashMap<>();
-		NbtConditionalIdMap<Block> tileEntityMap = new NbtConditionalIdMap<>();
+	public static BlockIdMaps createBlockIdMaps(Int2ObjectMap<List<BlockEntry>> blockPropertiesMap, boolean skipFlattening) {
+		final Reference2ObjectMap<Block, Int2IntMap> blockMatches = new Reference2ObjectOpenHashMap<>();
+		final NbtConditionalIdMap<Block> tileEntityMap = new NbtConditionalIdMap<>();
+		final ReferenceSet<Block> snowyBlocks = new ReferenceOpenHashSet<>();
 
 		blockPropertiesMap.forEach((intId, entries) -> {
 			for (BlockEntry entry : entries) {
 				if (entry.hasNbtProperties()) {
 					addTileEntityEntry(entry, tileEntityMap, intId);
 				} else {
-					addBlockMetas(entry, blockMatches, tileEntityMap, intId);
+					addBlockMetas(entry, blockMatches, tileEntityMap, intId, skipFlattening, snowyBlocks);
 				}
 			}
 		});
 
+		BlockRenderingSettings.INSTANCE.setHasSnowyEntries(!snowyBlocks.isEmpty());
+		BlockRenderingSettings.INSTANCE.setSnowyBlocks(snowyBlocks);
 		return new BlockIdMaps(blockMatches, tileEntityMap);
 	}
 
 	public static Map<Block, BlockRenderLayer> createBlockTypeMap(Map<NamespacedId, BlockRenderType> blockPropertiesMap) {
-		Map<Block, BlockRenderLayer> blockTypeIds = new Reference2ReferenceOpenHashMap<>();
+		final Map<Block, BlockRenderLayer> blockTypeIds = new Reference2ReferenceOpenHashMap<>();
 
 		blockPropertiesMap.forEach((id, blockType) -> {
-			Block block = resolveBlock(id);
+			Block block = resolveBlockOrNull(id);
 
-			// Try flattening map for modern names
-			if ((block == null || block == Blocks.air) && "minecraft".equals(id.getNamespace())) {
-				List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(id.getName(), Map.of());
+			// Modern names like "grass_block" don't exist in 1.7.10's registry; fall back to flattening.
+			if (block == null && "minecraft".equals(id.getNamespace())) {
+				final List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(id.getName(), Map.of());
 				if (legacyEntries != null) {
 					// Use the first entry for render type (render type applies per-block)
-					block = resolveBlock(legacyEntries.getFirst().id());
+					block = resolveBlockOrNull(legacyEntries.getFirst().id());
 				}
 			}
 
-			if (block == null || block == Blocks.air) {
-				return;
-			}
-
+			if (block == null) return;
 			final BlockRenderLayer layer = convertBlockToRenderLayer(blockType);
-			if (layer != null) {
-				blockTypeIds.put(block, layer);
-			}
+			if (layer != null) blockTypeIds.put(block, layer);
 		});
 
 		return blockTypeIds;
@@ -119,37 +122,35 @@ public class BlockMaterialMapping {
 	 * Adds block+metadata combinations to the material ID map.
 	 * Based on Iris's addBlockStates method, adapted for 1.7.10 metadata system.
 	 */
-	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap, NbtConditionalIdMap<Block> tileEntityMap, int intId) {
+	private static void addBlockMetas(BlockEntry entry, Reference2ObjectMap<Block, Int2IntMap> idMap,
+									  NbtConditionalIdMap<Block> tileEntityMap, int intId,
+									  boolean skipFlattening, ReferenceSet<Block> snowyBlocks) {
 		final NamespacedId id = entry.id();
-		final String name = id.getName();
-		final boolean hasStateProps = entry.hasStateProperties();
-		final boolean hasExplicitMetas = !entry.metas().isEmpty();
+		final Map<String, String> stateProps = entry.stateProperties();
+		final String snowy = stateProps.get("snowy");
+		final int snowyBit = "true".equals(snowy) ? SNOWY_META_BIT : 0;
 
-		if ("minecraft".equals(id.getNamespace()) && (hasStateProps || !hasExplicitMetas)) {
-			List<BlockEntry> legacyEntries = FlatteningMap.toLegacy(name, entry.stateProperties());
-			if (legacyEntries != null) {
-				for (BlockEntry legacy : legacyEntries) {
-					if (legacy.hasNbtProperties()) {
-						addTileEntityEntry(legacy, tileEntityMap, intId);
-					} else {
-						applyMetas(resolveBlock(legacy.id()), legacy.metas(), idMap, intId);
-					}
-				}
-				return;
+		// Vanilla modern names go through FlatteningMap; legacy-section packs and modded blocks
+		// resolve directly from the registry.
+		List<BlockEntry> targets = null;
+		if (!skipFlattening && "minecraft".equals(id.getNamespace()) && (!stateProps.isEmpty() || entry.metas().isEmpty())) {
+			targets = FlatteningMap.toLegacy(id.getName(), stateProps);
+		}
+		if (targets == null) targets = List.of(entry);
+
+		for (BlockEntry target : targets) {
+			if (target.hasNbtProperties()) {
+				addTileEntityEntry(target, tileEntityMap, intId);
+				continue;
 			}
+			final Block block = resolveBlockOrNull(target.id());
+			if (block == null) continue;
+			applyMetas(block, target.metas(), idMap, intId, snowyBit);
+			if (snowy != null) snowyBlocks.add(block);
 		}
-
-		// Fall back to registry with the entry's own metas
-		Block block = resolveBlock(id);
-		applyMetas(block, entry.metas(), idMap, intId);
 	}
-    // If the block doesn't exist, by default the registry will return AIR. That probably isn't what we want.
-    // TODO: Assuming that Registry.BLOCK.getDefaultId() == "minecraft:air" here
-	private static void applyMetas(Block block, Set<Integer> metas, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId) {
-		if (block == null || block == Blocks.air) {
-			return;
-		}
 
+	private static void applyMetas(Block block, Set<Integer> metas, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId, int snowyBit) {
 		Int2IntMap metaMap = idMap.get(block);
 		if (metaMap == null) {
 			metaMap = new Int2IntOpenHashMap();
@@ -158,18 +159,18 @@ public class BlockMaterialMapping {
 		}
 
 		if (metas.isEmpty()) {
-			for (int meta = 0; meta < 16; meta++) {
-				metaMap.putIfAbsent(meta, intId);
-			}
+			for (int meta = 0; meta < 16; meta++) metaMap.putIfAbsent(meta | snowyBit, intId);
 		} else {
-			for (int meta : metas) {
-				metaMap.putIfAbsent(meta, intId);
-			}
+			for (int meta : metas) metaMap.putIfAbsent(meta | snowyBit, intId);
 		}
 	}
 
-	private static Block resolveBlock(NamespacedId id) {
-		final ResourceLocation resourceLocation = new ResourceLocation(id.getNamespace(), id.getName());
-		return (Block) Block.blockRegistry.getObject(resourceLocation.toString());
+	/**
+	 * Returns the registered Block for an id, or null if unknown.
+	 * The registry returns Blocks.air (its default) for missing keys, which we coerce to null.
+	 */
+	private static Block resolveBlockOrNull(NamespacedId id) {
+		final Block block = (Block) Block.blockRegistry.getObject(new ResourceLocation(id.getNamespace(), id.getName()).toString());
+		return block == Blocks.air ? null : block;
 	}
 }

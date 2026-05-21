@@ -22,6 +22,7 @@ import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
+import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
@@ -102,28 +103,9 @@ public final class ClientProxy extends CommonProxy {
         super.preInit(event);
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
-    }
-
-    @SubscribeEvent
-    public void worldLoad(WorldEvent.Load event) {
-        if (GLStateManager.isRunningSplash()) {
-            GLStateManager.setRunningSplash(false);
-            LOGGER.info("World loaded - Enabling GLSM Cache");
-        }
-
-        if (AngelicaConfig.enableCeleritas) {
-            ChunkTaskRegistry.reset();
-            ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
-            ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
-
-            // Register all blocks. Because blockids are unique to a world, this must be done each load
-            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
-            });
-        }
     }
 
     @Override
@@ -170,7 +152,6 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
-
     @Override
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
@@ -190,11 +171,38 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
+    @SubscribeEvent
+    public void worldLoad(WorldEvent.Load event) {
+        if (!event.world.isRemote) return;
+        if (GLStateManager.isRunningSplash()) {
+            GLStateManager.setRunningSplash(false);
+            LOGGER.info("World loaded - Enabling GLSM Cache");
+        }
+
+        if (AngelicaConfig.enableCeleritas) {
+            ChunkTaskRegistry.reset();
+            ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
+            ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
+
+            // Register all blocks. Because blockids are unique to a world, this must be done each load
+            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
+            });
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        if (!event.world.isRemote) return;
+        DynamicLights.get().removeAllLightSources();
+    }
+
     float lastIntegratedTickTime;
 
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {
-        if (FMLCommonHandler.instance().getSide().isClient() && event.phase == TickEvent.Phase.END) {
+        if (event.phase == TickEvent.Phase.END) {
             final IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
             if (srv != null) {
                 final long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];

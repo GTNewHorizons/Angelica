@@ -1,12 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.ffp;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizons.angelica.glsm.ITessellatorData;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.minecraft.client.renderer.Tessellator;
-import org.spongepowered.asm.mixin.Intrinsic;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -16,43 +13,11 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
  * except when GTNHLib needs to intercept (display list compilation, DirectTessellator capture).
  */
 @Mixin(Tessellator.class)
-public class MixinTessellator_CoreProfile implements ITessellatorData {
+public class MixinTessellator_CoreProfile {
 
-    @Shadow public boolean isDrawing;
-    @Shadow public int vertexCount;
-    @Shadow public int[] rawBuffer;
-    @Shadow public int rawBufferIndex;
-    @Shadow public int rawBufferSize;
-    @Shadow public int drawMode;
-    @Shadow public boolean hasTexture;
-    @Shadow public boolean hasColor;
-    @Shadow public boolean hasNormals;
-    @Shadow public boolean hasBrightness;
-
-    @Shadow public void reset() {}
-
-    public void angelica$reset() {
-        reset();
-    }
-
-    @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "draw", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;isDrawing:Z", opcode = Opcodes.GETFIELD), cancellable = true)
     private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
-        // Let GTNHLib handle display list compilation and DirectTessellator capture
-        if (TessellatorManager.shouldInterceptDraw((Tessellator)(Object)this)) return;
-        cir.setReturnValue(TessellatorStreamingDrawer.draw((ITessellatorData) this));
+        // Injecting after HEAD because GTNHLib's shouldInterceptDraw() takes priority
+        cir.setReturnValue(TessellatorStreamingDrawer.draw((Tessellator) (Object) this));
     }
-
-    @Override public boolean isDrawing() { return isDrawing; }
-    @Override public void setDrawing(boolean drawing) { isDrawing = drawing; }
-    @Override public int getVertexCount() { return vertexCount; }
-    @Override public int[] getRawBuffer() { return rawBuffer; }
-    @Override public int getRawBufferIndex() { return rawBufferIndex; }
-    @Override public int getRawBufferSize() { return rawBufferSize; }
-    @Override public void setRawBufferSize(int size) { rawBufferSize = size; }
-    @Override public void setRawBuffer(int[] buffer) { rawBuffer = buffer; }
-    @Override public int getDrawMode() { return drawMode; }
-    @Override public boolean hasTexture() { return hasTexture; }
-    @Override public boolean hasColor() { return hasColor; }
-    @Override public boolean hasNormals() { return hasNormals; }
-    @Override public boolean hasBrightness() { return hasBrightness; }
 }

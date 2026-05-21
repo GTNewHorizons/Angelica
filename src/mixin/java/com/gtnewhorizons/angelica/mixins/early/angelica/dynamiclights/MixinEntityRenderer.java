@@ -19,8 +19,9 @@ public class MixinEntityRenderer {
     private void updateDynamicLights(float p_78471_1_, long p_78471_2_, CallbackInfo ci) {
         IDynamicLightWorldRenderer renderer = DynamicLights.getActiveRenderer();
         if (renderer != null && renderer.isActive()) {
-            mc.mcProfiler.endStartSection("angelica_dynamic_lighting");
+            mc.mcProfiler.startSection("angelica_dynamic_lighting");
             DynamicLights.get().updateAll(renderer);
+            mc.mcProfiler.endSection();
         }
     }
 }
