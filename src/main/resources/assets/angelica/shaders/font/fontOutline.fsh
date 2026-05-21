@@ -2,19 +2,24 @@
 
 
 // ----- GLOW -----
-#define USE_GLOW
-#define RGB_GLOW
-#define GLOW_COLOR vec3(0, 1, 1)
+//#define USE_GLOW
+//#define RGB_GLOW
+#define GLOW_COLOR vec3(0.992, 0.651, 0.227)
 
 // ----- SPARKLES -----
-#define USE_SPARKLES
+//#define USE_SPARKLES
 #define SPARKLE_COLOR vec3(1)
 
 // ----- WAVE -----
-#define USE_WAVE
+//#define USE_WAVE
+#define WAVE_COLOR vec3(1)
 
 // ----- TEXT -----
 #define TEXT_COLOR vec3(0, 0, 0)
+
+// ----- SPOTLIGHT -----
+#define USE_SPOTLIGHT
+#define SPOTLIGHT_COLOR GLOW_COLOR
 
 
 
@@ -53,19 +58,28 @@ vec3 mixHexColors(int colorA, int colorB, float t) {
     return mix(a, b, t);
 }
 
+float random(vec2 p) {
+    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
+}
+
+vec2 random2(vec2 p) {
+    float r = random(p);
+    return vec2(r, random(p + r));
+}
+
 
 float glow(vec2 uv) {
     int uRadius = 6;
 
-    float dist = 9999;
+    float dist = 1e10;
 
     for (int y = -MAX_RADIUS; y <= MAX_RADIUS; y++) {
         for (int x = -MAX_RADIUS; x <= MAX_RADIUS; x++) {
             if (abs(x) > uRadius || abs(y) > uRadius) continue;
 
             // Manhatten for better readability
-            float currDist = abs(x) + abs(y);
-
+            //float currDist = abs(x) + abs(y);
+            float currDist = max(abs(x), abs(y)) + min(abs(x), abs(y)) * 0.5;
             vec2 offset = vec2(x, y) * uTexelSize;
 
             if (texture(textFBO, vec2(uv.x + offset.x, uv.y + offset.y)).a > 0.1) {
@@ -76,7 +90,7 @@ float glow(vec2 uv) {
         }
     }
 
-    if (dist == 9999) return 0;
+    if (dist == 1e10) return 0;
 
     dist = dist - 1.5;
 
@@ -86,22 +100,14 @@ float glow(vec2 uv) {
     //TODO
 
     if (dist <= 0) return 1;
-    float timeGlow = (sin(uTime * 2.0)) * 0.1;
+    //else return 0;
+    float timeGlow = (sin(uTime * 2.0)) * 0.2;
     float d = dist;
     d = d / (2 + timeGlow);
     float glow = exp(-d);
     //float d = (dist / (1 + (sin(uTime * 2.0)) * 0.1));
     //return min(1.0 / pow(d, 1.2), 1);
     return min(glow, 1);
-}
-
-float random(vec2 p) {
-    return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453);
-}
-
-vec2 random2(vec2 p) {
-    float r = random(p);
-    return vec2(r, random(p + r));
 }
 
 // Adapted from https://www.shadertoy.com/view/3d33zM
@@ -215,6 +221,34 @@ float wave(vec2 uv) {
     return 1.0 - smoothstep(0.0, thickness, dist);
 }
 
+float spotlight(
+    vec2 uv,
+    float minX,
+    float maxX,
+    float minY,
+    float maxY
+) {
+    vec2 center = vec2(
+    (minX + maxX) * 0.5,
+    (minY + maxY) * 0.5
+    );
+
+    vec2 radius = vec2(
+    (maxX - minX) * 0.5,
+    (maxY - minY) * 0.5
+    );
+
+    vec2 p = abs((uv - center) / radius);
+
+    float dist = pow(
+        pow(p.x, 4.0) + pow(p.y, 4.0),
+        1.0 / 4.0
+    );
+
+    // inverted radial falloff
+    return (1.0 - smoothstep(0.0, 1.0, dist)) * 0.4;
+}
+
 //0xfda63a orang
 
 
@@ -230,6 +264,10 @@ void main() {
 
     vec3 overlay = vec3(0);
 
+    #ifdef USE_SPOTLIGHT
+    overlay = SPOTLIGHT_COLOR * spotlight(texCoord, minX, maxX, minY, maxY);
+    #endif
+
     #ifdef USE_SPARKLES
     if (
         texCoord.x >= minX &&
@@ -244,8 +282,6 @@ void main() {
         }
     }
     #endif
-
-    //vec3 glowColor = mixHexColors(0xe1afff, 0xd0a4fa, 0);
 
     #ifdef USE_GLOW
     float glowVal = glow(texCoord);
@@ -265,18 +301,20 @@ void main() {
 
 
 
-    // Mix based on text color
-    vec4 textColor = texture(textFBO, texCoord);
-    if (textColor.a > 0.1) {
-        overlay = mix(overlay, TEXT_COLOR, textColor.a);
-    }
 
 
-    // Blend scene together
+
+    // Since Minecraft doesn't have HDR colors, I need an alternative approach to blending the colors together
     vec4 scene = texture(sceneFBO, texCoord);
     vec3 base = scene.rgb;
 
     vec3 finalColor = vec3(1.0) - (vec3(1.0) - base) * (vec3(1.0) - overlay);
+
+    // Mix based on text color
+    vec4 textColor = texture(textFBO, texCoord);
+    if (textColor.a > 0.1) {
+        finalColor = mix(finalColor, TEXT_COLOR, textColor.a);
+    }
 
     fragColor = vec4(finalColor, 1.0);
 }

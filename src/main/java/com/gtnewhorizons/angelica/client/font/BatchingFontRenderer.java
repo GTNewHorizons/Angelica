@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
@@ -15,13 +14,10 @@ import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import lombok.Setter;
-import net.coderbot.iris.gl.program.Program;
-import net.coderbot.iris.gl.program.ProgramBuilder;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
-import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
@@ -76,20 +72,6 @@ public final class BatchingFontRenderer {
     @Setter
     boolean bookMode = false;
 
-    private static class FontAAShader {
-
-        private static Program fontShader = null;
-        public static Program getProgram() {
-            if (fontShader == null) {
-
-                final String vsh = ShaderLoader.getShaderSource("angelica:fontFilter.vsh");
-                final String fsh = ShaderLoader.getShaderSource("angelica:fontFilter.fsh");
-                fontShader = ProgramBuilder.begin("fontFilter", vsh, null, fsh, ImmutableSet.of(0)).build();
-            }
-            return fontShader;
-        }
-    }
-
     public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, int[] colorCode, ResourceLocation locationFontTexture) {
         this.underlying = underlying;
         this.charWidth = charWidth;
@@ -107,14 +89,14 @@ public final class BatchingFontRenderer {
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
         final String vsh = ShaderProgram.loadShaderSource(
-            FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/font/fontFilter.vsh")
+            BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/fontFilter.vsh")
         );
         final String fsh = ShaderProgram.loadShaderSource(
-            FontAAShader.class.getResourceAsStream("/assets/angelica/shaders/font/fontFilter.fsh"),
+            BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/fontFilter.fsh"),
             new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode)
         );
 
-        fontShaderId = ShaderProgram.createProgramFromSource(vsh, fsh);
+        fontShaderId = ShaderProgram.createProgram(vsh, fsh);
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
         if (ebo == null) {

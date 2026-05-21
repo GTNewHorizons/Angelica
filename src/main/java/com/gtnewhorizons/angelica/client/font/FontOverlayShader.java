@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.AutoShaderUpdater;
-import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderDefinesWriter;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderDefinesInjector;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderReloadRunnable;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizons.angelica.AngelicaMod;
@@ -19,12 +19,12 @@ public final class FontOverlayShader extends ShaderProgram {
 
     private static long startTime;
 
-    public FontOverlayShader() {
-        super(AngelicaMod.MOD_ID, "shaders/font/fontOutline.vsh", "shaders/font/fontOutline.fsh");
-        super.use();
-        this.bindTextureSlot("textFBO", 0);
-        this.bindTextureSlot("sceneFBO", 1);
-        clear();
+    public FontOverlayShader(Builder defines) {
+        super(
+            loadShaderSource(AngelicaMod.MOD_ID, "shaders/font/fontOutline.vsh"),
+            loadShaderSource(AngelicaMod.MOD_ID, "shaders/font/fontOutline.fsh", defines)
+        );
+        this.bindTextureSlots("textFBO", "sceneFBO");
         mvpMatrixLocation = this.getUniformLocation("u_MVPMatrix");
         uTexelSize = this.getUniformLocation("uTexelSize");
         uTime = this.getUniformLocation("uTime");
@@ -40,15 +40,13 @@ public final class FontOverlayShader extends ShaderProgram {
                     uTexelSize = shader.getUniformLocation("uTexelSize");
                     uTime = shader.getUniformLocation("uTime");
                     uTexBounds = shader.getUniformLocation("uTexBounds");
-                    shader.use();
-                    shader.bindTextureSlot("textFBO", 0);
-                    shader.bindTextureSlot("sceneFBO", 1);
-                    clear();
+                    shader.bindTextureSlots("textFBO", "sceneFBO");
+
                 }
 
                 @Override
-                public IShaderDefinesWriter[] getDefines() {
-                    return new IShaderDefinesWriter[0];
+                public IShaderDefinesInjector[] getDefines() {
+                    return new IShaderDefinesInjector[0];
                 }
             }
         );
@@ -58,7 +56,7 @@ public final class FontOverlayShader extends ShaderProgram {
 
     public static FontOverlayShader getInstance() {
         if (INSTANCE == null) {
-            INSTANCE = new FontOverlayShader();
+            INSTANCE = new FontOverlayShader(new FontOverlayShader.Builder());
         }
         return INSTANCE;
     }
@@ -78,5 +76,13 @@ public final class FontOverlayShader extends ShaderProgram {
 
     public void uploadBounds(float minX, float maxX, float minY, float maxY) {
         GLStateManager.glUniform4f(uTexBounds, minX, maxX, minY, maxY);
+    }
+
+    public static final class Builder implements IShaderDefinesInjector {
+
+        @Override
+        public void writeDefines(StringBuilder out) {
+
+        }
     }
 }
