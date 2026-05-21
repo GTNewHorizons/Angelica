@@ -27,7 +27,9 @@ public class NbtConditionalIdMap<K> {
     /**
      * A single property matcher within a condition.
      */
-    record PropertyMatcher(String key, String[] path, String expectedValue, long expectedLong, boolean isExpectedLong) {
+    record PropertyMatcher(String key, String[] path, String expectedValue,
+                           long expectedLong, boolean isExpectedLong,
+                           double expectedDouble, boolean isExpectedDouble) {
         boolean isPathMatch() { return path != null; }
         boolean isExistenceOnly() { return expectedValue == null; }
     }
@@ -68,14 +70,21 @@ public class NbtConditionalIdMap<K> {
 
             long expectedLong = 0;
             boolean isExpectedLong = false;
+            double expectedDouble = 0;
+            boolean isExpectedDouble = false;
             if (resolvedValue != null) {
                 try {
                     expectedLong = Long.parseLong(resolvedValue);
                     isExpectedLong = true;
                 } catch (NumberFormatException ignored) {}
+                try {
+                    expectedDouble = Double.parseDouble(resolvedValue);
+                    isExpectedDouble = true;
+                } catch (NumberFormatException ignored) {}
             }
 
-            matchers[i++] = new PropertyMatcher(nbtKey, path, resolvedValue, expectedLong, isExpectedLong);
+            matchers[i++] = new PropertyMatcher(nbtKey, path, resolvedValue,
+                expectedLong, isExpectedLong, expectedDouble, isExpectedDouble);
         }
 
         conditionsByKey.computeIfAbsent(key, k -> new ArrayList<>())
@@ -181,9 +190,9 @@ public class NbtConditionalIdMap<K> {
             case 4 -> // TAG_Long
                 matcher.isExpectedLong() && ((net.minecraft.nbt.NBTTagLong) tag).func_150291_c() == matcher.expectedLong();
             case 5 -> // TAG_Float
-                matcher.expectedValue().equals(String.valueOf(((net.minecraft.nbt.NBTTagFloat) tag).func_150288_h()));
+                matcher.isExpectedDouble() && ((net.minecraft.nbt.NBTTagFloat) tag).func_150288_h() == (float) matcher.expectedDouble();
             case 6 -> // TAG_Double
-                matcher.expectedValue().equals(String.valueOf(((net.minecraft.nbt.NBTTagDouble) tag).func_150286_g()));
+                matcher.isExpectedDouble() && ((net.minecraft.nbt.NBTTagDouble) tag).func_150286_g() == matcher.expectedDouble();
             case 8 -> // TAG_String
                 matcher.expectedValue().equals(((net.minecraft.nbt.NBTTagString) tag).func_150285_a_());
             default -> // Compounds, lists, arrays — fall back to toString
