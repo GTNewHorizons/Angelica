@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import jss.notfine.core.Settings;
+import jss.notfine.gui.options.named.BobviewMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.texture.DynamicTexture;
@@ -53,5 +55,15 @@ public abstract class MixinEntityRenderer implements EntityRendererAccessor {
     private float angelica$hurtCameraEffect(float orig) {
         int value = (int) Settings.HURT_SHAKE.option.getStore();
         return orig * (value/100F);
+    }
+
+    @WrapWithCondition(method = "setupCameraTransform", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;setupViewBobbing(F)V"))
+    private boolean angelica$cameraBobbing(EntityRenderer entity, float partialTicks) {
+        return Settings.BOBVIEW_MODE.option.getStore() != BobviewMode.HAND;
+    }
+
+    @WrapWithCondition(method = "renderHand", at= @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;setupViewBobbing(F)V"))
+    private boolean angelica$handBobbing(EntityRenderer entity, float partialTicks) {
+        return Settings.BOBVIEW_MODE.option.getStore() != BobviewMode.CAMERA;
     }
 }
