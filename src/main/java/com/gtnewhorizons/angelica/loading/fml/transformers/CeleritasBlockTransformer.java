@@ -8,6 +8,7 @@ import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
 import org.objectweb.asm.tree.ClassNode;
 
+/** IClassTransformer wrapper for {@link CeleritasBlockTransform} */
 public class CeleritasBlockTransformer implements IClassTransformer {
 
     private final CeleritasBlockTransform inner;

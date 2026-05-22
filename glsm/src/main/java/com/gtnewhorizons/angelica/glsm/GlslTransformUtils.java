@@ -36,9 +36,10 @@ public class GlslTransformUtils {
     /** Reserved words added in later GLSL versions that may appear as identifiers in older shaders. */
     private record ReservedWordRename(Pattern pattern, String replacement) {}
     private static final Map<Integer, List<ReservedWordRename>> VERSIONED_RESERVED_WORDS = Map.of(
-        // Always rename sample, glsl-transformation-lib doesn't like it
+        // Some reserved words to always rename
         0, List.of(
-            new ReservedWordRename(Pattern.compile("\\bsample\\b"), RENAMED_PREFIX + "sample")
+            new ReservedWordRename(Pattern.compile("\\bsample\\b"), RENAMED_PREFIX + "sample"),
+            new ReservedWordRename(Pattern.compile("\\bnew\\b"), RENAMED_PREFIX + "new")
         ),
         400, List.of(
             new ReservedWordRename(Pattern.compile("\\bsampler\\b(?!\\d)"), RENAMED_PREFIX + "sampler")

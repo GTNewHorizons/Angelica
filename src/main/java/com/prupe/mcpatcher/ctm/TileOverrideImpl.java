@@ -18,24 +18,9 @@ import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import com.prupe.mcpatcher.mal.util.WeightedIndex;
 
-class TileOverrideImpl {
+public class TileOverrideImpl {
 
     final static class CTM extends TileOverride {
-
-        // Index into this array is formed from these bit values:
-        // 128 64 32
-        // 1 * 16
-        // 2 4 8
-        private static final int[] neighborMap = new int[] { 0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15, 1, 2,
-            1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14, 0, 3, 0, 3, 12, 5, 12, 15, 0, 3, 0, 3, 12, 5, 12, 15, 1, 2,
-            1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14, 36, 17, 36, 17, 24, 19, 24, 43, 36, 17, 36, 17, 24, 19, 24,
-            43, 16, 18, 16, 18, 6, 46, 6, 21, 16, 18, 16, 18, 28, 9, 28, 22, 36, 17, 36, 17, 24, 19, 24, 43, 36, 17, 36,
-            17, 24, 19, 24, 43, 37, 40, 37, 40, 30, 8, 30, 34, 37, 40, 37, 40, 25, 23, 25, 45, 0, 3, 0, 3, 12, 5, 12,
-            15, 0, 3, 0, 3, 12, 5, 12, 15, 1, 2, 1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14, 0, 3, 0, 3, 12, 5, 12,
-            15, 0, 3, 0, 3, 12, 5, 12, 15, 1, 2, 1, 2, 4, 7, 4, 29, 1, 2, 1, 2, 13, 31, 13, 14, 36, 39, 36, 39, 24, 41,
-            24, 27, 36, 39, 36, 39, 24, 41, 24, 27, 16, 42, 16, 42, 6, 20, 6, 10, 16, 42, 16, 42, 28, 35, 28, 44, 36,
-            39, 36, 39, 24, 41, 24, 27, 36, 39, 36, 39, 24, 41, 24, 27, 37, 38, 37, 38, 30, 11, 30, 32, 37, 38, 37, 38,
-            25, 33, 25, 26, };
 
         CTM(PropertiesFile properties, TileLoader tileLoader) {
             super(properties, tileLoader);
@@ -62,13 +47,7 @@ class TileOverrideImpl {
 
         @Override
         IIcon getTileWorld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
-            int neighborBits = 0;
-            for (int bit = 0; bit < 8; bit++) {
-                if (shouldConnect(renderBlockState, origIcon, bit)) {
-                    neighborBits |= (1 << bit);
-                }
-            }
-            return icons[neighborMap[neighborBits]];
+            return icons[neighborMap[getNeighborBits(renderBlockState, origIcon)]];
         }
 
         @Override
@@ -479,6 +458,51 @@ class TileOverrideImpl {
         @Override
         IIcon getTileHeld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
             return icons[0];
+        }
+    }
+
+    final public static class CTMCompact extends TileOverride {
+
+        private final CompactConnectingCtmProperties properties;
+        private volatile CompactCtmQuadProcessor processor;
+
+        CTMCompact(PropertiesFile propertiesFile, TileLoader tileLoader) {
+            super(propertiesFile, tileLoader);
+            this.properties = new CompactConnectingCtmProperties(propertiesFile);
+        }
+
+        @Override
+        String getMethod() {
+            return "compact";
+        }
+
+        @Override
+        String checkTileMap() {
+            return getNumberOfTiles() == 5 ? null : "requires exactly 5 tiles";
+        }
+
+        @Override
+        boolean requiresFace() {
+            return true;
+        }
+
+        @Override
+        IIcon getTileWorld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
+            return origIcon;
+        }
+
+        @Override
+        IIcon getTileHeld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
+            return icons.length > 0 ? icons[0] : origIcon;
+        }
+
+        public CompactCtmQuadProcessor getProcessor() {
+            CompactCtmQuadProcessor p = this.processor;
+            if (p == null) {
+                p = new CompactCtmQuadProcessor(icons, properties, this);
+                this.processor = p;
+            }
+            return p;
         }
     }
 }

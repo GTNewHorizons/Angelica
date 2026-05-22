@@ -74,10 +74,7 @@ public final class GLCommand {
 
     // === Double commands ===
     public static final int TRANSLATE = 70;          // [cmd:4][mode:4][x:8d][y:8d][z:8d] = 32 bytes
-    public static final int ROTATE = 71;             // [cmd:4][mode:4][angle:8d][x:8d][y:8d][z:8d] = 40 bytes
     public static final int SCALE = 72;              // [cmd:4][mode:4][x:8d][y:8d][z:8d] = 32 bytes
-    public static final int ORTHO = 73;              // [cmd:4][left:8d][right:8d][bottom:8d][top:8d][zNear:8d][zFar:8d] = 52 bytes
-    public static final int FRUSTUM = 74;            // [cmd:4][left:8d][right:8d][bottom:8d][top:8d][zNear:8d][zFar:8d] = 52 bytes
     public static final int CLEAR_DEPTH = 75;        // [cmd:4][depth:8d] = 12 bytes
 
     // === Matrix commands (72 bytes) ===
@@ -97,8 +94,6 @@ public final class GLCommand {
     public static final int CALL_LIST = 102;         // [cmd:4][listId:4] = 8 bytes
 
 
-    public static final int DRAW_ARRAYS = 110;       // [cmd:4][drawMode:4][start:4][count:4] = 20 bytes
-    public static final int DRAW_ELEMENTS = 111;     // [cmd:4][mode:4][indices_count:4][type:4][indices_buffer_offset:8] = 28 bytes
     public static final int DRAW_BUFFER = 112;       // [cmd:4][mode:4] = 8 bytes
     public static final int DRAW_BUFFERS = 113;      // [cmd:4][count:4][bufs:4*8] = 40 bytes (up to 8 buffers)
     /**
@@ -169,10 +164,7 @@ public final class GLCommand {
             case MATERIALF -> "MATERIALF";
             case TEX_PARAMETERF -> "TEX_PARAMETERF";
             case TRANSLATE -> "TRANSLATE";
-            case ROTATE -> "ROTATE";
             case SCALE -> "SCALE";
-            case ORTHO -> "ORTHO";
-            case FRUSTUM -> "FRUSTUM";
             case CLEAR_DEPTH -> "CLEAR_DEPTH";
             case MULT_MATRIX -> "MULT_MATRIX";
             case LOAD_MATRIX -> "LOAD_MATRIX";
@@ -219,15 +211,13 @@ public final class GLCommand {
             // Three int commands (16 bytes)
             case GLCommand.STENCIL_FUNC, GLCommand.STENCIL_OP, GLCommand.TEX_PARAMETERI,
                  GLCommand.LIGHTF, GLCommand.LIGHTI,
-                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF, GLCommand.DRAW_ARRAYS -> 16;
+                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF -> 16;
 
             // Four int commands (20 bytes)
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
                  GLCommand.SCISSOR,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
-
-            case GLCommand.DRAW_ELEMENTS -> 24;
 
             // DRAW_RANGE_RESTORE: 28 bytes
             case GLCommand.DRAW_RANGE_RESTORE -> 28;
@@ -239,10 +229,8 @@ public final class GLCommand {
             case GLCommand.DRAW_BUFFERS -> 40;
 
             // Double commands
-            case GLCommand.TRANSLATE, GLCommand.SCALE -> 28;  // cmd + 3 doubles
+            case GLCommand.TRANSLATE, GLCommand.SCALE -> 16;  // cmd + 3 floats
             case GLCommand.CLEAR_DEPTH -> 12;  // cmd + 1 double
-            case GLCommand.ROTATE -> 36;  // cmd + 4 doubles
-            case GLCommand.ORTHO, GLCommand.FRUSTUM -> 52;  // cmd + 6 doubles
 
             // Matrix commands
             case GLCommand.MULT_MATRIX, GLCommand.LOAD_MATRIX -> 68;  // cmd + 16 floats

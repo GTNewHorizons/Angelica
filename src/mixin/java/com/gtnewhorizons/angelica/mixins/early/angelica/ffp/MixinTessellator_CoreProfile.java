@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.ffp;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.gtnewhorizons.angelica.client.rendering.TessellatorStreamingDrawer;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import net.minecraft.client.renderer.Tessellator;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -15,10 +15,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 @Mixin(Tessellator.class)
 public class MixinTessellator_CoreProfile {
 
-    @Inject(method = "draw", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "draw", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;isDrawing:Z", opcode = Opcodes.GETFIELD), cancellable = true)
     private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
-        // Let GTNHLib handle display list compilation and DirectTessellator capture
-        if (TessellatorManager.shouldInterceptDraw((Tessellator)(Object)this)) return;
-        cir.setReturnValue(TessellatorStreamingDrawer.draw((Tessellator)(Object)this));
+        // Injecting after HEAD because GTNHLib's shouldInterceptDraw() takes priority
+        cir.setReturnValue(TessellatorStreamingDrawer.draw((Tessellator) (Object) this));
     }
 }

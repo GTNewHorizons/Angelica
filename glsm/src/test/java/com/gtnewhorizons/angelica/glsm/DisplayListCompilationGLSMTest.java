@@ -107,6 +107,7 @@ class DisplayListCompilationGLSMTest {
         testList = GL11.glGenLists(1);
         GLStateManager.glNewList(testList, GL11.GL_COMPILE_AND_EXECUTE);
         GLStateManager.glTranslatef(10, 0, 0);  // Applied immediately
+        DisplayListManager.flushMatrix();
 
         FloatBuffer afterTranslate = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterTranslate);
@@ -216,6 +217,7 @@ class DisplayListCompilationGLSMTest {
 
         GLStateManager.glTranslatef(10, 0, 0);  // Applied immediately
         GLStateManager.glRotatef(45, 0, 1, 0);  // Applied immediately
+        DisplayListManager.flushMatrix();
 
         FloatBuffer afterTransforms = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterTransforms);
@@ -241,6 +243,7 @@ class DisplayListCompilationGLSMTest {
 
         GLStateManager.glPushMatrix();
         GLStateManager.glTranslatef(10, 0, 0);  // Applied immediately
+        DisplayListManager.flushMatrix();
 
         FloatBuffer afterTranslate = BufferUtils.createFloatBuffer(16);
         GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, afterTranslate);

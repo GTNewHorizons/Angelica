@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
-import org.joml.Vector4f;
+import org.joml.Vector4fc;
 
 import java.util.function.Supplier;
 
@@ -31,11 +31,11 @@ public class Vector3Uniform extends Uniform {
 		});
 	}
 
-	static Vector3Uniform truncated(int location, Supplier<Vector4f> value) {
+	static Vector3Uniform truncated(int location, Supplier<Vector4fc> value) {
 		Vector3f held = new Vector3f();
 
 		return new Vector3Uniform(location, () -> {
-			Vector4f updated = value.get();
+			Vector4fc updated = value.get();
 
 			held.set(updated.x(), updated.y(), updated.z());
 

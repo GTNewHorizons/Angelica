@@ -18,6 +18,7 @@ import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.shader.Framebuffer;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -33,8 +34,12 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 
 	@Override
 	public void beginLevelRendering() {
+		final Framebuffer mainFb = Minecraft.getMinecraft().getFramebuffer();
+		if (mainFb == null || mainFb.framebufferWidth < 16 || mainFb.framebufferHeight < 16) {
+			return;
+		}
 		// Use the default Minecraft framebuffer and ensure that no programs are in use
-        Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
+        mainFb.bindFramebuffer(true);
 		GLStateManager.glUseProgram(0);
 	}
 

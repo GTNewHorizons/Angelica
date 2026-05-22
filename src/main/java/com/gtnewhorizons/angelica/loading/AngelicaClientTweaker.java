@@ -8,10 +8,14 @@ import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
+import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
+import com.gtnewhorizons.angelica.lwjgl3.MissingDependencySdl;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
+import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import jss.notfine.asm.AsmTransformers;
 import jss.notfine.asm.mappings.Namer;
@@ -27,6 +31,8 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
+import javax.swing.JOptionPane;
+import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -80,7 +86,9 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         if (FMLLaunchHandler.side().isClient()) {
             final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
             if (!rfbLoaded) {
-                Launch.classLoader.registerTransformer("com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer");
+                final String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer";
+                FMLRelaunchLog.finer("Registering transformer %s", transformer);
+                Launch.classLoader.registerTransformer(transformer);
             }
         }
     }
@@ -91,30 +99,45 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             .findFirst()
             .orElse(null);
         if (handle != null) {
-            handle.exclusions().add("org.embeddedt.embeddium");
-            handle.exclusions().add("org.taumc.celeritas");
-            handle.exclusions().add("com.mitchej123.lwjgl.lwjgl3");
-            handle.exclusions().add("com.mitchej123.glsm");
-            handle.exclusions().add("com.gtnewhorizons.angelica.lwjgl3");
+            for (String exclusion : EcosystemNarrowRules.LWJGL3IFY_EXCLUSIONS_SHARED) {
+                handle.exclusions().add(exclusion);
+            }
             handle.exclusions().add("com.gtnewhorizons.angelica.vulkan");
         }
     }
 
     private static void verifyDependencies() {
-        // Check for fastutil (bundled with GTNHLib since 0.2.1)
-        if (AngelicaTweaker.class.getResource("/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class") == null) {
-            throw new RuntimeException("Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib");
+        try {
+            DependencyVerifier.verify(AngelicaTweaker.class, List.of(
+                new DependencyVerifier.Check(
+                    "/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class",
+                    "Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib"),
+                new DependencyVerifier.Check(
+                    "/com/gtnewhorizon/gtnhlib/client/renderer/VertexCallbackManager.class",
+                    "GTNHLib is outdated: Angelica requires GTNHLib 0.10.0 or newer! Download: https://modrinth.com/mod/gtnhlib")
+            ));
+        } catch (RuntimeException ex) {
+            fatalDependencyError(ex.getMessage());
         }
+    }
 
-        // Check for PrimitiveExtractor/cel.model classes (added in GTNHLib 0.8.21)
-        if (AngelicaTweaker.class.getResource("/com/gtnewhorizon/gtnhlib/client/renderer/PrimitiveExtractor.class") == null) {
-            throw new RuntimeException("GTNHLib is outdated: Angelica requires GTNHLib 0.8.21 or newer! Download: https://modrinth.com/mod/gtnhlib");
-        }
+    private static void fatalDependencyError(String message) {
+        final String title = "Angelica - Missing Dependency";
+        System.err.println("FATAL: " + message);
+        try {
+            LOGGER.fatal(message);
+        } catch (Throwable ignored) {}
 
-        // Check for jvmdowngrader stubs (bundled with GTNHLib since 0.9.0)
-        if (AngelicaTweaker.class.getResource("/xyz/wagyourtail/jvmdg/exc/MissingStubError.class") == null) {
-            throw new RuntimeException("GTNHLib is outdated: Angelica requires GTNHLib 0.9.0 or newer! Download: https://modrinth.com/mod/gtnhlib");
-        }
+        final int lwjgl3ifyMajor = ((Integer) Launch.blackboard.getOrDefault("lwjgl3ify:major-version", Integer.MIN_VALUE));
+        try {
+            if (lwjgl3ifyMajor >= 3) {
+                MissingDependencySdl.showFatal(title, message);
+            } else if (!GraphicsEnvironment.isHeadless()) {
+                JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
+            }
+        } catch (Throwable ignored) {}
+
+        Runtime.getRuntime().halt(1);
     }
 
     @Override
@@ -126,6 +149,10 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             final List<String> notFineTransformers = Arrays.asList(ITransformers.getTransformers(AsmTransformers.class));
             if (!notFineTransformers.isEmpty()) Namer.initNames();
             transformers.addAll(notFineTransformers);
+            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+            if (!rfbLoaded) {
+                transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseTransformer");
+            }
             transformerClasses = transformers.toArray(new String[0]);
         }
         return transformerClasses;
@@ -152,6 +179,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             narrowTransformerConfig("Xaeros", AngelicaConfig.transformerCompat.narrowXaeros);
             narrowTransformerConfig("AdvancedLightsabers", AngelicaConfig.transformerCompat.narrowAdvancedLightsabers);
             narrowTransformerConfig("Alfheim", AngelicaConfig.transformerCompat.narrowAlfheim);
+            narrowTransformerConfig("Ears", AngelicaConfig.transformerCompat.narrowEars);
 
             tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.IncompatibleModsDisablerTweaker");
             if (AngelicaConfig.enableHudCaching) {

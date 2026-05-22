@@ -345,6 +345,27 @@ public class FeedbackManager {
                 }
                 break;
 
+            case GL11.GL_QUAD_STRIP:
+                for (int i = 0; i + 3 < count; i += 2) {
+                    feedbackToken(GL11.GL_POLYGON_TOKEN);
+                    feedbackToken(4);
+                    emitVertex(reader.read(i), stride);
+                    emitVertex(reader.read(i + 1), stride);
+                    emitVertex(reader.read(i + 3), stride);
+                    emitVertex(reader.read(i + 2), stride);
+                }
+                break;
+
+            case GL11.GL_POLYGON:
+                if (count >= 3) {
+                    feedbackToken(GL11.GL_POLYGON_TOKEN);
+                    feedbackToken(count);
+                    for (int i = 0; i < count; i++) {
+                        emitVertex(reader.read(i), stride);
+                    }
+                }
+                break;
+
             default:
                 throw new UnsupportedOperationException("Feedback mode: unsupported primitive mode 0x" + Integer.toHexString(mode));
         }

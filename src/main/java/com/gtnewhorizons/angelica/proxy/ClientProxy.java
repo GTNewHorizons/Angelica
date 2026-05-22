@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import biomesoplenty.api.content.BOPCBlocks;
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
@@ -21,6 +22,7 @@ import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
+import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
@@ -42,6 +44,7 @@ import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
+import jss.notfine.gui.options.named.FOVMode;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
@@ -85,6 +88,7 @@ public final class ClientProxy extends CommonProxy {
     private final Minecraft mc = Minecraft.getMinecraft();
     private final FrametimeGraph frametimeGraph = new FrametimeGraph();
     private final TPSGraph tpsGraph = new TPSGraph();
+    public static Block bopGrass;
 
     public static SodiumGameOptions options() {
         if (CONFIG == null) {
@@ -99,28 +103,9 @@ public final class ClientProxy extends CommonProxy {
         super.preInit(event);
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
+        MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
-    }
-
-    @SubscribeEvent
-    public void worldLoad(WorldEvent.Load event) {
-        if (GLStateManager.isRunningSplash()) {
-            GLStateManager.setRunningSplash(false);
-            LOGGER.info("World loaded - Enabling GLSM Cache");
-        }
-
-        if (AngelicaConfig.enableCeleritas) {
-            ChunkTaskRegistry.reset();
-            ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
-            ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
-
-            // Register all blocks. Because blockids are unique to a world, this must be done each load
-            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
-            });
-        }
     }
 
     @Override
@@ -167,7 +152,6 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
-
     @Override
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
@@ -182,13 +166,43 @@ public final class ClientProxy extends CommonProxy {
                 LOGGER.error("Could not replace LOTR handle render code with thread safe version");
             }
         }
+        if(ModStatus.isBOPLoaded) {
+            bopGrass = BOPCBlocks.newBopGrass;
+        }
+    }
+
+    @SubscribeEvent
+    public void worldLoad(WorldEvent.Load event) {
+        if (!event.world.isRemote) return;
+        if (GLStateManager.isRunningSplash()) {
+            GLStateManager.setRunningSplash(false);
+            LOGGER.info("World loaded - Enabling GLSM Cache");
+        }
+
+        if (AngelicaConfig.enableCeleritas) {
+            ChunkTaskRegistry.reset();
+            ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
+            ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
+
+            // Register all blocks. Because blockids are unique to a world, this must be done each load
+            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
+                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
+            });
+        }
+    }
+
+    @SubscribeEvent
+    public void onWorldUnload(WorldEvent.Unload event) {
+        if (!event.world.isRemote) return;
+        DynamicLights.get().removeAllLightSources();
     }
 
     float lastIntegratedTickTime;
 
     @SubscribeEvent
     public void onTick(TickEvent.ServerTickEvent event) {
-        if (FMLCommonHandler.instance().getSide().isClient() && event.phase == TickEvent.Phase.END) {
+        if (event.phase == TickEvent.Phase.END) {
             final IntegratedServer srv = Minecraft.getMinecraft().getIntegratedServer();
             if (srv != null) {
                 final long currentTickTime = srv.tickTimeArray[srv.getTickCounter() % 100];
@@ -337,10 +351,19 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
-    // This is a bit of a hack to prevent the FOV from being modified by other mods
+    // This only disables FOV changes from vanilla, leaving mod FOV changes untouched
+    @SubscribeEvent(priority = EventPriority.HIGHEST)
+    public void onFOVModifierUpdateEarly(FOVUpdateEvent event) {
+        if(Settings.DYNAMIC_FOV.option.getStore() == FOVMode.MODS) {
+            event.fov = 1.0F;
+            event.newfov = 1.0F;
+        }
+    }
+
+    // This removes all FOV dynamics, both from vanilla (speed/sprinting), and mods
     @SubscribeEvent(priority = EventPriority.LOWEST)
-    public void onFOVModifierUpdate(FOVUpdateEvent event) {
-        if (!(boolean) Settings.DYNAMIC_FOV.option.getStore()) {
+    public void onFOVModifierUpdateLate(FOVUpdateEvent event) {
+        if(Settings.DYNAMIC_FOV.option.getStore() == FOVMode.NONE) {
             event.newfov = 1.0F;
         }
     }

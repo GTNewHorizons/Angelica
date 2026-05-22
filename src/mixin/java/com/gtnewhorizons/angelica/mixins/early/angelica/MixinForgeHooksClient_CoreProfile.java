@@ -142,8 +142,12 @@ public abstract class MixinForgeHooksClient_CoreProfile {
     private static void angelica$reportContextFailure(Exception e) {
         LOGGER.error("FATAL: Failed to create OpenGL core profile context.");
         LOGGER.error("Error: {}", e != null ? e.getMessage() : "unknown");
-        try {
-            LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
-        } catch (Exception ignored) {}
+        if (Display.isCreated()) {
+            try {
+                LOGGER.error("GPU: {}, Driver: {}", GLStateManager.glGetString(GL11.GL_RENDERER), GLStateManager.glGetString(GL11.GL_VERSION));
+            } catch (Exception ignored) {}
+        } else {
+            LOGGER.error("GPU info: not available (no GL context)");
+        }
     }
 }

@@ -16,6 +16,7 @@ public class ProgramSet {
 	private final PackDirectives packDirectives;
 
 	private final ProgramSource shadow;
+	private final ProgramSource shadowWater;
 	private final ComputeSource[] shadowCompute;
 
 	private final ProgramSource[] shadowcomp;
@@ -79,6 +80,8 @@ public class ProgramSet {
 		// - https://github.com/IrisShaders/Iris/issues/483
 		// - https://github.com/IrisShaders/Iris/issues/987
 		this.shadow = readProgramSource(directory, sourceProvider, "shadow", this, shaderProperties,
+				BlendModeOverride.OFF);
+		this.shadowWater = readProgramSource(directory, sourceProvider, "shadow_water", this, shaderProperties,
 				BlendModeOverride.OFF);
 		this.shadowCompute = readComputeArray(directory, sourceProvider, "shadow");
 
@@ -218,6 +221,7 @@ public class ProgramSet {
 		List<ComputeSource> computes = new ArrayList<>();
 
 		programs.add(shadow);
+		programs.add(shadowWater);
 		programs.addAll(Arrays.asList(shadowcomp));
 		programs.addAll(Arrays.asList(begin));
 		programs.addAll(Arrays.asList(prepare));
@@ -300,6 +304,10 @@ public class ProgramSet {
 
 	public Optional<ProgramSource> getShadow() {
 		return shadow.requireValid();
+	}
+
+	public Optional<ProgramSource> getShadowWater() {
+		return shadowWater.requireValid();
 	}
 
 	public ProgramSource[] getShadowComposite() {
@@ -413,6 +421,7 @@ public class ProgramSet {
 	public Optional<ProgramSource> get(ProgramId programId) {
 		return switch (programId) {
 			case Shadow -> getShadow();
+			case ShadowWater -> first(getShadowWater(), getShadow());
 			case Basic -> getGbuffersBasic();
 			case Line -> gbuffersLine.requireValid();
 			case Textured -> getGbuffersTextured();

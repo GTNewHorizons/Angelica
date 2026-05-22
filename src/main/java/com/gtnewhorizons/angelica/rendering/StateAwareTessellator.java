@@ -16,4 +16,8 @@ public interface StateAwareTessellator {
     void angelica$setCeleritasMeshing(boolean active);
 
     int[] angelica$getVertexStates();
+
+    int[] angelica$getShaderOverrideBlockIds();
+
+    void angelica$setShaderOverrideBlockId(short blockId);
 }

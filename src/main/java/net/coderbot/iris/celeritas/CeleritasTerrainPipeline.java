@@ -72,9 +72,11 @@ public class CeleritasTerrainPipeline {
             Optional<ProgramSource> terrainSource,
             Optional<ProgramSource> translucentSource,
             Optional<ProgramSource> shadowSource,
+            Optional<ProgramSource> shadowTranslucentSource,
             CompletableFuture<Map<PatchShaderType, String>> terrainFuture,
             CompletableFuture<Map<PatchShaderType, String>> translucentFuture,
             CompletableFuture<Map<PatchShaderType, String>> shadowFuture,
+            CompletableFuture<Map<PatchShaderType, String>> shadowTranslucentFuture,
             RenderTargets renderTargets,
             ImmutableSet<Integer> flippedAfterPrepare,
             ImmutableSet<Integer> flippedAfterTranslucent,
@@ -92,6 +94,7 @@ public class CeleritasTerrainPipeline {
         gbufferProgramSource.put(IrisTerrainPass.GBUFFER_CUTOUT, terrainSource);
         gbufferProgramSource.put(IrisTerrainPass.GBUFFER_TRANSLUCENT, translucentSource.isPresent() ? translucentSource : terrainSource);
         gbufferProgramSource.put(IrisTerrainPass.SHADOW, shadowSource);
+        gbufferProgramSource.put(IrisTerrainPass.SHADOW_TRANSLUCENT, shadowTranslucentSource.isPresent() ? shadowTranslucentSource : shadowSource);
 
         // Initialize PassInfo, framebuffers, blend modes, and alpha in single pass
         for (IrisTerrainPass pass : IrisTerrainPass.VALUES) {
@@ -101,11 +104,12 @@ public class CeleritasTerrainPipeline {
             // Set up framebuffer, blend mode, and buffer blend overrides
             final ProgramId programId = switch (pass) {
                 case GBUFFER_TRANSLUCENT -> ProgramId.Water;
+                case SHADOW_TRANSLUCENT -> ProgramId.ShadowWater;
                 case SHADOW, SHADOW_CUTOUT -> ProgramId.Shadow;
                 default -> ProgramId.Terrain;
             };
 
-            if (pass == IrisTerrainPass.SHADOW || pass == IrisTerrainPass.SHADOW_CUTOUT) {
+            if (pass.isShadow()) {
                 passInfo.framebuffer = shadowFramebuffer;
                 passInfo.blendModeOverride = programId.getBlendModeOverride();
                 passInfo.bufferBlendOverrides = Collections.emptyList();
@@ -145,6 +149,7 @@ public class CeleritasTerrainPipeline {
         processShaderFuture(terrainFuture, terrainSource, passInfoMap.get(IrisTerrainPass.GBUFFER_SOLID), passInfoMap.get(IrisTerrainPass.GBUFFER_CUTOUT));
         processShaderFuture(translucentFuture, translucentSource, passInfoMap.get(IrisTerrainPass.GBUFFER_TRANSLUCENT));
         processShaderFuture(shadowFuture, shadowSource, passInfoMap.get(IrisTerrainPass.SHADOW), passInfoMap.get(IrisTerrainPass.SHADOW_CUTOUT));
+        processShaderFuture(shadowTranslucentFuture, shadowTranslucentSource.isPresent() ? shadowTranslucentSource : shadowSource, passInfoMap.get(IrisTerrainPass.SHADOW_TRANSLUCENT));
     }
 
     private void processShaderFuture(@Nullable CompletableFuture<Map<PatchShaderType, String>> future, Optional<ProgramSource> source, PassInfo... targets) {

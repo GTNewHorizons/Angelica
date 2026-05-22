@@ -1,12 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
-import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import org.lwjgl.BufferUtils;
-import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
@@ -14,7 +12,10 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetDouble;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 
 /**
  * Executes commands from a CommandBuffer
@@ -39,7 +40,13 @@ public final class CommandBufferExecutor {
      * @param complexObjects Array of complex objects (TexImage2DCmd, etc.)
      * @param ownedVbos Array of VBOs owned by the display list (indexed by DrawRange commands)
      */
-    public static void execute(ByteBuffer buffer, Object[] complexObjects, DisplayListVBO ownedVbos) {
+    public static void execute(
+        ByteBuffer buffer,
+        DisplayListCommand[] complexObjects,
+        DisplayListVBO ownedVbos,
+        int list,
+        CompiledDisplayList compiledDisplayList
+    ) {
         long ptr = memAddress(buffer);
         final long end = ptr + buffer.limit();
 
@@ -343,50 +350,6 @@ public final class CommandBufferExecutor {
                     GLStateManager.glTexParameterf(target, pname, param);
                 }
 
-                // === Double commands ===
-                case GLCommand.TRANSLATE -> {
-                    final double x = memGetDouble(ptr);
-                    final double y = memGetDouble(ptr + 8);
-                    final double z = memGetDouble(ptr + 16);
-                    ptr += 24;
-                    GLStateManager.glTranslated(x, y, z);
-                }
-                case GLCommand.ROTATE -> {
-                    final double angle = memGetDouble(ptr);
-                    final double x = memGetDouble(ptr + 8);
-                    final double y = memGetDouble(ptr + 16);
-                    final double z = memGetDouble(ptr + 24);
-                    ptr += 32;
-                    GLStateManager.glRotated(angle, x, y, z);
-                }
-                case GLCommand.SCALE -> {
-                    final double x = memGetDouble(ptr);
-                    final double y = memGetDouble(ptr + 8);
-                    final double z = memGetDouble(ptr + 16);
-                    ptr += 24;
-                    GLStateManager.glScaled(x, y, z);
-                }
-                case GLCommand.ORTHO -> {
-                    final double left = memGetDouble(ptr);
-                    final double right = memGetDouble(ptr + 8);
-                    final double bottom = memGetDouble(ptr + 16);
-                    final double top = memGetDouble(ptr + 24);
-                    final double zNear = memGetDouble(ptr + 32);
-                    final double zFar = memGetDouble(ptr + 40);
-                    ptr += 48;
-                    GLStateManager.glOrtho(left, right, bottom, top, zNear, zFar);
-                }
-                case GLCommand.FRUSTUM -> {
-                    final double left = memGetDouble(ptr);
-                    final double right = memGetDouble(ptr + 8);
-                    final double bottom = memGetDouble(ptr + 16);
-                    final double top = memGetDouble(ptr + 24);
-                    final double zNear = memGetDouble(ptr + 32);
-                    final double zFar = memGetDouble(ptr + 40);
-                    ptr += 48;
-                    GLStateManager.glFrustum(left, right, bottom, top, zNear, zFar);
-                }
-
                 // === Matrix commands ===
                 case GLCommand.MULT_MATRIX -> {
                     // Mode-agnostic: just multiply current matrix
@@ -397,6 +360,20 @@ public final class CommandBufferExecutor {
                     }
                     MATRIX_BUFFER.flip();
                     GLStateManager.glMultMatrix(MATRIX_BUFFER);
+                }
+                case GLCommand.TRANSLATE -> {
+                    final float x = memGetFloat(ptr);
+                    final float y = memGetFloat(ptr + 4);
+                    final float z = memGetFloat(ptr + 8);
+                    ptr += 12;
+                    GLStateManager.glTranslatef(x, y, z);
+                }
+                case GLCommand.SCALE -> {
+                    final float x = memGetFloat(ptr);
+                    final float y = memGetFloat(ptr + 4);
+                    final float z = memGetFloat(ptr + 8);
+                    ptr += 12;
+                    GLStateManager.glScalef(x, y, z);
                 }
                 case GLCommand.LOAD_MATRIX -> {
                     MATRIX_BUFFER.clear();
@@ -530,14 +507,6 @@ public final class CommandBufferExecutor {
                     ptr += 4 * MAX_DRAW_BUFFERS;
                     GLStateManager.glDrawBuffers(DRAW_BUFFERS_BUFFER);
                 }
-                case GLCommand.DRAW_ARRAYS -> {
-                    GLStateManager.glDrawArrays(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8));
-                    ptr += 12;
-                }
-                case GLCommand.DRAW_ELEMENTS -> {
-                    GLStateManager.glDrawElements(memGetInt(ptr), memGetInt(ptr + 4), memGetInt(ptr + 8), memGetLong(ptr + 12));
-                    ptr += 20;
-                }
                 case GLCommand.BIND_VBO -> {
                     GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, memGetInt(ptr));
                     ptr += 4;
@@ -551,10 +520,10 @@ public final class CommandBufferExecutor {
                 case GLCommand.COMPLEX_REF -> {
                     final int index = memGetInt(ptr);
                     ptr += 4;
-                    ((DisplayListCommand) complexObjects[index]).execute();
+                    complexObjects[index].execute();
                 }
 
-                default -> throw new IllegalStateException("Unknown command opcode: " + cmd);
+                default -> throw new IllegalStateException("Unknown command opcode: " + cmd + " in display list with ID " + list + "\n" + DisplayListManager.getCompiledDisplayListString(list, compiledDisplayList, null));
             }
         }
     }

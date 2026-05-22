@@ -41,6 +41,7 @@ import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.postprocess.BufferFlipper;
@@ -180,9 +181,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final boolean allowConcurrentCompute;
 	private final OptionalInt forcedShadowRenderDistanceChunks;
 	private final CloudSetting dhCloudSetting;
-
 	private Pass current = null;
-
 	private WorldRenderingPhase overridePhase = null;
 	private WorldRenderingPhase phase = WorldRenderingPhase.NONE;
 	private boolean isBeforeTranslucent;
@@ -219,11 +218,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
 		final Optional<ProgramSource> translucentSource = first(programs.getGbuffersWater(), terrainSource);
 		final Optional<ProgramSource> shadowSource = programs.getShadow();
+		final Optional<ProgramSource> shadowTranslucentSource = first(programs.getShadowWater(), shadowSource);
 
 		// Celeritas terrain transform futures
 		final CompletableFuture<Map<PatchShaderType, String>> celeritasTerrainFuture = terrainSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
 		final CompletableFuture<Map<PatchShaderType, String>> celeritasTranslucentFuture = translucentSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
 		final CompletableFuture<Map<PatchShaderType, String>> celeritasShadowFuture = shadowSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
+		final CompletableFuture<Map<PatchShaderType, String>> celeritasShadowTranslucentFuture = shadowTranslucentSource.map(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform).orElse(null);
 
 		this.cloudSetting = programs.getPackDirectives().getCloudSetting();
 		this.shouldRenderUnderwaterOverlay = programs.getPackDirectives().underwaterOverlay();
@@ -276,7 +277,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             holder -> CommonUniforms.addNonDynamicUniforms(holder, programs.getPack().getIdMap(), programs.getPackDirectives(), this.updateNotifier)
         );
 
-		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(BlockMaterialMapping.createBlockMetaIdMap(programs.getPack().getIdMap().getBlockProperties()));
+		BlockRenderingSettings.INSTANCE.setBlockMetaMatches(BlockMaterialMapping.createBlockMetaIdMap(
+			programs.getPack().getIdMap().getBlockProperties(),
+			programs.getPack().getIdMap().hasLegacySection()));
 		BlockRenderingSettings.INSTANCE.setBlockTypeIds(BlockMaterialMapping.createBlockTypeMap(programs.getPack().getIdMap().getBlockRenderTypeMap()));
 
 		BlockRenderingSettings.INSTANCE.setEntityIds(programs.getPack().getIdMap().getEntityIdMap());
@@ -387,6 +390,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				null, null, ProgramId.Weather,
 				// world border uses textured_lit even though it has no lightmap :/
 				null, ProgramId.TexturedLit, ProgramId.TexturedLit,
+				ProgramId.ShadowWater, ProgramId.ShadowWater, ProgramId.ShadowWater,
 				ProgramId.Shadow, ProgramId.Shadow, ProgramId.Shadow
 		};
 
@@ -430,7 +434,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return cachedPasses.computeIfAbsent(Pair.of(id, availability), p -> {
 				final ProgramSource source = resolver.resolveNullable(p.getLeft());
 
-				if (condition == RenderCondition.SHADOW) {
+				if (condition == RenderCondition.SHADOW || condition == RenderCondition.SHADOW_TRANSLUCENT) {
 					if (!shadowDirectives.isShadowEnabled().orElse(shadowRenderTargets != null)) {
 						// shadow is not used
 						return null;
@@ -447,7 +451,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 
 				try {
-					return createPass(source, availability, condition == RenderCondition.SHADOW, finalId);
+					return createPass(source, availability,
+						condition == RenderCondition.SHADOW || condition == RenderCondition.SHADOW_TRANSLUCENT, finalId);
 				} catch (Exception e) {
 					throw new RuntimeException("Failed to create pass for " + source.getName() + " for rendering condition "
 						+ condition + " specialized to input availability " + availability, e);
@@ -474,7 +479,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				this.shadowRenderer = new ShadowRenderer(programs.getShadow().orElse(null),
 					programs.getPackDirectives(), shadowRenderTargets, shadowCompositeRenderer);
 				Program shadowProgram = table.match(RenderCondition.SHADOW, new InputAvailability(true, true)).getProgram();
-				shadowRenderer.setUsesImages(shadowProgram != null && shadowProgram.getActiveImages() > 0);
+				Program shadowWaterProgram = table.match(RenderCondition.SHADOW_TRANSLUCENT, new InputAvailability(true, true)).getProgram();
+				shadowRenderer.setUsesImages((shadowProgram != null && shadowProgram.getActiveImages() > 0)
+					|| (shadowWaterProgram != null && shadowWaterProgram.getActiveImages() > 0));
 			} else {
 				shadowRenderer = null;
 			}
@@ -591,7 +598,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			terrainSource,
 			translucentSource,
 			shadowSource,
-			celeritasTerrainFuture, celeritasTranslucentFuture, celeritasShadowFuture,
+			shadowTranslucentSource,
+			celeritasTerrainFuture, celeritasTranslucentFuture, celeritasShadowFuture, celeritasShadowTranslucentFuture,
 			renderTargets, flippedAfterPrepare, flippedAfterTranslucent,
 			celeritasShadowFb);
 
@@ -698,7 +706,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private RenderCondition getCondition(WorldRenderingPhase phase) {
 		if (isRenderingShadow) {
-			return RenderCondition.SHADOW;
+			return switch (phase) {
+				case TERRAIN_TRANSLUCENT, TRIPWIRE -> RenderCondition.SHADOW_TRANSLUCENT;
+				default -> RenderCondition.SHADOW;
+			};
 		}
 
 		if (special != null) {
@@ -756,7 +767,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public boolean shouldOverrideShaders() {
 		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
 	}
-
+	
+	public Pass getActivePassProgram() {
+		return current;
+	}
+	
 	public int getActivePassProgramId() {
 		if (current == null) return -1;
 		final Program p = current.getProgram();
@@ -774,10 +789,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
 			return;
 		}
-
+		
 		final RenderCondition condition = getCondition(getPhase());
 		final Pass matched = table.match(condition, inputs);
-
+		
 		beginPass(matched);
 	}
 
@@ -1037,7 +1052,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return shadowRenderTargets != null;
 	}
 
-	private final class Pass {
+	public final class Pass {
 		@Nullable
 		private final Program program;
 		private final GlFramebuffer framebufferBeforeTranslucents;
@@ -1545,6 +1560,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginLevelRendering() {
+		final Framebuffer mainFb = Minecraft.getMinecraft().getFramebuffer();
+		if (mainFb == null || mainFb.framebufferWidth < 16 || mainFb.framebufferHeight < 16) {
+			return;
+		}
+
 		isRenderingFullScreenPass = false;
 		isRenderingWorld = true;
 		isBeforeTranslucent = true;
@@ -1656,12 +1676,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void setOverridePhase(WorldRenderingPhase phase) {
 		this.overridePhase = phase;
 		matchPass();
+		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override
 	public void setPhase(WorldRenderingPhase phase) {
 		this.phase = phase;
 		matchPass();
+		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
 	@Override

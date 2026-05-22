@@ -74,6 +74,7 @@ dependencies {
     // LWJGL3
     implementation("org.lwjgl:lwjgl:${lwjglVersion}")
     implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
+    compileOnly("org.lwjgl:lwjgl-sdl:${lwjglVersion}")
     runtimeOnly("org.lwjgl:lwjgl:$lwjglVersion:$lwjglNatives")
     runtimeOnly("org.lwjgl:lwjgl-opengl:$lwjglVersion:$lwjglNatives")
 

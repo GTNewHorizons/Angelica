@@ -22,12 +22,13 @@ import net.minecraft.util.Vec3;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.joml.Vector2f;
-import org.joml.Vector2i;
+import org.joml.Vector2ic;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector3fc;
 import org.joml.Vector3ic;
 import org.joml.Vector4f;
+import org.joml.Vector4fc;
 
 import java.util.Collection;
 import java.util.Map;
@@ -112,7 +113,7 @@ public class CustomUniformFixedInputUniformsHolder {
 		}
 
 		@Override
-		public Builder uniform2i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector2i> value) {
+		public Builder uniform2i(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector2ic> value) {
 			return this.put(name, new Int2VectorCachedUniform(name, updateFrequency, value));
 		}
 
@@ -132,10 +133,10 @@ public class CustomUniformFixedInputUniformsHolder {
         }
 
         @Override
-		public Builder uniformTruncated3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4f> value) {
+		public Builder uniformTruncated3f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4fc> value) {
 			Vector3f held = new Vector3f();
 			return this.put(name, new Float3VectorCachedUniform(name, updateFrequency, () -> {
-				Vector4f vec = value.get();
+				final Vector4fc vec = value.get();
 				held.set(vec.x(), vec.y(), vec.z());
 				return held;
 			}));
@@ -152,10 +153,10 @@ public class CustomUniformFixedInputUniformsHolder {
 		}
 
 		@Override
-		public UniformHolder uniform4f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4f> value) {
+		public UniformHolder uniform4f(UniformUpdateFrequency updateFrequency, String name, Supplier<Vector4fc> value) {
 			Vector4f held = new Vector4f();
 			return this.put(name, new Float4VectorCachedUniform(name, updateFrequency, () -> {
-				Vector4f vec = value.get();
+				final Vector4fc vec = value.get();
 				held.set(vec.x(), vec.y(), vec.z(), vec.w());
 				return held;
 			}));

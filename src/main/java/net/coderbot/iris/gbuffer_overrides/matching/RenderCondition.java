@@ -18,6 +18,7 @@ public enum RenderCondition {
 	HAND_TRANSLUCENT,
 	RAIN_SNOW,
 	WORLD_BORDER,
+	SHADOW_TRANSLUCENT,
 	// NB: Must be last due to implementation details of DeferredWorldRenderingPipeline
 	SHADOW
 }

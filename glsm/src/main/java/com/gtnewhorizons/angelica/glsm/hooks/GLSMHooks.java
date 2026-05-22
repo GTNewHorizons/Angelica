@@ -1,12 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.hooks;
 
-import com.gtnewhorizons.angelica.glsm.hooks.events.BlendFuncChangeEvent;
-import com.gtnewhorizons.angelica.glsm.hooks.events.FogStateChangeEvent;
-import com.gtnewhorizons.angelica.glsm.hooks.events.LightmapCoordsEvent;
-import com.gtnewhorizons.angelica.glsm.hooks.events.ProgramChangeEvent;
-import com.gtnewhorizons.angelica.glsm.hooks.events.TextureBindEvent;
-import com.gtnewhorizons.angelica.glsm.hooks.events.TextureDeleteEvent;
-import com.gtnewhorizons.angelica.glsm.hooks.events.TextureUnitStateEvent;
+import com.gtnewhorizons.angelica.glsm.hooks.events.*;
 import net.minecraftforge.eventbus.api.bus.EventBus;
 
 public final class GLSMHooks {
@@ -23,6 +17,7 @@ public final class GLSMHooks {
     public static final EventBus<BlendFuncChangeEvent> BLEND_FUNC_CHANGE = EventBus.create(BlendFuncChangeEvent.class);
     public static final EventBus<FogStateChangeEvent> FOG_STATE_CHANGE = EventBus.create(FogStateChangeEvent.class);
     public static final EventBus<LightmapCoordsEvent> LIGHTMAP_COORDS = EventBus.create(LightmapCoordsEvent.class);
+    public static final EventBus<AlphaStateChangeEvent> ALPHA_STATE_CHANGE = EventBus.create(AlphaStateChangeEvent.class);
 
     // Reusable event instances
     public static final TextureBindEvent textureBindEvent = new TextureBindEvent();
@@ -32,6 +27,7 @@ public final class GLSMHooks {
     public static final BlendFuncChangeEvent blendFuncChangeEvent = new BlendFuncChangeEvent();
     public static final FogStateChangeEvent fogStateChangeEvent = new FogStateChangeEvent();
     public static final LightmapCoordsEvent lightmapCoordsEvent = new LightmapCoordsEvent();
+    public static final AlphaStateChangeEvent alphaStateChangeEvent = new AlphaStateChangeEvent();
 
     private GLSMHooks() {}
 }

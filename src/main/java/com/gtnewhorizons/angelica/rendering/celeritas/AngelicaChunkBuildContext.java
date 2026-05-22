@@ -115,6 +115,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
     @SuppressWarnings("unchecked")
     public void copyRawBuffer(int[] rawBuffer, int vertexCount, int[] vertexStates,
+                              int[] shaderOverrideBlockIds,
                               ChunkBuildBuffers buffers, Material material, boolean isShaderPackOverride,
                               boolean blockAllowsSmoothLighting) {
         if (vertexCount == 0) {
@@ -144,6 +145,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final int worldX = originX + blockX;
         final int worldY = originY + blockY;
         final int worldZ = originZ + blockZ;
+
+        final short originalBlockId = blockRenderContext.blockId;
 
         int stateIdx = 0;
         int facesAtBaseMaterial = 0;
@@ -238,6 +241,9 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
             }
             final var builder = buffers.get(correctMaterial);
+
+            final int shaderOverrideBlockId = shaderOverrideBlockIds[quadIdx * 4];
+            blockRenderContext.blockId = shaderOverrideBlockId != -1 ? (short) shaderOverrideBlockId : originalBlockId;
 
             if (correctMaterial != material && builder.getEncoder() instanceof IrisExtendedChunkVertexEncoder iris) {
                 iris.setContext(blockRenderContext);

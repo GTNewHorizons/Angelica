@@ -9,6 +9,7 @@ import org.lwjgl.opengl.ARBDebugOutputCallback;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.EXTDirectStateAccess;
+import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -67,7 +68,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void init() {
-        caps = org.lwjgl.opengl.GLContext.getCapabilities();
+        caps = GLContext.getCapabilities();
         activeDebugExtension = 0;
     }
 
@@ -84,6 +85,15 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public String getName() {
         return "OpenGL (LWJGL2)";
+    }
+
+    @Override
+    public boolean hasContext() {
+        try {
+            return GLContext.getCapabilities() != null;
+        } catch (Exception e) {
+            return false;
+        }
     }
 
     @Override

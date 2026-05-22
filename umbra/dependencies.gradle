@@ -1,0 +1,40 @@
+configurations {
+    // Embed in JAR without relocation (compile only, shadowed into JAR)
+    embedOnly
+    embedOnly.canBeConsumed = false
+    embedOnly.canBeResolved = true
+    compileClasspath.extendsFrom(embedOnly)
+    runtimeClasspath.extendsFrom(embedOnly)
+    testCompileClasspath.extendsFrom(embedOnly)
+    testRuntimeClasspath.extendsFrom(embedOnly)
+}
+
+// Exclude self-reference from all configurations
+configurations.all {
+    exclude group: "com.github.GTNewHorizons", module: "Angelica"
+}
+
+dependencies {
+    compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.0.7") { transitive = false }
+
+    compileOnly('org.jetbrains:annotations:26.0.2')
+    compileOnly("org.projectlombok:lombok:1.18.42") { transitive = false }
+    annotationProcessor("org.projectlombok:lombok:1.18.42")
+
+    api("com.github.GTNewHorizons:GTNHLib:0.9.36:dev")
+
+    shadowImplementation(project(":glsm")) { transitive = false }
+    shadowImplementation(project(":lwjgl3-backend")) { transitive = false }
+    shadowImplementation("net.minecraftforge:eventbus:7.0-beta.15")
+
+    shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
+    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-32.g7dd88a4-GTNH") {
+        exclude module: "antlr4" // we only want to shadow the runtime module
+    }
+    shadowImplementation("org.antlr:antlr4-runtime:4.13.2")
+
+    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.4-GTNH") { transitive = false }
+    embedOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.5.3-GTNH") { transitive = false }
+    runtimeOnlyNonPublishable("org.embeddedt.celeritas:celeritas-common:2.5.4-GTNH") { transitive = false }
+    runtimeOnlyNonPublishable("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.5.3-GTNH") { transitive = false }
+}

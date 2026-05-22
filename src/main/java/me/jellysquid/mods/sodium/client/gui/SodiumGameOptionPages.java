@@ -143,6 +143,7 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                     .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                         .build())
+                .add(Settings.BOBVIEW_MODE.option)
                 .add(Settings.DYNAMIC_FOV.option)
                 .add(Settings.HURT_SHAKE.option)
                 .add(Settings.MODE_WATER.option)
@@ -532,6 +533,63 @@ public class SodiumGameOptionPages {
                 .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
+    }
+
+    public static OptionPage text() {
+        final List<OptionGroup> groups = new ArrayList<>();
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("RGB Colors")
+                        .setTooltip("Enable hex colors via &#RRGGBB syntax")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableRGBColors = value,
+                                    opts -> AngelicaConfig.enableRGBColors)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Gradients")
+                        .setTooltip("Smooth color transitions via &g&#start&#end")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableGradients = value,
+                                    opts -> AngelicaConfig.enableGradients)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Rainbow")
+                        .setTooltip("Cycling rainbow colors via &q")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableRainbow = value,
+                                    opts -> AngelicaConfig.enableRainbow)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Wave Text")
+                        .setTooltip("Animated bouncing text via &z")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableWaveText = value,
+                                    opts -> AngelicaConfig.enableWaveText)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName("Wave Amplitude")
+                        .setTooltip("How far wave text bounces (default 2.0)")
+                        .setControl(option -> new SliderControl(option, 10, 80, 5, v -> (v / 10) + "." + (v % 10)))
+                        .setBinding((opts, value) -> AngelicaConfig.waveAmplitude = value / 10f, opts -> Math.round(AngelicaConfig.waveAmplitude * 10f))
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Dinnerbone Text")
+                        .setTooltip("Flipped upside down text via &v")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableDinnerboneText = value,
+                                    opts -> AngelicaConfig.enableDinnerboneText)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName("Ampersand Conversion")
+                        .setTooltip("Convert & prefix codes to formatting codes at render time")
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.enableAmpersandConversion = value,
+                                    opts -> AngelicaConfig.enableAmpersandConversion)
+                        .build())
+                .build());
+
+        return new OptionPage("Text Effects", ImmutableList.copyOf(groups));
     }
 
 }

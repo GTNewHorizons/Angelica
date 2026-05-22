@@ -52,10 +52,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private static final double MAX_ENTITY_CHECK_VOLUME = 16 * 16 * 16 * 15;
 
     // For sorting transparent TESRs
-    private RenderSectionOrderer renderSectionOrderer = new RenderSectionOrderer();
-    private TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
-    private ArrayList<RenderSection> sortedRenderSections = new ArrayList<>();
-    private ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
+    private final RenderSectionOrderer renderSectionOrderer = new RenderSectionOrderer();
+    private final TileEntityOrderer tileEntityOrderer = new TileEntityOrderer();
+    private final ArrayList<RenderSection> sortedRenderSections = new ArrayList<>();
+    private final ArrayList<TileEntity> sortedTileEntities = new ArrayList<>();
 
     private CeleritasWorldRenderer(Minecraft mc) {
         // Private constructor for singleton
@@ -92,6 +92,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     @Override
     protected void unloadWorld() {
         DynamicLights.setActiveRenderer(null);
+        this.sortedRenderSections.clear();
+        this.sortedTileEntities.clear();
+        ShadowRenderer.visibleTileEntities.clear();
+        ShadowRenderer.globalTileEntities.clear();
         super.unloadWorld();
     }
 

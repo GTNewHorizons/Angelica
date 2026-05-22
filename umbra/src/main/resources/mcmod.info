@@ -1,0 +1,13 @@
+[{
+  "modid": "umbra",
+  "name": "Umbra",
+  "description": "Umbra replaces Minecraft 1.7.10’s legacy rendering pipeline with a modern, backend-agnostic core.",
+  "version": "${modVersion}",
+  "mcversion": "${minecraftVersion}",
+  "url": "",
+  "authorList": ["GTNH"],
+  "credits": "",
+  "logoFile": "",
+  "screenshots": [],
+  "dependencies": ["gtnhlib"]
+}]

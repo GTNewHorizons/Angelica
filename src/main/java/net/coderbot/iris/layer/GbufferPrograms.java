@@ -4,6 +4,7 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.shader.ProgramCreator;
+import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 
@@ -11,7 +12,12 @@ public class GbufferPrograms {
 	private static boolean entities;
 	private static boolean blockEntities;
 	private static boolean outline;
-
+	private static Runnable phaseChangeListener;
+	
+	static {
+		StateUpdateNotifiers.phaseChangeNotifier = listener -> phaseChangeListener = listener;
+	}
+	
 	private static void checkReentrancy() {
 		if (entities || blockEntities || outline) {
 			throw new IllegalStateException("GbufferPrograms in weird state, tried to call begin function when entities = "
@@ -106,7 +112,13 @@ public class GbufferPrograms {
 	public static void teardownSpecialRenderCondition() {
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(null));
 	}
-
+	
+	public static void runPhaseChangeNotifier() {
+		if (phaseChangeListener != null) {
+			phaseChangeListener.run();
+		}
+	}
+	
 	public static void init() {
 		// Empty initializer to run static
 	}

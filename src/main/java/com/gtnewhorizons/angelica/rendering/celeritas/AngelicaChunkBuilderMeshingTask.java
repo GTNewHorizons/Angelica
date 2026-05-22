@@ -8,7 +8,10 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
+import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
@@ -20,6 +23,7 @@ import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
+import net.minecraft.util.AxisAlignedBB;
 import net.minecraft.util.ReportedException;
 import net.minecraft.world.IBlockAccess;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
@@ -139,7 +143,25 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
-                                (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity) ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);
+                                final boolean isGlobal;
+                                if (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity)) {
+                                    isGlobal = true;
+                                } else {
+                                    AxisAlignedBB aabb;
+                                    try {
+                                        aabb = tileEntity.getRenderBoundingBox();
+                                    } catch (Throwable t) {
+                                        aabb = null;
+                                    }
+                                    if (aabb != null) {
+                                        final int secMinX = x & ~15, secMinY = y & ~15, secMinZ = z & ~15;
+                                        isGlobal = aabb.minX < secMinX || aabb.minY < secMinY || aabb.minZ < secMinZ
+                                            || aabb.maxX > secMinX + 16 || aabb.maxY > secMinY + 16 || aabb.maxZ > secMinZ + 16;
+                                    } else {
+                                        isGlobal = true;
+                                    }
+                                }
+                                (isGlobal ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);
                             }
                         }
 
@@ -242,7 +264,13 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             if (isFluid) {
                 contextEncoder.prepareToRenderFluid(blockRenderContext, block, lightValue);
             } else {
-                contextEncoder.prepareToRenderBlock(blockRenderContext, block, metadata,
+                int effectiveMeta = metadata;
+                if (BlockRenderingSettings.INSTANCE.hasSnowyEntries()
+                    && BlockRenderingSettings.INSTANCE.getSnowyBlocks().contains(block)
+                    && RenderBlocksUtils.isSnowCovered(renderBlocks.blockAccess, x, y, z)) {
+                    effectiveMeta |= BlockMaterialMapping.SNOWY_META_BIT;
+                }
+                contextEncoder.prepareToRenderBlock(blockRenderContext, block, effectiveMeta,
                     ExtendedDataHelper.BLOCK_RENDER_TYPE, lightValue);
             }
         }
@@ -256,6 +284,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             && block.getLightValue() == 0; // does not emit real block light
         buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,
             ((StateAwareTessellator)tessellator).angelica$getVertexStates(),
+            ((StateAwareTessellator)tessellator).angelica$getShaderOverrideBlockIds(),
             buffers, passMaterial, isShaderPackOverride, blockAllowsSmoothLighting);
         tessellator.reset();
         tessellator.isDrawing = false;

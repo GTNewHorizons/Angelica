@@ -3,14 +3,23 @@ package net.coderbot.iris.uniforms.custom.cached;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.parsing.VectorType;
 import org.joml.Vector4f;
+import org.joml.Vector4fc;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 import java.util.function.Supplier;
 
 public class Float4VectorCachedUniform extends VectorCachedUniform<Vector4f> {
 
-	public Float4VectorCachedUniform(String name, UniformUpdateFrequency updateFrequency, Supplier<Vector4f> supplier) {
-		super(name, updateFrequency, new Vector4f(), supplier);
+	public Float4VectorCachedUniform(String name, UniformUpdateFrequency updateFrequency, Supplier<Vector4fc> supplier) {
+		super(name, updateFrequency, new Vector4f(), adapt(supplier));
+	}
+
+	private static Supplier<Vector4f> adapt(Supplier<Vector4fc> supplier) {
+		final Vector4f scratch = new Vector4f();
+		return () -> {
+			final Vector4fc v = supplier.get();
+			return scratch.set(v.x(), v.y(), v.z(), v.w());
+		};
 	}
 
 	@Override

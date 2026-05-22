@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
 import org.embeddedt.embeddium.impl.gl.sync.GlFence;
@@ -52,7 +53,7 @@ public class PersistentStreamingBuffer implements StreamingBuffer {
         RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         if (this.mappedBuffer == null) {
-            RENDER_BACKEND.deleteBuffers(bufferId);
+            GLStateManager.glDeleteBuffers(bufferId);
             bufferId = 0;
             throw new RuntimeException("Failed to persistently map streaming buffer");
         }
@@ -147,7 +148,7 @@ public class PersistentStreamingBuffer implements StreamingBuffer {
             RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, bufferId);
             RENDER_BACKEND.unmapBuffer(GL15.GL_ARRAY_BUFFER);
             RENDER_BACKEND.bindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            RENDER_BACKEND.deleteBuffers(bufferId);
+            GLStateManager.glDeleteBuffers(bufferId);
             bufferId = 0;
         }
     }

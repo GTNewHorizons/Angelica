@@ -35,11 +35,17 @@ public enum Mixins implements IMixins {
             , "angelica.MixinGameSettings"
             , "angelica.MixinMinecraft"
             , "angelica.MixinMinecraft_FrameHook"
+            , "angelica.MixinMinecraft_IconifyGuard"
             , "angelica.MixinMinecraftServer"
             , "angelica.bugfixes.MixinItemRenderer_EdgeDepth"
+            , "angelica.bugfixes.MixinModelCreeper_AuraBodyInflate"
+            , "angelica.bugfixes.MixinModelSkeleton_LegPelvisZFight"
             , "angelica.bugfixes.MixinModelWither_ArmorCentering"
             , "angelica.bugfixes.MixinRenderBlocks_CrossedSquaresNormal"
+            , "angelica.bugfixes.MixinRenderCreeper_AuraDepth"
+            , "angelica.bugfixes.MixinRenderGlobal_DeferredEntityOverlay"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
+            , "angelica.bugfixes.MixinRendererLivingEntity_DeferredEntityOverlay"
             , "angelica.bugfixes.MixinRenderWither_ArmorCentering"
             , "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
             , "angelica.debug.MixinMinecraft_FPSCap"
@@ -64,6 +70,12 @@ public enum Mixins implements IMixins {
             .setPhase(Phase.EARLY)
             .setApplyIf(() -> AngelicaConfig.enablePanoramaBlurShader)
             .addClientMixins("angelica.gui.MixinGuiMainMenu")
+    ),
+
+    ANGELICA_GL_SPLASH_TEXT(
+        new MixinBuilder("Rewrite 'OpenGL 1.2!' splash to reflect the actual GL context")
+            .setPhase(Phase.EARLY)
+            .addClientMixins("angelica.gui.MixinGuiMainMenuSplash")
     ),
 
     ANGELICA_FONT_RENDERER(new MixinBuilder()
@@ -118,7 +130,10 @@ public enum Mixins implements IMixins {
 
     ANGELICA_ITEM_RENDERER_OPTIMIZATION(new MixinBuilder("Optimizes in-world item rendering")
         .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.itemrenderer.MixinItemRenderer")
+        .addClientMixins(
+            "angelica.itemrenderer.MixinItemRenderer",
+            "angelica.itemrenderer.MixinRenderBlocks"
+        )
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
 
     ANGELICA_OPTIMIZE_GLALLOCATION(new MixinBuilder("Replace HashMap with fastutil Int2IntMap in GLAllocation")
@@ -190,6 +205,7 @@ public enum Mixins implements IMixins {
             , "rendering.MixinTileEntity"
             , "rendering.MixinTileEntityMobSpawner"
             , "rendering.MixinTileEntityRendererDispatcher"
+            , "rendering.MixinRenderBlocksEmissive"
         )
     ),
 
@@ -240,6 +256,7 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
               "shaders.MixinDroppedItemGlintEdges"
+            , "shaders.MixinHeldItemGlintEdges"
             , "shaders.MixinEntityPickupFX"
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
@@ -252,6 +269,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderEntityFlame"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
+            , "shaders.AccessorEntityHorse"
             , "shaders.MixinRenderHorse"
             , "shaders.MixinRenderItem"
             , "shaders.MixinRenderNameTag"
@@ -278,6 +296,14 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.DRAGON_API)
         .addClientMixins(
             "shaders.MixinRenderManagerDAPI"
+        )
+    ),
+
+    DRAGONAPI_SHADER_REGISTRY_PARSE_ERROR(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "dragonapi.MixinShaderRegistry_ParseError"
         )
     ),
 
@@ -375,16 +401,15 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> CompatConfig.fixMinefactoryReloaded)
         .addClientMixins("client.minefactoryreloaded.MixinRedNetCableRenderer")),
 
-    NTM_SPACE_TWEAKS(new MixinBuilder("Support for 'Disable Horizon' & 'disableAltitudePlanetRenderer' options in NTM:Space")
-            .setPhase(Phase.LATE)
-            .addRequiredMod(TargetedMod.NTM_SPACE)
-            .setApplyIf(() -> CompatConfig.tweakNTMSpace)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_Tweaks")),
-    NTM_SPACE_SHADER_COMPAT(new MixinBuilder("Multiple shader fixes for NTM:Space")
+    NTM_SPACE_COMPAT(new MixinBuilder("Multiple fixes for NTM:Space")
             .setPhase(Phase.LATE)
             .addRequiredMod(TargetedMod.NTM_SPACE)
             .setApplyIf(() -> CompatConfig.fixNTMSpace && AngelicaConfig.enableIris)
-            .addClientMixins("client.ntmSpace.MixinSkyProviderCelestial_ShaderCompat", "client.ntmSpace.MixinSkyProviderLaytheSunset")),
+            .addClientMixins(
+                    "client.ntmSpace.MixinSkyProviderCelestial",
+                    "client.ntmSpace.MixinSkyProviderOrbit",
+                    "client.ntmSpace.MixinSkyProviderLaytheSunset"
+            )),
 
     SPEEDUP_CAMPFIRE_BACKPORT_ANIMATIONS(new MixinBuilder("Add animation speedup support to Campfire Backport")
         .setPhase(Phase.LATE)

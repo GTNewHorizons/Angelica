@@ -1,6 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import lombok.Getter;
+import lombok.Setter;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 
 import org.joml.Vector4f;
@@ -8,7 +9,8 @@ import org.joml.Vector4f;
 public class CapturedRenderingState {
 	public static final CapturedRenderingState INSTANCE = new CapturedRenderingState();
 
-	@Getter
+	@Setter
+    @Getter
     private float tickDelta;
 	@Getter
     private int currentRenderedBlockEntity;
@@ -29,10 +31,6 @@ public class CapturedRenderingState {
 	private CapturedRenderingState() {
 	}
 
-	public void setTickDelta(float tickDelta) {
-		this.tickDelta = tickDelta;
-	}
-
     public void setCurrentBlockEntity(int entity) {
 		this.currentRenderedBlockEntity = entity;
 
@@ -47,6 +45,7 @@ public class CapturedRenderingState {
 		if (this.entityIdListener != null) {
 			this.entityIdListener.run();
 		}
+        setCurrentRenderedItem(0);
 	}
 
     public void setCurrentEntityColor(float r, float g, float b, float a) {

@@ -146,42 +146,11 @@ public final class QuadConverter {
 
         final int bytesPerIndex = VertexAttribState.Attrib.glTypeSizeBytes(type);
 
-        // Read source indices from caller's EBO
         final ByteBuffer src = memAlloc(indexCount * bytesPerIndex);
         RENDER_BACKEND.getBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, offset, src);
-        final long srcAddr = memAddress0(src);
 
-        // Allocate output as GL_UNSIGNED_INT
         final ByteBuffer dst = memAlloc(triIndexCount * 4);
-        final long dstAddr = memAddress0(dst);
-
-        for (int i = 0; i < quadCount; i++) {
-            final int a, b, c, d;
-            switch (type) {
-                case GL11.GL_UNSIGNED_INT -> {
-                    final long p = srcAddr + (long) i * 16;
-                    a = memGetInt(p); b = memGetInt(p + 4); c = memGetInt(p + 8); d = memGetInt(p + 12);
-                }
-                case GL11.GL_UNSIGNED_SHORT -> {
-                    final long p = srcAddr + (long) i * 8;
-                    a = memGetShort(p) & 0xFFFF; b = memGetShort(p + 2) & 0xFFFF;
-                    c = memGetShort(p + 4) & 0xFFFF; d = memGetShort(p + 6) & 0xFFFF;
-                }
-                default /* GL_UNSIGNED_BYTE */ -> {
-                    final long p = srcAddr + (long) i * 4;
-                    a = memGetByte(p) & 0xFF; b = memGetByte(p + 1) & 0xFF;
-                    c = memGetByte(p + 2) & 0xFF; d = memGetByte(p + 3) & 0xFF;
-                }
-            }
-            // GL_LAST_VERTEX_CONVENTION: (a,b,d), (b,c,d)
-            final long o = (long) i * 24;
-            memPutInt(dstAddr + o, a);
-            memPutInt(dstAddr + o + 4, b);
-            memPutInt(dstAddr + o + 8, d);
-            memPutInt(dstAddr + o + 12, b);
-            memPutInt(dstAddr + o + 16, c);
-            memPutInt(dstAddr + o + 20, d);
-        }
+        triangulateQuads(memAddress0(src), type, memAddress0(dst), GL11.GL_UNSIGNED_INT, quadCount);
 
         memFree(src);
         uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_INT, 4);
@@ -198,16 +167,8 @@ public final class QuadConverter {
         final int triIndexCount = quadCount * 6;
 
         final ByteBuffer dst = memAlloc(triIndexCount * 4);
-        final long dstAddr = memAddress0(dst);
-        final int basePos = indices.position();
-
-        for (int i = 0; i < quadCount; i++) {
-            final int base = basePos + i * 4;
-            final int a = indices.get(base), b = indices.get(base + 1), c = indices.get(base + 2), d = indices.get(base + 3);
-            final long o = (long) i * 24;
-            memPutInt(dstAddr + o, a);     memPutInt(dstAddr + o + 4, b);  memPutInt(dstAddr + o + 8, d);
-            memPutInt(dstAddr + o + 12, b); memPutInt(dstAddr + o + 16, c); memPutInt(dstAddr + o + 20, d);
-        }
+        final long srcAddr = memAddress0(indices) + (long) indices.position() * 4;
+        triangulateQuads(srcAddr, GL11.GL_UNSIGNED_INT, memAddress0(dst), GL11.GL_UNSIGNED_INT, quadCount);
 
         uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_INT, 4);
     }
@@ -223,16 +184,8 @@ public final class QuadConverter {
         final int triIndexCount = quadCount * 6;
 
         final ByteBuffer dst = memAlloc(triIndexCount * 2);
-        final long dstAddr = memAddress0(dst);
-        final int basePos = indices.position();
-
-        for (int i = 0; i < quadCount; i++) {
-            final int base = basePos + i * 4;
-            final short a = indices.get(base), b = indices.get(base + 1), c = indices.get(base + 2), d = indices.get(base + 3);
-            final long o = (long) i * 12;
-            memPutShort(dstAddr + o, a);     memPutShort(dstAddr + o + 2, b);  memPutShort(dstAddr + o + 4, d);
-            memPutShort(dstAddr + o + 6, b); memPutShort(dstAddr + o + 8, c);  memPutShort(dstAddr + o + 10, d);
-        }
+        final long srcAddr = memAddress0(indices) + (long) indices.position() * 2;
+        triangulateQuads(srcAddr, GL11.GL_UNSIGNED_SHORT, memAddress0(dst), GL11.GL_UNSIGNED_SHORT, quadCount);
 
         uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_SHORT, 2);
     }
@@ -248,31 +201,7 @@ public final class QuadConverter {
         final long srcAddr = memAddress0(indices) + indices.position();
 
         final ByteBuffer dst = memAlloc(triIndexCount * 4);
-        final long dstAddr = memAddress0(dst);
-
-        for (int i = 0; i < quadCount; i++) {
-            final int a, b, c, d;
-            switch (type) {
-                case GL11.GL_UNSIGNED_INT -> {
-                    final long p = srcAddr + (long) i * 16;
-                    a = memGetInt(p); b = memGetInt(p + 4); c = memGetInt(p + 8); d = memGetInt(p + 12);
-                }
-                case GL11.GL_UNSIGNED_SHORT -> {
-                    final long p = srcAddr + (long) i * 8;
-                    a = memGetShort(p) & 0xFFFF; b = memGetShort(p + 2) & 0xFFFF;
-                    c = memGetShort(p + 4) & 0xFFFF; d = memGetShort(p + 6) & 0xFFFF;
-                }
-                case GL11.GL_UNSIGNED_BYTE -> {
-                    final long p = srcAddr + (long) i * 4;
-                    a = memGetByte(p) & 0xFF; b = memGetByte(p + 1) & 0xFF;
-                    c = memGetByte(p + 2) & 0xFF; d = memGetByte(p + 3) & 0xFF;
-                }
-                default -> { memFree(dst); return; }
-            }
-            final long o = (long) i * 24;
-            memPutInt(dstAddr + o, a);     memPutInt(dstAddr + o + 4, b);  memPutInt(dstAddr + o + 8, d);
-            memPutInt(dstAddr + o + 12, b); memPutInt(dstAddr + o + 16, c); memPutInt(dstAddr + o + 20, d);
-        }
+        triangulateQuads(srcAddr, type, memAddress0(dst), GL11.GL_UNSIGNED_INT, quadCount);
 
         uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_INT, 4);
     }
@@ -282,14 +211,140 @@ public final class QuadConverter {
      */
     public static void destroy() {
         if (eboId != 0) {
-            RENDER_BACKEND.deleteBuffers(eboId);
+            GLStateManager.glDeleteBuffers(eboId);
             eboId = 0;
             maxQuads = 0;
         }
         if (scratchEboId != 0) {
-            RENDER_BACKEND.deleteBuffers(scratchEboId);
+            GLStateManager.glDeleteBuffers(scratchEboId);
             scratchEboId = 0;
             scratchEboCapacity = 0;
         }
+    }
+
+    /**
+     * Read one index at {@code srcAddr + i * sizeof(srcType)} and return its
+     * zero-extended unsigned value.
+     */
+    private static int readIndex(long srcAddr, int srcType, int i) {
+        return switch (srcType) {
+            case GL11.GL_UNSIGNED_BYTE  -> memGetByte(srcAddr + i)          & 0xFF;
+            case GL11.GL_UNSIGNED_SHORT -> memGetShort(srcAddr + i * 2L)    & 0xFFFF;
+            case GL11.GL_UNSIGNED_INT   -> memGetInt(srcAddr + i * 4L);
+            default -> throw new IllegalArgumentException("unsupported index type 0x" + Integer.toHexString(srcType));
+        };
+    }
+
+    /**
+     * Write one index at {@code dstAddr + i * sizeof(dstType)}.
+     */
+    private static void writeIndex(long dstAddr, int dstType, int i, int value) {
+        switch (dstType) {
+            case GL11.GL_UNSIGNED_SHORT -> memPutShort(dstAddr + i * 2L, (short) value);
+            case GL11.GL_UNSIGNED_INT   -> memPutInt(dstAddr + i * 4L, value);
+            default -> throw new IllegalArgumentException("unsupported index type 0x" + Integer.toHexString(dstType));
+        }
+    }
+
+    /**
+     * Read {@code quadCount} quads from {@code srcAddr} and emit 6 triangle indices
+     * per quad at {@code dstAddr} using {@code GL_LAST_VERTEX_CONVENTION}:
+     * {@code (a,b,d), (b,c,d)}. v3 is the provoking vertex for both triangles;
+     * diagonal runs b→d. Matches Mesa's {@code do_quad} LAST path.
+     *
+     * <p>Caller allocates dst of size {@code quadCount * 6 * sizeof(dstType)}.
+     *
+     * <p>Supported src types: {@code GL_UNSIGNED_BYTE} / {@code GL_UNSIGNED_SHORT}
+     * / {@code GL_UNSIGNED_INT}. Supported dst types: {@code GL_UNSIGNED_SHORT} /
+     * {@code GL_UNSIGNED_INT}. Widening only.
+     */
+    public static void triangulateQuads(long srcAddr, int srcType, long dstAddr, int dstType, int quadCount) {
+        triangulateQuads(srcAddr, srcType, dstAddr, dstType, quadCount, 0);
+    }
+
+    /**
+     * Same as {@link #triangulateQuads(long, int, long, int, int)} but subtracts
+     * {@code minVtx} from every emitted index, rebasing to a 0-based buffer in
+     * one pass.
+     */
+    public static void triangulateQuads(long srcAddr, int srcType, long dstAddr, int dstType, int quadCount, int minVtx) {
+        for (int i = 0; i < quadCount; i++) {
+            final int a = readIndex(srcAddr, srcType, i * 4)     - minVtx;
+            final int b = readIndex(srcAddr, srcType, i * 4 + 1) - minVtx;
+            final int c = readIndex(srcAddr, srcType, i * 4 + 2) - minVtx;
+            final int d = readIndex(srcAddr, srcType, i * 4 + 3) - minVtx;
+            final int o = i * 6;
+            writeIndex(dstAddr, dstType, o,     a);
+            writeIndex(dstAddr, dstType, o + 1, b);
+            writeIndex(dstAddr, dstType, o + 2, d);
+            writeIndex(dstAddr, dstType, o + 3, b);
+            writeIndex(dstAddr, dstType, o + 4, c);
+            writeIndex(dstAddr, dstType, o + 5, d);
+        }
+    }
+
+    /**
+     * Copy {@code count} indices from {@code srcAddr} to {@code dstAddr}, converting
+     * from {@code srcType} to {@code dstType}.
+     *
+     * <p>Supported src types: {@code GL_UNSIGNED_BYTE} / {@code GL_UNSIGNED_SHORT} /
+     * {@code GL_UNSIGNED_INT}. Supported dst types: {@code GL_UNSIGNED_SHORT} /
+     * {@code GL_UNSIGNED_INT}. Widening only; narrowing is rejected by
+     * {@link #writeIndex(long, int, int, int) writeIndex}.
+     */
+    public static void widenIndices(long srcAddr, int srcType, long dstAddr, int dstType, int count) {
+        widenIndices(srcAddr, srcType, dstAddr, dstType, count, 0);
+    }
+
+    /**
+     * Same as {@link #widenIndices(long, int, long, int, int)} but subtracts
+     * {@code minVtx} from every written index in one pass.
+     */
+    public static void widenIndices(long srcAddr, int srcType, long dstAddr, int dstType, int count, int minVtx) {
+        for (int i = 0; i < count; i++) {
+            writeIndex(dstAddr, dstType, i, readIndex(srcAddr, srcType, i) - minVtx);
+        }
+    }
+
+    /**
+     * Scan {@code count} indices at {@code srcAddr} of {@code srcType}. Returns
+     * {@code (max << 32) | (min & 0xFFFFFFFFL)} or {@code -1L} for an unsupported
+     * type or empty range.
+     */
+    public static long scanMinMaxIndex(long srcAddr, int srcType, int count) {
+        if (count <= 0) return -1L;
+        long min = Long.MAX_VALUE;
+        long max = Long.MIN_VALUE;
+        switch (srcType) {
+            case GL11.GL_UNSIGNED_BYTE -> {
+                for (int i = 0; i < count; i++) {
+                    final int v = memGetByte(srcAddr + i) & 0xFF;
+                    if (v < min) min = v;
+                    if (v > max) max = v;
+                }
+            }
+            case GL11.GL_UNSIGNED_SHORT -> {
+                for (int i = 0; i < count; i++) {
+                    final int v = memGetShort(srcAddr + i * 2L) & 0xFFFF;
+                    if (v < min) min = v;
+                    if (v > max) max = v;
+                }
+            }
+            case GL11.GL_UNSIGNED_INT -> {
+                for (int i = 0; i < count; i++) {
+                    final long v = memGetInt(srcAddr + i * 4L) & 0xFFFFFFFFL;
+                    if (v < min) min = v;
+                    if (v > max) max = v;
+                }
+                // readIndex / writeIndex / rebase all route UINT through signed int.
+                // Reject the > 2^31 slice so the caller bails rather than silently
+                // emitting negative indices. MC never hits this in practice.
+                if (max > Integer.MAX_VALUE) return -1L;
+            }
+            default -> {
+                return -1L;
+            }
+        }
+        return (max << 32) | (min & 0xFFFFFFFFL);
     }
 }
