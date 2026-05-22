@@ -703,13 +703,11 @@ public class BatchingFontRenderer {
                 if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
 
                 if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
-                    String chrReplacement = GlyphReplacements.customGlyphs.get(String.valueOf(chr));
-                    if (chrReplacement != null) {
-                        char replacement = chrReplacement.charAt(0);
-                        boolean isReplacementCharAvailable =
-                            FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
-                                || FontProviderCustom.getFallback().isGlyphAvailable(replacement);
-                        if (isReplacementCharAvailable) {
+                    final char replacement = GlyphReplacements.getReplacementGlyph(chr);
+                    if (replacement != 0) {
+                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
+                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
+                        ) {
                             chr = replacement;
                         }
                     }

@@ -68,7 +68,7 @@ public final class DisplayListVBOBuilder {
                     allBuffers.addAll(drawBuffers);
                     int size = 0;
                     for (ByteBuffer buffer : drawBuffers) {
-                        size += buffer.remaining();
+                        size += buffer.limit();
                     }
                     vertexCount = format.getVertexCount(size);
                 }

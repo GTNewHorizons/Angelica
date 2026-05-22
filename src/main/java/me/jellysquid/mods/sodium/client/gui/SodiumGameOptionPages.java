@@ -143,6 +143,7 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                     .setBinding((opts, value) -> opts.viewBobbing = value, opts -> opts.viewBobbing)
                         .build())
+                .add(Settings.BOBVIEW_MODE.option)
                 .add(Settings.DYNAMIC_FOV.option)
                 .add(Settings.HURT_SHAKE.option)
                 .add(Settings.MODE_WATER.option)

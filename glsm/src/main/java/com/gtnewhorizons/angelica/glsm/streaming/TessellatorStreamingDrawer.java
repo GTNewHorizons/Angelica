@@ -5,10 +5,10 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.ITessellatorData;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
@@ -69,42 +69,42 @@ public class TessellatorStreamingDrawer {
     /**
      * Draw the vanilla Tessellator's data using streaming VBO+VAO instead of FFP client arrays.
      */
-    public static int draw(ITessellatorData tess) {
-        if (!tess.isDrawing()) {
+    public static int draw(Tessellator tess) {
+        if (!tess.isDrawing) {
             throw new IllegalStateException("Not tesselating!");
         }
 
-        tess.setDrawing(false);
+        tess.isDrawing = false;
 
-        final int vertexCount = tess.getVertexCount();
+        final int vertexCount = tess.vertexCount;
         if (vertexCount == 0) {
-            final int result = tess.getRawBufferIndex() * 4;
-            tess.angelica$reset();
+            final int result = tess.rawBufferIndex * 4;
+            tess.reset();
             return result;
         }
 
         // Determine the optimal vertex format from the tessellator's flags
-        final int flags = VertexFlags.convertToFlags(tess.hasTexture(), tess.hasColor(), tess.hasNormals(), tess.hasBrightness());
+        final int flags = VertexFlags.convertToFlags(tess.hasTexture, tess.hasColor, tess.hasNormals, tess.hasBrightness);
         final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
         final int vertexSize = format.getVertexSize();
 
         final int requiredBytes = vertexCount * vertexSize;
         ensureRepackCapacity(requiredBytes);
 
-        final long writePtr = format.writeToBuffer0(repackAddress, tess.getRawBuffer(), tess.getRawBufferIndex());
+        final long writePtr = format.writeToBuffer0(repackAddress, tess.rawBuffer, tess.rawBufferIndex);
         repackBuffer.position(0);
         repackBuffer.limit((int)(writePtr - repackAddress));
 
-        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.getDrawMode(), vertexCount);
+        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
 
         // Shrink rawBuffer if oversized
-        if (tess.getRawBufferSize() > 0x20000 && tess.getRawBufferIndex() < (tess.getRawBufferSize() << 3)) {
-            tess.setRawBufferSize(0x10000);
-            tess.setRawBuffer(new int[tess.getRawBufferSize()]);
+        if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
+            tess.rawBufferSize = 0x10000;
+            tess.rawBuffer = new int[tess.rawBufferSize];
         }
 
-        final int result = tess.getRawBufferIndex() * 4;
-        tess.angelica$reset();
+        final int result = tess.rawBufferIndex * 4;
+        tess.reset();
         return result;
     }
 
