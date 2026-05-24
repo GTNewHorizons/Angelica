@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
+import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -10,8 +12,13 @@ import org.lwjgl.opengl.GL12;
 /**
  * Compact key capturing the vertex shader permutation axes for FFP emulation.
  * Packed into a single long for fast hash/compare.
+ *
+ * Per-unit fields are 4-bit base-indexed: bit (BASE + i) for unit i in [0..3].
+ * Unit 1 is the lightmap; texcoord enable for unit 1 also gates the lightmap-specific code paths.
  */
 public final class VertexKey {
+
+    public static final int MAX_UNITS = 4;
 
     private final long packed;
 
@@ -23,26 +30,25 @@ public final class VertexKey {
     private static final int BIT_COLOR_MATERIAL      = 5;
     private static final int BIT_SEPARATE_SPECULAR   = 6;
     private static final int BIT_FOG                 = 7;
-    private static final int BIT_FOG_DIST_MODE       = 8;
+    private static final int BIT_FOG_DIST_MODE       = 8;  // 2 bits: 8-9
     private static final int BIT_NORMALIZE           = 10;
     private static final int BIT_RESCALE_NORMAL      = 11;
-    private static final int BIT_TEXTURE             = 12;
-    private static final int BIT_LIGHTMAP            = 13;
-    private static final int BIT_TEX_MATRIX          = 14;
-    private static final int BIT_HAS_VERTEX_COLOR    = 15;
-    private static final int BIT_HAS_VERTEX_NORMAL   = 16;
-    private static final int BIT_HAS_VERTEX_TEX      = 17;
-    private static final int BIT_HAS_VERTEX_LIGHTMAP = 18;
-    private static final int BIT_COLOR_MAT_MODE      = 19;
-    // bits 19-21: colorMaterialMode (3 bits)
-    // TexGen modes: 3 bits each (0=NONE, 1=OBJ_LINEAR, 2=EYE_LINEAR)
-    private static final int BIT_TEXGEN_S            = 22;
-    private static final int BIT_TEXGEN_T            = 25;
-    private static final int BIT_TEXGEN_R            = 28;
-    private static final int BIT_TEXGEN_Q            = 31;
-    // bits 31-33: texGenModeQ (3 bits)
-    private static final int BIT_CLIP_PLANES         = 34;
-    private static final int BIT_WIDE_LINE           = 35;
+    // Per-unit texcoord enable: bits 12-15 (unit 0..3). Unit 1 doubles as the lightmap flag.
+    private static final int BIT_UNIT_TEX_BASE       = 12;
+    private static final int BIT_HAS_VERTEX_COLOR    = 16;
+    private static final int BIT_HAS_VERTEX_NORMAL   = 17;
+    private static final int BIT_HAS_VERTEX_TEX      = 18;
+    private static final int BIT_HAS_VERTEX_LIGHTMAP = 19;
+    private static final int BIT_COLOR_MAT_MODE      = 20;  // 3 bits: 20-22
+    // TexGen modes (unit 0 only, for now): 3 bits each (0=NONE, 1=OBJ_LINEAR, 2=EYE_LINEAR).
+    private static final int BIT_TEXGEN_S            = 23;  // 3 bits: 23-25
+    private static final int BIT_TEXGEN_T            = 26;  // 3 bits: 26-28
+    private static final int BIT_TEXGEN_R            = 29;  // 3 bits: 29-31
+    private static final int BIT_TEXGEN_Q            = 32;  // 3 bits: 32-34
+    private static final int BIT_CLIP_PLANES         = 35;
+    private static final int BIT_WIDE_LINE           = 36;
+    // Per-unit texmat enable: bits 37-40 (unit 0..3). Unit 1 is the lightmap matrix.
+    private static final int BIT_UNIT_TEXMAT_BASE    = 37;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -71,9 +77,10 @@ public final class VertexKey {
     public int fogDistanceMode()           { return (int)((packed >> BIT_FOG_DIST_MODE) & 0x3); }
     public boolean normalizeEnabled()      { return bit(BIT_NORMALIZE); }
     public boolean rescaleNormalsEnabled() { return bit(BIT_RESCALE_NORMAL); }
-    public boolean textureEnabled()        { return bit(BIT_TEXTURE); }
-    public boolean lightmapEnabled()       { return bit(BIT_LIGHTMAP); }
-    public boolean textureMatrixEnabled()  { return bit(BIT_TEX_MATRIX); }
+    public boolean unitTexCoordEnabled(int unit) { return bit(BIT_UNIT_TEX_BASE + unit); }
+    public boolean unitTexMatEnabled(int unit)   { return bit(BIT_UNIT_TEXMAT_BASE + unit); }
+    public boolean anyUnitTexCoordEnabled() { return ((packed >> BIT_UNIT_TEX_BASE) & 0xF) != 0; }
+    public boolean lightmapEnabled()       { return unitTexCoordEnabled(1); }
     public boolean hasVertexColor()        { return bit(BIT_HAS_VERTEX_COLOR); }
     public boolean hasVertexNormal()       { return bit(BIT_HAS_VERTEX_NORMAL); }
     public boolean hasVertexTexCoord()     { return bit(BIT_HAS_VERTEX_TEX); }
@@ -81,28 +88,18 @@ public final class VertexKey {
     /** Color material mode (CM_AMBIENT, CM_DIFFUSE, CM_SPECULAR, CM_EMISSION, CM_AMBIENT_AND_DIFFUSE). Only meaningful when colorMaterialEnabled(). */
     public int colorMaterialMode()        { return (int)((packed >> BIT_COLOR_MAT_MODE) & 0x7); }
 
-    /** TexGen mode for S coordinate (TG_NONE, TG_OBJ_LINEAR, TG_EYE_LINEAR). */
+    /** TexGen mode for S coordinate (TG_NONE, TG_OBJ_LINEAR, TG_EYE_LINEAR). Unit 0 only; see TODO in packFromState. */
     public int texGenModeS()              { return (int)((packed >> BIT_TEXGEN_S) & 0x7); }
-    /** TexGen mode for T coordinate. */
     public int texGenModeT()              { return (int)((packed >> BIT_TEXGEN_T) & 0x7); }
-    /** TexGen mode for R coordinate. */
     public int texGenModeR()              { return (int)((packed >> BIT_TEXGEN_R) & 0x7); }
-    /** TexGen mode for Q coordinate. */
     public int texGenModeQ()              { return (int)((packed >> BIT_TEXGEN_Q) & 0x7); }
-    /** Whether any texgen coordinate is enabled. */
     public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
-    /** Whether any clip plane is enabled. */
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
-    /** Whether wide line GS emulation is active for this variant. */
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
 
-    /** Whether vertex color replaces material ambient in this variant. */
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
-    /** Whether vertex color replaces material diffuse in this variant. */
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
-    /** Whether vertex color replaces material specular in this variant. */
     public boolean cmReplacesSpecular()   { return colorMaterialMode() == CM_SPECULAR; }
-    /** Whether vertex color replaces material emission in this variant. */
     public boolean cmReplacesEmission()   { return colorMaterialMode() == CM_EMISSION; }
 
     private boolean bit(int pos) { return ((packed >> pos) & 1) != 0; }
@@ -171,23 +168,18 @@ public final class VertexKey {
             bits |= (1L << BIT_RESCALE_NORMAL);
         }
 
-        // Texture unit 0 (base texture)
-        if (GLStateManager.getTextures().getTextureUnitStates(0).isEnabled()) {
-            bits |= (1L << BIT_TEXTURE);
-        }
-        // Texture unit 1 (lightmap)
-        if (GLStateManager.getTextures().getTextureUnitStates(1).isEnabled()) {
-            bits |= (1L << BIT_LIGHTMAP);
-        }
-
-        // Check if texture matrix unit 0 is non-identity
-        final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
-        if (!DisplayListManager.isIdentity(texMat)) {
-            bits |= (1L << BIT_TEX_MATRIX);
+        final TextureUnitArray texUnit = GLStateManager.getTextures();
+        for (int i = 0; i < MAX_UNITS; i++) {
+            if (texUnit.getTextureUnitStates(i).isEnabled()) {
+                bits |= (1L << (BIT_UNIT_TEX_BASE + i));
+            }
+            if (!MatrixHelper.isIdentity(texUnit.getTextureUnitMatrix(i))) {
+                bits |= (1L << (BIT_UNIT_TEXMAT_BASE + i));
+            }
         }
 
-        // TexGen (unit 0 only) — encode per-coordinate mode if enabled
-        final var texUnit = GLStateManager.getTextures();
+        // TexGen (unit 0 only) - per-coordinate mode if enabled.
+        // TODO: per-unit texgen for units 2/3. Deferred - no MC code path uses glTexGen on those.
         final TexGenState tg = texUnit.getTexGenState(0);
         boolean anyTexGen = false;
         if (texUnit.getTexGenSStates(0).isEnabled() && tg.getMode(GL11.GL_S) != 0) {
@@ -210,9 +202,9 @@ public final class VertexKey {
             bits |= ((long) m & 0x7) << BIT_TEXGEN_Q;
             if (m != TG_NONE) anyTexGen = true;
         }
-        // Force texture matrix on when texgen is active (end portal pattern always uses it)
+        // Force unit-0 texture matrix on when texgen is active (end portal pattern always uses it).
         if (anyTexGen) {
-            bits |= (1L << BIT_TEX_MATRIX);
+            bits |= (1L << BIT_UNIT_TEXMAT_BASE);
         }
 
         // Vertex format flags
@@ -221,12 +213,10 @@ public final class VertexKey {
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
 
-        // Clip planes
         if (GLStateManager.anyClipPlaneEnabled()) {
             bits |= (1L << BIT_CLIP_PLANES);
         }
 
-        // Wide line GS emulation
         if (GLStateManager.wideLineEmulationActive) {
             bits |= (1L << BIT_WIDE_LINE);
         }
@@ -256,9 +246,11 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%09X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%b lm=%b col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b]",
+        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b]",
             packed, lightingEnabled(), light0Enabled(), light1Enabled(),
-            colorMaterialEnabled(), fogEnabled(), textureEnabled(), lightmapEnabled(),
+            colorMaterialEnabled(), fogEnabled(),
+            unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0,
+            unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0,
             hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(),
             texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation());
     }

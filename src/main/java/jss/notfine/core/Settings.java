@@ -10,6 +10,7 @@ import cpw.mods.fml.relauncher.SideOnly;
 import jss.notfine.gui.options.control.NotFineControlValueFormatter;
 import jss.notfine.gui.options.named.AlwaysNever;
 import jss.notfine.gui.options.named.BackgroundSelect;
+import jss.notfine.gui.options.named.BobviewMode;
 import jss.notfine.gui.options.named.DownfallQuality;
 import jss.notfine.gui.options.named.FOVMode;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
@@ -50,6 +51,7 @@ public enum Settings {
             SettingsManager.downfallDistanceUpdated();
         }
     },
+    BOBVIEW_MODE(new NotFineOptionCycling<>(BobviewMode.DEFAULT, null)),
     DYNAMIC_FOV(new NotFineOptionCycling<>(FOVMode.ALL, OptionImpact.VARIES)),
     HURT_SHAKE(new NotFineOptionSliderPercentage(100, 0, 300, 5, OptionImpact.LOW)),
     DYNAMIC_LIGHTS(new NotFineOptionCycling<>(DynamicLightsMode.FANCY, OptionImpact.VARIES)){

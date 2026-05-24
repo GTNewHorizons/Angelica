@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
+import org.joml.Math;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
@@ -42,8 +43,8 @@ public class Uniforms {
     private final org.joml.Vector3f tempVec3 = new org.joml.Vector3f();
 
     // Pre-computed constants for fog params (Mesa STATE_FOG_PARAMS_OPTIMIZED)
-    private static final double LN2 = Math.log(2.0);
-    private static final double SQRT_LN2 = Math.sqrt(LN2);
+    private static final double LN2 = java.lang.Math.log(2.0);
+    private static final double SQRT_LN2 = java.lang.Math.sqrt(LN2);
 
     // Dirty tracking: last-uploaded generation per category + program ID.
     // Program change forces full re-upload since uniform locations differ.
@@ -110,10 +111,10 @@ public class Uniforms {
             }
         }
 
-        if (!program.getVertexKey().hasVertexTexCoord() && program.getVertexKey().textureEnabled()) {
+        if (program.getVertexKey().anyUnitTexCoordEnabled()) {
             final int texGen = ShaderManager.getTexCoordGeneration();
             if (programChanged || texGen != lastTexCoordGen) {
-                uploadCurrentTexCoord(program);
+                uploadCurrentTexCoords(program);
                 lastTexCoordGen = texGen;
             }
         }
@@ -197,16 +198,15 @@ public class Uniforms {
             RENDER_BACKEND.uniformMatrix4(program.locMVPMatrix, false, mat4Buf);
         }
 
-        // Texture matrices
+        // Texture matrices (per-unit).
         if (texMatChanged) {
-            // Texture matrix unit 0
-            if (program.locTextureMatrix0 != -1) {
-                final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
-                texMat.get(mat4Buf);
-                RENDER_BACKEND.uniformMatrix4(program.locTextureMatrix0, false, mat4Buf);
+            for (int i = 0; i < 4; i++) {
+                if (program.locTextureMatrix[i] != -1) {
+                    final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(i);
+                    texMat.get(mat4Buf);
+                    RENDER_BACKEND.uniformMatrix4(program.locTextureMatrix[i], false, mat4Buf);
+                }
             }
-
-            // Texture matrix unit 1 (lightmap)
             if (program.locLightmapTextureMatrix != -1) {
                 final Matrix4f lmTexMat = GLStateManager.getTextures().getTextureUnitMatrix(1);
                 lmTexMat.get(mat4Buf);
@@ -315,18 +315,20 @@ public class Uniforms {
         // Upload the current color from GLSM
         final var color = GLStateManager.getColor();
         vec4Buf.clear();
-        vec4Buf.put(color.getRed());
-        vec4Buf.put(color.getGreen());
-        vec4Buf.put(color.getBlue());
-        vec4Buf.put(color.getAlpha());
+        vec4Buf.put(Math.clamp(0f, 1f, color.getRed()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getGreen()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getBlue()));
+        vec4Buf.put(Math.clamp(0f, 1f, color.getAlpha()));
         vec4Buf.flip();
         RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
 
-    private void uploadCurrentTexCoord(Program program) {
-        if (program.locCurrentTexCoord == -1) return;
-        final var tc = ShaderManager.getCurrentTexCoord();
-        uploadVec4(program.locCurrentTexCoord, tc);
+    private void uploadCurrentTexCoords(Program program) {
+        for (int i = 0; i < 4; i++) {
+            if (program.locCurrentTexCoord[i] != -1) {
+                uploadVec4(program.locCurrentTexCoord[i], ShaderManager.getCurrentTexCoord(i));
+            }
+        }
     }
 
     private void uploadCurrentLightmapCoord(Program program) {

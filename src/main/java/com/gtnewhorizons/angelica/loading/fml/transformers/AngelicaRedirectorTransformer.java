@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.loading.fml.transformers;
 
-import com.gtnewhorizons.angelica.loading.AngelicaTweaker;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.loading.shared.transformers.AngelicaRedirector;
 import net.minecraft.launchwrapper.IClassTransformer;

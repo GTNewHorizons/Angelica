@@ -37,11 +37,11 @@ public final class FragmentShaderGenerator {
         if (key.separateSpecular()) {
             sb.append("in vec3 v_SpecularColor;\n");
         }
-        if (key.textureEnabled()) {
-            sb.append("in vec4 v_TexCoord0;\n");
-        }
-        if (key.lightmapEnabled()) {
-            sb.append("in vec4 v_TexCoord1;\n");
+        // Per-unit texcoord inputs. Each enabled unit sources from its own varying
+        for (int i = 0; i < key.nrEnabledUnits(); i++) {
+            if (key.unitEnabled(i)) {
+                sb.append("in vec4 v_TexCoord").append(i).append(";\n");
+            }
         }
         if (key.fogMode() != FragmentKey.FOG_NONE) {
             sb.append("in float v_FogCoord;\n");
@@ -75,11 +75,7 @@ public final class FragmentShaderGenerator {
     private static void emitTextureSampling(StringBuilder sb, FragmentKey key) {
         for (int i = 0; i < key.nrEnabledUnits(); i++) {
             if (!key.unitEnabled(i)) continue;
-            // Unit 1 is the lightmap — uses v_TexCoord1.
-            // Units 2-3 intentionally share unit 0's texture coordinates since
-            // the vertex shader only provides 2 tex coord varyings (unit 0 and unit 1/lightmap).
-            final String texCoord = (i == 1) ? "v_TexCoord1.st" : "v_TexCoord0.st";
-            sb.append("  vec4 tex").append(i).append("Color = texture(u_Sampler").append(i).append(", ").append(texCoord).append(");\n");
+            sb.append("  vec4 tex").append(i).append("Color = texture(u_Sampler").append(i).append(", v_TexCoord").append(i).append(".st);\n");
         }
     }
 

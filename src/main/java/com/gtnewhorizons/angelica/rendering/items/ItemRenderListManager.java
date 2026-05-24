@@ -23,7 +23,7 @@
  * along with FalseTweaks. If not, see <https://www.gnu.org/licenses/>.
  */
 
-package com.gtnewhorizons.angelica.rendering;
+package com.gtnewhorizons.angelica.rendering.items;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
@@ -37,6 +37,7 @@ import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import org.lwjgl.opengl.GL11;
 
 public class ItemRenderListManager {
@@ -96,6 +97,17 @@ public class ItemRenderListManager {
 
     private static int getElapsedTicks() {
         return Minecraft.getMinecraft().thePlayer.ticksExisted;
+    }
+
+    public static void registerReloadListener(){
+        IReloadableResourceManager resourceManager = (IReloadableResourceManager) Minecraft.getMinecraft()
+            .getResourceManager();
+        resourceManager.registerReloadListener(_ -> {
+            for (CachedVBO value : vboCache.values()) {
+                value.delete();
+            }
+            vboCache.clear();
+        });
     }
 
     public static final class CachedVBO {

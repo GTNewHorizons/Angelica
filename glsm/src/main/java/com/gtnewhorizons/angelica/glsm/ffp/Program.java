@@ -32,12 +32,12 @@ public class Program {
     public int locProjectionMatrix = -1;
     public int locMVPMatrix = -1;
     public int locNormalMatrix = -1;
-    public int locTextureMatrix0 = -1;
+    public final int[] locTextureMatrix = { -1, -1, -1, -1 };
 
     // Current state defaults
     public int locCurrentNormal = -1;
     public int locCurrentColor = -1;
-    public int locCurrentTexCoord = -1;
+    public final int[] locCurrentTexCoord = { -1, -1, -1, -1 };
     public int locCurrentLightmapCoord = -1;
     public int locLightmapTextureMatrix = -1;
 
@@ -107,11 +107,13 @@ public class Program {
         locProjectionMatrix = loc("u_ProjectionMatrix");
         locMVPMatrix = loc("u_MVPMatrix");
         locNormalMatrix = loc("u_NormalMatrix");
-        locTextureMatrix0 = loc("u_TextureMatrix0");
+        for (int i = 0; i < 4; i++) {
+            locTextureMatrix[i] = loc("u_TextureMatrix" + i);
+            locCurrentTexCoord[i] = loc("u_CurrentTexCoord" + i);
+        }
 
         locCurrentNormal = loc("u_CurrentNormal");
         locCurrentColor = loc("u_CurrentColor");
-        locCurrentTexCoord = loc("u_CurrentTexCoord");
         locCurrentLightmapCoord = loc("u_CurrentLightmapCoord");
         locLightmapTextureMatrix = loc("u_LightmapTextureMatrix");
 

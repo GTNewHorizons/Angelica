@@ -1993,7 +1993,9 @@ public class GLStateManager {
         }
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
         RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, 1, 1, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        restorePixelUnpackBuffer();
 
         // Restore previous binding on active unit
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
@@ -2099,22 +2101,20 @@ public class GLStateManager {
     }
 
     public static void glEnd() {
-        if (DisplayListManager.isRecording()) {
-            final DirectTessellator result = ImmediateModeRecorder.end();
-            if (result != null) {
+        final DirectTessellator result = ImmediateModeRecorder.end();
+        if (result != null) {
+            if (DisplayListManager.isRecording()) {
                 if (DisplayListManager.isCompileAndExecute() && initConfig != null && initConfig.getDirectDrawer() != null) {
-                    DisplayListManager.flushMatrix();
-                    final var recorder = DisplayListManager.pauseRecording();
+                    final CommandRecorder recorder = DisplayListManager.pauseRecording();
                     initConfig.getDirectDrawer().accept(result);
                     DisplayListManager.resumeRecording(recorder);
                 }
                 DisplayListManager.addImmediateModeDraw(result);
+                return;
             }
-            return;
-        }
-        final DirectTessellator result = ImmediateModeRecorder.end();
-        if (result != null && initConfig != null && initConfig.getDirectDrawer() != null) {
-            initConfig.getDirectDrawer().accept(result);
+            if (initConfig != null && initConfig.getDirectDrawer() != null) {
+                initConfig.getDirectDrawer().accept(result);
+            }
         }
     }
 
@@ -2229,7 +2229,6 @@ public class GLStateManager {
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
             // is redirected to it, so a VAO is always bound here — no fallback branches.
-            DisplayListManager.flushMatrix();
             final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
             if (capture != null) {
                 DisplayListManager.recordIndexedDrawCapture(capture);
@@ -3350,7 +3349,6 @@ public class GLStateManager {
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
             DisplayListManager.recordMatrixMode(mode);
-            DisplayListManager.resetRelativeTransform();  // Mode switch is a barrier - reset delta tracking
             if (recordMode == RecordMode.COMPILE) {
                 return;
             }
@@ -3364,8 +3362,6 @@ public class GLStateManager {
             final Matrix4f matrix = new Matrix4f().set(m);
             m.rewind();
             DisplayListManager.recordLoadMatrix(matrix);
-            // Reset relative transform - subsequent transforms are relative to loaded matrix
-            DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -3385,8 +3381,6 @@ public class GLStateManager {
             final Matrix4f floatMatrix = new Matrix4f();
             floatMatrix.set(conversionMatrix4d);
             DisplayListManager.recordLoadMatrix(floatMatrix);
-            // Reset relative transform - subsequent transforms are relative to loaded matrix
-            DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -3426,8 +3420,6 @@ public class GLStateManager {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordLoadIdentity();
-            // Reset relative transform - accumulated transforms are discarded (overwritten by load)
-            DisplayListManager.resetRelativeTransform();
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -3439,10 +3431,9 @@ public class GLStateManager {
     }
 
     public static void glTranslatef(float x, float y, float z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.TRANSLATE, null);
-            if (mode == RecordMode.COMPILE) return;
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.applyMatrixTranslation(x, y, z);
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate(x, y, z);
@@ -3451,10 +3442,9 @@ public class GLStateManager {
     }
 
     public static void glTranslated(double x, double y, double z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.TRANSLATE, null);
-            if (mode == RecordMode.COMPILE) return;
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.applyMatrixTranslation((float) x, (float) y, (float) z);
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate((float) x, (float) y, (float) z);
@@ -3463,10 +3453,9 @@ public class GLStateManager {
     }
 
     public static void glScalef(float x, float y, float z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform(x, y, z, DisplayListManager.TransformOp.SCALE, null);
-            if (mode == RecordMode.COMPILE) return;
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.applyMatrixScale(x, y, z);
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().scale(x, y, z);
@@ -3475,10 +3464,9 @@ public class GLStateManager {
     }
 
     public static void glScaled(double x, double y, double z) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.updateRelativeTransform((float) x, (float) y, (float) z, DisplayListManager.TransformOp.SCALE, null);
-            if (mode == RecordMode.COMPILE) return;
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.applyMatrixScale((float) x, (float) y, (float) z);
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().scale((float) x, (float) y, (float) z);
@@ -3492,11 +3480,17 @@ public class GLStateManager {
         multMatrix.set(floatBuffer);
         final int currentMode = matrixMode.getMode();
 
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransform(multMatrix);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
+        if (isCachingEnabled()) {
+            getMatrixStack().mul(multMatrix);
+            bumpMatrixGeneration();
+        }
+    }
+
+    public static void applyMultMatrix(Matrix4f multMatrix) {
         if (isCachingEnabled()) {
             getMatrixStack().mul(multMatrix);
             bumpMatrixGeneration();
@@ -3510,10 +3504,9 @@ public class GLStateManager {
         conversionMatrix4d.set(matrix);
         conversionMatrix4f.set(conversionMatrix4d);
 
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransform(conversionMatrix4f);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().mul(conversionMatrix4f);
@@ -3521,20 +3514,24 @@ public class GLStateManager {
         }
     }
 
-    private static final Vector3f rotation = new Vector3f();
-
     public static void glRotatef(float angle, float x, float y, float z) {
         final float lenSq = x * x + y * y + z * z;
         if (lenSq == 0.0f) return;
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            rotation.set(x, y, z).normalize();
-            DisplayListManager.updateRelativeTransform(angle, 0, 0, DisplayListManager.TransformOp.ROTATE, rotation);
-            if (mode == RecordMode.COMPILE) return;
+
+        // Fast way to normalize rotation
+        final float scalar = 1.0f / (float) Math.sqrt(lenSq);
+        x *= scalar;
+        y *= scalar;
+        z *= scalar;
+        // Convert deg to rad
+        angle = (float) Math.toRadians(angle);
+
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.applyMatrixRotation(angle, x, y, z);
+            return;
         }
         if (isCachingEnabled()) {
-            rotation.set(x, y, z).normalize();
-            getMatrixStack().rotate((float) Math.toRadians(angle), rotation);
+            getMatrixStack().rotate(angle, x, y, z);
             bumpMatrixGeneration();
         }
     }
@@ -3542,24 +3539,29 @@ public class GLStateManager {
     public static void glRotated(double angle, double x, double y, double z) {
         final double lenSq = x * x + y * y + z * z;
         if (lenSq == 0.0) return;
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            rotation.set((float) x, (float) y, (float) z).normalize();
-            DisplayListManager.updateRelativeTransform((float) angle, 0, 0, DisplayListManager.TransformOp.ROTATE, rotation);
-            if (mode == RecordMode.COMPILE) return;
+
+        // Fast way to normalize rotation
+        final double scalar = 1.0 / Math.sqrt(lenSq);
+        x *= scalar;
+        y *= scalar;
+        z *= scalar;
+        // Convert deg to rad
+        angle = Math.toRadians(angle);
+
+        if (DisplayListManager.isRecording()) {
+            DisplayListManager.applyMatrixRotation((float) angle, (float) x, (float) y, (float) z);
+            return;
         }
         if (isCachingEnabled()) {
-            rotation.set((float) x, (float) y, (float) z).normalize();
-            getMatrixStack().rotate((float) Math.toRadians(angle), rotation);
+            getMatrixStack().rotate((float) angle, (float) x, (float) y, (float) z);
             bumpMatrixGeneration();
         }
     }
 
     public static void glOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransformOrtho(left, right, bottom, top, zNear, zFar);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
@@ -3568,10 +3570,9 @@ public class GLStateManager {
     }
 
     public static void glFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
+        if (DisplayListManager.isRecording()) {
             DisplayListManager.updateRelativeTransformFrustum(left, right, bottom, top, zNear, zFar);
-            if (mode == RecordMode.COMPILE) return;
+            return;
         }
         if (isCachingEnabled()) {
             getMatrixStack().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
@@ -4393,8 +4394,8 @@ public class GLStateManager {
     }
 
     public static int glGetError() {
-        if (!RENDER_BACKEND.hasContext()) return 0;
         if (initConfig.noErrorChecks()) return 0;
+        if (!RENDER_BACKEND.hasContext()) return 0;
         return RENDER_BACKEND.getError();
     }
 
@@ -4966,25 +4967,25 @@ public class GLStateManager {
         RENDER_BACKEND.bindBuffer(target, buffer);
     }
 
-    private static void suspendPixelUnpackBuffer() {
+    static void suspendPixelUnpackBuffer() {
         if (boundPixelUnpackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
         }
     }
 
-    private static void restorePixelUnpackBuffer() {
+    static void restorePixelUnpackBuffer() {
         if (boundPixelUnpackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, boundPixelUnpackBuffer);
         }
     }
 
-    private static void suspendPixelPackBuffer() {
+    static void suspendPixelPackBuffer() {
         if (boundPixelPackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
         }
     }
 
-    private static void restorePixelPackBuffer() {
+    static void restorePixelPackBuffer() {
         if (boundPixelPackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, boundPixelPackBuffer);
         }
@@ -5148,8 +5149,12 @@ public class GLStateManager {
                 return;
             }
             setLightmapTextureCoords(target, s, t);
+        } else {
+            final int unit = target - GL13.GL_TEXTURE0;
+            if (unit >= 2 && unit < 4) {
+                ShaderManager.setCurrentTexCoord(unit, s, t, 0.0f, 1.0f);
+            }
         }
-        // Units 2+ silently ignored — shader uses v_TexCoord0 for all non-lightmap units
     }
 
     public static void glMultiTexCoord2d(int target, double s, double t) {
@@ -5931,5 +5936,15 @@ public class GLStateManager {
     }
     public static void glGetTexImage(int target, int level, int format, int type, long pixels) {
         GL11.glGetTexImage(target, level, format, type, pixels);
+    }
+
+    /**
+     * Draw modes that rely on the previous vertex data cannot be merged currently.
+     * It is possible to merge them using Index Buffers, but currently unimplemented.
+     */
+    public static boolean isContinuousDraw(int drawMode) {
+        return drawMode == GL11.GL_TRIANGLE_STRIP || drawMode == GL11.GL_TRIANGLE_FAN
+            || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP
+            || drawMode == GL11.GL_QUAD_STRIP || drawMode == GL11.GL_POLYGON;
     }
 }

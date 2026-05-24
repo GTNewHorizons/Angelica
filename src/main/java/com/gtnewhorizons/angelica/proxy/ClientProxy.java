@@ -29,6 +29,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
+import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager;
+import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
@@ -144,6 +146,10 @@ public final class ClientProxy extends CommonProxy {
         }
         if (AngelicaConfig.enableDynamicLights) {
             EntityLightConfig.init(new java.io.File(mc.mcDataDir, "config"));
+        }
+        if(AngelicaConfig.optimizeInWorldItemRendering){
+            ItemRenderListManager.registerReloadListener();
+            BlockRenderListManager.registerReloadListener();
         }
 
         // Register debug commands in dev environment only
