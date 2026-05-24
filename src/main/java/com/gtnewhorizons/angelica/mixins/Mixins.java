@@ -45,6 +45,7 @@ public enum Mixins implements IMixins {
             , "angelica.bugfixes.MixinRenderCreeper_AuraDepth"
             , "angelica.bugfixes.MixinRenderGlobal_DeferredEntityOverlay"
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
+            , "angelica.bugfixes.MixinRenderMooshroom_MushroomTint"
             , "angelica.bugfixes.MixinRendererLivingEntity_DeferredEntityOverlay"
             , "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
             , "angelica.bugfixes.MixinRenderWither_ArmorCentering"
