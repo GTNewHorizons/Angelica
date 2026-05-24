@@ -6,6 +6,7 @@ import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
 import net.minecraft.item.Item;
@@ -20,6 +21,7 @@ import net.minecraft.util.ResourceLocation;
 public class ItemMaterialHelper {
     private static final Reference2ObjectMap<Item, Int2IntMap> MATERIAL_CACHE = new Reference2ObjectOpenHashMap<>();
     private static final int CACHE_MISS_SENTINEL = Integer.MIN_VALUE;
+    private static final Reference2ObjectMap<Item, NamespacedId> ITEM_NAME_CACHE = new Reference2ObjectOpenHashMap<>();
     /**
      * Get the material ID for an ItemStack.
      * For ItemBlock: checks block.properties first, then item.properties.
@@ -32,6 +34,19 @@ public class ItemMaterialHelper {
         if (itemStack == null || itemStack.getItem() == null) {
             return -1;
         }
+
+        // Check item NBT conditions first
+        final NbtConditionalIdMap<NamespacedId> itemNbtMap = BlockRenderingSettings.INSTANCE.getItemNbtMap();
+        if (itemNbtMap != null && !itemNbtMap.isEmpty() && itemStack.hasTagCompound()) {
+            NamespacedId namespacedId = getCachedItemName(itemStack.getItem());
+            if (namespacedId != null && itemNbtMap.hasConditions(namespacedId)) {
+                int nbtId = itemNbtMap.resolve(namespacedId, itemStack.getTagCompound());
+                if (nbtId != -1) {
+                    return nbtId;
+                }
+            }
+        }
+
         return getMaterialId(itemStack.getItem(), itemStack.getItemDamage());
     }
 
@@ -73,8 +88,7 @@ public class ItemMaterialHelper {
      */
     private static int lookupMaterialId(Item item, int metadata) {
         // For ItemBlock: check block.properties first
-        if (item instanceof ItemBlock) {
-            final ItemBlock itemBlock = (ItemBlock) item;
+        if (item instanceof ItemBlock itemBlock) {
             final Block block = itemBlock.field_150939_a; // The block this item places
 
             if (block != null) {
@@ -94,7 +108,7 @@ public class ItemMaterialHelper {
         // Fall back to item.properties
         Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
         if (itemIds != null) {
-            String itemIdString = (String) Item.itemRegistry.getNameForObject(item);
+            String itemIdString = Item.itemRegistry.getNameForObject(item);
             if (itemIdString != null) {
                 ResourceLocation itemId = new ResourceLocation(itemIdString);
                 return itemIds.applyAsInt(new NamespacedId(itemId.getResourceDomain(), itemId.getResourcePath()));
@@ -110,5 +124,23 @@ public class ItemMaterialHelper {
      */
     public static void clearCache() {
         MATERIAL_CACHE.clear();
+        ITEM_NAME_CACHE.clear();
+    }
+
+    private static NamespacedId getCachedItemName(Item item) {
+        NamespacedId cached = ITEM_NAME_CACHE.get(item);
+        if (cached != null) {
+            return cached;
+        }
+
+        String itemIdString = Item.itemRegistry.getNameForObject(item);
+        if (itemIdString == null) {
+            return null;
+        }
+
+        ResourceLocation itemId = new ResourceLocation(itemIdString);
+        cached = new NamespacedId(itemId.getResourceDomain(), itemId.getResourcePath());
+        ITEM_NAME_CACHE.put(item, cached);
+        return cached;
     }
 }
