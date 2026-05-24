@@ -148,9 +148,20 @@ public class GLStateManager {
     public static int projGeneration;  // projection matrix changes
     public static int texMatrixGeneration; // texture matrix changes
     public static int lightingGeneration;
-    public static int fragmentGeneration; // fog + alpha ref
+    public static int fragmentGeneration; // fog + alpha ref + overlay color
     public static int colorGeneration;    // current vertex color
     public static int clipPlaneGeneration; // clip plane equation changes
+
+    @Getter private static float overlayR = 0.0f;
+    @Getter private static float overlayG = 0.0f;
+    @Getter private static float overlayB = 0.0f;
+    @Getter private static float overlayA = 0.0f;
+
+    public static void setOverlayColor(float r, float g, float b, float a) {
+        if (r == overlayR && g == overlayG && b == overlayB && a == overlayA) return;
+        overlayR = r; overlayG = g; overlayB = b; overlayA = a;
+        fragmentGeneration++;
+    }
 
     // Deferred vertex attribute upload flags — set when state changes, flushed before draw
     private static boolean dirtyColorAttrib;
@@ -5147,8 +5158,12 @@ public class GLStateManager {
                 return;
             }
             setLightmapTextureCoords(target, s, t);
+        } else {
+            final int unit = target - GL13.GL_TEXTURE0;
+            if (unit >= 2 && unit < 4) {
+                ShaderManager.setCurrentTexCoord(unit, s, t, 0.0f, 1.0f);
+            }
         }
-        // Units 2+ silently ignored — shader uses v_TexCoord0 for all non-lightmap units
     }
 
     public static void glMultiTexCoord2d(int target, double s, double t) {

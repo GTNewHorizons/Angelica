@@ -42,10 +42,10 @@ public class MixinItemRenderer_EdgeDepth {
     )
     private void angelica$stencilWriteStart(CallbackInfo ci) {
         GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilMask(0xFF);
+        GLStateManager.glStencilMask(0x03);
         GLStateManager.glClearStencil(0);
         GLStateManager.glClear(GL11.GL_STENCIL_BUFFER_BIT);
-        GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 1, 0xFF);
+        GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 1, 0x03);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
     }
 
@@ -69,7 +69,7 @@ public class MixinItemRenderer_EdgeDepth {
     private void angelica$glintStart(int func) {
         angelica$glintMode = true;
         GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0x03);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
     }
 
@@ -83,7 +83,7 @@ public class MixinItemRenderer_EdgeDepth {
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         GLStateManager.glDepthMask(true);
         GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
-        GLStateManager.glStencilMask(0xFF);
+        GLStateManager.glStencilMask(0x03);
     }
 
     // Stencil pre-pass inside renderItemIn2D when in glint mode
@@ -102,21 +102,21 @@ public class MixinItemRenderer_EdgeDepth {
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glDepthMask(false);
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
-        GLStateManager.glStencilMask(0xFF);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GLStateManager.glStencilMask(0x03);
+        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0x03);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
         original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
 
         // Color pass: draw only at pre-pass pixels.
         GLStateManager.glColorMask(true, true, true, true);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 2, 0xFF);
+        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 2, 0x03);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
         GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
         original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
 
         // Restore state for the next glint renderItemIn2D call
         GLStateManager.glStencilMask(0x00);
-        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0x03);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
 

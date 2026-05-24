@@ -12,7 +12,7 @@ import org.lwjgl.opengl.GL13;
  * Packed-long fragment shader permutation key for FFP emulation.
  *
  * Layout:
- *   long[0]: global bits (10) + unit 0 (47 bits at offset 10)
+ *   long[0]: global bits (11) + unit 0 (47 bits at offset 11)
  *   long[1..3]: unit 1..3 (47 bits each, low-aligned)
  * Only max(1, nrEnabledUnits) longs are significant.
  *
@@ -63,12 +63,13 @@ public final class FragmentKey {
     public static final int FOG_EXP    = 2;
     public static final int FOG_EXP2   = 3;
 
-    private static final int GLOBAL_BITS = 10;
+    private static final int GLOBAL_BITS = 11;
     private static final int BIT_FOG_MODE          = 0;  // 2 bits
     private static final int BIT_ALPHA_TEST        = 2;  // 1 bit
     private static final int BIT_ALPHA_FUNC        = 3;  // 3 bits
     private static final int BIT_SEPARATE_SPECULAR = 6;  // 1 bit
     private static final int BIT_NR_ENABLED_UNITS  = 7;  // 3 bits
+    private static final int BIT_OVERLAY_ENABLED   = 10; // 1 bit
 
     private static final int U_ENABLED         = 0;
     private static final int U_MODE            = 1;   // 3 bits
@@ -117,6 +118,11 @@ public final class FragmentKey {
         if (GLStateManager.getAlphaTest().isEnabled()) {
             global |= (1L << BIT_ALPHA_TEST);
             global |= ((long) (encodeAlphaFunc(GLStateManager.getAlphaState().getFunction()) & 0x7)) << BIT_ALPHA_FUNC;
+        }
+
+        // Damage overlay
+        if (GLStateManager.getOverlayA() != 0.0f) {
+            global |= (1L << BIT_OVERLAY_ENABLED);
         }
 
         // Separate specular
@@ -227,6 +233,7 @@ public final class FragmentKey {
     public int alphaTestFunc()        { return (int) ((packed[0] >> BIT_ALPHA_FUNC) & 0x7); }
     public boolean separateSpecular() { return ((packed[0] >> BIT_SEPARATE_SPECULAR) & 1) != 0; }
     public int nrEnabledUnits()       { return (int) ((packed[0] >> BIT_NR_ENABLED_UNITS) & 0x7); }
+    public boolean overlayEnabled()   { return ((packed[0] >> BIT_OVERLAY_ENABLED) & 1) != 0; }
 
     private long unitBits(int i) {
         return (i == 0) ? (packed[0] >>> GLOBAL_BITS) : packed[i];
@@ -338,10 +345,10 @@ public final class FragmentKey {
             default -> "?";
         };
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b units=%d",
+        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b overlay=%b units=%d",
             fogName, alphaTestEnabled(),
             alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-",
-            separateSpecular(), nrEnabledUnits()));
+            separateSpecular(), overlayEnabled(), nrEnabledUnits()));
         for (int i = 0; i < nrEnabledUnits(); i++) {
             if (!unitEnabled(i)) {
                 sb.append(String.format(" u%d=OFF", i));
