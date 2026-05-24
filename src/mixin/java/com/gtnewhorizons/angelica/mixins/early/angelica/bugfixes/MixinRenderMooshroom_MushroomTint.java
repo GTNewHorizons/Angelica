@@ -23,16 +23,19 @@ public class MixinRenderMooshroom_MushroomTint {
     @Unique private static final float ANGELICA$RED_MIX = 1.0F - (0xB2 / 255.0F);
 
     @Unique private boolean angelica$mushroomTintActive;
+    @Unique private boolean angelica$mushroomTintShaderPath;
 
     @Inject(
         method = "renderEquippedItems(Lnet/minecraft/entity/passive/EntityMooshroom;F)V",
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/RenderBlocks;renderBlockAsItem(Lnet/minecraft/block/Block;IF)V",
-            ordinal = 0)
+            ordinal = 0),
+        require = 1, expect = 1
     )
     private void angelica$applyMushroomTint(EntityMooshroom entity, float partialTick, CallbackInfo ci) {
         if (entity.hurtTime <= 0 && entity.deathTime <= 0) return;
-        if (angelica$isShaderPackActive()) {
+        angelica$mushroomTintShaderPath = angelica$isShaderPackActive();
+        if (angelica$mushroomTintShaderPath) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
         } else {
             GLStateManager.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
@@ -45,11 +48,12 @@ public class MixinRenderMooshroom_MushroomTint {
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/RenderBlocks;renderBlockAsItem(Lnet/minecraft/block/Block;IF)V",
             ordinal = 2,
-            shift = At.Shift.AFTER)
+            shift = At.Shift.AFTER),
+        require = 1, expect = 1
     )
     private void angelica$clearMushroomTint(EntityMooshroom entity, float partialTick, CallbackInfo ci) {
         if (!angelica$mushroomTintActive) return;
-        if (angelica$isShaderPackActive()) {
+        if (angelica$mushroomTintShaderPath) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(0.0F, 0.0F, 0.0F, 0.0F);
         } else {
             GLStateManager.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);

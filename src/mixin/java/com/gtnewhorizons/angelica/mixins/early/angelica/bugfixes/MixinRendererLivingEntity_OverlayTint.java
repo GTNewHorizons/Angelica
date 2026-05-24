@@ -38,7 +38,8 @@ public class MixinRendererLivingEntity_OverlayTint {
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderModel(Lnet/minecraft/entity/EntityLivingBase;FFFFFF)V")
+            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderModel(Lnet/minecraft/entity/EntityLivingBase;FFFFFF)V"),
+        require = 1, expect = 1
     )
     private void angelica$setupOverlay(EntityLivingBase entity, double x, double y, double z,
                                        float yaw, float partialTick, CallbackInfo ci) {
@@ -63,7 +64,8 @@ public class MixinRendererLivingEntity_OverlayTint {
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
+            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V"),
+        require = 1, expect = 1
     )
     private void angelica$teardownOverlay(EntityLivingBase entity, double x, double y, double z,
                                           float yaw, float partialTick, CallbackInfo ci) {
@@ -86,9 +88,11 @@ public class MixinRendererLivingEntity_OverlayTint {
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V"),
         slice = @Slice(
-            from = @At(value = "INVOKE",
-                target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
-        )
+            from = @At(value = "FIELD",
+                target = "Lnet/minecraft/entity/EntityLivingBase;hurtTime:I",
+                ordinal = 1)
+        ),
+        require = 1, expect = 1
     )
     private void angelica$skipOverlayReRender(ModelBase model, Entity entity,
             float p1, float p2, float p3, float p4, float p5, float p6, Operation<Void> original) {
@@ -102,7 +106,8 @@ public class MixinRendererLivingEntity_OverlayTint {
     @WrapOperation(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I")
+            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"),
+        require = 1, expect = 1
     )
     private int angelica$detectEmissivePass(RendererLivingEntity self, EntityLivingBase entity, int pass,
             float partialTick, Operation<Integer> original) {
@@ -126,7 +131,8 @@ public class MixinRendererLivingEntity_OverlayTint {
                 target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"),
             to = @At(value = "INVOKE",
                 target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
-        )
+        ),
+        require = 1, expect = 1
     )
     private void angelica$untintEmissivePass(ModelBase model, Entity entity,
             float p1, float p2, float p3, float p4, float p5, float p6, Operation<Void> original) {

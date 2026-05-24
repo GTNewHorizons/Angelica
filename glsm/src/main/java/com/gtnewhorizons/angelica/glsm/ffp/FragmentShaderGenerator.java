@@ -65,7 +65,9 @@ public final class FragmentShaderGenerator {
                 sb.append("uniform vec4 u_TexEnvColor").append(i).append(";\n");
             }
         }
-        sb.append("uniform vec4 u_OverlayColor;\n");
+        if (key.overlayEnabled()) {
+            sb.append("uniform vec4 u_OverlayColor;\n");
+        }
         if (key.fogMode() != FragmentKey.FOG_NONE) {
             sb.append("uniform vec4 u_FogParams;\n");
             sb.append("uniform vec4 u_FogColor;\n");
@@ -84,7 +86,7 @@ public final class FragmentShaderGenerator {
         if (!key.textureEnabled()) {
             sb.append("  // No texture -- vertex color only\n");
             sb.append("  vec4 color = v_Color;\n");
-            emitOverlay(sb);
+            emitOverlay(sb, key);
             return;
         }
 
@@ -95,7 +97,7 @@ public final class FragmentShaderGenerator {
             if (!key.unitEnabled(i)) continue;
 
             if (!firstUnit && !overlayInjected) {
-                emitOverlay(sb);
+                emitOverlay(sb, key);
                 overlayInjected = true;
             }
 
@@ -112,13 +114,14 @@ public final class FragmentShaderGenerator {
             firstUnit = false;
         }
 
-        if (!overlayInjected) emitOverlay(sb);
+        if (!overlayInjected) emitOverlay(sb, key);
     }
 
     /**
      * Emit the modern-style damage overlay mix.
      */
-    private static void emitOverlay(StringBuilder sb) {
+    private static void emitOverlay(StringBuilder sb, FragmentKey key) {
+        if (!key.overlayEnabled()) return;
         sb.append("  color.rgb = mix(color.rgb, u_OverlayColor.rgb, u_OverlayColor.a);\n");
     }
 

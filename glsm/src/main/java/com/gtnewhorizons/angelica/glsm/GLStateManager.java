@@ -152,14 +152,10 @@ public class GLStateManager {
     public static int colorGeneration;    // current vertex color
     public static int clipPlaneGeneration; // clip plane equation changes
 
-    @Getter
-    private static float overlayR = 0.0f;
-    @Getter
-    private static float overlayG = 0.0f;
-    @Getter
-    private static float overlayB = 0.0f;
-    @Getter
-    private static float overlayA = 0.0f;
+    @Getter private static float overlayR = 0.0f;
+    @Getter private static float overlayG = 0.0f;
+    @Getter private static float overlayB = 0.0f;
+    @Getter private static float overlayA = 0.0f;
 
     public static void setOverlayColor(float r, float g, float b, float a) {
         if (r == overlayR && g == overlayG && b == overlayB && a == overlayA) return;

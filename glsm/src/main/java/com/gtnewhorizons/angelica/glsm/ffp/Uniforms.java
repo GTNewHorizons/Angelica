@@ -422,7 +422,7 @@ public class Uniforms {
             }
         }
 
-        if (program.locOverlayColor != -1) {
+        if (fk.overlayEnabled() && program.locOverlayColor != -1) {
             vec4Buf.clear();
             vec4Buf.put(GLStateManager.getOverlayR());
             vec4Buf.put(GLStateManager.getOverlayG());
