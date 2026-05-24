@@ -24,8 +24,18 @@ public class MixinNetHandlerPlayClient_NbtRemesh {
         }
 
         final World world = Minecraft.getMinecraft().theWorld;
-        if (world != null) {
-            world.markBlockForUpdate(packet.func_148856_c(), packet.func_148855_d(), packet.func_148854_e());
+        if (world == null) {
+            return;
         }
+
+        final int x = packet.func_148856_c/*getX*/() ;
+        final int y = packet.func_148855_d/*getY*/();
+        final int z = packet.func_148854_e/*getZ*/();
+        final Block block = world.getBlock(x, y, z);
+        if (block == null || !teMap.hasConditions(block)) {
+            return;
+        }
+
+        world.markBlockForUpdate(x, y, z);
     }
 }

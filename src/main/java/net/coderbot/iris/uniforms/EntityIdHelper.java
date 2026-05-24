@@ -1,7 +1,6 @@
 package net.coderbot.iris.uniforms;
 
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -31,11 +30,13 @@ public final class EntityIdHelper {
     private static final Map<Class<?>, NamespacedId> entityNameCache = new IdentityHashMap<>();
     private static Object2IntFunction<NamespacedId> cachedEntityIdMap;
 
-    private static final Int2ObjectMap<long[]> entityNbtCache = new Int2ObjectOpenHashMap<>();
+    private static final Int2LongLinkedOpenHashMap entityNbtCache = new Int2LongLinkedOpenHashMap();
     private static final int NBT_CACHE_INTERVAL_TICKS = 20;
+    private static final int ENTITY_NBT_CACHE_MAX = 256;
 
     static {
         entityIdCache.defaultReturnValue(Integer.MIN_VALUE);
+        entityNbtCache.defaultReturnValue(-1L);
     }
 
     private EntityIdHelper() {
@@ -63,39 +64,38 @@ public final class EntityIdHelper {
 
         // Check NBT-conditional match first
         final NbtConditionalIdMap<NamespacedId> entityNbtMap = BlockRenderingSettings.INSTANCE.getEntityNbtMap();
-        if (entityNbtMap != null && !entityNbtMap.isEmpty()) {
-            NamespacedId namespacedId = getCachedEntityName(entity);
+        if (entityNbtMap != null && !entityNbtMap.isEmpty() && entity.worldObj != null) {
+            final NamespacedId namespacedId = getCachedEntityName(entity);
             if (namespacedId != null && entityNbtMap.hasConditions(namespacedId)) {
                 final int entityRuntimeId = entity.getEntityId();
-                final long currentTick = entity.worldObj != null ? entity.worldObj.getTotalWorldTime() : 0;
+                final long currentTick = entity.worldObj.getTotalWorldTime();
+                final long cached = entityNbtCache.get(entityRuntimeId);
 
-                // Attempt to reduce the performance impact of entity nbt checks
-                final long[] cached = entityNbtCache.get(entityRuntimeId);
-                if (cached != null && entity.worldObj != null && (currentTick - cached[0]) < NBT_CACHE_INTERVAL_TICKS) {
-                    if (cached[1] != -1) {
-                        return (int) cached[1];
-                    }
+                final int nbtId;
+                if (cached != -1L && (currentTick - (cached >>> 32)) < NBT_CACHE_INTERVAL_TICKS) {
+                    nbtId = (int) cached;
                 } else {
-                    // Cache miss or stale
-                    NBTTagCompound nbt = new NBTTagCompound();
+                    final NBTTagCompound nbt = new NBTTagCompound();
                     entity.writeToNBT(nbt);
-                    int nbtId = entityNbtMap.resolve(namespacedId, nbt);
-                    entityNbtCache.put(entityRuntimeId, new long[]{currentTick, nbtId});
-                    if (entityNbtCache.size() > 256) {
-                        entityNbtCache.clear();
+                    nbtId = entityNbtMap.resolve(namespacedId, nbt);
+                    final long packed = ((currentTick & 0x7FFFFFFFL) << 32) | (nbtId & 0xFFFFFFFFL);
+                    entityNbtCache.put(entityRuntimeId, packed);
+                    while (entityNbtCache.size() > ENTITY_NBT_CACHE_MAX) {
+                        entityNbtCache.removeFirstLong();
                     }
-                    if (nbtId != -1) {
-                        return nbtId;
-                    }
+                }
+
+                if (nbtId != -1) {
+                    return nbtId;
                 }
             }
         }
 
         // Normal entity type lookup
-        int normalId = getNormalEntityId(entity, entityIdMap);
+        final int normalId = getNormalEntityId(entity, entityIdMap);
 
         // Check for special entity type overrides
-        int specialId = getSpecialEntityId(entity, entityIdMap);
+        final int specialId = getSpecialEntityId(entity, entityIdMap);
         if (specialId != -1) {
             return specialId;
         }

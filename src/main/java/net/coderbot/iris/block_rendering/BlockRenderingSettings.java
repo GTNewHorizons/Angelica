@@ -2,7 +2,7 @@ package net.coderbot.iris.block_rendering;
 
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.ReferenceSet;
@@ -22,8 +22,9 @@ public class BlockRenderingSettings {
 	public static final int CACHE_MISS = Integer.MIN_VALUE;
 
 	private static final int NBT_CACHE_INTERVAL_TICKS = 20;
+	private static final int TE_NBT_CACHE_MAX = 8192;
 
-	private static final Long2LongOpenHashMap teNbtIdCache = new Long2LongOpenHashMap(256);
+	private static final Long2LongLinkedOpenHashMap teNbtIdCache = new Long2LongLinkedOpenHashMap(256);
 	private static final Object teNbtIdCacheLock = new Object();
 
 	static {
@@ -61,6 +62,9 @@ public class BlockRenderingSettings {
 		final long packed = ((currentTick & 0x7FFFFFFFL) << 32) | (shaderId & 0xFFFFFFFFL);
 		synchronized (teNbtIdCacheLock) {
 			teNbtIdCache.put(packedPos, packed);
+			while (teNbtIdCache.size() > TE_NBT_CACHE_MAX) {
+				teNbtIdCache.removeFirstLong();
+			}
 		}
 	}
 

@@ -289,10 +289,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                             final NBTTagCompound teNbt = new NBTTagCompound();
                             te.writeToNBT(teNbt);
                             teBlockId = teMap.resolve(block, teNbt);
-                            BlockRenderingSettings.cacheTeNbtId(packedPos, teBlockId, currentTick);
                         } else {
                             teBlockId = -1;
                         }
+                        BlockRenderingSettings.cacheTeNbtId(packedPos, teBlockId, currentTick);
                     }
 
                     if (teBlockId != -1) {
