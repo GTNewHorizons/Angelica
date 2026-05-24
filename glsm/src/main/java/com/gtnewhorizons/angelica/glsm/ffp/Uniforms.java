@@ -111,10 +111,10 @@ public class Uniforms {
             }
         }
 
-        if (!program.getVertexKey().hasVertexTexCoord() && program.getVertexKey().textureEnabled()) {
+        if (program.getVertexKey().anyUnitTexCoordEnabled()) {
             final int texGen = ShaderManager.getTexCoordGeneration();
             if (programChanged || texGen != lastTexCoordGen) {
-                uploadCurrentTexCoord(program);
+                uploadCurrentTexCoords(program);
                 lastTexCoordGen = texGen;
             }
         }
@@ -198,16 +198,15 @@ public class Uniforms {
             RENDER_BACKEND.uniformMatrix4(program.locMVPMatrix, false, mat4Buf);
         }
 
-        // Texture matrices
+        // Texture matrices (per-unit).
         if (texMatChanged) {
-            // Texture matrix unit 0
-            if (program.locTextureMatrix0 != -1) {
-                final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(0);
-                texMat.get(mat4Buf);
-                RENDER_BACKEND.uniformMatrix4(program.locTextureMatrix0, false, mat4Buf);
+            for (int i = 0; i < 4; i++) {
+                if (program.locTextureMatrix[i] != -1) {
+                    final Matrix4f texMat = GLStateManager.getTextures().getTextureUnitMatrix(i);
+                    texMat.get(mat4Buf);
+                    RENDER_BACKEND.uniformMatrix4(program.locTextureMatrix[i], false, mat4Buf);
+                }
             }
-
-            // Texture matrix unit 1 (lightmap)
             if (program.locLightmapTextureMatrix != -1) {
                 final Matrix4f lmTexMat = GLStateManager.getTextures().getTextureUnitMatrix(1);
                 lmTexMat.get(mat4Buf);
@@ -324,10 +323,12 @@ public class Uniforms {
         RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
 
-    private void uploadCurrentTexCoord(Program program) {
-        if (program.locCurrentTexCoord == -1) return;
-        final var tc = ShaderManager.getCurrentTexCoord();
-        uploadVec4(program.locCurrentTexCoord, tc);
+    private void uploadCurrentTexCoords(Program program) {
+        for (int i = 0; i < 4; i++) {
+            if (program.locCurrentTexCoord[i] != -1) {
+                uploadVec4(program.locCurrentTexCoord[i], ShaderManager.getCurrentTexCoord(i));
+            }
+        }
     }
 
     private void uploadCurrentLightmapCoord(Program program) {
