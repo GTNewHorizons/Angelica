@@ -36,11 +36,11 @@ public final class FontOverlayShader extends ShaderProgram {
             new IShaderReloadRunnable() {
                 @Override
                 public void run(ShaderProgram shader) {
+                    shader.bindTextureSlots("textFBO", "sceneFBO");
                     mvpMatrixLocation = shader.getUniformLocation("u_MVPMatrix");
                     uTexelSize = shader.getUniformLocation("uTexelSize");
                     uTime = shader.getUniformLocation("uTime");
                     uTexBounds = shader.getUniformLocation("uTexBounds");
-                    shader.bindTextureSlots("textFBO", "sceneFBO");
 
                 }
 

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Setter;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
@@ -11,16 +12,10 @@ import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import javax.imageio.ImageIO;
-import java.awt.Font;
-import java.awt.FontMetrics;
-import java.awt.Graphics2D;
-import java.awt.RenderingHints;
+import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.io.IOException;
 import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.Map;
 import java.util.Objects;
 
@@ -125,7 +120,7 @@ public final class FontProviderCustom implements FontProvider {
     private class FontAtlas {
 
         GlyphData[] glyphData = new GlyphData[ATLAS_SIZE];
-        private ResourceLocation texture;
+        private int texture;
         private final int id;
 
         FontAtlas(int id) {
@@ -212,13 +207,14 @@ public final class FontProviderCustom implements FontProvider {
                 tileX++;
             }
             g2d.dispose();
-            try {
-                Files.createDirectories(Paths.get(getFontDir()));
-                ImageIO.write(image, "png", new File(getAtlasFullPath(this.id)));
-            } catch (IOException e) {
-                e.printStackTrace();
-            }
-            this.texture = new ResourceLocation(getAtlasResourceName(this.id));
+//            try {
+//                Files.createDirectories(Paths.get(getFontDir()));
+//                ImageIO.write(image, "png", new File(getAtlasFullPath(this.id)));
+//            } catch (IOException e) {
+//                e.printStackTrace();
+//            }
+            this.texture = TextureUtil.uploadTextureImageAllocate(GLStateManager.glGenTextures(), image, false, false);
+            //this.texture = new ResourceLocation(getAtlasResourceName(this.id));
         }
     }
 
@@ -280,7 +276,7 @@ public final class FontProviderCustom implements FontProvider {
     }
 
     @Override
-    public ResourceLocation getTexture(char chr) {
+    public int getTexture(char chr) {
         return getAtlas(chr).texture;
     }
 

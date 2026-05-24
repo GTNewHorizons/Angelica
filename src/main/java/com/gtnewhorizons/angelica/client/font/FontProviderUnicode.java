@@ -24,17 +24,18 @@ public final class FontProviderUnicode implements FontProvider {
     private static class InstLoader { static final FontProviderUnicode instance = new FontProviderUnicode(); }
     public static FontProviderUnicode get() { return FontProviderUnicode.InstLoader.instance; }
 
-    private static final ResourceLocation[] unicodePageLocations = new ResourceLocation[256];
+    private static final int[] unicodePageLocations = new int[256];
     private final byte[] glyphWidth = new byte[65536];
 
-    private ResourceLocation getUnicodePageLocation(int page) {
-        final ResourceLocation lookup = unicodePageLocations[page];
-        if (lookup == null) {
+    private int getUnicodePageTexture(int page) {
+        final int lookup = unicodePageLocations[page];
+        if (lookup == 0) {
             final ResourceLocation rl = new ResourceLocation(String.format(
                 "textures/font/unicode_page_%02x.png",
                 page));
-            unicodePageLocations[page] = rl;
-            return rl;
+            final int texture = getTextureFromLocation(rl);
+            unicodePageLocations[page] = texture;
+            return texture;
         } else {
             return lookup;
         }
@@ -101,9 +102,9 @@ public final class FontProviderUnicode implements FontProvider {
     }
 
     @Override
-    public ResourceLocation getTexture(char chr) {
+    public int getTexture(char chr) {
         final int uniPage = chr / 256;
-        return getUnicodePageLocation(uniPage);
+        return getUnicodePageTexture(uniPage);
     }
 
     @Override

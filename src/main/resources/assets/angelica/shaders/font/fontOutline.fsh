@@ -2,12 +2,12 @@
 
 
 // ----- GLOW -----
-//#define USE_GLOW
+#define USE_GLOW
 //#define RGB_GLOW
-#define GLOW_COLOR vec3(0.992, 0.651, 0.227)
+#define GLOW_COLOR vec3(0.882, 0.686, 1.0)
 
 // ----- SPARKLES -----
-//#define USE_SPARKLES
+#define USE_SPARKLES
 #define SPARKLE_COLOR vec3(1)
 
 // ----- WAVE -----
@@ -20,6 +20,7 @@
 // ----- SPOTLIGHT -----
 #define USE_SPOTLIGHT
 #define SPOTLIGHT_COLOR GLOW_COLOR
+#define SPOTLIGHT_STRENGTH 0.333
 
 
 
@@ -99,12 +100,12 @@ float glow(vec2 uv) {
     //dist += jitter;
     //TODO
 
-    if (dist <= 0) return 1;
+    //if (dist <= 0) return 1;
     //else return 0;
     float timeGlow = (sin(uTime * 2.0)) * 0.2;
     float d = dist;
-    d = d / (2 + timeGlow);
-    float glow = exp(-d);
+    //d = d / (2 + timeGlow);
+    float glow = exp(-d * 0.7);
     //float d = (dist / (1 + (sin(uTime * 2.0)) * 0.1));
     //return min(1.0 / pow(d, 1.2), 1);
     return min(glow, 1);
@@ -117,7 +118,7 @@ float starfield(vec2 uv) {
 
     float widthHeightRatio = resolution.x / resolution.y;
 
-    float t = uTime * 0.01;
+    float t = uTime * 0.015;
 
     float dist = 0.0;
 
@@ -245,8 +246,7 @@ float spotlight(
         1.0 / 4.0
     );
 
-    // inverted radial falloff
-    return (1.0 - smoothstep(0.0, 1.0, dist)) * 0.4;
+    return (1.0 - smoothstep(0.0, 1.0, dist)) * SPOTLIGHT_STRENGTH;
 }
 
 //0xfda63a orang
@@ -256,31 +256,31 @@ float spotlight(
 //0xe1afff
 
 void main() {
-    float minX = uTexBounds.x - uTexelSize.x * 3;
-    float maxX = uTexBounds.y + uTexelSize.x * 3;
-    float minY = uTexBounds.z - uTexelSize.y * 3;
-    float maxY = uTexBounds.w + uTexelSize.y * 3;
+    float minX = uTexBounds.x;
+    float maxX = uTexBounds.y;
+    float minY = uTexBounds.z;
+    float maxY = uTexBounds.w;
     vec2 relativeUV = vec2(texCoord.x - minX, texCoord.y - minY);
 
     vec3 overlay = vec3(0);
 
-    #ifdef USE_SPOTLIGHT
-    overlay = SPOTLIGHT_COLOR * spotlight(texCoord, minX, maxX, minY, maxY);
-    #endif
-
     #ifdef USE_SPARKLES
     if (
-        texCoord.x >= minX &&
-        texCoord.x <= maxX &&
-        texCoord.y >= minY &&
-        texCoord.y <= maxY
+        texCoord.x >= minX - uTexelSize.x * 2 &&
+        texCoord.x <= maxX + uTexelSize.x * 2 &&
+        texCoord.y >= minY - uTexelSize.y * 4 &&
+        texCoord.y <= maxY + uTexelSize.y * 4
     ) {
         float sparkle = starfield(vec2(texCoord.x - minX, texCoord.y - minY));
-        if (sparkle > 0.1) {
+        if (sparkle > 0.05) {
             // glow sits in front of sparkle
             overlay = mix(overlay, SPARKLE_COLOR, sparkle);
         }
     }
+    #endif
+
+    #ifdef USE_SPOTLIGHT
+    overlay = mix(overlay, SPOTLIGHT_COLOR, spotlight(texCoord, minX, maxX, minY, maxY));
     #endif
 
     #ifdef USE_GLOW
