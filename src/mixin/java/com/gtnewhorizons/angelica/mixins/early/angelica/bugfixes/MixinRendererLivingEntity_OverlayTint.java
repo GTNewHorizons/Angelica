@@ -42,6 +42,11 @@ public class MixinRendererLivingEntity_OverlayTint {
     )
     private void angelica$setupOverlay(EntityLivingBase entity, double x, double y, double z,
                                        float yaw, float partialTick, CallbackInfo ci) {
+        GLStateManager.glDisable(GL11.GL_BLEND);
+        GLStateManager.glEnable(GL11.GL_ALPHA_TEST);
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLStateManager.glDepthMask(true);
+
         if (entity.hurtTime <= 0 && entity.deathTime <= 0) return;
         if (angelica$isShaderPackActive()) {
             // Iris path
@@ -101,14 +106,11 @@ public class MixinRendererLivingEntity_OverlayTint {
     )
     private int angelica$detectEmissivePass(RendererLivingEntity self, EntityLivingBase entity, int pass,
             float partialTick, Operation<Integer> original) {
-        int angelica$savedSrcRgb = GLStateManager.glGetInteger(GL14.GL_BLEND_SRC_RGB);
-        int angelica$savedDstRgb = GLStateManager.glGetInteger(GL14.GL_BLEND_DST_RGB);
+        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
         final int result = original.call(self, entity, pass, partialTick);
         final int srcAfter = GLStateManager.glGetInteger(GL14.GL_BLEND_SRC_RGB);
         final int dstAfter = GLStateManager.glGetInteger(GL14.GL_BLEND_DST_RGB);
-        final boolean nowAdditive = srcAfter == GL11.GL_ONE && dstAfter == GL11.GL_ONE;
-        final boolean wasAdditive = angelica$savedSrcRgb == GL11.GL_ONE && angelica$savedDstRgb == GL11.GL_ONE;
-        angelica$emissivePass = nowAdditive && !wasAdditive;
+        angelica$emissivePass = srcAfter == GL11.GL_ONE && dstAfter == GL11.GL_ONE;
         return result;
     }
 
