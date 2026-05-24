@@ -4,7 +4,7 @@ uniform sampler2D sampler;
 uniform float strength;
 
 in vec4 color;
-in vec4 tB;
+flat in vec4 tB;
 in vec2 texCoord;
 
 out vec4 fragColor;

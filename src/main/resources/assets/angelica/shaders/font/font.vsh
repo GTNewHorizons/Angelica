@@ -7,7 +7,7 @@ layout(location = 3) in vec4 a_TexBounds;
 
 uniform mat4 u_MVPMatrix;
 
-out vec4 tB;
+flat out vec4 tB;
 out vec4 color;
 out vec2 texCoord;
 

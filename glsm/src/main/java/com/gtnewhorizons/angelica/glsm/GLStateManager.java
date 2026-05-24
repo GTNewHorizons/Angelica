@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
@@ -63,7 +62,6 @@ import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
-
 import org.lwjgl.opengl.ARBShaderObjects;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
@@ -97,12 +95,12 @@ import java.util.List;
 import java.util.Set;
 import java.util.function.IntSupplier;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
 import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
 import static com.gtnewhorizons.angelica.glsm.Vendor.MESA;
 import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * OpenGL State Manager - Provides cached state tracking and management for Backend Renderer Actions
@@ -5897,18 +5895,16 @@ public class GLStateManager {
     }
 
     public static final Matrix4f scratchMvp = new Matrix4f();
+    public static final FloatBuffer mvpBuffer = memAllocFloat(16);
 
     public static void uploadMVPMatrix(int mvpMatrixLocation) {
-        try (MemoryStack stack = stackPush()) {
-            final FloatBuffer mvpBuf = stack.mallocFloat(16);
-            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
-            scratchMvp.get(mvpBuf);
-            GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
-        }
+        getMVPMatrix(scratchMvp);
+        scratchMvp.get(mvpBuffer);
+        glUniformMatrix4(mvpMatrixLocation, false, mvpBuffer);
     }
 
     public static Matrix4f getMVPMatrix(Matrix4f dest) {
-        return GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), dest);
+        return getProjectionMatrix().mul(getModelViewMatrix(), dest);
     }
 
     public static void glGetActiveUniform(int program, int index, IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name) {
