@@ -5147,8 +5147,12 @@ public class GLStateManager {
                 return;
             }
             setLightmapTextureCoords(target, s, t);
+        } else {
+            final int unit = target - GL13.GL_TEXTURE0;
+            if (unit >= 2 && unit < 4) {
+                ShaderManager.setCurrentTexCoord(unit, s, t, 0.0f, 1.0f);
+            }
         }
-        // Units 2+ silently ignored — shader uses v_TexCoord0 for all non-lightmap units
     }
 
     public static void glMultiTexCoord2d(int target, double s, double t) {
