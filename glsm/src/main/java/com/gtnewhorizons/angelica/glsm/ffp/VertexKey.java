@@ -123,7 +123,7 @@ public final class VertexKey {
         };
     }
 
-    public static long packFromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
+    public static long packFromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {
         long bits = 0;
 
         final boolean lighting = GLStateManager.getLightingState().isEnabled();
@@ -170,7 +170,7 @@ public final class VertexKey {
 
         final TextureUnitArray texUnit = GLStateManager.getTextures();
         for (int i = 0; i < MAX_UNITS; i++) {
-            if (texUnit.getTextureUnitStates(i).isEnabled()) {
+            if ((fragUnitMask & (1 << i)) != 0) {
                 bits |= (1L << (BIT_UNIT_TEX_BASE + i));
             }
             if (!MatrixHelper.isIdentity(texUnit.getTextureUnitMatrix(i))) {
@@ -224,8 +224,8 @@ public final class VertexKey {
         return bits;
     }
 
-    public static VertexKey fromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        return new VertexKey(packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap));
+    public static VertexKey fromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {
+        return new VertexKey(packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragUnitMask));
     }
 
     static VertexKey fromPacked(long packed) {

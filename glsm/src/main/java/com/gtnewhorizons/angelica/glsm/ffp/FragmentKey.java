@@ -259,6 +259,28 @@ public final class FragmentKey {
         return false;
     }
 
+    /** Per-unit enable bits as a 4-bit mask (bit i = unit i enabled). */
+    public int enabledUnitMask() {
+        int mask = 0;
+        final int n = Math.min(nrEnabledUnits(), MAX_UNITS);
+        for (int i = 0; i < n; i++) {
+            if (unitEnabled(i)) mask |= (1 << i);
+        }
+        return mask;
+    }
+
+    /** Per-unit enable bits from a packed scratch as a 4-bit mask (bit i = unit i enabled). */
+    public static int unitMaskFromPacked(long[] packed, int len) {
+        int mask = 0;
+        if (len < 1) return 0;
+        if (((packed[0] >>> GLOBAL_BITS) & 1L) != 0) mask |= 1;
+        final int n = Math.min(len, MAX_UNITS);
+        for (int i = 1; i < n; i++) {
+            if ((packed[i] & 1L) != 0) mask |= (1 << i);
+        }
+        return mask;
+    }
+
     public boolean lightmapEnabled() {
         return nrEnabledUnits() > 1 && unitEnabled(1);
     }
