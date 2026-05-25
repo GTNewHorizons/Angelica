@@ -2,29 +2,22 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
 import cpw.mods.fml.client.SplashProgress;
 import lombok.Getter;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.resources.DefaultResourcePack;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
 
-import java.awt.Font;
-import java.awt.GraphicsEnvironment;
-import java.io.File;
+import java.awt.*;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
+
+import static com.gtnewhorizons.angelica.AngelicaMod.LOGGER;
 
 public class FontStrategist {
 
     @Getter
     private static final Font[] availableFonts;
-    public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     static {
         if (GraphicsEnvironment.isHeadless()) {
@@ -61,17 +54,6 @@ public class FontStrategist {
 
             LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, availableFonts.length);
         }
-
-        // create and add the resource pack that provides fonts
-        HashMap<String, File> packMap = new HashMap<>();
-        for (int i = 0; i < FontProviderCustom.ATLAS_COUNT; i++) {
-            packMap.put(FontProviderCustom.getPrimary().getAtlasResourceName(i), new File(FontProviderCustom.getPrimary().getAtlasFullPath(i)));
-            packMap.put(FontProviderCustom.getFallback().getAtlasResourceName(i), new File(FontProviderCustom.getFallback().getAtlasFullPath(i)));
-        }
-
-        DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
-        List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
-        defaultResourcePacks.add(fontResourcePack);
     }
 
     /**

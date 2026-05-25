@@ -5,41 +5,39 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Setter;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.ITextureObject;
-import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureUtil;
-import net.minecraft.util.ResourceLocation;
-import org.apache.logging.log4j.LogManager;
-import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.GL11;
 
+import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
 import java.io.File;
-import java.nio.file.Files;
-import java.util.Map;
+import java.io.IOException;
 import java.util.Objects;
+
+import static com.gtnewhorizons.angelica.AngelicaMod.LOGGER;
 
 public final class FontProviderCustom implements FontProvider {
 
-    public static final Logger LOGGER = LogManager.getLogger("Angelica");
-    public static final String FONT_DIR = "fonts/custom/";
     static final int ATLAS_SIZE = 128;
     static final int ATLAS_COUNT = 512;
-    private final byte id; // 0 - primary font, 1 - fallback font
     private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
-    private float currentFontQuality = FontConfig.customFontQuality;
+    private static float currentFontQuality = FontConfig.customFontQuality;
     @Setter
     private Font font;
 
+    private static final boolean DUMP_ATLASES = true;
+
+
     private FontProviderCustom(byte id) {
-        this.id = id;
+        // 0 - primary font, 1 - fallback font
         Font[] availableFonts = FontStrategist.getAvailableFonts();
-        String myFontName = switch (this.id) {
+        String myFontName = switch (id) {
             case 0 -> FontConfig.customFontNamePrimary;
             case 1 -> FontConfig.customFontNameFallback;
             default -> null;
         };
-        if (Objects.equals(myFontName, "(none)")) {
+        if ("(none)".equals(myFontName)) {
             this.font = null;
             return;
         }
@@ -55,9 +53,9 @@ public final class FontProviderCustom implements FontProvider {
             this.font = null;
             return;
         }
-        this.font = availableFonts[fontPos].deriveFont(this.currentFontQuality);
+        this.font = availableFonts[fontPos].deriveFont(currentFontQuality);
     }
-    private static class InstLoader {
+    private static final class InstLoader {
         static final FontProviderCustom instance0 = new FontProviderCustom((byte)0);
         static final FontProviderCustom instance1 = new FontProviderCustom((byte)1);
     }
@@ -65,50 +63,28 @@ public final class FontProviderCustom implements FontProvider {
     public static FontProviderCustom getFallback() { return InstLoader.instance1; }
 
     public void reloadFont(int fontID) {
-        this.currentFontQuality = FontConfig.customFontQuality;
-        this.font = FontStrategist.getAvailableFonts()[fontID].deriveFont(this.currentFontQuality);
+        currentFontQuality = FontConfig.customFontQuality;
+        this.font = FontStrategist.getAvailableFonts()[fontID].deriveFont(currentFontQuality);
 
-        File[] files = new File(getFontDir()).listFiles();
-        if (files != null) {
-            for (File f : files) {
-                if (!Files.isSymbolicLink(f.toPath())) {
-                    f.delete();
-                }
+        for (FontAtlas atlas : fontAtlases) {
+            if (atlas != null) {
+                GL11.glDeleteTextures(atlas.texture);
             }
         }
 
-        TextureManager tm = Minecraft.getMinecraft().getTextureManager();
-        Map mapTextureObjects = tm.mapTextureObjects;
-        for (int i = 0; i < ATLAS_COUNT; i++) {
-            ResourceLocation key = new ResourceLocation(getAtlasResourceName(i));
-            if (mapTextureObjects.containsKey(key)) {
-                ITextureObject obj = (ITextureObject) mapTextureObjects.get(key);
-                TextureUtil.deleteTexture(obj.getGlTextureId());
-                mapTextureObjects.remove(key);
+        if (DUMP_ATLASES) {
+            for (int i = 0; i < fontAtlases.length; i++) {
+                final FontAtlas atlas = new FontAtlas(i);
+                fontAtlases[i] = atlas;
+                atlas.construct(font);
             }
         }
 
         this.fontAtlases = new FontAtlas[ATLAS_COUNT];
     }
 
-    private String getFontDir() {
-        return FONT_DIR + "f" + this.id + "/";
-    }
-
-    private String getAtlasFilename(int atlasId) {
-        return "f" + this.id + "p" + atlasId;
-    }
-
-    String getAtlasResourceName(int atlasId) {
-        return "minecraft:angelica_c" + getAtlasFilename(atlasId);
-    }
-
-    String getAtlasFullPath(int atlasId) {
-        return getFontDir() + getAtlasFilename(atlasId) + ".png";
-    }
-
     @Value
-    private class GlyphData {
+    private static class GlyphData {
         float uStart;
         float vStart;
         float xAdvance;
@@ -117,7 +93,7 @@ public final class FontProviderCustom implements FontProvider {
         float vSz;
     }
 
-    private class FontAtlas {
+    private static final class FontAtlas {
 
         GlyphData[] glyphData = new GlyphData[ATLAS_SIZE];
         private int texture;
@@ -196,23 +172,27 @@ public final class FontProviderCustom implements FontProvider {
                 final float charAspectRatio = (float) charWidth / lineHeight;
                 final float inset = currentFontQuality / 16;
                 g2d.drawString(Character.toString(ch), imgX, (lineHeight + charSeparator) * (tileY + 1) - desc);
-                final float uStart = (float) (imgX - inset * charAspectRatio) / imageWidth;
+                final float uStart = (imgX - inset * charAspectRatio) / imageWidth;
                 final float vStart = ((lineHeight + charSeparator) * (tileY + 1) - lineHeight - inset) / imageHeight;
                 final float xAdvance = charAspectRatio * 8 * charWidth / (charWidth + 2 * inset * charAspectRatio);
                 final float glyphW = charAspectRatio * 8 + 1;
-                final float uSz = (float) (charWidth + 2 * inset * charAspectRatio) / imageWidth;
-                final float vSz = (float) (lineHeight + 2 * inset) / imageHeight;
+                final float uSz = (charWidth + 2 * inset * charAspectRatio) / imageWidth;
+                final float vSz = (lineHeight + 2 * inset) / imageHeight;
                 this.glyphData[i] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
                 imgX += (int) (charWidth + charSeparator);
                 tileX++;
             }
             g2d.dispose();
-//            try {
-//                Files.createDirectories(Paths.get(getFontDir()));
-//                ImageIO.write(image, "png", new File(getAtlasFullPath(this.id)));
-//            } catch (IOException e) {
-//                e.printStackTrace();
-//            }
+            if (DUMP_ATLASES) {
+                try {
+                    File dir = new File(Minecraft.getMinecraft().mcDataDir, "debug/fonts");
+                    if (!dir.exists()) dir.mkdirs();
+                    ImageIO.write(image, "png", new File(dir, id + ".png"));
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+
             this.texture = TextureUtil.uploadTextureImageAllocate(GLStateManager.glGenTextures(), image, false, false);
             //this.texture = new ResourceLocation(getAtlasResourceName(this.id));
         }

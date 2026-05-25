@@ -20,6 +20,8 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
+import org.lwjgl.opengl.GL31;
 
 import java.nio.ByteBuffer;
 
@@ -190,7 +192,7 @@ public final class BatchingFontRenderer {
         }
     }
 
-    private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
+    private void pushVertex(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
         final long ptr = vertexDataAddress + vertexDataPos;
 
         // v, v
@@ -220,10 +222,10 @@ public final class BatchingFontRenderer {
     //TODO fix this (shader issue)
     private void pushUntexRect(float x, float y, float w, float h, int rgba) {
         ensureCapacity();
-        pushVtx(x, y, rgba, 0, 0, 0, 0, 0, 0);
-        pushVtx(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
-        pushVtx(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
-        pushVtx(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
+        pushVertex(x, y, rgba, 0, 0, 0, 0, 0, 0);
+        pushVertex(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
+        pushVertex(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
+        pushVertex(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
         pushQuadIdx();
     }
 
@@ -231,10 +233,10 @@ public final class BatchingFontRenderer {
         ensureCapacity();
         float vTop = flipV ? vStart + vSz : vStart;
         float vBot = flipV ? vStart : vStart + vSz;
-        pushVtx(x + itOff, y, rgba, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff, y + h, rgba, uStart, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVertex(x + itOff, y, rgba, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVertex(x - itOff, y + h, rgba, uStart, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVertex(x + itOff + w, y, rgba, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVertex(x - itOff + w, y + h, rgba, uStart + uSz, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
         pushQuadIdx();
     }
 
@@ -383,6 +385,8 @@ public final class BatchingFontRenderer {
 //        Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
 //            .thenComparing(ResourceLocation::getResourcePath))).thenComparing(fdc -> fdc.startVtx);
 
+    private boolean test;
+
     private void flushBatch() {
         if (vertexDataPos == 0) {
             clearBatch();
@@ -502,75 +506,7 @@ public final class BatchingFontRenderer {
 
                 offset += indexCount * 2;
             }
-
-
-
-
-
-            /*
-            for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
-                final int texture = drawCommands.getIntKey();
-                final FontDrawCmd drawCmd = drawCommands.getValue();
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-
-                int indexCount = 0;
-                for (int i : drawCmd.ranges) {
-                    final int end = i & 0xFFFF;
-                    final int start = i >> 16;
-                    indexCount += end - start;
-                }
-                indexCount = indexCount / 4 * 6;
-
-                final ByteBuffer data = memAlloc(indexCount * 2); // * 2 for short
-                long ptr = memAddress0(data);
-
-                for (int i : drawCmd.ranges) {
-                    final int end = i & 0xFFFF;
-                    final int start = i >> 16;
-                    for (int base = start; base < end; base += 4) {
-                        // triangle 1
-                        memPutShort(ptr, (short) base);
-                        memPutShort(ptr + 2, (short) (base + 1));
-                        memPutShort(ptr + 4, (short) (base + 2));
-
-                        // triangle 2
-                        memPutShort(ptr + 6, (short) (base + 2));
-                        memPutShort(ptr + 8, (short) (base + 1));
-                        memPutShort(ptr + 10, (short) (base + 3));
-                        ptr += 12;
-                    }
-                }
-
-                GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
-
-                memFree(data);
-
-
-
-                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, indexCount, GL11.GL_UNSIGNED_SHORT, 0);
-            }
-
-             */
         }
-//        final FontDrawCmd[] cmdsData = batchCommands.elements();
-//        final int cmdsSize = batchCommands.size();
-//        for (int i = 0; i < cmdsSize; i++) {
-//            final FontDrawCmd cmd = cmdsData[i];
-//            if (!Objects.equals(lastTexture, cmd.texture)) {
-//                if (lastTexture <= 0) {
-//                    GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
-//                } else if (cmd.texture > 0) {
-//                    GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
-//                }
-//
-//                if (cmd.texture > 0) {
-//                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, cmd.texture);
-//                    textureChanged = true;
-//                }
-//                lastTexture = cmd.texture;
-//            }
-//            cmd.render();
-//        }
 
 
         GLStateManager.glUseProgram(prevProgram);
