@@ -3876,7 +3876,12 @@ public class GLStateManager {
         return switch (pname) {
             case GL11.GL_TEXTURE_WIDTH -> info.getWidth();
             case GL11.GL_TEXTURE_HEIGHT -> info.getHeight();
-            case GL11.GL_TEXTURE_INTERNAL_FORMAT -> info.getInternalFormat();
+            case GL11.GL_TEXTURE_INTERNAL_FORMAT -> {
+                if (info.needsInternalFormatResolve() && isRecordingDisplayList()) {
+                    throw new IllegalStateException(String.format("glGetTexLevelParameteri(GL_TEXTURE_INTERNAL_FORMAT) needs to resolve a generic compressed format for texture %d during display list recording", getBoundTextureForServerState()));
+                }
+                yield info.getResolvedInternalFormat();
+            }
             default -> {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(

@@ -116,8 +116,9 @@ public class ShaderManager {
             }
         }
 
-        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap);
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
+        final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
+        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
 
         if (vkPacked != currentVertexKeyPacked || !Arrays.equals(currentFKScratch, 0, fkLen, currentFKPacked, 0, currentFKLen)) {
             commitVariant(vkPacked, fkLen);
@@ -141,8 +142,9 @@ public class ShaderManager {
     }
 
     private void updateVariant(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap);
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
+        final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
+        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
         commitVariant(vkPacked, fkLen);
     }
 
