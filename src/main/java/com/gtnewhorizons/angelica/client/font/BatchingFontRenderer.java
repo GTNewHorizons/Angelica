@@ -7,12 +7,10 @@ import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import lombok.Setter;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.MathHelper;
@@ -20,10 +18,9 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL30;
-import org.lwjgl.opengl.GL31;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
@@ -45,16 +42,14 @@ import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PA
 public final class BatchingFontRenderer {
 
     /** The underlying FontRenderer object that's being accelerated */
-    protected FontRenderer underlying;
+    private final FontRenderer underlying;
     /** Array of width of all the characters in default.png */
-    protected int[] charWidth;
+    private final int[] charWidth;
     /**
      * Array of RGB triplets defining the 16 standard chat colors followed by 16 darker version of the same colors for
      * drop shadows.
      */
     private final int[] colorCode;
-    /** Location of the primary font atlas to bind. */
-    protected final ResourceLocation locationFontTexture;
 
     private static int AAStrength;
     private static int mvpMatrixLocation;
@@ -73,19 +68,14 @@ public final class BatchingFontRenderer {
         this.underlying = underlying;
         this.charWidth = charWidth;
         this.colorCode = colorCode;
-        this.locationFontTexture = locationFontTexture;
 
-//        for (int i = 0; i < 64; i++) {
-//            batchCommandPool.add(new FontDrawCmd());
-//        }
-
-        this.isSGA = this.locationFontTexture.getResourcePath().equals("textures/font/ascii_sga.png");
+        this.isSGA = locationFontTexture.getResourcePath().equals("textures/font/ascii_sga.png");
         this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
 
         // Determine GL texture by binding & querying the bound texture
-        ((FontRendererAccessor) underlying).angelica$bindTexture(this.locationFontTexture);
+        ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
         this.fontTexture = GLStateManager.getBoundTextureForServerState();
 
         final String vsh = ShaderProgram.loadShaderSource(
@@ -101,7 +91,6 @@ public final class BatchingFontRenderer {
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
         if (mainEBO == null) {
             mainEBO = new IndexBuffer();
-            streamingEBO = new IndexBuffer();
             vbo = GLStateManager.glGenBuffers();
             allocateBuffers();
         }
@@ -109,15 +98,12 @@ public final class BatchingFontRenderer {
 
     // === Batched rendering
 
-    private static final int INITIAL_BATCH_SIZE = 2048;
 
     // Layout in data:
     // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
     // v, t and tb are floats, c is bytes; 36 bytes total
-    private static final int VERTEX_SIZE = 36;
-    private static int rawCapacity = INITIAL_BATCH_SIZE * VERTEX_SIZE;
-    private static ByteBuffer vertexData = memAlloc(rawCapacity);
-    private static long vertexDataAddress = memAddress0(vertexData);
+    private static final int INSTANCE_SIZE = 36;
+
     private static int vboCapacity;
 
 
@@ -131,34 +117,29 @@ public final class BatchingFontRenderer {
 
     // Streaming Objects (used if there's multi textured draws happening)
     //TODO add bindless textures
-    private static int streamingVAO = 0;
-    private static IndexBuffer streamingEBO;
-    private static ByteBuffer streamingEBOData = memAlloc(0x1000);
-
-    private static final int MAX_EBO_CAPACITY = 0x10000;
 
 
 
     private int batchDepth = 0;
 
-    private int vertexDataPos = 0;
-    private int idxWriterIndex = 0;
 
     // private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
     // private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
 
     private final Int2ObjectOpenHashMap<FontDrawCmd> batchCommandMap = new Int2ObjectOpenHashMap<>();
+    private FontDrawCmd[] commandPool = new FontDrawCmd[16];
+    private int commandPoolIndex = -1;
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
 
     private void allocateBuffers() {
-        populateEBO(rawCapacity / VERTEX_SIZE);
+        populateEBO();
     }
 
-    private void populateEBO(int capacity) {
-        final int quadCount = capacity * 6;
+    private void populateEBO() {
+        final int quadCount = 6;
         final ByteBuffer data = memAlloc(quadCount * 6 * 2);
         long ptr = memAddress0(data);
         for (int i = 0; i < quadCount; i++) {
@@ -166,13 +147,15 @@ public final class BatchingFontRenderer {
 
             // triangle 1
             memPutShort(ptr, (short) base);
-            memPutShort(ptr + 2, (short) (base + 1));
-            memPutShort(ptr + 4, (short) (base + 2));
+            memPutShort(ptr + 2, (short) (base + 2));
+            memPutShort(ptr + 4, (short) (base + 1));
+
 
             // triangle 2
             memPutShort(ptr + 6, (short) (base + 2));
-            memPutShort(ptr + 8, (short) (base + 1));
-            memPutShort(ptr + 10, (short) (base + 3));
+            memPutShort(ptr + 8, (short) (base + 3));
+            memPutShort(ptr + 10, (short) (base + 1));
+
             ptr += 12;
         }
 
@@ -182,66 +165,40 @@ public final class BatchingFontRenderer {
 
     }
 
-    private void ensureCapacity() {
-        if (vertexDataPos + (4 * VERTEX_SIZE) > rawCapacity) {
-            rawCapacity *= 2;
-            vertexData = memRealloc(vertexData, rawCapacity);
-            vertexDataAddress = memAddress0(vertexData);
-
-            allocateBuffers();
-        }
-    }
-
-    private void pushVertex(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
-        final long ptr = vertexDataAddress + vertexDataPos;
-
-        // v, v
-        memPutFloat(ptr, x);
-        memPutFloat(ptr + 4, y);
-
-        // t, t
-        memPutFloat(ptr + 8, u);
-        memPutFloat(ptr + 12, v);
-
-        // c, c, c, c
-        // 0xAARRGGBB
-        memPutByte(ptr + 16, (byte) ((rgba >> 16) & 0xFF));
-        memPutByte(ptr + 17, (byte) ((rgba >> 8) & 0xFF));
-        memPutByte(ptr + 18, (byte) (rgba & 0xFF));
-        memPutByte(ptr + 19, (byte) ((rgba >> 24) & 0xFF));
-
-        // tb, tb, tb, tb
-        memPutFloat(ptr + 20, uMin);
-        memPutFloat(ptr + 24, uMax);
-        memPutFloat(ptr + 28, vMin);
-        memPutFloat(ptr + 32, vMax);
-
-        vertexDataPos += VERTEX_SIZE;
-    }
-
     //TODO fix this (shader issue)
     private void pushUntexRect(float x, float y, float w, float h, int rgba) {
-        ensureCapacity();
-        pushVertex(x, y, rgba, 0, 0, 0, 0, 0, 0);
-        pushVertex(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
-        pushVertex(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
-        pushVertex(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
-        pushQuadIdx();
+//        ensureCapacity();
+//        pushVertex(x, y, rgba, 0, 0, 0, 0, 0, 0);
+//        pushVertex(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
+//        pushVertex(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
+//        pushVertex(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
+//        pushQuadIdx();
     }
 
-    private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz, boolean flipV) {
-        ensureCapacity();
-        float vTop = flipV ? vStart + vSz : vStart;
-        float vBot = flipV ? vStart : vStart + vSz;
-        pushVertex(x + itOff, y, rgba, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVertex(x - itOff, y + h, rgba, uStart, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVertex(x + itOff + w, y, rgba, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVertex(x - itOff + w, y + h, rgba, uStart + uSz, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushQuadIdx();
-    }
-
-    private void pushQuadIdx() {
-        idxWriterIndex += 4;
+    private void pushTexRect(
+        float x, float y, float w, float h,
+        float uStart, float vStart, float uSz, float vSz,
+        int rgba,
+        boolean italic,
+        boolean flipV,
+        int texture
+    ) {
+        FontDrawCmd cmd = batchCommandMap.get(texture);
+        if (cmd == null) {
+            cmd = createFontDrawCmd();
+            batchCommandMap.put(texture, cmd);
+        }
+        //TODO idk how to integrate this
+        final float vTop;
+        final float vBot;
+        if (flipV) {
+            vTop = vStart + vSz;
+            vBot = vStart;
+        } else {
+            vTop = vStart;
+            vBot = vStart + vSz;
+        }
+        cmd.pushQuad(x, y, w, h, uStart, vStart, uSz, vSz, rgba, italic);
     }
 
     private void pushShaderCmd(
@@ -276,85 +233,65 @@ public final class BatchingFontRenderer {
          */
     }
 
-    private void pushDrawCmd(int startIdx, int vertexCount, int texture) {
-        final FontDrawCmd cmd = batchCommandMap.get(texture);
-        if (cmd != null) {
-            cmd.addRange(startIdx, vertexCount);
-        } else {
-            batchCommandMap.put(texture, new FontDrawCmd(startIdx, vertexCount));
-        }
-    }
-
-    public static class FontDrawCmd {
-
-        private int indexCount;
-        // high 16 = start
-        // low 16  = end
-        public final IntArrayList ranges = new IntArrayList();
-
-        public FontDrawCmd(int start, int count) {
-            pushNewRange(start, start + count);
-            indexCount += count;
-        }
-
-        public final int getIndexCount() {
-            return indexCount / 2 * 3;
-        }
-
-        public void addRange(int start, int count) {
-            indexCount += count;
-            int end = start + count;
-
-            if (ranges.isEmpty()) {
-                pushNewRange(start, end);
-                return;
-            }
-
-            int lastIndex = ranges.size() - 1;
-            int packed = ranges.getInt(lastIndex);
-
-            int lastEnd = packed & 0xFFFF;
-
-            if (lastEnd == start) {
-                ranges.set(
-                    lastIndex,
-                    (packed & 0xFFFF0000) | (end & 0xFFFF)
-                );
-
-                return;
-            }
-
-            pushNewRange(start, end);
-        }
-
-        private void pushNewRange(int start, int end) {
-            ranges.add((start << 16) | (end & 0xFFFF));
-        }
-    }
-
-    private static int initVAO(IndexBuffer ebo) {
+    private int initVAO(IndexBuffer ebo) {
         int vao = GLStateManager.glGenVertexArrays();
 
         GLStateManager.glBindVertexArray(vao);
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
         ebo.bind();
 
         // position
-        GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 0);
-        GLStateManager.glEnableVertexAttribArray(0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, InstancedHelper.getQuadVBO());
 
-        // texcoords
-        GLStateManager.glVertexAttribPointer(1, 2, GL11.GL_FLOAT, false, VERTEX_SIZE, 8);
+        GLStateManager.glVertexAttribPointer(
+            0,
+            2,
+            GL11.GL_FLOAT,
+            false,
+            8,
+            0
+        );
+        GLStateManager.glEnableVertexAttribArray(0);
+        GLStateManager.glVertexAttribDivisor(0, 0);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+        // Glyph data (posX, posY, width, height)
+        GLStateManager.glVertexAttribPointer(
+            1,
+            4,
+            GL11.GL_FLOAT,
+            false,
+            INSTANCE_SIZE,
+            0
+        );
         GLStateManager.glEnableVertexAttribArray(1);
+        GLStateManager.glVertexAttribDivisor(1, 1);
+
+        // UV data (u, v, uWidth, vWidth)
+        GLStateManager.glVertexAttribPointer(
+            2,
+            4,
+            GL11.GL_FLOAT,
+            false,
+            INSTANCE_SIZE,
+            16
+        );
+        GLStateManager.glEnableVertexAttribArray(2);
+        GLStateManager.glVertexAttribDivisor(2, 1);
+
 
         // color
-        GLStateManager.glVertexAttribPointer(2, 4, GL11.GL_UNSIGNED_BYTE, true, VERTEX_SIZE, 16);
-        GLStateManager.glEnableVertexAttribArray(2);
-
-        // tex bounds
-        GLStateManager.glVertexAttribPointer(3, 4, GL11.GL_FLOAT, false, VERTEX_SIZE, 20);
+        GLStateManager.glVertexAttribPointer(
+            3,
+            4,
+            GL11.GL_UNSIGNED_BYTE,
+            true,
+            INSTANCE_SIZE,
+            32
+        );
         GLStateManager.glEnableVertexAttribArray(3);
+        GLStateManager.glVertexAttribDivisor(3, 1);
 
         return vao;
     }
@@ -368,12 +305,7 @@ public final class BatchingFontRenderer {
     }
 
     public void endBatch() {
-        if (batchDepth <= 0) {
-            batchDepth = 0;
-            return;
-        }
-        batchDepth--;
-        if (batchDepth == 0) {
+        if (--batchDepth <= 0) {
             // We finished any nested batches
             flushBatch();
         }
@@ -385,83 +317,13 @@ public final class BatchingFontRenderer {
 //        Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
 //            .thenComparing(ResourceLocation::getResourcePath))).thenComparing(fdc -> fdc.startVtx);
 
-    private boolean test;
-
     private void flushBatch() {
-        if (vertexDataPos == 0) {
+        if (batchCommandMap.isEmpty()) {
             clearBatch();
             return;
         }
 
-        // Upload first (to reduce stalls)
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-        vertexData.limit(vertexDataPos);
-        vboCapacity = StreamingUploader.upload(vertexData, vboCapacity);
-
-        final boolean useStaticEBO = batchCommandMap.size() == 1;
-
-        // Upload now (to reduce stalls)
-        if (!useStaticEBO) {
-            if (streamingVAO == 0) {
-                streamingVAO = initVAO(streamingEBO);
-            }
-
-            GLStateManager.glBindVertexArray(streamingVAO);
-
-
-            int indexCount = 0;
-            for (FontDrawCmd drawCommand : batchCommandMap.values()) {
-                indexCount += drawCommand.getIndexCount();
-            }
-
-            final int dataSize = indexCount * 2;
-
-            final ByteBuffer data;
-            if (streamingEBOData.capacity() >= dataSize) {
-                data = streamingEBOData;
-            } else {
-                if (dataSize > MAX_EBO_CAPACITY) {
-                    data = memAlloc(dataSize);
-                } else {
-                    final int newCapacity = Math.max(dataSize, streamingEBOData.capacity() * 2);
-                    streamingEBOData = memRealloc(streamingEBOData, newCapacity);
-                    data = streamingEBOData;
-                }
-            }
-            data.limit(dataSize);
-
-            long ptr = memAddress0(data);
-
-            for (FontDrawCmd drawCommand : batchCommandMap.values()) {
-                for (int i : drawCommand.ranges) {
-                    final int end = i & 0xFFFF;
-                    final int start = i >> 16;
-                    for (int base = start; base < end; base += 4) {
-                        // triangle 1
-                        memPutShort(ptr, (short) base);
-                        memPutShort(ptr + 2, (short) (base + 1));
-                        memPutShort(ptr + 4, (short) (base + 2));
-
-                        // triangle 2
-                        memPutShort(ptr + 6, (short) (base + 2));
-                        memPutShort(ptr + 8, (short) (base + 1));
-                        memPutShort(ptr + 10, (short) (base + 3));
-                        ptr += 12;
-                    }
-                }
-            }
-
-            GL15.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
-
-            if (streamingEBOData != data) {
-                memFree(data);
-            }
-        }
-
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
-
-        // Sort&Draw
-        //batchCommands.sort(DRAW_ORDER_COMPARATOR);
 
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
         final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
@@ -478,34 +340,30 @@ public final class BatchingFontRenderer {
 
         int lastTexture = -1;
 
-        if (useStaticEBO) {
-            if (mainVAO == 0) {
-                mainVAO = initVAO(mainEBO);
-            }
+        if (mainVAO == 0) {
+            mainVAO = initVAO(mainEBO);
+        }
 
-            GLStateManager.glBindVertexArray(mainVAO);
+        GLStateManager.glBindVertexArray(mainVAO);
 
-            for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
-                final int texture = drawCommands.getIntKey();
-                final FontDrawCmd drawCmd = drawCommands.getValue();
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
-                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, drawCmd.ranges.getInt(0) / 4 * 6, GL11.GL_UNSIGNED_SHORT, 0);
-            }
-        } else {
+        for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
+            // Upload first (to reduce stalls)
+            final FontDrawCmd drawCmd = drawCommands.getValue();
+            //vboCapacity = StreamingUploader.upload(drawCmd.getReadBuffer(), vboCapacity);
+            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, drawCmd.getReadBuffer(), GL15.GL_STREAM_DRAW);
 
-            int offset = 0;
-            for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
-                final int texture = drawCommands.getIntKey();
-                final FontDrawCmd drawCmd = drawCommands.getValue();
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            final int texture = drawCommands.getIntKey();
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 
-                int indexCount = drawCmd.getIndexCount();
-
-                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, indexCount, GL11.GL_UNSIGNED_SHORT, offset);
-
-                offset += indexCount * 2;
-            }
+            GLStateManager.glDrawElementsInstanced(
+                GL11.GL_TRIANGLES,
+                6, //drawCmd.ranges.getInt(0) / 4 * 6,
+                GL11.GL_UNSIGNED_SHORT,
+                0,
+                drawCmd.getInstanceCount()
+            );
         }
 
 
@@ -518,18 +376,28 @@ public final class BatchingFontRenderer {
             GLStateManager.disableBlend();
         }
         if (textureChanged) {
-        	GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
         }
 
         clearBatch();
     }
 
     private void clearBatch() {
-        // Clear for the next batch
-        // TODO make it reuse the objects
         batchCommandMap.clear();
-        vertexDataPos = 0;
-        idxWriterIndex = 0;
+        commandPoolIndex = -1;
+    }
+
+    private FontDrawCmd createFontDrawCmd() {
+        if (++commandPoolIndex >= commandPool.length) {
+            commandPool = Arrays.copyOf(commandPool, commandPool.length * 2);
+        }
+        FontDrawCmd next = commandPool[commandPoolIndex];
+        if (next == null) {
+            next = new FontDrawCmd();
+            commandPool[commandPoolIndex] = next;
+        }
+        next.clear();
+        return next;
     }
 
     // === Actual text mesh generation
@@ -672,20 +540,16 @@ public final class BatchingFontRenderer {
                     charIdx++;
 
                     if (curUnderline && underlineStartX != underlineEndX) {
-                        final int ulIdx = idxWriterIndex;
                         pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                        pushDrawCmd(ulIdx, 4, 0);
                         underlineStartX = underlineEndX;
                     }
                     if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        final int ulIdx = idxWriterIndex;
                         pushUntexRect(
                             strikethroughStartX,
                             strikethroughY,
                             strikethroughEndX - strikethroughStartX,
                             glyphScaleY,
                             curColor);
-                        pushDrawCmd(ulIdx, 4, 0);
                         strikethroughStartX = strikethroughEndX;
                     }
 
@@ -823,7 +687,6 @@ public final class BatchingFontRenderer {
                 final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
                 final float uSz = fontProvider.getUSize(chr);
                 final float vSz = fontProvider.getVSize(chr);
-                final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
                 final float shadowOffset = fontProvider.getShadowOffset();
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
@@ -834,39 +697,40 @@ public final class BatchingFontRenderer {
                     texture = fontProvider.getTexture(chr);
                 }
 
-                final int idxId = idxWriterIndex;
 
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
 
-                if (curShader) {
-                    pushTexRect(
-                        curX,
-                        renderY,
-                        glyphW - 1.0f,
-                        heightSouth,
-                        itOff,
-                        0xFFFFFFFF, //0xFF000000,
-                        uStart, vStart, uSz, vSz,
-                        curDinnerbone
-                    );
-                    final int vtxCount = 4;
-                    pushShaderCmd(
-                        idxId,
-                        vtxCount / 2 * 3,
-                        texture,
-                        curX,
-                        renderY,
-                        glyphW - 1.0f,
-                        heightSouth
-                    );
-
-                    curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
-                    if (bookMode) { curX = (int) curX; }
-                    underlineEndX = curX;
-                    strikethroughEndX = curX;
-                    continue;
-                }
+//                if (curShader) {
+//                    pushTexRect(
+//                        curX,
+//                        renderY,
+//                        glyphW - 1.0f,
+//                        heightSouth,
+//                        itOff,
+//                        0xFFFFFFFF, //0xFF000000,
+//                        uStart, vStart, uSz, vSz,
+//                        curDinnerbone,
+//                        texture
+//                    );
+//                    final int idxId = idxWriterIndex;
+//                    final int vtxCount = 4;
+//                    pushShaderCmd(
+//                        idxId,
+//                        vtxCount / 2 * 3,
+//                        texture,
+//                        curX,
+//                        renderY,
+//                        glyphW - 1.0f,
+//                        heightSouth
+//                    );
+//
+//                    curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
+//                    if (bookMode) { curX = (int) curX; }
+//                    underlineEndX = curX;
+//                    strikethroughEndX = curX;
+//                    continue;
+//                }
 
                 if (curWave) {
                     float time = HUDCaching.renderingCacheOverride ? 0f : (float)((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
@@ -876,20 +740,52 @@ public final class BatchingFontRenderer {
                 if (enableShadow) {
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                        pushTexRect(
+                            curX + shadowOffsetPart, renderY + shadowOffsetPart,
+                            glyphW - 1.0f, heightSouth,
+                            uStart, vStart, uSz, vSz,
+                            curShadowColor,
+                            curItalic,
+                            curDinnerbone,
+                            texture
+                        );
 
                         if (curBold) {
-                            pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                            pushTexRect(
+                                curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart,
+                                glyphW - 1.0f, heightSouth,
+                                uStart, vStart, uSz, vSz,
+                                curShadowColor,
+                                curItalic,
+                                curDinnerbone,
+                                texture
+                            );
                         }
                     }
                 }
 
-                pushTexRect(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                pushTexRect(
+                    curX, renderY,
+                    glyphW - 1.0f, heightSouth,
+                    uStart, vStart, uSz, vSz,
+                    curColor,
+                    curItalic,
+                    curDinnerbone,
+                    texture
+                );
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushTexRect(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                        pushTexRect(
+                            curX + shadowOffsetPart, renderY,
+                            glyphW - 1.0f, heightSouth,
+                            uStart, vStart, uSz, vSz,
+                            curColor,
+                            curItalic,
+                            curDinnerbone,
+                            texture
+                        );
                     }
                 }
 
@@ -900,11 +796,6 @@ public final class BatchingFontRenderer {
                     bold only:      4(1 + boldCopies)
                     both:           4(1 + 2 * shadowCopies + boldCopies)
                  */
-                int charCount = 1;
-                if (enableShadow) { charCount += shadowCopies * (curBold ? 2 : 1); }
-                if (curBold) { charCount += boldCopies; }
-                final int vtxCount = 4 * charCount;
-                pushDrawCmd(idxId, vtxCount, texture);
 
                 curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
                 if (bookMode) { curX = (int) curX; }
@@ -912,33 +803,25 @@ public final class BatchingFontRenderer {
                 strikethroughEndX = curX;
 
                 if ((curRainbow || curGradient) && curUnderline && underlineStartX != underlineEndX) {
-                    final int ulIdx = idxWriterIndex;
                     pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                    pushDrawCmd(idxWriterIndex, 4, 0);
                     underlineStartX = underlineEndX;
                 }
                 if ((curRainbow || curGradient) && curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                    final int stIdx = idxWriterIndex;
                     pushUntexRect(strikethroughStartX, strikethroughY, strikethroughEndX - strikethroughStartX, glyphScaleY, curColor);
-                    pushDrawCmd(stIdx, 4, 0);
                     strikethroughStartX = strikethroughEndX;
                 }
             }
 
             if (curUnderline && underlineStartX != underlineEndX) {
-                final int ulIdx = idxWriterIndex;
                 pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
-                pushDrawCmd(ulIdx, 4, 0);
             }
             if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                final int ulIdx = idxWriterIndex;
                 pushUntexRect(
                     strikethroughStartX,
                     strikethroughY,
                     strikethroughEndX - strikethroughStartX,
                     glyphScaleY,
                     curColor);
-                pushDrawCmd(ulIdx, 4, 0);
             }
 
         } finally {
@@ -968,4 +851,72 @@ public final class BatchingFontRenderer {
         blendSrcRGB = GL11.GL_SRC_ALPHA;
         blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
+
+
+    public static class FontDrawCmd {
+
+        private ByteBuffer data = memAlloc(INSTANCE_SIZE * 32);
+        private long writePtr; // gets initialized in clear()
+        private int count;
+
+        public FontDrawCmd() {
+
+        }
+
+        public ByteBuffer getReadBuffer() {
+            data.limit(count * INSTANCE_SIZE);
+            return data;
+        }
+
+        public int getInstanceCount() {
+            return count;
+        }
+
+        private void ensureCapacity() {
+            if ((count + 1) * INSTANCE_SIZE > data.capacity()) {
+                data = memRealloc(data, data.capacity() * 2);
+                writePtr = memAddress0(data) + (count * INSTANCE_SIZE);
+            }
+        }
+
+        public void pushQuad(
+            float x, float y, float width, float height,
+            float uMin, float vMin, float uWidth, float vWidth,
+            int rgba,
+            boolean italic
+        ) {
+            ensureCapacity();
+            final long ptr = writePtr;
+
+            // vertices
+            memPutFloat(ptr, x);
+            memPutFloat(ptr + 4, y);
+            memPutFloat(ptr + 8, width);
+            memPutFloat(ptr + 12, height);
+
+            // tb, tb, tb, tb
+            memPutFloat(ptr + 16, uMin);
+            memPutFloat(ptr + 20, vMin);
+            memPutFloat(ptr + 24, uWidth);
+            memPutFloat(ptr + 28, vWidth);
+
+            // c, c, c, c
+            // 0xAARRGGBB
+            memPutByte(ptr + 32, (byte) ((rgba >> 16) & 0xFF));
+            memPutByte(ptr + 33, (byte) ((rgba >> 8) & 0xFF));
+            memPutByte(ptr + 34, (byte) (rgba & 0xFF));
+            memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
+
+            //TODO italic + other shit
+
+            writePtr += INSTANCE_SIZE;
+            count++;
+        }
+
+        public void clear() {
+            count = 0;
+            writePtr = memAddress0(data);
+        }
+    }
+
 }

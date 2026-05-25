@@ -3,8 +3,8 @@
 uniform sampler2D sampler;
 uniform float strength;
 
-in vec4 color;
-flat in vec4 tB;
+flat in vec4 color;
+flat in vec4 tB; // uMin, vMin, uMax, vMax
 in vec2 texCoord;
 
 out vec4 fragColor;
@@ -22,9 +22,7 @@ float txSample(vec2 uv, float du, float dv, float factorU, float factorV) {
     totalWt += weight;
     float finalU = uv.x + factorU * du;
     float finalV = uv.y + factorV * dv;
-    if (finalU < tB.x || finalU > tB.y || finalV < tB.z || finalV > tB.w) {
-        return 0.0f;
-    }
+    if (finalU < tB.x || finalV < tB.y || finalU > tB.z || finalV > tB.w) return 0.0f;
     return weight * texture(sampler, vec2(finalU, finalV)).a;
 }
 
@@ -77,9 +75,7 @@ void main() {
 
     #endif
 
-    if (col.a <= 0.1) {
-        discard;
-    }
+    if (col.a < 0.1) discard;
 
     fragColor = col;
 }

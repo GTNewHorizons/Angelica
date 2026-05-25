@@ -1,19 +1,24 @@
 #version 330 core
 
-layout(location = 0) in vec2 a_Position;
-layout(location = 1) in vec2 a_TexCoord0;
-layout(location = 2) in vec4 a_Color;
-layout(location = 3) in vec4 a_TexBounds;
+layout(location = 0) in vec2 quadCorner;
+layout(location = 1) in vec4 glyphRect;
+layout(location = 2) in vec4 uvRect;
+layout(location = 3) in vec4 aColor;
+
 
 uniform mat4 u_MVPMatrix;
 
 flat out vec4 tB;
-out vec4 color;
+flat out vec4 color;
 out vec2 texCoord;
 
+//TODO italic
+//TODO separate shader for untex rect
 void main() {
-    gl_Position = u_MVPMatrix * vec4(a_Position, 0.0, 1.0);
-    texCoord = a_TexCoord0;
-    color = a_Color;
-    tB = a_TexBounds;
+    vec2 pos = glyphRect.xy + quadCorner * glyphRect.zw;
+    vec2 uv = uvRect.xy + quadCorner * uvRect.zw;
+    gl_Position = u_MVPMatrix * vec4(pos, 0.0, 1.0);
+    texCoord = uv;
+    color = aColor;
+    tB = vec4(uvRect.xy, uvRect.x + uvRect.z, uvRect.y + uvRect.w);
 }
