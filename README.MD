@@ -50,6 +50,7 @@ Targets GL 3.3+ core profile
 * CodeChicken[Core](https://github.com/GTNewHorizons/CodeChickenCore/releases)/[Lib](https://github.com/GTNewHorizons/CodeChickenLib/releases) <1.2.0 - Threading issues, use 1.3.0+
 * Neodymium - Untested, but unlikely to be compatible. (Chunk Meshing is definitely incompatible, other features might work depending on config)
 * SmoothFont - Equivalent functionality added
+* ClientFixer - Use a resource pack like [GTNH-FTI-Standard-Font](https://github.com/Eldrinn-Elantey/GTNH-FTI-Standard-Font)
 
 # Credits
 * ShadersMod
