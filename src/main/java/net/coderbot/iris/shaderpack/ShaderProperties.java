@@ -771,7 +771,7 @@ public class ShaderProperties {
 				return;
 			}
 
-			final int size = Integer.parseInt(parts[0]);
+			final long size = Long.parseLong(parts[0]);
 
 			// Size < 1 means the shader dev intended to disable the buffer
 			if (size < 1) {

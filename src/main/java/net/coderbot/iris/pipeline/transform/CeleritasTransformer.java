@@ -60,6 +60,7 @@ class CeleritasTransformer {
     }
 
     private static void transformShared(Transformer transformer, Parameters parameters) {
+        transformer.replaceExpression("gl_TextureMatrix[0]", "mat4(1.0)");
         CoreTransformHelper.injectMatrixUniforms(transformer);
     }
 }
