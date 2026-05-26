@@ -9,6 +9,7 @@ public class TextureInfo {
 
     @Getter protected final int id;
     protected int internalFormat = -1;
+    protected int resolvedInternalFormat = -1;
     protected int width = -1;
     protected int height = -1;
 
@@ -32,6 +33,17 @@ public class TextureInfo {
             internalFormat = RenderSystem.getTexLevelParameteri(id, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
         }
         return internalFormat;
+    }
+
+    public int getResolvedInternalFormat() {
+        if (resolvedInternalFormat == -1) {
+            resolvedInternalFormat = RenderSystem.getTexLevelParameteri(id, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
+        }
+        return resolvedInternalFormat;
+    }
+
+    public boolean needsInternalFormatResolve() {
+        return resolvedInternalFormat == -1;
     }
 
     public int getWidth() {
