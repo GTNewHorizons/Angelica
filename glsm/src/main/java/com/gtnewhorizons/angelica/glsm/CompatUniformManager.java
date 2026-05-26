@@ -132,6 +132,33 @@ public class CompatUniformManager {
 
     private CompatUniformManager() {}
 
+    /**
+     * Normalize each column of a 3x3 matrix in place. Used to strip the residual 1/scale that
+     * inverse-transpose introduces.
+     */
+    private static void normalizeColumnsInPlace(Matrix3f m) {
+        normalizeColumn(m, 0);
+        normalizeColumn(m, 1);
+        normalizeColumn(m, 2);
+    }
+
+    private static void normalizeColumn(Matrix3f m, int col) {
+        final float x, y, z;
+        switch (col) {
+            case 0 -> { x = m.m00(); y = m.m01(); z = m.m02(); }
+            case 1 -> { x = m.m10(); y = m.m11(); z = m.m12(); }
+            default -> { x = m.m20(); y = m.m21(); z = m.m22(); }
+        }
+        final float lenSq = x * x + y * y + z * z;
+        if (lenSq < 1e-20f) return;
+        final float inv = 1.0f / (float) Math.sqrt(lenSq);
+        switch (col) {
+            case 0 -> m.set(0, 0, x * inv).set(0, 1, y * inv).set(0, 2, z * inv);
+            case 1 -> m.set(1, 0, x * inv).set(1, 1, y * inv).set(1, 2, z * inv);
+            default -> m.set(2, 0, x * inv).set(2, 1, y * inv).set(2, 2, z * inv);
+        }
+    }
+
     public static void onLinkProgram(int program) {
         int[] locs = new int[LOC_COUNT];
         boolean hasAny = false;
@@ -222,13 +249,17 @@ public class CompatUniformManager {
             // Normal Matrix (inverse-transpose of upper-left 3x3 of ModelView)
             if (locs[LOC_NORMAL] != -1 || locs[LOC_IRIS_NORMAL] != -1) {
                 mv.normal(normalMatrix);
-                normalMatrix.get(mat3Buf);
                 if (locs[LOC_NORMAL] != -1) {
+                    normalMatrix.get(mat3Buf);
                     RENDER_BACKEND.uniformMatrix3(locs[LOC_NORMAL], false, mat3Buf);
                 }
+                // Column-normalized to unit magnitude
                 if (locs[LOC_IRIS_NORMAL] != -1) {
+                    normalizeColumnsInPlace(normalMatrix);
+                    normalMatrix.get(mat3Buf);
                     RENDER_BACKEND.uniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
                 }
+
             }
         }
 

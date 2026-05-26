@@ -2,16 +2,17 @@ package net.coderbot.iris.gl.buffer;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import lombok.Getter;
 import org.embeddedt.embeddium.impl.gl.debug.GLDebug;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL43;
 
 public class ShaderStorageBuffer {
 	protected final int index;
 	protected final ShaderStorageInfo info;
-	protected int id;
+	@Getter
+    protected int id;
 
 	public ShaderStorageBuffer(int index, ShaderStorageInfo info) {
 		this.id = RenderSystem.createBuffers();
@@ -45,16 +46,13 @@ public class ShaderStorageBuffer {
 		GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, newId);
 
 		// Calculation time
-		int newWidth = (int) (width * info.scaleX());
-		int newHeight = (int) (height * info.scaleY());
-		int finalSize = (newHeight * newWidth) * info.size();
+		long newWidth = (long) (width * info.scaleX());
+		long newHeight = (long) (height * info.scaleY());
+		long finalSize = (newHeight * newWidth) * info.size();
 		RenderSystem.bufferStorage(GL43.GL_SHADER_STORAGE_BUFFER, finalSize, 0);
 		RenderSystem.clearBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, GL30.GL_R8, 0, finalSize, GL11.GL_RED, GL11.GL_BYTE, new int[]{0});
 		RenderSystem.bindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, index, newId);
 		id = newId;
 	}
 
-	public int getId() {
-		return id;
-	}
 }

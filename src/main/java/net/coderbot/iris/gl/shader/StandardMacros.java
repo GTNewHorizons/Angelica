@@ -81,6 +81,9 @@ public class StandardMacros {
 		define(standardDefines, "IS_ANGELICA");
 		if (AngelicaConfig.defineIsIris) {
 			define(standardDefines, "IS_IRIS");
+			define(standardDefines, "IRIS_VERSION", "10803");
+			define(standardDefines, "IRIS_HAS_TRANSLUCENCY_SORTING");
+			define(standardDefines, "MAX_COLOR_BUFFERS", String.valueOf(net.coderbot.iris.shaderpack.IrisLimits.MAX_COLOR_BUFFERS));
 		}
 
 		if (DHCompat.hasRenderingEnabled()) {
