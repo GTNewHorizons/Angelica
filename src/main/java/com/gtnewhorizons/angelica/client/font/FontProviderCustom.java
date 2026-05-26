@@ -193,6 +193,7 @@ public final class FontProviderCustom implements FontProvider {
                 }
             }
 
+            // TODO replace this with something proper & add linear
             this.texture = TextureUtil.uploadTextureImageAllocate(GLStateManager.glGenTextures(), image, false, false);
             //this.texture = new ResourceLocation(getAtlasResourceName(this.id));
         }

@@ -2,11 +2,11 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.SimpleShaderDefine;
-import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
@@ -18,17 +18,12 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL42;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutShort;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
@@ -87,12 +82,13 @@ public final class BatchingFontRenderer {
         );
 
         fontShaderId = ShaderProgram.createProgram(vsh, fsh);
+        GLStateManager.glUseProgram(fontShaderId);
+
+        GLStateManager.glUseProgram(0);
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
-        if (mainEBO == null) {
-            mainEBO = new IndexBuffer();
+        if (vbo <= 0) {
             vbo = GLStateManager.glGenBuffers();
-            allocateBuffers();
         }
     }
 
@@ -110,12 +106,8 @@ public final class BatchingFontRenderer {
     // Streaming VBO (uploaded once per draw)
     private static int vbo;
 
-
-    // Main Objects (used if there's only 1 batched command operation)
     private static int mainVAO = 0;
-    private static IndexBuffer mainEBO;
 
-    // Streaming Objects (used if there's multi textured draws happening)
     //TODO add bindless textures
 
 
@@ -132,38 +124,6 @@ public final class BatchingFontRenderer {
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
-
-
-    private void allocateBuffers() {
-        populateEBO();
-    }
-
-    private void populateEBO() {
-        final int quadCount = 6;
-        final ByteBuffer data = memAlloc(quadCount * 6 * 2);
-        long ptr = memAddress0(data);
-        for (int i = 0; i < quadCount; i++) {
-            int base = (i * 4);
-
-            // triangle 1
-            memPutShort(ptr, (short) base);
-            memPutShort(ptr + 2, (short) (base + 2));
-            memPutShort(ptr + 4, (short) (base + 1));
-
-
-            // triangle 2
-            memPutShort(ptr + 6, (short) (base + 2));
-            memPutShort(ptr + 8, (short) (base + 3));
-            memPutShort(ptr + 10, (short) (base + 1));
-
-            ptr += 12;
-        }
-
-        mainEBO.upload(data);
-
-        memFree(data);
-
-    }
 
     //TODO fix this (shader issue)
     private void pushUntexRect(float x, float y, float w, float h, int rgba) {
@@ -233,12 +193,12 @@ public final class BatchingFontRenderer {
          */
     }
 
-    private int initVAO(IndexBuffer ebo) {
+    private int initVAO() {
         int vao = GLStateManager.glGenVertexArrays();
 
         GLStateManager.glBindVertexArray(vao);
 
-        ebo.bind();
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, InstancedHelper.getQuadEBO());
 
         // position
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, InstancedHelper.getQuadVBO());
@@ -323,6 +283,41 @@ public final class BatchingFontRenderer {
             return;
         }
 
+
+        if (mainVAO == 0) {
+            mainVAO = initVAO();
+        }
+        GLStateManager.glBindVertexArray(mainVAO);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+        int totalSize = 0;
+        for (FontDrawCmd drawCommands : batchCommandMap.values()) {
+            totalSize += drawCommands.getInstanceCount();
+        }
+        totalSize *= INSTANCE_SIZE;
+
+        final ByteBuffer data = memAlloc(totalSize);
+        long dst = memAddress(data);
+
+        for (FontDrawCmd drawCommand : batchCommandMap.values()) {
+            final ByteBuffer other = drawCommand.getReadBuffer();
+
+            int size = other.limit();
+
+            memCopy(
+                memAddress0(other),
+                dst,
+                size
+            );
+
+            dst += size;
+        }
+        GLStateManager.glDrawElementsIn();
+
+        vboCapacity = StreamingUploader.upload(data, vboCapacity);
+
+
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
@@ -340,30 +335,32 @@ public final class BatchingFontRenderer {
 
         int lastTexture = -1;
 
-        if (mainVAO == 0) {
-            mainVAO = initVAO(mainEBO);
-        }
-
-        GLStateManager.glBindVertexArray(mainVAO);
-
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-
+        int offset = 0;
         for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
             // Upload first (to reduce stalls)
             final FontDrawCmd drawCmd = drawCommands.getValue();
             //vboCapacity = StreamingUploader.upload(drawCmd.getReadBuffer(), vboCapacity);
-            GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, drawCmd.getReadBuffer(), GL15.GL_STREAM_DRAW);
+            // GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, drawCmd.getReadBuffer(), GL15.GL_STREAM_DRAW);
 
             final int texture = drawCommands.getIntKey();
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 
-            GLStateManager.glDrawElementsInstanced(
+            GL42.glDrawElementsInstancedBaseInstance(
                 GL11.GL_TRIANGLES,
                 6, //drawCmd.ranges.getInt(0) / 4 * 6,
                 GL11.GL_UNSIGNED_SHORT,
                 0,
-                drawCmd.getInstanceCount()
+                drawCmd.getInstanceCount(),
+                offset
             );
+            offset += drawCmd.getInstanceCount();
+//            GLStateManager.glDrawElementsInstanced(
+//                GL11.GL_TRIANGLES,
+//                6, //drawCmd.ranges.getInt(0) / 4 * 6,
+//                GL11.GL_UNSIGNED_SHORT,
+//                0,
+//                drawCmd.getInstanceCount()
+//            );
         }
 
 
