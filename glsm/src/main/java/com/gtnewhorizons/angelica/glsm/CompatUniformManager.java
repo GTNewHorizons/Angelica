@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -112,6 +113,7 @@ public class CompatUniformManager {
     private static final FloatBuffer clipPlaneBuf = BufferUtils.createFloatBuffer(32); // 8 planes * vec4
     private static final Matrix3f normalMatrix = new Matrix3f();
     private static final Matrix4f scratchMatrix = new Matrix4f();
+    private static final Vector3f scratchCol = new Vector3f();
 
     private static final float LIGHTMAP_SCALE = 1.0f / 256.0f;
     private static final FloatBuffer lightmapMatrixBuf;
@@ -137,26 +139,9 @@ public class CompatUniformManager {
      * inverse-transpose introduces.
      */
     private static void normalizeColumnsInPlace(Matrix3f m) {
-        normalizeColumn(m, 0);
-        normalizeColumn(m, 1);
-        normalizeColumn(m, 2);
-    }
-
-    private static void normalizeColumn(Matrix3f m, int col) {
-        final float x, y, z;
-        switch (col) {
-            case 0 -> { x = m.m00(); y = m.m01(); z = m.m02(); }
-            case 1 -> { x = m.m10(); y = m.m11(); z = m.m12(); }
-            default -> { x = m.m20(); y = m.m21(); z = m.m22(); }
-        }
-        final float lenSq = x * x + y * y + z * z;
-        if (lenSq < 1e-20f) return;
-        final float inv = 1.0f / (float) Math.sqrt(lenSq);
-        switch (col) {
-            case 0 -> m.set(0, 0, x * inv).set(0, 1, y * inv).set(0, 2, z * inv);
-            case 1 -> m.set(1, 0, x * inv).set(1, 1, y * inv).set(1, 2, z * inv);
-            default -> m.set(2, 0, x * inv).set(2, 1, y * inv).set(2, 2, z * inv);
-        }
+        m.setColumn(0, m.getColumn(0, scratchCol).normalize());
+        m.setColumn(1, m.getColumn(1, scratchCol).normalize());
+        m.setColumn(2, m.getColumn(2, scratchCol).normalize());
     }
 
     public static void onLinkProgram(int program) {

@@ -11,8 +11,7 @@ import org.lwjgl.opengl.GL43;
 public class ShaderStorageBuffer {
 	protected final int index;
 	protected final ShaderStorageInfo info;
-	@Getter
-    protected int id;
+	@Getter protected int id;
 
 	public ShaderStorageBuffer(int index, ShaderStorageInfo info) {
 		this.id = RenderSystem.createBuffers();

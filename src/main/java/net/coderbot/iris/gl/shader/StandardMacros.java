@@ -8,6 +8,7 @@ import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
+import net.coderbot.iris.shaderpack.IrisLimits;
 import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
@@ -83,7 +84,7 @@ public class StandardMacros {
 			define(standardDefines, "IS_IRIS");
 			define(standardDefines, "IRIS_VERSION", "10803");
 			define(standardDefines, "IRIS_HAS_TRANSLUCENCY_SORTING");
-			define(standardDefines, "MAX_COLOR_BUFFERS", String.valueOf(net.coderbot.iris.shaderpack.IrisLimits.MAX_COLOR_BUFFERS));
+			define(standardDefines, "MAX_COLOR_BUFFERS", String.valueOf(IrisLimits.MAX_COLOR_BUFFERS));
 		}
 
 		if (DHCompat.hasRenderingEnabled()) {
