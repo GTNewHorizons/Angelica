@@ -18,7 +18,7 @@ public final class ColorCodeUtils {
     private ColorCodeUtils() {}
 
     public static final char FORMATTING_CHAR = '§';
-    public static final char ESCAPED_AMPERSAND = '';
+    public static final char ESCAPED_AMPERSAND = '';
 
     public static final int SECTION_X_PAYLOAD = 12;
     public static final int SECTION_X_LENGTH = 14;
