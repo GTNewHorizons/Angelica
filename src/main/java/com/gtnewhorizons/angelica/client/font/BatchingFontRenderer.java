@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.AutoShaderUpdater;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderDefinesInjector;
+import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderReloadRunnable;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.SimpleShaderDefine;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
@@ -13,7 +16,6 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.Setter;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -23,7 +25,13 @@ import org.lwjgl.opengl.GL42;
 import java.nio.ByteBuffer;
 import java.util.Arrays;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
@@ -55,6 +63,8 @@ public final class BatchingFontRenderer {
 
     private final int fontTexture;
 
+    private static FontTextureArray mainTextureArray;
+
     /** For use with modded books. Affects calculations and forces some defaults. */
     @Setter
     boolean bookMode = false;
@@ -72,6 +82,10 @@ public final class BatchingFontRenderer {
         // Determine GL texture by binding & querying the bound texture
         ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
         this.fontTexture = GLStateManager.getBoundTextureForServerState();
+        if (mainTextureArray == null) {
+            mainTextureArray = new FontTextureArray(256);
+            mainTextureArray.addAtlasFromBoundTexture(0);
+        }
 
         final String vsh = ShaderProgram.loadShaderSource(
             BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh")
@@ -81,7 +95,30 @@ public final class BatchingFontRenderer {
             new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode)
         );
 
-        fontShaderId = ShaderProgram.createProgram(vsh, fsh);
+        final ShaderProgram program = new ShaderProgram(vsh, fsh);
+        if (!isSplash) {
+            AutoShaderUpdater.getInstance().registerShaderReload(program,
+                new ResourceLocation("angelica", "shaders/font/font.vsh"),
+                new ResourceLocation("angelica", "shaders/font/font.fsh"),
+                new IShaderReloadRunnable() {
+                    @Override
+                    public void run(ShaderProgram shaderProgram) {
+                        fontShaderId = shaderProgram.getProgram();
+                        AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
+                        mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
+                    }
+
+                    @Override
+                    public IShaderDefinesInjector[] getDefines() {
+                        return new IShaderDefinesInjector[] {
+                            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode)
+                        };
+                    }
+                }
+            );
+        }
+        //fontShaderId = ShaderProgram.createProgram(vsh, fsh);
+        fontShaderId = program.getProgram();
         GLStateManager.glUseProgram(fontShaderId);
 
         GLStateManager.glUseProgram(0);
@@ -97,8 +134,8 @@ public final class BatchingFontRenderer {
 
     // Layout in data:
     // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
-    // v, t and tb are floats, c is bytes; 36 bytes total
-    private static final int INSTANCE_SIZE = 36;
+    // v, t and tb are floats, c is bytes; 37 bytes total
+    private static final int INSTANCE_SIZE = 37;
 
     private static int vboCapacity;
 
@@ -139,6 +176,7 @@ public final class BatchingFontRenderer {
         float x, float y, float w, float h,
         float uStart, float vStart, float uSz, float vSz,
         int rgba,
+        int layer,
         boolean italic,
         boolean flipV,
         int texture
@@ -148,17 +186,7 @@ public final class BatchingFontRenderer {
             cmd = createFontDrawCmd();
             batchCommandMap.put(texture, cmd);
         }
-        //TODO idk how to integrate this
-        final float vTop;
-        final float vBot;
-        if (flipV) {
-            vTop = vStart + vSz;
-            vBot = vStart;
-        } else {
-            vTop = vStart;
-            vBot = vStart + vSz;
-        }
-        cmd.pushQuad(x, y, w, h, uStart, vStart, uSz, vSz, rgba, italic);
+        cmd.pushQuad(x, y, w, h, uStart, vStart, uSz, vSz, rgba, layer, italic, flipV);
     }
 
     private void pushShaderCmd(
@@ -253,6 +281,17 @@ public final class BatchingFontRenderer {
         GLStateManager.glEnableVertexAttribArray(3);
         GLStateManager.glVertexAttribDivisor(3, 1);
 
+        // layer
+        GLStateManager.glVertexAttribIPointer(
+            4,
+            1,
+            GL11.GL_UNSIGNED_BYTE,
+            INSTANCE_SIZE,
+            36
+        );
+        GLStateManager.glEnableVertexAttribArray(4);
+        GLStateManager.glVertexAttribDivisor(4, 1);
+
         return vao;
     }
 
@@ -313,7 +352,7 @@ public final class BatchingFontRenderer {
 
             dst += size;
         }
-        GLStateManager.glDrawElementsIn();
+        //GLStateManager.glDrawElementsIn();
 
         vboCapacity = StreamingUploader.upload(data, vboCapacity);
 
@@ -336,14 +375,15 @@ public final class BatchingFontRenderer {
         int lastTexture = -1;
 
         int offset = 0;
+        mainTextureArray.bind();
         for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
             // Upload first (to reduce stalls)
             final FontDrawCmd drawCmd = drawCommands.getValue();
             //vboCapacity = StreamingUploader.upload(drawCmd.getReadBuffer(), vboCapacity);
             // GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, drawCmd.getReadBuffer(), GL15.GL_STREAM_DRAW);
 
-            final int texture = drawCommands.getIntKey();
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            //final int texture = drawCommands.getIntKey();
+            //GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
 
             GL42.glDrawElementsInstancedBaseInstance(
                 GL11.GL_TRIANGLES,
@@ -362,6 +402,7 @@ public final class BatchingFontRenderer {
 //                drawCmd.getInstanceCount()
 //            );
         }
+        mainTextureArray.unbind();
 
 
         GLStateManager.glUseProgram(prevProgram);
@@ -478,11 +519,11 @@ public final class BatchingFontRenderer {
     private static final double WAVE_TIME_SCALE = 5e-9;
     private static final float WAVE_FREQUENCY = 0.5f;
 
-    public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
-        final boolean unicodeFlag, final String string, int stringOffset, int stringLength) {
+    public int drawString(final int anchorX, final int anchorY, final int color, final boolean enableShadow,
+        final boolean unicodeFlag, final String string) {
         // noinspection SizeReplaceableByIsEmpty
         if (string == null || string.length() == 0) {
-            return anchorX + (enableShadow ? 1.0f : 0.0f);
+            return anchorX + (enableShadow ? 1 : 0);
         }
         final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
 
@@ -491,13 +532,7 @@ public final class BatchingFontRenderer {
         this.beginBatch();
         float curX = anchorX;
         try {
-            final int totalStringLength = string.length();
-            stringOffset = MathHelper.clamp_int(stringOffset, 0, totalStringLength);
-            stringLength = MathHelper.clamp_int(stringLength, 0, totalStringLength - stringOffset);
-            if (stringLength <= 0) {
-                return 0;
-            }
-            final int stringEnd = stringOffset + stringLength;
+            final int stringEnd = string.length();
 
             int curColor = color;
             int curShadowColor = shadowColor;
@@ -530,7 +565,7 @@ public final class BatchingFontRenderer {
             float strikethroughEndX = 0.0f;
 
 
-            for (int charIdx = stringOffset; charIdx < stringEnd; charIdx++) {
+            for (int charIdx = 0; charIdx < stringEnd; charIdx++) {
                 char chr = string.charAt(charIdx);
                 if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
                     final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
@@ -583,11 +618,11 @@ public final class BatchingFontRenderer {
                         curBold = true;
                     } else if (fmtCode == 'm') {
                         curStrikethrough = true;
-                        strikethroughStartX = curX - 1.0f;
+                        strikethroughStartX = curX - 1;
                         strikethroughEndX = strikethroughStartX;
                     } else if (fmtCode == 'n') {
                         curUnderline = true;
-                        underlineStartX = curX - 1.0f;
+                        underlineStartX = curX - 1;
                         underlineEndX = underlineStartX;
                     } else if (fmtCode == 'o') {
                         curItalic = true;
@@ -693,6 +728,15 @@ public final class BatchingFontRenderer {
                 } else {
                     texture = fontProvider.getTexture(chr);
                 }
+                final int layer = chr / 256;
+                if (fontProvider instanceof FontProviderUnicode) {
+                    if (!mainTextureArray.hasLayer(layer)) {
+                        mainTextureArray.addAtlas(
+                            layer,
+                            new ResourceLocation(String.format("textures/font/unicode_page_%02x.png", layer))
+                        );
+                    }
+                }
 
 
                 // Wave: Y offset via sine wave
@@ -739,9 +783,10 @@ public final class BatchingFontRenderer {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
                         pushTexRect(
                             curX + shadowOffsetPart, renderY + shadowOffsetPart,
-                            glyphW - 1.0f, heightSouth,
+                            glyphW - 1, heightSouth,
                             uStart, vStart, uSz, vSz,
                             curShadowColor,
+                            layer,
                             curItalic,
                             curDinnerbone,
                             texture
@@ -749,10 +794,11 @@ public final class BatchingFontRenderer {
 
                         if (curBold) {
                             pushTexRect(
-                                curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart,
-                                glyphW - 1.0f, heightSouth,
+                                curX + 2 * shadowOffsetPart, renderY + shadowOffsetPart,
+                                glyphW - 1, heightSouth,
                                 uStart, vStart, uSz, vSz,
                                 curShadowColor,
+                                layer,
                                 curItalic,
                                 curDinnerbone,
                                 texture
@@ -763,9 +809,10 @@ public final class BatchingFontRenderer {
 
                 pushTexRect(
                     curX, renderY,
-                    glyphW - 1.0f, heightSouth,
+                    glyphW - 1, heightSouth,
                     uStart, vStart, uSz, vSz,
                     curColor,
+                    layer,
                     curItalic,
                     curDinnerbone,
                     texture
@@ -776,9 +823,10 @@ public final class BatchingFontRenderer {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
                         pushTexRect(
                             curX + shadowOffsetPart, renderY,
-                            glyphW - 1.0f, heightSouth,
+                            glyphW - 1, heightSouth,
                             uStart, vStart, uSz, vSz,
                             curColor,
+                            layer,
                             curItalic,
                             curDinnerbone,
                             texture
@@ -794,8 +842,7 @@ public final class BatchingFontRenderer {
                     both:           4(1 + 2 * shadowCopies + boldCopies)
                  */
 
-                curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
-                if (bookMode) { curX = (int) curX; }
+                curX += (xAdvance + (curBold ? 1 : 0)) + getGlyphSpacing();
                 underlineEndX = curX;
                 strikethroughEndX = curX;
 
@@ -824,7 +871,7 @@ public final class BatchingFontRenderer {
         } finally {
             this.endBatch();
         }
-        return curX + (enableShadow ? 1.0f : 0.0f);
+        return (int) (curX + (enableShadow ? 1 : 0));
     }
 
     public float getCharWidthFine(char chr) {
@@ -880,7 +927,8 @@ public final class BatchingFontRenderer {
             float x, float y, float width, float height,
             float uMin, float vMin, float uWidth, float vWidth,
             int rgba,
-            boolean italic
+            int layer,
+            boolean italic, boolean dinnerbone
         ) {
             ensureCapacity();
             final long ptr = writePtr;
@@ -891,6 +939,10 @@ public final class BatchingFontRenderer {
             memPutFloat(ptr + 8, width);
             memPutFloat(ptr + 12, height);
 
+//            memPutFloat(ptr, round(x));
+//            memPutFloat(ptr + 4, round(y));
+//            memPutFloat(ptr + 8, round(width));
+//            memPutFloat(ptr + 12, round(height));
             // tb, tb, tb, tb
             memPutFloat(ptr + 16, uMin);
             memPutFloat(ptr + 20, vMin);
@@ -904,7 +956,21 @@ public final class BatchingFontRenderer {
             memPutByte(ptr + 34, (byte) (rgba & 0xFF));
             memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
 
+            // layer
+            memPutByte(ptr + 36, (byte) layer);
+
             //TODO italic + other shit
+
+            //TODO add this to vertex shader
+//            final float vTop;
+//            final float vBot;
+//            if (flipV) {
+//                vTop = vStart + vSz;
+//                vBot = vStart;
+//            } else {
+//                vTop = vStart;
+//                vBot = vStart + vSz;
+//            }
 
             writePtr += INSTANCE_SIZE;
             count++;

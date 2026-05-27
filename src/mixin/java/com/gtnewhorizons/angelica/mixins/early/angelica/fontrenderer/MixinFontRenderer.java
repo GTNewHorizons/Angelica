@@ -179,10 +179,9 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             this.blue = (float)(argb >> 8 & 255) / 255.0F;
             this.green = (float)(argb & 255) / 255.0F;
             this.alpha = (float)(argb >> 24 & 255) / 255.0F;
-            GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f); //TODO
             this.posX = (float)x;
             this.posY = (float)y;
-            return (int) angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text, 0, text.length());
+            return angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text);
         }
     }
 

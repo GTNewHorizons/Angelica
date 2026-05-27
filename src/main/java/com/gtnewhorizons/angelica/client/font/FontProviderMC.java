@@ -43,7 +43,7 @@ public final class FontProviderMC implements FontProvider {
 
     public char getRandomReplacement(char chr) {
         int lutIndex = lookupMcFontPosition(chr);
-        if (lutIndex != -1) {
+        if (lutIndex != 0) {
             int randomReplacementIndex;
             do {
                 randomReplacementIndex = fontRandom.nextInt(charWidth.length);
@@ -58,13 +58,13 @@ public final class FontProviderMC implements FontProvider {
     @Override
     public float getUStart(char chr) {
         int lutIndex = lookupMcFontPosition(chr);
-        return ((lutIndex % 16) * 8) / 128.0F;
+        return ((lutIndex % 16) * 8) / 256.0F; //TODO 256
     }
 
     @Override
     public float getVStart(char chr) {
         int lutIndex = lookupMcFontPosition(chr);
-        return (float) ((lutIndex / 16) * 8) / 128.0F;
+        return (float) ((lutIndex / 16) * 8) / 256.0F;
     }
 
     @Override
@@ -82,12 +82,12 @@ public final class FontProviderMC implements FontProvider {
     @Override
     public float getUSize(char chr) {
         int lutIndex = lookupMcFontPosition(chr);
-        return (charWidth[lutIndex] - 1.01F) / 128.0F;
+        return (charWidth[lutIndex] - 1.01F) / 256.0F;
     }
 
     @Override
     public float getVSize(char chr) {
-        return 7.99F / 128.0F;
+        return 7.99F / 256.0F;
     }
 
     @Override
@@ -98,7 +98,7 @@ public final class FontProviderMC implements FontProvider {
     @Override
     public int getTexture(char chr) {
         throw new UnsupportedOperationException(
-            "Cannot call getTexture() in FontProviderMC - Implementation is dependant on the FontRenderer!"
+            "Cannot call getTexture() in FontProviderMC - Implementation is dependent on the FontRenderer!"
         );
     }
 

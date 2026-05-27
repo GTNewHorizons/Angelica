@@ -97,9 +97,11 @@ dependencies {
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
+    /*
     devOnlyNonPublishable('com.github.GTNewHorizons:GT5-Unofficial:9:dev') {
         exclude group: 'com.github.GTNewHorizons', module: 'Angelica'
     }
+     */
 
     // Display List Testing
     /*

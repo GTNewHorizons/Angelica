@@ -77,6 +77,7 @@ import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL45;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 
@@ -4479,6 +4480,23 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
         restorePixelUnpackBuffer();
+    }
+
+    public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, IntBuffer pixels) {
+        if (DisplayListManager.isRecording()) {
+            throw new UnsupportedOperationException("glTexSubImage3D in display lists not yet implemented - if you see this, please report!");
+        }
+        suspendPixelUnpackBuffer();
+        GL12.glTexSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
+        //RENDER_BACKEND.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
+        restorePixelUnpackBuffer();
+    }
+
+    public static void glGetTextureSubImage(int texture, int level, int xoffset, int yoffset, int zoffset,
+                                            int width, int height, int depth,
+                                            int format, int type, int pixels_bufSize, long pixels_buffer_offset
+    ) {
+        GL45.glGetTextureSubImage(texture, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels_bufSize, pixels_buffer_offset);
     }
 
     public static void glCopyTexImage1D(int target, int level, int internalFormat, int x, int y, int width, int border) {

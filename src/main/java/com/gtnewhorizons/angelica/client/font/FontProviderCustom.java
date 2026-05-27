@@ -1,28 +1,32 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.textures.TextureLoader;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Setter;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.renderer.texture.TextureUtil;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
 import java.awt.image.BufferedImage;
+import java.awt.image.DataBufferInt;
 import java.io.File;
 import java.io.IOException;
+import java.nio.IntBuffer;
 import java.util.Objects;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.LOGGER;
 
 public final class FontProviderCustom implements FontProvider {
 
-    static final int ATLAS_SIZE = 128;
-    static final int ATLAS_COUNT = 512;
+    static final int ATLAS_CHARS = 256;
+    //static final int ATLAS_SIZE = 256;
+    static final int ATLAS_COUNT = 256;
     private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
-    private static float currentFontQuality = FontConfig.customFontQuality;
+    private static float currentFontQuality = 32;
     @Setter
     private Font font;
 
@@ -63,7 +67,8 @@ public final class FontProviderCustom implements FontProvider {
     public static FontProviderCustom getFallback() { return InstLoader.instance1; }
 
     public void reloadFont(int fontID) {
-        currentFontQuality = FontConfig.customFontQuality;
+        currentFontQuality = 32;
+
         this.font = FontStrategist.getAvailableFonts()[fontID].deriveFont(currentFontQuality);
 
         for (FontAtlas atlas : fontAtlases) {
@@ -95,7 +100,7 @@ public final class FontProviderCustom implements FontProvider {
 
     private static final class FontAtlas {
 
-        GlyphData[] glyphData = new GlyphData[ATLAS_SIZE];
+        private final GlyphData[] glyphData = new GlyphData[ATLAS_CHARS];
         private int texture;
         private final int id;
 
@@ -105,8 +110,8 @@ public final class FontProviderCustom implements FontProvider {
 
         void construct(Font font) {
             int atlasChars = 0;
-            for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char) (i + ATLAS_SIZE * this.id);
+            for (int i = 0; i < ATLAS_CHARS; i++) {
+                final char ch = (char) (i + ATLAS_CHARS * this.id);
                 if (font.canDisplay(ch)) { atlasChars++; }
             }
             if (atlasChars == 0) { return; }
@@ -117,31 +122,24 @@ public final class FontProviderCustom implements FontProvider {
             FontMetrics fm = g2d.getFontMetrics();
             g2d.dispose();
 
-            final int atlasTilesX = (int) Math.ceil(Math.sqrt(atlasChars) * 1.5f);
-            final int atlasTilesY = (int) Math.ceil((double) atlasChars / atlasTilesX);
-            final float charSeparator = currentFontQuality / 3f;
-            int rowWidth = 0;
-            int maxRowWidth = 0;
-            atlasChars = 0;
-
-            for (int i = 0; i < ATLAS_SIZE; i++) {
-                if (atlasChars % atlasTilesX == 0) {
-                    maxRowWidth = Math.max(maxRowWidth, rowWidth);
-                    rowWidth = 0;
-                }
-                final char ch = (char)(i + ATLAS_SIZE * this.id);
-                if (font.canDisplay(ch)) {
-                    rowWidth += (int) (charSeparator + fm.charWidth(ch));
-                    atlasChars++;
-                }
-            }
-            maxRowWidth = Math.max(maxRowWidth, rowWidth);
+            final int atlasTilesX = 512;
+            final int atlasTilesY = 512;
+            final int charSeparator = 2; //TODO idk
+//            atlasChars = 0;
+//
+//            for (int i = 0; i < ATLAS_CHARS; i++) {
+//                final char ch = (char)(i + ATLAS_CHARS * this.id);
+//                if (font.canDisplay(ch)) {
+//                    rowWidth += (int) (charSeparator + fm.charWidth(ch));
+//                    atlasChars++;
+//                }
+//            }
 
             final int lineHeight = fm.getHeight();
             final float desc = fm.getDescent();
 
-            final int imageWidth = (int) (maxRowWidth + charSeparator);
-            final int imageHeight = (int) ((charSeparator + lineHeight) * atlasTilesY + charSeparator);
+            final int imageWidth = atlasTilesX;
+            final int imageHeight = atlasTilesY;
 
             image = new BufferedImage(imageWidth, imageHeight, BufferedImage.TYPE_INT_ARGB);
             g2d = image.createGraphics();
@@ -155,32 +153,35 @@ public final class FontProviderCustom implements FontProvider {
             g2d.setFont(font);
             fm = g2d.getFontMetrics();
 
-            int tileX = 0, tileY = 0; // position in atlas tiles
-            int imgX = (int) charSeparator; // position in pixels
+            //int tileY = 0; // position in atlas tiles
 
-            for (int i = 0; i < ATLAS_SIZE; i++) {
-                final char ch = (char) (i + ATLAS_SIZE * this.id);
+            final int charHeight = (lineHeight + charSeparator);
+
+            int imgX = 0; // position in pixels
+            int imgY = charHeight;
+
+            for (int i = 0; i < ATLAS_CHARS; i++) {
+                final char ch = (char) (i + ATLAS_CHARS * this.id);
                 if (!font.canDisplay(ch)) { continue; }
 
-                if (tileX >= atlasTilesX) {
-                    tileX = 0;
-                    imgX = (int) charSeparator;
-                    tileY++;
+                final int charWidth = fm.charWidth(ch);
+
+                if (imgX + charWidth >= atlasTilesX) {
+                    imgX = 0;
+                    imgY += charHeight;
                 }
 
-                final int charWidth = fm.charWidth(ch);
                 final float charAspectRatio = (float) charWidth / lineHeight;
                 final float inset = currentFontQuality / 16;
-                g2d.drawString(Character.toString(ch), imgX, (lineHeight + charSeparator) * (tileY + 1) - desc);
+                g2d.drawString(Character.toString(ch), imgX, imgY - desc);
                 final float uStart = (imgX - inset * charAspectRatio) / imageWidth;
-                final float vStart = ((lineHeight + charSeparator) * (tileY + 1) - lineHeight - inset) / imageHeight;
+                final float vStart = (imgY - lineHeight - inset + 1) / imageHeight;
                 final float xAdvance = charAspectRatio * 8 * charWidth / (charWidth + 2 * inset * charAspectRatio);
                 final float glyphW = charAspectRatio * 8 + 1;
                 final float uSz = (charWidth + 2 * inset * charAspectRatio) / imageWidth;
                 final float vSz = (lineHeight + 2 * inset) / imageHeight;
                 this.glyphData[i] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
-                imgX += (int) (charWidth + charSeparator);
-                tileX++;
+                imgX += (charWidth + charSeparator);
             }
             g2d.dispose();
             if (DUMP_ATLASES) {
@@ -193,14 +194,39 @@ public final class FontProviderCustom implements FontProvider {
                 }
             }
 
+            this.texture = GLStateManager.glGenTextures();
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
+            GLStateManager.glTexImage2D(
+                GL11.GL_TEXTURE_2D,
+                0,
+                GL11.GL_RGBA,
+                imageWidth, imageHeight,
+                0,
+                GL12.GL_BGRA,
+                GL12.GL_UNSIGNED_INT_8_8_8_8_REV,
+                getPixelBuffer(image)
+            );
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             // TODO replace this with something proper & add linear
-            this.texture = TextureUtil.uploadTextureImageAllocate(GLStateManager.glGenTextures(), image, false, false);
-            //this.texture = new ResourceLocation(getAtlasResourceName(this.id));
+            //this.texture = TextureUtil.uploadTextureImageAllocate(GLStateManager.glGenTextures(), image, false, false);
         }
     }
 
+    private static IntBuffer getPixelBuffer(BufferedImage image) {
+        final IntBuffer pixelBuffer = TextureLoader.dataBuffer;
+        pixelBuffer.clear();
+        final int[] pixelValues = ((DataBufferInt) image.getRaster().getDataBuffer()).getData();
+        pixelBuffer.put(pixelValues);
+        pixelBuffer.position(0).limit(pixelValues.length);
+        return pixelBuffer;
+    }
+
     private FontAtlas getAtlas(char chr) {
-        int id = chr / ATLAS_SIZE;
+        int id = chr / ATLAS_CHARS;
         FontAtlas fa = this.fontAtlases[id];
         if (fa == null) {
             fa = new FontAtlas(id);
@@ -213,7 +239,7 @@ public final class FontProviderCustom implements FontProvider {
     @Override
     public boolean isGlyphAvailable(char chr) {
         if (this.font == null) { return false; }
-        return (getAtlas(chr).glyphData[chr % ATLAS_SIZE] != null);
+        return (getAtlas(chr).glyphData[chr % ATLAS_CHARS] != null);
     }
 
     @Override
@@ -223,32 +249,32 @@ public final class FontProviderCustom implements FontProvider {
 
     @Override
     public float getUStart(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].uStart;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].uStart;
     }
 
     @Override
     public float getVStart(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].vStart;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].vStart;
     }
 
     @Override
     public float getXAdvance(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].xAdvance * FontConfig.customFontScale;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].xAdvance * FontConfig.customFontScale;
     }
 
     @Override
     public float getGlyphW(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].glyphW * FontConfig.customFontScale;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].glyphW * FontConfig.customFontScale;
     }
 
     @Override
     public float getUSize(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].uSz;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].uSz;
     }
 
     @Override
     public float getVSize(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_SIZE].vSz;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].vSz;
     }
 
     @Override

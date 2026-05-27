@@ -1,11 +1,13 @@
 #version 330 core
 
-uniform sampler2D sampler;
+uniform sampler2DArray sampler;
 uniform float strength;
 
 flat in vec4 color;
 flat in vec4 tB; // uMin, vMin, uMax, vMax
 in vec2 texCoord;
+flat in uint layer;
+
 
 out vec4 fragColor;
 
@@ -23,8 +25,19 @@ float txSample(vec2 uv, float du, float dv, float factorU, float factorV) {
     float finalU = uv.x + factorU * du;
     float finalV = uv.y + factorV * dv;
     if (finalU < tB.x || finalV < tB.y || finalU > tB.z || finalV > tB.w) return 0.0f;
-    return weight * texture(sampler, vec2(finalU, finalV)).a;
+    return weight * texture(sampler, vec3(finalU, finalV, layer)).a;
 }
+
+float texSample(vec2 uv) {
+    if (uv.x < tB.x || uv.y < tB.y || uv.x > tB.z || uv.y > tB.w) return 0.0f;
+    return texture(sampler, vec3(uv, layer)).a;
+}
+
+float easeOut(float t) {
+    t = clamp(t, 0.0, 1.0);
+    return 1.0 - pow(1.0 - t, 2.0);
+}
+
 
 void main() {
     vec4 col = color;
@@ -75,7 +88,26 @@ void main() {
 
     #endif
 
-    if (col.a < 0.1) discard;
+    /*
+    float alpha = texSample(texCoord);
+    float width = fwidth(alpha);
+
+    float smoothAlpha = smoothstep(0.5 - width, 0.5 + width, alpha);
+    col.a = smoothAlpha;
+    */
+
+
+    //col.a = smoothstep(0, 1, texSample(texCoord));
+    float a = texSample(texCoord);
+    a = easeOut(a);
+    //a = smoothstep(0.1, 1, a);
+    //a = pow(a, 1/2.2);
+    //a = (a - 0.1) / 0.9;
+    //a = 1 - exp(-a + 1);
+    //a = mix(a, 1, 0.1);
+    //col.a = a;
+
+    if (col.a <= 0.1) discard;
 
     fragColor = col;
 }

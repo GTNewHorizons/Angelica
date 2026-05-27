@@ -17,7 +17,7 @@ public class FontConfig {
     public static String customFontNameFallback;
 
     @Config.Comment("The quality at which custom fonts are rendered, making them less pixelated but increasing memory usage.")
-    @Config.DefaultInt(30)
+    @Config.DefaultInt(32)
     @Config.RangeInt(min = 6, max = 72)
     public static int customFontQuality;
 
@@ -47,9 +47,9 @@ public class FontConfig {
     public static float glyphScale;
 
     @Config.Comment("Whitespace scale.")
-    @Config.DefaultFloat(1F)
-    @Config.RangeFloat(min = 0.1F, max = 3F)
-    public static float whitespaceScale;
+    @Config.DefaultInt(1)
+    @Config.RangeInt(min = 1, max = 3)
+    public static int whitespaceScale;
 
     @Config.Comment("Adds extra spacing between glyphs.")
     @Config.DefaultFloat(0F)

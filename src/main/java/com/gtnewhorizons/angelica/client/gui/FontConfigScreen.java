@@ -183,7 +183,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optWhitespaceScale)
             .initialValue(FontConfig.whitespaceScale)
-            .setter(value -> FontConfig.whitespaceScale = value)
+            .setter(value -> FontConfig.whitespaceScale = value.intValue())
             .langKey("options.angelica.fontconfig.whitespace_scale")
             .formatString("x%3.2f")
             .build()
