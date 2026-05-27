@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.entity.Render;
@@ -23,7 +25,14 @@ public class MixinRenderManagerDAPI {
     private void iris$wrapDoRenderDragonAPI(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
         int entityId = EntityIdHelper.getEntityId(entity);
         CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
+        final boolean lightning = EntityIdHelper.isLightningBolt(entity);
+        if (lightning) {
+            GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
+        }
         original.call(render, entity, x, y, z, entityYaw, partialTicks);
+        if (lightning) {
+            GbufferPrograms.teardownSpecialRenderCondition();
+        }
         CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
     }
 }
