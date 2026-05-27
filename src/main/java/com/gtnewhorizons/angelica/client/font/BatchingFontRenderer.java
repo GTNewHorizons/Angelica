@@ -560,6 +560,9 @@ public class BatchingFontRenderer {
             boolean curWave = false;
             boolean curDinnerbone = false;
             boolean curGradient = false;
+            boolean curShadow = false;
+            boolean curShadowCustomColor = false;
+            int curShadowColorOverride = 0;
             int gradientStartRgb = 0, gradientEndRgb = 0;
             int gradientCharIndex = 0, gradientTotalChars = 0;
             float gradientStep = 0f;
@@ -651,6 +654,19 @@ public class BatchingFontRenderer {
                         curWave = !curWave;
                     } else if (fmtCode == 'v' && AngelicaConfig.enableDinnerboneText) {
                         curDinnerbone = !curDinnerbone;
+                    } else if (fmtCode == 'u' && AngelicaConfig.enableDropShadow) {
+                        int customRgb = (charIdx + SECTION_X_LENGTH < stringEnd)
+                            ? ColorCodeUtils.parseSectionXAt(string, charIdx + 1)
+                            : -1;
+                        if (customRgb != -1) {
+                            curShadow = true;
+                            curShadowCustomColor = true;
+                            curShadowColorOverride = customRgb;
+                            charIdx += SECTION_X_LENGTH;
+                        } else {
+                            curShadow = !curShadow;
+                            if (!curShadow) curShadowCustomColor = false;
+                        }
                     } else if (fmtCode == 'g' && AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
                         int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
                         int color2 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1 + SECTION_X_LENGTH);
@@ -674,6 +690,8 @@ public class BatchingFontRenderer {
                         curWave = false;
                         curDinnerbone = false;
                         curGradient = false;
+                        curShadow = false;
+                        curShadowCustomColor = false;
                         curColor = color;
                         curShadowColor = shadowColor;
                     }
@@ -681,6 +699,8 @@ public class BatchingFontRenderer {
 
                     continue;
                 }
+
+                if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
 
                 if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
                     final char replacement = GlyphReplacements.getReplacementGlyph(chr);
@@ -747,13 +767,17 @@ public class BatchingFontRenderer {
                     renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
                 }
 
-                if (enableShadow) {
+                final boolean drawShadow = enableShadow || curShadow;
+                if (drawShadow) {
+                    final int effectiveShadowColor = curShadowCustomColor
+                        ? ((curColor & 0xFF000000) | (curShadowColorOverride & 0x00FFFFFF))
+                        : curShadowColor;
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                        pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, effectiveShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
 
                         if (curBold) {
-                            pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, curShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                            pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, effectiveShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
                         }
                     }
                 }
@@ -775,7 +799,7 @@ public class BatchingFontRenderer {
                     both:           4(1 + 2 * shadowCopies + boldCopies)
                  */
                 int charCount = 1;
-                if (enableShadow) { charCount += shadowCopies * (curBold ? 2 : 1); }
+                if (drawShadow) { charCount += shadowCopies * (curBold ? 2 : 1); }
                 if (curBold) { charCount += boldCopies; }
                 final int vtxCount = 4 * charCount;
                 pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
@@ -822,6 +846,7 @@ public class BatchingFontRenderer {
     }
 
     public float getCharWidthFine(char chr) {
+        if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
         if (chr == FORMATTING_CHAR) { return -1; }
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
