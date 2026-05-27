@@ -59,6 +59,9 @@ public final class BatchingFontRenderer {
     @Setter
     boolean bookMode = false;
 
+    private static final int FLAG_ITALIC = 0x1;
+    private static final int FLAG_DINNERBONE = 0x2;
+
     public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, int[] colorCode, ResourceLocation locationFontTexture) {
         this.underlying = underlying;
         this.charWidth = charWidth;
@@ -73,12 +76,14 @@ public final class BatchingFontRenderer {
         ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
         this.fontTexture = GLStateManager.getBoundTextureForServerState();
         if (mainTextureArray == null) {
-            mainTextureArray = new FontTextureArray(256);
+            mainTextureArray = new FontTextureArray(256, false);
             mainTextureArray.addAtlasFromBoundTexture(0);
         }
 
         final String vsh = ShaderProgram.loadShaderSource(
-            BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh")
+            BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh"),
+            new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
+            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u")
         );
         final String fsh = ShaderProgram.loadShaderSource(
             BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.fsh"),
@@ -101,7 +106,9 @@ public final class BatchingFontRenderer {
                     @Override
                     public IShaderDefinesInjector[] getDefines() {
                         return new IShaderDefinesInjector[] {
-                            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode)
+                            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode),
+                            new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
+                            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u")
                         };
                     }
                 }
@@ -118,28 +125,6 @@ public final class BatchingFontRenderer {
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
-
-    //TODO fix this (shader issue)
-    private void pushUntexRect(float x, float y, float w, float h, int rgba) {
-//        ensureCapacity();
-//        pushVertex(x, y, rgba, 0, 0, 0, 0, 0, 0);
-//        pushVertex(x, y + h, rgba, 0, 0, 0, 0, 0, 0);
-//        pushVertex(x + w, y, rgba, 0, 0, 0, 0, 0, 0);
-//        pushVertex(x + w, y + h, rgba, 0, 0, 0, 0, 0, 0);
-//        pushQuadIdx();
-    }
-
-    private void pushTexRect(
-        float x, float y, float w, float h,
-        float uStart, float vStart, float uSz, float vSz,
-        int rgba,
-        int layer,
-        boolean italic,
-        boolean flipV,
-        int texture
-    ) { //TODO remove
-        pushQuad(x, y, w, h, uStart, vStart, uSz, vSz, rgba, layer, italic, flipV);
-    }
 
     private void pushShaderCmd(
         int startIdx,
@@ -307,16 +292,26 @@ public final class BatchingFontRenderer {
                     charIdx++;
 
                     if (curUnderline && underlineStartX != underlineEndX) {
-                        pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                        pushQuad(
+                            underlineStartX, underlineY,
+                            underlineEndX - underlineStartX,
+                            glyphScaleY,
+                            curColor,
+                            0,
+                            curItalic, curDinnerbone
+                        );
                         underlineStartX = underlineEndX;
                     }
                     if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        pushUntexRect(
+                        pushQuad(
                             strikethroughStartX,
                             strikethroughY,
                             strikethroughEndX - strikethroughStartX,
                             glyphScaleY,
-                            curColor);
+                            curColor,
+                            0,
+                            curItalic, curDinnerbone
+                        );
                         strikethroughStartX = strikethroughEndX;
                     }
 
@@ -457,12 +452,6 @@ public final class BatchingFontRenderer {
                 final float shadowOffset = fontProvider.getShadowOffset();
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
-                final int texture;
-                if (fontProvider instanceof FontProviderMC) {
-                    texture = this.fontTexture;
-                } else {
-                    texture = fontProvider.getTexture(chr);
-                }
                 final int layer = chr / 256;
                 if (fontProvider instanceof FontProviderUnicode) {
                     if (!mainTextureArray.hasLayer(layer)) {
@@ -516,55 +505,51 @@ public final class BatchingFontRenderer {
                 if (enableShadow) {
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(
+                        pushQuad(
                             curX + shadowOffsetPart, renderY + shadowOffsetPart,
                             glyphW - 1, heightSouth,
                             uStart, vStart, uSz, vSz,
                             curShadowColor,
                             layer,
                             curItalic,
-                            curDinnerbone,
-                            texture
+                            curDinnerbone
                         );
 
                         if (curBold) {
-                            pushTexRect(
+                            pushQuad(
                                 curX + 2 * shadowOffsetPart, renderY + shadowOffsetPart,
                                 glyphW - 1, heightSouth,
                                 uStart, vStart, uSz, vSz,
                                 curShadowColor,
                                 layer,
                                 curItalic,
-                                curDinnerbone,
-                                texture
+                                curDinnerbone
                             );
                         }
                     }
                 }
 
-                pushTexRect(
+                pushQuad(
                     curX, renderY,
                     glyphW - 1, heightSouth,
                     uStart, vStart, uSz, vSz,
                     curColor,
                     layer,
                     curItalic,
-                    curDinnerbone,
-                    texture
+                    curDinnerbone
                 );
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushTexRect(
+                        pushQuad(
                             curX + shadowOffsetPart, renderY,
                             glyphW - 1, heightSouth,
                             uStart, vStart, uSz, vSz,
                             curColor,
                             layer,
                             curItalic,
-                            curDinnerbone,
-                            texture
+                            curDinnerbone
                         );
                     }
                 }
@@ -582,25 +567,46 @@ public final class BatchingFontRenderer {
                 strikethroughEndX = curX;
 
                 if ((curRainbow || curGradient) && curUnderline && underlineStartX != underlineEndX) {
-                    pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                    pushQuad(
+                        underlineStartX, underlineY,
+                        underlineEndX - underlineStartX, glyphScaleY,
+                        curColor,
+                        layer,
+                        curItalic, curDinnerbone
+                    );
                     underlineStartX = underlineEndX;
                 }
                 if ((curRainbow || curGradient) && curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                    pushUntexRect(strikethroughStartX, strikethroughY, strikethroughEndX - strikethroughStartX, glyphScaleY, curColor);
+                    pushQuad(
+                        strikethroughStartX, strikethroughY,
+                        strikethroughEndX - strikethroughStartX, glyphScaleY,
+                        curColor,
+                        layer,
+                        curItalic, curDinnerbone
+                    );
                     strikethroughStartX = strikethroughEndX;
                 }
             }
 
             if (curUnderline && underlineStartX != underlineEndX) {
-                pushUntexRect(underlineStartX, underlineY, underlineEndX - underlineStartX, glyphScaleY, curColor);
+                pushQuad(
+                    underlineStartX, underlineY,
+                    underlineEndX - underlineStartX, glyphScaleY,
+                    curColor,
+                    0,
+                    curItalic, curDinnerbone
+                );
             }
             if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                pushUntexRect(
+                pushQuad(
                     strikethroughStartX,
                     strikethroughY,
                     strikethroughEndX - strikethroughStartX,
                     glyphScaleY,
-                    curColor);
+                    curColor,
+                    0,
+                    curItalic, curDinnerbone
+                );
             }
 
         } finally {
@@ -634,14 +640,7 @@ public final class BatchingFontRenderer {
     // ---------- RENDERING ----------
 
 
-
-
-    // Layout in data:
-    // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
-    // v, t and tb are floats, c is bytes; 37 bytes total
-    private static final int INSTANCE_SIZE = 37;
-
-    private static int vboCapacity;
+    private static final int INSTANCE_SIZE = 38;
 
     private int mainVAO = 0;
 
@@ -651,10 +650,8 @@ public final class BatchingFontRenderer {
 
     private int batchDepth = 0;
 
-//    private ByteBuffer data = memAlloc(INSTANCE_SIZE * 128);
-//    private long writePtr = memAddress0(data);
-    private final StreamingDrawer stream = StreamingDrawer.create(1024 * 400 * INSTANCE_SIZE);
-    private int instanceCount;
+    private final StreamingDrawer stream = StreamingDrawer.create(1024 * 400 * INSTANCE_SIZE); //TODO test resize
+    private int instanceCount; //TODO merge into stream
 
 
 
@@ -730,7 +727,33 @@ public final class BatchingFontRenderer {
         GLStateManager.glEnableVertexAttribArray(4);
         GLStateManager.glVertexAttribDivisor(4, 1);
 
+        // flags
+        GLStateManager.glVertexAttribIPointer(
+            5,
+            1,
+            GL11.GL_UNSIGNED_BYTE,
+            INSTANCE_SIZE,
+            37
+        );
+        GLStateManager.glEnableVertexAttribArray(5);
+        GLStateManager.glVertexAttribDivisor(5, 1);
+
         return vao;
+    }
+
+    public void pushQuad(
+        float x, float y, float width, float height,
+        int rgba,
+        int layer,
+        boolean italic, boolean dinnerbone
+    ) {
+        pushQuad(
+            x, y, width, height,
+            -1, -1, 0, 0,
+            rgba,
+            layer,
+            italic, dinnerbone
+        );
     }
 
     public void pushQuad(
@@ -763,23 +786,14 @@ public final class BatchingFontRenderer {
         memPutByte(ptr + 32, (byte) ((rgba >> 16) & 0xFF));
         memPutByte(ptr + 33, (byte) ((rgba >> 8) & 0xFF));
         memPutByte(ptr + 34, (byte) (rgba & 0xFF));
-        memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
+        memPutByte(ptr + 35, (byte) ((rgba >> 24)));
 
         // layer
         memPutByte(ptr + 36, (byte) layer);
 
-        //TODO italic + other shit
-
-        //TODO add this to vertex shader
-//            final float vTop;
-//            final float vBot;
-//            if (flipV) {
-//                vTop = vStart + vSz;
-//                vBot = vStart;
-//            } else {
-//                vTop = vStart;
-//                vBot = vStart + vSz;
-//            }
+        final int flags = (italic ? FLAG_ITALIC : 0)
+            | (dinnerbone ? FLAG_DINNERBONE : 0);
+        memPutByte(ptr + 37, (byte) flags);
 
         instanceCount++;
     }

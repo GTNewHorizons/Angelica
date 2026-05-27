@@ -61,8 +61,8 @@ public class FontStrategist {
      SGA is on, if we're in a splash screen, if a font can even display a character in the first place, etc.
      */
     public static FontProvider getFontProvider(BatchingFontRenderer me, char chr, boolean customFontEnabled, boolean forceUnicode) {
-        if (me.isSGA && FontProviderMC.get(true).isGlyphAvailable(chr)) {
-            return FontProviderMC.get(true);
+        if (me.isSGA && FontProviderMC.getSGA().isGlyphAvailable(chr)) {
+            return FontProviderMC.getSGA();
         }
         if (me.bookMode) {
             return FontProviderUnicode.get();
@@ -75,8 +75,8 @@ public class FontStrategist {
             if (fp.isGlyphAvailable(chr)) { return fp; }
             return FontProviderUnicode.get();
         } else {
-            if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
-                return FontProviderMC.get(false);
+            if (!forceUnicode && FontProviderMC.getDefault().isGlyphAvailable(chr)) {
+                return FontProviderMC.getDefault();
             } else {
                 return FontProviderUnicode.get();
             }

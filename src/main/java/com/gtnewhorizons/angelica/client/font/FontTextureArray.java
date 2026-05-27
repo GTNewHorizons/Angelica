@@ -7,6 +7,7 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 
 import javax.imageio.ImageIO;
@@ -16,30 +17,37 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
+import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
 
 public final class FontTextureArray {
     private final int id;
-    private final int size;
     private final int layers;
     private final int[] layersLookupArray = new int[256];
     private final boolean[] initializedLayers = new boolean[256];
     //TODO layers + layers lookup
 
 
-    public FontTextureArray(int size) {
-        this.size = size;
+    public FontTextureArray(int size, boolean linear) {
         this.layers = 256;
         id = GLStateManager.glGenTextures();
 
         bind();
         //TODO convert to 1 channel only
-        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_WRAP_S, GL11.GL_CLAMP);
-        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_WRAP_T, GL11.GL_CLAMP);
+        final int filter = linear ? GL11.GL_LINEAR : GL11.GL_NEAREST;
+        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_MIN_FILTER, filter);
+        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_MAG_FILTER, filter);
+        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_WRAP_S, GL13.GL_CLAMP_TO_BORDER);
+        GLStateManager.glTexParameteri(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_WRAP_T, GL13.GL_CLAMP_TO_BORDER);
+        final FloatBuffer buffer = BufferUtils.createFloatBuffer(4);
+        buffer.put(1);
+        buffer.put(1);
+        buffer.put(1);
+        buffer.put(1);
+        buffer.position(0).limit(4);
+        GLStateManager.glTexParameter(GL30.GL_TEXTURE_2D_ARRAY, GL11.GL_TEXTURE_BORDER_COLOR, buffer);
         GLStateManager.glTexImage3D(
             GL30.GL_TEXTURE_2D_ARRAY,
             0,

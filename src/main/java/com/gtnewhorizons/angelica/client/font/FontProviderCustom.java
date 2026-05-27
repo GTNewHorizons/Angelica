@@ -26,7 +26,7 @@ public final class FontProviderCustom implements FontProvider {
     //static final int ATLAS_SIZE = 256;
     static final int ATLAS_COUNT = 256;
     private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
-    private static float currentFontQuality = 32;
+    private static float currentFontQuality = FontConfig.customFontQuality;
     @Setter
     private Font font;
 
@@ -67,7 +67,7 @@ public final class FontProviderCustom implements FontProvider {
     public static FontProviderCustom getFallback() { return InstLoader.instance1; }
 
     public void reloadFont(int fontID) {
-        currentFontQuality = 32;
+        currentFontQuality = FontConfig.customFontQuality;
 
         this.font = FontStrategist.getAvailableFonts()[fontID].deriveFont(currentFontQuality);
 

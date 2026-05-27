@@ -21,6 +21,14 @@ public final class FontProviderMC implements FontProvider {
         return (isSGA ? InstLoader.instanceSGA : InstLoader.instance);
     }
 
+    public static FontProviderMC getSGA() {
+        return InstLoader.instanceSGA;
+    }
+
+    public static FontProviderMC getDefault() {
+        return InstLoader.instance;
+    }
+
     private static final Char2ShortOpenHashMap MCFONT_ASCII_MAP = new Char2ShortOpenHashMap();
     private static final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
     public int[] charWidth;
