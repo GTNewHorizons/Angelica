@@ -7,6 +7,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
+import it.unimi.dsi.fastutil.longs.LongIterator;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -40,6 +42,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     private final WorldClient world;
     private final ClonedChunkSectionCache sectionCache;
     private final ChunkTaskProvider taskProvider;
+    private final LongOpenHashSet biomeRebuildColumns = new LongOpenHashSet();
 
     public AngelicaRenderSectionManager(RenderPassConfiguration<?> configuration, WorldClient world, int renderDistance, CommandList commandList, int minSection, int maxSection, int requestedThreads, ChunkTaskProvider taskProvider) {
         super(configuration, () -> new AngelicaChunkBuildContext(configuration, world), AngelicaChunkRenderer::new, renderDistance, commandList, minSection, maxSection, requestedThreads, true  /* hasShadowPass = true for Iris */);
@@ -144,9 +147,35 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         this.sectionCache.invalidate(section.getChunkX(), section.getChunkY(), section.getChunkZ());
     }
 
+    public void onBiomesChanged(int chunkX, int chunkZ) {
+        for (int dx = -1; dx <= 1; dx++) {
+            for (int dz = -1; dz <= 1; dz++) {
+                this.biomeRebuildColumns.add(PositionUtil.packChunk(chunkX + dx, chunkZ + dz));
+            }
+        }
+    }
+
+    private void flushBiomeRebuilds() {
+        if (this.biomeRebuildColumns.isEmpty()) {
+            return;
+        }
+        final int sectionCountY = this.world.getHeight() >> 4;
+        for (final LongIterator it = this.biomeRebuildColumns.iterator(); it.hasNext(); ) {
+            final long column = it.nextLong();
+            final int cx = PositionUtil.unpackChunkX(column);
+            final int cz = PositionUtil.unpackChunkZ(column);
+            for (int cy = 0; cy < sectionCountY; cy++) {
+                this.sectionCache.invalidate(cx, cy, cz);
+                this.scheduleRebuild(cx, cy, cz, false);
+            }
+        }
+        this.biomeRebuildColumns.clear();
+    }
+
     @Override
     public void updateChunks(boolean updateImmediately) {
         this.sectionCache.cleanup();
+        this.flushBiomeRebuilds();
         super.updateChunks(updateImmediately);
     }
 

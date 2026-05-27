@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.rendering.celeritas.world.cloned;
 
-import com.falsepattern.endlessids.mixin.helpers.ChunkBiomeHook;
 import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
@@ -20,6 +19,7 @@ import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
@@ -62,24 +62,22 @@ public class ClonedChunkSection {
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(chunk, section);
 
-        final int bArrLength;
-        if (ModStatus.isEIDBiomeLoaded) {
-            bArrLength = ((ChunkBiomeHook) chunk).getBiomeShortArray().length;
-        } else {
-            bArrLength = chunk.getBiomeArray().length;
-        }
-        this.biomeData = new BiomeGenBase[bArrLength];
+        this.biomeData = new BiomeGenBase[16 * 16];
 
         copyBlockEntities(chunk, pos);
 
-        // Fill biome data
-        for (int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
-            for (int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
-                this.biomeData[(x & 15) | ((z & 15) << 4)] = world.getBiomeGenForCoords(x, z);
-            }
-        }
+        fillBiomeData(chunk);
 
         this.sectionLightData = BlockLightProvider.getInstance().prepareSectionData(chunk, pos.y);
+    }
+
+    private void fillBiomeData(Chunk chunk) {
+        final WorldChunkManager wcm = world.getWorldChunkManager();
+        for (int lz = 0; lz < 16; lz++) {
+            for (int lx = 0; lx < 16; lx++) {
+                this.biomeData[lx | (lz << 4)] = chunk.getBiomeGenForWorldCoords(lx, lz, wcm);
+            }
+        }
     }
 
     @SuppressWarnings("unchecked")
@@ -88,24 +86,27 @@ public class ClonedChunkSection {
 
         final ConcurrentTileEntityMap map = ((IChunkTileEntityMapHolder) chunk).angelica$getConcurrentTEMap();
 
-        map.withReadLock(() -> {
+        map.readLock();
+        try {
             final Object2ObjectOpenHashMap<ChunkPosition, TileEntity> delegate = map.getDelegate();
 
-            if (delegate.isEmpty()) return;
+            if (!delegate.isEmpty()) {
+                final int minY = pos.getMinY();
+                final int maxY = pos.getMaxY();
 
-            final int minY = pos.getMinY();
-            final int maxY = pos.getMaxY();
+                for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(delegate)) {
+                    final ChunkPosition tePos = entry.getKey();
+                    if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
 
-            for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(delegate)) {
-                final ChunkPosition tePos = entry.getKey();
-                if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
-
-                final TileEntity te = entry.getValue();
-                if (te != null && !te.isInvalid()) {
-                    this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
+                    final TileEntity te = entry.getValue();
+                    if (te != null && !te.isInvalid()) {
+                        this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
+                    }
                 }
             }
-        });
+        } finally {
+            map.readUnlock();
+        }
 
         this.tileEntities.trim();
     }
