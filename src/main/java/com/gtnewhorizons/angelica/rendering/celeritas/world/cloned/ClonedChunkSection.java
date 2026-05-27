@@ -61,6 +61,7 @@ public class ClonedChunkSection {
 
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(chunk, section);
+        this.synthesizeSkylightIfMissing(chunk, pos);
 
         final int bArrLength;
         if (ModStatus.isEIDBiomeLoaded) {
@@ -80,6 +81,40 @@ public class ClonedChunkSection {
         }
 
         this.sectionLightData = BlockLightProvider.getInstance().prepareSectionData(chunk, pos.y);
+    }
+
+    /**
+     * Empty sections often have no skylight nibble array at all, but their actual sky light can still be anything from
+     * 0 to 15 depending on terrain above. Copy the chunk's saved sky light into the cloned section so smooth-light
+     * sampling in caves doesn't interpret "missing array" as full skylight.
+     */
+    private void synthesizeSkylightIfMissing(Chunk chunk, ChunkSectionPos pos) {
+        if (world.provider.hasNoSky || this.data.getSkylightArray() != null) {
+            return;
+        }
+
+        final NibbleArray skylight = new NibbleArray(4096, 4);
+
+        for (int localY = 0; localY < 16; localY++) {
+            final int worldY = pos.getMinY() + localY;
+
+            for (int localZ = 0; localZ < 16; localZ++) {
+                for (int localX = 0; localX < 16; localX++) {
+                    final int sky;
+                    if (worldY < 0) {
+                        sky = 0;
+                    } else if (worldY >= 256) {
+                        sky = EnumSkyBlock.Sky.defaultLightValue;
+                    } else {
+                        sky = chunk.getSavedLightValue(EnumSkyBlock.Sky, localX, worldY, localZ);
+                    }
+                    skylight.set(localX, localY, localZ, sky);
+                }
+            }
+        }
+
+        this.data.setSkylightArray(skylight);
+        this.data.hasSky = true;
     }
 
     @SuppressWarnings("unchecked")
