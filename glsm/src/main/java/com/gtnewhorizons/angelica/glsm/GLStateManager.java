@@ -161,10 +161,14 @@ public class GLStateManager {
 
     /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
     public static void flushDeferredVertexAttribs() {
-        RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
-        dirtyColorAttrib = false;
-        RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
-        dirtyLightmapAttrib = false;
+        if (dirtyColorAttrib) {
+            RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+            dirtyColorAttrib = false;
+        }
+        if (dirtyLightmapAttrib) {
+            RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
+            dirtyLightmapAttrib = false;
+        }
         if (dirtyNormalAttrib) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);

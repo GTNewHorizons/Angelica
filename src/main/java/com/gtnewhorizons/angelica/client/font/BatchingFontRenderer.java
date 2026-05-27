@@ -12,23 +12,18 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
-import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import lombok.Setter;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL42;
+import org.lwjgl.opengl.GL31;
 
 import java.nio.ByteBuffer;
-import java.util.Arrays;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
@@ -151,13 +146,75 @@ public final class BatchingFontRenderer {
 
     private int batchDepth = 0;
 
+    private ByteBuffer data = memAlloc(INSTANCE_SIZE * 128);
+    private long writePtr = memAddress0(data);
+    private int instanceCount;
 
-    // private final ObjectArrayList<FontDrawCmd> batchCommands = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
-    // private final ObjectArrayList<FontDrawCmd> batchCommandPool = ObjectArrayList.wrap(new FontDrawCmd[64], 0);
+    public ByteBuffer getReadBuffer() {
+        data.position(0);
+        data.limit(instanceCount * INSTANCE_SIZE);
+        return data;
+    }
 
-    private final Int2ObjectOpenHashMap<FontDrawCmd> batchCommandMap = new Int2ObjectOpenHashMap<>();
-    private FontDrawCmd[] commandPool = new FontDrawCmd[16];
-    private int commandPoolIndex = -1;
+    private void ensureCapacity() {
+        if ((instanceCount + 1) * INSTANCE_SIZE > data.capacity()) {
+            data = memRealloc(data, data.capacity() * 2);
+            writePtr = memAddress0(data) + (instanceCount * INSTANCE_SIZE);
+        }
+    }
+
+    public void pushQuad(
+        float x, float y, float width, float height,
+        float uMin, float vMin, float uWidth, float vWidth,
+        int rgba,
+        int layer,
+        boolean italic, boolean dinnerbone
+    ) {
+        ensureCapacity();
+        final long ptr = writePtr;
+
+        // vertices
+        memPutFloat(ptr, x);
+        memPutFloat(ptr + 4, y);
+        memPutFloat(ptr + 8, width);
+        memPutFloat(ptr + 12, height);
+
+//            memPutFloat(ptr, round(x));
+//            memPutFloat(ptr + 4, round(y));
+//            memPutFloat(ptr + 8, round(width));
+//            memPutFloat(ptr + 12, round(height));
+        // tb, tb, tb, tb
+        memPutFloat(ptr + 16, uMin);
+        memPutFloat(ptr + 20, vMin);
+        memPutFloat(ptr + 24, uWidth);
+        memPutFloat(ptr + 28, vWidth);
+
+        // c, c, c, c
+        // 0xAARRGGBB
+        memPutByte(ptr + 32, (byte) ((rgba >> 16) & 0xFF));
+        memPutByte(ptr + 33, (byte) ((rgba >> 8) & 0xFF));
+        memPutByte(ptr + 34, (byte) (rgba & 0xFF));
+        memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
+
+        // layer
+        memPutByte(ptr + 36, (byte) layer);
+
+        //TODO italic + other shit
+
+        //TODO add this to vertex shader
+//            final float vTop;
+//            final float vBot;
+//            if (flipV) {
+//                vTop = vStart + vSz;
+//                vBot = vStart;
+//            } else {
+//                vTop = vStart;
+//                vBot = vStart + vSz;
+//            }
+
+        writePtr += INSTANCE_SIZE;
+        instanceCount++;
+    }
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
@@ -180,13 +237,8 @@ public final class BatchingFontRenderer {
         boolean italic,
         boolean flipV,
         int texture
-    ) {
-        FontDrawCmd cmd = batchCommandMap.get(texture);
-        if (cmd == null) {
-            cmd = createFontDrawCmd();
-            batchCommandMap.put(texture, cmd);
-        }
-        cmd.pushQuad(x, y, w, h, uStart, vStart, uSz, vSz, rgba, layer, italic, flipV);
+    ) { //TODO remove
+        pushQuad(x, y, w, h, uStart, vStart, uSz, vSz, rgba, layer, italic, flipV);
     }
 
     private void pushShaderCmd(
@@ -312,56 +364,24 @@ public final class BatchingFontRenderer {
 
     private int fontAAStrengthLast = -1;
 
-//    private static final Comparator<FontDrawCmd> DRAW_ORDER_COMPARATOR = Comparator.comparing((FontDrawCmd fdc) -> fdc.texture,
-//        Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
-//            .thenComparing(ResourceLocation::getResourcePath))).thenComparing(fdc -> fdc.startVtx);
-
     private void flushBatch() {
-        if (batchCommandMap.isEmpty()) {
-            clearBatch();
-            return;
-        }
-
+        if (instanceCount == 0) return;
 
         if (mainVAO == 0) {
             mainVAO = initVAO();
         }
+
         GLStateManager.glBindVertexArray(mainVAO);
 
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
-        int totalSize = 0;
-        for (FontDrawCmd drawCommands : batchCommandMap.values()) {
-            totalSize += drawCommands.getInstanceCount();
-        }
-        totalSize *= INSTANCE_SIZE;
-
-        final ByteBuffer data = memAlloc(totalSize);
-        long dst = memAddress(data);
-
-        for (FontDrawCmd drawCommand : batchCommandMap.values()) {
-            final ByteBuffer other = drawCommand.getReadBuffer();
-
-            int size = other.limit();
-
-            memCopy(
-                memAddress0(other),
-                dst,
-                size
-            );
-
-            dst += size;
-        }
-        //GLStateManager.glDrawElementsIn();
-
-        vboCapacity = StreamingUploader.upload(data, vboCapacity);
+        vboCapacity = StreamingUploader.upload(getReadBuffer(), vboCapacity);
 
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
-        final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
-        boolean textureChanged = false;
+
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
 
@@ -372,36 +392,14 @@ public final class BatchingFontRenderer {
         }
         GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
 
-        int lastTexture = -1;
-
-        int offset = 0;
         mainTextureArray.bind();
-        for (Int2ObjectMap.Entry<FontDrawCmd> drawCommands : batchCommandMap.int2ObjectEntrySet()) {
-            // Upload first (to reduce stalls)
-            final FontDrawCmd drawCmd = drawCommands.getValue();
-            //vboCapacity = StreamingUploader.upload(drawCmd.getReadBuffer(), vboCapacity);
-            // GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, drawCmd.getReadBuffer(), GL15.GL_STREAM_DRAW);
-
-            //final int texture = drawCommands.getIntKey();
-            //GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-
-            GL42.glDrawElementsInstancedBaseInstance(
-                GL11.GL_TRIANGLES,
-                6, //drawCmd.ranges.getInt(0) / 4 * 6,
-                GL11.GL_UNSIGNED_SHORT,
-                0,
-                drawCmd.getInstanceCount(),
-                offset
-            );
-            offset += drawCmd.getInstanceCount();
-//            GLStateManager.glDrawElementsInstanced(
-//                GL11.GL_TRIANGLES,
-//                6, //drawCmd.ranges.getInt(0) / 4 * 6,
-//                GL11.GL_UNSIGNED_SHORT,
-//                0,
-//                drawCmd.getInstanceCount()
-//            );
-        }
+        GL31.glDrawElementsInstanced(
+            GL11.GL_TRIANGLES,
+            6, //drawCmd.ranges.getInt(0) / 4 * 6,
+            GL11.GL_UNSIGNED_SHORT,
+            0,
+            instanceCount
+        );
         mainTextureArray.unbind();
 
 
@@ -413,29 +411,13 @@ public final class BatchingFontRenderer {
         if (!isBlendEnabledBefore) {
             GLStateManager.disableBlend();
         }
-        if (textureChanged) {
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
-        }
 
         clearBatch();
     }
 
     private void clearBatch() {
-        batchCommandMap.clear();
-        commandPoolIndex = -1;
-    }
-
-    private FontDrawCmd createFontDrawCmd() {
-        if (++commandPoolIndex >= commandPool.length) {
-            commandPool = Arrays.copyOf(commandPool, commandPool.length * 2);
-        }
-        FontDrawCmd next = commandPool[commandPoolIndex];
-        if (next == null) {
-            next = new FontDrawCmd();
-            commandPool[commandPoolIndex] = next;
-        }
-        next.clear();
-        return next;
+        writePtr = memAddress0(data);
+        instanceCount = 0;
     }
 
     // === Actual text mesh generation
@@ -896,90 +878,5 @@ public final class BatchingFontRenderer {
         blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
 
-
-    public static class FontDrawCmd {
-
-        private ByteBuffer data = memAlloc(INSTANCE_SIZE * 32);
-        private long writePtr; // gets initialized in clear()
-        private int count;
-
-        public FontDrawCmd() {
-
-        }
-
-        public ByteBuffer getReadBuffer() {
-            data.limit(count * INSTANCE_SIZE);
-            return data;
-        }
-
-        public int getInstanceCount() {
-            return count;
-        }
-
-        private void ensureCapacity() {
-            if ((count + 1) * INSTANCE_SIZE > data.capacity()) {
-                data = memRealloc(data, data.capacity() * 2);
-                writePtr = memAddress0(data) + (count * INSTANCE_SIZE);
-            }
-        }
-
-        public void pushQuad(
-            float x, float y, float width, float height,
-            float uMin, float vMin, float uWidth, float vWidth,
-            int rgba,
-            int layer,
-            boolean italic, boolean dinnerbone
-        ) {
-            ensureCapacity();
-            final long ptr = writePtr;
-
-            // vertices
-            memPutFloat(ptr, x);
-            memPutFloat(ptr + 4, y);
-            memPutFloat(ptr + 8, width);
-            memPutFloat(ptr + 12, height);
-
-//            memPutFloat(ptr, round(x));
-//            memPutFloat(ptr + 4, round(y));
-//            memPutFloat(ptr + 8, round(width));
-//            memPutFloat(ptr + 12, round(height));
-            // tb, tb, tb, tb
-            memPutFloat(ptr + 16, uMin);
-            memPutFloat(ptr + 20, vMin);
-            memPutFloat(ptr + 24, uWidth);
-            memPutFloat(ptr + 28, vWidth);
-
-            // c, c, c, c
-            // 0xAARRGGBB
-            memPutByte(ptr + 32, (byte) ((rgba >> 16) & 0xFF));
-            memPutByte(ptr + 33, (byte) ((rgba >> 8) & 0xFF));
-            memPutByte(ptr + 34, (byte) (rgba & 0xFF));
-            memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
-
-            // layer
-            memPutByte(ptr + 36, (byte) layer);
-
-            //TODO italic + other shit
-
-            //TODO add this to vertex shader
-//            final float vTop;
-//            final float vBot;
-//            if (flipV) {
-//                vTop = vStart + vSz;
-//                vBot = vStart;
-//            } else {
-//                vTop = vStart;
-//                vBot = vStart + vSz;
-//            }
-
-            writePtr += INSTANCE_SIZE;
-            count++;
-        }
-
-        public void clear() {
-            count = 0;
-            writePtr = memAddress0(data);
-        }
-    }
 
 }
