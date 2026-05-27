@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.client.streaming.PersistentStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -61,6 +62,7 @@ public abstract class MixinMinecraft {
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
         GLStateManager.glEnable(GL11.GL_LIGHTING);
+        PersistentStreamingDrawer.incrementFPS();
     }
 
     @Inject(

@@ -473,6 +473,22 @@ public class GLStateManager {
         return DisplayListManager.displayListExists(list);
     }
 
+    public static long glFenceSync(int flags, int i) {
+        return RENDER_BACKEND.fenceSync(flags, i);
+    }
+
+    public static int glClientWaitSync(long fence, int flags, long l) {
+        return RENDER_BACKEND.clientWaitSync(fence, flags, l);
+    }
+
+    public static void glDeleteSync(long fence) {
+        RENDER_BACKEND.deleteSync(fence);
+    }
+
+    public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access) {
+        return RENDER_BACKEND.mapBufferRange(target, offset, length, access);
+    }
+
     public static class GLFeatureSet extends IntOpenHashSet {
 
         private static final long serialVersionUID = 8558779940775721010L;

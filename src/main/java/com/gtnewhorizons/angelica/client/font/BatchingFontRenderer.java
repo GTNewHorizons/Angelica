@@ -6,10 +6,10 @@ import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderReloadRunnable;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.SimpleShaderDefine;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
+import com.gtnewhorizons.angelica.client.streaming.StreamingDrawer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import lombok.Setter;
@@ -18,15 +18,10 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL42;
 
-import java.nio.ByteBuffer;
-
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
@@ -119,101 +114,6 @@ public final class BatchingFontRenderer {
         GLStateManager.glUseProgram(0);
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
-        if (vbo <= 0) {
-            vbo = GLStateManager.glGenBuffers();
-        }
-    }
-
-    // === Batched rendering
-
-
-    // Layout in data:
-    // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
-    // v, t and tb are floats, c is bytes; 37 bytes total
-    private static final int INSTANCE_SIZE = 37;
-
-    private static int vboCapacity;
-
-
-    // Streaming VBO (uploaded once per draw)
-    private static int vbo;
-
-    private static int mainVAO = 0;
-
-    //TODO add bindless textures
-
-
-
-    private int batchDepth = 0;
-
-    private ByteBuffer data = memAlloc(INSTANCE_SIZE * 128);
-    private long writePtr = memAddress0(data);
-    private int instanceCount;
-
-    public ByteBuffer getReadBuffer() {
-        data.position(0);
-        data.limit(instanceCount * INSTANCE_SIZE);
-        return data;
-    }
-
-    private void ensureCapacity() {
-        if ((instanceCount + 1) * INSTANCE_SIZE > data.capacity()) {
-            data = memRealloc(data, data.capacity() * 2);
-            writePtr = memAddress0(data) + (instanceCount * INSTANCE_SIZE);
-        }
-    }
-
-    public void pushQuad(
-        float x, float y, float width, float height,
-        float uMin, float vMin, float uWidth, float vWidth,
-        int rgba,
-        int layer,
-        boolean italic, boolean dinnerbone
-    ) {
-        ensureCapacity();
-        final long ptr = writePtr;
-
-        // vertices
-        memPutFloat(ptr, x);
-        memPutFloat(ptr + 4, y);
-        memPutFloat(ptr + 8, width);
-        memPutFloat(ptr + 12, height);
-
-//            memPutFloat(ptr, round(x));
-//            memPutFloat(ptr + 4, round(y));
-//            memPutFloat(ptr + 8, round(width));
-//            memPutFloat(ptr + 12, round(height));
-        // tb, tb, tb, tb
-        memPutFloat(ptr + 16, uMin);
-        memPutFloat(ptr + 20, vMin);
-        memPutFloat(ptr + 24, uWidth);
-        memPutFloat(ptr + 28, vWidth);
-
-        // c, c, c, c
-        // 0xAARRGGBB
-        memPutByte(ptr + 32, (byte) ((rgba >> 16) & 0xFF));
-        memPutByte(ptr + 33, (byte) ((rgba >> 8) & 0xFF));
-        memPutByte(ptr + 34, (byte) (rgba & 0xFF));
-        memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
-
-        // layer
-        memPutByte(ptr + 36, (byte) layer);
-
-        //TODO italic + other shit
-
-        //TODO add this to vertex shader
-//            final float vTop;
-//            final float vBot;
-//            if (flipV) {
-//                vTop = vStart + vSz;
-//                vBot = vStart;
-//            } else {
-//                vTop = vStart;
-//                vBot = vStart + vSz;
-//            }
-
-        writePtr += INSTANCE_SIZE;
-        instanceCount++;
     }
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
@@ -271,153 +171,6 @@ public final class BatchingFontRenderer {
         batchCommands.add(cmd);
 
          */
-    }
-
-    private int initVAO() {
-        int vao = GLStateManager.glGenVertexArrays();
-
-        GLStateManager.glBindVertexArray(vao);
-
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, InstancedHelper.getQuadEBO());
-
-        // position
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, InstancedHelper.getQuadVBO());
-
-        GLStateManager.glVertexAttribPointer(
-            0,
-            2,
-            GL11.GL_FLOAT,
-            false,
-            8,
-            0
-        );
-        GLStateManager.glEnableVertexAttribArray(0);
-        GLStateManager.glVertexAttribDivisor(0, 0);
-
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-
-        // Glyph data (posX, posY, width, height)
-        GLStateManager.glVertexAttribPointer(
-            1,
-            4,
-            GL11.GL_FLOAT,
-            false,
-            INSTANCE_SIZE,
-            0
-        );
-        GLStateManager.glEnableVertexAttribArray(1);
-        GLStateManager.glVertexAttribDivisor(1, 1);
-
-        // UV data (u, v, uWidth, vWidth)
-        GLStateManager.glVertexAttribPointer(
-            2,
-            4,
-            GL11.GL_FLOAT,
-            false,
-            INSTANCE_SIZE,
-            16
-        );
-        GLStateManager.glEnableVertexAttribArray(2);
-        GLStateManager.glVertexAttribDivisor(2, 1);
-
-
-        // color
-        GLStateManager.glVertexAttribPointer(
-            3,
-            4,
-            GL11.GL_UNSIGNED_BYTE,
-            true,
-            INSTANCE_SIZE,
-            32
-        );
-        GLStateManager.glEnableVertexAttribArray(3);
-        GLStateManager.glVertexAttribDivisor(3, 1);
-
-        // layer
-        GLStateManager.glVertexAttribIPointer(
-            4,
-            1,
-            GL11.GL_UNSIGNED_BYTE,
-            INSTANCE_SIZE,
-            36
-        );
-        GLStateManager.glEnableVertexAttribArray(4);
-        GLStateManager.glVertexAttribDivisor(4, 1);
-
-        return vao;
-    }
-
-    /**
-     * Starts a new batch of font rendering operations. Can be called from within another batch with a matching end, to
-     * allow for easier optimizing of blocks of font rendering code.
-     */
-    public void beginBatch() {
-        batchDepth++;
-    }
-
-    public void endBatch() {
-        if (--batchDepth <= 0) {
-            // We finished any nested batches
-            flushBatch();
-        }
-    }
-
-    private int fontAAStrengthLast = -1;
-
-    private void flushBatch() {
-        if (instanceCount == 0) return;
-
-        if (mainVAO == 0) {
-            mainVAO = initVAO();
-        }
-
-        GLStateManager.glBindVertexArray(mainVAO);
-
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
-
-        vboCapacity = StreamingUploader.upload(getReadBuffer(), vboCapacity);
-
-
-        final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
-
-        final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
-
-        GLStateManager.enableBlend();
-        GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
-
-        GLStateManager.glUseProgram(fontShaderId);
-        if (FontConfig.fontAAStrength != fontAAStrengthLast) {
-            fontAAStrengthLast = FontConfig.fontAAStrength;
-            GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
-        }
-        GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
-
-        mainTextureArray.bind();
-        GL31.glDrawElementsInstanced(
-            GL11.GL_TRIANGLES,
-            6, //drawCmd.ranges.getInt(0) / 4 * 6,
-            GL11.GL_UNSIGNED_SHORT,
-            0,
-            instanceCount
-        );
-        mainTextureArray.unbind();
-
-
-        GLStateManager.glUseProgram(prevProgram);
-
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.glBindVertexArray(0);
-
-        if (!isBlendEnabledBefore) {
-            GLStateManager.disableBlend();
-        }
-
-        clearBatch();
-    }
-
-    private void clearBatch() {
-        writePtr = memAddress0(data);
-        instanceCount = 0;
     }
 
     // === Actual text mesh generation
@@ -878,5 +631,239 @@ public final class BatchingFontRenderer {
         blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
     }
 
+    // ---------- RENDERING ----------
+
+
+
+
+    // Layout in data:
+    // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
+    // v, t and tb are floats, c is bytes; 37 bytes total
+    private static final int INSTANCE_SIZE = 37;
+
+    private static int vboCapacity;
+
+    private int mainVAO = 0;
+
+    //TODO add bindless textures
+
+
+
+    private int batchDepth = 0;
+
+//    private ByteBuffer data = memAlloc(INSTANCE_SIZE * 128);
+//    private long writePtr = memAddress0(data);
+    private final StreamingDrawer stream = StreamingDrawer.create(1024 * 400 * INSTANCE_SIZE);
+    private int instanceCount;
+
+
+
+
+    private int initVAO() {
+        int vao = GLStateManager.glGenVertexArrays();
+
+        GLStateManager.glBindVertexArray(vao);
+
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, InstancedHelper.getQuadEBO());
+
+        // position
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, InstancedHelper.getQuadVBO());
+
+        GLStateManager.glVertexAttribPointer(
+            0,
+            2,
+            GL11.GL_FLOAT,
+            false,
+            8,
+            0
+        );
+        GLStateManager.glEnableVertexAttribArray(0);
+        GLStateManager.glVertexAttribDivisor(0, 0);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, stream.getVBO());
+
+        // Glyph data (posX, posY, width, height)
+        GLStateManager.glVertexAttribPointer(
+            1,
+            4,
+            GL11.GL_FLOAT,
+            false,
+            INSTANCE_SIZE,
+            0
+        );
+        GLStateManager.glEnableVertexAttribArray(1);
+        GLStateManager.glVertexAttribDivisor(1, 1);
+
+        // UV data (u, v, uWidth, vWidth)
+        GLStateManager.glVertexAttribPointer(
+            2,
+            4,
+            GL11.GL_FLOAT,
+            false,
+            INSTANCE_SIZE,
+            16
+        );
+        GLStateManager.glEnableVertexAttribArray(2);
+        GLStateManager.glVertexAttribDivisor(2, 1);
+
+
+        // color
+        GLStateManager.glVertexAttribPointer(
+            3,
+            4,
+            GL11.GL_UNSIGNED_BYTE,
+            true,
+            INSTANCE_SIZE,
+            32
+        );
+        GLStateManager.glEnableVertexAttribArray(3);
+        GLStateManager.glVertexAttribDivisor(3, 1);
+
+        // layer
+        GLStateManager.glVertexAttribIPointer(
+            4,
+            1,
+            GL11.GL_UNSIGNED_BYTE,
+            INSTANCE_SIZE,
+            36
+        );
+        GLStateManager.glEnableVertexAttribArray(4);
+        GLStateManager.glVertexAttribDivisor(4, 1);
+
+        return vao;
+    }
+
+    public void pushQuad(
+        float x, float y, float width, float height,
+        float uMin, float vMin, float uWidth, float vWidth,
+        int rgba,
+        int layer,
+        boolean italic, boolean dinnerbone
+    ) {
+        final long ptr = stream.writeSection(INSTANCE_SIZE);
+
+        // vertices
+        memPutFloat(ptr, x);
+        memPutFloat(ptr + 4, y);
+        memPutFloat(ptr + 8, width);
+        memPutFloat(ptr + 12, height);
+
+//            memPutFloat(ptr, round(x));
+//            memPutFloat(ptr + 4, round(y));
+//            memPutFloat(ptr + 8, round(width));
+//            memPutFloat(ptr + 12, round(height));
+        // tb, tb, tb, tb
+        memPutFloat(ptr + 16, uMin);
+        memPutFloat(ptr + 20, vMin);
+        memPutFloat(ptr + 24, uWidth);
+        memPutFloat(ptr + 28, vWidth);
+
+        // c, c, c, c
+        // 0xAARRGGBB
+        memPutByte(ptr + 32, (byte) ((rgba >> 16) & 0xFF));
+        memPutByte(ptr + 33, (byte) ((rgba >> 8) & 0xFF));
+        memPutByte(ptr + 34, (byte) (rgba & 0xFF));
+        memPutByte(ptr + 35, (byte) ((rgba >> 24) & 0xFF));
+
+        // layer
+        memPutByte(ptr + 36, (byte) layer);
+
+        //TODO italic + other shit
+
+        //TODO add this to vertex shader
+//            final float vTop;
+//            final float vBot;
+//            if (flipV) {
+//                vTop = vStart + vSz;
+//                vBot = vStart;
+//            } else {
+//                vTop = vStart;
+//                vBot = vStart + vSz;
+//            }
+
+        instanceCount++;
+    }
+
+    /**
+     * Starts a new batch of font rendering operations. Can be called from within another batch with a matching end, to
+     * allow for easier optimizing of blocks of font rendering code.
+     */
+    public void beginBatch() {
+        batchDepth++;
+    }
+
+    public void endBatch() {
+        if (--batchDepth <= 0) {
+            // We finished any nested batches
+            flushBatch();
+        }
+    }
+
+    private int fontAAStrengthLast = -1;
+
+    private void flushBatch() {
+        if (instanceCount == 0) return;
+
+        if (mainVAO == 0) {
+            mainVAO = initVAO();
+        }
+
+        GLStateManager.glBindVertexArray(mainVAO);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, stream.getVBO());
+
+        final int offset = stream.finishUploading() / INSTANCE_SIZE;
+
+        //vboCapacity = StreamingUploader.upload(getReadBuffer(), vboCapacity);
+
+
+        final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
+
+        final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
+
+        GLStateManager.enableBlend();
+        GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
+
+        GLStateManager.glUseProgram(fontShaderId);
+        if (FontConfig.fontAAStrength != fontAAStrengthLast) {
+            fontAAStrengthLast = FontConfig.fontAAStrength;
+            GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+        }
+        GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
+
+        mainTextureArray.bind();
+//        GL31.glDrawElementsInstanced(
+//            GL11.GL_TRIANGLES,
+//            6,
+//            GL11.GL_UNSIGNED_SHORT,
+//            0,
+//            instanceCount
+//        );
+        GL42.glDrawElementsInstancedBaseInstance(
+            GL11.GL_TRIANGLES,
+            6,
+            GL11.GL_UNSIGNED_SHORT,
+            0,
+            instanceCount,
+            offset
+        );
+        mainTextureArray.unbind();
+
+
+        GLStateManager.glUseProgram(prevProgram);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindVertexArray(0);
+
+        if (!isBlendEnabledBefore) {
+            GLStateManager.disableBlend();
+        }
+
+        clearBatch();
+    }
+
+    private void clearBatch() {
+        instanceCount = 0;
+    }
 
 }
