@@ -39,6 +39,7 @@ public enum ProgramId {
 	Entities(ProgramGroup.Gbuffers, "entities", TexturedLit),
 	EntitiesTrans(ProgramGroup.Gbuffers, "entities_translucent", Entities),
 	EntitiesGlowing(ProgramGroup.Gbuffers, "entities_glowing", Entities),
+	Lightning(ProgramGroup.Gbuffers, "lightning", Entities),
 	ArmorGlint(ProgramGroup.Gbuffers, "armor_glint", Textured),
 	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured,
 		new BlendModeOverride(new BlendState(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE)),
