@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.minecraft.block.Block;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IReloadableResourceManager;
 import org.lwjgl.opengl.GL11;
 
 public class BlockRenderListManager {
@@ -44,6 +46,17 @@ public class BlockRenderListManager {
         DisplayListManager.discardMatrixTransforms();
         GLStateManager.glEndList();
         displayListMap.put(new BlockMeta(block, meta), list);
+    }
+
+    public static void registerReloadListener(){
+        IReloadableResourceManager resourceManager = (IReloadableResourceManager) Minecraft.getMinecraft()
+            .getResourceManager();
+        resourceManager.registerReloadListener(_ -> {
+            for (int list : displayListMap.values()) {
+                GLStateManager.glDeleteLists(list, 1);
+            }
+            displayListMap.clear();
+        });
     }
 
 

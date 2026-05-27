@@ -5,6 +5,9 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL21;
+import org.lwjgl.opengl.GL30;
 
 import java.nio.Buffer;
 import java.util.concurrent.locks.ReentrantLock;
@@ -45,6 +48,7 @@ public class TextureInfoCache {
             final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
             if (info == null) return;
             info.internalFormat = internalformat;
+            info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
             info.width = width;
             info.height = height;
         }
@@ -55,9 +59,22 @@ public class TextureInfoCache {
             final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
             if (info == null) return;
             info.internalFormat = internalformat;
+            info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
             info.width = width;
             info.height = height;
         }
+    }
+
+    public static boolean isGenericCompressedInternalFormat(int internalFormat) {
+        return switch (internalFormat) {
+            case GL30.GL_COMPRESSED_RED,
+                 GL30.GL_COMPRESSED_RG,
+                 GL13.GL_COMPRESSED_RGB,
+                 GL13.GL_COMPRESSED_RGBA,
+                 GL21.GL_COMPRESSED_SRGB,
+                 GL21.GL_COMPRESSED_SRGB_ALPHA -> true;
+            default -> false;
+        };
     }
 
     public void onDeleteTexture(int id) {

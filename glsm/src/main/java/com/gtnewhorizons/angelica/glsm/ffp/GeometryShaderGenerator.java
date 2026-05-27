@@ -22,12 +22,10 @@ public final class GeometryShaderGenerator {
         if (key.separateSpecular()) {
             sb.append("in vec3 v_SpecularColor_gs[];\n");
         }
-        if (key.textureEnabled() || key.hasVertexTexCoord() || key.texGenEnabled()) {
-            sb.append("in vec4 v_TexCoord0_gs[];\n");
-        }
-        if (key.lightmapEnabled()) {
-            sb.append("in vec4 v_TexCoord1_gs[];\n");
-        }
+        if (key.unitTexCoordEnabled(0) || key.texGenEnabled()) sb.append("in vec4 v_TexCoord0_gs[];\n");
+        if (key.lightmapEnabled())            sb.append("in vec4 v_TexCoord1_gs[];\n");
+        if (key.unitTexCoordEnabled(2))       sb.append("in vec4 v_TexCoord2_gs[];\n");
+        if (key.unitTexCoordEnabled(3))       sb.append("in vec4 v_TexCoord3_gs[];\n");
         if (key.fogEnabled()) {
             sb.append("in float v_FogCoord_gs[];\n");
         }
@@ -37,12 +35,10 @@ public final class GeometryShaderGenerator {
         if (key.separateSpecular()) {
             sb.append("out vec3 v_SpecularColor;\n");
         }
-        if (key.textureEnabled() || key.hasVertexTexCoord() || key.texGenEnabled()) {
-            sb.append("out vec4 v_TexCoord0;\n");
-        }
-        if (key.lightmapEnabled()) {
-            sb.append("out vec4 v_TexCoord1;\n");
-        }
+        if (key.unitTexCoordEnabled(0) || key.texGenEnabled()) sb.append("out vec4 v_TexCoord0;\n");
+        if (key.lightmapEnabled())            sb.append("out vec4 v_TexCoord1;\n");
+        if (key.unitTexCoordEnabled(2))       sb.append("out vec4 v_TexCoord2;\n");
+        if (key.unitTexCoordEnabled(3))       sb.append("out vec4 v_TexCoord3;\n");
         if (key.fogEnabled()) {
             sb.append("out float v_FogCoord;\n");
         }
@@ -82,12 +78,10 @@ public final class GeometryShaderGenerator {
         if (key.separateSpecular()) {
             sb.append("    v_SpecularColor = v_SpecularColor_gs").append(idx).append(";\n");
         }
-        if (key.textureEnabled() || key.hasVertexTexCoord() || key.texGenEnabled()) {
-            sb.append("    v_TexCoord0 = v_TexCoord0_gs").append(idx).append(";\n");
-        }
-        if (key.lightmapEnabled()) {
-            sb.append("    v_TexCoord1 = v_TexCoord1_gs").append(idx).append(";\n");
-        }
+        if (key.unitTexCoordEnabled(0) || key.texGenEnabled()) sb.append("    v_TexCoord0 = v_TexCoord0_gs").append(idx).append(";\n");
+        if (key.lightmapEnabled())            sb.append("    v_TexCoord1 = v_TexCoord1_gs").append(idx).append(";\n");
+        if (key.unitTexCoordEnabled(2))       sb.append("    v_TexCoord2 = v_TexCoord2_gs").append(idx).append(";\n");
+        if (key.unitTexCoordEnabled(3))       sb.append("    v_TexCoord3 = v_TexCoord3_gs").append(idx).append(";\n");
         if (key.fogEnabled()) {
             sb.append("    v_FogCoord = v_FogCoord_gs").append(idx).append(";\n");
         }

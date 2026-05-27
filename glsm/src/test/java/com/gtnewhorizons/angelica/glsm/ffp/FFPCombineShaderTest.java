@@ -128,7 +128,7 @@ class FFPCombineShaderTest {
         setupXaeroState();
 
         FragmentKey fk = FragmentKey.fromState();
-        VertexKey vk = VertexKey.fromState(true, false, true, false);
+        VertexKey vk = VertexKey.fromState(true, false, true, false, fk.enabledUnitMask());
 
         String fragSource = FragmentShaderGenerator.generate(fk);
         String vertSource = VertexShaderGenerator.generate(vk);

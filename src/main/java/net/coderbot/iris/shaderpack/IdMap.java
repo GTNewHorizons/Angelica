@@ -14,6 +14,7 @@ import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
 import net.coderbot.iris.shaderpack.materialmap.EntityFlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.coderbot.iris.shaderpack.materialmap.PropertiesTokenizer;
 import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
 import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
 import net.minecraft.item.Item;
@@ -45,11 +46,15 @@ public class IdMap {
 	 * Maps a given item ID to an integer ID
 	 */
 	private final Object2IntMap<NamespacedId> itemIdMap;
+	@Getter
+    private final Int2ObjectMap<List<BlockEntry>> itemNbtEntries;
 
 	/**
 	 * Maps a given entity ID to an integer ID
 	 */
 	private final Object2IntMap<NamespacedId> entityIdMap;
+	@Getter
+    private final Int2ObjectMap<List<BlockEntry>> entityNbtEntries;
 
 	/**
 	 * Maps block states to block ids defined in block.properties
@@ -106,8 +111,17 @@ public class IdMap {
 			});
 		}
 
-		itemIdMap = loadProperties(shaderPath, "item.properties", shaderPackOptions, resolvedDefines).map(IdMap::parseItemIdMap).orElse(Object2IntMaps.emptyMap());
-		entityIdMap = loadProperties(shaderPath, "entity.properties", shaderPackOptions, resolvedDefines).map(IdMap::parseEntityIdMap).orElse(Object2IntMaps.emptyMap());
+		final ParsedIdMap parsedItems = loadProperties(shaderPath, "item.properties", shaderPackOptions, resolvedDefines)
+			.map(p -> parseIdMap(p, "item.", "item.properties"))
+			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
+		itemIdMap = parsedItems.simpleMap();
+		itemNbtEntries = parsedItems.nbtEntries();
+
+		final ParsedIdMap parsedEntities = loadProperties(shaderPath, "entity.properties", shaderPackOptions, resolvedDefines)
+			.map(p -> parseIdMap(p, "entity.", "entity.properties"))
+			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
+		entityIdMap = augmentEntityIdMap(parsedEntities.simpleMap(), parsedEntities.nbtEntries());
+		entityNbtEntries = parsedEntities.nbtEntries();
 
 		// TODO: Properly override block render layers
 
@@ -166,25 +180,37 @@ public class IdMap {
 		}
 	}
 
-	private static Object2IntMap<NamespacedId> parseItemIdMap(Properties properties) {
-		return parseIdMap(properties, "item.", "item.properties");
-	}
-
-	private static Object2IntMap<NamespacedId> parseEntityIdMap(Properties properties) {
-		Object2IntMap<NamespacedId> idMap = parseIdMap(properties, "entity.", "entity.properties");
-
-		// For modern shader packs: translate modern entity names to 1.7.10 names
-		// so runtime lookups match EntityList's registered names directly.
+	/**
+	 * For modern shaderpacks: also expose entries under their 1.7.10 entity names
+	 * so runtime lookups match EntityList's registered names directly.
+	 *
+	 * Modern names whose 1.7.10 counterpart is NBT-discriminated (e.g. wither_skeleton
+	 * is just Skeleton with SkeletonType=1) are routed into the NBT-conditional map
+	 * instead of being aliased into the simple map — otherwise the simple lookup for
+	 * "Skeleton" would short-circuit and match every skeleton variant.
+	 */
+	private static Object2IntMap<NamespacedId> augmentEntityIdMap(
+			Object2IntMap<NamespacedId> idMap,
+			Int2ObjectMap<List<BlockEntry>> nbtEntries) {
 		Object2IntMap<NamespacedId> augmented = new Object2IntOpenHashMap<>(idMap);
 		augmented.defaultReturnValue(-1);
 
 		for (Object2IntMap.Entry<NamespacedId> entry : idMap.object2IntEntrySet()) {
 			NamespacedId id = entry.getKey();
-			if ("minecraft".equals(id.getNamespace())) {
-				String legacyName = EntityFlatteningMap.toLegacy(id.getName());
-				if (legacyName != null) {
-					augmented.putIfAbsent(new NamespacedId(legacyName), entry.getIntValue());
-				}
+			if (!"minecraft".equals(id.getNamespace())) {
+				continue;
+			}
+			final int intId = entry.getIntValue();
+
+			BlockEntry nbtMapping = EntityFlatteningMap.toLegacyWithNbt(id.getName());
+			if (nbtMapping != null) {
+				nbtEntries.computeIfAbsent(intId, k -> new ArrayList<>()).add(nbtMapping);
+				continue;
+			}
+
+			String legacyName = EntityFlatteningMap.toLegacy(id.getName());
+			if (legacyName != null) {
+				augmented.putIfAbsent(new NamespacedId(legacyName), intId);
 			}
 		}
 
@@ -212,67 +238,18 @@ public class IdMap {
 	 * @return List of parsed identifiers
 	 */
 	static List<String> parseIdentifierList(String value, String fileName, String key) {
-		if (value.indexOf('"') == -1) {
-			String[] parts = value.split("\\s+");
-			List<String> result = new ArrayList<>(parts.length);
-			for (String part : parts) {
-				if (!part.isEmpty()) {
-					result.add(part);
-				}
-			}
-			return result;
-		}
-
-		// Found quote, start of a dumb block ID
-		List<String> result = new ArrayList<>();
-		StringBuilder current = new StringBuilder();
-		boolean inQuotes = false;
-		boolean escaped = false;
-
-		for (int i = 0; i < value.length(); i++) {
-			char c = value.charAt(i);
-
-			if (escaped) {
-				current.append(c);
-				escaped = false;
-			} else if (c == '\\') {
-				escaped = true;
-			} else if (c == '"') {
-				inQuotes = !inQuotes;
-			} else if (Character.isWhitespace(c) && !inQuotes) {
-				if (!current.isEmpty()) {
-					result.add(current.toString());
-					current.setLength(0);
-				}
-			} else {
-				current.append(c);
-			}
-		}
-
-		// Didn't close a quote, warn
-		if (inQuotes) {
-			Iris.logger.warn(fileName + " [" + key + "]: Unclosed quote");
-		}
-
-		// Trailing backslash, warn
-		if (escaped) {
-			Iris.logger.warn(fileName + " [" + key + "]: Trailing backslash");
-		}
-
-		// Add final token
-		if (!current.isEmpty()) {
-			result.add(current.toString());
-		}
-
-		return result;
+		return PropertiesTokenizer.tokenizeValues(value, ' ');
 	}
+
+	record ParsedIdMap(Object2IntMap<NamespacedId> simpleMap, Int2ObjectMap<List<BlockEntry>> nbtEntries) {}
 
 	/**
 	 * Parses a NamespacedId map in OptiFine format
 	 */
-	private static Object2IntMap<NamespacedId> parseIdMap(Properties properties, String keyPrefix, String fileName) {
+	private static ParsedIdMap parseIdMap(Properties properties, String keyPrefix, String fileName) {
 		Object2IntMap<NamespacedId> idMap = new Object2IntOpenHashMap<>();
 		idMap.defaultReturnValue(-1);
+		Int2ObjectMap<List<BlockEntry>> nbtEntries = new Int2ObjectOpenHashMap<>();
 
 		properties.forEach((keyObject, valueObject) -> {
 			String key = (String) keyObject;
@@ -295,6 +272,20 @@ public class IdMap {
 
 			// Parse identifiers
 			for (String part : parseIdentifierList(value, fileName, key)) {
+				if (part.contains("[")) {
+					// NBT-conditional entry
+					try {
+						BlockEntry entry = BlockEntry.parse(part);
+						if (entry.hasNbtProperties()) {
+							nbtEntries.computeIfAbsent(intId, k -> new ArrayList<>()).add(entry);
+						} else {
+							idMap.put(entry.id(), intId);
+						}
+					} catch (Exception e) {
+						Iris.logger.warn("Failed to parse NBT entry in " + fileName + " for key " + key + ": " + part, e);
+					}
+					continue;
+				}
 				if (part.contains("=")) {
 					// Avoid tons of logspam for now
 					Iris.logger.warn("Failed to parse an ResourceLocation in " + fileName + " for the key " + key + ": state properties are currently not supported: " + part);
@@ -307,7 +298,7 @@ public class IdMap {
 			}
 		});
 
-		return Object2IntMaps.unmodifiable(idMap);
+		return new ParsedIdMap(Object2IntMaps.unmodifiable(idMap), nbtEntries);
 	}
 
 	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
@@ -408,7 +399,7 @@ public class IdMap {
 		return itemIdMap;
 	}
 
-	public Object2IntFunction<NamespacedId> getEntityIdMap() {
+    public Object2IntFunction<NamespacedId> getEntityIdMap() {
 		return entityIdMap;
 	}
 

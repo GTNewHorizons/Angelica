@@ -148,7 +148,11 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         this.mc.entityRenderer.enableLightmap(partialTicks);
 
         final double camX = lerp(entity.lastTickPosX, entity.posX, partialTicks);
-        final double camY = lerp(entity.lastTickPosY, entity.posY, partialTicks);
+        // Minecraft's setupCameraTransform bakes -eyeHeight into the modelview, which would normally
+        // require feet here; CeleritasWorldRenderer.createChunkRenderMatrices compensates this by
+        // post-multiplying the chunk-shader modelview with translate(0, +eyeHeight, 0).
+        // Otherwise, we get issues with Iris shaders getting normals at a shifted y-position.
+        final double camY = lerp(entity.lastTickPosY, entity.posY, partialTicks) + entity.getEyeHeight();
         final double camZ = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
         try {
