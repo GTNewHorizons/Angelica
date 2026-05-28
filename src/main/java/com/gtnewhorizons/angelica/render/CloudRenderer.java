@@ -58,6 +58,15 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
     private static final byte F_TOP = 0, F_BOTTOM = 1, F_X = 2, F_Z = 3;
     private static final float[] FACTOR_VALUES = {0.7f, 1.0f, 0.9f, 0.8f}; // {top, bottom, X, Z}
+    private static final int[] FACTOR_BYTE_SHIFTED;
+    static {
+        FACTOR_BYTE_SHIFTED = new int[4];
+        for (int i = 0; i < 4; i++) {
+            final int b = Math.round(FACTOR_VALUES[i] * 255f) & 0xFF;
+            FACTOR_BYTE_SHIFTED[i] = (ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN) ? b : (b << 24);
+        }
+    }
+    private static final int FACTOR_ATTRIB_LOC = 5;
 
     private static final int VERTEX_STRIDE = 24;
     private static final int NORMAL_OFFSET = 20;
@@ -379,17 +388,18 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         GLStateManager.glDepthMask(false);
 
-        for (int f = 0; f < 4; f++) {
-            final int qc = factorQuadCount[f];
-            if (qc == 0) continue;
-            final float v = FACTOR_VALUES[f];
-            if (shadersActive) {
+        if (shadersActive) {
+            for (int f = 0; f < 4; f++) {
+                final int qc = factorQuadCount[f];
+                if (qc == 0) continue;
+                final float v = FACTOR_VALUES[f];
                 GLStateManager.glColor4f(v * r, v * g, v * b, CloudUniforms.ALPHA);
-            } else {
-                program.getInterface().setColorMult(v * r, v * g, v * b);
+                final long byteOffset = (long) (factorVertOffset[f] / 4) * 6L * 4L;
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, qc * 6, GL11.GL_UNSIGNED_INT, byteOffset);
             }
-            final long byteOffset = (long) (factorVertOffset[f] / 4) * 6L * 4L;
-            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, qc * 6, GL11.GL_UNSIGNED_INT, byteOffset);
+        } else {
+            program.getInterface().setColorMult(r, g, b);
+            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, totalQuads * 6, GL11.GL_UNSIGNED_INT, 0L);
         }
 
         vao.unbind();
@@ -461,11 +471,21 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             vao = VertexBufferType.MUTABLE_RESIZABLE.allocate(
                 DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_TRIANGLES,
                 sortedBuffer, vertexCount);
+            setupFactorAttrib();
         } else {
             vao.getVBO().allocate(sortedBuffer, vertexCount);
         }
         cachedVertexCount = vertexCount;
         ensureEbo(vertexCount / 4);
+    }
+
+    private void setupFactorAttrib() {
+        vao.bind();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vao.getVBO().getId());
+        GLStateManager.glEnableVertexAttribArray(FACTOR_ATTRIB_LOC);
+        GLStateManager.glVertexAttribPointer(FACTOR_ATTRIB_LOC, 1, GL11.GL_UNSIGNED_BYTE, true, VERTEX_STRIDE, NORMAL_OFFSET + 3);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        vao.unbind();
     }
 
     private void ensureEbo(int quadCount) {
@@ -788,11 +808,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         }
         quadFactor[quadCount++] = factorIdx;
 
+        final int packedNormal = normalInt | FACTOR_BYTE_SHIFTED[factorIdx];
         long a = writeAddr;
-        a = writeCloudVertex(a, x0, y0, z0, u0, v0, normalInt);
-        a = writeCloudVertex(a, x1, y1, z1, u1, v1, normalInt);
-        a = writeCloudVertex(a, x2, y2, z2, u2, v2, normalInt);
-        a = writeCloudVertex(a, x3, y3, z3, u3, v3, normalInt);
+        a = writeCloudVertex(a, x0, y0, z0, u0, v0, packedNormal);
+        a = writeCloudVertex(a, x1, y1, z1, u1, v1, packedNormal);
+        a = writeCloudVertex(a, x2, y2, z2, u2, v2, packedNormal);
+        a = writeCloudVertex(a, x3, y3, z3, u3, v3, packedNormal);
         writeAddr = a;
     }
 
