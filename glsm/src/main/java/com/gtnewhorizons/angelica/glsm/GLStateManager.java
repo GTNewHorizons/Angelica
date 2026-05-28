@@ -186,12 +186,6 @@ public class GLStateManager {
     private static boolean dirtyTexCoordAttrib;
     private static boolean dirtyLightmapAttrib = true;
 
-    // Normal/texcoord skip the backend call under FFP, so the dummy VBO holds stale defaults on transition out.
-    public static void forceAttribDefaultsDirty() {
-        dirtyNormalAttrib = true;
-        dirtyTexCoordAttrib = true;
-    }
-
     // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
     // Skip the backend vertexAttrib call in either case.
     public static void flushDeferredVertexAttribs(int vertexFlags) {
@@ -3336,9 +3330,18 @@ public class GLStateManager {
             if (texMatrixGeneration != savedTexMatGen[depth]) texMatrixGeneration++;
         }
         if ((mask & GL11.GL_CURRENT_BIT) != 0) {
-            if (colorGeneration != savedColorGen[depth]) colorGeneration++;
-            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) ShaderManager.bumpNormalGeneration();
-            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) ShaderManager.bumpTexCoordGeneration();
+            if (colorGeneration != savedColorGen[depth]) {
+                colorGeneration++;
+                dirtyColorAttrib = true;
+            }
+            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) {
+                ShaderManager.bumpNormalGeneration();
+                dirtyNormalAttrib = true;
+            }
+            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) {
+                ShaderManager.bumpTexCoordGeneration();
+                dirtyTexCoordAttrib = true;
+            }
         }
     }
 

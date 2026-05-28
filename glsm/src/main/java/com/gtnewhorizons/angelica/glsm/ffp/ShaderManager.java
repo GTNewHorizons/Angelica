@@ -94,7 +94,6 @@ public class ShaderManager {
         currentProgram = null;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
-        GLStateManager.forceAttribDefaultsDirty();
     }
 
     public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
