@@ -124,6 +124,7 @@ tasks.withType<DowngradeFiles>().configureEach {
     downgradeTo.set(JavaVersion.VERSION_1_8)
     multiReleaseOriginal.set(false)
     multiReleaseVersions.set(emptySet())
+    logLevel.set("FATAL")
 }
 
 val downgradeDepsForTest by tasks.registering(DowngradeFiles::class) {
@@ -139,6 +140,7 @@ val downgradeMainClasses by tasks.registering(DowngradeFiles::class) {
 val downgradeTestClasses by tasks.registering(DowngradeFiles::class) {
     inputCollection = sourceSets["test"].output.classesDirs
     classpath = sourceSets["test"].compileClasspath
+    sourceSets["test"].output.classesDirs.files.forEach { outputs.dir(temporaryDir.resolve(it.name)) }
     dependsOn(tasks.named("testClasses"))
 }
 
@@ -173,6 +175,19 @@ tasks.test {
     dependsOn(extractNatives)
     jvmArgs("-Djava.library.path=${extractNatives.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}")
 }
+
+val verifyTestsRan by tasks.registering {
+    val resultsDir = layout.buildDirectory.dir("test-results/test")
+    dependsOn(tasks.test)
+    doLast {
+        val dir = resultsDir.get().asFile
+        val xmls = dir.listFiles { f -> f.name.startsWith("TEST-") && f.name.endsWith(".xml") } ?: emptyArray()
+        check(xmls.isNotEmpty()) {
+            ":glsm:test produced no TEST-*.xml in $dir - test task likely went NO-SOURCE"
+        }
+    }
+}
+tasks.check { dependsOn(verifyTestsRan) }
 
 publishing {
     publications {

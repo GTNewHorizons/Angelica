@@ -21,6 +21,8 @@ class SharedDrawableVaoTest {
     private static final String VERT_330 = "#version 330 core\nvoid main() { gl_Position = vec4(0.0); }\n";
     private static final String FRAG_330 = "#version 330 core\nout vec4 o;\nvoid main() { o = vec4(0.0); }\n";
 
+    private static boolean ownsDisplay = false;
+
     @BeforeAll
     static void createContext() throws LWJGLException {
         assumeTrue(!Display.isCreated(), "inherited Display -- skipping to avoid profile drift");
@@ -31,11 +33,13 @@ class SharedDrawableVaoTest {
             new PixelFormat().withDepthBits(24).withStencilBits(8),
             new ContextAttribs(4, 1).withProfileCore(true).withForwardCompatible(true));
         GL30.glBindVertexArray(GL30.glGenVertexArrays());
+        ownsDisplay = true;
     }
 
     @AfterAll
     static void destroyContext() {
-        if (Display.isCreated()) Display.destroy();
+        if (ownsDisplay && Display.isCreated()) Display.destroy();
+        ownsDisplay = false;
     }
 
     @Test
