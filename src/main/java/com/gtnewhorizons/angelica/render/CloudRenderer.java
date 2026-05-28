@@ -49,6 +49,7 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -87,6 +88,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
     private IVertexArrayObject vao;
     private int cachedVertexCount;
+    private int eboId = -1;
+    private int eboQuadCapacity;
 
     private int anchorCellX = Integer.MIN_VALUE, anchorCellZ = Integer.MIN_VALUE;
     private int anchorMarginCells = 0;
@@ -349,6 +352,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
     private void drawAllFactors(float r, float g, float b, boolean shadersActive) {
         vao.bind();
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
 
         GLStateManager.disableBlend();
         GLStateManager.glDepthMask(true);
@@ -359,7 +363,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         } else {
             program.getInterface().setColorMult(1.0f, 1.0f, 1.0f);
         }
-        vao.draw(0, cachedVertexCount);
+        final int totalQuads = cachedVertexCount / 4;
+        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, totalQuads * 6, GL11.GL_UNSIGNED_INT, 0L);
 
         if (!mc.gameSettings.anaglyph) {
             GLStateManager.glColorMask(true, true, true, true);
@@ -383,7 +388,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             } else {
                 program.getInterface().setColorMult(v * r, v * g, v * b);
             }
-            vao.draw(factorVertOffset[f], qc * 4);
+            final long byteOffset = (long) (factorVertOffset[f] / 4) * 6L * 4L;
+            GLStateManager.glDrawElements(GL11.GL_TRIANGLES, qc * 6, GL11.GL_UNSIGNED_INT, byteOffset);
         }
 
         vao.unbind();
@@ -453,12 +459,39 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         if (vao == null) {
             vao = VertexBufferType.MUTABLE_RESIZABLE.allocate(
-                DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_QUADS,
+                DefaultVertexFormat.POSITION_TEXTURE_NORMAL, GL11.GL_TRIANGLES,
                 sortedBuffer, vertexCount);
         } else {
             vao.getVBO().allocate(sortedBuffer, vertexCount);
         }
         cachedVertexCount = vertexCount;
+        ensureEbo(vertexCount / 4);
+    }
+
+    private void ensureEbo(int quadCount) {
+        if (eboId == -1) {
+            eboId = GLStateManager.glGenBuffers();
+        }
+        if (quadCount <= eboQuadCapacity) return;
+        final java.nio.IntBuffer ib = BufferUtils.createIntBuffer(quadCount * 6);
+        for (int q = 0; q < quadCount; q++) {
+            final int v = q * 4;
+            ib.put(v).put(v + 1).put(v + 2);
+            ib.put(v).put(v + 2).put(v + 3);
+        }
+        ib.flip();
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, ib, GL15.GL_STATIC_DRAW);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        eboQuadCapacity = quadCount;
+    }
+
+    private void deleteEbo() {
+        if (eboId != -1) {
+            GLStateManager.glDeleteBuffers(eboId);
+            eboId = -1;
+            eboQuadCapacity = 0;
+        }
     }
 
     private void emitChunk(int chunkX, int chunkZ, int anchorX, int anchorZ, int radiusCellsSq, boolean cameraInsideCloud, boolean emitTopFace, boolean emitBottomFace, double y1, double ye, float scrollX, float scrollZ) {
@@ -871,6 +904,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             vao.delete();
             vao = null;
         }
+        deleteEbo();
         mipmapTexId = -1;
         cloudTexId = -1;
     }
