@@ -87,8 +87,6 @@ public class ShaderManager {
 
     public void activate() {
         active = true;
-        updateVariant(true, true, true, true);
-        uploadUniforms();
     }
 
     public void deactivate() {
@@ -96,10 +94,11 @@ public class ShaderManager {
         currentProgram = null;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
+        GLStateManager.forceAttribDefaultsDirty();
     }
 
     public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
@@ -139,13 +138,6 @@ public class ShaderManager {
 
     public void preDraw() {
         preDraw(currentVertexFlags);
-    }
-
-    private void updateVariant(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        final int fkLen = FragmentKey.packFromState(currentFKScratch);
-        final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
-        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
-        commitVariant(vkPacked, fkLen);
     }
 
     private void commitVariant(long vkPacked, int fkLen) {

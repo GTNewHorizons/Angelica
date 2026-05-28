@@ -186,22 +186,32 @@ public class GLStateManager {
     private static boolean dirtyTexCoordAttrib;
     private static boolean dirtyLightmapAttrib = true;
 
-    /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
-    public static void flushDeferredVertexAttribs() {
-        if (dirtyColorAttrib) {
+    // Normal/texcoord skip the backend call under FFP, so the dummy VBO holds stale defaults on transition out.
+    public static void forceAttribDefaultsDirty() {
+        dirtyNormalAttrib = true;
+        dirtyTexCoordAttrib = true;
+    }
+
+    // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
+    // Skip the backend vertexAttrib call in either case.
+    public static void flushDeferredVertexAttribs(int vertexFlags) {
+        final ShaderManager sm = ShaderManager.getInstance();
+        final boolean ffpWillHandle = sm.isActive() || (sm.isEnabled() && getActiveProgram() == 0);
+
+        if (dirtyColorAttrib && (vertexFlags & VertexFlags.COLOR_BIT) == 0 && !ffpWillHandle) {
             RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
             dirtyColorAttrib = false;
         }
-        if (dirtyLightmapAttrib) {
+        if (dirtyLightmapAttrib && (vertexFlags & VertexFlags.BRIGHTNESS_BIT) == 0 && !ffpWillHandle) {
             RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
             dirtyLightmapAttrib = false;
         }
-        if (dirtyNormalAttrib) {
+        if (dirtyNormalAttrib && (vertexFlags & VertexFlags.NORMAL_BIT) == 0 && !ffpWillHandle) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);
             dirtyNormalAttrib = false;
         }
-        if (dirtyTexCoordAttrib) {
+        if (dirtyTexCoordAttrib && (vertexFlags & VertexFlags.TEXTURE_BIT) == 0 && !ffpWillHandle) {
             final var tc = ShaderManager.getCurrentTexCoord();
             RENDER_BACKEND.vertexAttrib4f(Usage.PRIMARY_UV.getAttributeLocation(), tc.x, tc.y, tc.z, tc.w);
             dirtyTexCoordAttrib = false;
