@@ -1,11 +1,10 @@
 #version 330 core
 
-in vec4 v_Color;
-in vec2 v_TexCoord0;
+in vec2 v_UV;
 in float v_FogCoord;
 
-uniform sampler2D u_CloudTexture;
-uniform vec3 u_ColorMultiplier;
+uniform sampler2D u_Tex;
+uniform vec4 u_ColorMult;
 uniform vec4 u_FogParams; // x: -1/(end-start), y: end/(end-start)
 uniform vec4 u_FogColor;
 uniform bool u_FogEnabled;
@@ -13,11 +12,9 @@ uniform bool u_FogEnabled;
 out vec4 fragColor;
 
 void main() {
-    vec4 texColor = texture(u_CloudTexture, v_TexCoord0);
-    vec4 color = v_Color * texColor;
-    color.rgb *= u_ColorMultiplier;
-
-    if (color.a < 0.1) discard;
+    vec4 texel = texture(u_Tex, v_UV);
+    if (texel.a < 0.1) discard;
+    vec4 color = texel * u_ColorMult;
 
     if (u_FogEnabled) {
         float f = clamp(v_FogCoord * u_FogParams.x + u_FogParams.y, 0.0, 1.0);

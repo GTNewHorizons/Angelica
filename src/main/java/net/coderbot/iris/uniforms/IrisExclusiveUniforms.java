@@ -2,6 +2,7 @@ package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
+import com.gtnewhorizons.angelica.render.CloudRenderer;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.minecraft.client.Minecraft;
@@ -40,6 +41,16 @@ public class IrisExclusiveUniforms {
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "eyePosition", IrisExclusiveUniforms::getEyePosition);
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "relativeEyePosition", IrisExclusiveUniforms::getRelativeEyePosition);
 		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", IrisExclusiveUniforms::getLightningBoltPosition);
+		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "cloudTime", IrisExclusiveUniforms::getCloudTime);
+	}
+
+	private static float getCloudTime() {
+		final WorldClient level = Minecraft.getMinecraft().theWorld;
+		if (level == null) return 0f;
+		final long cycle = (long) CloudRenderer.getCloudTextureWidth() * 400L * CloudRenderer.getScaleMult();
+		final long t = level.getTotalWorldTime() % cycle;
+		final float partial = Minecraft.getMinecraft().timer.renderPartialTicks;
+		return (t + partial) * 0.03F;
 	}
 
 	private static float getThunderStrength() {

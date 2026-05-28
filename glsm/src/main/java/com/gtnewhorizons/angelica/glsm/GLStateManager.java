@@ -163,6 +163,23 @@ public class GLStateManager {
         fragmentGeneration++;
     }
 
+    @Getter private static float shaderColorR = 1.0f;
+    @Getter private static float shaderColorG = 1.0f;
+    @Getter private static float shaderColorB = 1.0f;
+    @Getter private static float shaderColorA = 1.0f;
+
+    public static void setShaderColor(float r, float g, float b, float a) {
+        if (r == shaderColorR && g == shaderColorG && b == shaderColorB && a == shaderColorA) return;
+        shaderColorR = r; shaderColorG = g; shaderColorB = b; shaderColorA = a;
+        if (GLSMHooks.SHADER_COLOR_CHANGE.hasListeners()) {
+            GLSMHooks.shaderColorChangeEvent.red = r;
+            GLSMHooks.shaderColorChangeEvent.green = g;
+            GLSMHooks.shaderColorChangeEvent.blue = b;
+            GLSMHooks.shaderColorChangeEvent.alpha = a;
+            GLSMHooks.SHADER_COLOR_CHANGE.post(GLSMHooks.shaderColorChangeEvent);
+        }
+    }
+
     // Deferred vertex attribute upload flags — set when state changes, flushed before draw
     private static boolean dirtyColorAttrib;
     private static boolean dirtyNormalAttrib;

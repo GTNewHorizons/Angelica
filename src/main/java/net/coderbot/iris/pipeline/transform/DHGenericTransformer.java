@@ -94,7 +94,7 @@ public class DHGenericTransformer {
                 + " float skyLight = (float(uSkyLight) + 0.5) / 16.0;"
                 + " _vert_tex_light_coord = vec2(blockLight, skyLight);"
                 + " dhMaterialId = aMaterial;"
-                + " _vert_color = iris_color;"
+                + " _vert_color = iris_color * iris_ColorModulator;"
                 + " }"
         );
         transformer.prependMain("_vert_init();");

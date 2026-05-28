@@ -34,7 +34,7 @@ class AttributeTransformer {
 			transformer.injectVariable("layout(location = 4) in vec3 iris_Normal;");
 
 			transformer.rename("gl_Vertex", "iris_Vertex");
-			transformer.rename("gl_Color", "iris_Color");
+			transformer.replaceExpression("gl_Color", "(iris_Color * iris_ColorModulator)");
 			transformer.rename("gl_Normal", "iris_Normal");
 
 			// ftransform() = gl_ModelViewProjectionMatrix * gl_Vertex
