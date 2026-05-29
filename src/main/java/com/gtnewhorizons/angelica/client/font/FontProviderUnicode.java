@@ -24,22 +24,7 @@ public final class FontProviderUnicode implements FontProvider {
     private static class InstLoader { static final FontProviderUnicode instance = new FontProviderUnicode(); }
     public static FontProviderUnicode get() { return FontProviderUnicode.InstLoader.instance; }
 
-    private static final int[] unicodePageLocations = new int[256];
     private final byte[] glyphWidth = new byte[65536];
-
-    private int getUnicodePageTexture(int page) {
-        final int lookup = unicodePageLocations[page];
-        if (lookup == 0) {
-            final ResourceLocation rl = new ResourceLocation(String.format(
-                "textures/font/unicode_page_%02x.png",
-                page));
-            final int texture = getTextureFromLocation(rl);
-            unicodePageLocations[page] = texture;
-            return texture;
-        } else {
-            return lookup;
-        }
-    }
 
     @Override
     public boolean isGlyphAvailable(char chr) {
@@ -99,12 +84,6 @@ public final class FontProviderUnicode implements FontProvider {
     @Override
     public float getShadowOffset() {
         return FontConfig.fontShadowOffset * FontConfig.fontShadowOffsetUC;
-    }
-
-    @Override
-    public int getTexture(char chr) {
-        final int uniPage = chr / 256;
-        return getUnicodePageTexture(uniPage);
     }
 
     @Override

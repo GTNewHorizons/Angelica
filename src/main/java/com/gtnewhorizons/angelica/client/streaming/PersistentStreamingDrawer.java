@@ -27,6 +27,7 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
     private ByteBuffer persistentMapping;
     private final long[] fences = new long[NUM_SECTIONS];
     private int currentSection;
+    //private long sectionWritePointer;
     private int sectionWriteOffset;
     private int sectionWriteStart;
     private static int globalFPSCount;

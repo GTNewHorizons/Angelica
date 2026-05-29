@@ -66,7 +66,7 @@ public final class FontProviderMC implements FontProvider {
     @Override
     public float getUStart(char chr) {
         int lutIndex = lookupMcFontPosition(chr);
-        return ((lutIndex % 16) * 8) / 256.0F; //TODO 256
+        return ((lutIndex % 16) * 8) / 256.0F;
     }
 
     @Override
@@ -101,13 +101,6 @@ public final class FontProviderMC implements FontProvider {
     @Override
     public float getShadowOffset() {
         return FontConfig.fontShadowOffset;
-    }
-
-    @Override
-    public int getTexture(char chr) {
-        throw new UnsupportedOperationException(
-            "Cannot call getTexture() in FontProviderMC - Implementation is dependent on the FontRenderer!"
-        );
     }
 
     @Override

@@ -127,6 +127,11 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         }
     }
 
+    @Inject(method = "readFontTexture", at = @At("RETURN"))
+    private void angelica$onReadFontTexture(CallbackInfo ci) {
+        angelica$batcher.initializeTextures();
+    }
+
     @Unique
     private static boolean angelica$charInRange(char what, char fromInclusive, char toInclusive) {
         return (what >= fromInclusive) && (what <= toInclusive);

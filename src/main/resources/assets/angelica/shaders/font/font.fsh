@@ -3,10 +3,11 @@
 uniform sampler2DArray sampler;
 uniform float strength;
 
-flat in vec4 color;
 flat in vec4 tB; // uMin, vMin, uMax, vMax
-in vec2 texCoord;
+flat in vec4 color;
 flat in uint layer;
+
+in vec2 texCoord;
 
 
 out vec4 fragColor;
@@ -25,12 +26,12 @@ float txSample(vec2 uv, float du, float dv, float factorU, float factorV) {
     float finalU = uv.x + factorU * du;
     float finalV = uv.y + factorV * dv;
     if (finalU < tB.x || finalV < tB.y || finalU > tB.z || finalV > tB.w) return 0.0f;
-    return weight * texture(sampler, vec3(finalU, finalV, layer)).a;
+    return weight * texture(sampler, vec3(finalU, finalV, layer)).r;
 }
 
 float texSample(vec2 uv) {
     if (uv.x < tB.x || uv.y < tB.y || uv.x > tB.z || uv.y > tB.w) return 0.0f;
-    return texture(sampler, vec3(uv, layer)).a;
+    return texture(sampler, vec3(uv, layer)).r;
 }
 
 float easeOut(float t) {
@@ -106,6 +107,7 @@ void main() {
     //a = 1 - exp(-a + 1);
     //a = mix(a, 1, 0.1);
     //col.a = a;
+    //col.a = 1.0;
 
     if (col.a <= 0.1) discard;
 

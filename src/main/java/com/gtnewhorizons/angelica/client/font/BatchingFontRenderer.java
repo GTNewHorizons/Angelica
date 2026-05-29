@@ -10,8 +10,10 @@ import com.gtnewhorizons.angelica.client.streaming.StreamingDrawer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import lombok.Setter;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
@@ -51,9 +53,22 @@ public final class BatchingFontRenderer {
     final boolean isSGA;
     final boolean isSplash;
 
-    private final int fontTexture;
-
+    // Minecraft
     private static FontTextureArray mainTextureArray;
+    private static FontTextureArray unicodeTextureArray;
+
+    // SGA
+    private static FontTextureArray sgaTextureArray;
+
+    // Custom Font
+    private static FontTextureArray customTextureArray;
+    private static FontTextureArray fallbackTextureArray;
+
+    // Splash (will get deleted)
+    private static BatchingFontRenderer splashFontRenderer;
+    private static FontTextureArray splashTextureArray;
+
+    private final ResourceLocation locationFontTexture;
 
     /** For use with modded books. Affects calculations and forces some defaults. */
     @Setter
@@ -63,22 +78,53 @@ public final class BatchingFontRenderer {
     private static final int FLAG_DINNERBONE = 0x2;
 
     public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, int[] colorCode, ResourceLocation locationFontTexture) {
+
         this.underlying = underlying;
         this.charWidth = charWidth;
         this.colorCode = colorCode;
 
         this.isSGA = locationFontTexture.getResourcePath().equals("textures/font/ascii_sga.png");
         this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
+        this.locationFontTexture = locationFontTexture;
 
-        FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
+        FontProviderMC.get(this.isSGA).charWidth = this.charWidth; //TODO
 
-        // Determine GL texture by binding & querying the bound texture
-        ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
-        this.fontTexture = GLStateManager.getBoundTextureForServerState();
-        if (mainTextureArray == null) {
-            mainTextureArray = new FontTextureArray(256, false);
-            mainTextureArray.addAtlasFromBoundTexture(0);
+
+        if (isSplash) {
+            splashFontRenderer = this;
+
+            splashTextureArray = new FontTextureArray(256, 1, new int[] { 0 }, true);
+            //currentTextureArray = splashTextureArray;
+            GLSMHooks.SPLASH_DESTROY.addListener(event -> {
+                System.out.println("Splash thread listener works!");
+                splashTextureArray.delete();
+                splashTextureArray = null;
+                splashFontRenderer.delete();
+                splashFontRenderer = null;
+            });
+            //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+        } else if (isSGA) {
+            sgaTextureArray = new FontTextureArray(256, 1, new int[] { 0 }, true);
+        } else {
+//            int layer = 0;
+//            final int[] layersLookupArray = new int[256];
+//            for (int i = 0; i < 256; i++) {
+////                try {
+////                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
+////                } catch (Exception ignored) {
+////                    System.out.println("Could not find Layer " + i + ".");
+////                }
+//                layersLookupArray[i] = layer;
+//                layer++;
+//            }
+//            mainTextureArray = new FontTextureArray(256, layer, layersLookupArray, true);
+//            ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+//            mainTextureArray.addAtlasFromBoundTexture(0);
+//            //currentTextureArray = mainTextureArray; //TODO switch on splash destroy
         }
+
+        // Bind font texture & then copy it over into the atlas
+        //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
 
         final String vsh = ShaderProgram.loadShaderSource(
             BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh"),
@@ -116,11 +162,45 @@ public final class BatchingFontRenderer {
         }
         //fontShaderId = ShaderProgram.createProgram(vsh, fsh);
         fontShaderId = program.getProgram();
-        GLStateManager.glUseProgram(fontShaderId);
-
-        GLStateManager.glUseProgram(0);
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
+    }
+
+    public void initializeTextures() {
+        FontProviderMC.get(this.isSGA).charWidth = this.charWidth; //TODO
+
+        ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+
+        if (this.isSplash) {
+            splashTextureArray.addAtlasFromBoundTexture(0);
+            return;
+        }
+
+        if (this.isSGA) {
+
+            return;
+        }
+
+//        if (mainTextureArray != null) {
+//            mainTextureArray.delete();
+//        }
+
+        if (mainTextureArray == null) {
+            int layer = 0;
+            final int[] layersLookupArray = new int[256];
+            for (int i = 0; i < 256; i++) {
+//                try {
+//                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
+//                } catch (Exception ignored) {
+//                    System.out.println("Could not find Layer " + i + ".");
+//                }
+                layersLookupArray[i] = layer;
+                layer++;
+            }
+            mainTextureArray = new FontTextureArray(256, layer, layersLookupArray, true);
+            //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+            mainTextureArray.addAtlasFromBoundTexture(0);
+        }
     }
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
@@ -247,7 +327,6 @@ public final class BatchingFontRenderer {
         }
         final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
 
-        FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
 
         this.beginBatch();
         float curX = anchorX;
@@ -272,8 +351,9 @@ public final class BatchingFontRenderer {
             int rainbowCharIndex = 0;
             int visibleCharIndex = 0;
 
-            float glyphScaleY = getGlyphScaleY();
-            float glyphScaleX = getGlyphScaleX();
+            final float glyphScaleY = getGlyphScaleY();
+            final float glyphScaleX = getGlyphScaleX();
+            final float glyphSpacing = getGlyphSpacing();
             float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
 
             final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
@@ -287,6 +367,8 @@ public final class BatchingFontRenderer {
 
             for (int charIdx = 0; charIdx < stringEnd; charIdx++) {
                 char chr = string.charAt(charIdx);
+
+                // COLOR CODE BLOCK START
                 if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
                     final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
                     charIdx++;
@@ -315,19 +397,8 @@ public final class BatchingFontRenderer {
                         strikethroughStartX = strikethroughEndX;
                     }
 
-                    if (fmtCode == 'x' && AngelicaConfig.enableRGBColors && charIdx + SECTION_X_PAYLOAD < stringEnd) {
-                        int rgb = ColorCodeUtils.parseHexPairs(string, charIdx + 1, 6);
-                        if (rgb != -1) {
-                            curRainbow = false;
-                            curGradient = false;
-                            curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                            curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
-                            charIdx += SECTION_X_PAYLOAD;
-                        }
-                    } else {
                     final boolean is09 = charInRange(fmtCode, '0', '9');
-                    final boolean isAF = charInRange(fmtCode, 'a', 'f');
-                    if (is09 || isAF) {
+                    if (is09 || charInRange(fmtCode, 'a', 'f')) {
                         curRandom = false;
                         curBold = false;
                         curStrikethrough = false;
@@ -342,61 +413,95 @@ public final class BatchingFontRenderer {
                         curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                         final int shadowRgb = this.colorCode[colorIdx + 16];
                         curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
-                    } else if (fmtCode == 'k') {
-                        curRandom = true;
-                    } else if (fmtCode == 'l') {
-                        curBold = true;
-                    } else if (fmtCode == 'm') {
-                        curStrikethrough = true;
-                        strikethroughStartX = curX - 1;
-                        strikethroughEndX = strikethroughStartX;
-                    } else if (fmtCode == 'n') {
-                        curUnderline = true;
-                        underlineStartX = curX - 1;
-                        underlineEndX = underlineStartX;
-                    } else if (fmtCode == 'o') {
-                        curItalic = true;
-                    } else if (fmtCode == 'q' && AngelicaConfig.enableRainbow) {
-                        curRainbow = true;
-                        curGradient = false;
-                        rainbowCharIndex = 0;
-                    } else if (fmtCode == 'z' && AngelicaConfig.enableWaveText) {
-                        curWave = !curWave;
-                    } else if (fmtCode == 'v' && AngelicaConfig.enableDinnerboneText) {
-                        curDinnerbone = !curDinnerbone;
-                    } else if (fmtCode == 'g' && AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
-                        int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
-                        int color2 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1 + SECTION_X_LENGTH);
-                        if (color1 != -1 && color2 != -1) {
-                            curGradient = true;
-                            curRainbow = false;
-                            gradientStartRgb = color1;
-                            gradientEndRgb = color2;
-                            gradientCharIndex = 0;
-                            gradientTotalChars = countVisibleChars(string, charIdx + 1 + GRADIENT_PAYLOAD, stringEnd);
-                            gradientStep = gradientTotalChars > 1 ? 1f / (gradientTotalChars - 1) : 0f;
-                            charIdx += GRADIENT_PAYLOAD;
-                        }
-                    } else if (fmtCode == 'r') {
-                        curRandom = false;
-                        curBold = false;
-                        curStrikethrough = false;
-                        curUnderline = false;
-                        curItalic = false;
-                        curRainbow = false;
-                        curWave = false;
-                        curDinnerbone = false;
-                        curGradient = false;
-                        curColor = color;
-                        curShadowColor = shadowColor;
-                        curShader = false;
-                    } else if (fmtCode == 'y') {
-                        curShader = true;
+                        continue;
                     }
-                    } // close else block for non-§x codes
 
+                    switch (fmtCode) {
+                        case 'x' -> {
+                            if (AngelicaConfig.enableRGBColors && charIdx + SECTION_X_PAYLOAD < stringEnd) {
+                                int rgb = ColorCodeUtils.parseHexPairs(string, charIdx + 1, 6);
+                                if (rgb != -1) {
+                                    curRainbow = false;
+                                    curGradient = false;
+                                    curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                                    curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
+                                    charIdx += SECTION_X_PAYLOAD;
+                                }
+                            }
+                        }
+                        case 'k' -> {
+                            curRandom = true;
+                        }
+                        case 'l' -> {
+                            curBold = true;
+                        }
+                        case 'm' -> {
+                            curStrikethrough = true;
+                            strikethroughStartX = curX - 1;
+                            strikethroughEndX = strikethroughStartX;
+                        }
+                        case 'n' -> {
+                            curUnderline = true;
+                            underlineStartX = curX - 1;
+                            underlineEndX = underlineStartX;
+                        }
+                        case 'o' -> {
+                            curItalic = true;
+                        }
+                        case 'q' -> {
+                            if (AngelicaConfig.enableRainbow) {
+                                curRainbow = true;
+                                curGradient = false;
+                                rainbowCharIndex = 0;
+                            }
+                        }
+                        case 'z' -> {
+                            if (AngelicaConfig.enableWaveText) {
+                                curWave = !curWave;
+                            }
+                        }
+                        case 'v' -> {
+                            if (AngelicaConfig.enableDinnerboneText) {
+                                curDinnerbone = !curDinnerbone;
+                            }
+                        }
+                        case 'g' -> {
+                            if (AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
+                                int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
+                                int color2 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1 + SECTION_X_LENGTH);
+                                if (color1 != -1 && color2 != -1) {
+                                    curGradient = true;
+                                    curRainbow = false;
+                                    gradientStartRgb = color1;
+                                    gradientEndRgb = color2;
+                                    gradientCharIndex = 0;
+                                    gradientTotalChars = countVisibleChars(string, charIdx + 1 + GRADIENT_PAYLOAD, stringEnd);
+                                    gradientStep = gradientTotalChars > 1 ? 1f / (gradientTotalChars - 1) : 0f;
+                                    charIdx += GRADIENT_PAYLOAD;
+                                }
+                            }
+                        }
+                        case 'r' -> {
+                            curRandom = false;
+                            curBold = false;
+                            curStrikethrough = false;
+                            curUnderline = false;
+                            curItalic = false;
+                            curRainbow = false;
+                            curWave = false;
+                            curDinnerbone = false;
+                            curGradient = false;
+                            curColor = color;
+                            curShadowColor = shadowColor;
+                            curShader = false;
+                        }
+                        case 'y' -> {
+                            curShader = true; //TODO extend this functionality
+                        }
+                    }
                     continue;
                 }
+                // COLOR CODE BLOCK END
 
                 if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
                     final char replacement = GlyphReplacements.getReplacementGlyph(chr);
@@ -413,10 +518,11 @@ public final class BatchingFontRenderer {
                     chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                 }
 
-                FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
-
-                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
-                float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
+                //final FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
+                //final FontTextureArray fontProvider = getFontProvider(chr, FontConfig.enableCustomFont, unicodeFlag);
+                final float yScaleMultiplier = 1;
+                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * yScaleMultiplier / 2);
+                float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * yScaleMultiplier;
 
                 visibleCharIndex++;
 
@@ -443,24 +549,31 @@ public final class BatchingFontRenderer {
                     gradientCharIndex++;
                 }
 
-                final float uStart = fontProvider.getUStart(chr);
-                final float vStart = fontProvider.getVStart(chr);
-                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
-                final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
-                final float uSz = fontProvider.getUSize(chr);
-                final float vSz = fontProvider.getVSize(chr);
-                final float shadowOffset = fontProvider.getShadowOffset();
+                //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+                final FontTextureArray fontArray = this.isSplash ? splashTextureArray : mainTextureArray;
+                final GlyphData data = fontArray.getGlyphData(chr);
+                final float uStart = data.uStart;
+                final float vStart = data.vStart;
+                final float xAdvance = data.xAdvance * glyphScaleX;
+                final float glyphW = data.glyphW * glyphScaleX;
+                final float uSize = data.uSize;
+                final float vSize = data.vSize;
+//                final float uStart = fontProvider.getUStart(chr);
+//                final float vStart = fontProvider.getVStart(chr);
+//                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
+//                final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
+//                final float uSize = fontProvider.getUSize(chr);
+//                final float vSize = fontProvider.getVSize(chr);
+//                final float shadowOffset = fontProvider.getShadowOffset();
+                final float shadowOffset = FontConfig.fontShadowOffset;
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
-                final int layer = chr / 256;
-                if (fontProvider instanceof FontProviderUnicode) {
-                    if (!mainTextureArray.hasLayer(layer)) {
-                        mainTextureArray.addAtlas(
-                            layer,
-                            new ResourceLocation(String.format("textures/font/unicode_page_%02x.png", layer))
-                        );
-                    }
-                }
+                final int layer = fontArray.getDepth(chr);
+//                if (fontProvider instanceof FontProviderUnicode) { //TODO
+//                    if (!mainTextureArray.hasLayer(layer)) {
+//                        mainTextureArray.addAtlas(layer, FontTextureArray.getUnicodePage(layer));
+//                    }
+//                }
 
 
                 // Wave: Y offset via sine wave
@@ -508,7 +621,7 @@ public final class BatchingFontRenderer {
                         pushQuad(
                             curX + shadowOffsetPart, renderY + shadowOffsetPart,
                             glyphW - 1, heightSouth,
-                            uStart, vStart, uSz, vSz,
+                            uStart, vStart, uSize, vSize,
                             curShadowColor,
                             layer,
                             curItalic,
@@ -519,7 +632,7 @@ public final class BatchingFontRenderer {
                             pushQuad(
                                 curX + 2 * shadowOffsetPart, renderY + shadowOffsetPart,
                                 glyphW - 1, heightSouth,
-                                uStart, vStart, uSz, vSz,
+                                uStart, vStart, uSize, vSize,
                                 curShadowColor,
                                 layer,
                                 curItalic,
@@ -532,7 +645,7 @@ public final class BatchingFontRenderer {
                 pushQuad(
                     curX, renderY,
                     glyphW - 1, heightSouth,
-                    uStart, vStart, uSz, vSz,
+                    uStart, vStart, uSize, vSize,
                     curColor,
                     layer,
                     curItalic,
@@ -545,7 +658,7 @@ public final class BatchingFontRenderer {
                         pushQuad(
                             curX + shadowOffsetPart, renderY,
                             glyphW - 1, heightSouth,
-                            uStart, vStart, uSz, vSz,
+                            uStart, vStart, uSize, vSize,
                             curColor,
                             layer,
                             curItalic,
@@ -553,16 +666,7 @@ public final class BatchingFontRenderer {
                         );
                     }
                 }
-
-                /*
-                Vertex-per-char counts for different configurations
-                    default:        4
-                    shadow only:    4(1 + shadowCopies)
-                    bold only:      4(1 + boldCopies)
-                    both:           4(1 + 2 * shadowCopies + boldCopies)
-                 */
-
-                curX += (xAdvance + (curBold ? 1 : 0)) + getGlyphSpacing();
+                curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing;
                 underlineEndX = curX;
                 strikethroughEndX = curX;
 
@@ -615,6 +719,58 @@ public final class BatchingFontRenderer {
         return (int) (curX + (enableShadow ? 1 : 0));
     }
 
+    private FontTextureArray getFontProvider(char chr, boolean customFontEnabled, boolean forceUnicode) {
+        if (this.isSGA && isGlyphAvailable(chr)) {
+            //return FontProviderMC.getSGA();
+        }
+        if (this.bookMode) {
+            //return FontProviderUnicode.get();
+
+        }
+        customFontEnabled = false;
+        if (customFontEnabled && !this.isSplash) {
+//            FontProvider fp;
+//            fp = FontProviderCustom.getPrimary();
+//            if (fp.isGlyphAvailable(chr)) { return fp; }
+//            fp = FontProviderCustom.getFallback();
+//            if (fp.isGlyphAvailable(chr)) { return fp; }
+//            return FontProviderUnicode.get();
+            return null;
+        } else {
+//            if (!forceUnicode && FontProviderMC.getDefault().isGlyphAvailable(chr)) {
+//                return FontProviderMC.getDefault();
+//            } else {
+//                return FontProviderUnicode.get();
+//            }
+            return mainTextureArray;
+        }
+    }
+
+
+    private static final Char2ShortOpenHashMap MCFONT_ASCII_MAP = new Char2ShortOpenHashMap();
+
+    /**
+     * The full list of characters present in the default Minecraft font, excluding the Unicode font
+     */
+    @SuppressWarnings("UnnecessaryUnicodeEscape")
+    private static final String MCFONT_CHARS = "\u00c0\u00c1\u00c2\u00c8\u00ca\u00cb\u00cd\u00d3\u00d4\u00d5\u00da\u00df\u00e3\u00f5\u011f\u0130\u0131\u0152\u0153\u015e\u015f\u0174\u0175\u017e\u0207\u0000\u0000\u0000\u0000\u0000\u0000\u0000 !\"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~\u2302\u00c7\u00fc\u00e9\u00e2\u00e4\u00e0\u00e5\u00e7\u00ea\u00eb\u00e8\u00ef\u00ee\u00ec\u00c4\u00c5\u00c9\u00e6\u00c6\u00f4\u00f6\u00f2\u00fb\u00f9\u00ff\u00d6\u00dc\u00f8\u00a3\u00d8\u00d7\u0192\u00e1\u00ed\u00f3\u00fa\u00f1\u00d1\u00aa\u00ba\u00bf\u00ae\u00ac\u00bd\u00bc\u00a1\u00ab\u00bb\u2591\u2592\u2593\u2502\u2524\u2561\u2562\u2556\u2555\u2563\u2551\u2557\u255d\u255c\u255b\u2510\u2514\u2534\u252c\u251c\u2500\u253c\u255e\u255f\u255a\u2554\u2569\u2566\u2560\u2550\u256c\u2567\u2568\u2564\u2565\u2559\u2558\u2552\u2553\u256b\u256a\u2518\u250c\u2588\u2584\u258c\u2590\u2580\u03b1\u03b2\u0393\u03c0\u03a3\u03c3\u03bc\u03c4\u03a6\u0398\u03a9\u03b4\u221e\u2205\u2208\u2229\u2261\u00b1\u2265\u2264\u2320\u2321\u00f7\u2248\u00b0\u2219\u00b7\u221a\u207f\u00b2\u25a0\u0000";
+
+
+    static {
+        MCFONT_ASCII_MAP.defaultReturnValue((short) 0);
+        for (short i = 0; i < MCFONT_CHARS.length(); i++) {
+            MCFONT_ASCII_MAP.put(MCFONT_CHARS.charAt(i), i); //TODO optimize
+        }
+    }
+
+    public static int lookupMcFontPosition(char ch) {
+        return MCFONT_ASCII_MAP.get(ch);
+    }
+
+    public static boolean isGlyphAvailable(char chr) {
+        return MCFONT_ASCII_MAP.containsKey(chr);
+    }
+
     public float getCharWidthFine(char chr) {
         if (chr == FORMATTING_CHAR) { return -1; }
 
@@ -644,17 +800,11 @@ public final class BatchingFontRenderer {
 
     private int mainVAO = 0;
 
-    //TODO add bindless textures
-
-
-
     private int batchDepth = 0;
 
+    //TODO make it work with any initial capacity & fix resize
     private final StreamingDrawer stream = StreamingDrawer.create(1024 * 400 * INSTANCE_SIZE); //TODO test resize
     private int instanceCount; //TODO merge into stream
-
-
-
 
     private int initVAO() {
         int vao = GLStateManager.glGenVertexArrays();
@@ -771,10 +921,6 @@ public final class BatchingFontRenderer {
         memPutFloat(ptr + 8, width);
         memPutFloat(ptr + 12, height);
 
-//            memPutFloat(ptr, round(x));
-//            memPutFloat(ptr + 4, round(y));
-//            memPutFloat(ptr + 8, round(width));
-//            memPutFloat(ptr + 12, round(height));
         // tb, tb, tb, tb
         memPutFloat(ptr + 16, uMin);
         memPutFloat(ptr + 20, vMin);
@@ -792,7 +938,7 @@ public final class BatchingFontRenderer {
         memPutByte(ptr + 36, (byte) layer);
 
         final int flags = (italic ? FLAG_ITALIC : 0)
-            | (dinnerbone ? FLAG_DINNERBONE : 0);
+            | (dinnerbone ? FLAG_DINNERBONE : 0); //TODO
         memPutByte(ptr + 37, (byte) flags);
 
         instanceCount++;
@@ -824,7 +970,7 @@ public final class BatchingFontRenderer {
 
         GLStateManager.glBindVertexArray(mainVAO);
 
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, stream.getVBO());
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, stream.getVBO()); //TODO bindless vbo
 
         final int offset = stream.finishUploading() / INSTANCE_SIZE;
 
@@ -833,7 +979,7 @@ public final class BatchingFontRenderer {
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
-        final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
+        //final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
 
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
@@ -845,7 +991,8 @@ public final class BatchingFontRenderer {
         }
         GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
 
-        mainTextureArray.bind();
+        final FontTextureArray currentTextureArray = this.isSplash ? splashTextureArray : mainTextureArray;
+         currentTextureArray.bind();
 //        GL31.glDrawElementsInstanced(
 //            GL11.GL_TRIANGLES,
 //            6,
@@ -861,7 +1008,7 @@ public final class BatchingFontRenderer {
             instanceCount,
             offset
         );
-        mainTextureArray.unbind();
+//        currentTextureArray.unbind();
 
 
         GLStateManager.glUseProgram(prevProgram);
@@ -869,15 +1016,20 @@ public final class BatchingFontRenderer {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindVertexArray(0);
 
-        if (!isBlendEnabledBefore) {
-            GLStateManager.disableBlend();
-        }
+//        if (!isBlendEnabledBefore) {
+//            GLStateManager.disableBlend();
+//        }
 
         clearBatch();
     }
 
     private void clearBatch() {
         instanceCount = 0;
+    }
+
+    private void delete() {
+        GLStateManager.glDeleteVertexArrays(mainVAO);
+        stream.delete();
     }
 
 }

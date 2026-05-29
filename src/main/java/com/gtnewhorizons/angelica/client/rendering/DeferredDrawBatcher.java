@@ -147,7 +147,7 @@ public class DeferredDrawBatcher {
      * - fog state (mode, color, start/end — constant for the frame)
      */
     static long captureStateKey() {
-        final int textureId = GLStateManager.getTextures().getTextureUnitBindings(0).getBinding();
+        final int textureId = GLStateManager.getTextures().getTextureUnitBindings(0).getTexture2D();
         final int srcRgb = GLStateManager.getBlendState().getSrcRgb();
         final int dstRgb = GLStateManager.getBlendState().getDstRgb();
         final boolean blendEnabled = GLStateManager.getBlendMode().isEnabled();

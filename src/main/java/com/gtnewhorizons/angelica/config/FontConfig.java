@@ -69,7 +69,7 @@ public class FontConfig {
     @Config.Comment("Custom font scale multiplier, for bugfixes.")
     @Config.DefaultFloat(1.5F)
     @Config.RangeFloat(min = 0.1F, max = 3F)
-    public static float customFontScale;
+    public static float customFontScale; //TODO wat
 
     @Config.Comment("A shadow offset multiplier applied only to the Unicode font.")
     @Config.DefaultFloat(0.5F)

@@ -5,11 +5,13 @@ import lombok.Setter;
 
 @Getter
 public class TextureBinding implements ISettableState<TextureBinding> {
-    @Setter protected int binding;
+    @Setter protected int texture2D;
+    @Setter protected int texture2DArray;
 
     @Override
     public TextureBinding set(TextureBinding state) {
-        this.binding = state.binding;
+        this.texture2D = state.texture2D;
+        this.texture2DArray = state.texture2DArray;
         return this;
     }
 
@@ -17,7 +19,8 @@ public class TextureBinding implements ISettableState<TextureBinding> {
     public boolean sameAs(Object state) {
         if (this == state) return true;
         if (!(state instanceof TextureBinding textureBinding)) return false;
-        return binding == textureBinding.binding;
+        return texture2D == textureBinding.texture2D
+            && texture2DArray == textureBinding.texture2DArray;
     }
     @Override
     public TextureBinding copy() {

@@ -4,7 +4,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.textures.TextureLoader;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import lombok.Setter;
-import lombok.Value;
 import net.minecraft.client.Minecraft;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -86,16 +85,6 @@ public final class FontProviderCustom implements FontProvider {
         }
 
         this.fontAtlases = new FontAtlas[ATLAS_COUNT];
-    }
-
-    @Value
-    private static class GlyphData {
-        float uStart;
-        float vStart;
-        float xAdvance;
-        float glyphW;
-        float uSz;
-        float vSz;
     }
 
     private static final class FontAtlas {
@@ -211,8 +200,6 @@ public final class FontProviderCustom implements FontProvider {
                 getPixelBuffer(image)
             );
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-            // TODO replace this with something proper & add linear
-            //this.texture = TextureUtil.uploadTextureImageAllocate(GLStateManager.glGenTextures(), image, false, false);
         }
     }
 
@@ -269,22 +256,17 @@ public final class FontProviderCustom implements FontProvider {
 
     @Override
     public float getUSize(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].uSz;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].uSize;
     }
 
     @Override
     public float getVSize(char chr) {
-        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].vSz;
+        return getAtlas(chr).glyphData[chr % ATLAS_CHARS].uSize;
     }
 
     @Override
     public float getShadowOffset() {
         return FontConfig.fontShadowOffset;
-    }
-
-    @Override
-    public int getTexture(char chr) {
-        return getAtlas(chr).texture;
     }
 
     @Override

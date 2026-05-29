@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import com.gtnewhorizons.angelica.glsm.hooks.events.SplashDestroyEvent;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
@@ -1756,7 +1757,7 @@ public class GLStateManager {
     }
 
     private static int getBoundTexture(int unit) {
-        return textures.getTextureUnitBindings(unit).getBinding();
+        return textures.getTextureUnitBindings(unit).getTexture2D();
     }
 
     public static void glBindTexture(int target, int texture) {
@@ -1772,13 +1773,6 @@ public class GLStateManager {
             deferredDeleteTextures.remove(texture);
         }
 
-        if (target != GL11.GL_TEXTURE_2D) {
-            // Non-2D targets (e.g. GL_TEXTURE_2D_ARRAY) pass through without caching
-            logUncachedTextureTarget(target);
-            RENDER_BACKEND.bindTexture(target, texture);
-            return;
-        }
-
         if (!isCachingEnabled()) {
             RENDER_BACKEND.bindTexture(target, texture);
             return;
@@ -1786,24 +1780,40 @@ public class GLStateManager {
 
         final int activeUnit = GLStateManager.activeTextureUnit.getValue();
         final TextureBinding textureUnit = textures.getTextureUnitBindings(activeUnit);
-        final int cachedBinding = textureUnit.getBinding();
 
-        if (cachedBinding != texture) {
-            RENDER_BACKEND.bindTexture(target, texture);
-            textureUnit.setBinding(texture);
-            if (texture != 0 && activeUnit > maxBoundTextureUnit) {
-                maxBoundTextureUnit = activeUnit;
-            }
-            if (!lockBindCallback && activeTextureUnit.getValue() == 0) {
-                lockBindCallback = true;
-                if (GLSMHooks.TEXTURE_BIND.hasListeners()) {
-                    GLSMHooks.textureBindEvent.textureId = texture;
-                    GLSMHooks.TEXTURE_BIND.post(GLSMHooks.textureBindEvent);
+        if (target == GL11.GL_TEXTURE_2D) {
+            final int cachedBinding = textureUnit.getTexture2D();
+            if (cachedBinding != texture) {
+                RENDER_BACKEND.bindTexture(target, texture);
+                textureUnit.setTexture2D(texture);
+                if (texture != 0 && activeUnit > maxBoundTextureUnit) {
+                    maxBoundTextureUnit = activeUnit;
                 }
-                RenderSystem.bindTextureToUnit(0, texture);
-                lockBindCallback = false;
+                if (!lockBindCallback && activeTextureUnit.getValue() == 0) {
+                    lockBindCallback = true;
+                    if (GLSMHooks.TEXTURE_BIND.hasListeners()) {
+                        GLSMHooks.textureBindEvent.textureId = texture;
+                        GLSMHooks.TEXTURE_BIND.post(GLSMHooks.textureBindEvent);
+                    }
+                    RenderSystem.bindTextureToUnit(0, texture);
+                    lockBindCallback = false;
+                }
             }
+        } else if (target == GL30.GL_TEXTURE_2D_ARRAY) {
+            final int cachedBinding = textureUnit.getTexture2DArray();
+            if (cachedBinding != texture) {
+                RENDER_BACKEND.bindTexture(target, texture);
+                textureUnit.setTexture2DArray(texture);
+                if (texture != 0 && activeUnit > maxBoundTextureUnit) {
+                    maxBoundTextureUnit = activeUnit;
+                }
+            }
+        } else {
+            // Other targets pass through without caching
+            logUncachedTextureTarget(target);
+            RENDER_BACKEND.bindTexture(target, texture);
         }
+
     }
 
     private static int changeFormatIfDeprecated(int internalformat) {
@@ -1992,12 +2002,12 @@ public class GLStateManager {
         if (id == 0) return;
 
         final int savedUnit = GLStateManager.activeTextureUnit.getValue();
-        final int savedBinding = textures.getTextureUnitBindings(savedUnit).getBinding();
+        final int savedBinding = textures.getTextureUnitBindings(savedUnit).getTexture2D();
         boolean changedUnit = false;
 
         // Unbind from all units that have this texture
         for (int i = 0; i <= maxBoundTextureUnit; i++) {
-            if (textures.getTextureUnitBindings(i).getBinding() == id) {
+            if (textures.getTextureUnitBindings(i).getTexture2D() == id) {
                 if (i != savedUnit) {
                     RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
                     changedUnit = true;
@@ -3094,8 +3104,8 @@ public class GLStateManager {
 
         // Always delete
         for (int i = 0; i <= maxBoundTextureUnit; i++) {
-            if (textures.getTextureUnitBindings(i).getBinding() == id) {
-                textures.getTextureUnitBindings(i).setBinding(0);
+            if (textures.getTextureUnitBindings(i).getTexture2D() == id) {
+                textures.getTextureUnitBindings(i).setTexture2D(0);
             }
         }
     }
@@ -3137,6 +3147,9 @@ public class GLStateManager {
         splashComplete = true;
         drawableGLHolder = null;
         drawableGL = null;
+        if (GLSMHooks.SPLASH_DESTROY.hasListeners()) {
+            GLSMHooks.SPLASH_DESTROY.post(new SplashDestroyEvent());
+        }
     }
 
     public static void glNewList(int list, int mode) {
@@ -3297,7 +3310,7 @@ public class GLStateManager {
             // Restore texture bindings for all units, then restore active unit. activeTextureUnit stores the 0-based index, glActiveTexture needs GL_TEXTURE0 + index.
             for (int i = 0; i < MAX_TEXTURE_UNITS; i++) {
                 RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
-                RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, textures.getTextureUnitBindings(i).getBinding());
+                RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, textures.getTextureUnitBindings(i).getTexture2D());
             }
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + activeTextureUnit.getValue());
         }

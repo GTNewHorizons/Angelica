@@ -18,6 +18,7 @@ public final class GLSMHooks {
     public static final EventBus<FogStateChangeEvent> FOG_STATE_CHANGE = EventBus.create(FogStateChangeEvent.class);
     public static final EventBus<LightmapCoordsEvent> LIGHTMAP_COORDS = EventBus.create(LightmapCoordsEvent.class);
     public static final EventBus<AlphaStateChangeEvent> ALPHA_STATE_CHANGE = EventBus.create(AlphaStateChangeEvent.class);
+    public static final EventBus<SplashDestroyEvent> SPLASH_DESTROY = EventBus.create(SplashDestroyEvent.class);
 
     // Reusable event instances
     public static final TextureBindEvent textureBindEvent = new TextureBindEvent();
