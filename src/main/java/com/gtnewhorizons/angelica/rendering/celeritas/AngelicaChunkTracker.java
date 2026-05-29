@@ -22,14 +22,13 @@
 
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ChunkTrackerAccessor;
-import it.unimi.dsi.fastutil.longs.LongCollection;
-import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
-import it.unimi.dsi.fastutil.longs.LongSets;
+import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
 import org.embeddedt.embeddium.impl.render.chunk.map.ChunkStatus;
-import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTracker;
+import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTrackerImpl;
 import org.embeddedt.embeddium.impl.util.PositionUtil;
+
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 
 /**
  * Configurable chunk tracker supporting "fast" and "aggressive" loading modes.
@@ -41,47 +40,11 @@ import org.embeddedt.embeddium.impl.util.PositionUtil;
  *
  * Mode can be switched at runtime via options menu - triggers renderer reload.
  */
-public class AngelicaChunkTracker extends ChunkTracker {
+public class AngelicaChunkTracker extends ChunkTrackerImpl {
     private final LongOpenHashSet chunkReadyForced = new LongOpenHashSet();
 
-    private ChunkTrackerAccessor self() {
-        return (ChunkTrackerAccessor) this;
-    }
-
     @Override
-    public void onChunkStatusAdded(int x, int z, int flags) {
-        final var key = PositionUtil.packChunk(x, z);
-        final var prev = self().angelica$getChunkStatus().get(key);
-        final var cur = prev | flags;
-
-        if (prev == cur) {
-            return;
-        }
-
-        self().angelica$getChunkStatus().put(key, cur);
-        this.updateNeighbors(x, z);
-    }
-
-    @Override
-    public void onChunkStatusRemoved(int x, int z, int flags) {
-        final var key = PositionUtil.packChunk(x, z);
-        final var prev = self().angelica$getChunkStatus().get(key);
-        final int cur = prev & ~flags;
-
-        if (prev == cur) {
-            return;
-        }
-
-        if (cur == self().angelica$getChunkStatus().defaultReturnValue()) {
-            self().angelica$getChunkStatus().remove(key);
-        } else {
-            self().angelica$getChunkStatus().put(key, cur);
-        }
-
-        this.updateNeighbors(x, z);
-    }
-
-    private void updateNeighbors(int x, int z) {
+    protected void updateNeighbors(int x, int z) {
         for (int ox = -1; ox <= 1; ox++) {
             for (int oz = -1; oz <= 1; oz++) {
                 this.updateMerged(ox + x, oz + z);
@@ -89,61 +52,72 @@ public class AngelicaChunkTracker extends ChunkTracker {
         }
     }
 
-    private void updateMerged(int x, int z) {
+    @Override
+    protected void updateMerged(int x, int z) {
         final long key = PositionUtil.packChunk(x, z);
-        final int selfFlags = self().angelica$getChunkStatus().get(key);
+        final int selfFlags = chunkStatus.get(key);
 
         // If self doesn't have FLAG_ALL, can't be ready at all
         if (selfFlags != ChunkStatus.FLAG_ALL) {
             // Remove from ready if present
-            final boolean wasReady = self().angelica$getChunkReady().remove(key) | this.chunkReadyForced.remove(key);
-            if (wasReady && !self().angelica$getLoadQueue().remove(key)) {
-                self().angelica$getUnloadQueue().add(key);
+            final boolean wasReady = chunkReady.remove(key) | this.chunkReadyForced.remove(key);
+            if (wasReady && !loadQueue.remove(key)) {
+                unloadQueue.add(key);
             }
             return;
         }
 
         // Check if all neighbors also have FLAG_ALL
         int mergedFlags = selfFlags;
+
+        outer:
         for (int ox = -1; ox <= 1; ox++) {
             for (int oz = -1; oz <= 1; oz++) {
-                mergedFlags &= self().angelica$getChunkStatus().get(PositionUtil.packChunk(ox + x, oz + z));
+                if (ox == 0 && oz == 0) continue;
+
+                mergedFlags &= chunkStatus.get(PositionUtil.packChunk(ox + x, oz + z));
+
+                if (mergedFlags != ChunkStatus.FLAG_ALL) break outer;
             }
         }
 
         if (mergedFlags == ChunkStatus.FLAG_ALL) {
             // All neighbors ready - add to both sets -- Trigger load if newly added to chunkReadyForced (first time ready)
-            if ((this.chunkReadyForced.add(key) || self().angelica$getChunkReady().add(key)) && !self().angelica$getUnloadQueue().remove(key)) {
-                self().angelica$getLoadQueue().add(key);
+            if ((this.chunkReadyForced.add(key) || chunkReady.add(key)) && !unloadQueue.remove(key)) {
+                loadQueue.add(key);
             }
         } else {
             // Self ready but neighbors not - add to forced, remove from proper
             // Trigger load if state changed (moved from proper to forced, or newly forced)
-            if ((this.chunkReadyForced.add(key) || self().angelica$getChunkReady().remove(key)) && !self().angelica$getUnloadQueue().remove(key)) {
-                self().angelica$getLoadQueue().add(key);
+            if ((this.chunkReadyForced.add(key) || chunkReady.remove(key)) && !unloadQueue.remove(key)) {
+                loadQueue.add(key);
             }
         }
     }
 
     @Override
-    public LongCollection getReadyChunks() {
+    public void forEachReady(RenderSectionManager sectionManager) {
+        int min = sectionManager.getMinSection();
+        int max = sectionManager.getMaxSection();
+
+
         if (AngelicaConfig.useVanillaChunkTracking) {
             // Aggressive mode: return both ready sets
-            final LongOpenHashSet combined = new LongOpenHashSet(self().angelica$getChunkReady());
+            final LongOpenHashSet combined = new LongOpenHashSet(chunkReady);
             combined.addAll(this.chunkReadyForced);
-            return LongSets.unmodifiable(combined);
+
+            forEachChunk(combined, (x, z) -> {
+                for(int y = min; y < max; ++y) {
+                    sectionManager.onSectionAdded(x, y, z);
+                }
+            });
         } else {
             // Default mode: only return chunks with all neighbors ready
-            return LongSets.unmodifiable(self().angelica$getChunkReady());
+            forEachChunk(this.chunkReady, (x, z) -> {
+                for(int y = min; y < max; ++y) {
+                    sectionManager.onSectionAdded(x, y, z);
+                }
+            });
         }
-    }
-
-    @Override
-    public void forEachEvent(ChunkEventHandler loadEventHandler, ChunkEventHandler unloadEventHandler) {
-        ChunkTracker.forEachChunk(self().angelica$getUnloadQueue(), unloadEventHandler);
-        self().angelica$getUnloadQueue().clear();
-
-        ChunkTracker.forEachChunk(self().angelica$getLoadQueue(), loadEventHandler);
-        self().angelica$getLoadQueue().clear();
     }
 }

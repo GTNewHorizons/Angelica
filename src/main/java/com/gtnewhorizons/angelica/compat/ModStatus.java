@@ -4,8 +4,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
-import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksDelegate;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
+import com.gtnewhorizons.angelica.rendering.celeritas.CubeStatusEvents;
 import cpw.mods.fml.common.Loader;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import mods.battlegear2.Battlegear;
@@ -71,7 +71,7 @@ public class ModStatus {
         }
 
         if (isCubicChunksLoaded) {
-            CubicChunksDelegate.init();
+            CubeStatusEvents.init();
         }
     }
 }
