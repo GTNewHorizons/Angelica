@@ -1,11 +1,19 @@
 #version 330 core
 
-uniform sampler2DArray sampler;
+uniform sampler2DArray sampler0; // Minecraft fonts
+#ifdef MULTISAMPLING
+uniform sampler2DArray sampler1; // Custom fonts
+#endif
 uniform float strength;
 
 flat in vec4 tB; // uMin, vMin, uMax, vMax
 flat in vec4 color;
 flat in uint layer;
+
+#ifdef MULTISAMPLING
+flat in uint secondTexture;
+#endif
+
 
 in vec2 texCoord;
 
@@ -26,12 +34,7 @@ float txSample(vec2 uv, float du, float dv, float factorU, float factorV) {
     float finalU = uv.x + factorU * du;
     float finalV = uv.y + factorV * dv;
     if (finalU < tB.x || finalV < tB.y || finalU > tB.z || finalV > tB.w) return 0.0f;
-    return weight * texture(sampler, vec3(finalU, finalV, layer)).r;
-}
-
-float texSample(vec2 uv) {
-    if (uv.x < tB.x || uv.y < tB.y || uv.x > tB.z || uv.y > tB.w) return 0.0f;
-    return texture(sampler, vec3(uv, layer)).r;
+    return weight * texture(sampler0, vec3(finalU, finalV, layer)).r;
 }
 
 float easeOut(float t) {
@@ -39,17 +42,35 @@ float easeOut(float t) {
     return 1.0 - pow(1.0 - t, 2.0);
 }
 
-
 void main() {
     vec4 col = color;
     float original_alpha = col.a;
+    // For custom fonts, don't apply the AA as it results in a blurry look.
+
+    #ifdef MULTISAMPLING
+    if (secondTexture != 0u) {
+        float a = texture(sampler1, vec3(texCoord, layer)).r;
+        if (col.a < 0.1) discard;
+
+        //a = easeOut(a);
+        a = smoothstep(0.1, 1, a);
+        //a = (a - 0.1) / 0.9;
+        col.a = a;
+
+
+        fragColor = col;
+
+        return;
+    }
+    #endif
+
     #if AA_MODE == 0
 
         col.a = original_alpha * texture(sampler, texCoord).a;
 
     #else
 
-        vec2 texScaled = texCoord * strength;
+        vec2 texScaled = texCoord * AA_STRENGTH;
         float res = 0;
         float fu = abs(dFdx(texScaled.x)) + abs(dFdy(texScaled.x));
         float fv = abs(dFdx(texScaled.y)) + abs(dFdy(texScaled.y));
@@ -89,27 +110,7 @@ void main() {
 
     #endif
 
-    /*
-    float alpha = texSample(texCoord);
-    float width = fwidth(alpha);
-
-    float smoothAlpha = smoothstep(0.5 - width, 0.5 + width, alpha);
-    col.a = smoothAlpha;
-    */
-
-
-    //col.a = smoothstep(0, 1, texSample(texCoord));
-    float a = texSample(texCoord);
-    a = easeOut(a);
-    //a = smoothstep(0.1, 1, a);
-    //a = pow(a, 1/2.2);
-    //a = (a - 0.1) / 0.9;
-    //a = 1 - exp(-a + 1);
-    //a = mix(a, 1, 0.1);
-    //col.a = a;
-    //col.a = 1.0;
-
-    if (col.a <= 0.1) discard;
+    if (col.a < 0.1) discard;
 
     fragColor = col;
 }

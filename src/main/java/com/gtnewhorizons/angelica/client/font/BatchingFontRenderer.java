@@ -1,11 +1,13 @@
 package com.gtnewhorizons.angelica.client.font;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.shader.AutoShaderUpdater;
-import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderDefinesInjector;
-import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderReloadRunnable;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.SimpleShaderDefine;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
+import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderCustom;
+import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderDefault;
+import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderSGA;
+import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderSplash;
+import com.gtnewhorizons.angelica.client.font.atlas.FontTextureArray;
 import com.gtnewhorizons.angelica.client.streaming.StreamingDrawer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
@@ -13,14 +15,21 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import com.gtnewhorizons.angelica.utils.InstancedHelper;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
+import jss.util.RandomXoshiro256StarStar;
 import lombok.Setter;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL42;
+
+import java.awt.*;
+import java.awt.image.BufferedImage;
+import java.util.Arrays;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
@@ -38,31 +47,31 @@ public final class BatchingFontRenderer {
 
     /** The underlying FontRenderer object that's being accelerated */
     private final FontRenderer underlying;
-    /** Array of width of all the characters in default.png */
-    private final int[] charWidth;
     /**
      * Array of RGB triplets defining the 16 standard chat colors followed by 16 darker version of the same colors for
      * drop shadows.
      */
     private final int[] colorCode;
 
-    private static int AAStrength;
-    private static int mvpMatrixLocation;
-    private static int fontShaderId;
+    private static int defaultFontShader;
+    private static int defaultMatrixLocation;
+
+    private static int multisampleFontShader;
+    private static int multisampleMatrixLocation;
 
     final boolean isSGA;
     final boolean isSplash;
 
     // Minecraft
-    private static FontTextureArray mainTextureArray;
+    private static FontTextureArray defaultTextureArray;
     private static FontTextureArray unicodeTextureArray;
 
     // SGA
     private static FontTextureArray sgaTextureArray;
 
     // Custom Font
-    private static FontTextureArray customTextureArray;
-    private static FontTextureArray fallbackTextureArray;
+    public static FontTextureArray primaryTextureArray;
+//    public static FontTextureArray secondaryTextureArray;
 
     // Splash (will get deleted)
     private static BatchingFontRenderer splashFontRenderer;
@@ -70,137 +79,249 @@ public final class BatchingFontRenderer {
 
     private final ResourceLocation locationFontTexture;
 
+    public static int[] asciiCharWidths;
+    public static int[] sgaCharWidths;
+    public static byte[] glyphWidths;
+
     /** For use with modded books. Affects calculations and forces some defaults. */
     @Setter
     boolean bookMode = false;
 
     private static final int FLAG_ITALIC = 0x1;
     private static final int FLAG_DINNERBONE = 0x2;
+    private static final int FLAG_SECOND_TEXTURE = 0x4;
 
-    public BatchingFontRenderer(FontRenderer underlying, int[] charWidth, int[] colorCode, ResourceLocation locationFontTexture) {
+    private static final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
+
+    public BatchingFontRenderer(FontRenderer underlying, int[] colorCode, ResourceLocation locationFontTexture) {
 
         this.underlying = underlying;
-        this.charWidth = charWidth;
         this.colorCode = colorCode;
 
         this.isSGA = locationFontTexture.getResourcePath().equals("textures/font/ascii_sga.png");
         this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
         this.locationFontTexture = locationFontTexture;
 
-        FontProviderMC.get(this.isSGA).charWidth = this.charWidth; //TODO
-
-
         if (isSplash) {
             splashFontRenderer = this;
 
-            splashTextureArray = new FontTextureArray(256, 1, new int[] { 0 }, true);
-            //currentTextureArray = splashTextureArray;
+            splashTextureArray = new FontTextureArray(
+                256, 1, new int[]{0}, GL11.GL_NEAREST, new AtlasProviderSplash()
+            );
+
             GLSMHooks.SPLASH_DESTROY.addListener(event -> {
-                System.out.println("Splash thread listener works!");
-                splashTextureArray.delete();
-                splashTextureArray = null;
-                splashFontRenderer.delete();
-                splashFontRenderer = null;
+                if (splashTextureArray != null) {
+                    splashTextureArray.delete();
+                    splashTextureArray = null;
+                }
+                if (splashFontRenderer != null) {
+                    splashFontRenderer.delete();
+                    splashFontRenderer = null;
+                } //TODO verify GC removal
             });
-            //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
-        } else if (isSGA) {
-            sgaTextureArray = new FontTextureArray(256, 1, new int[] { 0 }, true);
-        } else {
-//            int layer = 0;
-//            final int[] layersLookupArray = new int[256];
-//            for (int i = 0; i < 256; i++) {
-////                try {
-////                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
-////                } catch (Exception ignored) {
-////                    System.out.println("Could not find Layer " + i + ".");
-////                }
-//                layersLookupArray[i] = layer;
-//                layer++;
-//            }
-//            mainTextureArray = new FontTextureArray(256, layer, layersLookupArray, true);
-//            ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
-//            mainTextureArray.addAtlasFromBoundTexture(0);
-//            //currentTextureArray = mainTextureArray; //TODO switch on splash destroy
         }
 
-        // Bind font texture & then copy it over into the atlas
-        //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+        if (defaultFontShader <= 0) {
+            recompileShaders();
+        }
+        initializeCustomFonts();
+    }
 
+    private void recompileShaders() {
+        final ShaderProgram defaultProgram = recompileShader(false);
+
+        //defaultFontShader = ShaderProgram.createProgram(vsh, fsh);
+        defaultFontShader = defaultProgram.getProgram();
+        defaultMatrixLocation = GLStateManager.glGetUniformLocation(defaultFontShader, "u_MVPMatrix");
+
+        final ShaderProgram multisampleProgram = recompileShader(true);
+        multisampleFontShader = multisampleProgram.getProgram();
+        multisampleMatrixLocation = GLStateManager.glGetUniformLocation(multisampleFontShader, "u_MVPMatrix");
+        multisampleProgram.use();
+        multisampleProgram.bindTextureSlots("sampler0", "sampler1");
+        GL20.glUseProgram(0); //TODO where did clear go?
+    }
+
+    private ShaderProgram recompileShader(boolean multisampling) {
+        final SimpleShaderDefine define = multisampling
+            ? new SimpleShaderDefine("MULTISAMPLING", "")
+            : new SimpleShaderDefine("PLACEHOLDER", ""); //TODO
         final String vsh = ShaderProgram.loadShaderSource(
             BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh"),
             new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
-            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u")
+            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u"),
+            new SimpleShaderDefine("FLAG_SECOND_TEXTURE", FLAG_SECOND_TEXTURE + "u"),
+            define
         );
         final String fsh = ShaderProgram.loadShaderSource(
             BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.fsh"),
-            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode)
+            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode),
+            new SimpleShaderDefine("AA_STRENGTH", 7 / 120f),
+            define
         );
 
-        final ShaderProgram program = new ShaderProgram(vsh, fsh);
-        if (!isSplash) {
-            AutoShaderUpdater.getInstance().registerShaderReload(program,
-                new ResourceLocation("angelica", "shaders/font/font.vsh"),
-                new ResourceLocation("angelica", "shaders/font/font.fsh"),
-                new IShaderReloadRunnable() {
-                    @Override
-                    public void run(ShaderProgram shaderProgram) {
-                        fontShaderId = shaderProgram.getProgram();
-                        AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
-                        mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
-                    }
+        return new ShaderProgram(vsh, fsh);
+//        if (!isSplash) {
+//            AutoShaderUpdater.getInstance().registerShaderReload(program,
+//                new ResourceLocation("angelica", "shaders/font/font.vsh"),
+//                new ResourceLocation("angelica", "shaders/font/font.fsh"),
+//                new IShaderReloadRunnable() {
+//                    @Override
+//                    public void run(ShaderProgram shaderProgram) {
+//                        defaultFontShader = shaderProgram.getProgram();
+//                        mvpMatrixLocation = GLStateManager.glGetUniformLocation(defaultFontShader, "u_MVPMatrix");
+//                    }
+//
+//                    @Override
+//                    public IShaderDefinesInjector[] getDefines() {
+//                        return new IShaderDefinesInjector[]{
+//                            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode),
+//                            new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
+//                            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u")
+//                        };
+//                    }
+//                }
+//            );
+//        }
+    }
 
-                    @Override
-                    public IShaderDefinesInjector[] getDefines() {
-                        return new IShaderDefinesInjector[] {
-                            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode),
-                            new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
-                            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u")
-                        };
-                    }
-                }
-            );
+    public static void initializeCustomFonts() {
+        if (primaryTextureArray == null && FontStrategist.primaryFont != null) {
+            System.out.println("Creating primary texture array. Font: " + FontStrategist.primaryFont.getFontName());
+            primaryTextureArray = createTextureArray(FontStrategist.primaryFont);
         }
-        //fontShaderId = ShaderProgram.createProgram(vsh, fsh);
-        fontShaderId = program.getProgram();
-        AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
-        mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
+//        if (secondaryTextureArray == null && FontStrategist.secondaryFont != null) {
+//            System.out.println("Creating secondary texture array. Font: " + FontStrategist.secondaryFont.getFontName());
+//
+//            secondaryTextureArray = createTextureArray(FontStrategist.secondaryFont);
+//        }
+    }
+
+
+    public static FontTextureArray createTextureArray(final Font font) {
+        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = image.createGraphics();
+        g2d.setFont(font);
+        FontMetrics fontMetrics = g2d.getFontMetrics();
+        g2d.dispose();
+
+        int[] layerLookup = new int[256];
+        int layer = 0;
+        loop:
+        for (int atlasId = 0; atlasId < 256; atlasId++) {
+            for (int i = 0; i < 256; i++) {
+                final char ch = (char) (i + atlasId * 256);
+                if (font.canDisplay(ch)) {
+                    layerLookup[atlasId] = layer;
+                    layer++;
+                    continue loop;
+                }
+                // Can't display any chars, skip.
+                layerLookup[atlasId] = -1;
+            }
+        }
+
+        final int size = getAtlasSize(font, fontMetrics, 2);
+        System.out.println("Font Atlas size: " + size);
+        System.out.println("Amount layers: " + layer);
+        System.out.println("Layers indices: " + Arrays.toString(layerLookup));
+
+        return new FontTextureArray(
+            size,
+            layer,
+            layerLookup,
+            GL11.GL_LINEAR,
+            new AtlasProviderCustom(font)
+        );
+    }
+
+
+    private static int getAtlasSize(Font font, FontMetrics fontMetrics, int separator) {
+        int size = 256;
+
+        loop:
+        while (size <= 2048) {
+            for (int atlasId = 0; atlasId < 256; atlasId++) {
+                final int lineHeight = fontMetrics.getHeight();
+                final int charHeight = (lineHeight + separator);
+                int imgX = 0;
+                int imgY = 0; //TODO idk
+                for (int i = 0; i < 256; i++) {
+                    final char ch = (char) (i + 256 * atlasId);
+                    if (!font.canDisplay(ch)) continue;
+
+                    final int charWidth = fontMetrics.charWidth(ch);
+
+                    if (imgX + charWidth >= size) {
+                        imgX = 0;
+                        imgY += charHeight;
+                    }
+                    imgX += (charWidth + separator);
+
+                }
+                //if (imgX == 0 && imgY == 0) return 0; TODO integrate this somehow
+                // Total used height includes final row
+                int usedHeight = imgY + charHeight;
+
+                if (usedHeight > size) {
+                    size *= 2;
+                    continue loop;
+                }
+            }
+            return size;
+        }
+
+        System.out.println("Size ended up being over 2048. This is a bug!");
+        return size;
+    }
+
+    public int[] getCharWidths() {
+        return ((FontRendererAccessor) underlying).angelica$getCharWidths();
+    }
+
+    public byte[] getGlyphWidths() {
+        return ((FontRendererAccessor) underlying).angelica$getGlyphWidths();
     }
 
     public void initializeTextures() {
-        FontProviderMC.get(this.isSGA).charWidth = this.charWidth; //TODO
-
         ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
 
-        if (this.isSplash) {
-            splashTextureArray.addAtlasFromBoundTexture(0);
-            return;
-        }
+        glyphWidths = this.getGlyphWidths();
 
         if (this.isSGA) {
-
+            sgaCharWidths = this.getCharWidths();
+            sgaTextureArray = new FontTextureArray(
+                256, 1, new int[]{0}, GL11.GL_NEAREST, new AtlasProviderSGA()
+            );
+            sgaTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
             return;
         }
 
-//        if (mainTextureArray != null) {
-//            mainTextureArray.delete();
-//        }
+        asciiCharWidths = this.getCharWidths();
 
-        if (mainTextureArray == null) {
-            int layer = 0;
-            final int[] layersLookupArray = new int[256];
-            for (int i = 0; i < 256; i++) {
+        if (this.isSplash) {
+            splashTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
+            return;
+        }
+
+        int layer = 0;
+        final int[] layersLookupArray = new int[256];
+        for (int i = 0; i < 256; i++) {
 //                try {
 //                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
 //                } catch (Exception ignored) {
 //                    System.out.println("Could not find Layer " + i + ".");
 //                }
-                layersLookupArray[i] = layer;
-                layer++;
-            }
-            mainTextureArray = new FontTextureArray(256, layer, layersLookupArray, true);
-            //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
-            mainTextureArray.addAtlasFromBoundTexture(0);
+            layersLookupArray[i] = layer;
+            layer++;
         }
+        if (defaultTextureArray != null) {
+            defaultTextureArray.delete();
+        }
+        defaultTextureArray = new FontTextureArray(
+            256, layer, layersLookupArray, GL11.GL_NEAREST, new AtlasProviderDefault()
+        );
+        defaultTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
     }
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
@@ -376,8 +497,7 @@ public final class BatchingFontRenderer {
                     if (curUnderline && underlineStartX != underlineEndX) {
                         pushQuad(
                             underlineStartX, underlineY,
-                            underlineEndX - underlineStartX,
-                            glyphScaleY,
+                            underlineEndX - underlineStartX, glyphScaleY,
                             curColor,
                             0,
                             curItalic, curDinnerbone
@@ -386,10 +506,8 @@ public final class BatchingFontRenderer {
                     }
                     if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
                         pushQuad(
-                            strikethroughStartX,
-                            strikethroughY,
-                            strikethroughEndX - strikethroughStartX,
-                            glyphScaleY,
+                            strikethroughStartX, strikethroughY,
+                            strikethroughEndX - strikethroughStartX, glyphScaleY,
                             curColor,
                             0,
                             curItalic, curDinnerbone
@@ -506,21 +624,28 @@ public final class BatchingFontRenderer {
                 if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
                     final char replacement = GlyphReplacements.getReplacementGlyph(chr);
                     if (replacement != 0) {
-                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
-                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
-                        ) {
-                            chr = replacement;
-                        }
+//                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
+//                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
+//                        ) {
+//                            chr = replacement;
+//                        } TODO
                     }
                 }
 
                 if (curRandom) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
+                    chr = getRandomReplacement(chr, this.isSGA);
                 }
 
                 //final FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
                 //final FontTextureArray fontProvider = getFontProvider(chr, FontConfig.enableCustomFont, unicodeFlag);
-                final float yScaleMultiplier = 1;
+
+                final FontTextureArray fontArray = getFontProvider(chr, FontConfig.enableCustomFont, unicodeFlag);
+                final boolean isCustomFont = fontArray == primaryTextureArray;
+                if (isCustomFont) {
+                    requiresMultisampling = true;
+                }
+                final float yScaleMultiplier = isCustomFont ? FontConfig.customFontScale : 1; //TODO make it not scuffed
+
                 heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * yScaleMultiplier / 2);
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * yScaleMultiplier;
 
@@ -550,7 +675,7 @@ public final class BatchingFontRenderer {
                 }
 
                 //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
-                final FontTextureArray fontArray = this.isSplash ? splashTextureArray : mainTextureArray;
+
                 final GlyphData data = fontArray.getGlyphData(chr);
                 final float uStart = data.uStart;
                 final float vStart = data.vStart;
@@ -625,7 +750,8 @@ public final class BatchingFontRenderer {
                             curShadowColor,
                             layer,
                             curItalic,
-                            curDinnerbone
+                            curDinnerbone,
+                            isCustomFont
                         );
 
                         if (curBold) {
@@ -636,7 +762,8 @@ public final class BatchingFontRenderer {
                                 curShadowColor,
                                 layer,
                                 curItalic,
-                                curDinnerbone
+                                curDinnerbone,
+                                isCustomFont
                             );
                         }
                     }
@@ -649,7 +776,8 @@ public final class BatchingFontRenderer {
                     curColor,
                     layer,
                     curItalic,
-                    curDinnerbone
+                    curDinnerbone,
+                    isCustomFont
                 );
 
                 if (curBold) {
@@ -662,7 +790,8 @@ public final class BatchingFontRenderer {
                             curColor,
                             layer,
                             curItalic,
-                            curDinnerbone
+                            curDinnerbone,
+                            isCustomFont
                         );
                     }
                 }
@@ -703,10 +832,8 @@ public final class BatchingFontRenderer {
             }
             if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
                 pushQuad(
-                    strikethroughStartX,
-                    strikethroughY,
-                    strikethroughEndX - strikethroughStartX,
-                    glyphScaleY,
+                    strikethroughStartX, strikethroughY,
+                    strikethroughEndX - strikethroughStartX, glyphScaleY,
                     curColor,
                     0,
                     curItalic, curDinnerbone
@@ -719,15 +846,30 @@ public final class BatchingFontRenderer {
         return (int) (curX + (enableShadow ? 1 : 0));
     }
 
+    private static char getRandomReplacement(char chr, boolean isSGA) {
+        int lutIndex = lookupMcFontPosition(chr);
+        if (lutIndex != 0) {
+            int randomReplacementIndex;
+            final int[] charWidth = isSGA ? sgaCharWidths : asciiCharWidths;
+            do {
+                randomReplacementIndex = fontRandom.nextInt(charWidth.length);
+            } while (charWidth[lutIndex] != charWidth[randomReplacementIndex]);
+
+            lutIndex = randomReplacementIndex;
+            return MCFONT_CHARS.charAt(lutIndex);
+        }
+        return chr;
+    }
+
     private FontTextureArray getFontProvider(char chr, boolean customFontEnabled, boolean forceUnicode) {
-        if (this.isSGA && isGlyphAvailable(chr)) {
+        if (this.isSGA) {
+            return sgaTextureArray;
             //return FontProviderMC.getSGA();
         }
         if (this.bookMode) {
             //return FontProviderUnicode.get();
 
         }
-        customFontEnabled = false;
         if (customFontEnabled && !this.isSplash) {
 //            FontProvider fp;
 //            fp = FontProviderCustom.getPrimary();
@@ -735,14 +877,16 @@ public final class BatchingFontRenderer {
 //            fp = FontProviderCustom.getFallback();
 //            if (fp.isGlyphAvailable(chr)) { return fp; }
 //            return FontProviderUnicode.get();
-            return null;
+            if (primaryTextureArray != null && primaryTextureArray.isGlyphAvailable(chr)) return primaryTextureArray;
+            //if (secondaryTextureArray != null && secondaryTextureArray.isGlyphAvailable(chr)) return secondaryTextureArray;
+            return defaultTextureArray;
         } else {
 //            if (!forceUnicode && FontProviderMC.getDefault().isGlyphAvailable(chr)) {
 //                return FontProviderMC.getDefault();
 //            } else {
 //                return FontProviderUnicode.get();
 //            }
-            return mainTextureArray;
+            return this.isSplash ? splashTextureArray : defaultTextureArray;
         }
     }
 
@@ -759,7 +903,7 @@ public final class BatchingFontRenderer {
     static {
         MCFONT_ASCII_MAP.defaultReturnValue((short) 0);
         for (short i = 0; i < MCFONT_CHARS.length(); i++) {
-            MCFONT_ASCII_MAP.put(MCFONT_CHARS.charAt(i), i); //TODO optimize
+            MCFONT_ASCII_MAP.put(MCFONT_CHARS.charAt(i), i);
         }
     }
 
@@ -778,9 +922,10 @@ public final class BatchingFontRenderer {
             return 4 * this.getWhitespaceScale();
         }
 
-        FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
+        final FontTextureArray fp = getFontProvider(chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
+        //FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
-        return fp.getXAdvance(chr) * this.getGlyphScaleX();
+        return fp.getGlyphData(chr).xAdvance * this.getGlyphScaleX();
     }
 
     public void overrideBlendFunc(int srcRgb, int dstRgb) {
@@ -805,6 +950,7 @@ public final class BatchingFontRenderer {
     //TODO make it work with any initial capacity & fix resize
     private final StreamingDrawer stream = StreamingDrawer.create(1024 * 400 * INSTANCE_SIZE); //TODO test resize
     private int instanceCount; //TODO merge into stream
+    private boolean requiresMultisampling;
 
     private int initVAO() {
         int vao = GLStateManager.glGenVertexArrays();
@@ -902,7 +1048,7 @@ public final class BatchingFontRenderer {
             -1, -1, 0, 0,
             rgba,
             layer,
-            italic, dinnerbone
+            italic, dinnerbone, false
         );
     }
 
@@ -911,7 +1057,7 @@ public final class BatchingFontRenderer {
         float uMin, float vMin, float uWidth, float vWidth,
         int rgba,
         int layer,
-        boolean italic, boolean dinnerbone
+        boolean italic, boolean dinnerbone, boolean secondaryTexture
     ) {
         final long ptr = stream.writeSection(INSTANCE_SIZE);
 
@@ -938,7 +1084,8 @@ public final class BatchingFontRenderer {
         memPutByte(ptr + 36, (byte) layer);
 
         final int flags = (italic ? FLAG_ITALIC : 0)
-            | (dinnerbone ? FLAG_DINNERBONE : 0); //TODO
+            | (dinnerbone ? FLAG_DINNERBONE : 0)
+            | (secondaryTexture ? FLAG_SECOND_TEXTURE : 0);
         memPutByte(ptr + 37, (byte) flags);
 
         instanceCount++;
@@ -958,8 +1105,6 @@ public final class BatchingFontRenderer {
             flushBatch();
         }
     }
-
-    private int fontAAStrengthLast = -1;
 
     private void flushBatch() {
         if (instanceCount == 0) return;
@@ -984,15 +1129,20 @@ public final class BatchingFontRenderer {
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(blendSrcRGB, blendDstRGB, GL11.GL_ONE, GL11.GL_ZERO);
 
-        GLStateManager.glUseProgram(fontShaderId);
-        if (FontConfig.fontAAStrength != fontAAStrengthLast) {
-            fontAAStrengthLast = FontConfig.fontAAStrength;
-            GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
-        }
-        GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
+        //TODO cache mvp
+        if (requiresMultisampling) {
+            GLStateManager.glUseProgram(multisampleFontShader);
+            GLStateManager.uploadMVPMatrix(multisampleMatrixLocation);
 
-        final FontTextureArray currentTextureArray = this.isSplash ? splashTextureArray : mainTextureArray;
-         currentTextureArray.bind();
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+            primaryTextureArray.bind();
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        } else {
+            GLStateManager.glUseProgram(defaultFontShader);
+            GLStateManager.uploadMVPMatrix(defaultMatrixLocation);
+        }
+
+        (this.isSplash ? splashTextureArray : defaultTextureArray).bind();
 //        GL31.glDrawElementsInstanced(
 //            GL11.GL_TRIANGLES,
 //            6,
@@ -1000,7 +1150,7 @@ public final class BatchingFontRenderer {
 //            0,
 //            instanceCount
 //        );
-        GL42.glDrawElementsInstancedBaseInstance(
+        GL42.glDrawElementsInstancedBaseInstance( //TODO
             GL11.GL_TRIANGLES,
             6,
             GL11.GL_UNSIGNED_SHORT,
@@ -1008,8 +1158,6 @@ public final class BatchingFontRenderer {
             instanceCount,
             offset
         );
-//        currentTextureArray.unbind();
-
 
         GLStateManager.glUseProgram(prevProgram);
 
@@ -1025,6 +1173,7 @@ public final class BatchingFontRenderer {
 
     private void clearBatch() {
         instanceCount = 0;
+        requiresMultisampling = false;
     }
 
     private void delete() {

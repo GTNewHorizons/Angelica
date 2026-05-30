@@ -10,14 +10,20 @@ import java.awt.*;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.Objects;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.LOGGER;
+import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.initializeCustomFonts;
+import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.primaryTextureArray;
 
-public class FontStrategist {
+public final class FontStrategist {
 
     @Getter
     private static final Font[] availableFonts;
+
+    public static Font primaryFont;
+    public static Font secondaryFont;
+
+    public static final int ATLAS_CHARS = 256;
 
     static {
         if (GraphicsEnvironment.isHeadless()) {
@@ -53,47 +59,38 @@ public class FontStrategist {
             availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
 
             LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, availableFonts.length);
+            reloadCustomFontProviders();
         }
     }
 
-    /**
-     Lets you get a FontProvider per char while respecting font priority and fallbacks, the unicode flag, whether
-     SGA is on, if we're in a splash screen, if a font can even display a character in the first place, etc.
-     */
-    public static FontProvider getFontProvider(BatchingFontRenderer me, char chr, boolean customFontEnabled, boolean forceUnicode) {
-        if (me.isSGA && FontProviderMC.getSGA().isGlyphAvailable(chr)) {
-            return FontProviderMC.getSGA();
-        }
-        if (me.bookMode) {
-            return FontProviderUnicode.get();
-        }
-        if (customFontEnabled && !me.isSplash) {
-            FontProvider fp;
-            fp = FontProviderCustom.getPrimary();
-            if (fp.isGlyphAvailable(chr)) { return fp; }
-            fp = FontProviderCustom.getFallback();
-            if (fp.isGlyphAvailable(chr)) { return fp; }
-            return FontProviderUnicode.get();
-        } else {
-            if (!forceUnicode && FontProviderMC.getDefault().isGlyphAvailable(chr)) {
-                return FontProviderMC.getDefault();
-            } else {
-                return FontProviderUnicode.get();
-            }
-        }
+    public static Font getFont(int index) {
+        return availableFonts[index];
     }
+
 
     public static void reloadCustomFontProviders() {
-        FontProviderCustom.getPrimary().setFont(null);
-        FontProviderCustom.getFallback().setFont(null);
+        primaryFont = null;
+        secondaryFont = null;
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(FontConfig.customFontNamePrimary, availableFonts[i].getFontName())) {
-                FontProviderCustom.getPrimary().reloadFont(i);
+            final Font font = getFont(i);
+            final String fontName = font.getFontName();
+            if (FontConfig.customFontNamePrimary.equals(fontName)) {
+                primaryFont = font.deriveFont((float) FontConfig.customFontQuality);
             }
-            if (Objects.equals(FontConfig.customFontNameFallback, availableFonts[i].getFontName())) {
-                FontProviderCustom.getFallback().reloadFont(i);
-            }
+//            if (FontConfig.customFontNameFallback.equals(fontName)) {
+//                secondaryFont = font.deriveFont((float) FontConfig.customFontQuality);
+//
+//                if (secondaryTextureArray != null) {
+//                    secondaryTextureArray.delete();
+//                    secondaryTextureArray = null;
+//                }
+//            }
         }
+        if (primaryTextureArray != null) {
+            primaryTextureArray.delete();
+            primaryTextureArray = null;
+        }
+        initializeCustomFonts();
     }
 
     public static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {

@@ -1,4 +1,4 @@
-package com.gtnewhorizons.angelica.client.font;
+package com.gtnewhorizons.angelica.utils;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL15;

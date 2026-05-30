@@ -14,6 +14,10 @@ flat out vec4 tB;
 flat out vec4 color;
 flat out uint layer;
 
+#ifdef MULTISAMPLING
+flat out uint secondTexture;
+#endif
+
 out vec2 texCoord;
 
 void main() {
@@ -30,4 +34,9 @@ void main() {
     color = aColor;
     tB = vec4(uvRect.xy, uvRect.x + uvRect.z, uvRect.y + uvRect.w);
     layer = aLayer;
+
+    #ifdef MULTISAMPLING
+    secondTexture = (flags & FLAG_SECOND_TEXTURE);
+    #endif
+
 }

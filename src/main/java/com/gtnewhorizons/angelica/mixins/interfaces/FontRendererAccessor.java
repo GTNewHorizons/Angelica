@@ -10,4 +10,8 @@ public interface FontRendererAccessor {
     BatchingFontRenderer angelica$getBatcher();
 
     void angelica$bindTexture(ResourceLocation location);
+
+    int[] angelica$getCharWidths();
+
+    byte[] angelica$getGlyphWidths();
 }

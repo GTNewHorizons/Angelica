@@ -121,7 +121,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Inject(method = "<init>", at = @At("TAIL"))
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
-        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.colorCode, this.locationFontTexture);
+        angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.colorCode, this.locationFontTexture);
         if (GTNHLibCompat.HAS_TEXT_PREPROCESSOR) {
             GTNHLibCompat.registerPreprocessor();
         }
@@ -130,11 +130,6 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Inject(method = "readFontTexture", at = @At("RETURN"))
     private void angelica$onReadFontTexture(CallbackInfo ci) {
         angelica$batcher.initializeTextures();
-    }
-
-    @Unique
-    private static boolean angelica$charInRange(char what, char fromInclusive, char toInclusive) {
-        return (what >= fromInclusive) && (what <= toInclusive);
     }
 
     /**
@@ -161,7 +156,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     }
 
     @Override
-    public int angelica$drawStringBatched(String text, int x, int y, int argb, boolean dropShadow) {
+    public final int angelica$drawStringBatched(String text, int x, int y, int argb, boolean dropShadow) {
         if (text == null)
         {
             return 0;
@@ -191,7 +186,12 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     }
 
     @Override
-    public BatchingFontRenderer angelica$getBatcher() {
+    public final int[] angelica$getCharWidths() {
+        return this.charWidth;
+    }
+
+    @Override
+    public final BatchingFontRenderer angelica$getBatcher() {
         return angelica$batcher;
     }
 
@@ -211,6 +211,11 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Override
     public float getGlyphScaleX() {
         return angelica$getBatcher().getGlyphScaleX();
+    }
+
+    @Override
+    public byte[] angelica$getGlyphWidths() {
+        return glyphWidth;
     }
 
     @Override
