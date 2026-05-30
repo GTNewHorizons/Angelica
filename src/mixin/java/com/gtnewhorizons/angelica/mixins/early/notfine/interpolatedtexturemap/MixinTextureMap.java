@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.notfine.interpolatedtexturemap;
 
 import com.google.gson.JsonObject;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.mitchej123.hodgepodge.config.SpeedupsConfig;
 import com.mitchej123.hodgepodge.mixins.interfaces.TextureMapAsyncIconsHook;
 import jss.notfine.render.InterpolatedIcon;
 import net.minecraft.client.Minecraft;
@@ -46,9 +47,11 @@ public abstract class MixinTextureMap extends AbstractTexture implements ITickab
 						InterpolatedIcon interpolatedIcon = new InterpolatedIcon(textureName);
 						mapRegisteredSprites.put(textureName, interpolatedIcon);
 						cir.setReturnValue(interpolatedIcon);
-                        if(ModStatus.isHodgepodgeLoaded){
-                            ((TextureMapAsyncIconsHook)this).hodgepodge$getProcessingIcons()
-                                .remove(textureName).complete(interpolatedIcon);
+                        if(ModStatus.isHodgepodgeLoaded) {
+                            if(SpeedupsConfig.asyncIconLoading) {
+                                ((TextureMapAsyncIconsHook)this).hodgepodge$getProcessingIcons()
+                                    .remove(textureName).complete(interpolatedIcon);
+                            }
                         }
 					}
 				}
