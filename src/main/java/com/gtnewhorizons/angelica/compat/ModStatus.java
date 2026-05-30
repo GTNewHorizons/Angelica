@@ -19,7 +19,6 @@ public class ModStatus {
     public static boolean isEIDBiomeLoaded;
     public static boolean isXaerosMinimapLoaded;
     public static boolean isHoloInventoryLoaded;
-    public static boolean isHodgepodgeLoaded;
     public static boolean isBattlegearLoaded;
     public static boolean isBackhandLoaded;
     public static boolean isThaumcraftLoaded;
@@ -41,7 +40,6 @@ public class ModStatus {
         isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
-        isHodgepodgeLoaded = Loader.isModLoaded("hodgepodge");
         isBattlegearLoaded = Loader.isModLoaded("battlegear2");
         isThaumcraftLoaded = Loader.isModLoaded("Thaumcraft");
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
