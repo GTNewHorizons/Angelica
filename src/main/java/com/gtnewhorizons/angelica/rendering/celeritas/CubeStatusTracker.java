@@ -61,6 +61,8 @@ public class CubeStatusTracker implements ChunkTracker {
 
         if (renderable != isRendering) {
             changedCubes.put(cubeX, cubeY, cubeZ, renderable ? PendingState.Add : PendingState.Remove);
+        } else {
+            changedCubes.remove(cubeX, cubeY, cubeZ);
         }
     }
 
