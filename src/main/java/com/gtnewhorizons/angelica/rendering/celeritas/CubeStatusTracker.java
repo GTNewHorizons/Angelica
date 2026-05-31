@@ -101,7 +101,7 @@ public class CubeStatusTracker implements ChunkTracker {
             int y = pos.getY();
             int z = pos.getZ();
 
-            renderSectionManager.onSectionRemoved(x, y, z);
+            renderSectionManager.onSectionAdded(x, y, z);
         }
     }
 
