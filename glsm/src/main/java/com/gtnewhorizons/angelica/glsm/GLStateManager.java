@@ -1998,7 +1998,14 @@ public class GLStateManager {
         }
     }
 
-    /** Shrink texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid. */
+    /**
+     * Defer deleting textures until it has been reclaimed.
+     * Why you might ask?  In compat profile if you bind a texture that doesn't exist, ie a deleted texture,
+     * mesa will silently create it for you, in core this is an error.  Why would you be binding a deleted texture?
+     * Damned if I know, but vanilla and mods do it... they create one, delete it, and then bind it....
+     *
+     * So... we shrink the texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid.
+     * */
     private static void deferDeleteTexture(int id) {
         if (id == 0) return;
 
