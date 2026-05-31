@@ -38,6 +38,7 @@ import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
+import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
@@ -294,9 +295,9 @@ public final class ClientProxy extends CommonProxy {
                         "lc: %d b: %s bl: %d sl: %d rl: %d",
                         chunk.getTopFilledSegment() + 15,
                         chunk.getBiomeGenForWorldCoords(bX & 15, bZ & 15, mc.theWorld.getWorldChunkManager()).biomeName,
-                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
-                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15),
-                        chunk.getBlockLightValue(bX & 15, MathHelper.clamp_int(bY, 0, 255), bZ & 15, 0)));
+                        chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15),
+                        chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15),
+                        chunk.getBlockLightValue(bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15, 0)));
                 }
             }
             // Draw a frametime graph

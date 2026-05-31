@@ -1,27 +1,12 @@
 package com.gtnewhorizons.angelica.rendering.celeritas.world;
 
-import com.gtnewhorizons.angelica.api.SectionLightData;
-import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
-import com.gtnewhorizons.angelica.compat.ModStatus;
-import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
-import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
-import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
-import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
-import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
-import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
-
+import java.util.Arrays;
 import java.util.List;
-import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ChunkRenderContext;
-import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSection;
-import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
-import org.embeddedt.embeddium.impl.util.position.SectionPos;
-import cpw.mods.fml.common.Optional;
-import mega.fluidlogged.api.FLBlockAccess;
+
 import net.minecraft.block.Block;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.init.Blocks;
 import net.minecraft.tileentity.TileEntity;
-import net.minecraft.util.MathHelper;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
@@ -31,9 +16,24 @@ import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraft.world.gen.structure.StructureBoundingBox;
 import net.minecraftforge.common.util.ForgeDirection;
 import net.minecraftforge.fluids.Fluid;
+
+import org.embeddedt.embeddium.impl.util.position.SectionPos;
 import org.jetbrains.annotations.Nullable;
 
-import java.util.Arrays;
+import com.gtnewhorizons.angelica.api.IBlockAccessExtended;
+import com.gtnewhorizons.angelica.api.SectionLightData;
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
+import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
+import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
+import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ChunkRenderContext;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSection;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
+import cpw.mods.fml.common.Optional;
+import mega.fluidlogged.api.FLBlockAccess;
 
 /**
  * Takes a slice of world state (block states, biome and light data arrays) and copies the data for use in off-thread
@@ -382,7 +382,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         if (!blockBoxContains(this.volume, x, y, z)) {
             return 0;
         }
-        y = MathHelper.clamp_int(y, 0, 255);
+        y = CompatMathHelper.clampHeight(y);
 
         final int relX = x - this.baseX;
         final int relY = y - this.baseY;
