@@ -29,14 +29,10 @@ public abstract class MixinTextureMap extends AbstractTexture {
     @Final
     private String basePath;
 
-    @Shadow
-    protected abstract void registerIcons();
-
     @Inject(
         method = "loadTextureAtlas(Lnet/minecraft/client/resources/IResourceManager;)V",
         at = @At(value = "INVOKE", target = "Ljava/util/List;clear()V", remap = false, shift = At.Shift.AFTER))
     private void modifyLoadTextureAtlas(IResourceManager manager, CallbackInfo ci) {
-        this.registerIcons();
         TileLoader.registerIcons((TextureMap) (Object) this, this.basePath, this.mapRegisteredSprites);
     }
 

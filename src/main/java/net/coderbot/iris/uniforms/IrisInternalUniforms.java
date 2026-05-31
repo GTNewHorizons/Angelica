@@ -12,8 +12,17 @@ import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
 
 public class IrisInternalUniforms {
     private static final Vector4f FOG_COLOR = new Vector4f();
+    private static final Vector4f COLOR_MODULATOR = new Vector4f(1f, 1f, 1f, 1f);
 
     private IrisInternalUniforms() {
+    }
+
+    private static Vector4f getColorModulator() {
+        return COLOR_MODULATOR.set(
+            GLStateManager.getShaderColorR(),
+            GLStateManager.getShaderColorG(),
+            GLStateManager.getShaderColorB(),
+            GLStateManager.getShaderColorA());
     }
 
     private static float getEffectiveAlphaRef() {
@@ -44,5 +53,7 @@ public class IrisInternalUniforms {
             .uniform1f("iris_currentAlphaTest", IrisInternalUniforms::getEffectiveAlphaRef, StateUpdateNotifiers.alphaTestNotifier)
             .uniform1f("alphaTestRef", IrisInternalUniforms::getEffectiveAlphaRef, StateUpdateNotifiers.alphaTestNotifier)
             .uniform1i("iris_currentAlphaFunc", IrisInternalUniforms::getEffectiveAlphaFunc, StateUpdateNotifiers.alphaFuncNotifier);
+
+        uniforms.uniform4f("iris_ColorModulator", IrisInternalUniforms::getColorModulator, StateUpdateNotifiers.colorModulatorNotifier);
     }
 }

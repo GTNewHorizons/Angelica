@@ -142,7 +142,7 @@ public class FeedbackManager {
         final int byteCount = count * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, (long) first * stride + posOffset, readbackBuf);
+        readPositionBuffer((long) first * stride + posOffset, readbackBuf);
 
         emitAllPrimitives(mode, count, i -> i, stride);
     }
@@ -170,7 +170,7 @@ public class FeedbackManager {
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
+        readPositionBuffer((long) minIdx * stride + posOffset, readbackBuf);
 
         final int base = minIdx;
         emitAllPrimitives(mode, indexCount, i -> ImmediateModeRecorder.readIndex(indexBuf, type, 0, i) - base, stride);
@@ -251,7 +251,23 @@ public class FeedbackManager {
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, (long) minIdx * stride + posOffset, readbackBuf);
+        readPositionBuffer((long) minIdx * stride + posOffset, readbackBuf);
+    }
+
+    private static void readPositionBuffer(long offset, ByteBuffer destination) {
+        final int positionVbo = VertexAttribState.get(0).vboId;
+        final int previousVbo = GLStateManager.getBoundVBO();
+
+        if (positionVbo != 0 && positionVbo != previousVbo) {
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, positionVbo);
+        }
+        try {
+            RENDER_BACKEND.getBufferSubData(GL15.GL_ARRAY_BUFFER, offset, destination);
+        } finally {
+            if (positionVbo != 0 && positionVbo != previousVbo) {
+                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, previousVbo);
+            }
+        }
     }
 
     private static void emitVertex(int vertexIndex, int stride) {

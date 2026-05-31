@@ -20,9 +20,10 @@ public class CommonTransformer {
 		}
 
 		if (parameters.type == ShaderType.VERTEX) {
+			root.injectVariable("uniform vec4 iris_ColorModulator;");
 			root.injectVariable("out vec4 iris_FrontColor;");
 			root.rename("gl_FrontColor", "iris_FrontColor");
-			root.prependMain("iris_FrontColor = vec4(1.0);");
+			root.prependMain("iris_FrontColor = iris_ColorModulator;");
 		} else if (parameters.type == ShaderType.FRAGMENT) {
 			root.injectVariable("in vec4 iris_FrontColor;");
 			root.rename("gl_Color", "iris_FrontColor");

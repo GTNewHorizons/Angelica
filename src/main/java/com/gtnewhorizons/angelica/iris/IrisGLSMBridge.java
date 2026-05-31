@@ -26,6 +26,7 @@ public class IrisGLSMBridge {
     private static Runnable fogStartListener = null;
     private static Runnable fogEndListener = null;
     private static Runnable fogDensityListener = null;
+    private static Runnable colorModulatorListener = null;
 
     static {
         StateUpdateNotifiers.alphaFuncNotifier = listener -> alphaFuncListener = listener;
@@ -35,6 +36,7 @@ public class IrisGLSMBridge {
         StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
         StateUpdateNotifiers.fogEndNotifier = listener -> fogEndListener = listener;
         StateUpdateNotifiers.fogDensityNotifier = listener -> fogDensityListener = listener;
+        StateUpdateNotifiers.colorModulatorNotifier = listener -> colorModulatorListener = listener;
     }
 
     public static void register() {
@@ -108,6 +110,10 @@ public class IrisGLSMBridge {
             }
         });
 
+        GLSMHooks.SHADER_COLOR_CHANGE.addListener(event -> {
+            if (Iris.enabled && colorModulatorListener != null) colorModulatorListener.run();
+        });
+
         GLSMHooks.FOG_STATE_CHANGE.addListener(event -> {
             if (Iris.enabled) {
                 if (fogModeListener != null) fogModeListener.run();
@@ -157,17 +163,17 @@ public class IrisGLSMBridge {
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
             if (event.postBind) return;
-            
+
             final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (!(pipeline instanceof DeferredWorldRenderingPipeline drp)) return;
             if (!drp.shouldOverrideShaders()) return;
             if (drp.getActivePassProgramId() == -1) return;
-            
+
             if (DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 DepthColorStorage.unlockDepthColor();
             }
         });
-        
+
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
             if (!event.postBind) return;

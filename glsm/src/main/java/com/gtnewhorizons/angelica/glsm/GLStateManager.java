@@ -163,18 +163,39 @@ public class GLStateManager {
         fragmentGeneration++;
     }
 
+    @Getter private static float shaderColorR = 1.0f;
+    @Getter private static float shaderColorG = 1.0f;
+    @Getter private static float shaderColorB = 1.0f;
+    @Getter private static float shaderColorA = 1.0f;
+
+    public static void setShaderColor(float r, float g, float b, float a) {
+        if (r == shaderColorR && g == shaderColorG && b == shaderColorB && a == shaderColorA) return;
+        shaderColorR = r; shaderColorG = g; shaderColorB = b; shaderColorA = a;
+        if (GLSMHooks.SHADER_COLOR_CHANGE.hasListeners()) {
+            GLSMHooks.shaderColorChangeEvent.red = r;
+            GLSMHooks.shaderColorChangeEvent.green = g;
+            GLSMHooks.shaderColorChangeEvent.blue = b;
+            GLSMHooks.shaderColorChangeEvent.alpha = a;
+            GLSMHooks.SHADER_COLOR_CHANGE.post(GLSMHooks.shaderColorChangeEvent);
+        }
+    }
+
     // Deferred vertex attribute upload flags — set when state changes, flushed before draw
-    private static boolean dirtyColorAttrib;
+    private static boolean dirtyColorAttrib = true;
     private static boolean dirtyNormalAttrib;
     private static boolean dirtyTexCoordAttrib;
-    private static boolean dirtyLightmapAttrib;
+    private static boolean dirtyLightmapAttrib = true;
 
     /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
     public static void flushDeferredVertexAttribs() {
-        RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
-        dirtyColorAttrib = false;
-        RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
-        dirtyLightmapAttrib = false;
+        if (dirtyColorAttrib) {
+            RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+            dirtyColorAttrib = false;
+        }
+        if (dirtyLightmapAttrib) {
+            RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
+            dirtyLightmapAttrib = false;
+        }
         if (dirtyNormalAttrib) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);

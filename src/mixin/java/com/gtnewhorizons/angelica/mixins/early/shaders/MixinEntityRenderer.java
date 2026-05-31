@@ -51,6 +51,8 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
         pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName()));
 
+        GLStateManager.setShaderColor(1f, 1f, 1f, 1f);
+
         pipeline.get().beginLevelRendering();
     }
 

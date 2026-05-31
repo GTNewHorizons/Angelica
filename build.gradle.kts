@@ -1,8 +1,13 @@
+import xyz.wagyourtail.jvmdg.gradle.flags.DowngradeFlags
+import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
 import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
 
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
+
+tasks.withType<DowngradeJar>().configureEach { logLevel.set("FATAL") }
+tasks.withType<DowngradeFiles>().configureEach { logLevel.set("FATAL") }
 
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")

@@ -34,6 +34,7 @@ class CeleritasTransformer {
         transformer.injectFunction(
             "void _celeritas_init() { " +
             "_vert_init(); " +
+            "_vert_color = _vert_color * iris_ColorModulator; " +
             "iris_LightTexCoord = vec4(vec2(_vert_tex_light_coord), 0.0, 1.0); }");
         transformer.prependMain("_celeritas_init();");
         transformShared(transformer, parameters);
@@ -60,6 +61,7 @@ class CeleritasTransformer {
     }
 
     private static void transformShared(Transformer transformer, Parameters parameters) {
+        transformer.replaceExpression("gl_TextureMatrix[0]", "mat4(1.0)");
         CoreTransformHelper.injectMatrixUniforms(transformer);
     }
 }

@@ -79,6 +79,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return instance;
     }
 
+    public static CeleritasWorldRenderer getInstanceOrNull() {
+        return instance;
+    }
+
     public AngelicaRenderSectionManager getRenderSectionManager() {
         return this.renderSectionManager;
     }
@@ -129,7 +133,16 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     protected ChunkRenderMatrices createChunkRenderMatrices() {
         final boolean shadowPass = renderSectionManager.isInShadowPass();
         final Matrix4f projection = shadowPass ? ShadowRenderer.PROJECTION : RenderingState.INSTANCE.getProjectionMatrix();
-        final Matrix4f modelView = shadowPass ? ShadowRenderer.MODELVIEW : RenderingState.INSTANCE.getModelViewMatrix();
+        Matrix4f modelView = shadowPass ? ShadowRenderer.MODELVIEW : RenderingState.INSTANCE.getModelViewMatrix();
+        if (!shadowPass) {
+            // Minecraft's setupCameraTransform bakes translate(0, -eyeHeight, 0) into the modelview.
+            // Chunk rendering passes eye position to drawChunkLayer so vertices arrive at
+            // the shader as (vert_world - eye).
+            final Entity view = mc.renderViewEntity;
+            if (view != null) {
+                modelView = new Matrix4f(modelView).translate(0f, view.getEyeHeight(), 0f);
+            }
+        }
         return new ChunkRenderMatrices(projection, modelView);
     }
 

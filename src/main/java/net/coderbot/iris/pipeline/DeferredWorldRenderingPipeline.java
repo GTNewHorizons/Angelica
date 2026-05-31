@@ -90,6 +90,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
+import org.lwjgl.opengl.GL43;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -394,6 +395,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				null, null, ProgramId.Weather,
 				// world border uses textured_lit even though it has no lightmap :/
 				null, ProgramId.TexturedLit, ProgramId.TexturedLit,
+				ProgramId.Lightning, ProgramId.Lightning, ProgramId.Lightning,
 				ProgramId.ShadowWater, ProgramId.ShadowWater, ProgramId.ShadowWater,
 				ProgramId.Shadow, ProgramId.Shadow, ProgramId.Shadow
 		};
@@ -517,7 +519,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 		if (hasSetup) {
 			ComputeProgram.unbind();
-			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT);
+			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
 		}
 
 		// Terrain pipeline sampler/image factory setup follows.
@@ -723,6 +725,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				return RenderCondition.ENTITY_EYES;
 			} else if (special == SpecialCondition.GLINT) {
 				return RenderCondition.GLINT;
+			} else if (special == SpecialCondition.LIGHTNING) {
+				return RenderCondition.LIGHTNING;
 			}
 		}
 
@@ -771,11 +775,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public boolean shouldOverrideShaders() {
 		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
 	}
-	
+
 	public Pass getActivePassProgram() {
 		return current;
 	}
-	
+
 	public int getActivePassProgramId() {
 		if (current == null) return -1;
 		final Program p = current.getProgram();
@@ -793,10 +797,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
 			return;
 		}
-		
+
 		final RenderCondition condition = getCondition(getPhase());
 		final Pass matched = table.match(condition, inputs);
-		
+
 		beginPass(matched);
 	}
 
@@ -1332,7 +1336,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 			if (ranSetup) {
 				ComputeProgram.unbind();
-				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT);
+				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
 			}
 		}
 
