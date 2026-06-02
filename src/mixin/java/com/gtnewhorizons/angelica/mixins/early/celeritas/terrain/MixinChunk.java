@@ -2,11 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.terrain;
 
 import java.util.Map;
 
-import com.gtnewhorizon.gtnhlib.hash.Fnv1a64;
-import com.gtnewhorizons.angelica.event.ChunkBiomeDataChangedEvent;
-import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
-import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
-import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
 import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
@@ -25,10 +20,17 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import com.gtnewhorizon.gtnhlib.hash.Fnv1a64;
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.event.ChunkBiomeDataChangedEvent;
+import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
+import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
+import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
+
 @Mixin(Chunk.class)
 public abstract class MixinChunk implements IChunkTileEntityMapHolder {
 
-    @Shadow public Map<ChunkPosition, TileEntity> chunkTileEntityMap = new ConcurrentTileEntityMap();
+    @Shadow public Map<ChunkPosition, TileEntity> chunkTileEntityMap;
     @Shadow public World worldObj;
     @Shadow private ExtendedBlockStorage[] storageArrays;
     @Final @Shadow public int xPosition;
@@ -41,9 +43,19 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
     @Unique private long angelica$biomeHash;
     @Unique private boolean angelica$biomeHashValid;
 
+    @Inject(method = "<init>", at = @At("TAIL"))
+    private void angelica$wrapTEMapIfNeeded(CallbackInfo ci) {
+        // Wrap the cubic chunks map, since it uses a custom map
+        if (ModStatus.isCubicChunksLoaded) {
+            this.chunkTileEntityMap = new ConcurrentTileEntityMap(this.chunkTileEntityMap);
+        } else {
+            this.chunkTileEntityMap = new ConcurrentTileEntityMap();
+        }
+    }
+
     @Override
-    public Map<ChunkPosition, TileEntity> angelica$getChunkTileEntityMap() {
-        return this.chunkTileEntityMap;
+    public ConcurrentTileEntityMap angelica$getConcurrentTEMap() {
+        return (ConcurrentTileEntityMap) this.chunkTileEntityMap;
     }
 
     @Redirect(method = "getTileEntityUnsafe", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"), remap = false)
@@ -83,9 +95,7 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
 
     private Object angelica$deferRemoveImpl(Map<ChunkPosition, TileEntity> map, Object key) {
         if (!RenderThreadContext.hasWorldSlice()) return map.remove(key);
-        if (map instanceof ConcurrentTileEntityMap concurrentMap) {
-            concurrentMap.queueInvalidation((ChunkPosition) key);
-        }
+        ((ConcurrentTileEntityMap) map).queueInvalidation((ChunkPosition) key);
         return null;
     }
 

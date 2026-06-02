@@ -1,16 +1,10 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
-import com.cardinalstar.cubicchunks.world.ICubicWorld;
-import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
-import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
-import com.gtnewhorizons.angelica.proxy.ClientProxy;
-import com.gtnewhorizons.angelica.rendering.RenderingState;
-import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
-import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
-import net.coderbot.iris.pipeline.ShadowRenderer;
+import java.util.ArrayList;
+import java.util.Comparator;
+import java.util.Iterator;
+import java.util.List;
+
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -18,6 +12,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 import net.minecraftforge.client.MinecraftForgeClient;
+
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
@@ -33,10 +28,18 @@ import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
-import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.Iterator;
-import java.util.List;
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
+import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
+import net.coderbot.iris.pipeline.ShadowRenderer;
 
 public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, AngelicaRenderSectionManager, BlockRenderLayer, TileEntity, CeleritasWorldRenderer.TileEntityRenderContext> implements IDynamicLightWorldRenderer {
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
@@ -115,18 +118,20 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     @Override
     public int getMinimumBuildHeight() {
-        if (this.world instanceof ICubicWorld cubicWorld) {
-            return cubicWorld.getMinHeight();
+        if (ModStatus.isCubicChunksLoaded) {
+            return CubicChunksAPI.getMinHeight(this.world);
+        } else {
+            return 0;
         }
-        return 0;
     }
 
     @Override
     public int getMaximumBuildHeight() {
-        if (this.world instanceof ICubicWorld cubicWorld) {
-            return cubicWorld.getMaxHeight();
+        if (ModStatus.isCubicChunksLoaded) {
+            return CubicChunksAPI.getMaxHeight(this.world);
+        } else {
+            return 256;
         }
-        return 256;
     }
 
     @Override

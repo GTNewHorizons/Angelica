@@ -8,9 +8,6 @@ import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import mega.fluidlogged.internal.mixin.hook.FLSubChunk;
 
@@ -89,7 +86,6 @@ public class ClonedChunkSection {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void copyBlockEntities(Chunk chunk, ChunkSectionPos pos) {
         this.tileEntities.clear();
 
@@ -97,22 +93,16 @@ public class ClonedChunkSection {
 
         map.readLock();
         try {
-            final Object2ObjectOpenHashMap<ChunkPosition, TileEntity> delegate = map.getDelegate();
-
-            if (!delegate.isEmpty()) {
-                final int minY = pos.getMinY();
-                final int maxY = pos.getMaxY();
-
-            for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(delegate)) {
+            map.forEachInYRange(pos.getMinY(), pos.getMaxY(), entry -> {
                 final ChunkPosition tePos = entry.getKey();
-                if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
-
-                final TileEntity te = entry.getValue();
-                if (te != null && !te.isInvalid()) {
-                    this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
-                }
-            }
-        });
+                this.tileEntities.put(
+                    ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15),
+                    entry.getValue()
+                );
+            });
+        } finally {
+            map.readUnlock();
+        }
 
         this.tileEntities.trim();
     }
