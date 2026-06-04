@@ -50,6 +50,7 @@ public class Uniforms {
     // Program change forces full re-upload since uniform locations differ.
     private int lastProgramId = -1;
     private int lastMvGen = -1;
+    private int lastMvLinearGen = -1;
     private int lastProjGen = -1;
     private int lastTexMatGen = -1;
     private int lastLightingGen = -1;
@@ -74,14 +75,17 @@ public class Uniforms {
         lastProgramId = program.getProgramId();
 
         final int mvGen = GLStateManager.mvGeneration;
+        final int mvLinearGen = GLStateManager.mvLinearGeneration;
         final int projGen = GLStateManager.projGeneration;
         final int texMatGen = GLStateManager.texMatrixGeneration;
         final boolean mvChanged = programChanged || mvGen != lastMvGen;
+        final boolean mvLinearChanged = programChanged || mvLinearGen != lastMvLinearGen;
         final boolean projChanged = programChanged || projGen != lastProjGen;
         final boolean texMatChanged = programChanged || texMatGen != lastTexMatGen;
         if (mvChanged || projChanged || texMatChanged) {
-            uploadMatrices(program, mvChanged, projChanged, texMatChanged);
+            uploadMatrices(program, mvChanged, mvLinearChanged, projChanged, texMatChanged);
             lastMvGen = mvGen;
+            lastMvLinearGen = mvLinearGen;
             lastProjGen = projGen;
             lastTexMatGen = texMatGen;
         }
@@ -155,7 +159,7 @@ public class Uniforms {
         }
     }
 
-    private void uploadMatrices(Program program, boolean mvChanged, boolean projChanged, boolean texMatChanged) {
+    private void uploadMatrices(Program program, boolean mvChanged, boolean mvLinearChanged, boolean projChanged, boolean texMatChanged) {
         final Matrix4f mv = GLStateManager.getModelViewMatrix();
         final Matrix4f proj = GLStateManager.getProjectionMatrix();
 
@@ -165,7 +169,9 @@ public class Uniforms {
                 mv.get(mat4Buf);
                 RENDER_BACKEND.uniformMatrix4(program.locModelViewMatrix, false, mat4Buf);
             }
+        }
 
+        if (mvLinearChanged) {
             // Normal matrix = inverse transpose of upper-left 3x3 of ModelView
             if (program.locNormalMatrix != -1 || program.locNormalScale != -1) {
                 mv.normal(normalMatrix);
@@ -314,12 +320,13 @@ public class Uniforms {
         if (program.locCurrentColor == -1) return;
         // Upload the current color from GLSM
         final var color = GLStateManager.getColor();
+        tempVec4.set(
+            Math.clamp(0f, 1f, color.getRed()),
+            Math.clamp(0f, 1f, color.getGreen()),
+            Math.clamp(0f, 1f, color.getBlue()),
+            Math.clamp(0f, 1f, color.getAlpha()));
         vec4Buf.clear();
-        vec4Buf.put(Math.clamp(0f, 1f, color.getRed()));
-        vec4Buf.put(Math.clamp(0f, 1f, color.getGreen()));
-        vec4Buf.put(Math.clamp(0f, 1f, color.getBlue()));
-        vec4Buf.put(Math.clamp(0f, 1f, color.getAlpha()));
-        vec4Buf.flip();
+        tempVec4.get(vec4Buf);
         RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
 
@@ -342,10 +349,7 @@ public class Uniforms {
         // Upload current normal from FFPShaderManager's tracked normal
         final var normal = ShaderManager.getCurrentNormal();
         vec3Buf.clear();
-        vec3Buf.put(normal.x);
-        vec3Buf.put(normal.y);
-        vec3Buf.put(normal.z);
-        vec3Buf.flip();
+        normal.get(vec3Buf);
         RENDER_BACKEND.uniform3(program.locCurrentNormal, vec3Buf);
     }
 
@@ -381,10 +385,7 @@ public class Uniforms {
     private void uploadPlane(int loc, float[] plane) {
         if (loc == -1) return;
         vec4Buf.clear();
-        vec4Buf.put(plane[0]);
-        vec4Buf.put(plane[1]);
-        vec4Buf.put(plane[2]);
-        vec4Buf.put(plane[3]);
+        vec4Buf.put(plane, 0, 4);
         vec4Buf.flip();
         RENDER_BACKEND.uniform4(loc, vec4Buf);
     }
@@ -488,11 +489,7 @@ public class Uniforms {
     private void uploadVec4(int loc, Vector4f v) {
         if (loc == -1) return;
         vec4Buf.clear();
-        vec4Buf.put(v.x);
-        vec4Buf.put(v.y);
-        vec4Buf.put(v.z);
-        vec4Buf.put(v.w);
-        vec4Buf.flip();
+        v.get(vec4Buf);
         RENDER_BACKEND.uniform4(loc, vec4Buf);
     }
 

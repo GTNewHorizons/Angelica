@@ -126,6 +126,7 @@ public class CompatUniformManager {
     // Dirty tracking: skip uploads when state hasn't changed and program is the same
     private static int lastProgram = -1;
     private static int lastMvGen = -1;
+    private static int lastMvLinearGen = -1;
     private static int lastProjGen = -1;
     private static int lastTexMatGen = -1;
     private static int lastFragmentGen = -1;
@@ -170,14 +171,17 @@ public class CompatUniformManager {
 
         // Matrix uniforms — skip if generation unchanged and same program
         final int mvGen = GLStateManager.mvGeneration;
+        final int mvLinearGen = GLStateManager.mvLinearGeneration;
         final int projGen = GLStateManager.projGeneration;
         final int texMatGen = GLStateManager.texMatrixGeneration;
         final boolean mvChanged = programChanged || mvGen != lastMvGen;
+        final boolean mvLinearChanged = programChanged || mvLinearGen != lastMvLinearGen;
         final boolean projChanged = programChanged || projGen != lastProjGen;
         final boolean texMatChanged = programChanged || texMatGen != lastTexMatGen;
         if (mvChanged || projChanged || texMatChanged) {
-            uploadMatrices(locs, mvChanged, projChanged, texMatChanged);
+            uploadMatrices(locs, mvChanged, mvLinearChanged, projChanged, texMatChanged);
             lastMvGen = mvGen;
+            lastMvLinearGen = mvLinearGen;
             lastProjGen = projGen;
             lastTexMatGen = texMatGen;
         }
@@ -208,7 +212,7 @@ public class CompatUniformManager {
         }
     }
 
-    private static void uploadMatrices(int[] locs, boolean mvChanged, boolean projChanged, boolean texMatChanged) {
+    private static void uploadMatrices(int[] locs, boolean mvChanged, boolean mvLinearChanged, boolean projChanged, boolean texMatChanged) {
         final Matrix4f mv = GLStateManager.getModelViewMatrix();
         final Matrix4f proj = GLStateManager.getProjectionMatrix();
 
@@ -230,7 +234,9 @@ public class CompatUniformManager {
                 scratchMatrix.get(mat4Buf);
                 RENDER_BACKEND.uniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
             }
+        }
 
+        if (mvLinearChanged) {
             // Normal Matrix (inverse-transpose of upper-left 3x3 of ModelView)
             if (locs[LOC_NORMAL] != -1 || locs[LOC_IRIS_NORMAL] != -1) {
                 mv.normal(normalMatrix);
@@ -244,7 +250,6 @@ public class CompatUniformManager {
                     normalMatrix.get(mat3Buf);
                     RENDER_BACKEND.uniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
                 }
-
             }
         }
 

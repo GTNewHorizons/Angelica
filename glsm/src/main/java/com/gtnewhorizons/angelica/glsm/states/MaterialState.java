@@ -37,82 +37,100 @@ public class MaterialState implements ISettableState<MaterialState> {
         colorIndexes = new Vector3f(0.0F, 1.0F, 1.0F);
     }
 
-    public void setAmbient(FloatBuffer newBuffer) {
+    public boolean setAmbient(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setAmbient(IntBuffer newBuffer) {
+    public boolean setAmbient(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setDiffuse(FloatBuffer newBuffer) {
+    public boolean setDiffuse(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setDiffuse(IntBuffer newBuffer) {
+    public boolean setDiffuse(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setSpecular(FloatBuffer newBuffer) {
+    public boolean setSpecular(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setSpecular(IntBuffer newBuffer) {
+    public boolean setSpecular(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setEmission(FloatBuffer newBuffer) {
+    public boolean setEmission(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.emission.equals(vector4f)) {
             this.emission.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setEmission(IntBuffer newBuffer) {
+    public boolean setEmission(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.emission.equals(vector4f)) {
             this.emission.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setShininess(float val) {
+    public boolean setShininess(float val) {
         if (GLStateManager.shouldBypassCache() || Float.compare(this.shininess, val) != 0) {
             this.shininess = val;
+            return true;
         }
+        return false;
     }
 
     // On the buffer versions of shininess, we need to call `get(0)` explicitly specifying the index
     // otherwise calling `get()` advances the buffer position, and some mods may re-use the same buffer
     // in subsequent calls, resulting in a BufferUnderflowException.
-    public void setShininess(FloatBuffer newBuffer) { setShininess(newBuffer.get(0)); }
+    public boolean setShininess(FloatBuffer newBuffer) { return setShininess(newBuffer.get(0)); }
 
-    public void setShininess(IntBuffer newBuffer) { setShininess((float) newBuffer.get(0)); }
+    public boolean setShininess(IntBuffer newBuffer) { return setShininess((float) newBuffer.get(0)); }
 
-    public void setShininess(int val) { setShininess((float) val);}
+    public boolean setShininess(int val) { return setShininess((float) val);}
 
-    public void setColorIndexes(FloatBuffer newBuffer) {
+    public boolean setColorIndexes(FloatBuffer newBuffer) {
         // You are reading this correctly, nvidia drivers flip the y and z values in
         // glMaterial specifically for GL_COLOR_INDEXES. Other drivers do not do this.
         // This probably breaks things but who knows, GLSM is setup to track to what the
@@ -125,15 +143,19 @@ public class MaterialState implements ISettableState<MaterialState> {
 
         if (GLStateManager.shouldBypassCache() || !this.colorIndexes.equals(vector3f)) {
             this.colorIndexes.set(vector3f);
+            return true;
         }
+        return false;
     }
 
-    public void setColorIndexes(IntBuffer newBuffer) {
+    public boolean setColorIndexes(IntBuffer newBuffer) {
         vector3i.set(newBuffer.get(0), newBuffer.get(2), newBuffer.get(1));
         vector3f.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
         if (GLStateManager.shouldBypassCache() || !this.colorIndexes.equals(vector3f)) {
             this.colorIndexes.set(vector3f);
+            return true;
         }
+        return false;
     }
 
     @Override
