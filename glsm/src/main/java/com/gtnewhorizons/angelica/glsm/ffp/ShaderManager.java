@@ -36,6 +36,7 @@ public class ShaderManager {
     @Getter
     private boolean active = false;
     private Program currentProgram = null;
+    private int lastBoundProgramId = -1;
     private long currentVertexKeyPacked = Long.MIN_VALUE;
     private final long[] currentFKScratch = new long[FragmentKey.MAX_UNITS];
     private final long[] currentFKPacked = new long[FragmentKey.MAX_UNITS];
@@ -92,6 +93,7 @@ public class ShaderManager {
     public void deactivate() {
         active = false;
         currentProgram = null;
+        lastBoundProgramId = -1;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
     }
@@ -102,16 +104,13 @@ public class ShaderManager {
         if (bh != null) bh.flushDeferredBlend();
 
         if (!active) {
-            if (enabled) {
-                final int currentProgramId = GLStateManager.getActiveProgram();
-                if (currentProgramId != 0) {
-                    CompatUniformManager.onUseProgram(currentProgramId);
-                    return;
-                }
-                active = true;
-            } else {
+            final int currentProgramId = GLStateManager.getActiveProgram();
+            if (currentProgramId != 0) {
+                CompatUniformManager.refreshCompatUniforms(currentProgramId);
                 return;
             }
+            if (!enabled) return;
+            active = true;
         }
 
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
@@ -144,7 +143,11 @@ public class ShaderManager {
         System.arraycopy(currentFKScratch, 0, currentFKPacked, 0, fkLen);
         currentFKLen = fkLen;
         currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
-        RENDER_BACKEND.useProgram(currentProgram.getProgramId());
+        final int programId = currentProgram.getProgramId();
+        if (programId != lastBoundProgramId) {
+            RENDER_BACKEND.useProgram(programId);
+            lastBoundProgramId = programId;
+        }
     }
 
     private void uploadUniforms() {
