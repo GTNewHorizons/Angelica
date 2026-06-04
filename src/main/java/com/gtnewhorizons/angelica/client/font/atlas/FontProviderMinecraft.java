@@ -1,11 +1,13 @@
 package com.gtnewhorizons.angelica.client.font.atlas;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.textures.TextureLoader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.GlyphData;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 
 public final class FontProviderMinecraft extends FontTextureArray {
 
@@ -13,14 +15,14 @@ public final class FontProviderMinecraft extends FontTextureArray {
         int layer = 0;
         final int[] layersLookupArray = new int[256];
         for (int i = 0; i < 256; i++) {
-//                try {
-//                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
-//                } catch (Exception ignored) {
-//                    System.out.println("Could not find Layer " + i + ".");
-//                } TODO resourceExists
-            layersLookupArray[i] = layer;
-            layer++;
+            if (TextureLoader.resourceExists(getUnicodePage(i))) {
+                layersLookupArray[i] = layer;
+                layer++;
+            } else {
+                layersLookupArray[i] = -1;
+            }
         }
+        System.out.println(Arrays.toString(layersLookupArray));
         return new FontProviderMinecraft(256, layer, layersLookupArray, GL11.GL_NEAREST);
     }
 
@@ -77,8 +79,10 @@ public final class FontProviderMinecraft extends FontTextureArray {
             );
         }
 
-        final ResourceLocation resource = new ResourceLocation(String.format("textures/font/unicode_page_%02x.png", atlasId));
+        return getTextureFromResource(getUnicodePage(atlasId));
+    }
 
-        return getTextureFromResource(resource);
+    private static ResourceLocation getUnicodePage(int atlasId) {
+        return new ResourceLocation(String.format("textures/font/unicode_page_%02x.png", atlasId));
     }
 }

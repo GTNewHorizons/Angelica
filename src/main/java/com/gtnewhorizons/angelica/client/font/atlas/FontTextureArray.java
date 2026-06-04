@@ -33,9 +33,6 @@ public abstract class FontTextureArray {
     static final boolean DUMP_ATLASES = true;
 
 
-    //TODO layers + layers lookup
-
-
     FontTextureArray(int size, int layers, int[] layersLookupArray, final int filter) {
         this.layersLookup = layersLookupArray;
         this.id = GLStateManager.glGenTextures();

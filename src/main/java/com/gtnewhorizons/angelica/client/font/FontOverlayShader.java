@@ -34,6 +34,7 @@ public final class FontOverlayShader extends ShaderProgram {
     private int uScale;
     private int uTime;
     private int uTexBounds;
+    private final int padding;
 
     public float xStart;
     public float xEnd;
@@ -51,10 +52,15 @@ public final class FontOverlayShader extends ShaderProgram {
     );
 
     public FontOverlayShader(ResourceLocation fragShader, IShaderDefinesInjector... defines) {
+        this(fragShader, 4, defines);
+    }
+
+    public FontOverlayShader(ResourceLocation fragShader, int padding, IShaderDefinesInjector... defines) {
         super(
             loadShaderSource(getVertexShader()),
             loadShaderSource(fragShader, defines)
         );
+        this.padding = padding;
         this.bindTextureSlots("textFBO", "sceneFBO");
         mvpMatrixLocation = this.getUniformLocation("u_MVPMatrix");
         uTexelSize = this.getUniformLocation("uTexelSize");
@@ -127,9 +133,8 @@ public final class FontOverlayShader extends ShaderProgram {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         framebuffer.bindFramebufferTexture();
 
-        final float padding = getPadding();
+        final int padding = this.padding;
         this.use();
-        GLStateManager.disableCull();
 
         ByteBuffer buffer = memAlloc(32);
         long address = memAddress0(buffer);
@@ -162,7 +167,6 @@ public final class FontOverlayShader extends ShaderProgram {
         this.uploadBounds(boundXStart, boundXEnd, boundYStart, boundYEnd);
 
 
-        GLStateManager.glDisable(GL11.GL_CULL_FACE); //TODO remove
         if (vao == 0) {
             vao = GLStateManager.glGenVertexArrays();
             GLStateManager.glBindVertexArray(vao);
@@ -196,10 +200,6 @@ public final class FontOverlayShader extends ShaderProgram {
         // v, v
         memPutFloat(ptr, x);
         memPutFloat(ptr + 4, y);
-    }
-
-    private float getPadding() {
-        return 8;
     }
 
 

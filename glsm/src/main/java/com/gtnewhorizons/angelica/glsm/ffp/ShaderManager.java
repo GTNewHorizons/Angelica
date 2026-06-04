@@ -87,8 +87,8 @@ public class ShaderManager {
 
     public void activate() {
         active = true;
-        updateVariant(true, true, true, true);
-        uploadUniforms();
+//        updateVariant(true, true, true, true);
+//        uploadUniforms();
     }
 
     public void deactivate() {

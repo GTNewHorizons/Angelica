@@ -60,11 +60,11 @@ public final class BatchingFontRenderer {
     private boolean forceDefaults;
 
     // Minecraft
-    private static FontTextureArray minecraftTextureArray;
+    private static FontProviderMinecraft minecraftTextureArray;
     private static FontTextureArray unicodeTextureArray; //TODO find a way to make it work normally
 
     // Custom Font
-    public static FontTextureArray customTextureArray;
+    public static FontProviderCustom customTextureArray;
 
     private FontTextureArray overrideTextureArray; // Used for splash & SGA;
 
@@ -83,6 +83,11 @@ public final class BatchingFontRenderer {
     public void setBookMode(boolean bookMode) {
         this.bookMode = bookMode;
         this.forceDefaults = this.isSplash || this.isSGA || bookMode;
+        if (bookMode) {
+            this.overrideTextureArray = minecraftTextureArray;
+        } else {
+            this.overrideTextureArray = null;
+        }
     }
 
     private static final int FLAG_ITALIC = 0x1;
@@ -108,7 +113,7 @@ public final class BatchingFontRenderer {
 
             GLSMHooks.SPLASH_DESTROY.addListener(event -> {
                 if (splashFontRenderer != null) {
-                    splashFontRenderer.delete(); //TODO add texture array
+                    splashFontRenderer.delete();
                     splashFontRenderer = null;
                 }
                 stream.switchContext();
@@ -161,6 +166,10 @@ public final class BatchingFontRenderer {
         //GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(multisampleFontShader, "sampler0"), 0);
         GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(multisampleFontShader, "sampler1"), 1);
         GLStateManager.glUseProgram(0);
+    }
+
+    private boolean isUnicodeFlag() {
+        return underlying.getUnicodeFlag() || this.bookMode;
     }
 
     public static void reloadCustomFonts() {
@@ -218,38 +227,6 @@ public final class BatchingFontRenderer {
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
-
-    private void pushShaderCmd(
-        int startIdx,
-        int idxCount,
-        int texture,
-        float x, float y,
-        float width, float height
-    ) {
-        /*
-        if (!batchCommands.isEmpty()) {
-            final FontDrawCmd lastCmd = batchCommands.get(batchCommands.size() - 1);
-            final int prevEndVtx = lastCmd.startVtx + lastCmd.idxCount;
-            if (lastCmd instanceof ShaderDrawCmd shaderCmd) {
-                if (prevEndVtx == startIdx && lastCmd.texture == texture) {
-                    // Coalesce into one
-                    lastCmd.idxCount += idxCount;
-                    shaderCmd.xEnd = x + width;
-                    shaderCmd.yEnd = y + height;
-                    return;
-                }
-            }
-        }
-        final ShaderDrawCmd cmd = new ShaderDrawCmd();
-        cmd.reset(startIdx, idxCount, texture);
-        cmd.xStart = x;
-        cmd.yStart = y;
-        cmd.xEnd = x + width;
-        cmd.yEnd = y + height;
-        batchCommands.add(cmd);
-
-         */
-    }
 
     // === Actual text mesh generation
     public static boolean charInRange(char what, char fromInclusive, char toInclusive) {
@@ -526,7 +503,7 @@ public final class BatchingFontRenderer {
                     }
                     default -> {
                         if (FontShaderManager.isOverlayShader(fmtCode) || fmtCode == 'y') { //TODO remove y test
-                            if (curShader == null) { //TODO shadermanager integration
+                            if (curShader == null) { //TODO FontShaderManager integration
                                 curShader = FontOverlayShader.TEMPLATE.begin(this);
                             }
                         }
@@ -547,7 +524,7 @@ public final class BatchingFontRenderer {
             if (this.overrideTextureArray != null) {
                 fontProvider = overrideTextureArray;
             }
-            else if (this.forceUnicode()) { //TODO make this override texture array
+            else if (unicodeFlag) { //TODO make this override texture array
                 fontProvider = unicodeTextureArray;
                 shadowOffset *= FontConfig.fontShadowOffsetUC;
             }
@@ -607,7 +584,7 @@ public final class BatchingFontRenderer {
             final float uStart = data.uStart;
             final float vStart = data.vStart;
             final float xAdvance = data.xAdvance * glyphScaleX;
-            final float glyphW = data.glyphW * glyphScaleX; //TODO -1
+            final float glyphW = (data.glyphW * glyphScaleX) - 1; //TODO -1
             final float uSize = data.uSize;
             final float vSize = data.vSize;
             final int layer = fontProvider.getDepth(chr);
@@ -622,10 +599,16 @@ public final class BatchingFontRenderer {
             }
 
             if (curShader != null) {
-                curShader.updateBounds(curX, renderY, glyphW - 1.0f, heightSouth);
+                pushQuad(
+                    curX, renderY,
+                    glyphW, heightSouth,
+                    uStart, vStart, uSize, vSize,
+                    curColor,
+                    layer,
+                    flags
+                );
+                curShader.updateBounds(curX, renderY, glyphW, heightSouth);
                 curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing; //TODO unify
-                underlineEndX = curX;
-                strikethroughEndX = curX;
                 continue;
             }
 
@@ -636,7 +619,7 @@ public final class BatchingFontRenderer {
                     : curShadowColor;
                 pushQuad(
                     curX + shadowOffset, renderY + shadowOffset,
-                    glyphW - 1, heightSouth,
+                    glyphW, heightSouth,
                     uStart, vStart, uSize, vSize,
                     effectiveShadowColor,
                     layer,
@@ -646,7 +629,7 @@ public final class BatchingFontRenderer {
                 if (curBold) {
                     pushQuad(
                         curX + 2 * shadowOffset, renderY + shadowOffset,
-                        glyphW - 1, heightSouth,
+                        glyphW, heightSouth,
                         uStart, vStart, uSize, vSize,
                         curShadowColor,
                         layer,
@@ -657,27 +640,29 @@ public final class BatchingFontRenderer {
 
             pushQuad(
                 curX, renderY,
-                glyphW - 1, heightSouth,
+                glyphW, heightSouth,
                 uStart, vStart, uSize, vSize,
                 curColor,
                 layer,
                 flags
             );
 
+            curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing;
             if (curBold) {
                 for (int n = 1; n <= boldCopies; n++) {
                     final float boldOffsetPart = (float) n / boldCopies;
                     pushQuad(
                         curX + boldOffsetPart, renderY,
-                        glyphW - 1, heightSouth,
+                        glyphW, heightSouth,
                         uStart, vStart, uSize, vSize,
                         curColor,
                         layer,
                         flags
                     );
                 }
+                curX += 1;
             }
-            curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing;
+            //curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing;
             underlineEndX = curX;
             strikethroughEndX = curX;
 
@@ -966,7 +951,7 @@ public final class BatchingFontRenderer {
         }
     }
 
-    protected void flushBatch() {
+    void flushBatch() {
         if (stream.isEmpty()) return;
 
         GLStateManager.glBindVertexArray(stream.getVAO());

@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -140,7 +140,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Inject(method = "drawString(Ljava/lang/String;IIIZ)I", at = @At("HEAD"), cancellable = true)
     public void angelica$BatchedFontRendererDrawString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir)
     {
-        if (GLStateManager.getListMode() == 0) {
+        if (DisplayListManager.getListMode() == 0) {
             cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
         }
     }
@@ -150,7 +150,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
      */
     @Inject(method = "renderString", at = @At("HEAD"), cancellable = true)
     public void angelica$BatchedFontRendererRenderString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir) {
-        if (GLStateManager.getListMode() == 0) {
+        if (DisplayListManager.getListMode() == 0) {
             cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
         }
     }
@@ -206,23 +206,18 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     }
 
     @Override
-    public final boolean angelica$getUnicodeFlag() {
-        return this.unicodeFlag;
-    }
-
-    @Override
     public final int[] angelica$getCharWidths() {
         return this.charWidth;
     }
 
     @Override
-    public final BatchingFontRenderer angelica$getBatcher() {
-        return angelica$batcher;
+    public final void angelica$bindTexture(ResourceLocation location) {
+        this.bindTexture(location);
     }
 
     @Override
-    public void angelica$bindTexture(ResourceLocation location) {
-        this.bindTexture(location);
+    public final BatchingFontRenderer angelica$getBatcher() {
+        return angelica$batcher;
     }
 
     @Override

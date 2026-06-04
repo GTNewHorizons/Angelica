@@ -3735,10 +3735,6 @@ public class GLStateManager {
         return activeTextureUnit.getValue();
     }
 
-    public static int getListMode() {
-        return DisplayListManager.getListMode();
-    }
-
     public static boolean updateTexParameteriCache(int target, int texture, int pname, int param) {
         if (target != GL11.GL_TEXTURE_2D) {
             return true;
