@@ -57,6 +57,7 @@ public final class ShaderManager {
     public static Vector4f getCurrentTexCoord() { return currentTexCoords[0]; }
     public static Vector4f getCurrentTexCoord(int unit) { return currentTexCoords[unit]; }
     @Getter private boolean enabled = false;
+
     private int currentVertexFlags = VertexFlags.TEXTURE_BIT | VertexFlags.COLOR_BIT | VertexFlags.NORMAL_BIT;
 
     private ShaderManager() {
@@ -102,19 +103,20 @@ public final class ShaderManager {
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
-        if (CompatUniformManager.isCoreShaderBound()) return; // Core shaders don't need FFP Emulation
+        // Handle FFP & Iris uniforms
+        final int currentProgramId = GLStateManager.getActiveProgram();
+        if (currentProgramId != 0) {
+            CompatUniformManager.refreshCompatUniforms(currentProgramId);
+
+            // Don't emulate on core shaders
+            if (CompatUniformManager.isCoreShader(currentProgramId)) return;
+        }
+
 
         GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
 
-        if (!active) {
-            final int currentProgramId = GLStateManager.getActiveProgram();
-            if (currentProgramId != 0) {
-                CompatUniformManager.refreshCompatUniforms(currentProgramId);
-                return;
-            }
-            if (!enabled) return;
-            active = true;
-        }
+        if (!active) return;
+
 
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);

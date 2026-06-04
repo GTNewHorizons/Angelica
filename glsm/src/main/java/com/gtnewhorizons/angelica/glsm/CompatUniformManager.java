@@ -163,8 +163,6 @@ public class CompatUniformManager {
     }
 
     public static void refreshCompatUniforms(int program) {
-        if (program == 0) return;
-
         final ProgramUniforms pu = programUniforms.get(program);
         if (pu == null) return;
         final int[] locs = pu.locs;
