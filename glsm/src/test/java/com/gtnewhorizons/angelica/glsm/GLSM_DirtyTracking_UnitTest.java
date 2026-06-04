@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.joml.Vector4f;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
@@ -16,6 +18,16 @@ public class GLSM_DirtyTracking_UnitTest {
 
     static final FloatBuffer f4b = ByteBuffer.allocateDirect(4 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();
     static final FloatBuffer f3b = ByteBuffer.allocateDirect(3 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();
+
+    @BeforeEach
+    void pushTrackedState() {
+        GLStateManager.glPushAttrib(GL11.GL_LIGHTING_BIT | GL11.GL_FOG_BIT | GL11.GL_CURRENT_BIT);
+    }
+
+    @AfterEach
+    void popTrackedState() {
+        GLStateManager.glPopAttrib();
+    }
 
     @Test
     void materialBumpsOnlyOnChange() {
