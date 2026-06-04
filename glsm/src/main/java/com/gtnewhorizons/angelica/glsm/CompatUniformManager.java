@@ -7,8 +7,7 @@ import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -16,6 +15,8 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Per-program compat uniform location cache and upload manager.
@@ -105,6 +106,10 @@ public class CompatUniformManager {
 
     /** Per-program cached uniform locations + last-uploaded generations. Maps program ID -> state. */
     private static final Int2ObjectOpenHashMap<ProgramUniforms> programUniforms = new Int2ObjectOpenHashMap<>();
+
+    private static final IntOpenHashSet coreShaders = new IntOpenHashSet();
+    private static final IntOpenHashSet corePrograms = new IntOpenHashSet();
+
 
     private static final class ProgramUniforms {
         final int[] locs;
@@ -413,8 +418,33 @@ public class CompatUniformManager {
         }
     }
 
+    public static boolean isCoreShader(int program) {
+        return corePrograms.contains(program);
+    }
+
+    public static boolean isCoreShaderBound() {
+        return corePrograms.contains(GLStateManager.getActiveProgram());
+    }
+
+    public static void onShaderSource(int shader, String source) {
+        if (CompatShaderTransformer.isCoreShader(source)) {
+            coreShaders.add(shader);
+        }
+    }
+
+    public static void onDeleteShader(int shader) {
+        coreShaders.remove(shader);
+    }
+
+    public static void onAttachShader(int program, int shader) {
+        if (coreShaders.contains(shader)) {
+            corePrograms.add(program);
+        }
+    }
+
     public static void onDeleteProgram(int program) {
         programUniforms.remove(program);
+        corePrograms.remove(program);
     }
 
     public static boolean hasProgram(int program) {

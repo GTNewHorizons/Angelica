@@ -190,23 +190,20 @@ public class GLStateManager {
     // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
     // Skip the backend vertexAttrib call in either case.
     public static void flushDeferredVertexAttribs(int vertexFlags) {
-        final ShaderManager sm = ShaderManager.getInstance();
-        final boolean ffpWillHandle = sm.isActive() || (sm.isEnabled() && getActiveProgram() == 0);
-
-        if (dirtyColorAttrib && (vertexFlags & VertexFlags.COLOR_BIT) == 0 && !ffpWillHandle) {
+        if (dirtyColorAttrib && (vertexFlags & VertexFlags.COLOR_BIT) == 0) {
             RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
             dirtyColorAttrib = false;
         }
-        if (dirtyLightmapAttrib && (vertexFlags & VertexFlags.BRIGHTNESS_BIT) == 0 && !ffpWillHandle) {
+        if (dirtyLightmapAttrib && (vertexFlags & VertexFlags.BRIGHTNESS_BIT) == 0) {
             RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
             dirtyLightmapAttrib = false;
         }
-        if (dirtyNormalAttrib && (vertexFlags & VertexFlags.NORMAL_BIT) == 0 && !ffpWillHandle) {
+        if (dirtyNormalAttrib && (vertexFlags & VertexFlags.NORMAL_BIT) == 0) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);
             dirtyNormalAttrib = false;
         }
-        if (dirtyTexCoordAttrib && (vertexFlags & VertexFlags.TEXTURE_BIT) == 0 && !ffpWillHandle) {
+        if (dirtyTexCoordAttrib && (vertexFlags & VertexFlags.TEXTURE_BIT) == 0) {
             final var tc = ShaderManager.getCurrentTexCoord();
             RENDER_BACKEND.vertexAttrib4f(Usage.PRIMARY_UV.getAttributeLocation(), tc.x, tc.y, tc.z, tc.w);
             dirtyTexCoordAttrib = false;
@@ -4493,6 +4490,7 @@ public class GLStateManager {
 
     public static void glShaderSource(int shader, CharSequence source) {
         String src = source.toString();
+        CompatUniformManager.onShaderSource(shader, src);
         // Always rename reserved words for the target GLSL version (e.g. 'sampler' at 460)
         src = GlslTransformUtils.renameReservedWords(src, RENDER_BACKEND.getMinGLSLVersion());
         if (ShaderManager.getInstance().isEnabled()) {
@@ -5754,6 +5752,7 @@ public class GLStateManager {
     }
 
     public static void glAttachShader(int program, int shader) {
+        CompatUniformManager.onAttachShader(program, shader);
         RENDER_BACKEND.attachShader(program, shader);
     }
 
@@ -5762,6 +5761,7 @@ public class GLStateManager {
     }
 
     public static void glDeleteShader(int shader) {
+        CompatUniformManager.onDeleteShader(shader);
         RENDER_BACKEND.deleteShader(shader);
     }
 

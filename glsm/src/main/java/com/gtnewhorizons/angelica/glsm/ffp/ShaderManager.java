@@ -22,7 +22,7 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 /**
  * FFP shader manager
  */
-public class ShaderManager {
+public final class ShaderManager {
 
     private static final class Holder {
 
@@ -99,9 +99,12 @@ public class ShaderManager {
     }
 
     public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
+
+        if (CompatUniformManager.isCoreShaderBound()) return; // Core shaders don't need FFP Emulation
+
+        GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
 
         if (!active) {
             final int currentProgramId = GLStateManager.getActiveProgram();
