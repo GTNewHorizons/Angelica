@@ -29,7 +29,7 @@ uniform sampler2D textFBO;
 uniform sampler2D sceneFBO;
 uniform vec2 uTexelSize;
 uniform float uTime;
-uniform float uScale; //TODO
+uniform int uScale; //TODO integrate this
 uniform vec4 uTexBounds;
 
 const int MAX_RADIUS = 16;

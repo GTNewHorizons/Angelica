@@ -3,10 +3,10 @@ package com.gtnewhorizons.angelica.client.font;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.SimpleShaderDefine;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
-import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderCustom;
-import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderDefault;
-import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderSGA;
-import com.gtnewhorizons.angelica.client.font.atlas.AtlasProviderSplash;
+import com.gtnewhorizons.angelica.client.font.atlas.FontProviderCustom;
+import com.gtnewhorizons.angelica.client.font.atlas.FontProviderMinecraft;
+import com.gtnewhorizons.angelica.client.font.atlas.FontProviderSGA;
+import com.gtnewhorizons.angelica.client.font.atlas.FontProviderSplash;
 import com.gtnewhorizons.angelica.client.font.atlas.FontTextureArray;
 import com.gtnewhorizons.angelica.client.streaming.StreamingDrawer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
@@ -18,18 +18,14 @@ import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import com.gtnewhorizons.angelica.utils.InstancedHelper;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import jss.util.RandomXoshiro256StarStar;
-import lombok.Setter;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
-import org.lwjgl.opengl.GL42;
 
 import java.awt.*;
-import java.awt.image.BufferedImage;
-import java.util.Arrays;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
@@ -59,23 +55,21 @@ public final class BatchingFontRenderer {
     private static int multisampleFontShader;
     private static int multisampleMatrixLocation;
 
-    final boolean isSGA;
-    final boolean isSplash;
+    private final boolean isSGA;
+    private final boolean isSplash;
+    private boolean forceDefaults;
 
     // Minecraft
-    private static FontTextureArray defaultTextureArray;
-    private static FontTextureArray unicodeTextureArray;
-
-    // SGA
-    private static FontTextureArray sgaTextureArray;
+    private static FontTextureArray minecraftTextureArray;
+    private static FontTextureArray unicodeTextureArray; //TODO find a way to make it work normally
 
     // Custom Font
-    public static FontTextureArray primaryTextureArray;
-//    public static FontTextureArray secondaryTextureArray;
+    public static FontTextureArray customTextureArray;
+
+    private FontTextureArray overrideTextureArray; // Used for splash & SGA;
 
     // Splash (will get deleted)
-    private static BatchingFontRenderer splashFontRenderer;
-    private static FontTextureArray splashTextureArray;
+    private static BatchingFontRenderer splashFontRenderer; //TODO this seems to sometimes get deleted prematurely?
 
     private final ResourceLocation locationFontTexture;
 
@@ -84,8 +78,12 @@ public final class BatchingFontRenderer {
     public static byte[] glyphWidths;
 
     /** For use with modded books. Affects calculations and forces some defaults. */
-    @Setter
     boolean bookMode = false;
+
+    public void setBookMode(boolean bookMode) {
+        this.bookMode = bookMode;
+        this.forceDefaults = this.isSplash || this.isSGA || bookMode;
+    }
 
     private static final int FLAG_ITALIC = 0x1;
     private static final int FLAG_DINNERBONE = 0x2;
@@ -101,178 +99,85 @@ public final class BatchingFontRenderer {
         this.isSGA = locationFontTexture.getResourcePath().equals("textures/font/ascii_sga.png");
         this.isSplash = FontStrategist.isSplashFontRendererActive(underlying);
         this.locationFontTexture = locationFontTexture;
+        this.forceDefaults = this.isSplash || this.isSGA;
 
         if (isSplash) {
             splashFontRenderer = this;
 
-            splashTextureArray = new FontTextureArray(
-                256, 1, new int[]{0}, GL11.GL_NEAREST, new AtlasProviderSplash()
-            );
+            overrideTextureArray = FontProviderSplash.create();
 
             GLSMHooks.SPLASH_DESTROY.addListener(event -> {
-                if (splashTextureArray != null) {
-                    splashTextureArray.delete();
-                    splashTextureArray = null;
-                }
                 if (splashFontRenderer != null) {
-                    splashFontRenderer.delete();
+                    splashFontRenderer.delete(); //TODO add texture array
                     splashFontRenderer = null;
-                } //TODO verify GC removal
+                }
+                stream.switchContext();
             });
         }
 
         if (defaultFontShader <= 0) {
-            recompileShaders();
+            reloadShaders();
         }
-        initializeCustomFonts();
+        if (customTextureArray == null) {
+            reloadCustomFonts();
+        }
     }
 
-    private void recompileShaders() {
-        final ShaderProgram defaultProgram = recompileShader(false);
+    public static void reloadShaders() {
+        if (defaultFontShader > 0) {
+            GLStateManager.glDeleteProgram(defaultFontShader);
+            GLStateManager.glDeleteProgram(multisampleFontShader);
+        }
+        final SimpleShaderDefine vshItalic = new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u");
+        final SimpleShaderDefine vshDinnerbone = new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u");
+        final SimpleShaderDefine vshSecondTexture = new SimpleShaderDefine("FLAG_SECOND_TEXTURE", FLAG_SECOND_TEXTURE + "u");
+
+        final SimpleShaderDefine fshAAMode = new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode);
+        final SimpleShaderDefine fshAAStrength = new SimpleShaderDefine("AA_STRENGTH", FontConfig.fontAAStrength / 120f);
+        final SimpleShaderDefine fshBrightness = FontConfig.fontBrightness != 0
+            ? new SimpleShaderDefine("FONT_BRIGHTNESS", (1 + (FontConfig.fontBrightness / 10f)) + "f")
+            : null;
+
+        final SimpleShaderDefine multisampling = new SimpleShaderDefine("MULTISAMPLING");
+
+        final String vsh = ShaderProgram.loadUnmodifiedSource(BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh"));
+        final String fsh = ShaderProgram.loadUnmodifiedSource(BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.fsh"));
+
 
         //defaultFontShader = ShaderProgram.createProgram(vsh, fsh);
-        defaultFontShader = defaultProgram.getProgram();
+        defaultFontShader = ShaderProgram.createProgram(
+            ShaderProgram.injectDefines(vsh, vshItalic, vshDinnerbone, vshSecondTexture),
+            ShaderProgram.injectDefines(fsh, fshAAMode, fshAAStrength, fshBrightness)
+        );
         defaultMatrixLocation = GLStateManager.glGetUniformLocation(defaultFontShader, "u_MVPMatrix");
 
-        final ShaderProgram multisampleProgram = recompileShader(true);
-        multisampleFontShader = multisampleProgram.getProgram();
+        multisampleFontShader = ShaderProgram.createProgram(
+            ShaderProgram.injectDefines(vsh, vshItalic, vshDinnerbone, vshSecondTexture, multisampling),
+            ShaderProgram.injectDefines(fsh, fshAAMode, fshAAStrength, fshBrightness, multisampling)
+        );
         multisampleMatrixLocation = GLStateManager.glGetUniformLocation(multisampleFontShader, "u_MVPMatrix");
-        multisampleProgram.use();
-        multisampleProgram.bindTextureSlots("sampler0", "sampler1");
-        GL20.glUseProgram(0); //TODO where did clear go?
+
+        GLStateManager.glUseProgram(multisampleFontShader);
+        //GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(multisampleFontShader, "sampler0"), 0);
+        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(multisampleFontShader, "sampler1"), 1);
+        GLStateManager.glUseProgram(0);
     }
 
-    private ShaderProgram recompileShader(boolean multisampling) {
-        final SimpleShaderDefine define = multisampling
-            ? new SimpleShaderDefine("MULTISAMPLING", "")
-            : new SimpleShaderDefine("PLACEHOLDER", ""); //TODO
-        final String vsh = ShaderProgram.loadShaderSource(
-            BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.vsh"),
-            new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
-            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u"),
-            new SimpleShaderDefine("FLAG_SECOND_TEXTURE", FLAG_SECOND_TEXTURE + "u"),
-            define
-        );
-        final String fsh = ShaderProgram.loadShaderSource(
-            BatchingFontRenderer.class.getResourceAsStream("/assets/angelica/shaders/font/font.fsh"),
-            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode),
-            new SimpleShaderDefine("AA_STRENGTH", 7 / 120f),
-            define
-        );
-
-        return new ShaderProgram(vsh, fsh);
-//        if (!isSplash) {
-//            AutoShaderUpdater.getInstance().registerShaderReload(program,
-//                new ResourceLocation("angelica", "shaders/font/font.vsh"),
-//                new ResourceLocation("angelica", "shaders/font/font.fsh"),
-//                new IShaderReloadRunnable() {
-//                    @Override
-//                    public void run(ShaderProgram shaderProgram) {
-//                        defaultFontShader = shaderProgram.getProgram();
-//                        mvpMatrixLocation = GLStateManager.glGetUniformLocation(defaultFontShader, "u_MVPMatrix");
-//                    }
-//
-//                    @Override
-//                    public IShaderDefinesInjector[] getDefines() {
-//                        return new IShaderDefinesInjector[]{
-//                            new SimpleShaderDefine("AA_MODE", FontConfig.fontAAMode),
-//                            new SimpleShaderDefine("FLAG_ITALIC", FLAG_ITALIC + "u"),
-//                            new SimpleShaderDefine("FLAG_DINNERBONE", FLAG_DINNERBONE + "u")
-//                        };
-//                    }
-//                }
-//            );
-//        }
-    }
-
-    public static void initializeCustomFonts() {
-        if (primaryTextureArray == null && FontStrategist.primaryFont != null) {
-            System.out.println("Creating primary texture array. Font: " + FontStrategist.primaryFont.getFontName());
-            primaryTextureArray = createTextureArray(FontStrategist.primaryFont);
-        }
-//        if (secondaryTextureArray == null && FontStrategist.secondaryFont != null) {
-//            System.out.println("Creating secondary texture array. Font: " + FontStrategist.secondaryFont.getFontName());
-//
-//            secondaryTextureArray = createTextureArray(FontStrategist.secondaryFont);
-//        }
-    }
-
-
-    public static FontTextureArray createTextureArray(final Font font) {
-        BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
-        Graphics2D g2d = image.createGraphics();
-        g2d.setFont(font);
-        FontMetrics fontMetrics = g2d.getFontMetrics();
-        g2d.dispose();
-
-        int[] layerLookup = new int[256];
-        int layer = 0;
-        loop:
-        for (int atlasId = 0; atlasId < 256; atlasId++) {
-            for (int i = 0; i < 256; i++) {
-                final char ch = (char) (i + atlasId * 256);
-                if (font.canDisplay(ch)) {
-                    layerLookup[atlasId] = layer;
-                    layer++;
-                    continue loop;
-                }
-                // Can't display any chars, skip.
-                layerLookup[atlasId] = -1;
-            }
+    public static void reloadCustomFonts() {
+        if (customTextureArray != null) {
+            customTextureArray.delete();
+            customTextureArray = null;
         }
 
-        final int size = getAtlasSize(font, fontMetrics, 2);
-        System.out.println("Font Atlas size: " + size);
-        System.out.println("Amount layers: " + layer);
-        System.out.println("Layers indices: " + Arrays.toString(layerLookup));
-
-        return new FontTextureArray(
-            size,
-            layer,
-            layerLookup,
-            GL11.GL_LINEAR,
-            new AtlasProviderCustom(font)
-        );
-    }
-
-
-    private static int getAtlasSize(Font font, FontMetrics fontMetrics, int separator) {
-        int size = 256;
-
-        loop:
-        while (size <= 2048) {
-            for (int atlasId = 0; atlasId < 256; atlasId++) {
-                final int lineHeight = fontMetrics.getHeight();
-                final int charHeight = (lineHeight + separator);
-                int imgX = 0;
-                int imgY = 0; //TODO idk
-                for (int i = 0; i < 256; i++) {
-                    final char ch = (char) (i + 256 * atlasId);
-                    if (!font.canDisplay(ch)) continue;
-
-                    final int charWidth = fontMetrics.charWidth(ch);
-
-                    if (imgX + charWidth >= size) {
-                        imgX = 0;
-                        imgY += charHeight;
-                    }
-                    imgX += (charWidth + separator);
-
-                }
-                //if (imgX == 0 && imgY == 0) return 0; TODO integrate this somehow
-                // Total used height includes final row
-                int usedHeight = imgY + charHeight;
-
-                if (usedHeight > size) {
-                    size *= 2;
-                    continue loop;
-                }
-            }
-            return size;
+        if (!FontConfig.enableCustomFont) {
+            return;
         }
 
-        System.out.println("Size ended up being over 2048. This is a bug!");
-        return size;
+        final Font[] fonts = FontStrategist.getConfigFonts();
+        if (fonts != null) {
+            customTextureArray = FontProviderCustom.createTextureArray(fonts);
+        }
+
     }
 
     public int[] getCharWidths() {
@@ -283,6 +188,10 @@ public final class BatchingFontRenderer {
         return ((FontRendererAccessor) underlying).angelica$getGlyphWidths();
     }
 
+    public boolean forceUnicode() {
+        return underlying.getUnicodeFlag() || this.bookMode;
+    }
+
     public void initializeTextures() {
         ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
 
@@ -290,38 +199,21 @@ public final class BatchingFontRenderer {
 
         if (this.isSGA) {
             sgaCharWidths = this.getCharWidths();
-            sgaTextureArray = new FontTextureArray(
-                256, 1, new int[]{0}, GL11.GL_NEAREST, new AtlasProviderSGA()
-            );
-            sgaTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
+            overrideTextureArray = FontProviderSGA.create();
             return;
         }
 
         asciiCharWidths = this.getCharWidths();
 
         if (this.isSplash) {
-            splashTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
+            overrideTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
             return;
         }
 
-        int layer = 0;
-        final int[] layersLookupArray = new int[256];
-        for (int i = 0; i < 256; i++) {
-//                try {
-//                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
-//                } catch (Exception ignored) {
-//                    System.out.println("Could not find Layer " + i + ".");
-//                }
-            layersLookupArray[i] = layer;
-            layer++;
+        if (minecraftTextureArray != null) {
+            minecraftTextureArray.delete();
         }
-        if (defaultTextureArray != null) {
-            defaultTextureArray.delete();
-        }
-        defaultTextureArray = new FontTextureArray(
-            256, layer, layersLookupArray, GL11.GL_NEAREST, new AtlasProviderDefault()
-        );
-        defaultTextureArray.getGlyphData((char) 0); // Load first texture from bound texture atlas
+        minecraftTextureArray = FontProviderMinecraft.create();
     }
 
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
@@ -413,35 +305,31 @@ public final class BatchingFontRenderer {
         }
     }
 
-    public boolean forceDefaults() {
-        return this.bookMode || this.isSGA || this.isSplash;
-    }
-
     public float getGlyphScaleX() {
-        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect));
+        return forceDefaults ? 1 : (float) (FontConfig.glyphScale * Math.pow(2, FontConfig.glyphAspect));
     }
 
     public float getGlyphScaleY() {
-        return forceDefaults() ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect));
+        return forceDefaults ? 1 : (float) (FontConfig.glyphScale / Math.pow(2, FontConfig.glyphAspect));
     }
 
     public float getGlyphSpacing() {
-        return forceDefaults() ? 0 : FontConfig.glyphSpacing;
+        return forceDefaults ? 0 : FontConfig.glyphSpacing;
     }
 
     public float getWhitespaceScale() {
-        return forceDefaults() ? 1 : FontConfig.whitespaceScale;
+        return forceDefaults ? 1 : FontConfig.whitespaceScale;
     }
 
     public float getShadowOffset() {
-        return forceDefaults() ? 1 : FontConfig.fontShadowOffset;
+        return forceDefaults ? 1 : FontConfig.fontShadowOffset;
     }
 
     private static final double WAVE_TIME_SCALE = 5e-9;
     private static final float WAVE_FREQUENCY = 0.5f;
 
-    public int drawString(final int anchorX, final int anchorY, final int color, final boolean enableShadow,
-        final boolean unicodeFlag, final String string) {
+    public int drawString(final String string, final int anchorX, final int anchorY,
+                          final int color, final boolean enableShadow) {
         // noinspection SizeReplaceableByIsEmpty
         if (string == null || string.length() == 0) {
             return anchorX + (enableShadow ? 1 : 0);
@@ -451,398 +339,368 @@ public final class BatchingFontRenderer {
 
         this.beginBatch();
         float curX = anchorX;
-        try {
-            final int stringEnd = string.length();
+        final int stringEnd = string.length();
 
-            int curColor = color;
-            int curShadowColor = shadowColor;
-            boolean curItalic = false;
-            boolean curRandom = false;
-            boolean curBold = false;
-            boolean curStrikethrough = false;
-            boolean curUnderline = false;
-            boolean curRainbow = false;
-            boolean curWave = false;
-            boolean curDinnerbone = false;
-            boolean curGradient = false;
-            boolean curShader = false;
-            int gradientStartRgb = 0, gradientEndRgb = 0;
-            int gradientCharIndex = 0, gradientTotalChars = 0;
-            float gradientStep = 0f;
-            int rainbowCharIndex = 0;
-            int visibleCharIndex = 0;
+        int curColor = color;
+        boolean unicodeFlag = this.forceUnicode();
+        int curShadowColor = shadowColor;
+        boolean curItalic = false;
+        boolean curRandom = false;
+        boolean curBold = false;
+        boolean curStrikethrough = false;
+        boolean curUnderline = false;
+        boolean curRainbow = false;
+        boolean curWave = false;
+        boolean curDinnerbone = false;
+        boolean curGradient = false;
+        FontOverlayShader curShader = null;
+        int gradientStartRgb = 0, gradientEndRgb = 0;
+        int gradientCharIndex = 0, gradientTotalChars = 0;
+        float gradientStep = 0f;
+        int rainbowCharIndex = 0;
+        int visibleCharIndex = 0;
 
-            final float glyphScaleY = getGlyphScaleY();
-            final float glyphScaleX = getGlyphScaleX();
-            final float glyphSpacing = getGlyphSpacing();
-            float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
+        final float glyphScaleY = getGlyphScaleY();
+        final float glyphScaleX = getGlyphScaleX();
+        final float glyphSpacing = getGlyphSpacing();
+        float heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY / 2);
 
-            final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
-            float underlineStartX = 0.0f;
-            float underlineEndX = 0.0f;
+        final float underlineY = heightNorth + (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY;
+        float underlineStartX = 0.0f;
+        float underlineEndX = 0.0f;
 
-            final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
-            float strikethroughStartX = 0.0f;
-            float strikethroughEndX = 0.0f;
+        final float strikethroughY = heightNorth + ((float) (underlying.FONT_HEIGHT / 2) - 1.0f) * glyphScaleY;
+        float strikethroughStartX = 0.0f;
+        float strikethroughEndX = 0.0f;
+
+        final int boldCopies = FontConfig.boldCopies;
 
 
-            for (int charIdx = 0; charIdx < stringEnd; charIdx++) {
-                char chr = string.charAt(charIdx);
+        for (int charIdx = 0; charIdx < stringEnd; charIdx++) {
+            char chr = string.charAt(charIdx);
 
-                // COLOR CODE BLOCK START
-                if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
-                    final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
-                    charIdx++;
+            // COLOR CODE BLOCK START
+            if (chr == FORMATTING_CHAR && (charIdx + 1) < stringEnd) {
+                final char fmtCode = Character.toLowerCase(string.charAt(charIdx + 1));
+                charIdx++;
 
-                    if (curUnderline && underlineStartX != underlineEndX) {
-                        pushQuad(
-                            underlineStartX, underlineY,
-                            underlineEndX - underlineStartX, glyphScaleY,
-                            curColor,
-                            0,
-                            curItalic, curDinnerbone
-                        );
-                        underlineStartX = underlineEndX;
+                if (curUnderline && underlineStartX != underlineEndX) {
+                    pushQuad(
+                        underlineStartX, underlineY,
+                        underlineEndX - underlineStartX, glyphScaleY,
+                        curColor,
+                        0,
+                        curItalic, curDinnerbone
+                    );
+                    underlineStartX = underlineEndX;
+                }
+                if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+                    pushQuad(
+                        strikethroughStartX, strikethroughY,
+                        strikethroughEndX - strikethroughStartX, glyphScaleY,
+                        curColor,
+                        0,
+                        curItalic, curDinnerbone
+                    );
+                    strikethroughStartX = strikethroughEndX;
+                }
+
+                final boolean is09 = charInRange(fmtCode, '0', '9');
+                if (is09 || charInRange(fmtCode, 'a', 'f')) {
+                    curRandom = false;
+                    curBold = false;
+                    curStrikethrough = false;
+                    curUnderline = false;
+                    curItalic = false;
+                    curRainbow = false;
+                    curGradient = false;
+                    // wave/dinnerbone does NOT get reset — they're positional effects, independent of color
+
+                    final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
+                    final int rgb = this.colorCode[colorIdx];
+                    curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                    final int shadowRgb = this.colorCode[colorIdx + 16];
+                    curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
+                    continue;
+                }
+
+                switch (fmtCode) {
+                    case 'x' -> {
+                        if (AngelicaConfig.enableRGBColors && charIdx + SECTION_X_PAYLOAD < stringEnd) {
+                            int rgb = ColorCodeUtils.parseHexPairs(string, charIdx + 1, 6);
+                            if (rgb != -1) {
+                                curRainbow = false;
+                                curGradient = false;
+                                curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
+                                curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
+                                charIdx += SECTION_X_PAYLOAD;
+                            }
+                        }
                     }
-                    if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                        pushQuad(
-                            strikethroughStartX, strikethroughY,
-                            strikethroughEndX - strikethroughStartX, glyphScaleY,
-                            curColor,
-                            0,
-                            curItalic, curDinnerbone
-                        );
-                        strikethroughStartX = strikethroughEndX;
+                    case 'k' -> {
+                        curRandom = true;
                     }
-
-                    final boolean is09 = charInRange(fmtCode, '0', '9');
-                    if (is09 || charInRange(fmtCode, 'a', 'f')) {
+                    case 'l' -> {
+                        curBold = true;
+                    }
+                    case 'm' -> {
+                        curStrikethrough = true;
+                        strikethroughStartX = curX - 1;
+                        strikethroughEndX = strikethroughStartX;
+                    }
+                    case 'n' -> {
+                        curUnderline = true;
+                        underlineStartX = curX - 1;
+                        underlineEndX = underlineStartX;
+                    }
+                    case 'o' -> {
+                        curItalic = true;
+                    }
+                    case 'q' -> {
+                        if (AngelicaConfig.enableRainbow) {
+                            curRainbow = true;
+                            curGradient = false;
+                            rainbowCharIndex = 0;
+                        }
+                    }
+                    case 'z' -> {
+                        if (AngelicaConfig.enableWaveText) {
+                            curWave = !curWave;
+                        }
+                    }
+                    case 'v' -> {
+                        if (AngelicaConfig.enableDinnerboneText) {
+                            curDinnerbone = !curDinnerbone;
+                        }
+                    }
+                    case 'g' -> {
+                        if (AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
+                            int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
+                            int color2 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1 + SECTION_X_LENGTH);
+                            if (color1 != -1 && color2 != -1) {
+                                curGradient = true;
+                                curRainbow = false;
+                                gradientStartRgb = color1;
+                                gradientEndRgb = color2;
+                                gradientCharIndex = 0;
+                                gradientTotalChars = countVisibleChars(string, charIdx + 1 + GRADIENT_PAYLOAD, stringEnd);
+                                gradientStep = gradientTotalChars > 1 ? 1f / (gradientTotalChars - 1) : 0f;
+                                charIdx += GRADIENT_PAYLOAD;
+                            }
+                        }
+                    }
+                    case 'r' -> {
                         curRandom = false;
                         curBold = false;
                         curStrikethrough = false;
                         curUnderline = false;
                         curItalic = false;
                         curRainbow = false;
+                        curWave = false;
+                        curDinnerbone = false;
                         curGradient = false;
-                        // wave/dinnerbone NOT reset — they're positional effects, independent of color
-
-                        final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
-                        final int rgb = this.colorCode[colorIdx];
-                        curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                        final int shadowRgb = this.colorCode[colorIdx + 16];
-                        curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
-                        continue;
-                    }
-
-                    switch (fmtCode) {
-                        case 'x' -> {
-                            if (AngelicaConfig.enableRGBColors && charIdx + SECTION_X_PAYLOAD < stringEnd) {
-                                int rgb = ColorCodeUtils.parseHexPairs(string, charIdx + 1, 6);
-                                if (rgb != -1) {
-                                    curRainbow = false;
-                                    curGradient = false;
-                                    curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
-                                    curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
-                                    charIdx += SECTION_X_PAYLOAD;
-                                }
-                            }
-                        }
-                        case 'k' -> {
-                            curRandom = true;
-                        }
-                        case 'l' -> {
-                            curBold = true;
-                        }
-                        case 'm' -> {
-                            curStrikethrough = true;
-                            strikethroughStartX = curX - 1;
-                            strikethroughEndX = strikethroughStartX;
-                        }
-                        case 'n' -> {
-                            curUnderline = true;
-                            underlineStartX = curX - 1;
-                            underlineEndX = underlineStartX;
-                        }
-                        case 'o' -> {
-                            curItalic = true;
-                        }
-                        case 'q' -> {
-                            if (AngelicaConfig.enableRainbow) {
-                                curRainbow = true;
-                                curGradient = false;
-                                rainbowCharIndex = 0;
-                            }
-                        }
-                        case 'z' -> {
-                            if (AngelicaConfig.enableWaveText) {
-                                curWave = !curWave;
-                            }
-                        }
-                        case 'v' -> {
-                            if (AngelicaConfig.enableDinnerboneText) {
-                                curDinnerbone = !curDinnerbone;
-                            }
-                        }
-                        case 'g' -> {
-                            if (AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
-                                int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
-                                int color2 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1 + SECTION_X_LENGTH);
-                                if (color1 != -1 && color2 != -1) {
-                                    curGradient = true;
-                                    curRainbow = false;
-                                    gradientStartRgb = color1;
-                                    gradientEndRgb = color2;
-                                    gradientCharIndex = 0;
-                                    gradientTotalChars = countVisibleChars(string, charIdx + 1 + GRADIENT_PAYLOAD, stringEnd);
-                                    gradientStep = gradientTotalChars > 1 ? 1f / (gradientTotalChars - 1) : 0f;
-                                    charIdx += GRADIENT_PAYLOAD;
-                                }
-                            }
-                        }
-                        case 'r' -> {
-                            curRandom = false;
-                            curBold = false;
-                            curStrikethrough = false;
-                            curUnderline = false;
-                            curItalic = false;
-                            curRainbow = false;
-                            curWave = false;
-                            curDinnerbone = false;
-                            curGradient = false;
-                            curColor = color;
-                            curShadowColor = shadowColor;
-                            curShader = false;
-                        }
-                        case 'y' -> {
-                            curShader = true; //TODO extend this functionality
+                        curColor = color;
+                        curShadowColor = shadowColor;
+                        if (curShader != null) {
+                            curShader = curShader.end(this);
                         }
                     }
-                    continue;
-                }
-                // COLOR CODE BLOCK END
-
-                if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
-                    final char replacement = GlyphReplacements.getReplacementGlyph(chr);
-                    if (replacement != 0) {
-//                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
-//                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
-//                        ) {
-//                            chr = replacement;
-//                        } TODO
+                    default -> {
+                        if (FontShaderManager.isOverlayShader(fmtCode) || fmtCode == 'y') { //TODO remove y test
+                            if (curShader == null) { //TODO shadermanager integration
+                                curShader = FontOverlayShader.TEMPLATE.begin(this);
+                            }
+                        }
                     }
                 }
+                continue;
+            }
+            // COLOR CODE BLOCK END
 
-                if (curRandom) {
-                    chr = getRandomReplacement(chr, this.isSGA);
+            float shadowOffset = FontConfig.fontShadowOffset;
+            float yScaleMultiplier = 1;
+            int flags = (curItalic ? FLAG_ITALIC : 0) | (curDinnerbone ? FLAG_DINNERBONE : 0);
+
+
+            final FontTextureArray fontProvider;
+            if (this.overrideTextureArray != null) {
+                fontProvider = overrideTextureArray;
+            }
+            else if (this.forceUnicode()) { //TODO make this override texture array
+                fontProvider = unicodeTextureArray;
+                shadowOffset *= FontConfig.fontShadowOffsetUC;
+            }
+            else if (customTextureArray != null) {
+                final char replacement = GlyphReplacements.getReplacementGlyph(chr);
+                if (replacement != 0) {
+                    if (FontConfig.enableGlyphReplacements && customTextureArray.isGlyphAvailable(replacement)) {
+                        chr = replacement;
+                    }
                 }
-
-                //final FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
-                //final FontTextureArray fontProvider = getFontProvider(chr, FontConfig.enableCustomFont, unicodeFlag);
-
-                final FontTextureArray fontArray = getFontProvider(chr, FontConfig.enableCustomFont, unicodeFlag);
-                final boolean isCustomFont = fontArray == primaryTextureArray;
-                if (isCustomFont) {
+                if (customTextureArray.isGlyphAvailable(chr)) {
+                    fontProvider = customTextureArray;
+                    yScaleMultiplier = FontConfig.customFontScale;
+                    flags |= FLAG_SECOND_TEXTURE;
                     requiresMultisampling = true;
+                } else {
+                    fontProvider = minecraftTextureArray;
                 }
-                final float yScaleMultiplier = isCustomFont ? FontConfig.customFontScale : 1; //TODO make it not scuffed
+            }
+            else {
+                fontProvider = minecraftTextureArray;
+            }
 
-                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * yScaleMultiplier / 2);
-                float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * yScaleMultiplier;
+            if (curRandom) {
+                chr = getRandomReplacement(chr, this.isSGA);
+            }
 
-                visibleCharIndex++;
+            heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * yScaleMultiplier / 2);
+            float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * yScaleMultiplier;
 
-                // Check ASCII space, NBSP, NNBSP
-                if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
-                    curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
-                    continue;
-                }
+            visibleCharIndex++;
 
-                if (curRainbow) {
-                    int rgbEffect = RAINBOW_LUT[rainbowCharIndex % RAINBOW_LUT_SIZE];
-                    curColor = (curColor & 0xFF000000) | rgbEffect;
-                    curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
-                    rainbowCharIndex++;
-                }
-                if (curGradient && gradientTotalChars > 0) {
-                    float t = Math.min(gradientCharIndex * gradientStep, 1f);
-                    int gr = (int)((gradientStartRgb >> 16 & 0xFF) * (1-t) + (gradientEndRgb >> 16 & 0xFF) * t);
-                    int gg = (int)((gradientStartRgb >> 8 & 0xFF) * (1-t) + (gradientEndRgb >> 8 & 0xFF) * t);
-                    int gb = (int)((gradientStartRgb & 0xFF) * (1-t) + (gradientEndRgb & 0xFF) * t);
-                    int rgbEffect = (gr << 16) | (gg << 8) | gb;
-                    curColor = (curColor & 0xFF000000) | rgbEffect;
-                    curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
-                    gradientCharIndex++;
-                }
+            // Check ASCII space, NBSP, NNBSP
+            if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
+                curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
+                continue;
+            }
 
-                //((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+            if (curRainbow) {
+                int rgbEffect = RAINBOW_LUT[rainbowCharIndex % RAINBOW_LUT_SIZE];
+                curColor = (curColor & 0xFF000000) | rgbEffect;
+                curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
+                rainbowCharIndex++;
+            }
+            if (curGradient && gradientTotalChars > 0) {
+                float t = Math.min(gradientCharIndex * gradientStep, 1f);
+                int gr = (int) ((gradientStartRgb >> 16 & 0xFF) * (1 - t) + (gradientEndRgb >> 16 & 0xFF) * t);
+                int gg = (int) ((gradientStartRgb >> 8 & 0xFF) * (1 - t) + (gradientEndRgb >> 8 & 0xFF) * t);
+                int gb = (int) ((gradientStartRgb & 0xFF) * (1 - t) + (gradientEndRgb & 0xFF) * t);
+                int rgbEffect = (gr << 16) | (gg << 8) | gb;
+                curColor = (curColor & 0xFF000000) | rgbEffect;
+                curShadowColor = (curShadowColor & 0xFF000000) | ((rgbEffect & 0xFCFCFC) >> 2);
+                gradientCharIndex++;
+            }
 
-                final GlyphData data = fontArray.getGlyphData(chr);
-                final float uStart = data.uStart;
-                final float vStart = data.vStart;
-                final float xAdvance = data.xAdvance * glyphScaleX;
-                final float glyphW = data.glyphW * glyphScaleX;
-                final float uSize = data.uSize;
-                final float vSize = data.vSize;
-//                final float uStart = fontProvider.getUStart(chr);
-//                final float vStart = fontProvider.getVStart(chr);
-//                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
-//                final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
-//                final float uSize = fontProvider.getUSize(chr);
-//                final float vSize = fontProvider.getVSize(chr);
-//                final float shadowOffset = fontProvider.getShadowOffset();
-                final float shadowOffset = FontConfig.fontShadowOffset;
-                final int shadowCopies = FontConfig.shadowCopies;
-                final int boldCopies = FontConfig.boldCopies;
-                final int layer = fontArray.getDepth(chr);
-//                if (fontProvider instanceof FontProviderUnicode) { //TODO
-//                    if (!mainTextureArray.hasLayer(layer)) {
-//                        mainTextureArray.addAtlas(layer, FontTextureArray.getUnicodePage(layer));
-//                    }
-//                }
+            final GlyphData data = fontProvider.getGlyphData(chr);
+            final float uStart = data.uStart;
+            final float vStart = data.vStart;
+            final float xAdvance = data.xAdvance * glyphScaleX;
+            final float glyphW = data.glyphW * glyphScaleX; //TODO -1
+            final float uSize = data.uSize;
+            final float vSize = data.vSize;
+            final int layer = fontProvider.getDepth(chr);
 
 
-                // Wave: Y offset via sine wave
-                float renderY = heightNorth;
+            // Wave: Y offset via sine wave
+            float renderY = heightNorth;
 
-//                if (curShader) {
-//                    pushTexRect(
-//                        curX,
-//                        renderY,
-//                        glyphW - 1.0f,
-//                        heightSouth,
-//                        itOff,
-//                        0xFFFFFFFF, //0xFF000000,
-//                        uStart, vStart, uSz, vSz,
-//                        curDinnerbone,
-//                        texture
-//                    );
-//                    final int idxId = idxWriterIndex;
-//                    final int vtxCount = 4;
-//                    pushShaderCmd(
-//                        idxId,
-//                        vtxCount / 2 * 3,
-//                        texture,
-//                        curX,
-//                        renderY,
-//                        glyphW - 1.0f,
-//                        heightSouth
-//                    );
-//
-//                    curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
-//                    if (bookMode) { curX = (int) curX; }
-//                    underlineEndX = curX;
-//                    strikethroughEndX = curX;
-//                    continue;
-//                }
+            if (curWave) {
+                float time = HUDCaching.renderingCacheOverride ? 0f : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
+                renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
+            }
 
-                if (curWave) {
-                    float time = HUDCaching.renderingCacheOverride ? 0f : (float)((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
-                    renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
-                }
+            if (curShader != null) {
+                curShader.updateBounds(curX, renderY, glyphW - 1.0f, heightSouth);
+                curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing; //TODO unify
+                underlineEndX = curX;
+                strikethroughEndX = curX;
+                continue;
+            }
 
-                if (enableShadow) {
-                    for (int n = 1; n <= shadowCopies; n++) {
-                        final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushQuad(
-                            curX + shadowOffsetPart, renderY + shadowOffsetPart,
-                            glyphW - 1, heightSouth,
-                            uStart, vStart, uSize, vSize,
-                            curShadowColor,
-                            layer,
-                            curItalic,
-                            curDinnerbone,
-                            isCustomFont
-                        );
-
-                        if (curBold) {
-                            pushQuad(
-                                curX + 2 * shadowOffsetPart, renderY + shadowOffsetPart,
-                                glyphW - 1, heightSouth,
-                                uStart, vStart, uSize, vSize,
-                                curShadowColor,
-                                layer,
-                                curItalic,
-                                curDinnerbone,
-                                isCustomFont
-                            );
-                        }
-                    }
-                }
-
+            if (enableShadow) {
                 pushQuad(
-                    curX, renderY,
+                    curX + shadowOffset, renderY + shadowOffset,
                     glyphW - 1, heightSouth,
                     uStart, vStart, uSize, vSize,
-                    curColor,
+                    curShadowColor,
                     layer,
-                    curItalic,
-                    curDinnerbone,
-                    isCustomFont
+                    flags
                 );
 
                 if (curBold) {
-                    for (int n = 1; n <= boldCopies; n++) {
-                        final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushQuad(
-                            curX + shadowOffsetPart, renderY,
-                            glyphW - 1, heightSouth,
-                            uStart, vStart, uSize, vSize,
-                            curColor,
-                            layer,
-                            curItalic,
-                            curDinnerbone,
-                            isCustomFont
-                        );
-                    }
-                }
-                curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing;
-                underlineEndX = curX;
-                strikethroughEndX = curX;
-
-                if ((curRainbow || curGradient) && curUnderline && underlineStartX != underlineEndX) {
                     pushQuad(
-                        underlineStartX, underlineY,
-                        underlineEndX - underlineStartX, glyphScaleY,
-                        curColor,
+                        curX + 2 * shadowOffset, renderY + shadowOffset,
+                        glyphW - 1, heightSouth,
+                        uStart, vStart, uSize, vSize,
+                        curShadowColor,
                         layer,
-                        curItalic, curDinnerbone
+                        flags
                     );
-                    underlineStartX = underlineEndX;
-                }
-                if ((curRainbow || curGradient) && curStrikethrough && strikethroughStartX != strikethroughEndX) {
-                    pushQuad(
-                        strikethroughStartX, strikethroughY,
-                        strikethroughEndX - strikethroughStartX, glyphScaleY,
-                        curColor,
-                        layer,
-                        curItalic, curDinnerbone
-                    );
-                    strikethroughStartX = strikethroughEndX;
                 }
             }
 
-            if (curUnderline && underlineStartX != underlineEndX) {
+            pushQuad(
+                curX, renderY,
+                glyphW - 1, heightSouth,
+                uStart, vStart, uSize, vSize,
+                curColor,
+                layer,
+                flags
+            );
+
+            if (curBold) {
+                for (int n = 1; n <= boldCopies; n++) {
+                    final float boldOffsetPart = (float) n / boldCopies;
+                    pushQuad(
+                        curX + boldOffsetPart, renderY,
+                        glyphW - 1, heightSouth,
+                        uStart, vStart, uSize, vSize,
+                        curColor,
+                        layer,
+                        flags
+                    );
+                }
+            }
+            curX += (xAdvance + (curBold ? 1 : 0)) + glyphSpacing;
+            underlineEndX = curX;
+            strikethroughEndX = curX;
+
+            if ((curRainbow || curGradient) && curUnderline && underlineStartX != underlineEndX) {
                 pushQuad(
                     underlineStartX, underlineY,
                     underlineEndX - underlineStartX, glyphScaleY,
                     curColor,
-                    0,
+                    layer,
                     curItalic, curDinnerbone
                 );
+                underlineStartX = underlineEndX;
             }
-            if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+            if ((curRainbow || curGradient) && curStrikethrough && strikethroughStartX != strikethroughEndX) {
                 pushQuad(
                     strikethroughStartX, strikethroughY,
                     strikethroughEndX - strikethroughStartX, glyphScaleY,
                     curColor,
-                    0,
+                    layer,
                     curItalic, curDinnerbone
                 );
+                strikethroughStartX = strikethroughEndX;
             }
-
-        } finally {
-            this.endBatch();
         }
+
+        if (curUnderline && underlineStartX != underlineEndX) {
+            pushQuad(
+                underlineStartX, underlineY,
+                underlineEndX - underlineStartX, glyphScaleY,
+                curColor,
+                0,
+                curItalic, curDinnerbone
+            );
+        }
+        if (curStrikethrough && strikethroughStartX != strikethroughEndX) {
+            pushQuad(
+                strikethroughStartX, strikethroughY,
+                strikethroughEndX - strikethroughStartX, glyphScaleY,
+                curColor,
+                0,
+                curItalic, curDinnerbone
+            );
+        }
+
+        if (curShader != null) {
+            curShader.end(this);
+        }
+        this.endBatch();
         return (int) (curX + (enableShadow ? 1 : 0));
     }
 
@@ -861,33 +719,17 @@ public final class BatchingFontRenderer {
         return chr;
     }
 
-    private FontTextureArray getFontProvider(char chr, boolean customFontEnabled, boolean forceUnicode) {
-        if (this.isSGA) {
-            return sgaTextureArray;
-            //return FontProviderMC.getSGA();
+    private FontTextureArray getFontProvider(char chr) {
+        if (this.overrideTextureArray != null) {
+            return overrideTextureArray;
         }
-        if (this.bookMode) {
-            //return FontProviderUnicode.get();
-
+        if (this.forceUnicode()) {
+            return unicodeTextureArray;
         }
-        if (customFontEnabled && !this.isSplash) {
-//            FontProvider fp;
-//            fp = FontProviderCustom.getPrimary();
-//            if (fp.isGlyphAvailable(chr)) { return fp; }
-//            fp = FontProviderCustom.getFallback();
-//            if (fp.isGlyphAvailable(chr)) { return fp; }
-//            return FontProviderUnicode.get();
-            if (primaryTextureArray != null && primaryTextureArray.isGlyphAvailable(chr)) return primaryTextureArray;
-            //if (secondaryTextureArray != null && secondaryTextureArray.isGlyphAvailable(chr)) return secondaryTextureArray;
-            return defaultTextureArray;
-        } else {
-//            if (!forceUnicode && FontProviderMC.getDefault().isGlyphAvailable(chr)) {
-//                return FontProviderMC.getDefault();
-//            } else {
-//                return FontProviderUnicode.get();
-//            }
-            return this.isSplash ? splashTextureArray : defaultTextureArray;
+        if (customTextureArray != null && customTextureArray.isGlyphAvailable(chr)) {
+            return customTextureArray; //TODO fix this not working with no fonts selected
         }
+        return minecraftTextureArray;
     }
 
 
@@ -922,7 +764,7 @@ public final class BatchingFontRenderer {
             return 4 * this.getWhitespaceScale();
         }
 
-        final FontTextureArray fp = getFontProvider(chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
+        final FontTextureArray fp = getFontProvider(chr);
         //FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getGlyphData(chr).xAdvance * this.getGlyphScaleX();
@@ -943,18 +785,16 @@ public final class BatchingFontRenderer {
 
     private static final int INSTANCE_SIZE = 38;
 
-    private int mainVAO = 0;
-
     private int batchDepth = 0;
 
     //TODO make it work with any initial capacity & fix resize
-    private final StreamingDrawer stream = StreamingDrawer.create(1024 * 400 * INSTANCE_SIZE); //TODO test resize
-    private int instanceCount; //TODO merge into stream
+    private static final StreamingDrawer stream = StreamingDrawer.create(
+        INSTANCE_SIZE, 256, BatchingFontRenderer::initVAO
+    );
+
     private boolean requiresMultisampling;
 
-    private int initVAO() {
-        int vao = GLStateManager.glGenVertexArrays();
-
+    private static int initVAO(int vao, int vbo) {
         GLStateManager.glBindVertexArray(vao);
 
         GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, InstancedHelper.getQuadEBO());
@@ -973,7 +813,7 @@ public final class BatchingFontRenderer {
         GLStateManager.glEnableVertexAttribArray(0);
         GLStateManager.glVertexAttribDivisor(0, 0);
 
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, stream.getVBO());
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
 
         // Glyph data (posX, posY, width, height)
         GLStateManager.glVertexAttribPointer(
@@ -1034,7 +874,7 @@ public final class BatchingFontRenderer {
         GLStateManager.glEnableVertexAttribArray(5);
         GLStateManager.glVertexAttribDivisor(5, 1);
 
-        return vao;
+        return INSTANCE_SIZE;
     }
 
     public void pushQuad(
@@ -1048,7 +888,7 @@ public final class BatchingFontRenderer {
             -1, -1, 0, 0,
             rgba,
             layer,
-            italic, dinnerbone, false
+            (italic ? FLAG_ITALIC : 0) | (dinnerbone ? FLAG_DINNERBONE : 0)
         );
     }
 
@@ -1057,7 +897,7 @@ public final class BatchingFontRenderer {
         float uMin, float vMin, float uWidth, float vWidth,
         int rgba,
         int layer,
-        boolean italic, boolean dinnerbone, boolean secondaryTexture
+        int flags
     ) {
         final long ptr = stream.writeSection(INSTANCE_SIZE);
 
@@ -1082,13 +922,7 @@ public final class BatchingFontRenderer {
 
         // layer
         memPutByte(ptr + 36, (byte) layer);
-
-        final int flags = (italic ? FLAG_ITALIC : 0)
-            | (dinnerbone ? FLAG_DINNERBONE : 0)
-            | (secondaryTexture ? FLAG_SECOND_TEXTURE : 0);
         memPutByte(ptr + 37, (byte) flags);
-
-        instanceCount++;
     }
 
     /**
@@ -1106,21 +940,10 @@ public final class BatchingFontRenderer {
         }
     }
 
-    private void flushBatch() {
-        if (instanceCount == 0) return;
+    protected void flushBatch() {
+        if (stream.isEmpty()) return;
 
-        if (mainVAO == 0) {
-            mainVAO = initVAO();
-        }
-
-        GLStateManager.glBindVertexArray(mainVAO);
-
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, stream.getVBO()); //TODO bindless vbo
-
-        final int offset = stream.finishUploading() / INSTANCE_SIZE;
-
-        //vboCapacity = StreamingUploader.upload(getReadBuffer(), vboCapacity);
-
+        GLStateManager.glBindVertexArray(stream.getVAO());
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
@@ -1135,33 +958,31 @@ public final class BatchingFontRenderer {
             GLStateManager.uploadMVPMatrix(multisampleMatrixLocation);
 
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
-            primaryTextureArray.bind();
+            customTextureArray.bind();
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         } else {
             GLStateManager.glUseProgram(defaultFontShader);
             GLStateManager.uploadMVPMatrix(defaultMatrixLocation);
         }
 
-        (this.isSplash ? splashTextureArray : defaultTextureArray).bind();
-//        GL31.glDrawElementsInstanced(
+        (this.overrideTextureArray != null ? overrideTextureArray : minecraftTextureArray).bind();
+//        GL31.glDrawElementsInstanced( TODO make this the fallback
 //            GL11.GL_TRIANGLES,
 //            6,
 //            GL11.GL_UNSIGNED_SHORT,
 //            0,
 //            instanceCount
 //        );
-        GL42.glDrawElementsInstancedBaseInstance( //TODO
+
+        stream.drawElementsInstanced(
             GL11.GL_TRIANGLES,
             6,
             GL11.GL_UNSIGNED_SHORT,
-            0,
-            instanceCount,
-            offset
+            0
         );
 
         GLStateManager.glUseProgram(prevProgram);
 
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         GLStateManager.glBindVertexArray(0);
 
 //        if (!isBlendEnabledBefore) {
@@ -1172,13 +993,14 @@ public final class BatchingFontRenderer {
     }
 
     private void clearBatch() {
-        instanceCount = 0;
         requiresMultisampling = false;
     }
 
     private void delete() {
-        GLStateManager.glDeleteVertexArrays(mainVAO);
-        stream.delete();
+        if (overrideTextureArray != null) {
+            overrideTextureArray.delete();
+            overrideTextureArray = null;
+        }
     }
 
 }

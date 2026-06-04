@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
+import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 
 @Config(modid = "angelica", category = "customfont")
 public class FontConfig {
@@ -26,10 +27,10 @@ public class FontConfig {
     @Config.RangeFloat(min = 0F, max = 2F)
     public static float fontShadowOffset;
 
-    @Config.Comment("The number of shadows to be drawn behind text at various offsets.")
-    @Config.DefaultInt(1)
-    @Config.RangeInt(min = 1, max = 8)
-    public static int shadowCopies;
+    @Config.Comment("Adds extra brightness to fonts. 0 = None, 10 = 2x brighter")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 10)
+    public static int fontBrightness;
 
     @Config.Comment("The number of bold copies to be drawn behind text at various offsets.")
     @Config.DefaultInt(2)
@@ -82,4 +83,24 @@ public class FontConfig {
         "See for additional details: https://github.com/GTNewHorizons/Angelica/issues/1239#issuecomment-3729877936"})
     @Config.DefaultBoolean(true)
     public static boolean enableGlyphReplacements;
+
+    public static void setEnableCustomFont(boolean enableCustomFont) {
+        FontConfig.enableCustomFont = enableCustomFont;
+        BatchingFontRenderer.reloadCustomFonts();
+    }
+
+    public static void setFontAAStrength(int fontAAStrength) {
+        FontConfig.fontAAStrength = fontAAStrength;
+        BatchingFontRenderer.reloadShaders();
+    }
+
+    public static void setFontAAMode(int fontAAMode) {
+        FontConfig.fontAAMode = fontAAMode;
+        BatchingFontRenderer.reloadShaders();
+    }
+
+    public static void setFontBrightness(int fontBrightness) {
+        FontConfig.fontBrightness = fontBrightness;
+        BatchingFontRenderer.reloadShaders();
+    }
 }

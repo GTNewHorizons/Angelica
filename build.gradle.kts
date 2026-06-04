@@ -9,7 +9,7 @@ minecraft {
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
     //extraRunJvmArguments.add("-Dangelica.useVulkan=true")
     //extraRunJvmArguments.add("-Dangelica.vulkanDebug=true")
-    extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
+    //extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")
     //extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
     //extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
     //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")

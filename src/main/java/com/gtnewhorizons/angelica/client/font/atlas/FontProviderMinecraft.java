@@ -3,15 +3,37 @@ package com.gtnewhorizons.angelica.client.font.atlas;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.GlyphData;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 
-public final class AtlasProviderDefault implements AtlasProvider {
+public final class FontProviderMinecraft extends FontTextureArray {
+
+    public static FontProviderMinecraft create() {
+        int layer = 0;
+        final int[] layersLookupArray = new int[256];
+        for (int i = 0; i < 256; i++) {
+//                try {
+//                    //Minecraft.getMinecraft().getResourceManager().getResource(getUnicodePage(i));
+//                } catch (Exception ignored) {
+//                    System.out.println("Could not find Layer " + i + ".");
+//                } TODO resourceExists
+            layersLookupArray[i] = layer;
+            layer++;
+        }
+        return new FontProviderMinecraft(256, layer, layersLookupArray, GL11.GL_NEAREST);
+    }
+
+
+    private FontProviderMinecraft(int size, int layers, int[] layersLookupArray, int filter) {
+        super(size, layers, layersLookupArray, filter);
+        loadAtlas(0); // Load first texture from bound texture atlas
+    }
 
     @Override
-    public ByteBuffer generateGlyphData(int atlasId, int textureSize, GlyphData[] glyphs) {
+    public ByteBuffer generateGlyphData(int atlasId, GlyphData[] glyphs) {
         if (atlasId == 0) {
-            final int size = AtlasProvider.getBoundTextureSize();
+            final int size = getBoundTextureSize();
             final int[] charWidth = BatchingFontRenderer.asciiCharWidths;
             for (int i = 0; i < 256; i++) {
                 final int index = BatchingFontRenderer.lookupMcFontPosition((char) i);
@@ -31,7 +53,7 @@ public final class AtlasProviderDefault implements AtlasProvider {
                 );
             }
 
-            return AtlasProvider.getBoundTextureData(size);
+            return getBoundTextureData(size);
         }
 
         final byte[] glyphWidth = BatchingFontRenderer.glyphWidths;
@@ -57,6 +79,6 @@ public final class AtlasProviderDefault implements AtlasProvider {
 
         final ResourceLocation resource = new ResourceLocation(String.format("textures/font/unicode_page_%02x.png", atlasId));
 
-        return AtlasProvider.getTextureFromResource(resource);
+        return getTextureFromResource(resource);
     }
 }

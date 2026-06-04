@@ -14,4 +14,6 @@ public interface FontRendererAccessor {
     int[] angelica$getCharWidths();
 
     byte[] angelica$getGlyphWidths();
+
+    boolean angelica$getUnicodeFlag();
 }

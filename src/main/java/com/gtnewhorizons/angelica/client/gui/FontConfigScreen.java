@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.config.ConfigException;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.client.font.FontStrategist;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gui.element.widget.IrisButton;
 import net.minecraft.client.gui.GuiButton;
 import net.minecraft.client.gui.GuiScreen;
@@ -13,8 +14,9 @@ import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.MathHelper;
 import org.lwjgl.input.Keyboard;
+import org.lwjgl.input.Mouse;
 
-import java.awt.Font;
+import java.awt.*;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -49,7 +51,7 @@ public class FontConfigScreen extends GuiScreen {
 
     SliderClone.Option optFontQuality = new SliderClone.Option(6, 72, 6);
     SliderClone.Option optShadowOffset = new SliderClone.Option(0, 2, 0.05f);
-    SliderClone.Option optShadowCopies = new SliderClone.Option(1, 8, 1);
+    SliderClone.Option optBrightness = new SliderClone.Option(0, 10, 1);
     SliderClone.Option optBoldCopies = new SliderClone.Option(1, 8, 1);
     SliderClone.Option optGlyphAspect = new SliderClone.Option(-1, 1, 0.05f);
     SliderClone.Option optGlyphScale = new SliderClone.Option(0.1f, 3, 0.05f);
@@ -83,7 +85,7 @@ public class FontConfigScreen extends GuiScreen {
         searchBox = new GuiTextField(this.fontRendererObj, this.width / 2 - 120, 24, 240, 20);
         searchBox.setMaxStringLength(64);
         fontList = new FontList();
-        testArea = new GuiTextField(this.fontRendererObj, this.width * 5 / 6 - this.width / 7, 63 - 10, this.width * 2 / 7, 20);
+        testArea = new GuiTextField(this.fontRendererObj, this.width * 5 / 6 - this.width / 7, 0, this.width * 2 / 7, 20);
         testArea.setMaxStringLength(512);
         testArea.setText(I18n.format("options.angelica.fontconfig.testareaexample"));
         initButtons();
@@ -132,11 +134,11 @@ public class FontConfigScreen extends GuiScreen {
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
-            .option(optShadowOffset)
-            .initialValue(FontConfig.fontShadowOffset)
-            .setter(value -> FontConfig.fontShadowOffset = value)
-            .langKey("options.angelica.fontconfig.shadow_offset")
-            .formatString("x%3.2f")
+            .option(optBrightness)
+            .initialValue(FontConfig.fontBrightness)
+            .setter(value -> FontConfig.setFontBrightness(value.intValue()))
+            .langKey("options.angelica.fontconfig.brightness")
+            .formatString("%.0f")
             .build()
         );
         sliders.add(new SliderClone.SliderCloneBuilder()
@@ -163,7 +165,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optFontAAStrength)
             .initialValue(FontConfig.fontAAStrength)
-            .setter(value -> FontConfig.fontAAStrength = value.intValue())
+            .setter(value -> FontConfig.setFontAAStrength(value.intValue()))
             .langKey("options.angelica.fontconfig.font_aa_strength")
             .formatString("%.0f")
             .build()
@@ -173,7 +175,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optFontAAMode)
             .initialValue(FontConfig.fontAAMode)
-            .setter(value -> FontConfig.fontAAMode = value.intValue())
+            .setter(value -> FontConfig.setFontAAMode(value.intValue()))
             .formatter(this::fontAAModeFormat)
             .langKey("options.angelica.fontconfig.aamode")
             .build()
@@ -200,11 +202,11 @@ public class FontConfigScreen extends GuiScreen {
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
-            .option(optShadowCopies)
-            .initialValue(FontConfig.shadowCopies)
-            .setter(value -> FontConfig.shadowCopies = value.intValue())
-            .langKey("options.angelica.fontconfig.shadow_copies")
-            .formatString("%.0f")
+            .option(optShadowOffset)
+            .initialValue(FontConfig.fontShadowOffset)
+            .setter(value -> FontConfig.fontShadowOffset = value)
+            .langKey("options.angelica.fontconfig.shadow_offset")
+            .formatString("x%3.2f")
             .build()
         );
         sliders.add(new SliderClone.SliderCloneBuilder()
@@ -279,10 +281,14 @@ public class FontConfigScreen extends GuiScreen {
         pos = selectedPrimaryFontListPos;
         if (pos >= 0 && pos < displayedFonts.size()) {
             FontConfig.customFontNamePrimary = displayedFonts.get(pos).getFontName();
+        } else {
+            FontConfig.customFontNamePrimary = "(none)";
         }
         pos = selectedFallbackFontListPos;
         if (pos >= 0 && pos < displayedFonts.size()) {
             FontConfig.customFontNameFallback = displayedFonts.get(pos).getFontName();
+        } else {
+            FontConfig.customFontNameFallback = "(none)";
         }
 
         FontStrategist.reloadCustomFontProviders();
@@ -307,7 +313,7 @@ public class FontConfigScreen extends GuiScreen {
     }
 
     private void toggleCustomFont(IrisButton button) {
-        FontConfig.enableCustomFont = !FontConfig.enableCustomFont;
+        FontConfig.setEnableCustomFont(!FontConfig.enableCustomFont);
         applyChanges(false);
         button.displayString = FontConfig.enableCustomFont ?
             I18n.format("options.angelica.fontconfig.disable_custom_font") :
@@ -338,9 +344,8 @@ public class FontConfigScreen extends GuiScreen {
         };
     }
 
-    private float lastMouseX = 0;
-    private float lastMouseY = 0;
-    private long lastStillTime = 0;
+    private long hoverTimeStart = 0;
+    private GuiButton hoveredButton;
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
         drawBackground(0);
@@ -374,7 +379,7 @@ public class FontConfigScreen extends GuiScreen {
                 I18n.format("options.angelica.fontconfig.testareainfo"), this.width / 4
             );
         }
-        int cumulativeY = 73;
+        int cumulativeY = 44 + 5 + 10;
         for (String s : this.testAreaInfo) {
             drawCenteredString(this.fontRendererObj, s, this.width * 5 / 6, cumulativeY, 0xFFFFFF);
             cumulativeY += this.fontRendererObj.FONT_HEIGHT;
@@ -387,13 +392,38 @@ public class FontConfigScreen extends GuiScreen {
                 this.testArea.xPosition + this.fontRendererObj.getStringWidth(this.testAreaPrompt) / 2 + 4,
                 this.testArea.yPosition + this.testArea.height / 2 - 4, 0xFFFFFF);
         }
+        final String displayText = this.testArea.getText().replace('&', '§');
         List<String> testText = this.fontRendererObj.listFormattedStringToWidth(
-            this.testArea.getText().replace('&', '§'), this.width / 4
+            displayText, this.width / 4
         );
         cumulativeY += this.testArea.height + 4;
         for (String s : testText) {
-            drawCenteredString(this.fontRendererObj, s, this.width * 5 / 6, cumulativeY, 0xFFFFFF);
-            cumulativeY += this.fontRendererObj.FONT_HEIGHT;
+            GLStateManager.glPushMatrix();
+            GLStateManager.glTranslatef(this.width * 5 / 6, cumulativeY, 0);
+            drawCenteredString(this.fontRendererObj, s + "§r (1.00x Scale)", 0, 0, 0xFFFFFF);
+            cumulativeY += this.fontRendererObj.FONT_HEIGHT * 2;
+            GLStateManager.glPopMatrix();
+
+            GLStateManager.glPushMatrix();
+            GLStateManager.glTranslatef(this.width * 5 / 6, cumulativeY, 0);
+            GLStateManager.glScalef(0.75f, 0.75f, 1);
+            drawCenteredString(this.fontRendererObj, s + "§r (0.75x Scale)", 0, 0, 0xFFFFFF);
+            cumulativeY += this.fontRendererObj.FONT_HEIGHT * 2 * 0.75;
+            GLStateManager.glPopMatrix();
+
+            GLStateManager.glPushMatrix();
+            GLStateManager.glTranslatef(this.width * 5 / 6, cumulativeY, 0);
+            GLStateManager.glScalef(0.5f, 0.5f, 1);
+            drawCenteredString(this.fontRendererObj, s + "§r (0.5x Scale)", 0, 0, 0xFFFFFF);
+            cumulativeY += this.fontRendererObj.FONT_HEIGHT * 2 * 0.5;
+            GLStateManager.glPopMatrix();
+
+            GLStateManager.glPushMatrix();
+            GLStateManager.glTranslatef(this.width * 5 / 6, cumulativeY, 0);
+            GLStateManager.glScalef(0.33f, 0.33f, 1);
+            drawCenteredString(this.fontRendererObj, s + "§r (0.33x Scale)", 0, 0, 0xFFFFFF);
+            cumulativeY += this.fontRendererObj.FONT_HEIGHT * 2 * 0.33;
+            GLStateManager.glPopMatrix();
         }
 
         super.drawScreen(mouseX, mouseY, delta);
@@ -405,20 +435,19 @@ public class FontConfigScreen extends GuiScreen {
             final int left = slider.xPosition;
             final int right = slider.xPosition + slider.width;
             if (mouseY < top || mouseY >= bot || mouseX < left || mouseX >= right) { continue; }
-            if (mouseX == lastMouseX && mouseY == lastMouseY) {
-                if (lastStillTime == 0) {
-                    lastStillTime = System.currentTimeMillis();
-                }
-                if (lastStillTime + 500L < System.currentTimeMillis()) {
-                    displayTooltip(mouseX, mouseY, slider.tooltipKey);
-                }
-            } else {
-                lastStillTime = 0;
+            if (guiButton != hoveredButton) {
+                hoveredButton = guiButton;
+                hoverTimeStart = System.currentTimeMillis();
+            }
+            if (Mouse.isButtonDown(0) || Mouse.isButtonDown(1)) {
+                hoverTimeStart = System.currentTimeMillis();
+            }
+
+            if (hoverTimeStart + 300L < System.currentTimeMillis()) {
+                displayTooltip(mouseX, mouseY, slider.tooltipKey);
             }
             break;
         }
-        lastMouseX = mouseX;
-        lastMouseY = mouseY;
     }
 
     private void displayTooltip(int x, int y, String langKey) {
@@ -511,19 +540,21 @@ public class FontConfigScreen extends GuiScreen {
             if (slotIndex < 0 || slotIndex >= this.getSize()) { return; }
 
             if (mouseButton == 0) {
-                onElemClicked(slotIndex, false);
+                if (selectedPrimaryFontListPos == slotIndex) {
+                    selectedPrimaryFontListPos = -1;
+                    currentPrimaryFontName = "(none)";
+                } else {
+                    selectedPrimaryFontListPos = slotIndex;
+                    currentPrimaryFontName = displayedFonts.get(slotIndex).getFontName();
+                }
             } else if (mouseButton == 1) {
-                onElemClicked(slotIndex, true);
-            }
-        }
-
-        protected void onElemClicked(int index, boolean rightClick) {
-            if (!rightClick) {
-                selectedPrimaryFontListPos = index;
-                currentPrimaryFontName = displayedFonts.get(index).getFontName();
-            } else {
-                selectedFallbackFontListPos = index;
-                currentFallbackFontName = displayedFonts.get(index).getFontName();
+                if (selectedFallbackFontListPos == slotIndex) {
+                    selectedFallbackFontListPos = -1;
+                    currentFallbackFontName = "(none)";
+                } else {
+                    selectedFallbackFontListPos = slotIndex;
+                    currentFallbackFontName = displayedFonts.get(slotIndex).getFontName();
+                }
             }
             applyChanges(false);
         }

@@ -2,16 +2,26 @@ package com.gtnewhorizons.angelica.client.font.atlas;
 
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.GlyphData;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 
-public final class AtlasProviderSplash implements AtlasProvider {
+public final class FontProviderSGA extends FontTextureArray {
+
+    public static FontProviderSGA create() {
+        final int size = getBoundTextureSize();
+        return new FontProviderSGA(size, 1, new int[] {0}, GL11.GL_NEAREST);
+    }
+
+    private FontProviderSGA(int size, int layers, int[] layersLookupArray, int filter) {
+        super(size, layers, layersLookupArray, filter);
+        loadAtlas(0);
+    }
 
     @Override
-    public ByteBuffer generateGlyphData(int atlasId, int textureSize, GlyphData[] glyphs) {
+    public ByteBuffer generateGlyphData(int atlasId, GlyphData[] glyphs) {
         if (atlasId == 0) {
-            final int size = AtlasProvider.getBoundTextureSize();
-            final int[] charWidth = BatchingFontRenderer.asciiCharWidths;
+            final int[] charWidth = BatchingFontRenderer.sgaCharWidths;
             for (int i = 0; i < 256; i++) {
                 final int index = BatchingFontRenderer.lookupMcFontPosition((char) i);
                 final float uStart = ((index & 15) * 8) / 256.0F;
@@ -30,9 +40,8 @@ public final class AtlasProviderSplash implements AtlasProvider {
                 );
             }
 
-            return AtlasProvider.getBoundTextureData(size);
+            return getBoundTextureData(this.textureSize);
         }
-
         return null;
     }
 }

@@ -1,8 +1,11 @@
 package com.gtnewhorizons.angelica.client.font.atlas;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.textures.TextureLoader;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.font.GlyphData;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
@@ -10,6 +13,7 @@ import org.lwjgl.opengl.GL30;
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
 import java.io.File;
+import java.io.IOException;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 
@@ -20,19 +24,20 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 
-public final class FontTextureArray {
-    private final int id;
-    private final int textureSize;
-    private final int[] layersLookup;
-    private final GlyphData[][] atlasGlyphs = new GlyphData[256][];
-    private final AtlasProvider atlasProvider;
+public abstract class FontTextureArray {
+    protected final int id;
+    protected final int textureSize;
+    protected final int[] layersLookup;
+    protected final GlyphData[][] atlasGlyphs = new GlyphData[256][];
+
+    static final boolean DUMP_ATLASES = true;
+
 
     //TODO layers + layers lookup
 
 
-    public FontTextureArray(int size, int layers, int[] layersLookupArray, final int filter, AtlasProvider atlasProvider) {
+    FontTextureArray(int size, int layers, int[] layersLookupArray, final int filter) {
         this.layersLookup = layersLookupArray;
-        this.atlasProvider = atlasProvider;
         this.id = GLStateManager.glGenTextures();
         this.textureSize = size;
 
@@ -59,25 +64,6 @@ public final class FontTextureArray {
             GL11.GL_UNSIGNED_BYTE,
             (ByteBuffer) null
         );
-
-//        if (FontProviderCustom.DUMP_ATLASES) {
-//            long totalTime = 0;
-//            for (int atlasId = 0; atlasId < 255; atlasId++) {
-//                try {
-//                    final long nanos = System.nanoTime();
-//
-//                    getGlyphData((char) (atlasId * 256));
-//
-//                    final long diff = System.nanoTime() - nanos;
-//                    totalTime += diff;
-//                    saveLayerAsPNG(layersLookup[atlasId], 256, "test" + atlasId + ".png");
-//                } catch (Exception e) {
-//                    e.printStackTrace();
-//                }
-//            }
-//            final double diff = totalTime / 1_000_000d;
-//            System.out.println("Loading all texture atlases took " + diff + "ms.");
-//        }
     }
 //
 //    public GlyphData[] addAtlas(int depth, ResourceLocation resource) {
@@ -97,61 +83,74 @@ public final class FontTextureArray {
 //        }
 //    }
 
-    public GlyphData getGlyphData(final char ch) {
+    public final GlyphData getGlyphData(final char ch) {
         final int atlasId = ch / 256;
         GlyphData[] glyphs = atlasGlyphs[atlasId];
         if (glyphs == null) {
             glyphs = addAtlas(atlasId);
-        }
-        if (glyphs[ch & 255] == null) { //TODO make it null
-            glyphs[ch & 255] = new GlyphData(-1, -1, -1, -1, -1, -1);
         }
         return glyphs[ch & 255];
     }
 
-    public boolean isGlyphAvailable(char ch) {
+    public final boolean isGlyphAvailable(char ch) {
         final int atlasId = ch / 256;
         GlyphData[] glyphs = atlasGlyphs[atlasId];
         if (glyphs == null) {
             glyphs = addAtlas(atlasId);
         }
-        return glyphs[ch & 255] != null && glyphs[ch & 255].glyphW != -1;
+        return glyphs[ch & 255] != null;
     }
-
 
     public int getDepth(char ch) {
         return layersLookup[ch / 256];
     }
 
-
-    public GlyphData[] addAtlas(int atlasId) {
-        final GlyphData[] glyphData = new GlyphData[256];
-        atlasGlyphs[atlasId] = glyphData;
-        final ByteBuffer pixels = atlasProvider.generateGlyphData(atlasId, this.textureSize, glyphData);
-        if (pixels == null) {
-//            throw new UnsupportedOperationException(
-//                "Failed to initialize atlas for chars " + (atlasId * 256) + " to " + ((atlasId + 1) * 256) + "!"
-//            );
-            return glyphData;
+    protected final void loadAtlas(int atlasId) {
+        if (atlasGlyphs[atlasId] == null) {
+            addAtlas(atlasId);
         }
-        final int size = (int) Math.sqrt(pixels.capacity());
-        bind();
-        GLStateManager.glTexSubImage3D(
-            GL30.GL_TEXTURE_2D_ARRAY,
-            0,
-            0, 0, layersLookup[atlasId],
-            size, size,
-            1,
-            GL11.GL_RED,
-            GL11.GL_UNSIGNED_BYTE,
-            pixels
-        );
-        memFree(pixels);
+    }
 
+    public abstract ByteBuffer generateGlyphData(int atlasId, GlyphData[] glyphs);
+
+
+    protected final GlyphData[] addAtlas(int atlasId) {
+        final GlyphData[] glyphData = new GlyphData[256];
         try {
-            saveLayerAsPNG(layersLookup[atlasId], size, "test" + layersLookup[atlasId] + ".png");
+            final ByteBuffer pixels = generateGlyphData(atlasId, glyphData);
+            if (pixels == null) {
+                atlasGlyphs[atlasId] = glyphData;
+                return glyphData;
+            }
+            final int size = (int) Math.sqrt(pixels.capacity());
+            bind();
+            GLStateManager.glTexSubImage3D(
+                GL30.GL_TEXTURE_2D_ARRAY,
+                0,
+                0, 0, layersLookup[atlasId],
+                size, size,
+                1,
+                GL11.GL_RED,
+                GL11.GL_UNSIGNED_BYTE,
+                pixels
+            );
+
+            memFree(pixels);
+
+            atlasGlyphs[atlasId] = glyphData;
+
+            if (DUMP_ATLASES) {
+                try {
+                    saveLayerAsPNG(layersLookup[atlasId], size, "test" + layersLookup[atlasId] + ".png");
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
+            }
         } catch (Exception e) {
-            e.printStackTrace();
+            AngelicaMod.LOGGER.error("Failed to initialize glyph data for atlas id " + id + "! Did this get called in another thread?", e);
+            // Return the data (because it's correct), but don't initialize it (texture is still missing)
+            return glyphData;
+
         }
 
         return glyphData;
@@ -212,10 +211,57 @@ public final class FontTextureArray {
 
     public void unbind() {
         GLStateManager.glBindTexture(GL30.GL_TEXTURE_2D_ARRAY, 0);
-        //GLStateManager.bindTextureBypass(GL30.GL_TEXTURE_2D_ARRAY, 0);
     }
 
     public void delete() {
         GLStateManager.glDeleteTextures(id);
+    }
+
+
+
+    static ByteBuffer getBoundTextureData(final int size) {
+        final ByteBuffer pixels = memAlloc(size * size);
+        GLStateManager.glGetTexImage(
+            GL11.GL_TEXTURE_2D,
+            0,
+            GL11.GL_RED,
+            GL11.GL_UNSIGNED_BYTE,
+            pixels
+        );
+        return pixels;
+    }
+
+    static int getBoundTextureSize() {
+        return GLStateManager.glGetTexLevelParameteri(
+            GL11.GL_TEXTURE_2D,
+            0,
+            GL11.GL_TEXTURE_WIDTH
+        );
+    }
+
+    static ByteBuffer getPixelBuffer(BufferedImage image) {
+        final int size = image.getWidth();
+        final ByteBuffer pixelBuffer = memAlloc(size * size);
+        pixelBuffer.clear();
+        final int[] pixelValues = TextureLoader.getImagePixels(image);
+        for (int i : pixelValues) {
+            pixelBuffer.put((byte) ((i >> 24) & 0xFF)); // Only extract alpha
+        }
+        pixelBuffer.position(0).limit(pixelValues.length);
+        return pixelBuffer;
+    }
+
+    static ByteBuffer getTextureFromResource(ResourceLocation resource) {
+        try {
+            final BufferedImage image = TextureLoader.getBufferedImage(Minecraft.getMinecraft().getResourceManager()
+                .getResource(resource));
+            if (image.getWidth() != image.getHeight()) {
+                throw new UnsupportedOperationException(resource + "has a different width and height, they cannot get rendered!");
+            }
+            return getPixelBuffer(image);
+        } catch (IOException e) {
+            System.out.println("Failed to load resource " + resource + ".");
+            return null;
+        }
     }
 }

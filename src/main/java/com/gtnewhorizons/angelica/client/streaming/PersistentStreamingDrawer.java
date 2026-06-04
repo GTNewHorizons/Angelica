@@ -4,18 +4,23 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL44;
 
 import java.nio.ByteBuffer;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
 
-/** Triple-buffered persistent VBO using ARB_buffer_storage. */
+/**
+ * Triple-buffered persistent VAO/VBO streamer.
+ * <br>
+ * Unlike {@link com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer},
+ * this provides direct writes into persistently mapped GPU memory, bypassing
+ * temporary upload buffers for lower-overhead streaming.
+ */
 public final class PersistentStreamingDrawer extends StreamingDrawer {
 
-
-
-    private static final int NUM_SECTIONS = 3;
+    private static final int NUM_SECTIONS = 4;
 
     private static final int FLAGS =
         GL30.GL_MAP_WRITE_BIT
@@ -23,31 +28,36 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
             | GL44.GL_MAP_COHERENT_BIT;
 
     private int sectionSize;
-    private int totalCapacity;
+    //private int totalCapacity;
     private ByteBuffer persistentMapping;
+    private long baseAddress;
     private final long[] fences = new long[NUM_SECTIONS];
     private int currentSection;
-    //private long sectionWritePointer;
     private int sectionWriteOffset;
     private int sectionWriteStart;
+    private long sectionWritePointer;
+    private int sectionDrawCount;
+
     private static int globalFPSCount;
 
-    public PersistentStreamingDrawer(int capacity) {
-        super(capacity);
-        sectionSize   = capacity;
-        totalCapacity = capacity * NUM_SECTIONS;
+    PersistentStreamingDrawer(int stride, int elementCapacity, VAOConsumer initVAO) {
+        super(initVAO);
+        sectionSize   = elementCapacity * stride;
+        final int totalCapacity = getTotalCapacity();
 
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboId);
         GLStateManager.glBufferStorage(GL15.GL_ARRAY_BUFFER, totalCapacity, FLAGS);
 
         persistentMapping = GLStateManager.glMapBufferRange(
             GL15.GL_ARRAY_BUFFER, 0, totalCapacity, FLAGS);
+        baseAddress = memAddress0(persistentMapping);
+        sectionWritePointer = baseAddress;
 
         if (persistentMapping == null)
             throw new RuntimeException("Persistent mapping failed — check ARB_buffer_storage support.");
     }
 
-    public static void incrementFPS() {
+    public static void incrementFPS() { //TODO make this use Display
         globalFPSCount = (globalFPSCount + 1) % NUM_SECTIONS;
     }
 
@@ -55,7 +65,8 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
         if (needed + sectionWriteOffset > sectionSize) {
             System.out.println("Resizing");
             new Exception().printStackTrace();
-            resize(nextPowerOfTwo(sectionSize + needed));
+            resize(sectionSize * 2);
+            return;
         }
     }
 
@@ -66,50 +77,79 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
             advanceSection();
             //System.out.println("Moving to section " + currentSection);
         }
-        ensureCapacity(needed);
-        long pointer = memAddress0(persistentMapping)
-            + (long) currentSection * sectionSize + sectionWriteOffset;
+        if (sectionDrawCount > 5) {
+            ensureCapacity(needed);
+        }
+        long pointer = sectionWritePointer + sectionWriteOffset;
         sectionWriteOffset += needed;
+        sectionDrawCount++;
         return pointer;
     }
 
-    @Override
-    public int finishUploading() {
-//        final int count = sectionElementCount;
-//        sectionElementCount = 0;
-//        return count;
-        final int start = sectionWriteStart;
-        sectionWriteStart = currentSection * sectionSize + sectionWriteOffset;
-        return start;
-    }
-
-    /**
-     * Destroys and recreates the buffer at a larger section size.
-     * All fences are waited on first; existing data is lost.
-     */
+    // AI slop resize, seems to work well
+    // Essentially copies any pending draw operations into the new buffer
     public void resize(int newSectionSize) {
-        for (int i = 0; i < NUM_SECTIONS; i++) waitForSection(i);
+        // Preserve pending batch
+        int sectionBase = currentSection * sectionSize;
 
+        int batchSize = (sectionBase + sectionWriteOffset) - sectionWriteStart;
+
+        long tempBuffer = nmemAllocChecked(batchSize);
+
+        memCopy(
+            sectionWritePointer,
+            tempBuffer,
+            batchSize
+        );
+
+        // Wait for GPU
+        for (int i = 0; i < NUM_SECTIONS; i++) {
+            waitForSection(i);
+        }
+
+        // Destroy old buffer
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboId);
         GLStateManager.glUnmapBuffer(GL15.GL_ARRAY_BUFFER);
         GLStateManager.glDeleteBuffers(vboId);
 
-        sectionSize        = newSectionSize;
-        totalCapacity      = newSectionSize * NUM_SECTIONS;
-        currentSection     = 0;
-        sectionWriteOffset = 0;
+        // Create new buffer
+        sectionSize = newSectionSize;
+        sectionWriteStart = currentSection * sectionSize;
 
         vboId = GLStateManager.glGenBuffers();
-        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboId);
-        GLStateManager.glBufferStorage(GL15.GL_ARRAY_BUFFER, totalCapacity, FLAGS);
 
+        final int totalCapacity = getTotalCapacity();
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vboId);
+        GLStateManager.glBufferStorage(
+            GL15.GL_ARRAY_BUFFER,
+            totalCapacity,
+            FLAGS
+        );
         persistentMapping = GLStateManager.glMapBufferRange(
-            GL15.GL_ARRAY_BUFFER, 0, totalCapacity, FLAGS);
+            GL15.GL_ARRAY_BUFFER,
+            0,
+            totalCapacity,
+            FLAGS
+        );
+        baseAddress = memAddress0(persistentMapping);
+
+        sectionWritePointer = baseAddress + sectionWriteStart;
+        sectionWriteOffset = batchSize;
+        vaoId = 0;
+
+        // Restore pending batch at offset 0
+        memCopy(
+            tempBuffer,
+            sectionWritePointer,
+            batchSize
+        );
+
+        nmemFree(tempBuffer);
     }
 
-    /** Call at the start of each frame to advance to the next section. */
-    public void beginFrame() {
-        advanceSection();
+    public int getTotalCapacity() {
+        return sectionSize * NUM_SECTIONS;
     }
 
     public void destroy() {
@@ -136,6 +176,7 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
         currentSection     = (currentSection + 1) % NUM_SECTIONS;
         sectionWriteOffset = 0;
         sectionWriteStart = currentSection * sectionSize;
+        sectionWritePointer = baseAddress + sectionWriteStart;
         waitForSection(currentSection);
     }
 
@@ -156,14 +197,31 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
         fences[section] = 0;
     }
 
-    private static int nextPowerOfTwo(int value) {
-        if (value <= 0) return 1;
-        int v = value - 1;
-        v |= v >> 1;
-        v |= v >> 2;
-        v |= v >> 4;
-        v |= v >> 8;
-        v |= v >> 16;
-        return v + 1;
+
+    @Override
+    public void drawElementsInstanced(
+        int mode, int indices_count, int type, long indices_buffer_offset
+    ) {
+        if (this.vaoId == 0) {
+            super.initVAO();
+        }
+        final int start = sectionWriteStart;
+        final int offset = start / dataSize;
+        GL42.glDrawElementsInstancedBaseInstance(
+            mode,
+            indices_count,
+            type,
+            indices_buffer_offset,
+            sectionDrawCount,
+            offset
+        );
+        sectionDrawCount = 0;
+
+        sectionWriteStart = currentSection * sectionSize + sectionWriteOffset;
+    }
+
+    @Override
+    public boolean isEmpty() {
+        return sectionDrawCount == 0;
     }
 }

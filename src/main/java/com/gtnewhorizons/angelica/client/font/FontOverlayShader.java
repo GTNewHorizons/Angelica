@@ -1,65 +1,205 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
+import com.gtnewhorizon.gtnhlib.client.renderer.postprocessing.CustomFramebuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.AutoShaderUpdater;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderDefinesInjector;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.IShaderReloadRunnable;
 import com.gtnewhorizon.gtnhlib.client.renderer.shader.ShaderProgram;
+import com.gtnewhorizon.gtnhlib.core.GTNHLibCore;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.minecraft.client.Minecraft;
+import com.gtnewhorizons.angelica.utils.InstancedHelper;
+import net.minecraft.client.gui.ScaledResolution;
+import net.minecraft.util.ResourceLocation;
+import org.joml.Matrix4f;
+import org.joml.Vector4f;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
+
+import java.nio.ByteBuffer;
+
+import static com.gtnewhorizon.gtnhlib.ClientProxy.mc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.nmemFree;
 
 //TODO move this + shader to gtnhlib
 public final class FontOverlayShader extends ShaderProgram {
 
-    private static FontOverlayShader INSTANCE;
+    private int mvpMatrixLocation;
+    private int uTexelSize;
+    private int uScale;
+    private int uTime;
+    private int uTexBounds;
 
-    private static int mvpMatrixLocation;
-    private static int uTexelSize;
-    private static int uTime;
-    private static int uTexBounds;
+    public float xStart;
+    public float xEnd;
+    public float yStart;
+    public float yEnd;
+
+    private static CustomFramebuffer framebuffer;
+    private static int vao;
+    private static int vbo;
 
     private static long startTime;
 
-    public FontOverlayShader(Builder defines) {
+    public static FontOverlayShader TEMPLATE = new FontOverlayShader(
+        new ResourceLocation(AngelicaMod.MOD_ID, "shaders/font/fontShaderTemplate.fsh")
+    );
+
+    public FontOverlayShader(ResourceLocation fragShader, IShaderDefinesInjector... defines) {
         super(
-            loadShaderSource(AngelicaMod.MOD_ID, "shaders/font/fontOutline.vsh"),
-            loadShaderSource(AngelicaMod.MOD_ID, "shaders/font/fontOutline.fsh", defines)
+            loadShaderSource(getVertexShader()),
+            loadShaderSource(fragShader, defines)
         );
         this.bindTextureSlots("textFBO", "sceneFBO");
         mvpMatrixLocation = this.getUniformLocation("u_MVPMatrix");
         uTexelSize = this.getUniformLocation("uTexelSize");
+        uScale = this.getUniformLocation("uScale");
         uTime = this.getUniformLocation("uTime");
         uTexBounds = this.getUniformLocation("uTexBounds");
-        AutoShaderUpdater.getInstance().registerShaderReload(
-            this,
-            AngelicaMod.MOD_ID,
-            "shaders/font/fontOutline.vsh", "shaders/font/fontOutline.fsh",
-            new IShaderReloadRunnable() {
-                @Override
-                public void run(ShaderProgram shader) {
-                    shader.bindTextureSlots("textFBO", "sceneFBO");
-                    mvpMatrixLocation = shader.getUniformLocation("u_MVPMatrix");
-                    uTexelSize = shader.getUniformLocation("uTexelSize");
-                    uTime = shader.getUniformLocation("uTime");
-                    uTexBounds = shader.getUniformLocation("uTexBounds");
 
+        if (startTime == 0) {
+            startTime = System.currentTimeMillis();
+        }
+
+        if (!GTNHLibCore.isObf()) {
+
+            AutoShaderUpdater.getInstance().registerShaderReload(
+                this,
+                getVertexShader(), fragShader,
+                new IShaderReloadRunnable() {
+
+                    @Override
+                    public void run(ShaderProgram shader) {
+                        shader.bindTextureSlots("textFBO", "sceneFBO");
+                        mvpMatrixLocation = shader.getUniformLocation("u_MVPMatrix");
+                        uTexelSize = shader.getUniformLocation("uTexelSize");
+                        uScale = shader.getUniformLocation("uScale");
+                        uTime = shader.getUniformLocation("uTime");
+                        uTexBounds = shader.getUniformLocation("uTexBounds");
+                    }
+
+                    @Override
+                    public IShaderDefinesInjector[] getDefines() {
+                        return defines;
+                    }
                 }
-
-                @Override
-                public IShaderDefinesInjector[] getDefines() {
-                    return new IShaderDefinesInjector[0];
-                }
-            }
-        );
-
-        startTime = System.currentTimeMillis();
+            );
+        }
     }
 
-    public static FontOverlayShader getInstance() {
-        if (INSTANCE == null) {
-            INSTANCE = new FontOverlayShader(new FontOverlayShader.Builder());
+    public static ResourceLocation getVertexShader() {
+        return new ResourceLocation(AngelicaMod.MOD_ID, "shaders/font/fontShader.vsh");
+    }
+
+    public FontOverlayShader begin(BatchingFontRenderer fontRenderer) {
+        fontRenderer.flushBatch();
+        xStart = -1;
+        return this;
+    }
+
+    public void updateBounds(float x, float y, float width, float height) {
+        if (xStart == -1) {
+            xStart = x;
+            yStart = y;
         }
-        return INSTANCE;
+        xEnd = x + width;
+        yEnd = y + height;
+    }
+
+    public FontOverlayShader end(BatchingFontRenderer fontRenderer) {
+        if (framebuffer == null) {
+            framebuffer = new CustomFramebuffer(0);
+        }
+        if (framebuffer.framebufferWidth != mc.displayWidth || framebuffer.framebufferHeight != mc.displayHeight) {
+            framebuffer.createBindFramebuffer(mc.displayWidth, mc.displayHeight);
+        }
+        framebuffer.clearBindFramebuffer();
+        fontRenderer.flushBatch();
+        framebuffer.unbindFramebuffer();
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, mc.getFramebuffer().framebufferTexture);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        framebuffer.bindFramebufferTexture();
+
+        final float padding = getPadding();
+        this.use();
+        GLStateManager.disableCull();
+
+        ByteBuffer buffer = memAlloc(32);
+        long address = memAddress0(buffer);
+        buffer.limit(32);
+        addVertex(address, xStart - padding, yStart - padding);
+        addVertex(address + 8, xEnd + padding, yStart - padding);
+        addVertex(address + 16, xStart - padding, yEnd + padding);
+        addVertex(address + 24, xEnd + padding, yEnd + padding);
+
+        Matrix4f mvp = GLStateManager.getMVPMatrix(new Matrix4f());
+        Vector4f temp = new Vector4f();
+        temp.x = xStart;
+        temp.y = yEnd;
+        temp.z = 0;
+        temp.w = 1;
+        MatrixHelper.transformVertex(mvp, temp);
+
+        float boundXStart = temp.x * 0.5f + 0.5f;
+        float boundYStart = temp.y * 0.5f + 0.5f;
+
+        temp.x = xEnd;
+        temp.y = yStart;
+        temp.z = 0;
+        temp.w = 1;
+        MatrixHelper.transformVertex(mvp, temp);
+
+        float boundXEnd = temp.x * 0.5f + 0.5f;
+        float boundYEnd = temp.y * 0.5f + 0.5f;
+
+        this.uploadBounds(boundXStart, boundXEnd, boundYStart, boundYEnd);
+
+
+        GLStateManager.glDisable(GL11.GL_CULL_FACE); //TODO remove
+        if (vao == 0) {
+            vao = GLStateManager.glGenVertexArrays();
+            GLStateManager.glBindVertexArray(vao);
+            vbo = GLStateManager.glGenBuffers();
+
+            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, InstancedHelper.getQuadEBO());
+
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+            // position
+            GLStateManager.glVertexAttribPointer(0, 2, GL11.GL_FLOAT, false, 8, 0);
+            GLStateManager.glEnableVertexAttribArray(0);
+        }
+
+        GLStateManager.glBindVertexArray(vao);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, buffer, GL15.GL_STREAM_DRAW);
+        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_SHORT, 0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+
+        GLStateManager.glUseProgram(0);
+        GLStateManager.glBindVertexArray(0);
+
+        nmemFree(address);
+
+        return null;
+    }
+
+    private void addVertex(long ptr, float x, float y) {
+        // v, v
+        memPutFloat(ptr, x);
+        memPutFloat(ptr + 4, y);
+    }
+
+    private float getPadding() {
+        return 8;
     }
 
 
@@ -67,15 +207,21 @@ public final class FontOverlayShader extends ShaderProgram {
     public void use() {
         super.use();
         GLStateManager.uploadMVPMatrix(mvpMatrixLocation);
-        final Minecraft mc = Minecraft.getMinecraft();
-        if (uTexelSize != -1)
+        if (uTexelSize != -1) {
             GLStateManager.glUniform2f(uTexelSize, 1f / mc.displayWidth, 1f / mc.displayHeight);
+        }
 
-        if (uTime != -1)
+        if (uTime != -1) {
             GLStateManager.glUniform1f(uTime, (System.currentTimeMillis() - startTime) / 1000f);
+        }
+
+        if (uScale != -1) {
+            final ScaledResolution res = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+            GLStateManager.glUniform1i(uScale, res.getScaleFactor());
+        }
     }
 
-    public void uploadBounds(float minX, float maxX, float minY, float maxY) {
+    private void uploadBounds(float minX, float maxX, float minY, float maxY) {
         GLStateManager.glUniform4f(uTexBounds, minX, maxX, minY, maxY);
     }
 

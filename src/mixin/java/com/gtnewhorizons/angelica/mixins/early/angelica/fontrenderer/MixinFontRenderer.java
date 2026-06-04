@@ -181,22 +181,9 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             this.alpha = (float)(argb >> 24 & 255) / 255.0F;
             this.posX = (float)x;
             this.posY = (float)y;
-            return angelica$batcher.drawString(x, y, argb, dropShadow, unicodeFlag, text);
+            return angelica$batcher.drawString(text, x, y, argb, dropShadow);
         }
     }
-
-    @Override
-    public final int[] angelica$getCharWidths() {
-        return this.charWidth;
-    }
-
-    @Override
-    public final BatchingFontRenderer angelica$getBatcher() {
-        return angelica$batcher;
-    }
-
-    @Override
-    public void angelica$bindTexture(ResourceLocation location) { this.bindTexture(location); }
 
     @ModifyConstant(method = "getCharWidth", constant = @Constant(intValue = 7))
     private int angelica$maxCharWidth(int original) {
@@ -214,8 +201,28 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     }
 
     @Override
-    public byte[] angelica$getGlyphWidths() {
+    public final byte[] angelica$getGlyphWidths() {
         return glyphWidth;
+    }
+
+    @Override
+    public final boolean angelica$getUnicodeFlag() {
+        return this.unicodeFlag;
+    }
+
+    @Override
+    public final int[] angelica$getCharWidths() {
+        return this.charWidth;
+    }
+
+    @Override
+    public final BatchingFontRenderer angelica$getBatcher() {
+        return angelica$batcher;
+    }
+
+    @Override
+    public void angelica$bindTexture(ResourceLocation location) {
+        this.bindTexture(location);
     }
 
     @Override

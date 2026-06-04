@@ -6,14 +6,15 @@ import cpw.mods.fml.client.SplashProgress;
 import lombok.Getter;
 import net.minecraft.client.gui.FontRenderer;
 
+import javax.annotation.Nullable;
 import java.awt.*;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.LOGGER;
-import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.initializeCustomFonts;
-import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.primaryTextureArray;
+import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.customTextureArray;
+import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.reloadCustomFonts;
 
 public final class FontStrategist {
 
@@ -22,8 +23,6 @@ public final class FontStrategist {
 
     public static Font primaryFont;
     public static Font secondaryFont;
-
-    public static final int ATLAS_CHARS = 256;
 
     static {
         if (GraphicsEnvironment.isHeadless()) {
@@ -63,8 +62,17 @@ public final class FontStrategist {
         }
     }
 
-    public static Font getFont(int index) {
-        return availableFonts[index];
+    public static @Nullable Font[] getConfigFonts() {
+        if (primaryFont != null && secondaryFont != null) {
+            return new Font[] { primaryFont, secondaryFont };
+        }
+        if (primaryFont != null) {
+            return new Font[] { primaryFont };
+        }
+        if (secondaryFont != null) {
+            return new Font[] { secondaryFont };
+        }
+        return null;
     }
 
 
@@ -72,37 +80,31 @@ public final class FontStrategist {
         primaryFont = null;
         secondaryFont = null;
         for (int i = 0; i < availableFonts.length; i++) {
-            final Font font = getFont(i);
+            final Font font = availableFonts[i];
             final String fontName = font.getFontName();
             if (FontConfig.customFontNamePrimary.equals(fontName)) {
                 primaryFont = font.deriveFont((float) FontConfig.customFontQuality);
             }
-//            if (FontConfig.customFontNameFallback.equals(fontName)) {
-//                secondaryFont = font.deriveFont((float) FontConfig.customFontQuality);
-//
-//                if (secondaryTextureArray != null) {
-//                    secondaryTextureArray.delete();
-//                    secondaryTextureArray = null;
-//                }
-//            }
+            if (FontConfig.customFontNameFallback.equals(fontName)) {
+                secondaryFont = font.deriveFont((float) FontConfig.customFontQuality);
+            }
         }
-        if (primaryTextureArray != null) {
-            primaryTextureArray.delete();
-            primaryTextureArray = null;
+        if (customTextureArray != null) {
+            customTextureArray.delete();
+            customTextureArray = null;
         }
-        initializeCustomFonts();
+        reloadCustomFonts();
     }
 
     public static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {
         // noinspection deprecation
-        boolean active = fontRenderer instanceof SplashProgress.SplashFontRenderer;
+        if (fontRenderer instanceof SplashProgress.SplashFontRenderer) return true;
 
         try {
             Class<?> customSplashClass = Class.forName("gkappa.modernsplash.CustomSplash$SplashFontRenderer");
-            active = active || customSplashClass.isInstance(fontRenderer);
-        } catch (ClassNotFoundException ignored) {
-        }
+            return customSplashClass.isInstance(fontRenderer);
+        } catch (ClassNotFoundException ignored) {}
 
-        return active;
+        return false;
     }
 }
