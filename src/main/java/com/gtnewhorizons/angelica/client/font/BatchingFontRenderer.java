@@ -354,6 +354,9 @@ public final class BatchingFontRenderer {
         boolean curDinnerbone = false;
         boolean curGradient = false;
         FontOverlayShader curShader = null;
+        boolean curShadow = false;
+        boolean curShadowCustomColor = false;
+        int curShadowColorOverride = 0;
         int gradientStartRgb = 0, gradientEndRgb = 0;
         int gradientCharIndex = 0, gradientTotalChars = 0;
         float gradientStep = 0f;
@@ -473,6 +476,20 @@ public final class BatchingFontRenderer {
                             curDinnerbone = !curDinnerbone;
                         }
                     }
+                    case 'u' -> {
+                        int customRgb = (charIdx + SECTION_X_LENGTH < stringEnd)
+                            ? ColorCodeUtils.parseSectionXAt(string, charIdx + 1)
+                            : -1;
+                        if (customRgb != -1) {
+                            curShadow = true;
+                            curShadowCustomColor = true;
+                            curShadowColorOverride = customRgb;
+                            charIdx += SECTION_X_LENGTH;
+                        } else {
+                            curShadow = !curShadow;
+                            if (!curShadow) curShadowCustomColor = false;
+                        }
+                    }
                     case 'g' -> {
                         if (AngelicaConfig.enableGradients && charIdx + GRADIENT_PAYLOAD < stringEnd) {
                             int color1 = ColorCodeUtils.parseSectionXAt(string, charIdx + 1);
@@ -499,6 +516,8 @@ public final class BatchingFontRenderer {
                         curWave = false;
                         curDinnerbone = false;
                         curGradient = false;
+                        curShadow = false;
+                        curShadowCustomColor = false;
                         curColor = color;
                         curShadowColor = shadowColor;
                         if (curShader != null) {
@@ -521,6 +540,8 @@ public final class BatchingFontRenderer {
             float yScaleMultiplier = 1;
             int flags = (curItalic ? FLAG_ITALIC : 0) | (curDinnerbone ? FLAG_DINNERBONE : 0);
 
+
+            if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
 
             final FontTextureArray fontProvider;
             if (this.overrideTextureArray != null) {
@@ -608,12 +629,16 @@ public final class BatchingFontRenderer {
                 continue;
             }
 
-            if (enableShadow) {
+            final boolean drawShadow = enableShadow || curShadow;
+            if (drawShadow) {
+                final int effectiveShadowColor = curShadowCustomColor
+                    ? ((curColor & 0xFF000000) | (curShadowColorOverride & 0x00FFFFFF))
+                    : curShadowColor;
                 pushQuad(
                     curX + shadowOffset, renderY + shadowOffset,
                     glyphW - 1, heightSouth,
                     uStart, vStart, uSize, vSize,
-                    curShadowColor,
+                    effectiveShadowColor,
                     layer,
                     flags
                 );
@@ -758,6 +783,7 @@ public final class BatchingFontRenderer {
     }
 
     public float getCharWidthFine(char chr) {
+        if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
         if (chr == FORMATTING_CHAR) { return -1; }
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {

@@ -89,7 +89,7 @@ public class CameraUniforms {
 
 		private void update() {
 			previousCameraPosition.set(currentCameraPosition);
-			previousCameraPositionUnshifted = currentCameraPositionUnshifted;
+			previousCameraPositionUnshifted.set(currentCameraPositionUnshifted);
 			currentCameraPosition.set(getUnshiftedCameraPosition()).add(shift);
 			currentCameraPositionUnshifted.set(getUnshiftedCameraPosition());
 

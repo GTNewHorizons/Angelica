@@ -308,6 +308,17 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             } else if (code >= 'k' && code <= 'o') {
                 styles.append(ColorCodeUtils.sectionPrefix(code));
                 i++;
+            } else if (code == 'u') {
+                if (i + 2 + SECTION_X_LENGTH <= len && ColorCodeUtils.isValidSectionX(text, i + 2)) {
+                    final StringBuilder cb = EXTRACT_COLOR;
+                    cb.setLength(0);
+                    for (int j = 0; j < 2 + SECTION_X_LENGTH; j++) cb.append(text.charAt(i + j));
+                    effects.append(cb);
+                    i += 1 + SECTION_X_LENGTH;
+                } else {
+                    effects.append(ColorCodeUtils.sectionPrefix(code));
+                    i++;
+                }
             } else if (code == 'q' || code == 'z' || code == 'v') {
                 effects.append(ColorCodeUtils.sectionPrefix(code));
                 i++;

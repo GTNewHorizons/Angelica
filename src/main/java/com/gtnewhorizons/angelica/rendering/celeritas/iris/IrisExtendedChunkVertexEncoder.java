@@ -26,6 +26,11 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     private static final int NORMAL_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("iris_Normal").getPointer();
     private static final int MC_ENTITY_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("mc_Entity").getPointer();
     private static final int MID_BLOCK_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("at_midBlock").getPointer();
+    private static final int A_TEXCOORD_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("a_TexCoord").getPointer();
+
+    // One unit of UV-space shift toward the quad centroid. Stops bilinear /
+    // mipmap sampling from bleeding pixels from neighboring atlas cells.
+    private static final float TEX_CENTROID_BIAS = 1.0f / 32768.0f;
 
     private final ChunkVertexEncoder baseEncoder = IrisExtendedChunkVertexType.BASE_TYPE.createEncoder();
     private final CeleritasQuadView quad = new CeleritasQuadView();
@@ -97,6 +102,14 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE, midUV);
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE * 2, midUV);
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE * 3, midUV);
+
+            for (int vIdx = 0; vIdx < 4; vIdx++) {
+                final long uvBase = ptr - (long) (3 - vIdx) * STRIDE + A_TEXCOORD_OFFSET;
+                final float vU = memGetFloat(uvBase);
+                final float vV = memGetFloat(uvBase + 4L);
+                memPutFloat(uvBase, vU + (vU < midU ? TEX_CENTROID_BIAS : -TEX_CENTROID_BIAS));
+                memPutFloat(uvBase + 4L, vV + (vV < midV ? TEX_CENTROID_BIAS : -TEX_CENTROID_BIAS));
+            }
 
             quad.setup(ptr, STRIDE);
             NormalHelper.computeFaceNormal(normal, quad);

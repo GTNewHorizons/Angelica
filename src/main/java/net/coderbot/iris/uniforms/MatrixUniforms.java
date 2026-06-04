@@ -6,6 +6,8 @@ import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shadow.ShadowMatrices;
+import net.minecraft.client.Minecraft;
+import net.minecraft.entity.Entity;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
@@ -17,8 +19,18 @@ public final class MatrixUniforms {
 	private MatrixUniforms() {
 	}
 
+	private static final Matrix4f GBUFFER_MODELVIEW_SCRATCH = new Matrix4f();
+	private static Matrix4fc getGbufferModelView() {
+		final Matrix4fc raw = RenderingState.INSTANCE.getModelViewMatrix();
+		final Entity view = Minecraft.getMinecraft().renderViewEntity;
+		if (view == null) {
+			return raw;
+		}
+		return GBUFFER_MODELVIEW_SCRATCH.set(raw).translate(0f, view.getEyeHeight(), 0f);
+	}
+
 	public static void addMatrixUniforms(UniformHolder uniforms, PackDirectives directives) {
-		addMatrix(uniforms, "ModelView", RenderingState.INSTANCE::getModelViewMatrix);
+		addMatrix(uniforms, "ModelView", MatrixUniforms::getGbufferModelView);
 		// TODO: In some cases, gbufferProjectionInverse takes on a value much different than OptiFine...
 		// We need to audit Mojang's linear algebra.
 		addMatrix(uniforms, "Projection", RenderingState.INSTANCE::getProjectionMatrix);

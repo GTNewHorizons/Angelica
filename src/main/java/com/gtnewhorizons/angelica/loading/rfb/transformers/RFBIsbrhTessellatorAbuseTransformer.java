@@ -49,11 +49,19 @@ public class RFBIsbrhTessellatorAbuseTransformer implements RfbClassTransformer 
     }
 
     @Override
-    public void transformClass(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
+    public boolean transformClassIfNeeded(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
         @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
-        if (inner.transformClassNode(classNode.getNode(), this.isObf)) {
+        final boolean changed = inner.transformClassNode(classNode.getNode(), this.isObf);
+        if (changed) {
             classNode.computeMaxs();
             AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }
+        return changed;
+    }
+
+    @Override
+    public void transformClass(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
+                               @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
+        transformClassIfNeeded(classLoader, context, manifest, className, classNode);
     }
 }

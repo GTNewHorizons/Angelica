@@ -92,6 +92,7 @@ public class Program {
     public final int[] locSampler = { -1, -1, -1, -1 };
     public int locAlphaRef = -1;
     public final int[] locTexEnvColor = { -1, -1, -1, -1 };
+    public int locOverlayColor = -1;
     public int locFogParams = -1;
     public int locFogColor = -1;
 
@@ -171,6 +172,7 @@ public class Program {
         for (int i = 0; i < 4; i++) {
             locTexEnvColor[i] = loc("u_TexEnvColor" + i);
         }
+        locOverlayColor = loc("u_OverlayColor");
         locFogParams = loc("u_FogParams");
         locFogColor = loc("u_FogColor");
     }

@@ -1,10 +1,16 @@
 package net.coderbot.iris.uniforms;
 
+import it.unimi.dsi.fastutil.ints.Int2LongLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.minecraft.nbt.NBTTagCompound;
+
+import java.util.IdentityHashMap;
+import java.util.Map;
 import net.minecraft.client.Minecraft;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityList;
@@ -21,13 +27,23 @@ public final class EntityIdHelper {
     private static final NamespacedId LIGHTNING_BOLT_ID = new NamespacedId("minecraft", "lightning_bolt");
 
     private static final Object2IntMap<Class<?>> entityIdCache = new Object2IntOpenHashMap<>();
+    private static final Map<Class<?>, NamespacedId> entityNameCache = new IdentityHashMap<>();
     private static Object2IntFunction<NamespacedId> cachedEntityIdMap;
+
+    private static final Int2LongLinkedOpenHashMap entityNbtCache = new Int2LongLinkedOpenHashMap();
+    private static final int NBT_CACHE_INTERVAL_TICKS = 20;
+    private static final int ENTITY_NBT_CACHE_MAX = 256;
 
     static {
         entityIdCache.defaultReturnValue(Integer.MIN_VALUE);
+        entityNbtCache.defaultReturnValue(-1L);
     }
 
     private EntityIdHelper() {
+    }
+
+    public static boolean isLightningBolt(Entity entity) {
+        return entity instanceof EntityLightningBolt;
     }
 
     /**
@@ -42,17 +58,48 @@ public final class EntityIdHelper {
             return -1;
         }
 
-        // Invalidate cache if the map changed (shader reload)
+        // Invalidate caches if the map changed (shader reload)
         if (entityIdMap != cachedEntityIdMap) {
             entityIdCache.clear();
+            entityNameCache.clear();
+            entityNbtCache.clear();
             cachedEntityIdMap = entityIdMap;
         }
 
+        // Check NBT-conditional match first
+        final NbtConditionalIdMap<NamespacedId> entityNbtMap = BlockRenderingSettings.INSTANCE.getEntityNbtMap();
+        if (entityNbtMap != null && !entityNbtMap.isEmpty() && entity.worldObj != null) {
+            final NamespacedId namespacedId = getCachedEntityName(entity);
+            if (namespacedId != null && entityNbtMap.hasConditions(namespacedId)) {
+                final int entityRuntimeId = entity.getEntityId();
+                final long currentTick = entity.worldObj.getTotalWorldTime();
+                final long cached = entityNbtCache.get(entityRuntimeId);
+
+                final int nbtId;
+                if (cached != -1L && (currentTick - (cached >>> 32)) < NBT_CACHE_INTERVAL_TICKS) {
+                    nbtId = (int) cached;
+                } else {
+                    final NBTTagCompound nbt = new NBTTagCompound();
+                    entity.writeToNBT(nbt);
+                    nbtId = entityNbtMap.resolve(namespacedId, nbt);
+                    final long packed = ((currentTick & 0x7FFFFFFFL) << 32) | (nbtId & 0xFFFFFFFFL);
+                    entityNbtCache.put(entityRuntimeId, packed);
+                    while (entityNbtCache.size() > ENTITY_NBT_CACHE_MAX) {
+                        entityNbtCache.removeFirstLong();
+                    }
+                }
+
+                if (nbtId != -1) {
+                    return nbtId;
+                }
+            }
+        }
+
         // Normal entity type lookup
-        int normalId = getNormalEntityId(entity, entityIdMap);
+        final int normalId = getNormalEntityId(entity, entityIdMap);
 
         // Check for special entity type overrides
-        int specialId = getSpecialEntityId(entity, entityIdMap);
+        final int specialId = getSpecialEntityId(entity, entityIdMap);
         if (specialId != -1) {
             return specialId;
         }
@@ -133,5 +180,25 @@ public final class EntityIdHelper {
         }
 
         return id;
+    }
+
+    /**
+     * Returns a cached NamespacedId for the entity's registered type.
+     */
+    private static NamespacedId getCachedEntityName(Entity entity) {
+        Class<?> entityClass = entity.getClass();
+        NamespacedId cached = entityNameCache.get(entityClass);
+        if (cached != null) {
+            return cached;
+        }
+
+        String entityType = EntityList.getEntityString(entity);
+        if (entityType == null) {
+            return null;
+        }
+
+        cached = new NamespacedId(entityType);
+        entityNameCache.put(entityClass, cached);
+        return cached;
     }
 }

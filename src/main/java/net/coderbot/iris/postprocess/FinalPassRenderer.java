@@ -42,6 +42,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
+import org.lwjgl.opengl.GL43;
 
 import java.util.Map;
 import java.util.Objects;
@@ -229,7 +230,7 @@ public class FinalPassRenderer {
 				}
 			}
 
-			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT);
+			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
 
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
 				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);

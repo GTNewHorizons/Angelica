@@ -422,6 +422,16 @@ public class Uniforms {
             }
         }
 
+        if (fk.overlayEnabled() && program.locOverlayColor != -1) {
+            vec4Buf.clear();
+            vec4Buf.put(GLStateManager.getOverlayR());
+            vec4Buf.put(GLStateManager.getOverlayG());
+            vec4Buf.put(GLStateManager.getOverlayB());
+            vec4Buf.put(GLStateManager.getOverlayA());
+            vec4Buf.flip();
+            RENDER_BACKEND.uniform4(program.locOverlayColor, vec4Buf);
+        }
+
         // Fog
         if (fk.fogMode() != FragmentKey.FOG_NONE) {
             uploadFog(program);

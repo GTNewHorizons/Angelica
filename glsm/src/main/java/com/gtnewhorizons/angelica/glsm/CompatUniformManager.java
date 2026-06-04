@@ -11,6 +11,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -112,6 +113,7 @@ public class CompatUniformManager {
     private static final FloatBuffer clipPlaneBuf = BufferUtils.createFloatBuffer(32); // 8 planes * vec4
     private static final Matrix3f normalMatrix = new Matrix3f();
     private static final Matrix4f scratchMatrix = new Matrix4f();
+    private static final Vector3f scratchCol = new Vector3f();
 
     private static final float LIGHTMAP_SCALE = 1.0f / 256.0f;
     private static final FloatBuffer lightmapMatrixBuf;
@@ -131,6 +133,16 @@ public class CompatUniformManager {
     private static int lastClipPlaneGen = -1;
 
     private CompatUniformManager() {}
+
+    /**
+     * Normalize each column of a 3x3 matrix in place. Used to strip the residual 1/scale that
+     * inverse-transpose introduces.
+     */
+    private static void normalizeColumnsInPlace(Matrix3f m) {
+        m.setColumn(0, m.getColumn(0, scratchCol).normalize());
+        m.setColumn(1, m.getColumn(1, scratchCol).normalize());
+        m.setColumn(2, m.getColumn(2, scratchCol).normalize());
+    }
 
     public static void onLinkProgram(int program) {
         int[] locs = new int[LOC_COUNT];
@@ -222,13 +234,17 @@ public class CompatUniformManager {
             // Normal Matrix (inverse-transpose of upper-left 3x3 of ModelView)
             if (locs[LOC_NORMAL] != -1 || locs[LOC_IRIS_NORMAL] != -1) {
                 mv.normal(normalMatrix);
-                normalMatrix.get(mat3Buf);
                 if (locs[LOC_NORMAL] != -1) {
+                    normalMatrix.get(mat3Buf);
                     RENDER_BACKEND.uniformMatrix3(locs[LOC_NORMAL], false, mat3Buf);
                 }
+                // Column-normalized to unit magnitude
                 if (locs[LOC_IRIS_NORMAL] != -1) {
+                    normalizeColumnsInPlace(normalMatrix);
+                    normalMatrix.get(mat3Buf);
                     RENDER_BACKEND.uniformMatrix3(locs[LOC_IRIS_NORMAL], false, mat3Buf);
                 }
+
             }
         }
 

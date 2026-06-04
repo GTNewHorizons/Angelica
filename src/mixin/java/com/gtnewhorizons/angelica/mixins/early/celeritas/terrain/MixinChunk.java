@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.terrain;
 
 import java.util.Map;
 
+import com.gtnewhorizon.gtnhlib.hash.Fnv1a64;
+import com.gtnewhorizons.angelica.event.ChunkBiomeDataChangedEvent;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
@@ -9,12 +11,15 @@ import net.minecraft.block.Block;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.World;
+import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
@@ -30,6 +35,11 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
     @Final @Shadow public int zPosition;
 
     @Shadow public abstract void addTileEntity(TileEntity te);
+
+    @Shadow public abstract BiomeGenBase getBiomeGenForWorldCoords(int x, int z, WorldChunkManager wcm);
+
+    @Unique private long angelica$biomeHash;
+    @Unique private boolean angelica$biomeHashValid;
 
     @Override
     public ConcurrentTileEntityMap angelica$getConcurrentTEMap() {
@@ -115,5 +125,31 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
                 }
             }
         });
+    }
+
+    @Inject(method = "fillChunk", at = @At("RETURN"))
+    private void angelica$onBiomesFilled(byte[] data, int primaryBitMask, int addBitMask, boolean groundUp, CallbackInfo ci) {
+        if (!groundUp || !this.worldObj.isRemote) return;
+        final long hash = angelica$hashBiomes();
+        if (!this.angelica$biomeHashValid) {
+            this.angelica$biomeHashValid = true;
+            this.angelica$biomeHash = hash;
+            return;
+        }
+        if (hash == this.angelica$biomeHash) return;
+        this.angelica$biomeHash = hash;
+        ChunkBiomeDataChangedEvent.post(this.xPosition, this.zPosition);
+    }
+
+    @Unique
+    private long angelica$hashBiomes() {
+        final WorldChunkManager wcm = this.worldObj.getWorldChunkManager();
+        long hash = Fnv1a64.initialState();
+        for (int z = 0; z < 16; z++) {
+            for (int x = 0; x < 16; x++) {
+                hash = Fnv1a64.hashStep(hash, getBiomeGenForWorldCoords(x, z, wcm).biomeID);
+            }
+        }
+        return hash;
     }
 }

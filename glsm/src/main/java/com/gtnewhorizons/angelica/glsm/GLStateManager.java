@@ -150,15 +150,43 @@ public class GLStateManager {
     public static int projGeneration;  // projection matrix changes
     public static int texMatrixGeneration; // texture matrix changes
     public static int lightingGeneration;
-    public static int fragmentGeneration; // fog + alpha ref
+    public static int fragmentGeneration; // fog + alpha ref + overlay color
     public static int colorGeneration;    // current vertex color
     public static int clipPlaneGeneration; // clip plane equation changes
 
+    @Getter private static float overlayR = 0.0f;
+    @Getter private static float overlayG = 0.0f;
+    @Getter private static float overlayB = 0.0f;
+    @Getter private static float overlayA = 0.0f;
+
+    public static void setOverlayColor(float r, float g, float b, float a) {
+        if (r == overlayR && g == overlayG && b == overlayB && a == overlayA) return;
+        overlayR = r; overlayG = g; overlayB = b; overlayA = a;
+        fragmentGeneration++;
+    }
+
+    @Getter private static float shaderColorR = 1.0f;
+    @Getter private static float shaderColorG = 1.0f;
+    @Getter private static float shaderColorB = 1.0f;
+    @Getter private static float shaderColorA = 1.0f;
+
+    public static void setShaderColor(float r, float g, float b, float a) {
+        if (r == shaderColorR && g == shaderColorG && b == shaderColorB && a == shaderColorA) return;
+        shaderColorR = r; shaderColorG = g; shaderColorB = b; shaderColorA = a;
+        if (GLSMHooks.SHADER_COLOR_CHANGE.hasListeners()) {
+            GLSMHooks.shaderColorChangeEvent.red = r;
+            GLSMHooks.shaderColorChangeEvent.green = g;
+            GLSMHooks.shaderColorChangeEvent.blue = b;
+            GLSMHooks.shaderColorChangeEvent.alpha = a;
+            GLSMHooks.SHADER_COLOR_CHANGE.post(GLSMHooks.shaderColorChangeEvent);
+        }
+    }
+
     // Deferred vertex attribute upload flags — set when state changes, flushed before draw
-    private static boolean dirtyColorAttrib;
+    private static boolean dirtyColorAttrib = true;
     private static boolean dirtyNormalAttrib;
     private static boolean dirtyTexCoordAttrib;
-    private static boolean dirtyLightmapAttrib;
+    private static boolean dirtyLightmapAttrib = true;
 
     /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
     public static void flushDeferredVertexAttribs() {
@@ -1997,7 +2025,14 @@ public class GLStateManager {
         }
     }
 
-    /** Shrink texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid. */
+    /**
+     * Defer deleting textures until it has been reclaimed.
+     * Why you might ask?  In compat profile if you bind a texture that doesn't exist, ie a deleted texture,
+     * mesa will silently create it for you, in core this is an error.  Why would you be binding a deleted texture?
+     * Damned if I know, but vanilla and mods do it... they create one, delete it, and then bind it....
+     *
+     * So... we shrink the texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid.
+     * */
     private static void deferDeleteTexture(int id) {
         if (id == 0) return;
 
@@ -3903,7 +3938,12 @@ public class GLStateManager {
         return switch (pname) {
             case GL11.GL_TEXTURE_WIDTH -> info.getWidth();
             case GL11.GL_TEXTURE_HEIGHT -> info.getHeight();
-            case GL11.GL_TEXTURE_INTERNAL_FORMAT -> info.getInternalFormat();
+            case GL11.GL_TEXTURE_INTERNAL_FORMAT -> {
+                if (info.needsInternalFormatResolve() && isRecordingDisplayList()) {
+                    throw new IllegalStateException(String.format("glGetTexLevelParameteri(GL_TEXTURE_INTERNAL_FORMAT) needs to resolve a generic compressed format for texture %d during display list recording", getBoundTextureForServerState()));
+                }
+                yield info.getResolvedInternalFormat();
+            }
             default -> {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
