@@ -103,8 +103,15 @@ public class CompatUniformManager {
         }
     }
 
-    /** Per-program cached uniform locations. Maps program ID → int[LOC_COUNT]. */
-    private static final Int2ObjectOpenHashMap<int[]> programLocations = new Int2ObjectOpenHashMap<>();
+    /** Per-program cached uniform locations + last-uploaded generations. Maps program ID -> state. */
+    private static final Int2ObjectOpenHashMap<ProgramUniforms> programUniforms = new Int2ObjectOpenHashMap<>();
+
+    private static final class ProgramUniforms {
+        final int[] locs;
+        int lastMvGen = -1, lastMvLinearGen = -1, lastProjGen = -1, lastTexMatGen = -1;
+        int lastFragmentGen = -1, lastLightingGen = -1, lastClipPlaneGen = -1;
+        ProgramUniforms(int[] locs) { this.locs = locs; }
+    }
 
     // Reusable NIO buffers for upload
     private static final FloatBuffer mat4Buf = BufferUtils.createFloatBuffer(16);
@@ -122,16 +129,6 @@ public class CompatUniformManager {
         lightmapMatrixBuf = BufferUtils.createFloatBuffer(16);
         new Matrix4f().scale(LIGHTMAP_SCALE).translate(8.0f, 8.0f, 8.0f).get(lightmapMatrixBuf);
     }
-
-    // Dirty tracking: skip uploads when state hasn't changed and program is the same
-    private static int lastProgram = -1;
-    private static int lastMvGen = -1;
-    private static int lastMvLinearGen = -1;
-    private static int lastProjGen = -1;
-    private static int lastTexMatGen = -1;
-    private static int lastFragmentGen = -1;
-    private static int lastLightingGen = -1;
-    private static int lastClipPlaneGen = -1;
 
     private CompatUniformManager() {}
 
@@ -155,7 +152,7 @@ public class CompatUniformManager {
         }
 
         if (hasAny) {
-            programLocations.put(program, locs);
+            programUniforms.put(program, new ProgramUniforms(locs));
             GLStateManager.LOGGER.debug("CompatUniformManager: program {} has compat uniforms", program);
         }
     }
@@ -163,40 +160,38 @@ public class CompatUniformManager {
     public static void onUseProgram(int program) {
         if (program == 0) return;
 
-        int[] locs = programLocations.get(program);
-        if (locs == null) return;
+        final ProgramUniforms pu = programUniforms.get(program);
+        if (pu == null) return;
+        final int[] locs = pu.locs;
 
-        final boolean programChanged = program != lastProgram;
-        lastProgram = program;
-
-        // Matrix uniforms — skip if generation unchanged and same program
+        // Matrix uniforms — skip if this program's storage already holds the current generation
         final int mvGen = GLStateManager.mvGeneration;
         final int mvLinearGen = GLStateManager.mvLinearGeneration;
         final int projGen = GLStateManager.projGeneration;
         final int texMatGen = GLStateManager.texMatrixGeneration;
-        final boolean mvChanged = programChanged || mvGen != lastMvGen;
-        final boolean mvLinearChanged = programChanged || mvLinearGen != lastMvLinearGen;
-        final boolean projChanged = programChanged || projGen != lastProjGen;
-        final boolean texMatChanged = programChanged || texMatGen != lastTexMatGen;
+        final boolean mvChanged = mvGen != pu.lastMvGen;
+        final boolean mvLinearChanged = mvLinearGen != pu.lastMvLinearGen;
+        final boolean projChanged = projGen != pu.lastProjGen;
+        final boolean texMatChanged = texMatGen != pu.lastTexMatGen;
         if (mvChanged || projChanged || texMatChanged) {
             uploadMatrices(locs, mvChanged, mvLinearChanged, projChanged, texMatChanged);
-            lastMvGen = mvGen;
-            lastMvLinearGen = mvLinearGen;
-            lastProjGen = projGen;
-            lastTexMatGen = texMatGen;
+            pu.lastMvGen = mvGen;
+            pu.lastMvLinearGen = mvLinearGen;
+            pu.lastProjGen = projGen;
+            pu.lastTexMatGen = texMatGen;
         }
 
         // Fragment-category uniforms (fog, alpha) — skip if generation unchanged
         final int fragGen = GLStateManager.fragmentGeneration;
-        if (programChanged || fragGen != lastFragmentGen) {
-            lastFragmentGen = fragGen;
+        if (fragGen != pu.lastFragmentGen) {
+            pu.lastFragmentGen = fragGen;
             uploadFragmentUniforms(locs);
         }
 
         // Lighting-derived uniforms (scene color, light sources, material)
         final int litGen = GLStateManager.lightingGeneration;
-        if (programChanged || litGen != lastLightingGen) {
-            lastLightingGen = litGen;
+        if (litGen != pu.lastLightingGen) {
+            pu.lastLightingGen = litGen;
             if (locs[LOC_SCENE_COLOR] != -1) uploadSceneColor(locs);
             uploadLightSources(locs);
             uploadMaterial(locs);
@@ -205,8 +200,8 @@ public class CompatUniformManager {
         // Clip plane equations + enabled bool — uploaded when enable state or equations change
         if (locs[LOC_CLIP_PLANES] != -1 || locs[LOC_CLIP_PLANES_ENABLED] != -1) {
             final int cpGen = GLStateManager.clipPlaneGeneration;
-            if (programChanged || cpGen != lastClipPlaneGen) {
-                lastClipPlaneGen = cpGen;
+            if (cpGen != pu.lastClipPlaneGen) {
+                pu.lastClipPlaneGen = cpGen;
                 uploadClipPlanes(locs);
             }
         }
@@ -419,14 +414,15 @@ public class CompatUniformManager {
     }
 
     public static void onDeleteProgram(int program) {
-        programLocations.remove(program);
+        programUniforms.remove(program);
     }
 
     public static boolean hasProgram(int program) {
-        return programLocations.containsKey(program);
+        return programUniforms.containsKey(program);
     }
 
     public static int[] getLocations(int program) {
-        return programLocations.get(program);
+        final ProgramUniforms pu = programUniforms.get(program);
+        return pu == null ? null : pu.locs;
     }
 }
