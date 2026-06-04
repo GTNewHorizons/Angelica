@@ -106,16 +106,13 @@ public class ShaderManager {
         if (bh != null) bh.flushDeferredBlend();
 
         if (!active) {
-            if (enabled) {
-                final int currentProgramId = GLStateManager.getActiveProgram();
-                if (currentProgramId != 0) {
-                    CompatUniformManager.onUseProgram(currentProgramId);
-                    return;
-                }
-                active = true;
-            } else {
+            final int currentProgramId = GLStateManager.getActiveProgram();
+            if (currentProgramId != 0) {
+                CompatUniformManager.refreshCompatUniforms(currentProgramId);
                 return;
             }
+            if (!enabled) return;
+            active = true;
         }
 
         final int fkLen = FragmentKey.packFromState(currentFKScratch);

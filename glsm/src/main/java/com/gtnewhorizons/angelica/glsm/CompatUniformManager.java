@@ -157,7 +157,7 @@ public class CompatUniformManager {
         }
     }
 
-    public static void onUseProgram(int program) {
+    public static void refreshCompatUniforms(int program) {
         if (program == 0) return;
 
         final ProgramUniforms pu = programUniforms.get(program);
