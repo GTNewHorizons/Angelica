@@ -146,7 +146,8 @@ public class GLStateManager {
 
     // Generation counters for FFP uniform dirty tracking. Bumped when the corresponding GLSM state changes.
     // Per-matrix-mode generation counters — avoids re-uploading all matrices when only one mode changed
-    public static int mvGeneration;    // modelview matrix changes
+    public static int mvGeneration;    // modelview matrix changes (any: translation, rotation, scale)
+    public static int mvLinearGeneration;
     public static int projGeneration;  // projection matrix changes
     public static int texMatrixGeneration; // texture matrix changes
     public static int lightingGeneration;
@@ -303,6 +304,7 @@ public class GLStateManager {
 
     // Saved generation counters at push time — used to detect whether state actually changed during push/pop scope
     private static final int[] savedMvGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedMvLinearGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedProjGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedTexMatGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedLightingGen = new int[MAX_ATTRIB_STACK_DEPTH];
@@ -2904,6 +2906,22 @@ public class GLStateManager {
             }
         }
         colorMaterial.enable();
+        bakeCurrentColorIntoTrackedMaterial();
+    }
+
+    public static void disableColorMaterial() {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordDisable(GL11.GL_COLOR_MATERIAL);
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        bakeCurrentColorIntoTrackedMaterial();
+        colorMaterial.disable();
+    }
+
+    private static void bakeCurrentColorIntoTrackedMaterial() {
         final float r = getColor().getRed();
         final float g = getColor().getGreen();
         final float b = getColor().getBlue();
@@ -2932,17 +2950,6 @@ public class GLStateManager {
                 case GL11.GL_EMISSION -> backMaterial.emission.set(r, g, b, a);
             }
         }
-    }
-
-    public static void disableColorMaterial() {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.recordDisable(GL11.GL_COLOR_MATERIAL);
-            if (mode == RecordMode.COMPILE) {
-                return;
-            }
-        }
-        colorMaterial.disable();
     }
 
     public static void disableLighting() {
@@ -3075,16 +3082,19 @@ public class GLStateManager {
         }
         // Update cached state (FFP shader reads from cache)
         if (isCachingEnabled()) {
-            boolean changed = true;
+            boolean changed = false;
             switch (pname) {
-                case GL11.GL_FOG_DENSITY -> { fogState.setDensity(param); fragmentGeneration++; }
-                case GL11.GL_FOG_START -> { fogState.setStart(param); fragmentGeneration++; }
-                case GL11.GL_FOG_END -> { fogState.setEnd(param); fragmentGeneration++; }
-                case GL11.GL_FOG_MODE -> { fogState.setFogMode((int) param); fragmentGeneration++; }
-                default -> changed = false;
+                case GL11.GL_FOG_DENSITY -> { if (BYPASS_CACHE || fogState.getDensity() != param) { fogState.setDensity(param); changed = true; } }
+                case GL11.GL_FOG_START -> { if (BYPASS_CACHE || fogState.getStart() != param) { fogState.setStart(param); changed = true; } }
+                case GL11.GL_FOG_END -> { if (BYPASS_CACHE || fogState.getEnd() != param) { fogState.setEnd(param); changed = true; } }
+                case GL11.GL_FOG_MODE -> { if (BYPASS_CACHE || fogState.getFogMode() != (int) param) { fogState.setFogMode((int) param); changed = true; } }
+                default -> {}
             }
-            if (changed && GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
-                GLSMHooks.FOG_STATE_CHANGE.post(GLSMHooks.fogStateChangeEvent);
+            if (changed) {
+                fragmentGeneration++;
+                if (GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
+                    GLSMHooks.FOG_STATE_CHANGE.post(GLSMHooks.fogStateChangeEvent);
+                }
             }
         }
     }
@@ -3098,7 +3108,7 @@ public class GLStateManager {
             }
         }
         // Update cached state (FFP shader reads from cache)
-        if (isCachingEnabled() && pname == GL11.GL_FOG_MODE) {
+        if (isCachingEnabled() && pname == GL11.GL_FOG_MODE && (BYPASS_CACHE || fogState.getFogMode() != param)) {
             fogState.setFogMode(param);
             fragmentGeneration++;
             if (GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
@@ -3255,6 +3265,7 @@ public class GLStateManager {
 
         // Snapshot generation counters so we can detect actual changes at pop time
         savedMvGen[attribDepth] = mvGeneration;
+        savedMvLinearGen[attribDepth] = mvLinearGeneration;
         savedProjGen[attribDepth] = projGeneration;
         savedTexMatGen[attribDepth] = texMatrixGeneration;
         savedLightingGen[attribDepth] = lightingGeneration;
@@ -3363,6 +3374,7 @@ public class GLStateManager {
         if ((mask & GL11.GL_TEXTURE_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++; // texenv state
         if ((mask & GL11.GL_TRANSFORM_BIT) != 0) {
             if (mvGeneration != savedMvGen[depth]) mvGeneration++;
+            if (mvLinearGeneration != savedMvLinearGen[depth]) mvLinearGeneration++;
             if (projGeneration != savedProjGen[depth]) projGeneration++;
             if (texMatrixGeneration != savedTexMatGen[depth]) texMatrixGeneration++;
         }
@@ -3480,8 +3492,15 @@ public class GLStateManager {
 
     /** Bump the generation counter for the currently active matrix mode. */
     private static void bumpMatrixGeneration() {
+        bumpMatrixGeneration(true);
+    }
+
+    private static void bumpMatrixGeneration(boolean linearChanged) {
         switch (matrixMode.getMode()) {
-            case GL11.GL_MODELVIEW -> mvGeneration++;
+            case GL11.GL_MODELVIEW -> {
+                mvGeneration++;
+                if (linearChanged) mvLinearGeneration++;
+            }
             case GL11.GL_PROJECTION -> projGeneration++;
             case GL11.GL_TEXTURE -> texMatrixGeneration++;
         }
@@ -3508,7 +3527,7 @@ public class GLStateManager {
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate(x, y, z);
-            bumpMatrixGeneration();
+            bumpMatrixGeneration(false);
         }
     }
 
@@ -3519,7 +3538,7 @@ public class GLStateManager {
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate((float) x, (float) y, (float) z);
-            bumpMatrixGeneration();
+            bumpMatrixGeneration(false);
         }
     }
 
@@ -3986,64 +4005,72 @@ public class GLStateManager {
     public static void glSamplerParameteri(int sampler, int pname, int param) { RENDER_BACKEND.samplerParameteri(sampler, pname, param); }
     public static void glSamplerParameterf(int sampler, int pname, float param) { RENDER_BACKEND.samplerParameterf(sampler, pname, param); }
 
-    private static void glMaterialFront(int pname, FloatBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialFront(int pname, FloatBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> frontMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> frontMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> frontMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> frontMaterial.setEmission(params);
             case GL11.GL_SHININESS -> frontMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                frontMaterial.setAmbient(params);
-                frontMaterial.setDiffuse(params);
+                final boolean a = frontMaterial.setAmbient(params);
+                final boolean d = frontMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> frontMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
-    private static void glMaterialBack(int pname, FloatBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialBack(int pname, FloatBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> backMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> backMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> backMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> backMaterial.setEmission(params);
             case GL11.GL_SHININESS -> backMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                backMaterial.setAmbient(params);
-                backMaterial.setDiffuse(params);
+                final boolean a = backMaterial.setAmbient(params);
+                final boolean d = backMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> backMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
-    private static void glMaterialFront(int pname, IntBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialFront(int pname, IntBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> frontMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> frontMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> frontMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> frontMaterial.setEmission(params);
             case GL11.GL_SHININESS -> frontMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                frontMaterial.setAmbient(params);
-                frontMaterial.setDiffuse(params);
+                final boolean a = frontMaterial.setAmbient(params);
+                final boolean d = frontMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> frontMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
-    private static void glMaterialBack(int pname, IntBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialBack(int pname, IntBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> backMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> backMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> backMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> backMaterial.setEmission(params);
             case GL11.GL_SHININESS -> backMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                backMaterial.setAmbient(params);
-                backMaterial.setDiffuse(params);
+                final boolean a = backMaterial.setAmbient(params);
+                final boolean d = backMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> backMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
     public static void glMaterial(int face, int pname, FloatBuffer params) {
@@ -4054,17 +4081,19 @@ public class GLStateManager {
                 return;
             }
         }
+        boolean changed = false;
         if (face == GL11.GL_FRONT) {
-            glMaterialFront(pname, params);
+            changed = glMaterialFront(pname, params);
         } else if (face == GL11.GL_BACK) {
-            glMaterialBack(pname, params);
+            changed = glMaterialBack(pname, params);
         } else if (face == GL11.GL_FRONT_AND_BACK) {
-            glMaterialFront(pname, params);
-            glMaterialBack(pname, params);
+            final boolean f = glMaterialFront(pname, params);
+            final boolean b = glMaterialBack(pname, params);
+            changed = f || b;
         } else {
             throw new RuntimeException("Unsupported face value for glMaterial: " + face);
         }
-        lightingGeneration++;
+        if (changed) lightingGeneration++;
     }
 
     public static void glMaterial(int face, int pname, IntBuffer params) {
@@ -4083,17 +4112,19 @@ public class GLStateManager {
                 return;
             }
         }
+        boolean changed = false;
         if (face == GL11.GL_FRONT) {
-            glMaterialFront(pname, params);
+            changed = glMaterialFront(pname, params);
         } else if (face == GL11.GL_BACK) {
-            glMaterialBack(pname, params);
+            changed = glMaterialBack(pname, params);
         } else if (face == GL11.GL_FRONT_AND_BACK) {
-            glMaterialFront(pname, params);
-            glMaterialBack(pname, params);
+            final boolean f = glMaterialFront(pname, params);
+            final boolean b = glMaterialBack(pname, params);
+            changed = f || b;
         } else {
             throw new RuntimeException("Unsupported face value for glMaterial: " + face);
         }
-        lightingGeneration++;
+        if (changed) lightingGeneration++;
     }
 
     public static void glMaterialf(int face, int pname, float val) {
@@ -4109,17 +4140,19 @@ public class GLStateManager {
             return;
         }
 
+        boolean changed = false;
         if (face == GL11.GL_FRONT) {
-            frontMaterial.setShininess(val);
+            changed = frontMaterial.setShininess(val);
         } else if (face == GL11.GL_BACK) {
-            backMaterial.setShininess(val);
+            changed = backMaterial.setShininess(val);
         } else if (face == GL11.GL_FRONT_AND_BACK) {
-            frontMaterial.setShininess(val);
-            backMaterial.setShininess(val);
+            final boolean f = frontMaterial.setShininess(val);
+            final boolean b = backMaterial.setShininess(val);
+            changed = f || b;
         } else {
             throw new RuntimeException("Unsupported face value for glMaterial: " + face);
         }
-        lightingGeneration++;
+        if (changed) lightingGeneration++;
     }
 
     public static void glMateriali(int face, int pname, int val) {
@@ -4137,7 +4170,7 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_AMBIENT -> lightState.setAmbient(params);
             case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
             case GL11.GL_SPECULAR -> lightState.setSpecular(params);
@@ -4148,9 +4181,9 @@ public class GLStateManager {
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
-            default -> {}
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLight(int light, int pname, IntBuffer params) {
@@ -4170,7 +4203,7 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_AMBIENT -> lightState.setAmbient(params);
             case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
             case GL11.GL_SPECULAR -> lightState.setSpecular(params);
@@ -4181,9 +4214,9 @@ public class GLStateManager {
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
-            default -> {}
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightf(int light, int pname, float param) {
@@ -4195,15 +4228,15 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
             case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
-            default -> {}
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLighti(int light, int pname, int param) {
@@ -4215,16 +4248,15 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
             case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
-            default -> {
-            }
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightModel(int pname, FloatBuffer params) {
@@ -4235,14 +4267,13 @@ public class GLStateManager {
                 return;
             }
         }
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
             case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
             case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
-            default -> {
-            }
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightModel(int pname, IntBuffer params) {
@@ -4261,15 +4292,14 @@ public class GLStateManager {
                 return;
             }
         }
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
             case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(params);
             case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
             case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
-            default -> {
-            }
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightModelf(int pname, float param) {
@@ -4282,13 +4312,12 @@ public class GLStateManager {
         }
 
         if (isCachingEnabled()) {
-            switch (pname) {
+            final boolean changed = switch (pname) {
                 case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
                 case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
-                default -> {
-                }
-            }
-            lightingGeneration++;
+                default -> false;
+            };
+            if (changed) lightingGeneration++;
         }
     }
 
@@ -4302,14 +4331,13 @@ public class GLStateManager {
         }
 
         if (isCachingEnabled()) {
-            switch (pname) {
+            final boolean changed = switch (pname) {
                 case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(param);
                 case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
                 case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
-                default -> {
-                }
-            }
-            lightingGeneration++;
+                default -> false;
+            };
+            if (changed) lightingGeneration++;
         }
     }
 
@@ -4384,7 +4412,6 @@ public class GLStateManager {
                 GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
             }
             RENDER_BACKEND.useProgram(program);
-            CompatUniformManager.onUseProgram(program);
             if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = program;

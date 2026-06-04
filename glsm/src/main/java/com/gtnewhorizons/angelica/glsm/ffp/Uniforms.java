@@ -46,116 +46,99 @@ public class Uniforms {
     private static final double LN2 = java.lang.Math.log(2.0);
     private static final double SQRT_LN2 = java.lang.Math.sqrt(LN2);
 
-    // Dirty tracking: last-uploaded generation per category + program ID.
-    // Program change forces full re-upload since uniform locations differ.
-    private int lastProgramId = -1;
-    private int lastMvGen = -1;
-    private int lastProjGen = -1;
-    private int lastTexMatGen = -1;
-    private int lastLightingGen = -1;
-    private int lastFragmentGen = -1;
-    private int lastColorGen = -1;
-    private int lastNormalGen = -1;
-    private int lastTexCoordGen = -1;
-    private float lastLightmapX = Float.NaN;
-    private float lastLightmapY = Float.NaN;
-    private int lastTexGenGen = -1;
-    private int lastClipPlaneGen = -1;
-    private float lastLineWidth = Float.NaN;
-    private int lastViewportWidth = -1;
-    private int lastViewportHeight = -1;
-
     /**
      * Upload all relevant uniforms to the given FFP program based on current GLSM state.
      * Uses generation counters to skip categories that haven't changed since last upload.
      */
     public void upload(Program program) {
-        final boolean programChanged = program.getProgramId() != lastProgramId;
-        lastProgramId = program.getProgramId();
+        final Program.UploadState st = program.uploadState;
 
         final int mvGen = GLStateManager.mvGeneration;
+        final int mvLinearGen = GLStateManager.mvLinearGeneration;
         final int projGen = GLStateManager.projGeneration;
         final int texMatGen = GLStateManager.texMatrixGeneration;
-        final boolean mvChanged = programChanged || mvGen != lastMvGen;
-        final boolean projChanged = programChanged || projGen != lastProjGen;
-        final boolean texMatChanged = programChanged || texMatGen != lastTexMatGen;
+        final boolean mvChanged = mvGen != st.mvGen;
+        final boolean mvLinearChanged = mvLinearGen != st.mvLinearGen;
+        final boolean projChanged = projGen != st.projGen;
+        final boolean texMatChanged = texMatGen != st.texMatGen;
         if (mvChanged || projChanged || texMatChanged) {
-            uploadMatrices(program, mvChanged, projChanged, texMatChanged);
-            lastMvGen = mvGen;
-            lastProjGen = projGen;
-            lastTexMatGen = texMatGen;
+            uploadMatrices(program, mvChanged, mvLinearChanged, projChanged, texMatChanged);
+            st.mvGen = mvGen;
+            st.mvLinearGen = mvLinearGen;
+            st.projGen = projGen;
+            st.texMatGen = texMatGen;
         }
 
         if (program.getVertexKey().lightingEnabled()) {
             final int litGen = GLStateManager.lightingGeneration;
-            if (programChanged || litGen != lastLightingGen) {
+            if (litGen != st.lightingGen) {
                 uploadLighting(program);
-                lastLightingGen = litGen;
+                st.lightingGen = litGen;
             }
         }
 
         // Current color/normal/texcoord — skip if generation unchanged
         if (!program.getVertexKey().hasVertexColor()) {
             final int colorGen = GLStateManager.colorGeneration;
-            if (programChanged || colorGen != lastColorGen) {
+            if (colorGen != st.colorGen) {
                 uploadCurrentColor(program);
-                lastColorGen = colorGen;
+                st.colorGen = colorGen;
             }
         }
 
         if (!program.getVertexKey().hasVertexNormal() && program.getVertexKey().lightingEnabled()) {
             final int normalGen = ShaderManager.getNormalGeneration();
-            if (programChanged || normalGen != lastNormalGen) {
+            if (normalGen != st.normalGen) {
                 uploadCurrentNormal(program);
-                lastNormalGen = normalGen;
+                st.normalGen = normalGen;
             }
         }
 
         if (program.getVertexKey().anyUnitTexCoordEnabled()) {
             final int texGen = ShaderManager.getTexCoordGeneration();
-            if (programChanged || texGen != lastTexCoordGen) {
+            if (texGen != st.texCoordGen) {
                 uploadCurrentTexCoords(program);
-                lastTexCoordGen = texGen;
+                st.texCoordGen = texGen;
             }
         }
 
         if (program.getVertexKey().lightmapEnabled() && !program.getVertexKey().hasVertexLightmap()) {
-            if (programChanged || GLSMConfig.lastBrightnessX != lastLightmapX || GLSMConfig.lastBrightnessY != lastLightmapY) {
+            if (GLSMConfig.lastBrightnessX != st.lightmapX || GLSMConfig.lastBrightnessY != st.lightmapY) {
                 uploadCurrentLightmapCoord(program);
-                lastLightmapX = GLSMConfig.lastBrightnessX;
-                lastLightmapY = GLSMConfig.lastBrightnessY;
+                st.lightmapX = GLSMConfig.lastBrightnessX;
+                st.lightmapY = GLSMConfig.lastBrightnessY;
             }
         }
 
         if (program.getVertexKey().texGenEnabled()) {
             final int tgGen = GLStateManager.texGenGeneration;
-            if (programChanged || tgGen != lastTexGenGen) {
+            if (tgGen != st.texGenGen) {
                 uploadTexGen(program);
-                lastTexGenGen = tgGen;
+                st.texGenGen = tgGen;
             }
         }
 
         if (program.getVertexKey().clipPlanesEnabled()) {
             final int cpGen = GLStateManager.clipPlaneGeneration;
-            if (programChanged || cpGen != lastClipPlaneGen) {
+            if (cpGen != st.clipPlaneGen) {
                 uploadClipPlanes(program);
-                lastClipPlaneGen = cpGen;
+                st.clipPlaneGen = cpGen;
             }
         }
 
         final int fragGen = GLStateManager.fragmentGeneration;
-        if (programChanged || fragGen != lastFragmentGen) {
+        if (fragGen != st.fragmentGen) {
             uploadFragmentUniforms(program);
-            lastFragmentGen = fragGen;
+            st.fragmentGen = fragGen;
         }
 
         // Wide line emulation uniforms
         if (program.locLineWidth != -1 && program.locViewportSize != -1) {
-            uploadWideLineUniforms(program, programChanged);
+            uploadWideLineUniforms(program);
         }
     }
 
-    private void uploadMatrices(Program program, boolean mvChanged, boolean projChanged, boolean texMatChanged) {
+    private void uploadMatrices(Program program, boolean mvChanged, boolean mvLinearChanged, boolean projChanged, boolean texMatChanged) {
         final Matrix4f mv = GLStateManager.getModelViewMatrix();
         final Matrix4f proj = GLStateManager.getProjectionMatrix();
 
@@ -165,7 +148,9 @@ public class Uniforms {
                 mv.get(mat4Buf);
                 RENDER_BACKEND.uniformMatrix4(program.locModelViewMatrix, false, mat4Buf);
             }
+        }
 
+        if (mvLinearChanged) {
             // Normal matrix = inverse transpose of upper-left 3x3 of ModelView
             if (program.locNormalMatrix != -1 || program.locNormalScale != -1) {
                 mv.normal(normalMatrix);
@@ -314,12 +299,13 @@ public class Uniforms {
         if (program.locCurrentColor == -1) return;
         // Upload the current color from GLSM
         final var color = GLStateManager.getColor();
+        tempVec4.set(
+            Math.clamp(0f, 1f, color.getRed()),
+            Math.clamp(0f, 1f, color.getGreen()),
+            Math.clamp(0f, 1f, color.getBlue()),
+            Math.clamp(0f, 1f, color.getAlpha()));
         vec4Buf.clear();
-        vec4Buf.put(Math.clamp(0f, 1f, color.getRed()));
-        vec4Buf.put(Math.clamp(0f, 1f, color.getGreen()));
-        vec4Buf.put(Math.clamp(0f, 1f, color.getBlue()));
-        vec4Buf.put(Math.clamp(0f, 1f, color.getAlpha()));
-        vec4Buf.flip();
+        tempVec4.get(vec4Buf);
         RENDER_BACKEND.uniform4(program.locCurrentColor, vec4Buf);
     }
 
@@ -342,10 +328,7 @@ public class Uniforms {
         // Upload current normal from FFPShaderManager's tracked normal
         final var normal = ShaderManager.getCurrentNormal();
         vec3Buf.clear();
-        vec3Buf.put(normal.x);
-        vec3Buf.put(normal.y);
-        vec3Buf.put(normal.z);
-        vec3Buf.flip();
+        normal.get(vec3Buf);
         RENDER_BACKEND.uniform3(program.locCurrentNormal, vec3Buf);
     }
 
@@ -381,10 +364,7 @@ public class Uniforms {
     private void uploadPlane(int loc, float[] plane) {
         if (loc == -1) return;
         vec4Buf.clear();
-        vec4Buf.put(plane[0]);
-        vec4Buf.put(plane[1]);
-        vec4Buf.put(plane[2]);
-        vec4Buf.put(plane[3]);
+        vec4Buf.put(plane, 0, 4);
         vec4Buf.flip();
         RENDER_BACKEND.uniform4(loc, vec4Buf);
     }
@@ -470,29 +450,26 @@ public class Uniforms {
         }
     }
 
-    private void uploadWideLineUniforms(Program program, boolean programChanged) {
+    private void uploadWideLineUniforms(Program program) {
+        final Program.UploadState st = program.uploadState;
         final float lineWidth = GLStateManager.getLineState().getWidth();
-        if (programChanged || lineWidth != lastLineWidth) {
+        if (lineWidth != st.lineWidth) {
             RENDER_BACKEND.uniform1f(program.locLineWidth, lineWidth);
-            lastLineWidth = lineWidth;
+            st.lineWidth = lineWidth;
         }
         final int vw = GLStateManager.getViewportState().width;
         final int vh = GLStateManager.getViewportState().height;
-        if (programChanged || vw != lastViewportWidth || vh != lastViewportHeight) {
+        if (vw != st.viewportWidth || vh != st.viewportHeight) {
             RENDER_BACKEND.uniform2f(program.locViewportSize, vw, vh);
-            lastViewportWidth = vw;
-            lastViewportHeight = vh;
+            st.viewportWidth = vw;
+            st.viewportHeight = vh;
         }
     }
 
     private void uploadVec4(int loc, Vector4f v) {
         if (loc == -1) return;
         vec4Buf.clear();
-        vec4Buf.put(v.x);
-        vec4Buf.put(v.y);
-        vec4Buf.put(v.z);
-        vec4Buf.put(v.w);
-        vec4Buf.flip();
+        v.get(vec4Buf);
         RENDER_BACKEND.uniform4(loc, vec4Buf);
     }
 

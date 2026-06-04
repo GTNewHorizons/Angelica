@@ -27,65 +27,75 @@ public class LightModelState implements ISettableState<LightModelState> {
         twoSide = 0.0F;
     }
 
-    public void setAmbient(FloatBuffer newBuffer) {
+    public boolean setAmbient(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setAmbient(IntBuffer newBuffer) {
+    public boolean setAmbient(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
         if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
+            return true;
         }
+        return false;
     }
 
-    public void setColorControl(int val) {
+    public boolean setColorControl(int val) {
         if (GLStateManager.shouldBypassCache() || this.colorControl != val) {
             this.colorControl = val;
+            return true;
         }
+        return false;
     }
 
-    public void setColorControl(IntBuffer newBuffer) {
-        setColorControl(newBuffer.get());
+    public boolean setColorControl(IntBuffer newBuffer) {
+        return setColorControl(newBuffer.get());
     }
 
-    public void setLocalViewer(float val) {
+    public boolean setLocalViewer(float val) {
         if (GLStateManager.shouldBypassCache() || Float.compare(this.localViewer, val) != 0) {
             this.localViewer = val;
+            return true;
         }
+        return false;
     }
 
-    public void setLocalViewer(FloatBuffer newBuffer) {
-        setLocalViewer(newBuffer.get());
+    public boolean setLocalViewer(FloatBuffer newBuffer) {
+        return setLocalViewer(newBuffer.get());
     }
 
-    public void setLocalViewer(IntBuffer newBuffer) {
-        setLocalViewer((float) newBuffer.get());
+    public boolean setLocalViewer(IntBuffer newBuffer) {
+        return setLocalViewer((float) newBuffer.get());
     }
 
-    public void setLocalViewer(int val) {
-        setLocalViewer((float) val);
+    public boolean setLocalViewer(int val) {
+        return setLocalViewer((float) val);
     }
 
-    public void setTwoSide(float val) {
+    public boolean setTwoSide(float val) {
         if (GLStateManager.shouldBypassCache() || Float.compare(this.twoSide, val) != 0) {
             this.twoSide = val;
+            return true;
         }
+        return false;
     }
 
-    public void setTwoSide(FloatBuffer newBuffer) {
-        setTwoSide(newBuffer.get());
+    public boolean setTwoSide(FloatBuffer newBuffer) {
+        return setTwoSide(newBuffer.get());
     }
 
-    public void setTwoSide(IntBuffer newBuffer) {
-        setTwoSide((float) newBuffer.get());
+    public boolean setTwoSide(IntBuffer newBuffer) {
+        return setTwoSide((float) newBuffer.get());
     }
 
-    public void setTwoSide(int val) {
-        setTwoSide((float) val);
+    public boolean setTwoSide(int val) {
+        return setTwoSide((float) val);
     }
 
     @Override
