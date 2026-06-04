@@ -26,6 +26,16 @@ public class Program {
     @Getter private final VertexKey vertexKey;
     @Getter private final FragmentKey fragmentKey;
 
+    // Per-program uniform dirty-tracking
+    static final class UploadState {
+        int mvGen = -1, mvLinearGen = -1, projGen = -1, texMatGen = -1;
+        int lightingGen = -1, fragmentGen = -1, colorGen = -1, normalGen = -1, texCoordGen = -1;
+        int texGenGen = -1, clipPlaneGen = -1;
+        float lightmapX = Float.NaN, lightmapY = Float.NaN, lineWidth = Float.NaN;
+        int viewportWidth = -1, viewportHeight = -1;
+    }
+    final UploadState uploadState = new UploadState();
+
     // Uniform locations (-1 = not present in this variant)
     // Matrices
     public int locModelViewMatrix = -1;
