@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -107,8 +106,6 @@ public class CompatUniformManager {
     /** Per-program cached uniform locations + last-uploaded generations. Maps program ID -> state. */
     private static final Int2ObjectOpenHashMap<ProgramUniforms> programUniforms = new Int2ObjectOpenHashMap<>();
 
-    private static final IntOpenHashSet coreShaders = new IntOpenHashSet();
-    private static final IntOpenHashSet corePrograms = new IntOpenHashSet();
 
 
     private static final class ProgramUniforms {
@@ -162,9 +159,14 @@ public class CompatUniformManager {
         }
     }
 
-    public static void refreshCompatUniforms(int program) {
+    /**
+     * Uploads the emulated uniforms.
+     *
+     * @return Whether the program needs emulation (FFP or Iris Program)
+     */
+    public static boolean refreshCompatUniforms(int program) {
         final ProgramUniforms pu = programUniforms.get(program);
-        if (pu == null) return;
+        if (pu == null) return false;
         final int[] locs = pu.locs;
 
         // Matrix uniforms — skip if this program's storage already holds the current generation
@@ -208,6 +210,8 @@ public class CompatUniformManager {
                 uploadClipPlanes(locs);
             }
         }
+
+        return true;
     }
 
     private static void uploadMatrices(int[] locs, boolean mvChanged, boolean mvLinearChanged, boolean projChanged, boolean texMatChanged) {
@@ -414,35 +418,6 @@ public class CompatUniformManager {
             clipPlaneBuf.flip();
             RENDER_BACKEND.uniform4(locs[LOC_CLIP_PLANES], clipPlaneBuf);
         }
-    }
-
-    public static boolean isCoreShader(int program) {
-        return corePrograms.contains(program);
-    }
-
-    public static boolean isCoreShaderBound() {
-        return corePrograms.contains(GLStateManager.getActiveProgram());
-    }
-
-    public static void onShaderSource(int shader, String source) {
-        if (CompatShaderTransformer.isCoreShader(source)) {
-            coreShaders.add(shader);
-        }
-    }
-
-    public static void onDeleteShader(int shader) {
-        coreShaders.remove(shader);
-    }
-
-    public static void onAttachShader(int program, int shader) {
-        if (coreShaders.contains(shader)) {
-            corePrograms.add(program);
-        }
-    }
-
-    public static void onDeleteProgram(int program) {
-        programUniforms.remove(program);
-        corePrograms.remove(program);
     }
 
     public static boolean hasProgram(int program) {

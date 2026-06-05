@@ -4490,7 +4490,6 @@ public class GLStateManager {
 
     public static void glShaderSource(int shader, CharSequence source) {
         String src = source.toString();
-        CompatUniformManager.onShaderSource(shader, src);
         // Always rename reserved words for the target GLSL version (e.g. 'sampler' at 460)
         src = GlslTransformUtils.renameReservedWords(src, RENDER_BACKEND.getMinGLSLVersion());
         if (ShaderManager.getInstance().isEnabled()) {
@@ -5733,8 +5732,6 @@ public class GLStateManager {
 
     public static void glDeleteProgram(int program) {
         if (program == 0) return;
-        CompatUniformManager.onDeleteProgram(program);
-
         if (activeProgram == program) activeProgram = 0;
         RENDER_BACKEND.deleteProgram(program);
     }
@@ -5752,7 +5749,6 @@ public class GLStateManager {
     }
 
     public static void glAttachShader(int program, int shader) {
-        CompatUniformManager.onAttachShader(program, shader);
         RENDER_BACKEND.attachShader(program, shader);
     }
 
@@ -5761,7 +5757,6 @@ public class GLStateManager {
     }
 
     public static void glDeleteShader(int shader) {
-        CompatUniformManager.onDeleteShader(shader);
         RENDER_BACKEND.deleteShader(shader);
     }
 

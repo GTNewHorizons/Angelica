@@ -89,12 +89,12 @@ public final class ShaderManager {
 
     public void activate() {
         active = true;
+        lastBoundProgramId = GLStateManager.getActiveProgram();
     }
 
     public void deactivate() {
         active = false;
         currentProgram = null;
-        lastBoundProgramId = -1;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
     }
@@ -106,12 +106,10 @@ public final class ShaderManager {
         // Handle FFP & Iris uniforms
         final int currentProgramId = GLStateManager.getActiveProgram();
         if (currentProgramId != 0) {
-            CompatUniformManager.refreshCompatUniforms(currentProgramId);
-
-            // Don't emulate on core shaders
-            if (CompatUniformManager.isCoreShader(currentProgramId)) return;
+            if (!CompatUniformManager.refreshCompatUniforms(currentProgramId)) {
+                return; // Don't emulate FFP on non-core Iris shaders
+            }
         }
-
 
         GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
 
