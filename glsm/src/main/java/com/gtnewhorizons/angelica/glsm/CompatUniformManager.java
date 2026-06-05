@@ -106,8 +106,6 @@ public class CompatUniformManager {
     /** Per-program cached uniform locations + last-uploaded generations. Maps program ID -> state. */
     private static final Int2ObjectOpenHashMap<ProgramUniforms> programUniforms = new Int2ObjectOpenHashMap<>();
 
-
-
     private static final class ProgramUniforms {
         final int[] locs;
         int lastMvGen = -1, lastMvLinearGen = -1, lastProjGen = -1, lastTexMatGen = -1;
@@ -418,6 +416,10 @@ public class CompatUniformManager {
             clipPlaneBuf.flip();
             RENDER_BACKEND.uniform4(locs[LOC_CLIP_PLANES], clipPlaneBuf);
         }
+    }
+
+    public static void onDeleteProgram(int program) {
+        programUniforms.remove(program);
     }
 
     public static boolean hasProgram(int program) {

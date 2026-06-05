@@ -5732,6 +5732,8 @@ public class GLStateManager {
 
     public static void glDeleteProgram(int program) {
         if (program == 0) return;
+        CompatUniformManager.onDeleteProgram(program);
+
         if (activeProgram == program) activeProgram = 0;
         RENDER_BACKEND.deleteProgram(program);
     }
