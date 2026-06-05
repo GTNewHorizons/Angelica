@@ -7,8 +7,6 @@ import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
-
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -16,6 +14,8 @@ import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Per-program compat uniform location cache and upload manager.
@@ -157,11 +157,14 @@ public class CompatUniformManager {
         }
     }
 
-    public static void refreshCompatUniforms(int program) {
-        if (program == 0) return;
-
+    /**
+     * Uploads the emulated uniforms.
+     *
+     * @return Whether the program needs emulation (FFP or Iris Program)
+     */
+    public static boolean refreshCompatUniforms(int program) {
         final ProgramUniforms pu = programUniforms.get(program);
-        if (pu == null) return;
+        if (pu == null) return false;
         final int[] locs = pu.locs;
 
         // Matrix uniforms — skip if this program's storage already holds the current generation
@@ -205,6 +208,8 @@ public class CompatUniformManager {
                 uploadClipPlanes(locs);
             }
         }
+
+        return true;
     }
 
     private static void uploadMatrices(int[] locs, boolean mvChanged, boolean mvLinearChanged, boolean projChanged, boolean texMatChanged) {

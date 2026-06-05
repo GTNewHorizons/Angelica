@@ -9,9 +9,12 @@ import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -19,6 +22,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ItemRenderer.class)
 public class MixinItemRenderer {
+
+    @Shadow private ItemStack itemToRender;
+
     /**
      * Render held item in first person.
      */
@@ -34,15 +40,33 @@ public class MixinItemRenderer {
             }
         }
 
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc.thePlayer == null) {
-            return;
+        // Wait for hand to lower before setting ID
+        ItemIdManager.setItemId(this.itemToRender);
+    }
+
+    /**
+     * Force the equip lower/raise animation whenever the held stack isn't an exact match for
+     * the one being rendered.
+     */
+    @Redirect(
+        method = "updateEquippedItem",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getItemDamage()I", ordinal = 0)
+    )
+    private int iris$animateStackSwap(ItemStack incoming) {
+        if (this.itemToRender != null
+                && !ItemStack.areItemStacksEqual(incoming, this.itemToRender)) {
+            return Integer.MIN_VALUE;
         }
+        return incoming.getItemDamage();
+    }
 
-        ItemStack itemStack = mc.thePlayer.getCurrentEquippedItem();
-
-        // Set item ID for first-person hand/item
-        ItemIdManager.setItemId(itemStack);
+    @Redirect(
+        method = "updateEquippedItem",
+        at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/ItemRenderer;itemToRender:Lnet/minecraft/item/ItemStack;", opcode = Opcodes.PUTFIELD, ordinal = 0)
+    )
+    private void iris$commitSlotOnInstantSwap(ItemRenderer self, ItemStack value) {
+        this.itemToRender = value;
+        int equippedItemSlot = Minecraft.getMinecraft().thePlayer.inventory.currentItem;
     }
 
     /**

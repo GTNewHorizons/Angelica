@@ -189,22 +189,23 @@ public class GLStateManager {
     private static boolean dirtyTexCoordAttrib;
     private static boolean dirtyLightmapAttrib = true;
 
-    /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
-    public static void flushDeferredVertexAttribs() {
-        if (dirtyColorAttrib) {
+    // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
+    // Skip the backend vertexAttrib call in either case.
+    public static void flushDeferredVertexAttribs(int vertexFlags) {
+        if (dirtyColorAttrib && (vertexFlags & VertexFlags.COLOR_BIT) == 0) {
             RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
             dirtyColorAttrib = false;
         }
-        if (dirtyLightmapAttrib) {
+        if (dirtyLightmapAttrib && (vertexFlags & VertexFlags.BRIGHTNESS_BIT) == 0) {
             RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
             dirtyLightmapAttrib = false;
         }
-        if (dirtyNormalAttrib) {
+        if (dirtyNormalAttrib && (vertexFlags & VertexFlags.NORMAL_BIT) == 0) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);
             dirtyNormalAttrib = false;
         }
-        if (dirtyTexCoordAttrib) {
+        if (dirtyTexCoordAttrib && (vertexFlags & VertexFlags.TEXTURE_BIT) == 0) {
             final var tc = ShaderManager.getCurrentTexCoord();
             RENDER_BACKEND.vertexAttrib4f(Usage.PRIMARY_UV.getAttributeLocation(), tc.x, tc.y, tc.z, tc.w);
             dirtyTexCoordAttrib = false;
@@ -3379,9 +3380,18 @@ public class GLStateManager {
             if (texMatrixGeneration != savedTexMatGen[depth]) texMatrixGeneration++;
         }
         if ((mask & GL11.GL_CURRENT_BIT) != 0) {
-            if (colorGeneration != savedColorGen[depth]) colorGeneration++;
-            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) ShaderManager.bumpNormalGeneration();
-            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) ShaderManager.bumpTexCoordGeneration();
+            if (colorGeneration != savedColorGen[depth]) {
+                colorGeneration++;
+                dirtyColorAttrib = true;
+            }
+            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) {
+                ShaderManager.bumpNormalGeneration();
+                dirtyNormalAttrib = true;
+            }
+            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) {
+                ShaderManager.bumpTexCoordGeneration();
+                dirtyTexCoordAttrib = true;
+            }
         }
     }
 
