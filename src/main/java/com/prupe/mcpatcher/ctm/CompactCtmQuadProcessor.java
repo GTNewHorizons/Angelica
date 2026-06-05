@@ -53,6 +53,9 @@ public final class CompactCtmQuadProcessor {
     }
 
     public boolean processFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon origIcon) {
+        if(renderBlockState instanceof BlockOrientation blockOrientation){
+            blockOrientation.setFlipBottom();
+        }
         int neighborBits = override.getNeighborBits(renderBlockState, origIcon);
 
         int ctmIndex = TileOverride.neighborMap[neighborBits & 0xFF];
