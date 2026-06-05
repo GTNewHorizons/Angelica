@@ -329,6 +329,15 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    IRIS_SHADERS_CHISEL_BEACON(new MixinBuilder("Iris Chisel Beacon Beam")
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addRequiredMod(TargetedMod.CHISEL)
+        .addClientMixins(
+            "chisel.MixinRenderCarvableBeacon"
+        )
+    ),
+
     ANGELICA_TEXTURE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableIris || AngelicaConfig.enableCeleritas)

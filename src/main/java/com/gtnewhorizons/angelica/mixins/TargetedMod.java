@@ -10,6 +10,7 @@ public enum TargetedMod implements ITargetMod {
     ARCHAICFIX("org.embeddedt.archaicfix.ArchaicCore", "archaicfix"),
     BACKHAND("xonin.backhand.coremod.BackhandLoadingPlugin", "backhand"),
     CAMPFIRE_BACKPORT(null, "campfirebackport"),
+    CHISEL(null, "chisel"),
     COFHCORE( "cofh.asm.LoadingPlugin", "CoFHCore"),
     DYNAMIC_SURROUNDINGS_MIST("org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround"),
     DYNAMIC_SURROUNDINGS_ORIGINAL("org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround"),
