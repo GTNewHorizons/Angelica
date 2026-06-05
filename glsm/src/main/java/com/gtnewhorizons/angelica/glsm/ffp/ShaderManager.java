@@ -57,7 +57,6 @@ public final class ShaderManager {
     public static Vector4f getCurrentTexCoord() { return currentTexCoords[0]; }
     public static Vector4f getCurrentTexCoord(int unit) { return currentTexCoords[unit]; }
     @Getter private boolean enabled = false;
-
     private int currentVertexFlags = VertexFlags.TEXTURE_BIT | VertexFlags.COLOR_BIT | VertexFlags.NORMAL_BIT;
 
     private ShaderManager() {
@@ -95,6 +94,7 @@ public final class ShaderManager {
     public void deactivate() {
         active = false;
         currentProgram = null;
+        lastBoundProgramId = -1;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
     }
@@ -107,7 +107,7 @@ public final class ShaderManager {
         final int currentProgramId = GLStateManager.getActiveProgram();
         if (currentProgramId != 0) {
             if (!CompatUniformManager.refreshCompatUniforms(currentProgramId)) {
-                return; // Don't emulate FFP on non-core Iris shaders
+                return; // Don't emulate FFP on non-iris core shaders
             }
         }
 
