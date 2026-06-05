@@ -14,6 +14,7 @@ import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
 import net.coderbot.iris.shaderpack.materialmap.FlatteningMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.init.Blocks;
 import net.minecraft.util.ResourceLocation;
 
@@ -25,8 +26,10 @@ public class BlockMaterialMapping {
 
 	public record BlockIdMaps(Reference2ObjectMap<Block, Int2IntMap> blockMetaMap, NbtConditionalIdMap<Block> tileEntityMap) {}
 
-	/** Meta-key bit OR'd in at runtime when a snowy-tagged block has snow above it. */
+	// Meta-key bits OR'd in at runtime
 	public static final int SNOWY_META_BIT = 0x10;
+
+	public static final int DOUBLE_PLANT_TOP_BIT = 0x8;
 
 	/**
 	 * Creates the standard block meta ID map, the TileEntity NBT-conditional map, and registers
@@ -129,6 +132,7 @@ public class BlockMaterialMapping {
 		final Map<String, String> stateProps = entry.stateProperties();
 		final String snowy = stateProps.get("snowy");
 		final int snowyBit = "true".equals(snowy) ? SNOWY_META_BIT : 0;
+		final boolean wantsDoublePlantTop = "upper".equals(stateProps.get("half"));
 
 		// Vanilla modern names go through FlatteningMap; legacy-section packs and modded blocks
 		// resolve directly from the registry.
@@ -145,12 +149,16 @@ public class BlockMaterialMapping {
 			}
 			final Block block = resolveBlockOrNull(target.id());
 			if (block == null) continue;
-			applyMetas(block, target.metas(), idMap, intId, snowyBit);
+			int extraBits = snowyBit;
+			if (wantsDoublePlantTop && block instanceof BlockDoublePlant) {
+				extraBits |= DOUBLE_PLANT_TOP_BIT;
+			}
+			applyMetas(block, target.metas(), idMap, intId, extraBits);
 			if (snowy != null) snowyBlocks.add(block);
 		}
 	}
 
-	private static void applyMetas(Block block, Set<Integer> metas, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId, int snowyBit) {
+	private static void applyMetas(Block block, Set<Integer> metas, Reference2ObjectMap<Block, Int2IntMap> idMap, int intId, int extraBits) {
 		Int2IntMap metaMap = idMap.get(block);
 		if (metaMap == null) {
 			metaMap = new Int2IntOpenHashMap();
@@ -159,9 +167,9 @@ public class BlockMaterialMapping {
 		}
 
 		if (metas.isEmpty()) {
-			for (int meta = 0; meta < 16; meta++) metaMap.putIfAbsent(meta | snowyBit, intId);
+			for (int meta = 0; meta < 16; meta++) metaMap.putIfAbsent(meta | extraBits, intId);
 		} else {
-			for (int meta : metas) metaMap.putIfAbsent(meta | snowyBit, intId);
+			for (int meta : metas) metaMap.putIfAbsent(meta | extraBits, intId);
 		}
 	}
 
