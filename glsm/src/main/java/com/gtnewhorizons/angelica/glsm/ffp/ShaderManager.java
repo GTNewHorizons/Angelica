@@ -22,7 +22,7 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 /**
  * FFP shader manager
  */
-public class ShaderManager {
+public final class ShaderManager {
 
     private static final class Holder {
 
@@ -88,8 +88,7 @@ public class ShaderManager {
 
     public void activate() {
         active = true;
-        updateVariant(true, true, true, true);
-        uploadUniforms();
+        lastBoundProgramId = GLStateManager.getActiveProgram();
     }
 
     public void deactivate() {
@@ -101,19 +100,21 @@ public class ShaderManager {
     }
 
     public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        GLStateManager.flushDeferredVertexAttribs();
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
-        if (!active) {
-            final int currentProgramId = GLStateManager.getActiveProgram();
-            if (currentProgramId != 0) {
-                CompatUniformManager.refreshCompatUniforms(currentProgramId);
-                return;
+        // Handle FFP & Iris uniforms
+        final int currentProgramId = GLStateManager.getActiveProgram();
+        if (currentProgramId != 0) {
+            if (!CompatUniformManager.refreshCompatUniforms(currentProgramId)) {
+                return; // Don't emulate FFP on non-iris core shaders
             }
-            if (!enabled) return;
-            active = true;
         }
+
+        GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
+
+        if (!active) return;
+
 
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
@@ -138,13 +139,6 @@ public class ShaderManager {
 
     public void preDraw() {
         preDraw(currentVertexFlags);
-    }
-
-    private void updateVariant(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        final int fkLen = FragmentKey.packFromState(currentFKScratch);
-        final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
-        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
-        commitVariant(vkPacked, fkLen);
     }
 
     private void commitVariant(long vkPacked, int fkLen) {

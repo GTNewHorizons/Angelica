@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 
@@ -114,13 +113,17 @@ public class CompatShaderTransformer {
         return result;
     }
 
-    private static boolean needsTransformation(String source) {
-        // Shaders already at 330+ core don't need compat transformation
+    public static boolean isCoreShader(String source) {
         final Matcher vm = VERSION_PATTERN.matcher(source);
         if (vm.find()) {
             final int version = Integer.parseInt(vm.group(1));
-            if (version >= 330 && "core".equals(vm.group(2))) return false;
+            return version >= 330 && "core".equals(vm.group(2));
         }
+        return false;
+    }
+
+    private static boolean needsTransformation(String source) {
+        if (isCoreShader(source)) return false;
 
         return NEEDS_TRANSFORM_PATTERN.matcher(source).find();
     }
