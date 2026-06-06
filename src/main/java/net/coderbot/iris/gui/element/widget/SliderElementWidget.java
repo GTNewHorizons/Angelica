@@ -108,7 +108,7 @@ public class SliderElementWidget extends StringElementWidget {
 
 	@Override
 	public boolean mouseReleased(double mx, double my, int button) {
-		if (button == 0) {
+		if (button == 0 && this.mouseDown) {
 			this.onReleased();
 
 			return true;

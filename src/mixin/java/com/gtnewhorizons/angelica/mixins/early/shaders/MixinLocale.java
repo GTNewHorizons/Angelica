@@ -78,7 +78,9 @@ public class MixinLocale {
         languageCodes.clear();
 
         // Reverse order due to how minecraft has English and then the primary language in the language definitions list
-        new LinkedList<>(definitions).descendingIterator().forEachRemaining(languageCodes::add);
+        new LinkedList<>(definitions).descendingIterator()
+            // FQN here because due to clashing
+            .forEachRemaining(code -> languageCodes.add(code.toLowerCase(java.util.Locale.ROOT)));
     }
 
     @Inject(method = "checkUnicode", at = @At("HEAD"), cancellable = true)

@@ -4,13 +4,23 @@ import lombok.Getter;
 import lombok.Setter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.element.shaderselection.BaseEntry;
+import net.coderbot.iris.gui.element.shaderselection.DownloadEntry;
 import net.coderbot.iris.gui.element.shaderselection.LabelEntry;
 import net.coderbot.iris.gui.element.shaderselection.ShaderPackEntry;
 import net.coderbot.iris.gui.element.shaderselection.TopButtonRowEntry;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.util.EnumChatFormatting;
 
+import java.io.IOException;
+import java.nio.file.FileSystems;
+import java.nio.file.StandardWatchEventKinds;
+import java.nio.file.WatchEvent;
+import java.nio.file.WatchKey;
+import java.nio.file.WatchService;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
@@ -31,13 +41,68 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
 
     private final List<BaseEntry> entries = new ArrayList<>();
 
+    private final WatchService watcher;
+    private final WatchKey key;
+    private boolean keyValid;
+
     public ShaderPackSelectionList(ShaderPackScreen screen, Minecraft client, int width, int height, int top, int bottom, int left, int right) {
         super(client, width, height, top, bottom, 20);
 
         this.screen = screen;
         this.topButtonRow = new TopButtonRowEntry(this, Iris.getIrisConfig().areShadersEnabled());
 
+        WatchService watcher1;
+        WatchKey key1;
+        try {
+            watcher1 = FileSystems.getDefault().newWatchService();
+            key1 = Iris.getShaderpacksDirectory().register(watcher1,
+                StandardWatchEventKinds.ENTRY_CREATE,
+                StandardWatchEventKinds.ENTRY_MODIFY,
+                StandardWatchEventKinds.ENTRY_DELETE);
+            keyValid = true;
+        } catch (IOException e) {
+            Iris.logger.error("Couldn't register shaderpacks directory file watcher!", e);
+            watcher1 = null;
+            key1 = null;
+            keyValid = false;
+        }
+        this.watcher = watcher1;
+        this.key = key1;
+
         refresh();
+    }
+
+    // Poll for new shaderpacks
+    public void poll() {
+        if (!keyValid) {
+            return;
+        }
+        boolean changed = false;
+        for (WatchEvent<?> event : key.pollEvents()) {
+            if (event.kind() == StandardWatchEventKinds.OVERFLOW) {
+                continue;
+            }
+            changed = true;
+        }
+        if (changed) {
+            refresh();
+        }
+        keyValid = key.reset();
+    }
+
+    public void close() throws IOException {
+        if (key != null) {
+            key.cancel();
+        }
+        if (watcher != null) {
+            watcher.close();
+        }
+    }
+
+    @Override
+    public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        poll();
+        super.drawScreen(mouseX, mouseY, partialTicks);
     }
 
     public void refresh() {
@@ -68,8 +133,13 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
 
         this.entries.add(topButtonRow);
 
+        // Download something man
+        if (names.isEmpty()) {
+            this.entries.add(new DownloadEntry(this, "Download Shaders", "https://modrinth.com/shaders"));
+        }
+
         // Only allow the enable/disable shaders button if the user has added a shader pack. Otherwise, the button will be disabled.
-        topButtonRow.allowEnableShadersButton = names.size() > 0;
+        topButtonRow.allowEnableShadersButton = !names.isEmpty();
 
         int index = 0;
 
@@ -78,6 +148,11 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
             addPackEntry(index, name);
         }
 
+        // Try not to gaslight users in case they swap back and forth from lwjgl2 and lwjgl3
+        final String footerKey = BackendManager.RENDER_BACKEND.supportsFileDrop()
+            ? "pack.iris.list.label"
+            : "pack.iris.list.label.lwjgl2";
+        addLabelEntries(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format(footerKey));
     }
 
     public void addPackEntry(int index, String name) {
@@ -128,6 +203,8 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
             return true;
         } else if( entry instanceof TopButtonRowEntry topButtonRowEntry) {
             return topButtonRowEntry.mouseClicked(mouseX, mouseY, 0);
+        } else if (entry instanceof DownloadEntry downloadEntry) {
+            return downloadEntry.click(this.screen);
         }
         return false;
    }
@@ -152,7 +229,7 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
     protected void drawSlot(int index, int x, int y, int i1, Tessellator tessellator, int mouseX, int mouseY) {
         final BaseEntry entry = this.entries.get(index);
         final boolean isMouseOver = this.func_148124_c/*getSlotIndexFromScreenCoords*/(mouseX, mouseY) == index;
-        entry.drawEntry(screen, index, x - 2, y + 4, this.getListWidth(), tessellator, mouseX, mouseY, isMouseOver);
+        entry.drawEntry(screen, index, x, y + 4, this.getListWidth(), tessellator, mouseX, mouseY, isMouseOver);
     }
 
 }
