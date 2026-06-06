@@ -310,6 +310,16 @@ public class AngelicaConfig {
         @Config.DefaultBoolean(true)
         @Config.RequiresMcRestart
         public boolean narrowEars;
+
+        @Config.Comment("Narrow Fisk's Superheroes transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFiskHeroes;
+
+        @Config.Comment("Narrow FoamFix transformer exclusions to allow GL redirection in its repackaged Ears")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFoamFix;
     }
 
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
