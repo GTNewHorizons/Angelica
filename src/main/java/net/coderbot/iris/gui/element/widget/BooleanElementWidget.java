@@ -71,6 +71,14 @@ public class BooleanElementWidget extends BaseOptionElementWidget<OptionMenuBool
 	}
 
 	@Override
+	protected int getValueColor() {
+		if (this.value == this.defaultValue) {
+			return 0xFFFFFF;
+		}
+		return this.value ? 0x55FF55 : 0xFF5555;
+	}
+
+	@Override
 	public String getCommentKey() {
 		return "option." + this.option.getName() + ".comment";
 	}

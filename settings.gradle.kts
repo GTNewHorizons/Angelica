@@ -16,7 +16,7 @@ pluginManagement {
 }
 
 plugins {
-    id("com.gtnewhorizons.gtnhsettingsconvention") version ("2.0.24")
+    id("com.gtnewhorizons.gtnhsettingsconvention") version ("2.0.25")
 }
 
 include("glsm")

@@ -20,11 +20,7 @@ final class BlockOrientation extends RenderBlockState {
     // 1 2 3
     // c: coordinate (x,y,z) 0-2
     private static final int[][][] NEIGHBOR_OFFSET = new int[][][] {
-        (
-            fixedBottomFaceUV
-                ? makeNeighborOffset(EAST_FACE, SOUTH_FACE, WEST_FACE, NORTH_FACE) // BOTTOM_FACE fixedBottomFaceUV
-                : makeNeighborOffset(WEST_FACE, SOUTH_FACE, EAST_FACE, NORTH_FACE) // BOTTOM_FACE not fixed
-        ),
+        makeNeighborOffset(EAST_FACE, SOUTH_FACE, WEST_FACE, NORTH_FACE), // BOTTOM_FACE
         makeNeighborOffset(WEST_FACE, SOUTH_FACE, EAST_FACE, NORTH_FACE), // TOP_FACE
         makeNeighborOffset(EAST_FACE, BOTTOM_FACE, WEST_FACE, TOP_FACE), // NORTH_FACE
         makeNeighborOffset(WEST_FACE, BOTTOM_FACE, EAST_FACE, TOP_FACE), // SOUTH_FACE
@@ -48,6 +44,7 @@ final class BlockOrientation extends RenderBlockState {
     private int textureFace;
     private int textureFaceOrig;
     private int rotateUV;
+    private boolean flipBottom;
 
     @Override
     public void clear() {
@@ -60,6 +57,7 @@ final class BlockOrientation extends RenderBlockState {
         offsetsComputed = false;
         haveOffsets = false;
         dx = dy = dz = 0;
+        flipBottom = !fixedBottomFaceUV;
     }
 
     @Override
@@ -104,7 +102,7 @@ final class BlockOrientation extends RenderBlockState {
 
     @Override
     public int[] getOffset(int blockFace, int relativeDirection) {
-        return NEIGHBOR_OFFSET[blockFace][rotateUV(relativeDirection)];
+        return NEIGHBOR_OFFSET[flipBottom && blockFace == 0 ? 1 : blockFace][rotateUV(relativeDirection)];
     }
 
     @Override
@@ -147,6 +145,11 @@ final class BlockOrientation extends RenderBlockState {
         return haveOffsets;
     }
 
+
+    public void setFlipBottom(){
+        flipBottom = true;
+    }
+
     @Override
     public boolean shouldConnectByBlock(Block neighbor, int neighborX, int neighborY, int neighborZ) {
         return block == neighbor
@@ -172,6 +175,7 @@ final class BlockOrientation extends RenderBlockState {
         copy.textureFace = textureFace;
         copy.textureFaceOrig = textureFaceOrig;
         copy.rotateUV = rotateUV;
+        copy.flipBottom = flipBottom;
 
         copy.blockAccess = blockAccess;
         copy.block = block;
@@ -204,6 +208,7 @@ final class BlockOrientation extends RenderBlockState {
         rotateUV = 0;
         textureFace = blockFaceToTextureFace(blockFace);
         metadataBits = (1 << metadata) | (1 << altMetadata);
+        flipBottom = !fixedBottomFaceUV;
     }
 
     void setBlockMetadata(Block block, int metadata, int face) {

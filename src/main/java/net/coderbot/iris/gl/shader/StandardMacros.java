@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import cpw.mods.fml.common.Loader;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.parsing.BiomeCategories;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -89,6 +90,10 @@ public class StandardMacros {
 
 		if (DHCompat.hasRenderingEnabled()) {
 			define(standardDefines, "DISTANT_HORIZONS");
+		}
+
+		if (Iris.getIrisConfig().shouldAllowUnknownShaders()) {
+			define(standardDefines, "ALLOWS_UNKNOWN_SHADERS");
 		}
 
 		define(standardDefines, "DH_BLOCK_UNKNOWN", String.valueOf(0));

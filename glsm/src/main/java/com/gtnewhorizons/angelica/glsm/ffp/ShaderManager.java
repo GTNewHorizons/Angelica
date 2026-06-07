@@ -22,7 +22,7 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 /**
  * FFP shader manager
  */
-public class ShaderManager {
+public final class ShaderManager {
 
     private static final class Holder {
 
@@ -36,6 +36,7 @@ public class ShaderManager {
     @Getter
     private boolean active = false;
     private Program currentProgram = null;
+    private int lastBoundProgramId = -1;
     private long currentVertexKeyPacked = Long.MIN_VALUE;
     private final long[] currentFKScratch = new long[FragmentKey.MAX_UNITS];
     private final long[] currentFKPacked = new long[FragmentKey.MAX_UNITS];
@@ -87,34 +88,33 @@ public class ShaderManager {
 
     public void activate() {
         active = true;
-        updateVariant(true, true, true, true);
-        uploadUniforms();
+        lastBoundProgramId = GLStateManager.getActiveProgram();
     }
 
     public void deactivate() {
         active = false;
         currentProgram = null;
+        lastBoundProgramId = -1;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
     }
 
     public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        GLStateManager.flushDeferredVertexAttribs();
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
-        if (!active) {
-            if (enabled) {
-                final int currentProgramId = GLStateManager.getActiveProgram();
-                if (currentProgramId != 0) {
-                    CompatUniformManager.onUseProgram(currentProgramId);
-                    return;
-                }
-                active = true;
-            } else {
-                return;
+        // Handle FFP & Iris uniforms
+        final int currentProgramId = GLStateManager.getActiveProgram();
+        if (currentProgramId != 0) {
+            if (!CompatUniformManager.refreshCompatUniforms(currentProgramId)) {
+                return; // Don't emulate FFP on non-iris core shaders
             }
         }
+
+        GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
+
+        if (!active) return;
+
 
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
@@ -141,19 +141,16 @@ public class ShaderManager {
         preDraw(currentVertexFlags);
     }
 
-    private void updateVariant(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
-        final int fkLen = FragmentKey.packFromState(currentFKScratch);
-        final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
-        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
-        commitVariant(vkPacked, fkLen);
-    }
-
     private void commitVariant(long vkPacked, int fkLen) {
         currentVertexKeyPacked = vkPacked;
         System.arraycopy(currentFKScratch, 0, currentFKPacked, 0, fkLen);
         currentFKLen = fkLen;
         currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
-        RENDER_BACKEND.useProgram(currentProgram.getProgramId());
+        final int programId = currentProgram.getProgramId();
+        if (programId != lastBoundProgramId) {
+            RENDER_BACKEND.useProgram(programId);
+            lastBoundProgramId = programId;
+        }
     }
 
     private void uploadUniforms() {

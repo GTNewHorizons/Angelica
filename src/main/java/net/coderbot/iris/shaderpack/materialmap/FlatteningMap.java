@@ -373,13 +373,14 @@ public class FlatteningMap {
 		colorVariants("carpet", "carpet");
 
 		// === Double plant (ID 175) ===
-		// Bottom half has type in meta 0-5; top half is always meta 8 (shared by all types).
-		meta("sunflower",   "double_plant", 0);
-		meta("lilac",       "double_plant", 1);
-		meta("tall_grass",  "double_plant", 2);
-		meta("large_fern",  "double_plant", 3);
-		meta("rose_bush",   "double_plant", 4);
-		meta("peony",       "double_plant", 5);
+		// Bottom half carries the variant in meta 0-5; the top half's real meta is 8-11.
+        // We use a synthetic key to tie the variant the bottom is with the top half.
+		doublePlant("sunflower",  0);
+		doublePlant("lilac",      1);
+		doublePlant("tall_grass", 2);
+		doublePlant("large_fern", 3);
+		doublePlant("rose_bush",  4);
+		doublePlant("peony",      5);
 
 		// === Water / Lava (IDs 8-11) ===
 		// In 1.13+, water/lava are single blocks. In 1.7.10, flowing variants are separate.
@@ -861,21 +862,6 @@ public class FlatteningMap {
 			state(WOOD_TYPES[i] + "_sapling", "stage", "0", entryMetas("sapling", i));
 			state(WOOD_TYPES[i] + "_sapling", "stage", "1", entryMetas("sapling", i + 8));
 		}
-
-		// === Double plant half (ID 175) ===
-		// 1.7.10: bottom half has type in meta 0-5; top half is always meta 8
-		state("sunflower",  "half", "lower", entryMetas("double_plant", 0));
-		state("sunflower",  "half", "upper", entryMetas("double_plant", 8));
-		state("lilac",      "half", "lower", entryMetas("double_plant", 1));
-		state("lilac",      "half", "upper", entryMetas("double_plant", 8));
-		state("tall_grass", "half", "lower", entryMetas("double_plant", 2));
-		state("tall_grass", "half", "upper", entryMetas("double_plant", 8));
-		state("large_fern", "half", "lower", entryMetas("double_plant", 3));
-		state("large_fern", "half", "upper", entryMetas("double_plant", 8));
-		state("rose_bush",  "half", "lower", entryMetas("double_plant", 4));
-		state("rose_bush",  "half", "upper", entryMetas("double_plant", 8));
-		state("peony",      "half", "lower", entryMetas("double_plant", 5));
-		state("peony",      "half", "upper", entryMetas("double_plant", 8));
 	}
 
 	/**
@@ -1051,6 +1037,17 @@ public class FlatteningMap {
 		for (int i = 0; i < COLORS.length; i++) {
 			meta(COLORS[i] + "_" + modernSuffix, legacyName, i);
 		}
+	}
+
+	/**
+	 * Double plant: the bottom half stores the variant in meta 0-5; the top half stores facing
+     * direction, so Angelica's chunk mesher rebuilds a synthetic key 0x8|variant for top halves.
+	 */
+	private static void doublePlant(String modern, int variant) {
+		final int upper = 0x8 | variant;
+		metas(modern, "double_plant", variant, upper);
+		state(modern, "half", "lower", entryMetas("double_plant", variant));
+		state(modern, "half", "upper", entryMetas("double_plant", upper));
 	}
 
 	// ==========================================
