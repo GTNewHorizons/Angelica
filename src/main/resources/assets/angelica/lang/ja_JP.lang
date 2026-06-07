@@ -103,7 +103,7 @@ options.framerate=%s FPS
 iris.shaders.toggled=シェーダーを %s に切り替えました!
 iris.shaders.disabled=シェーダーを無効化しました！
 
-options.iris.apply=適応
+options.iris.apply=適用
 options.iris.refresh=更新
 options.iris.openShaderPackFolder=パックフォルダーを開く...
 options.iris.shaderPackSettings=シェーダーの設定...
