@@ -21,6 +21,8 @@ public class AngelicaRenderPassConfiguration {
     private record AngelicaPipelineState(int pass, boolean disableAlphaTest) implements TerrainRenderPass.PipelineState {
         @Override
         public void setup() {
+            GLStateManager.glDepthMask(true);
+
             if (pass == 0) {
                 GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
             }
