@@ -289,9 +289,6 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             if (token.isEmpty()) {
                 // nothing
             } else if (token.contains("/")) {
-                if (!token.endsWith(".png")) {
-                    token += ".png";
-                }
                 ResourceLocation resource = TexturePackAPI.parseResourceLocation(properties.getResource(), token);
                 if (resource != null) {
                     list.add(resource.toString());
