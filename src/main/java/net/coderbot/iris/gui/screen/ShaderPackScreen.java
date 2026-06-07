@@ -102,8 +102,6 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
         this.irisTextComponent = irisName;
 
-        BackendManager.RENDER_BACKEND.startFileDrop();
-
         refreshForChangedPack();
     }
     @Override
@@ -189,6 +187,9 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     @Override
     public void initGui() {
         super.initGui();
+
+        BackendManager.RENDER_BACKEND.startFileDrop();
+
         final int bottomCenter = this.width / 2 - 50;
         final int topCenter = this.width / 2 - 76;
         final boolean inWorld = this.mc.theWorld != null;
@@ -501,18 +502,20 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             discardChanges();
         }
 
-        try {
-            shaderPackList.close();
-        } catch (IOException e) {
-            Iris.logger.error("Failed to safely close shaderpack selection!", e);
-        }
-
         this.mc.displayGuiScreen(parent);
     }
 
     @Override
     public void onGuiClosed() {
         BackendManager.RENDER_BACKEND.stopFileDrop();
+
+        if (this.shaderPackList != null) {
+            try {
+                this.shaderPackList.close();
+            } catch (IOException e) {
+                Iris.logger.error("Failed to safely close shaderpack selection!", e);
+            }
+        }
     }
 
     private void dropChangesAndClose() {
