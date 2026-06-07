@@ -269,7 +269,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         if (contextEncoder != null) {
             final byte lightValue = (byte) block.getLightValue();
             if (isFluid) {
-                contextEncoder.prepareToRenderFluid(blockRenderContext, block, lightValue);
+                contextEncoder.prepareToRenderFluid(blockRenderContext, block, metadata, lightValue);
             } else {
                 int effectiveMeta = metadata;
                 if (BlockRenderingSettings.INSTANCE.hasSnowyEntries()
