@@ -61,6 +61,11 @@ public class StringElementWidget extends BaseOptionElementWidget<OptionMenuStrin
 	}
 
 	@Override
+	protected int getValueColor() {
+		return 0x6688FF;
+	}
+
+	@Override
 	public String getCommentKey() {
 		return "option." + this.option.getName() + ".comment";
 	}
