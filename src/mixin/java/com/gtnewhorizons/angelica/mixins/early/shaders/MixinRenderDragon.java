@@ -29,7 +29,7 @@ public abstract class MixinRenderDragon {
     private static final NamespacedId END_CRYSTAL_BEAM = new NamespacedId("minecraft", "end_crystal_beam");
 
     @Unique
-    private static final NamespacedId DRAGON_DEATH_RAY = new NamespacedId("minecraft", "dragon_death_ray");
+    private static final NamespacedId DRAGON_DEATH_RAY = new NamespacedId("minecraft", "dragon_death_rays");
 
     @Unique
     private int angelica$previousEntityId = -1;
