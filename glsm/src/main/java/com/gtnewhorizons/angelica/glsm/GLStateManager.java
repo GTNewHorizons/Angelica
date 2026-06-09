@@ -194,10 +194,6 @@ public class GLStateManager {
             RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
             dirtyColorAttrib = false;
         }
-        if (dirtyLightmapAttrib && (vertexFlags & VertexFlags.BRIGHTNESS_BIT) == 0) {
-            RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
-            dirtyLightmapAttrib = false;
-        }
         if (dirtyNormalAttrib && (vertexFlags & VertexFlags.NORMAL_BIT) == 0) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);
@@ -207,6 +203,10 @@ public class GLStateManager {
             final var tc = ShaderManager.getCurrentTexCoord();
             RENDER_BACKEND.vertexAttrib4f(Usage.PRIMARY_UV.getAttributeLocation(), tc.x, tc.y, tc.z, tc.w);
             dirtyTexCoordAttrib = false;
+        }
+        if (dirtyLightmapAttrib) {
+            RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
+            dirtyLightmapAttrib = false;
         }
     }
 
