@@ -11,6 +11,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.holoinventory.HoloInventoryReflectionCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.event.liteloader.LiteloaderEvent;
+import com.gtnewhorizons.angelica.event.liteloader.LiteloaderEventType;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.GuiIngameAccessor;
@@ -65,6 +67,8 @@ public class HUDCaching {
     }
 
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
+        LiteloaderEvent.post(LiteloaderEventType.PRE_RENDER_GUI, renderer, partialTicks);
+        LiteloaderEvent.post(LiteloaderEventType.PRE_RENDER_HUD, renderer, partialTicks);
         if (ModStatus.isXaerosMinimapLoaded && ingame instanceof GuiIngameForge) {
             // this used to be called by asming into renderGameOverlay, but we removed it
             XaeroMinimapCore.beforeIngameGuiRender(partialTicks);
@@ -78,6 +82,7 @@ public class HUDCaching {
 
         if (!AngelicaConfig.hudCachingActive || mc.displayWidth < 16 || mc.displayHeight < 16) {
             ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            LiteloaderEvent.post(LiteloaderEventType.POST_RENDER_HUD, renderer, partialTicks);
             return;
         }
 
@@ -170,6 +175,8 @@ public class HUDCaching {
 
         GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
         mc.getTextureManager().bindTexture(Gui.icons);
+
+        LiteloaderEvent.post(LiteloaderEventType.POST_RENDER_HUD, renderer, partialTicks);
     }
 
     /**
