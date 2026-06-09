@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.prupe.mcpatcher.ctm.CTMUtils;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -18,7 +17,6 @@ public class MixinTileEntityRendererDispatcher {
 
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("HEAD"))
     private void iris$setBlockEntityId(TileEntity te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        CTMUtils.clearCurrentCompact();
         if (te == null) {
             CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
             return;
@@ -48,7 +46,6 @@ public class MixinTileEntityRendererDispatcher {
 
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("RETURN"))
     private void iris$resetBlockEntityId(TileEntity te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        CTMUtils.clearCurrentCompact();
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
     }
 }

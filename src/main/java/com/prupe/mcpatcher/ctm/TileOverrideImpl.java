@@ -20,7 +20,7 @@ import com.prupe.mcpatcher.mal.util.WeightedIndex;
 
 public class TileOverrideImpl {
 
-    final static class CTM extends TileOverride {
+    static class CTM extends TileOverride {
 
         CTM(PropertiesFile properties, TileLoader tileLoader) {
             super(properties, tileLoader);
@@ -461,48 +461,15 @@ public class TileOverrideImpl {
         }
     }
 
-    final public static class CTMCompact extends TileOverride {
-
-        private final CompactConnectingCtmProperties properties;
-        private volatile CompactCtmQuadProcessor processor;
+    final public static class CTMCompact extends CTM {
 
         CTMCompact(PropertiesFile propertiesFile, TileLoader tileLoader) {
             super(propertiesFile, tileLoader);
-            this.properties = new CompactConnectingCtmProperties(propertiesFile);
         }
 
         @Override
         String getMethod() {
             return "compact";
-        }
-
-        @Override
-        String checkTileMap() {
-            return getNumberOfTiles() == 5 ? null : "requires exactly 5 tiles";
-        }
-
-        @Override
-        boolean requiresFace() {
-            return true;
-        }
-
-        @Override
-        IIcon getTileWorld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
-            return origIcon;
-        }
-
-        @Override
-        IIcon getTileHeld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
-            return icons.length > 0 ? icons[0] : origIcon;
-        }
-
-        public CompactCtmQuadProcessor getProcessor() {
-            CompactCtmQuadProcessor p = this.processor;
-            if (p == null) {
-                p = new CompactCtmQuadProcessor(icons, properties, this);
-                this.processor = p;
-            }
-            return p;
         }
     }
 }

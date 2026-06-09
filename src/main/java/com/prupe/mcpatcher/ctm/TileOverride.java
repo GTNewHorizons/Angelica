@@ -5,6 +5,7 @@ import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_MATERIAL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_TILE;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.NORMALS;
 
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -196,6 +197,11 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         return tileLoader.preloadTile(resource, renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS);
     }
 
+    public void addIcon(ResourceLocation resource, BufferedImage img){
+        tileNames.add(resource);
+        tileLoader.addTile(resource, img, null);
+    }
+
     private void loadIcons() {
         tileNames.clear();
         String tileList = properties.getString("tiles", "");
@@ -213,6 +219,8 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             }
         } else {
             Pattern range = Pattern.compile("(\\d+)-(\\d+)");
+            String method = properties.getString("method", "");
+            boolean isCompact = method.equals("compact") || method.equals("ctm_compact");
             for (String token : tileList.split("\\s+")) {
                 Matcher matcher = range.matcher(token);
                 if (token.isEmpty()) {
@@ -221,15 +229,25 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                     try {
                         int from = Integer.parseInt(matcher.group(1));
                         int to = Integer.parseInt(matcher.group(2));
+                        List<BufferedImage> compactIcons = new ArrayList<>();
                         for (int i = from; i <= to; i++) {
                             ResourceLocation resource = TileLoader
                                 .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
                             if (TexturePackAPI.hasResource(resource)) {
-                                addIcon(resource);
+                                if(isCompact){
+                                    compactIcons.add(tileLoader.loadResourceImage(resource,
+                                        renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS));
+                                }else{
+                                    addIcon(resource);
+                                }
                             } else {
                                 properties.warning("could not find image %s", resource);
                                 tileNames.add(null);
                             }
+                        }
+                        if(isCompact){
+                            CompactCTMUtils.generateTextures(compactIcons.toArray(new BufferedImage[0]),
+                                this, properties.getResource(), blankResource);
                         }
                     } catch (NumberFormatException e) {
                         e.printStackTrace();

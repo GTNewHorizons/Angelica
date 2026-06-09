@@ -6,9 +6,6 @@ import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
-import com.prupe.mcpatcher.ctm.CTMUtils;
-import com.prupe.mcpatcher.ctm.CompactCtmQuadProcessor;
-import com.prupe.mcpatcher.ctm.RenderBlockState;
 import cpw.mods.fml.client.registry.RenderingRegistry;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
@@ -19,7 +16,6 @@ import net.minecraft.block.BlockGrass;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
@@ -28,7 +24,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderBlocks.class)
@@ -54,13 +49,11 @@ public abstract class MixinRenderBlocks {
 
     @Inject(method = "renderBlockByRenderType", at = @At("HEAD"))
     private void renderingByTypeEnable(CallbackInfoReturnable<Boolean> ci) {
-        CTMUtils.clearCurrentCompact();
         this.isRenderingByType = true;
     }
 
     @Inject(method = "renderBlockByRenderType", at = @At("TAIL"))
     private void renderingByTypeDisable(CallbackInfoReturnable<Boolean> ci) {
-        CTMUtils.clearCurrentCompact();
         this.isRenderingByType = false;
     }
 
@@ -152,7 +145,6 @@ public abstract class MixinRenderBlocks {
         try {
             return RenderingRegistry.instance().renderWorldBlock(rb, world, x, y, z, block, modelId);
         } catch (Exception e) {
-            CTMUtils.clearCurrentCompact();
             // Render Error Block
             int meta = exceptionErrorBlockMap.getOrDefault(e.getClass(), 0);
             rb.overrideBlockTexture = BlockError.icons[exceptionErrorBlockMap.getOrDefault(e.getClass(), 0)];
@@ -179,61 +171,5 @@ public abstract class MixinRenderBlocks {
         at = @At("RETURN"))
     private void resetAOFlag(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_, CallbackInfoReturnable<Boolean> cir, @Local(ordinal = 0) Tessellator tessellator) {
         ((StateAwareTessellator)tessellator).angelica$setAppliedAo(false);
-    }
-
-    @Shadow
-    public IBlockAccess blockAccess;
-
-    @Unique
-    private void angelica$handleCompactCtmFace(IIcon icon, CallbackInfo ci) {
-        CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
-        if (ctx == null) {
-            return;
-        }
-        CompactCtmQuadProcessor processor = ctx.compact().getProcessor();
-        RenderBlockState renderBlockState = ctx.renderBlockState();
-        CTMUtils.clearCurrentCompact();
-        if (this.blockAccess == null) {
-            return;
-        }
-
-        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon)) {
-            ci.cancel();
-        }
-    }
-
-    @Inject(method = "renderFaceYNeg", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
-    }
-
-    @Inject(method = "renderFaceYPos", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
-    }
-
-    @Inject(method = "renderFaceZNeg", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
-    }
-
-    @Inject(method = "renderFaceZPos", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
-    }
-
-    @Inject(method = "renderFaceXNeg", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
-    }
-
-    @Inject(method = "renderFaceXPos", at = @At("HEAD"), cancellable = true)
-    private void compactCtm_onRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
-    }
-
-    @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
-    private void compactCtm_resetAfterBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
-        CTMUtils.clearCurrentCompact();
     }
 }

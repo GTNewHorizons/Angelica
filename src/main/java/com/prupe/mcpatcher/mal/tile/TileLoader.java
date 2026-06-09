@@ -11,6 +11,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
+import com.prupe.mcpatcher.ctm.CTMAtlasSprite;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -119,6 +120,10 @@ public class TileLoader {
         logger.fine("after registerIcons(%s) %d icons", mapName, map.size());
     }
 
+    public BufferedImage getImageForPath(ResourceLocation rl) {
+        return tileImages.get(rl);
+    }
+
     public static String getOverridePath(String prefix, String basePath, String name, String ext) {
         String path;
         if (name.endsWith(".png")) {
@@ -218,6 +223,19 @@ public class TileLoader {
         if (tileImages.containsKey(resource)) {
             return true;
         }
+        return addTile(resource, loadResourceImage(resource, alternate), special);
+    }
+
+    public boolean addTile(ResourceLocation resource, BufferedImage image, String special) {
+        tilesToRegister.add(resource);
+        tileImages.put(resource, image);
+        if (special != null) {
+            specialTextures.put(resource.toString(), special);
+        }
+        return true;
+    }
+
+    public BufferedImage loadResourceImage(ResourceLocation resource, boolean alternate){
         BufferedImage image = null;
         if (!MCPatcherForgeConfig.ConnectedTextures.debugTextures) {
             image = TexturePackAPI.getImage(resource);
@@ -228,12 +246,7 @@ public class TileLoader {
         if (image == null) {
             image = generateDebugTexture(resource.getResourcePath(), 64, 64, alternate);
         }
-        tilesToRegister.add(resource);
-        tileImages.put(resource, image);
-        if (special != null) {
-            specialTextures.put(resource.toString(), special);
-        }
-        return true;
+        return image;
     }
 
     public boolean preloadTile(ResourceLocation resource, boolean alternate) {
@@ -287,8 +300,9 @@ public class TileLoader {
                 return false;
             }
         }
-        IIcon icon = textureMap.registerIcon(name);
-        map.put(name, (TextureAtlasSprite) icon);
+        TextureAtlasSprite icon = new CTMAtlasSprite(this, textureMap.anisotropicFiltering > 1, name);
+        textureMap.setTextureEntry(name, icon);
+        map.put(name, icon);
         iconMap.put(name, icon);
         String extra = (width == height ? "" : ", " + (height / width) + " frames");
         subLogger.finer("%s -> %s icon %dx%d%s", name, mapName, width, width, extra);
