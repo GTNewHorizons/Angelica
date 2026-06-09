@@ -31,7 +31,7 @@ import jss.notfine.config.MCPatcherForgeConfig;
 
 public class CTMUtils {
 
-    private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
+    public static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
     private static class Overrides {
         private final List<TileOverride> all = new ArrayList<>();

@@ -199,7 +199,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
 
     public void addIcon(ResourceLocation resource, BufferedImage img){
         tileNames.add(resource);
-        tileLoader.addTile(resource, img, null);
+        tileLoader.addTile(resource, img, null, true);
     }
 
     private void loadIcons() {

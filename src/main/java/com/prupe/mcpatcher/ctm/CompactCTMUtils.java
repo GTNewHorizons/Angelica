@@ -75,14 +75,18 @@ public class CompactCTMUtils {
     }
 
     private static BufferedImage generate(BufferedImage tl, BufferedImage tr, BufferedImage bl, BufferedImage br){
-        int s = tl.getWidth();
-        int hs = s/2;
-        BufferedImage img = new BufferedImage(s, s, BufferedImage.TYPE_INT_ARGB);
+        int w = tl.getWidth();
+        int hw = w/2;
+        BufferedImage img = new BufferedImage(tl.getWidth(), tl.getHeight(), BufferedImage.TYPE_INT_ARGB);
+        int numFrames = tl.getHeight() / tl.getWidth();
         Graphics2D g = img.createGraphics();
-        copy(tl, g, 0, 0, hs);
-        copy(tr, g, hs, 0, hs);
-        copy(bl, g, 0, hs, hs);
-        copy(br, g, hs, hs, hs);
+        for (int i = 0; i < numFrames; i++){
+            int yOff = w * i;
+            copy(tl, g, 0, yOff, hw);
+            copy(tr, g, hw, yOff, hw);
+            copy(bl, g, 0, yOff + hw, hw);
+            copy(br, g, hw, yOff + hw, hw);
+        }
         g.dispose();
         return img;
     }
