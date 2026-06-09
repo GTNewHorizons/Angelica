@@ -1,5 +1,6 @@
 package com.prupe.mcpatcher.ctm;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
@@ -43,7 +44,7 @@ public class GeneratedCTMAtlasSprite extends InterpolatedIcon {
             ResourceLocation metaLoc = getMetaLoc(location);
             IResource iresource = manager.getResource(metaLoc);
             AnimationMetadataSection anim = (AnimationMetadataSection)iresource.getMetadata("animation");
-            interpolated = anim != null && shouldInterpolate(iresource);
+            interpolated = anim != null && AngelicaConfig.enableNotFineFeatures && shouldInterpolate(iresource);
             loadSprite(new BufferedImage[]{img, null, null, null, null}, anim, aniFiltering);
         }catch (Exception exception){
             CTMUtils.logger.error("Error loading sprite for " + location);
