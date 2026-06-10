@@ -1860,6 +1860,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
@@ -1875,6 +1876,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
@@ -1890,6 +1892,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
@@ -1905,6 +1908,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
@@ -1914,6 +1918,7 @@ public class GLStateManager {
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexCoord1f(float s) {
@@ -3734,6 +3739,25 @@ public class GLStateManager {
         return DisplayListManager.getListMode();
     }
 
+    private static boolean handleRemovedTexParam(int target, int pname, int value) {
+        if (pname == GL14.GL_GENERATE_MIPMAP) {
+            if (target == GL11.GL_TEXTURE_2D) {
+                final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+                if (info != null) info.setGenerateMipmap(value != 0);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static void maybeGenerateMipmap(int target, int level) {
+        if (target != GL11.GL_TEXTURE_2D) return;
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+        if (info != null && info.isGenerateMipmap() && level == info.getBaseLevel() && level < info.getMaxLevel()) {
+            RENDER_BACKEND.generateMipmap(target);
+        }
+    }
+
     public static boolean updateTexParameteriCache(int target, int texture, int pname, int param) {
         if (target != GL11.GL_TEXTURE_2D) {
             return true;
@@ -3759,6 +3783,10 @@ public class GLStateManager {
                 if (info.getWrapT() == param && !shouldBypassCache()) return false;
                 info.setWrapT(param);
             }
+            case GL12.GL_TEXTURE_BASE_LEVEL -> {
+                if (info.getBaseLevel() == param && !shouldBypassCache()) return false;
+                info.setBaseLevel(param);
+            }
             case GL12.GL_TEXTURE_MAX_LEVEL -> {
                 if (info.getMaxLevel() == param && !shouldBypassCache()) return false;
                 info.setMaxLevel(param);
@@ -3776,6 +3804,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameter(int target, int pname, IntBuffer params) {
+        if (handleRemovedTexParam(target, pname, params.remaining() >= 1 ? params.get(params.position()) : 0)) return;
         if (params.remaining() >= 1) {
             final int val = params.get(params.position());
             final int remapped = remapTexClamp(pname, val);
@@ -3786,6 +3815,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameter(int target, int pname, FloatBuffer params) {
+        if (handleRemovedTexParam(target, pname, params.remaining() >= 1 ? (int) params.get(params.position()) : 0)) return;
         if (params.remaining() >= 1) {
             final float val = params.get(params.position());
             final float remapped = remapTexClamp(pname, val);
@@ -3796,6 +3826,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameteri(int target, int pname, int param) {
+        if (handleRemovedTexParam(target, pname, param)) return;
         param = remapTexClamp(pname, param);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -3835,6 +3866,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameterf(int target, int pname, float param) {
+        if (handleRemovedTexParam(target, pname, param > 0 ? (int) (param + 0.5f) : (int) (param - 0.5f))) return;
         param = remapTexClamp(pname, param);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -3867,9 +3899,11 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_MAG_FILTER -> info.getMagFilter();
             case GL11.GL_TEXTURE_WRAP_S -> info.getWrapS();
             case GL11.GL_TEXTURE_WRAP_T -> info.getWrapT();
+            case GL12.GL_TEXTURE_BASE_LEVEL -> info.getBaseLevel();
             case GL12.GL_TEXTURE_MAX_LEVEL -> info.getMaxLevel();
             case GL12.GL_TEXTURE_MIN_LOD -> info.getMinLod();
             case GL12.GL_TEXTURE_MAX_LOD -> info.getMaxLod();
+            case GL14.GL_GENERATE_MIPMAP -> info.isGenerateMipmap() ? GL11.GL_TRUE : GL11.GL_FALSE;
             default -> {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
@@ -4531,6 +4565,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
@@ -4544,6 +4579,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
@@ -4551,6 +4587,7 @@ public class GLStateManager {
             throw new UnsupportedOperationException("glTexSubImage2D with buffer offset in display lists not yet supported");
         }
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {
@@ -4574,6 +4611,7 @@ public class GLStateManager {
             throw new UnsupportedOperationException("glCopyTexImage2D in display lists not yet implemented - if you see this, please report!");
         }
         RENDER_BACKEND.copyTexImage2D(target, level, internalFormat, x, y, width, height, border);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glCopyTexSubImage1D(int target, int level, int xoffset, int x, int y, int width) {
@@ -4588,6 +4626,7 @@ public class GLStateManager {
             throw new UnsupportedOperationException("glCopyTexSubImage2D in display lists not yet implemented - if you see this, please report!");
         }
         RENDER_BACKEND.copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glCopyTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int x, int y, int width, int height) {
@@ -4633,6 +4672,12 @@ public class GLStateManager {
     }
 
     public static void glHint(int target, int hint) {
+        // These hint targets are removed in core profile, ignore them
+        switch (target) {
+            case GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_POINT_SMOOTH_HINT, GL11.GL_FOG_HINT, GL14.GL_GENERATE_MIPMAP_HINT -> {
+                return;
+            }
+        }
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordHint(target, hint);
