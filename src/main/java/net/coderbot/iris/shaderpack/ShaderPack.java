@@ -25,13 +25,10 @@ import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
 import net.coderbot.iris.shaderpack.parsing.BooleanParser;
 import net.coderbot.iris.shaderpack.preprocessor.JcppProcessor;
-import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
 import net.coderbot.iris.shaderpack.texture.CustomTextureData;
 import net.coderbot.iris.shaderpack.texture.TextureFilteringData;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
-import net.irisshaders.iris.api.v0.IrisApi;
-import org.jetbrains.annotations.Nullable;
 
 import java.io.BufferedReader;
 import java.io.IOException;
@@ -243,12 +240,8 @@ public class ShaderPack {
 		List<String> invalidFeatureFlags = invalidFlagList.stream().map(FeatureFlags::getHumanReadableName).collect(Collectors.toList());
 
 		if (!invalidFeatureFlags.isEmpty()) {
-            // TODO: GUI
-//			if (Minecraft.getMinecraft().screen instanceof ShaderPackScreen) {
-//				Minecraft.getMinecraft().setScreen(new FeatureMissingErrorScreen(Minecraft.getMinecraft().screen, I18n.format("iris.unsupported.pack"), I18n.format("iris.unsupported.pack.description", FeatureFlags.getInvalidStatus(invalidFlagList), invalidFeatureFlags.stream()
-//					.collect(Collectors.joining(", ", ": ", ".")))));
-//			}
-			IrisApi.getInstance().getConfig().setShadersEnabledAndApply(false);
+			// TODO: GUI?
+			Iris.logger.warn("Shader pack requires unsupported feature flags, loading anyway: {}", String.join(", ", invalidFeatureFlags));
 		}
 
 		ProfileSet profiles = ProfileSet.fromTree(shaderProperties.getProfiles(), this.shaderPackOptions.getOptionSet());
@@ -437,7 +430,8 @@ public class ShaderPack {
 			folderNames.add(folderName);
 
 			for (String dimensionName : dimensionNames) {
-				dimensionMap.put(dimensionName, folderName);
+				// Convert modern dimension IDs to 1.7.10 names
+				dimensionMap.put(DimensionFlatteningMap.toLegacyName(dimensionName), folderName);
 			}
 		});
 
@@ -667,6 +661,7 @@ public class ShaderPack {
      */
     public ProgramSet getProgramSet(String dimensionName) {
 		int dimensionId = Iris.getCurrentDimensionId();
+		dimensionName = DimensionFlatteningMap.toLegacyName(dimensionName);
 
 		// First, try to find an exact match in the dimension map
 		String folderName = dimensionMap.get(dimensionName);
