@@ -31,6 +31,26 @@ public class BlockMaterialMapping {
 
 	public static final int DOUBLE_PLANT_TOP_BIT = 0x8;
 
+	// Sentinel meta key for no-meta entries: matches ANY metadata of the block.
+	// Real keys are non-negative (block metadata OR'd with low extra bits), so this never collides.
+	public static final int WILDCARD_META_KEY = Integer.MIN_VALUE;
+
+	/**
+	 * The ONLY sanctioned way to read a per-block meta map produced by {@link #createBlockIdMaps}.
+	 * Resolves a block's shader ID: exact metadata first, then the block-wide wildcard registered
+	 * by a no-meta entry. Returns -1 when neither matches (relies on the map's defaultReturnValue == -1).
+	 *
+	 * Do NOT call {@code metaMap.get(meta)} directly on these maps: no-meta entries live only under
+	 * {@link #WILDCARD_META_KEY}, so a raw get would miss them for every metadata value.
+	 */
+	public static int lookupBlockId(Int2IntMap metaMap, int metadata) {
+		int id = metaMap.get(metadata);
+		if (id == -1) {
+			id = metaMap.get(WILDCARD_META_KEY);
+		}
+		return id;
+	}
+
 	/**
 	 * Creates the standard block meta ID map, the TileEntity NBT-conditional map, and registers
 	 * snowy blocks on {@link BlockRenderingSettings}.
@@ -167,7 +187,14 @@ public class BlockMaterialMapping {
 		}
 
 		if (metas.isEmpty()) {
-			for (int meta = 0; meta < 16; meta++) metaMap.putIfAbsent(meta | extraBits, intId);
+			if (extraBits == 0) {
+				// no-meta -> matches ANY metadata of the block (incl. extended metas > 15)
+				metaMap.putIfAbsent(WILDCARD_META_KEY, intId);
+			} else {
+				// snowy / double-plant: those bits are runtime flags, so keep the 0..15 | bit
+				// keys and do NOT register a wildcard (it would match unconditionally).
+				for (int meta = 0; meta < 16; meta++) metaMap.putIfAbsent(meta | extraBits, intId);
+			}
 		} else {
 			for (int meta : metas) metaMap.putIfAbsent(meta | extraBits, intId);
 		}

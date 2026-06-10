@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.prupe.mcpatcher.ctm.CTMUtils;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.block.Block;
@@ -29,20 +27,7 @@ public class MixinTileEntityRendererDispatcher {
             return;
         }
 
-        Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-        if (blockMetaMatches == null) {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-            return;
-        }
-
-        Int2IntMap metaMap = blockMetaMatches.get(block);
-        if (metaMap == null) {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-            return;
-        }
-
-        int meta = te.getBlockMetadata();
-        int id = metaMap.get(meta);
+        final int id = BlockRenderingSettings.INSTANCE.resolveBlockId(block, te.getBlockMetadata());
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(Math.max(0, id));
     }
 

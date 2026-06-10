@@ -76,6 +76,8 @@ public class BlockRenderingSettings {
 
 	@Getter
     private boolean reloadRequired;
+	// No-meta entries are stored under BlockMaterialMapping.WILDCARD_META_KEY, not as keys 0..15.
+	// Read this map only via BlockMaterialMapping.lookupBlockId / resolveBlockId, never a raw .get.
 	private Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches;
 	private NbtConditionalIdMap<Block> blockNbtMap;
 	private Map<Block, BlockRenderLayer> blockTypeIds;
@@ -127,6 +129,13 @@ public class BlockRenderingSettings {
     @Nullable
 	public Reference2ObjectMap<Block, Int2IntMap> getBlockMetaMatches() {
 		return blockMetaMatches;
+	}
+
+	/** Resolve a block+meta to its shader ID via the wildcard-aware contract, or -1 if unmapped. */
+	public int resolveBlockId(Block block, int metadata) {
+		if (blockMetaMatches == null) return -1;
+		final Int2IntMap metaMap = blockMetaMatches.get(block);
+		return metaMap != null ? BlockMaterialMapping.lookupBlockId(metaMap, metadata) : -1;
 	}
 
 	@Nullable

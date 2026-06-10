@@ -10,8 +10,6 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
@@ -943,12 +941,10 @@ public class Iris {
         if (!enabled)
             return;
 
-        final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-        if (blockMetaMatches == null)
+        if (BlockRenderingSettings.INSTANCE.getBlockMetaMatches() == null)
             return;
 
-        final Int2IntMap metaMap = blockMetaMatches.get(block);
-        final int blockId = metaMap != null ? metaMap.get(meta) : -1;
+        final int blockId = BlockRenderingSettings.INSTANCE.resolveBlockId(block, meta);
 
         if (TessellatorManager.get() instanceof StateAwareTessellator tess)
             tess.angelica$setShaderOverrideBlockId((short) blockId);

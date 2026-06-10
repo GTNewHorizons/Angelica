@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2IntFunction;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
@@ -96,7 +97,7 @@ public class ItemMaterialHelper {
                 if (blockMetaMatches != null) {
                     Int2IntMap metaMap = blockMetaMatches.get(block);
                     if (metaMap != null) {
-                        int id = metaMap.get(itemBlock.getMetadata(metadata));
+                        int id = BlockMaterialMapping.lookupBlockId(metaMap, itemBlock.getMetadata(metadata));
                         if (id != -1) {
                             return id;
                         }

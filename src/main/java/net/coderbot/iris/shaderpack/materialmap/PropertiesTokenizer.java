@@ -240,8 +240,11 @@ public final class PropertiesTokenizer {
      * Splits the bracket-stripped portion of a block identifier (e.g. {@code minecraft:furnace:lit=true})
      * into its components.
      *
+     * A bare/no-meta form (no {@code :meta} suffix) matches ANY metadata of the block, including
+     * extended metadata > 15. Single and comma-list meta forms match only the listed values.
+     *
      * Accepted forms:
-     *   stone                                                  (vanilla block)
+     *   stone                                                  (vanilla block, any meta)
      *   stone:0                                                (vanilla block with meta)
      *   minecraft:stone                                        (block with namespaced id specified)
      *   minecraft:stone:0                                      (single meta)
