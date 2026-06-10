@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Set;
@@ -33,7 +34,7 @@ public class LanguageMap {
 			stream.filter(path -> !Files.isDirectory(path)).forEach(path -> {
 				// Also note that OptiFine uses a property scheme for loading language entries to keep parity with other
 				// OptiFine features
-				final String currentFileName = path.getFileName().toString();
+				final String currentFileName = path.getFileName().toString().toLowerCase(Locale.ROOT);
 
 				if (!currentFileName.endsWith(".lang")) {
 					// This file lacks a .lang file extension and should be ignored.

@@ -19,7 +19,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
         super(mc, width, height, top, bottom, slotHeight);
         // Set Center Vertically to false
         this.field_148163_i = false;
-
+        this.headerPadding = 2;
     }
 
     @Override
@@ -37,11 +37,15 @@ public abstract class IrisGuiSlot extends GuiSlot {
     }
 
     @Override
-    protected void drawSelectionBox(int x, int y, int mouseX, int mouseY) {
-        final int oldPadding = this.headerPadding;
-        this.headerPadding = 2;
-        super.drawSelectionBox(x, y, mouseX, mouseY);
-        this.headerPadding = oldPadding;
+    public int func_148124_c/*getSlotIndexFromScreenCoords*/(int x, int y) {
+        final int left = this.left + this.width / 2 - this.getListWidth() / 2 + hitLeftInset() + hitXShift();
+        final int right = this.left + this.width / 2 + this.getListWidth() / 2 - hitRightInset() + hitXShift();
+        final int relativeY = y - this.top + (int) this.amountScrolled - hitYOffset();
+        final int index = relativeY / this.slotHeight;
+        if (y <= this.top || y >= this.bottom) {
+            return -1;
+        }
+        return x < this.getScrollBarX() && x >= left && x <= right && index >= 0 && relativeY >= 0 && index < this.getSize() ? index : -1;
     }
 
     @Override
@@ -53,6 +57,23 @@ public abstract class IrisGuiSlot extends GuiSlot {
         return false;
     }
 
+    protected int hitYOffset() {
+        return 4;
+    }
+
+    protected int hitRightInset() {
+        return 0;
+    }
+
+    protected int hitLeftInset() {
+        return 0;
+    }
+
+    protected int hitXShift() {
+        return 0;
+    }
+
+
     public boolean mouseClicked(int mouseX, int mouseY, int mouseButton) {
         if (!this.func_148125_i/*enabled*/()) {
             return false;
@@ -60,15 +81,15 @@ public abstract class IrisGuiSlot extends GuiSlot {
         final int size = this.getSize();
         final int scrollBarX = this.getScrollBarX();
         final int rightEdge = scrollBarX + 6;
-        final int elementLeft = this.width / 2 - this.getListWidth() / 2;
-        final int elementRight = this.width / 2 + this.getListWidth() / 2;
-        final int relativeY = mouseY - this.top - this.headerPadding + (int) this.amountScrolled - 4;
+        final int elementLeft = this.width / 2 - this.getListWidth() / 2 + hitLeftInset() + hitXShift();
+        final int elementRight = this.width / 2 + this.getListWidth() / 2 - hitRightInset() + hitXShift();
+        final int relativeY = mouseY - this.top + (int) this.amountScrolled - hitYOffset();
         boolean handled = false;
         final boolean leftMouseDown = Mouse.isButtonDown(0);
         final boolean rightMouseDown = Mouse.isButtonDown(1);
 
         if (mouseX <= this.left || mouseX >= this.right || mouseY <= this.top || mouseY >= this.bottom) {
-            return handled;
+            return false;
         }
         if (leftMouseDown && mouseX >= scrollBarX && mouseX <= rightEdge) {
             scrolling = true;

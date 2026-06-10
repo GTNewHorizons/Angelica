@@ -1,6 +1,7 @@
 package net.coderbot.iris.gui.element.shaderselection;
 
 import lombok.Getter;
+import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.element.ShaderPackSelectionList;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.minecraft.client.gui.FontRenderer;
@@ -37,6 +38,8 @@ public class ShaderPackEntry extends BaseEntry {
         }
 
         if(isMouseOver) {
+            GuiUtil.bindIrisWidgetsTexture();
+            GuiUtil.drawButton(x - 2, y - 6, listWidth, 20, true, false);
             name = EnumChatFormatting.BOLD + name;
         }
 

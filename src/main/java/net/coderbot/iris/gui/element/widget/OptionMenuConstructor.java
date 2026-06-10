@@ -1,6 +1,7 @@
 package net.coderbot.iris.gui.element.widget;
 
 import net.coderbot.iris.Iris;
+import net.minecraft.util.EnumChatFormatting;
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
 import net.coderbot.iris.gui.element.ShaderPackOptionList;
@@ -64,7 +65,7 @@ public final class OptionMenuConstructor {
 
 	static {
 		registerScreen(OptionMenuMainElementScreen.class, screen ->
-				new ElementWidgetScreenData(Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""), false));
+				new ElementWidgetScreenData(EnumChatFormatting.BOLD + Iris.getCurrentPackName() + (Iris.isFallback() ? " (fallback)" : ""), false));
 
 		registerScreen(OptionMenuSubElementScreen.class, screen ->
 				new ElementWidgetScreenData(GuiUtil.translateOrDefault(new String(screen.screenId), "screen." + screen.screenId), true));

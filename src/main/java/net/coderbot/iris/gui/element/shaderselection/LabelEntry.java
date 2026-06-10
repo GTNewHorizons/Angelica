@@ -14,6 +14,6 @@ public class LabelEntry extends BaseEntry {
 
     @Override
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int listWidth, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
-        screen.drawCenteredString(label, x, y, 0xFFFFFF);
+        screen.drawCenteredString(label, (x + listWidth / 2) - 2, y, 0xFFFFFF);
     }
 }

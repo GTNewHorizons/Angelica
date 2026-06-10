@@ -8,6 +8,8 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Abstract rendering backend.
@@ -24,6 +26,14 @@ public abstract class RenderBackend {
 
     /** Higher priority backends are preferred. */
     public int getPriority() { return 0; }
+
+    public boolean supportsFileDrop() { return false; }
+
+    public void startFileDrop() {}
+
+    public void stopFileDrop() {}
+
+    public List<String> pollDroppedFiles() { return Collections.emptyList(); }
 
     public abstract int getMinGLSLVersion();
 

@@ -383,8 +383,11 @@ public class FlatteningMap {
 		doublePlant("peony",      5);
 
 		// === Water / Lava (IDs 8-11) ===
-		// In 1.13+, water/lava are single blocks. In 1.7.10, flowing variants are separate.
-		// Map modern names to both still and flowing for full coverage.
+        // In 1.13+, water/lava are single blocks. In 1.7.10, flowing variants are separate.
+        // Map modern names to both still and flowing for full coverage. See IrisExtendedChunkVertexEncoder.java
+        // for more info on this.
+		liquidLevels("water", "water", "flowing_water");
+		liquidLevels("lava", "lava", "flowing_lava");
 		multi("water",
             entry("water"),
             entry("flowing_water"));
@@ -970,6 +973,13 @@ public class FlatteningMap {
 	/** Maps a modern name + state property value to legacy entries. */
 	private static void state(String modern, String property, String value, BlockEntry... entries) {
 		STATE_MAPPINGS.put(modern + "|" + property + "=" + value, List.of(entries));
+	}
+
+	/** Maps each modern liquid level state to that exact metadata on both the static and flowing IDs */
+	private static void liquidLevels(String modern, String legacyStatic, String legacyDynamic) {
+		for (int level = 0; level <= 15; level++) {
+			state(modern, "level", String.valueOf(level), entryMetas(legacyStatic, level), entryMetas(legacyDynamic, level));
+		}
 	}
 
 	/** Creates a BlockEntry with no specific metas. */

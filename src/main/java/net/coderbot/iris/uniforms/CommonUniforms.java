@@ -116,6 +116,7 @@ public final class CommonUniforms {
 		final SmoothedVec2f eyeBrightnessSmooth = new SmoothedVec2f(directives.getEyeBrightnessHalfLife(), directives.getEyeBrightnessHalfLife(), CommonUniforms::getEyeBrightness, updateNotifier);
 
         uniforms
+            .uniform1f(ONCE, "pi", () -> (float) Math.PI)
             .uniform1f(ONCE, "darknessFactor", () -> 0.0F) // This is PER_FRAME in modern, it is an effect added by The Warden. We're just setting to 0 because 1.7.10 doesn't have it.
             .uniform1f(ONCE, "darknessLightFactor", () -> 0.0F) // Warden darkness current light factor - 1.7.10 doesn't have it so hardcode to 0
 			.uniform1b(PER_FRAME, "hideGUI", () -> client.gameSettings.hideGUI)
