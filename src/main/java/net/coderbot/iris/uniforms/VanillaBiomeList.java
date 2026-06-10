@@ -72,6 +72,11 @@ public class VanillaBiomeList {
         biomes.add(new BiomeEntry(BiomeGenBase.sky, "END_HIGHLANDS"));
         biomes.add(new BiomeEntry(BiomeGenBase.sky, "END_BARRENS"));
 
+        // Modern biome variants (1.20+)
+        biomes.add(new BiomeEntry(BiomeGenBase.jungle, "BIOME_SPARSE_JUNGLE"));
+        biomes.add(new BiomeEntry(BiomeGenBase.mushroomIsland, "BIOME_MUSHROOM_FIELDS"));
+        biomes.add(new BiomeEntry(BiomeGenBase.swampland, "BIOME_MANGROVE_SWAMP"));
+
         return Collections.unmodifiableList(biomes);
     }
 
