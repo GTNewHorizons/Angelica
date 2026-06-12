@@ -545,11 +545,6 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void pixelStoref(int pname, float param) {
-        GL11C.glPixelStoref(pname, param);
-    }
-
-    @Override
     public void sampleCoverage(float value, boolean invert) {
         GL13C.glSampleCoverage(value, invert);
     }

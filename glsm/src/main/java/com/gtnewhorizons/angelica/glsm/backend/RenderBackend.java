@@ -125,7 +125,6 @@ public abstract class RenderBackend {
     public abstract int getTexLevelParameteri(int target, int level, int pname);
     public abstract void generateMipmap(int target);
     public abstract void pixelStorei(int pname, int param);
-    public void pixelStoref(int pname, float param) {}
     public void sampleCoverage(float value, boolean invert) {}
 
 
