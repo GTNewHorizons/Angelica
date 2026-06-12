@@ -38,6 +38,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
+import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -463,6 +464,7 @@ public class GLStateManager {
     private static final int[] clientArraysVBOOffsets = new int[VertexAttribState.MAX_ATTRIBS];
     private static int boundPixelUnpackBuffer;
     private static int boundPixelPackBuffer;
+    private static PixelUnpackState pixelUnpackState = PixelUnpackState.DEFAULT;
     private static final Int2IntOpenHashMap vaoEboMap = new Int2IntOpenHashMap();
 
     static {
@@ -1316,7 +1318,7 @@ public class GLStateManager {
 
     public static void glBlendEquation(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glBlendEquation in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glBlendEquation");
         }
         final boolean caching = isCachingEnabled();
         final boolean bypass = BYPASS_CACHE || !caching;
@@ -1331,7 +1333,7 @@ public class GLStateManager {
 
     public static void glBlendEquationSeparate(int modeRGB, int modeAlpha) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glBlendEquationSeparate in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glBlendEquationSeparate");
         }
         final boolean caching = isCachingEnabled();
         final boolean bypass = BYPASS_CACHE || !caching;
@@ -1851,7 +1853,7 @@ public class GLStateManager {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1867,7 +1869,7 @@ public class GLStateManager {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1883,7 +1885,7 @@ public class GLStateManager {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1899,7 +1901,7 @@ public class GLStateManager {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1914,7 +1916,7 @@ public class GLStateManager {
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage2D with buffer offset in display lists not yet supported");
+            throw DisplayListManager.unsupportedInList("glTexImage2D with buffer offset");
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
@@ -2202,7 +2204,7 @@ public class GLStateManager {
 
     public static void glDrawElements(int mode, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
@@ -2216,7 +2218,7 @@ public class GLStateManager {
 
     public static void glDrawElements(int mode, IntBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
@@ -2234,7 +2236,7 @@ public class GLStateManager {
 
     public static void glDrawElements(int mode, ShortBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
@@ -2252,7 +2254,7 @@ public class GLStateManager {
 
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, count, type, indices);
@@ -4439,7 +4441,7 @@ public class GLStateManager {
     public static void glTexImage1D(int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage1D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexImage1D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage1D(target, level, internalformat, width, border, format, type, pixels);
@@ -4449,7 +4451,7 @@ public class GLStateManager {
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexImage3D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
@@ -4459,7 +4461,7 @@ public class GLStateManager {
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexImage3D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
@@ -4468,7 +4470,7 @@ public class GLStateManager {
 
     public static void glTexSubImage1D(int target, int level, int xoffset, int width, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexSubImage1D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexSubImage1D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage1D(target, level, xoffset, width, format, type, pixels);
@@ -4557,7 +4559,7 @@ public class GLStateManager {
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -4571,7 +4573,7 @@ public class GLStateManager {
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -4584,7 +4586,7 @@ public class GLStateManager {
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexSubImage2D with buffer offset in display lists not yet supported");
+            throw DisplayListManager.unsupportedInList("glTexSubImage2D with buffer offset");
         }
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
         maybeGenerateMipmap(target, level);
@@ -4592,7 +4594,7 @@ public class GLStateManager {
 
     public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexSubImage3D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glTexSubImage3D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
@@ -4601,14 +4603,14 @@ public class GLStateManager {
 
     public static void glCopyTexImage1D(int target, int level, int internalFormat, int x, int y, int width, int border) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexImage1D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexImage1D");
         }
         RENDER_BACKEND.copyTexImage1D(target, level, internalFormat, x, y, width, border);
     }
 
     public static void glCopyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexImage2D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexImage2D");
         }
         RENDER_BACKEND.copyTexImage2D(target, level, internalFormat, x, y, width, height, border);
         maybeGenerateMipmap(target, level);
@@ -4616,14 +4618,14 @@ public class GLStateManager {
 
     public static void glCopyTexSubImage1D(int target, int level, int xoffset, int x, int y, int width) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexSubImage1D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexSubImage1D");
         }
         RENDER_BACKEND.copyTexSubImage1D(target, level, xoffset, x, y, width);
     }
 
     public static void glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexSubImage2D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexSubImage2D");
         }
         RENDER_BACKEND.copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
         maybeGenerateMipmap(target, level);
@@ -4631,7 +4633,7 @@ public class GLStateManager {
 
     public static void glCopyTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int x, int y, int width, int height) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexSubImage3D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexSubImage3D");
         }
         RENDER_BACKEND.copyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width, height);
     }
@@ -4766,7 +4768,7 @@ public class GLStateManager {
 
     public static void glReadBuffer(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glReadBuffer in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glReadBuffer");
         }
         RENDER_BACKEND.readBuffer(mode);
     }
@@ -4835,18 +4837,16 @@ public class GLStateManager {
         }
     }
 
+    // glPixelStore* isn'tcompiled into display lists, it executes immediately
     public static void glPixelStorei(int pname, int param) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPixelStorei in display lists not yet implemented - if you see this, please report!");
+        if (isCachingEnabled()) {
+            pixelUnpackState = pixelUnpackState.with(pname, param);
         }
         RENDER_BACKEND.pixelStorei(pname, param);
     }
 
     public static void glPixelStoref(int pname, float param) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPixelStoref in display lists not yet implemented - if you see this, please report!");
-        }
-        RENDER_BACKEND.pixelStoref(pname, param);
+        glPixelStorei(pname, param < 0 ? -Math.round(-param) : Math.round(param));
     }
 
     // Display List Commands
@@ -4941,7 +4941,7 @@ public class GLStateManager {
     // Multisample Commands
     public static void glSampleCoverage(float value, boolean invert) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glSampleCoverage in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glSampleCoverage");
         }
         RENDER_BACKEND.sampleCoverage(value, invert);
     }
@@ -5089,6 +5089,14 @@ public class GLStateManager {
             boundPixelPackBuffer = buffer;
         }
         RENDER_BACKEND.bindBuffer(target, buffer);
+    }
+
+    public static void forcePixelUnpackState(PixelUnpackState target) {
+        PixelUnpackState.applyDiff(pixelUnpackState, target);
+    }
+
+    public static void restorePixelUnpackState(PixelUnpackState applied) {
+        PixelUnpackState.applyDiff(applied, pixelUnpackState);
     }
 
     static void suspendPixelUnpackBuffer() {
