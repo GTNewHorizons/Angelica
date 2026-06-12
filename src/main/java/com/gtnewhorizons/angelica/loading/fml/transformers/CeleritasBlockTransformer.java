@@ -23,7 +23,6 @@ public class CeleritasBlockTransformer implements IClassTransformer {
     public CeleritasBlockTransformer() {
         this.inner = new CeleritasBlockTransform(AngelicaClientTweaker.isObfEnv());
         this.exclusions = inner.getTransformerExclusions();
-        this.inner.setCeleritasSetting();
     }
 
     /**

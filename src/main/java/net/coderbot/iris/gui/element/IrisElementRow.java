@@ -21,7 +21,9 @@ public class IrisElementRow {
 	private final int spacing;
 	private int x;
 	private int y;
-	private int width;
+
+    @Getter
+    private int width;
 	private int height;
 
 	public IrisElementRow(int spacing) {

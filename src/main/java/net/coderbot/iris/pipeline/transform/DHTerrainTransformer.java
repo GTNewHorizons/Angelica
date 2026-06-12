@@ -86,7 +86,7 @@ public class DHTerrainTransformer {
                 + " _vert_normal = irisNormals[int(irisExtra.y)];"
                 + " dhMaterialId = int(irisExtra.x);"
                 + " _vert_tex_light_coord = vec2((float(lights / 16u) + 0.5) / 16.0, (mod(float(lights), 16.0) + 0.5) / 16.0);"
-                + " _vert_color = iris_color;"
+                + " _vert_color = iris_color * iris_ColorModulator;"
                 + " }"
         );
         transformer.prependMain("_vert_init();");

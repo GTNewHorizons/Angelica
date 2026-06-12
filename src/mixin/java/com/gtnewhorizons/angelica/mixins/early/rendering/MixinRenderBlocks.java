@@ -193,7 +193,7 @@ public abstract class MixinRenderBlocks {
         CompactCtmQuadProcessor processor = ctx.compact().getProcessor();
         RenderBlockState renderBlockState = ctx.renderBlockState();
         CTMUtils.clearCurrentCompact();
-        if (this.blockAccess == null) {
+        if (this.blockAccess == null || renderBlockState.getBlockAccess() == null) {
             return;
         }
 

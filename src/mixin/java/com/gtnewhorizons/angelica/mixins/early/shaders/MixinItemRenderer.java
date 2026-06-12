@@ -6,10 +6,10 @@ import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.irisshaders.iris.api.v0.IrisApi;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
@@ -19,6 +19,9 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ItemRenderer.class)
 public class MixinItemRenderer {
+
+    @Shadow private ItemStack itemToRender;
+
     /**
      * Render held item in first person.
      */
@@ -34,15 +37,8 @@ public class MixinItemRenderer {
             }
         }
 
-        Minecraft mc = Minecraft.getMinecraft();
-        if (mc.thePlayer == null) {
-            return;
-        }
-
-        ItemStack itemStack = mc.thePlayer.getCurrentEquippedItem();
-
-        // Set item ID for first-person hand/item
-        ItemIdManager.setItemId(itemStack);
+        // Wait for hand to lower before setting ID
+        ItemIdManager.setItemId(this.itemToRender);
     }
 
     /**

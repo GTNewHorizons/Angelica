@@ -23,6 +23,9 @@ import org.lwjgl.opengl.GL44C;
 import org.lwjgl.opengl.GL45C;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLDebugMessageCallback;
+import org.lwjgl.sdl.SDL_DropEvent;
+import org.lwjgl.sdl.SDL_EventFilter;
+import org.lwjgl.sdl.SDLEvents;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.ByteBuffer;
@@ -31,6 +34,10 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * LWJGL3 GL implementation of {@link RenderBackend}.
@@ -43,6 +50,10 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     private GLDebugMessageCallback debugCallback;
     private boolean debugOutputActive;
 
+    private SDL_EventFilter dropEventFilter;
+    private final ConcurrentLinkedQueue<String> droppedFiles = new ConcurrentLinkedQueue<>();
+    private volatile boolean watchingDrops;
+
     @Override
     public void init() {
         caps = GL.getCapabilities();
@@ -50,7 +61,49 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void shutdown() {
-        // no-op
+        stopFileDrop();
+    }
+
+    @Override
+    public boolean supportsFileDrop() {
+        return true;
+    }
+
+    @Override
+    public void startFileDrop() {
+        if (watchingDrops) return;
+        dropEventFilter = SDL_EventFilter.create((userData, eventPtr) -> {
+            if (SDL_DropEvent.ntype(eventPtr) == SDLEvents.SDL_EVENT_DROP_FILE) {
+                final String path = SDL_DropEvent.ndataString(eventPtr);
+                if (path != null && !path.isEmpty()) {
+                    droppedFiles.add(path);
+                }
+            }
+            return true;
+        });
+        SDLEvents.SDL_AddEventWatch(dropEventFilter, 0L);
+        watchingDrops = true;
+    }
+
+    @Override
+    public void stopFileDrop() {
+        if (!watchingDrops) return;
+        SDLEvents.SDL_RemoveEventWatch(dropEventFilter, 0L);
+        dropEventFilter.free();
+        dropEventFilter = null;
+        droppedFiles.clear();
+        watchingDrops = false;
+    }
+
+    @Override
+    public List<String> pollDroppedFiles() {
+        if (droppedFiles.isEmpty()) return Collections.emptyList();
+        final List<String> out = new ArrayList<>();
+        String p;
+        while ((p = droppedFiles.poll()) != null) {
+            out.add(p);
+        }
+        return out;
     }
 
     @Override

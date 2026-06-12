@@ -132,6 +132,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     public static boolean enableDinnerboneText;
 
+    @Config.Comment("Enable per-segment drop shadow toggle (&u) and colored shadow (&u&#RRGGBB)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableDropShadow;
+
     @Config.Comment("Wave text amplitude (how far characters bounce)")
     @Config.DefaultFloat(2.0f)
     @Config.RangeFloat(min = 1.0f, max = 8.0f)
@@ -306,6 +310,16 @@ public class AngelicaConfig {
         @Config.DefaultBoolean(true)
         @Config.RequiresMcRestart
         public boolean narrowEars;
+
+        @Config.Comment("Narrow Fisk's Superheroes transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFiskHeroes;
+
+        @Config.Comment("Narrow FoamFix transformer exclusions to allow GL redirection in its repackaged Ears")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFoamFix;
     }
 
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")

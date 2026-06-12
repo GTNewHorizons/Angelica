@@ -15,6 +15,7 @@ import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.block_rendering.NbtConditionalIdMap;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.nbt.NBTTagCompound;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -268,13 +269,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         if (contextEncoder != null) {
             final byte lightValue = (byte) block.getLightValue();
             if (isFluid) {
-                contextEncoder.prepareToRenderFluid(blockRenderContext, block, lightValue);
+                contextEncoder.prepareToRenderFluid(blockRenderContext, block, metadata, lightValue);
             } else {
                 int effectiveMeta = metadata;
                 if (BlockRenderingSettings.INSTANCE.hasSnowyEntries()
                     && BlockRenderingSettings.INSTANCE.getSnowyBlocks().contains(block)
                     && RenderBlocksUtils.isSnowCovered(renderBlocks.blockAccess, x, y, z)) {
                     effectiveMeta |= BlockMaterialMapping.SNOWY_META_BIT;
+                } else if (block instanceof BlockDoublePlant doublePlant && BlockDoublePlant.func_149887_c(metadata)) {
+                    effectiveMeta = 0x8 | (doublePlant.func_149885_e(renderBlocks.blockAccess, x, y, z) & 7);
                 }
                 contextEncoder.prepareToRenderBlock(blockRenderContext, block, effectiveMeta,
                     ExtendedDataHelper.BLOCK_RENDER_TYPE, lightValue);

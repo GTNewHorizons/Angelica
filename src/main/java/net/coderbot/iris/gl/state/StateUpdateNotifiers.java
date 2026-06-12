@@ -11,6 +11,7 @@ public class StateUpdateNotifiers {
     public static ValueUpdateNotifier alphaFuncNotifier;
     public static ValueUpdateNotifier alphaTestNotifier;
 	public static ValueUpdateNotifier blendFuncNotifier;
+	public static ValueUpdateNotifier colorModulatorNotifier;
 	public static ValueUpdateNotifier bindTextureNotifier;
 	public static ValueUpdateNotifier normalTextureChangeNotifier;
 	public static ValueUpdateNotifier specularTextureChangeNotifier;

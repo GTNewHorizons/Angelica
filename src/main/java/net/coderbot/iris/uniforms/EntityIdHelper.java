@@ -42,6 +42,10 @@ public final class EntityIdHelper {
     private EntityIdHelper() {
     }
 
+    public static boolean isLightningBolt(Entity entity) {
+        return entity instanceof EntityLightningBolt;
+    }
+
     /**
      * Get the entity ID for the given entity.
      *

@@ -72,7 +72,6 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
-import java.util.zip.ZipError;
 import java.util.zip.ZipException;
 
 public class Iris {
@@ -458,6 +457,33 @@ public class Iris {
         }
     }
 
+    /**
+     * Toggles shader debug mode. When enabled, patched shader sources are dumped to disk (see
+     * {@link net.coderbot.iris.pipeline.PatchedShaderPrinter}) and logging is more verbose.
+     */
+    public static void setDebug(boolean enable) {
+        try {
+            irisConfig.setDebugEnabled(enable);
+            irisConfig.save();
+            reload();
+        } catch (IOException e) {
+            logger.error("Failed to " + (enable ? "enable" : "disable") + " debug mode", e);
+        }
+        logger.info("Debug functionality is " + (enable ? "enabled, logging will be more verbose!" : "disabled."));
+    }
+
+    /**
+     * Toggles whether unrecognized shader packs may load, exposing the {@code ALLOWS_UNKNOWN_SHADERS} macro.
+     */
+    public static void setAllowUnknownShaders(boolean allow) {
+        try {
+            irisConfig.setUnknown(allow);
+            reload();
+        } catch (IOException e) {
+            logger.error("Failed to " + (allow ? "allow" : "disallow") + " unknown shaders", e);
+        }
+    }
+
     public static void loadShaderpack() {
         if (irisConfig == null) {
             if (!initialized) {
@@ -678,8 +704,7 @@ public class Iris {
                 try (Stream<Path> stream = Files.walk(root)) {
                     return stream.filter(Files::isDirectory).anyMatch(path -> path.endsWith("shaders"));
                 }
-            } catch (ZipError zipError) {
-                // Java 8 seems to throw a ZipError instead of a subclass of IOException
+            } catch (ZipException e) {
                 Iris.logger.warn("The ZIP at " + pack + " is corrupt");
             } catch (IOException ignored) {
                 // ignored, not a valid shader pack.

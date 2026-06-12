@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.loading.shared.transformers;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import net.minecraft.launchwrapper.Launch;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,8 +26,6 @@ import org.objectweb.asm.tree.analysis.Frame;
 import org.objectweb.asm.tree.analysis.SourceInterpreter;
 import org.objectweb.asm.tree.analysis.SourceValue;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -44,11 +41,19 @@ public final class CeleritasBlockTransform {
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/client/rendering/ThreadedBlockData";
+    /** All classes under <tt>net.minecraft.block.Block*</tt> are Block subclasses save for these. */
+    private static final String[] VanillaBlockExclusions = {
+        "net/minecraft/block/IGrowable",
+        "net/minecraft/block/ITileEntityProvider",
+        "net/minecraft/block/BlockEventData",
+        "net/minecraft/block/BlockSourceImpl",
+        "net/minecraft/block/material/"
+    };
 
     private final ClassConstantPoolParser cstPoolParser;
     private final ImmutableMap<String, String> blockFieldRedirects;
     private final ImmutableList<String> methodNames;
-    private final Set<String> blockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
+    private final Set<String> moddedBlockSubclasses = Collections.newSetFromMap(new ConcurrentHashMap<>());
     /** Block subclass owners we shouldn't redirect because they shadow some fields we want to redirect */
     private final Set<String> blockSubclassExclusions = Collections.newSetFromMap(new ConcurrentHashMap<>());
     /**
@@ -56,10 +61,6 @@ public final class CeleritasBlockTransform {
      * and replace calls to these methods elsewhere with direct calls to the overloaded methods when possible.
      */
     private final Map<String, Map<String, String>> overloadedMethods = new ConcurrentHashMap<>();
-
-    /** Needed because the config is loaded in LaunchClassLoader, but we need to access it in the parent system loader. */
-    private final MethodHandle celeritasEnabledGetter;
-    private boolean isCeleritasEnabled;
 
     /** isObf will not be changed during runtime. */
     public CeleritasBlockTransform(boolean isObf) {
@@ -102,36 +103,32 @@ public final class CeleritasBlockTransform {
         }
         this.methodNames = methodNames.build();
         this.cstPoolParser = new ClassConstantPoolParser(names.toArray(new String[0]));
+    }
 
-        blockSubclasses.add(BlockClass);
-
-        try {
-            final Class<?> angelicaConfig = Class.forName("com.gtnewhorizons.angelica.config.AngelicaConfig", true, Launch.classLoader);
-            celeritasEnabledGetter = MethodHandles.lookup().findStaticGetter(angelicaConfig, "enableCeleritas", boolean.class);
-        } catch (ReflectiveOperationException e) {
-            throw new RuntimeException(e);
+    private boolean isVanillaBlockSubclass(String className) {
+        if (!className.startsWith(BlockClass)) {
+            return false;
         }
-    }
-
-    private boolean isCeleritasEnabled() {
-        if (isCeleritasEnabled) return true;
-        try {
-            return (boolean) celeritasEnabledGetter.invokeExact();
-        } catch (Throwable e) {
-            throw new RuntimeException(e);
+        for (String exclusion : VanillaBlockExclusions) {
+            if (className.startsWith(exclusion)) {
+                return false;
+            }
         }
+        return true;
     }
 
-    public void setCeleritasSetting() {
-        isCeleritasEnabled = true;
+    private boolean isBlockSubclass(String className) {
+        return isVanillaBlockSubclass(className) || moddedBlockSubclasses.contains(className);
     }
 
-    /** This method needs to be called for every class, including the ones we don't want to transform */
+    /**
+     * This method needs to be called for every class, including the ones we don't want to transform.
+     * Vanilla blocks are recognized by name; only modded subclasses need tracking, and FML's
+     * EventSubscriptionTransformer guarantees a modded class's superclass loads first.
+     */
     public void trackBlockSubclasses(String className, String superClassName) {
-        // It works because the deepest subclasses are always transformed first due to
-        // ForgeEventTransformer recursive superclass loading
-        if (blockSubclasses.contains(superClassName)) {
-            blockSubclasses.add(className);
+        if (!isVanillaBlockSubclass(className) && isBlockSubclass(superClassName)) {
+            moddedBlockSubclasses.add(className);
 
             if (blockSubclassExclusions.contains(superClassName)) {
                 LOGGER.info("Class {} extends a class with shadowed block bounds fields and will be skipped from redirecting", className);
@@ -150,7 +147,8 @@ public final class CeleritasBlockTransform {
     }
 
     private void trackBlockShadowingFields(ClassNode cn) {
-        if (blockSubclasses.contains(cn.name)) {
+        // Only modded subclasses can shadow; vanilla declares these fields solely in Block.
+        if (moddedBlockSubclasses.contains(cn.name)) {
             for (FieldNode field : cn.fields) {
                 if (blockFieldRedirects.containsKey(field.name)) {
                     LOGGER.info("Class '{}' shadows one or more block bounds fields, these accesses won't be redirected!", cn.name);
@@ -194,10 +192,6 @@ public final class CeleritasBlockTransform {
      * @return Was the class changed?
      */
     public boolean transformClassNode(String transformedName, ClassNode cn) {
-        if (!isCeleritasEnabled()) {
-            return false;
-        }
-
         boolean changed = false;
         if (BlockClass.equals(cn.name)) {
             changed = cn.fields.removeIf(field -> blockFieldRedirects.containsKey(field.name));
@@ -548,7 +542,7 @@ public final class CeleritasBlockTransform {
             Frame<SourceValue> frame = frames != null ? frames[i] : null;
 
             if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                if (blockSubclasses.contains(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
+                if (isBlockSubclass(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
                     String fieldRedirect = blockFieldRedirects.get(fNode.name);
                     if (fieldRedirect == null) {
                         continue;
@@ -578,7 +572,7 @@ public final class CeleritasBlockTransform {
     private boolean willGetFieldAccessInfoReturnEmpty(MethodNode mn) {
         for (AbstractInsnNode node : mn.instructions.toArray()) {
             if ((node.getOpcode() == Opcodes.GETFIELD || node.getOpcode() == Opcodes.PUTFIELD) && node instanceof FieldInsnNode fNode) {
-                if (blockSubclasses.contains(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
+                if (isBlockSubclass(fNode.owner) && !blockSubclassExclusions.contains(fNode.owner)) {
                     String fieldRedirect = blockFieldRedirects.get(fNode.name);
                     if (fieldRedirect != null) {
                         return false;

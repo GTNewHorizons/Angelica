@@ -45,9 +45,9 @@ public class GLSM_TextureInfoCache_UnitTest {
     void testNonGenericUploadCachesWithoutRoundtrip() {
         int texId = GL11.glGenTextures();
         try {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
             ByteBuffer pixels = BufferUtils.createByteBuffer(64 * 64 * 4);
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
             TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texId);
             assertFalse(info.needsInternalFormatResolve());
@@ -63,9 +63,9 @@ public class GLSM_TextureInfoCache_UnitTest {
     void testGenericCompressedPreservesAsPassedInternalFormat() {
         int texId = GL11.glGenTextures();
         try {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
             ByteBuffer pixels = BufferUtils.createByteBuffer(64 * 64 * 4);
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL13.GL_COMPRESSED_RGBA, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL13.GL_COMPRESSED_RGBA, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
             TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texId);
             assertEquals(GL13.GL_COMPRESSED_RGBA, info.getInternalFormat());
@@ -80,15 +80,15 @@ public class GLSM_TextureInfoCache_UnitTest {
     void testRepeatedQueryAfterResolveUsesCache() {
         int texId = GL11.glGenTextures();
         try {
-            GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
             ByteBuffer pixels = BufferUtils.createByteBuffer(64 * 64 * 4);
-            GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL13.GL_COMPRESSED_RGBA, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL13.GL_COMPRESSED_RGBA, 64, 64, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
 
             TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texId);
             assertTrue(info.needsInternalFormatResolve());
-            int first = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
+            int first = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
             assertFalse(info.needsInternalFormatResolve());
-            int second = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
+            int second = GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_INTERNAL_FORMAT);
             assertEquals(first, second);
         } finally {
             GL11.glDeleteTextures(texId);

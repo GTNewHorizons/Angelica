@@ -18,6 +18,7 @@ public final class ColorCodeUtils {
     private ColorCodeUtils() {}
 
     public static final char FORMATTING_CHAR = '§';
+    public static final char ESCAPED_AMPERSAND = '';
 
     public static final int SECTION_X_PAYLOAD = 12;
     public static final int SECTION_X_LENGTH = 14;
@@ -25,7 +26,7 @@ public final class ColorCodeUtils {
     public static final int GRADIENT_LENGTH = 30;
 
     /** Valid single {@code &} codes. {@code g} is excluded; {@code &g} only converts as part of a gradient. */
-    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzv";
+    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzvu";
 
     private static final String[] SECTION_PREFIX = new String[128];
     static {
@@ -87,6 +88,14 @@ public final class ColorCodeUtils {
         StringBuilder sb = null;
         int last = 0;
         while (idx != -1 && idx + 1 < len) {
+            if (idx > 0 && text.charAt(idx - 1) == '\\') {
+                if (sb == null) sb = new StringBuilder(len + 16);
+                sb.append(text, last, idx - 1);
+                sb.append(ESCAPED_AMPERSAND);
+                last = idx + 1;
+                idx = text.indexOf('&', last);
+                continue;
+            }
             if (text.charAt(idx + 1) == '#' && idx + 7 < len) {
                 boolean validHex = true;
                 for (int i = 2; i <= 7; i++) {

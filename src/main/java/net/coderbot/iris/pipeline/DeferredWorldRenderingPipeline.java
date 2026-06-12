@@ -395,6 +395,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				null, null, ProgramId.Weather,
 				// world border uses textured_lit even though it has no lightmap :/
 				null, ProgramId.TexturedLit, ProgramId.TexturedLit,
+				ProgramId.Lightning, ProgramId.Lightning, ProgramId.Lightning,
 				ProgramId.ShadowWater, ProgramId.ShadowWater, ProgramId.ShadowWater,
 				ProgramId.Shadow, ProgramId.Shadow, ProgramId.Shadow
 		};
@@ -724,6 +725,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				return RenderCondition.ENTITY_EYES;
 			} else if (special == SpecialCondition.GLINT) {
 				return RenderCondition.GLINT;
+			} else if (special == SpecialCondition.LIGHTNING) {
+				return RenderCondition.LIGHTNING;
 			}
 		}
 
@@ -1593,6 +1596,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		updateNotifier.onNewFrame();
 
         this.customUniforms.update();
+
+		// Make sure SSBO is bound
+		if (ssboHolder != null) {
+			ssboHolder.setupBuffers();
+		}
 
 		// Get ready for world rendering
 		prepareRenderTargets();

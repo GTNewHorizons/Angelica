@@ -6,13 +6,10 @@ import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.shaderpack.option.menu.OptionMenuLinkElement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.resources.I18n;
 
 import java.util.Optional;
 
 public class LinkElementWidget extends CommentedElementWidget<OptionMenuLinkElement> {
-	private static final String ARROW = new String(">");
-
 	private final String targetScreenId;
 	private final String label;
 
@@ -39,7 +36,7 @@ public class LinkElementWidget extends CommentedElementWidget<OptionMenuLinkElem
 
 		final FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
-        final int maxLabelWidth = width - 9;
+        final int maxLabelWidth = width - 6;
 
 		if (font.getStringWidth(this.label) > maxLabelWidth) {
 			this.isLabelTrimmed = true;
@@ -51,8 +48,7 @@ public class LinkElementWidget extends CommentedElementWidget<OptionMenuLinkElem
 
 		int labelWidth = font.getStringWidth(this.trimmedLabel);
 
-		font.drawStringWithShadow(this.trimmedLabel, x + (int)(width * 0.5) - (int)(labelWidth * 0.5) - (int)(0.5 * Math.max(labelWidth - (width - 18), 0)), y + 7, 0xFFFFFF);
-		font.drawString(ARROW, (x + width) - 9, y + 7, 0xFFFFFF);
+		font.drawStringWithShadow(this.trimmedLabel, x + (int)(width * 0.5) - (int)(labelWidth * 0.5), y + 7, 0xFFFFFF);
 
 		if (hovered && this.isLabelTrimmed) {
 			// To prevent other elements from being drawn on top of the tooltip
@@ -79,7 +75,7 @@ public class LinkElementWidget extends CommentedElementWidget<OptionMenuLinkElem
 	@Override
 	public Optional<String> getCommentBody() {
 		final String translation = "screen." + this.targetScreenId + ".comment";
-        final String translated = I18n.format(translation);
-		return Optional.ofNullable(!translated.equals(translation) ? I18n.format(translation) : null);
+        final String translated = GuiUtil.translateLenient(translation);
+		return Optional.ofNullable(!translated.equals(translation) ? translated : null);
 	}
 }

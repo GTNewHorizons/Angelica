@@ -53,8 +53,15 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         Launch.classLoader.addTransformerExclusion("com.gtnewhorizons.angelica.loading");
         Launch.classLoader.addTransformerExclusion("com.gtnewhorizons.angelica.glsm.GLStateManager");
 
-        if (Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE) {
+        final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
+        if (rfbLoaded) {
             addLwjgl3ifyExclusions();
+        } else {
+            // Fucking java 8 and non RFB
+            try {
+                Class.forName("com.gtnewhorizon.gtnhlib.core.GTNHLibCore", true, Launch.classLoader);
+            } catch (ClassNotFoundException ignored) {
+            }
         }
 
         try {
@@ -84,7 +91,6 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         // packages to avoid interfering with mixin delegation on game classes. AngelicaLateTweaker removes this registration once
         // mixins are setup.
         if (FMLLaunchHandler.side().isClient()) {
-            final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
             if (!rfbLoaded) {
                 final String transformer = "com.gtnewhorizons.angelica.loading.fml.transformers.EarlyRedirectorTransformer";
                 FMLRelaunchLog.finer("Registering transformer %s", transformer);
@@ -180,6 +186,8 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             narrowTransformerConfig("AdvancedLightsabers", AngelicaConfig.transformerCompat.narrowAdvancedLightsabers);
             narrowTransformerConfig("Alfheim", AngelicaConfig.transformerCompat.narrowAlfheim);
             narrowTransformerConfig("Ears", AngelicaConfig.transformerCompat.narrowEars);
+            narrowTransformerConfig("FiskHeroes", AngelicaConfig.transformerCompat.narrowFiskHeroes);
+            narrowTransformerConfig("FoamFix", AngelicaConfig.transformerCompat.narrowFoamFix);
 
             tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.IncompatibleModsDisablerTweaker");
             if (AngelicaConfig.enableHudCaching) {
