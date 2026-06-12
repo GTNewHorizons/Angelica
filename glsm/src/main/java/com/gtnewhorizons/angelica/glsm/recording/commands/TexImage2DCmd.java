@@ -2,14 +2,16 @@ package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
 import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 
 /**
  * Command: glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels)
@@ -24,92 +26,58 @@ public record TexImage2DCmd(
     int border,
     int format,
     int type,
-    @Nullable byte[] pixelData
+    @Nullable ByteBuffer pixels,
+    @Nullable PixelUnpackState unpack
 ) implements DisplayListCommand {
 
-    /**
-     * Create command from IntBuffer
-     */
-    public static TexImage2DCmd fromIntBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels) {
-        byte[] data = null;
-        if (pixels != null) {
-            int pos = pixels.position();
-            int limit = pixels.limit();
-            int size = (limit - pos) * 4; // 4 bytes per int
-            data = new byte[size];
-            ByteBuffer bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
-            bb.asIntBuffer().put(pixels);
-            pixels.position(pos); // Restore position
+    public TexImage2DCmd {
+        if (pixels == null) {
+            unpack = null;
         }
-        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, data);
     }
 
-    /**
-     * Create command from FloatBuffer
-     */
-    public static TexImage2DCmd fromFloatBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable FloatBuffer pixels) {
-        byte[] data = null;
-        if (pixels != null) {
-            int pos = pixels.position();
-            int limit = pixels.limit();
-            int size = (limit - pos) * 4; // 4 bytes per float
-            data = new byte[size];
-            ByteBuffer bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
-            bb.asFloatBuffer().put(pixels);
-            pixels.position(pos); // Restore position
-        }
-        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, data);
+    public static TexImage2DCmd fromIntBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels, PixelUnpackState unpack) {
+        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
-    /**
-     * Create command from DoubleBuffer
-     */
-    public static TexImage2DCmd fromDoubleBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable DoubleBuffer pixels) {
-        byte[] data = null;
-        if (pixels != null) {
-            int pos = pixels.position();
-            int limit = pixels.limit();
-            int size = (limit - pos) * 8; // 8 bytes per double
-            data = new byte[size];
-            ByteBuffer bb = ByteBuffer.wrap(data).order(ByteOrder.nativeOrder());
-            bb.asDoubleBuffer().put(pixels);
-            pixels.position(pos); // Restore position
-        }
-        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, data);
+    public static TexImage2DCmd fromFloatBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable FloatBuffer pixels, PixelUnpackState unpack) {
+        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
-    /**
-     * Create command from ByteBuffer
-     */
-    public static TexImage2DCmd fromByteBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels) {
-        byte[] data = null;
-        if (pixels != null) {
-            int pos = pixels.position();
-            int limit = pixels.limit();
-            int size = limit - pos;
-            data = new byte[size];
-            pixels.get(data);
-            pixels.position(pos); // Restore position
-        }
-        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, data);
+    public static TexImage2DCmd fromDoubleBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable DoubleBuffer pixels, PixelUnpackState unpack) {
+        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
+    }
+
+    public static TexImage2DCmd fromByteBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels, PixelUnpackState unpack) {
+        return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
     @Override
     public void execute() {
-        ByteBuffer buffer = null;
-        if (pixelData != null) {
-            buffer = ByteBuffer.allocateDirect(pixelData.length).order(ByteOrder.nativeOrder());
-            buffer.put(pixelData);
-            buffer.flip();
+        if (pixels == null) {
+            GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, (ByteBuffer) null);
+            return;
         }
-        GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, buffer);
+        GLStateManager.forcePixelUnpackState(unpack);
+        try {
+            GLStateManager.glTexImage2D(target, level, internalformat, width, height, border, format, type, pixels);
+        } finally {
+            GLStateManager.restorePixelUnpackState(unpack);
+        }
+    }
+
+    @Override
+    public void delete() {
+        if (pixels != null) {
+            memFree(pixels);
+        }
     }
 
     @Override
     public @NotNull String toString() {
-        String dataStr = pixelData != null ? (pixelData.length + " bytes") : "null";
-        return String.format("TexImage2D(target=%s, level=%d, internalformat=%s, %dx%d, border=%d, format=%s, type=%s, data=%s)",
+        String dataStr = pixels != null ? (pixels.remaining() + " bytes") : "null";
+        return String.format("TexImage2D(target=%s, level=%d, internalformat=%s, %dx%d, border=%d, format=%s, type=%s, data=%s, unpack=%s)",
             GLDebug.getTextureTargetName(target), level, GLDebug.getTextureFormatName(internalformat),
-            width, height, border, GLDebug.getTextureFormatName(format), GLDebug.getDataTypeName(type), dataStr);
+            width, height, border, GLDebug.getTextureFormatName(format), GLDebug.getDataTypeName(type), dataStr, unpack);
     }
 }

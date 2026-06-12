@@ -653,12 +653,19 @@ public final class CommandRecorder {
         for (IndexedDrawCapture c : indexedDraws.getCaptures()) {
             c.freeBuffers();
         }
-        memFree(buffer);
+        for (DisplayListCommand cmd : complexObjects) {
+            cmd.delete();
+        }
+        complexObjects.clear();
+        if (buffer != null) {
+            memFree(buffer);
+            buffer = null;
+        }
     }
 
     /**
      * Deletes every allocated object & returns a ByteBuffer with the capacity equal to its limit.
-     * This CommandRecorder object cannot be used after calling this anymore.
+     * This CommandRecorder object cannot be used after calling this anymore
      */
     public ByteBuffer finish() {
         for (IndexedDrawCapture c : indexedDraws.getCaptures()) {
@@ -666,7 +673,10 @@ public final class CommandRecorder {
         }
         final int size = size();
         buffer.limit(size);
-        return memRealloc(buffer, size);
+        final ByteBuffer out = memRealloc(buffer, size);
+        buffer = null;
+        complexObjects.clear();
+        return out;
     }
 
     public DisplayListCommand[] getComplexObjects() {
