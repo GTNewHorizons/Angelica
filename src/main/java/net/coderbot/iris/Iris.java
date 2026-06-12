@@ -13,6 +13,7 @@ import cpw.mods.fml.common.gameevent.InputEvent;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Getter;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.celeritas.IrisCeleritasShaderProvider;
 import net.coderbot.iris.compat.dh.DHCompat;
@@ -948,7 +949,7 @@ public class Iris {
             return;
 
         final Int2IntMap metaMap = blockMetaMatches.get(block);
-        final int blockId = metaMap != null ? metaMap.get(meta) : -1;
+        final int blockId = metaMap != null ? BlockMaterialMapping.resolveId(metaMap, meta) : -1;
 
         if (TessellatorManager.get() instanceof StateAwareTessellator tess)
             tess.angelica$setShaderOverrideBlockId((short) blockId);
