@@ -4428,6 +4428,7 @@ public class GLStateManager {
                 GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
             }
             RENDER_BACKEND.useProgram(program);
+            CompatUniformManager.refreshCompatUniforms(program);
             if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = program;
