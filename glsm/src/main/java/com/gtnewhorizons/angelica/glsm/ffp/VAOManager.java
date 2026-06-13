@@ -30,19 +30,11 @@ public final class VAOManager {
         vaoMap.put(defaultVAO, data);
     }
 
-    public static void reset() {
-        vaoMap.clear();
-        current = new VAOData();
-        clientSideEnabledCount = 0;
-        currentVertexFlags = 0;
-        currentAttribs = current.attribs;
-    }
-
     public static void onBindEBO(int ebo) {
         boundEBO = ebo;
     }
 
-    public static VAOData onBindVertexArrayPre(int vaoId) {
+    public static void onBindVertexArrayPre(int vaoId) {
         // Save old VAO data
         if (current != null) {
             current.vertexFlags = currentVertexFlags;
@@ -61,8 +53,6 @@ public final class VAOManager {
         boundEBO = data.ebo;
 
         recomputeClientSideCount();
-
-        return data;
     }
 
     public static void onDeleteVertexArray(int vaoId) {

@@ -456,7 +456,9 @@ public class GLStateManager {
     @Getter protected static int boundVBO;
     @Getter protected static int boundVAO;
 
-    @Getter protected static int boundEBO;
+    public static int getBoundEBO() {
+        return VAOManager.boundEBO;
+    }
 
     private static int boundPixelUnpackBuffer;
     private static int boundPixelPackBuffer;
@@ -483,7 +485,6 @@ public class GLStateManager {
 
         modelViewMatrix.clear();
         projectionMatrix.clear();
-        VAOManager.reset();
     }
 
     /**
@@ -1037,7 +1038,7 @@ public class GLStateManager {
             case GL11.GL_STENCIL_CLEAR_VALUE -> stencilState.getClearValue();
 
             case GL15.GL_ARRAY_BUFFER_BINDING -> boundVBO;
-            case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> boundEBO;
+            case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> VAOManager.boundEBO;
             case GL21.GL_PIXEL_UNPACK_BUFFER_BINDING -> boundPixelUnpackBuffer;
             case GL21.GL_PIXEL_PACK_BUFFER_BINDING -> boundPixelPackBuffer;
 
@@ -2275,7 +2276,7 @@ public class GLStateManager {
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
             // is redirected to it, so a VAO is always bound here — no fallback branches.
-            final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
+            final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, VAOManager.boundEBO);
             if (capture != null) {
                 DisplayListManager.recordIndexedDrawCapture(capture);
             }
@@ -5028,7 +5029,7 @@ public class GLStateManager {
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
         if (boundVBO == buffer) boundVBO = 0;
-        if (boundEBO == buffer) boundEBO = 0;
+        if (VAOManager.boundEBO == buffer) VAOManager.boundEBO = 0;
         if (boundPixelUnpackBuffer == buffer) boundPixelUnpackBuffer = 0;
         if (boundPixelPackBuffer == buffer) boundPixelPackBuffer = 0;
 
@@ -5043,7 +5044,6 @@ public class GLStateManager {
             // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
             boundVBO = buffer;
         } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
-            boundEBO = buffer;
             VAOManager.onBindEBO(buffer);
         } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
             boundPixelUnpackBuffer = buffer;
@@ -5128,8 +5128,7 @@ public class GLStateManager {
         }
         if (boundVAO != array) {
             boundVAO = array;
-            final VAOManager.VAOData vaoData = VAOManager.onBindVertexArrayPre(array);
-            boundEBO = vaoData.ebo;
+            VAOManager.onBindVertexArrayPre(array);
             RENDER_BACKEND.bindVertexArray(array);
         }
     }
@@ -5139,8 +5138,7 @@ public class GLStateManager {
         if (array == boundVAO) {
             // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
             boundVAO = defaultVAO;
-            final VAOManager.VAOData vaoData = VAOManager.onBindVertexArrayPre(array);
-            boundEBO = vaoData.ebo;
+            VAOManager.onBindVertexArrayPre(array);
             RENDER_BACKEND.bindVertexArray(defaultVAO);
         }
         RENDER_BACKEND.deleteVertexArrays(array);
