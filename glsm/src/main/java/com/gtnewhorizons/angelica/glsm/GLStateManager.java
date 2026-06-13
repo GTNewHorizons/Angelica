@@ -456,8 +456,6 @@ public class GLStateManager {
     @Getter protected static int boundVBO;
     @Getter protected static int boundVAO;
 
-
-    //TODO make VAOManager handle these
     @Getter protected static int boundEBO;
 
     private static int boundPixelUnpackBuffer;
