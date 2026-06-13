@@ -1,15 +1,13 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import lombok.Getter;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -31,7 +29,6 @@ public final class ShaderManager {
 
     private final ShaderCache cache = new ShaderCache();
     private final Uniforms uniforms = new Uniforms();
-    private final Int2IntOpenHashMap vaoVertexFlags = new Int2IntOpenHashMap();
 
     @Getter
     private boolean active = false;
@@ -57,10 +54,8 @@ public final class ShaderManager {
     public static Vector4f getCurrentTexCoord() { return currentTexCoords[0]; }
     public static Vector4f getCurrentTexCoord(int unit) { return currentTexCoords[unit]; }
     @Getter private boolean enabled = false;
-    private int currentVertexFlags = VertexFlags.TEXTURE_BIT | VertexFlags.COLOR_BIT | VertexFlags.NORMAL_BIT;
 
     private ShaderManager() {
-        vaoVertexFlags.defaultReturnValue(-1);
         if (Boolean.parseBoolean(System.getProperty("angelica.dumpShaders", "false"))) {
             cache.setDumpDir(Paths.get("ffp_shaders"));
         }
@@ -72,12 +67,6 @@ public final class ShaderManager {
 
     public void enable() {
         enabled = true;
-
-        VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
-            currentVertexFlags = format.getVertexFlags();
-            vaoVertexFlags.put(GLStateManager.getBoundVAO(), currentVertexFlags);
-            return false;
-        });
 
         GLStateManager.LOGGER.info("FFP shader emulation enabled");
     }
@@ -99,7 +88,7 @@ public final class ShaderManager {
         currentFKLen = 0;
     }
 
-    public void preDraw(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
+    public void preDraw() {
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
@@ -111,7 +100,12 @@ public final class ShaderManager {
             }
         }
 
-        GLStateManager.flushDeferredVertexAttribs(currentVertexFlags);
+        final int vertexFlags = VAOManager.getCurrentVertexFlags();
+        final boolean hasColor = (vertexFlags & VertexFlags.COLOR_BIT) != 0;
+        final boolean hasNormal =   (vertexFlags & VertexFlags.NORMAL_BIT) != 0;
+        final boolean hasTexCoord = (vertexFlags & VertexFlags.TEXTURE_BIT) != 0;
+        final boolean hasLightmap = (vertexFlags & VertexFlags.BRIGHTNESS_BIT) != 0;
+        GLStateManager.flushDeferredVertexAttribs(hasColor, hasNormal, hasTexCoord, hasLightmap);
 
         if (!active) return;
 
@@ -125,20 +119,6 @@ public final class ShaderManager {
         }
 
         uploadUniforms();
-    }
-
-    public void preDraw(int vertexFlags) {
-        currentVertexFlags = vertexFlags;
-        preDraw(
-            (vertexFlags & VertexFlags.COLOR_BIT) != 0,
-            (vertexFlags & VertexFlags.NORMAL_BIT) != 0,
-            (vertexFlags & VertexFlags.TEXTURE_BIT) != 0,
-            (vertexFlags & VertexFlags.BRIGHTNESS_BIT) != 0
-        );
-    }
-
-    public void preDraw() {
-        preDraw(currentVertexFlags);
     }
 
     private void commitVariant(long vkPacked, int fkLen) {
@@ -176,22 +156,6 @@ public final class ShaderManager {
 
     public static void bumpNormalGeneration() { normalGeneration++; }
     public static void bumpTexCoordGeneration() { texCoordGeneration++; }
-
-    public void enableClientVertexFlag(int flag) {currentVertexFlags |= flag;}
-    public void disableClientVertexFlag(int flag) {currentVertexFlags &= ~flag;}
-    public int getCurrentVertexFlags() {return currentVertexFlags;}
-    public void setCurrentVertexFlags(int flags) {currentVertexFlags = flags;}
-
-    public void onBindVertexArray(int vaoId) {
-        final int flags = vaoVertexFlags.get(vaoId);
-        if (flags != -1) {
-            currentVertexFlags = flags;
-        }
-    }
-
-    public void onDeleteVertexArray(int vaoId) {
-        vaoVertexFlags.remove(vaoId);
-    }
 
     public void destroy() {
         cache.destroy();

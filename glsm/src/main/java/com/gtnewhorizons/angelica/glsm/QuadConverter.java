@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
@@ -9,7 +9,6 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetByte;
@@ -17,6 +16,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetShort;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutShort;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Shared quad-to-triangle EBO for core profile GL_QUADS emulation.
@@ -83,6 +83,7 @@ public final class QuadConverter {
      * @param vertexCount number of vertices (must be multiple of 4)
      */
     public static void drawQuadsAsTriangles(int first, int vertexCount) {
+        GLStateManager.preDraw();
         assert first % 4 == 0 : "QuadConverter: first (" + first + ") must be a multiple of 4";
         assert vertexCount % 4 == 0 : "QuadConverter: vertexCount (" + vertexCount + ") must be a multiple of 4";
         final int quadCount = vertexCount / 4;
@@ -106,6 +107,7 @@ public final class QuadConverter {
      * @param bytesPerIndex  bytes per index element
      */
     private static void uploadAndDraw(ByteBuffer dst, int triIndexCount, int indexType, int bytesPerIndex) {
+        GLStateManager.preDraw();
         final int needed = triIndexCount * bytesPerIndex;
         final int prevEbo = GLStateManager.getBoundEBO();
 
@@ -144,7 +146,7 @@ public final class QuadConverter {
         final int quadCount = indexCount / 4;
         final int triIndexCount = quadCount * 6;
 
-        final int bytesPerIndex = VertexAttribState.Attrib.glTypeSizeBytes(type);
+        final int bytesPerIndex = VAOManager.Attrib.glTypeSizeBytes(type);
 
         final ByteBuffer src = memAlloc(indexCount * bytesPerIndex);
         RENDER_BACKEND.getBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, offset, src);
