@@ -5138,7 +5138,7 @@ public class GLStateManager {
         if (array == boundVAO) {
             // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
             boundVAO = defaultVAO;
-            VAOManager.onBindVertexArrayPre(array);
+            VAOManager.onBindVertexArrayPre(defaultVAO);
             RENDER_BACKEND.bindVertexArray(defaultVAO);
         }
         RENDER_BACKEND.deleteVertexArrays(array);

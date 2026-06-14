@@ -77,7 +77,7 @@ public final class VAOManager {
     public static void setAttribute(int index, int size, int type, boolean normalized, int stride, long offset, int vboId) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
-        final boolean was = a.isClientSide();
+        final boolean wasClient = a.clientPointer != null;
         a.size = size;
         a.type = type;
         a.normalized = normalized;
@@ -85,12 +85,15 @@ public final class VAOManager {
         a.offset = offset;
         a.vboId = vboId;
         a.clientPointer = null;
-        if (was) clientSideEnabledCount--;
+        if (wasClient && a.enabled) {
+            clientSideEnabledCount--;
+        }
     }
 
     public static void setAttribute(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
+        final boolean wasClient = a.clientPointer != null;
         a.size = size;
         a.type = type;
         a.normalized = normalized;
@@ -98,7 +101,7 @@ public final class VAOManager {
         a.offset = 0;
         a.vboId = 0;
         a.clientPointer = pointer;
-        if (a.enabled) {
+        if (!wasClient && a.enabled) {
             clientSideEnabledCount++;
         }
     }
