@@ -246,6 +246,7 @@ public abstract class RenderBackend {
     public abstract int genVertexArrays();
     public abstract void deleteVertexArrays(int array);
     public abstract void bindVertexArray(int array);
+    public abstract boolean isVertexArray(int array);
     public abstract void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long pointer);
     public void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
         vertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memAddress0(pointer));

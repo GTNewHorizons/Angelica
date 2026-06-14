@@ -1077,6 +1077,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean isVertexArray(int array) {
+        return GL30C.glIsVertexArray(array);
+    }
+
+    @Override
     public void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long pointer) {
         GL20C.glVertexAttribPointer(index, size, type, normalized, stride, pointer);
     }
@@ -1366,11 +1371,14 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public boolean supportsDebugOutput() {
-        return caps != null && caps.OpenGL43;
+        return caps != null && (caps.OpenGL43 || caps.GL_KHR_debug);
     }
 
     @Override
     public int setupDebugOutput(DebugMessageHandler handler) {
+        if (caps == null || !(caps.OpenGL43 || caps.GL_KHR_debug)) {
+            return 0;
+        }
         debugCallback = GLDebugMessageCallback.create(
             (source, type, id, severity, length, message, userParam) -> {
                 final String msg = GLDebugMessageCallback.getMessage(length, message);
@@ -1398,6 +1406,9 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public int disableDebugOutput() {
+        if (caps == null || !(caps.OpenGL43 || caps.GL_KHR_debug)) {
+            return 0;
+        }
         GL43C.glDebugMessageCallback(null, 0L);
         if (debugCallback != null) {
             debugCallback.free();
