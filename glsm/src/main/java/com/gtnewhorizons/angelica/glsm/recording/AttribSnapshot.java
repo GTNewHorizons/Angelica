@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import it.unimi.dsi.fastutil.ints.Int2LongOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL15;
@@ -15,11 +15,11 @@ public final class AttribSnapshot {
 
     public record AttribDesc(int location, int size, int type, boolean normalized, int stride, long offset, int sourceVboId, ByteBuffer readBuffer, long readBufferBaseOffset) {
         public int effectiveStride() {
-            return stride != 0 ? stride : size * VertexAttribState.Attrib.glTypeSizeBytes(type);
+            return stride != 0 ? stride : size * VAOManager.Attrib.glTypeSizeBytes(type);
         }
 
         public int typeSizeBytes() {
-            return VertexAttribState.Attrib.glTypeSizeBytes(type);
+            return VAOManager.Attrib.glTypeSizeBytes(type);
         }
     }
 
@@ -56,7 +56,7 @@ public final class AttribSnapshot {
      * allocating any hashmaps. A second distinct VBO promotes to the map-backed fallback.
      */
     public static AttribSnapshot snapshot(int firstVertex, int vertexCount) {
-        final AttribDesc[] out = new AttribDesc[VertexAttribState.MAX_ATTRIBS];
+        final AttribDesc[] out = new AttribDesc[VAOManager.MAX_ATTRIBS];
         final List<ByteBuffer> allocated = new ArrayList<>();
         final int prevVBO = GLStateManager.getBoundVBO();
 
@@ -67,11 +67,11 @@ public final class AttribSnapshot {
         Int2ObjectOpenHashMap<long[]> vboRanges = null;
 
         final long lastVtx = (long) firstVertex + vertexCount - 1;
-        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
-            final VertexAttribState.Attrib a = VertexAttribState.get(i);
-            if (!a.enabled || a.vboId == 0) continue;
+        for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
+            final VAOManager.Attrib a = VAOManager.get(i);
+            if (a == null || !a.enabled || a.vboId == 0) continue;
             final int stride = a.effectiveStride();
-            final long typeBytes = (long) a.size * VertexAttribState.Attrib.glTypeSizeBytes(a.type);
+            final long typeBytes = (long) a.size * VAOManager.Attrib.glTypeSizeBytes(a.type);
             final long start = a.offset + (long) firstVertex * stride;
             final long end = a.offset + lastVtx * stride + typeBytes;
 
@@ -103,9 +103,9 @@ public final class AttribSnapshot {
         Int2LongOpenHashMap vboReadOffsets = null;
 
         try {
-            for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
-                final VertexAttribState.Attrib a = VertexAttribState.get(i);
-                if (!a.enabled) continue;
+            for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
+                final VAOManager.Attrib a = VAOManager.get(i);
+                if (a == null || !a.enabled) continue;
 
                 if (a.vboId != 0) {
                     ByteBuffer buf;
