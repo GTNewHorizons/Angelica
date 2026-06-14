@@ -26,6 +26,17 @@ public class DHCompatInternal {
     public static final DHCompatInternal SHADERLESS = new DHCompatInternal(null, false);
     static boolean dhEnabled;
     private static int guiScale = -1;
+    // Debounced framebuffer-size tracking for checkFrame(). The pipeline is reloaded (rebuilding the
+    // DH framebuffers against the resized render targets) when the window/resolution changes, but only
+    // once the new size has been stable for a few frames. This avoids reacting to the transient sizes
+    // GLFW reports during fullscreen toggles and alt-tab focus changes, which would otherwise fire
+    // spurious reloads and disrupt the mouse grab (cursor position mismatch when tabbing back in).
+    private static int lastReloadFramebufferWidth = -1;
+    private static int lastReloadFramebufferHeight = -1;
+    private static int pendingFramebufferWidth = -1;
+    private static int pendingFramebufferHeight = -1;
+    private static int framebufferStableFrameCount = 0;
+    private static final int FRAMEBUFFER_STABLE_FRAMES_REQUIRED = 10;
     private final DeferredWorldRenderingPipeline pipeline;
     public boolean shouldOverrideShadow;
     public boolean shouldOverride;
@@ -133,15 +144,48 @@ public class DHCompatInternal {
     }
 
     public static boolean checkFrame() {
+        final int fbWidth = Minecraft.getMinecraft().getFramebuffer().framebufferWidth;
+        final int fbHeight = Minecraft.getMinecraft().getFramebuffer().framebufferHeight;
+
         if (guiScale == -1) {
             guiScale = Minecraft.getMinecraft().gameSettings.guiScale;
+        }
+        if (lastReloadFramebufferWidth == -1) {
+            lastReloadFramebufferWidth = fbWidth;
+            lastReloadFramebufferHeight = fbHeight;
         }
 
         if (DhApi.Delayed.configs == null) return dhEnabled;
 
-        if ((dhEnabled != DhApi.Delayed.configs.graphics().renderingEnabled().getValue() || guiScale != Minecraft.getMinecraft().gameSettings.guiScale)
+        // Detect a settled framebuffer size change (eg toggling fullscreen): a resize recreates Iris's
+        // render targets, but the DH framebuffers keep pointing at the old ones until the pipeline is
+        // reloaded. Only act once the new size has been stable for several frames and differs from the
+        // size we last reloaded at, and ignore zero/minimized sizes - otherwise the transient sizes
+        // reported during a fullscreen toggle or alt-tab focus change fire spurious reloads that
+        // disrupt the mouse grab.
+        boolean sizeChanged = false;
+        if (fbWidth > 0 && fbHeight > 0) {
+            if (fbWidth == pendingFramebufferWidth && fbHeight == pendingFramebufferHeight) {
+                if (framebufferStableFrameCount < FRAMEBUFFER_STABLE_FRAMES_REQUIRED) {
+                    framebufferStableFrameCount++;
+                }
+            } else {
+                pendingFramebufferWidth = fbWidth;
+                pendingFramebufferHeight = fbHeight;
+                framebufferStableFrameCount = 1;
+            }
+            sizeChanged = framebufferStableFrameCount >= FRAMEBUFFER_STABLE_FRAMES_REQUIRED
+                && (fbWidth != lastReloadFramebufferWidth || fbHeight != lastReloadFramebufferHeight);
+        }
+
+        if ((dhEnabled != DhApi.Delayed.configs.graphics().renderingEnabled().getValue()
+                || guiScale != Minecraft.getMinecraft().gameSettings.guiScale
+                || sizeChanged)
             && IrisApi.getInstance().isShaderPackInUse()) {
             guiScale = Minecraft.getMinecraft().gameSettings.guiScale;
+            lastReloadFramebufferWidth = fbWidth;
+            lastReloadFramebufferHeight = fbHeight;
+            framebufferStableFrameCount = 0;
             dhEnabled = DhApi.Delayed.configs.graphics().renderingEnabled().getValue();
             try {
                 Iris.reload();
