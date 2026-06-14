@@ -161,6 +161,7 @@ public class DHCompatInternal {
         if (((IRenderTargetExt) Minecraft.getMinecraft().getFramebuffer()).iris$getDepthBufferVersion() != cachedVersion) {
             cachedVersion = ((IRenderTargetExt) Minecraft.getMinecraft().getFramebuffer()).iris$getDepthBufferVersion();
             createDepthTex(Minecraft.getMinecraft().getFramebuffer().framebufferWidth, Minecraft.getMinecraft().getFramebuffer().framebufferHeight);
+            storedDepthTex = -1;
         }
         if (storedDepthTex != depthTex && dhTerrainFramebuffer != null) {
             storedDepthTex = depthTex;
