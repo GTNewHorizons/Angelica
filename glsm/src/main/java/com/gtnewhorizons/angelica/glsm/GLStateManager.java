@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.bytebuf.Pointer;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
@@ -620,12 +621,16 @@ public class GLStateManager {
             LOGGER.info("GLStateManager cache bypassed");
         }
         if (initConfig != null && initConfig.isLwjglDebug()) {
-            LOGGER.info("Enabling additional LWJGL debug output");
+            if (RENDER_BACKEND.supportsDebugOutput()) {
+                LOGGER.info("Enabling additional LWJGL debug output");
 
-            GLDebug.setupDebugMessageCallback();
-            GLDebug.initDebugState();
+                GLDebug.setupDebugMessageCallback();
+                GLDebug.initDebugState();
 
-            GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+                GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+            } else {
+                LOGGER.info("LWJGL debug output requested but unavailable in this GL context (requires GL 4.3 or GL_KHR_debug); skipping");
+            }
         }
 
         defaultVAO = RENDER_BACKEND.genVertexArrays();
@@ -1185,6 +1190,22 @@ public class GLStateManager {
             case GL11.GL_POINT_SIZE -> pointState.getSize();
             default -> RENDER_BACKEND.getFloat(pname);
         };
+    }
+
+    private static final FloatBuffer glGetFloatScratch = BufferUtils.createFloatBuffer(16);
+
+    public static void glGetFloat(int pname, float[] params) {
+        final FloatBuffer buf;
+        if (params.length <= glGetFloatScratch.capacity()) {
+            buf = glGetFloatScratch;
+            buf.clear();
+            buf.limit(params.length);
+        } else {
+            buf = BufferUtils.createFloatBuffer(params.length);
+        }
+        glGetFloat(pname, buf);
+        buf.position(0);
+        buf.get(params);
     }
 
     // GLStateManager Functions
@@ -4513,6 +4534,25 @@ public class GLStateManager {
         glShaderSource(shader, sb.toString());
     }
 
+    public static void nglShaderSource(int shader, int count, long strings, long lengths) {
+        if (count <= 0) return;
+        final CharSequence source;
+        if (count == 1) {
+            source = decodeShaderSourceString(strings, lengths, 0);
+        } else {
+            final StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < count; i++) sb.append(decodeShaderSourceString(strings, lengths, i));
+            source = sb.toString();
+        }
+        glShaderSource(shader, source);
+    }
+
+    private static String decodeShaderSourceString(long strings, long lengths, int i) {
+        final long strAddr = MemoryUtilities.memGetAddress(strings + (long) i * Pointer.POINTER_SIZE);
+        final int len = lengths == MemoryUtilities.NULL ? -1 : MemoryUtilities.memGetInt(lengths + (long) i * 4);
+        return len < 0 ? MemoryUtilities.memUTF8(strAddr) : MemoryUtilities.memUTF8(strAddr, len);
+    }
+
     /** Check shader type to determine if fragment output transformation is needed. */
     private static boolean isFragmentShader(int shader) {
         return RENDER_BACKEND.getShaderi(shader, GL20.GL_SHADER_TYPE) == GL20.GL_FRAGMENT_SHADER;
@@ -5146,6 +5186,10 @@ public class GLStateManager {
 
     public static int glGenVertexArrays() {
         return RENDER_BACKEND.genVertexArrays();
+    }
+
+    public static boolean glIsVertexArray(int array) {
+        return RENDER_BACKEND.isVertexArray(array);
     }
 
     public static void glBindVertexArrayAPPLE(int array) {
