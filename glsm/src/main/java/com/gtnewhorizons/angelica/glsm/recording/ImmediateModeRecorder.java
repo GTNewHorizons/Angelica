@@ -5,7 +5,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -293,7 +293,39 @@ public final class ImmediateModeRecorder {
     }
 
     private static float readComponent(AttribReader r, int base, int component) {
-        return VertexAttribState.Attrib.readComponent(r.type, r.normalized, r.data, base, component);
+        return VAOManager.Attrib.readComponent(r.type, r.normalized, r.data, base, component);
+    }
+
+    public static float readComponent(int type, boolean normalized, ByteBuffer buf, int base, int component) {
+        return switch (type) {
+            case GL11.GL_FLOAT -> buf.getFloat(base + component * 4);
+            case GL11.GL_DOUBLE -> (float) buf.getDouble(base + component * 8);
+            case GL11.GL_INT -> {
+                final int v = buf.getInt(base + component * 4);
+                yield normalized ? v / (float) Integer.MAX_VALUE : (float) v;
+            }
+            case GL11.GL_UNSIGNED_INT -> {
+                final int v = buf.getInt(base + component * 4);
+                yield normalized ? (v & 0xFFFFFFFFL) / (float) 0xFFFFFFFFL : (float) (v & 0xFFFFFFFFL);
+            }
+            case GL11.GL_SHORT -> {
+                final short v = buf.getShort(base + component * 2);
+                yield normalized ? v / (float) Short.MAX_VALUE : (float) v;
+            }
+            case GL11.GL_UNSIGNED_SHORT -> {
+                final int v = buf.getShort(base + component * 2) & 0xFFFF;
+                yield normalized ? v / (float) 0xFFFF : (float) v;
+            }
+            case GL11.GL_BYTE -> {
+                final byte v = buf.get(base + component);
+                yield normalized ? v / 127.0f : (float) v;
+            }
+            case GL11.GL_UNSIGNED_BYTE -> {
+                final int v = buf.get(base + component) & 0xFF;
+                yield normalized ? v / 255.0f : (float) v;
+            }
+            default -> 0.0f;
+        };
     }
 
 }

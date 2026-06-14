@@ -3,14 +3,14 @@ package com.gtnewhorizons.angelica.glsm.recording.commands;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.recording.AttribSnapshot;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentHashMap;
 import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetLong;
@@ -68,7 +68,7 @@ public final class IndexedDrawCapture {
             warnOnce("quads-misaligned", "[IndexedDrawCapture] GL_QUADS with indicesCount={} not a multiple of 4 — skipping", indicesCount);
             return null;
         }
-        final int srcIndexSize = VertexAttribState.Attrib.glTypeSizeBytes(srcIndexType);
+        final int srcIndexSize = VAOManager.Attrib.glTypeSizeBytes(srcIndexType);
         if (srcIndexSize <= 0) return null;
 
         final int prevEBO = GLStateManager.getBoundEBO();
@@ -106,7 +106,7 @@ public final class IndexedDrawCapture {
             snap = AttribSnapshot.snapshot(minVtx, vertexCount);
 
             int enabledCount = 0;
-            for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
+            for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
                 if (snap.get(i) != null) enabledCount++;
             }
             if (enabledCount == 0) {
@@ -118,7 +118,7 @@ public final class IndexedDrawCapture {
             final int[] types = new int[enabledCount];
             final boolean[] normalized = new boolean[enabledCount];
             int k = 0;
-            for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
+            for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
                 final AttribSnapshot.AttribDesc d = snap.get(i);
                 if (d == null) continue;
                 locations[k] = i;

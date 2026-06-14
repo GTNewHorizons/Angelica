@@ -1039,6 +1039,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean isVertexArray(int array) {
+        return GL30.glIsVertexArray(array);
+    }
+
+    @Override
     public void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long pointer) {
         GL20.glVertexAttribPointer(index, size, type, normalized, stride, pointer);
     }

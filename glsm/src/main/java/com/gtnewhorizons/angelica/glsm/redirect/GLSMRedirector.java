@@ -126,6 +126,7 @@ public class GLSMRedirector {
             .add("glFrustum")
             .add("glGetBoolean")
             .add("glGetFloat")
+            .add("glGetFloatv", "glGetFloat")
             .add("glGetInteger")
             .add("glGetLight")
             .add("glGetMaterial")
@@ -296,6 +297,7 @@ public class GLSMRedirector {
             .add("glStencilOpSeparate")
             .add("glUseProgram")
             .add("glShaderSource")
+            .add("nglShaderSource")
             .add("glLinkProgram")
             .add("glDeleteProgram")
             .add("glCreateShader")
@@ -321,6 +323,7 @@ public class GLSMRedirector {
             .add("glUniformMatrix2")
             .add("glUniformMatrix3")
             .add("glUniformMatrix4")
+            .add("glUniformMatrix4fv", "glUniformMatrix4")
             .add("glDeleteShader")
             .add("glGetShaderi")
             .add("glGetShaderInfoLog")
@@ -342,6 +345,7 @@ public class GLSMRedirector {
             .add("glGenVertexArrays")
             .add("glBindVertexArray")
             .add("glDeleteVertexArrays")
+            .add("glIsVertexArray")
             .add("glBindFramebuffer")
             .add("glDeleteFramebuffers")
             .add("glGenFramebuffers")
@@ -587,18 +591,16 @@ public class GLSMRedirector {
                         }
                     } else {
                         final Map<String, String> redirects = mNode.owner.startsWith(GL_PREFIX) ? glMethodRedirects : methodRedirects.get(mNode.owner);
-                        if (redirects != null) {
-                            final String glsmName = redirects.get(mNode.name);
-                            if (glsmName != null) {
-                                if (LOG_SPAM) {
-                                    final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
-                                    LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
-                                }
-                                mNode.owner = GLStateManager;
-                                mNode.name = glsmName;
-                                changed = true;
-                                redirectInMethod = true;
+                        final String glsmName = redirects != null ? redirects.get(mNode.name) : null;
+                        if (glsmName != null) {
+                            if (LOG_SPAM) {
+                                final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
+                                LOGGER.info("Redirecting call in {} from {}.{}{} to GLStateManager.{}{}", transformedName, shortOwner, mNode.name, mNode.desc, glsmName, mNode.desc);
                             }
+                            mNode.owner = GLStateManager;
+                            mNode.name = glsmName;
+                            changed = true;
+                            redirectInMethod = true;
                         }
                     }
                     // Redirect <init> calls for quadric classes
@@ -617,8 +619,7 @@ public class GLSMRedirector {
                     for (int i = 0; i < dynNode.bsmArgs.length; i++) {
                         if (!(dynNode.bsmArgs[i] instanceof Handle handle)) continue;
                         final Map<String, String> redirects = handle.getOwner().startsWith(GL_PREFIX) ? glMethodRedirects : methodRedirects.get(handle.getOwner());
-                        if (redirects == null) continue;
-                        final String glsmName = redirects.get(handle.getName());
+                        final String glsmName = redirects != null ? redirects.get(handle.getName()) : null;
                         if (glsmName == null) continue;
                         if (LOG_SPAM) {
                             final String shortOwner = handle.getOwner().substring(handle.getOwner().lastIndexOf("/") + 1);
