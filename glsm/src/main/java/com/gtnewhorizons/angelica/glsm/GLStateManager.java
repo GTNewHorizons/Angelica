@@ -56,6 +56,7 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4d;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
@@ -3434,6 +3435,21 @@ public class GLStateManager {
             conversionMatrix4d.set(m);
             getMatrixStack().set(conversionMatrix4d);
             bumpMatrixGeneration();
+        }
+    }
+
+    public static void setModelViewMatrix(Matrix4fc m) {
+        if (isCachingEnabled()) {
+            modelViewMatrix.set(m);
+            mvGeneration++;
+            mvLinearGeneration++;
+        }
+    }
+
+    public static void setProjectionMatrix(Matrix4fc m) {
+        if (isCachingEnabled()) {
+            projectionMatrix.set(m);
+            projGeneration++;
         }
     }
 
