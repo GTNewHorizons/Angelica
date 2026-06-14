@@ -20,7 +20,7 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mixin allows devs to target the ender crystal beams as a separate entity.
+ * Mixin allows devs to target the ender crystal beams and dragon death rays as separate entities.
  * Also sets the special condition "lightning" on the dragon's death beams.
  */
 @Mixin(RenderDragon.class)
@@ -29,7 +29,13 @@ public abstract class MixinRenderDragon {
     private static final NamespacedId END_CRYSTAL_BEAM = new NamespacedId("minecraft", "end_crystal_beam");
 
     @Unique
+    private static final NamespacedId DRAGON_DEATH_RAY = new NamespacedId("minecraft", "dragon_death_rays");
+
+    @Unique
     private int angelica$previousEntityId = -1;
+
+    @Unique
+    private int angelica$previousDeathRayEntityId = -1;
 
     @Unique
     private boolean angelica$deathBeamsActive = false;
@@ -83,6 +89,13 @@ public abstract class MixinRenderDragon {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
             angelica$deathBeamsActive = true;
 
+            Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
+            if (entityIdMap != null) {
+                angelica$previousDeathRayEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+                int deathRayId = entityIdMap.applyAsInt(DRAGON_DEATH_RAY);
+                CapturedRenderingState.INSTANCE.setCurrentEntity(deathRayId);
+            }
+
             angelica$depthPassReplay++;
             GLStateManager.glColorMask(false, false, false, false);
             angelica$invokeRenderEquippedItems(dragon, partialTicks);
@@ -118,6 +131,10 @@ public abstract class MixinRenderDragon {
     private void angelica$endDeathBeamsLighting(EntityDragon dragon, float partialTicks, CallbackInfo ci) {
         if (angelica$depthPassReplay > 0) return;
         if (angelica$deathBeamsActive) {
+            if (angelica$previousDeathRayEntityId != -1) {
+                CapturedRenderingState.INSTANCE.setCurrentEntity(angelica$previousDeathRayEntityId);
+                angelica$previousDeathRayEntityId = -1;
+            }
             GbufferPrograms.teardownSpecialRenderCondition();
             angelica$deathBeamsActive = false;
         }

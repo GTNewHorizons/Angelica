@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording.commands;
 
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 
 import java.util.Arrays;
 
@@ -24,7 +24,7 @@ public final class AttribLayoutKey {
         int base = 0;
         int maxAlign = 1;
         for (int i = 0; i < n; i++) {
-            final int typeSize = VertexAttribState.Attrib.glTypeSizeBytes(types[i]);
+            final int typeSize = VAOManager.Attrib.glTypeSizeBytes(types[i]);
             if (typeSize > maxAlign) maxAlign = typeSize;
             base = (base + typeSize - 1) & -typeSize;
             off[i] = base;

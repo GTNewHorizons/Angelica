@@ -35,9 +35,28 @@ public final class EcosystemNarrowRules {
             "com.fiskmods.lightsabers.asm.transformers"
         )),
 
+        new NarrowRule("FiskHeroes", "com.fiskmods.heroes.asm", List.of(
+            "com.fiskmods.heroes.asm.SHLoadingPlugin",
+            "com.fiskmods.heroes.asm.transformers"
+        )),
+
         new NarrowRule("Ears", "com.unascribed.ears", List.of(
             "com.unascribed.ears.asm",
             "com.unascribed.ears.common.agent"
+        )),
+
+        new NarrowRule("FoamFix", "pl.asie.foamfix", List.of(
+            "pl.asie.foamfix.bugfixmod",
+            "pl.asie.foamfix.coremod",
+            "pl.asie.foamfix.forkage",
+            "pl.asie.foamfix.ghostbuster",
+            "pl.asie.foamfix.FoamFixMod",
+            "pl.asie.foamfix.HackyMessageFactoryWrapper",
+            "pl.asie.foamfix.LaunchWrapperRuntimeFix",
+            "pl.asie.foamfix.ProxyClient",
+            "pl.asie.foamfix.ProxyCommon",
+            "pl.asie.foamfix.repack.com.unascribed.ears.asm",
+            "pl.asie.foamfix.repack.com.unascribed.ears.common.agent"
         )),
 
         new NarrowRule("Alfheim", "alfheim.common.core.asm.hook", List.of(

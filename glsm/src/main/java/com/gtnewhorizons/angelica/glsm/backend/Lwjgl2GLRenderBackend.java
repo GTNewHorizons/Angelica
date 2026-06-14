@@ -508,11 +508,6 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void pixelStoref(int pname, float param) {
-        GL11.glPixelStoref(pname, param);
-    }
-
-    @Override
     public void sampleCoverage(float value, boolean invert) {
         GL13.glSampleCoverage(value, invert);
     }
@@ -1041,6 +1036,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public void bindVertexArray(int array) {
         GL30.glBindVertexArray(array);
+    }
+
+    @Override
+    public boolean isVertexArray(int array) {
+        return GL30.glIsVertexArray(array);
     }
 
     @Override

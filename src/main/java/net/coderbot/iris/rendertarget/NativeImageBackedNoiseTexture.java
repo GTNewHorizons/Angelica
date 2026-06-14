@@ -1,7 +1,7 @@
 package net.coderbot.iris.rendertarget;
 
 import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.minecraft.client.renderer.texture.DynamicTexture;
 import org.lwjgl.opengl.GL11;
 
@@ -10,6 +10,11 @@ import java.util.Random;
 public class NativeImageBackedNoiseTexture extends DynamicTexture {
 	public NativeImageBackedNoiseTexture(int size) {
 		super(create(size));
+
+		RenderSystem.texParameteri(getGlTextureId(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+		RenderSystem.texParameteri(getGlTextureId(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+		RenderSystem.texParameteri(getGlTextureId(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+		RenderSystem.texParameteri(getGlTextureId(), GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
 	}
 
 	private static NativeImage create(int size) {
@@ -26,12 +31,5 @@ public class NativeImageBackedNoiseTexture extends DynamicTexture {
 
 		return image;
 	}
-
-	@Override
-    public void updateDynamicTexture() {
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        super.updateDynamicTexture();
-    }
 
 }

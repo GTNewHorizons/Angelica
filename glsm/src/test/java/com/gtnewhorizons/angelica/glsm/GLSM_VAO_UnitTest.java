@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.opengl.UniversalVAO;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.util.GLSMUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -133,7 +133,7 @@ public class GLSM_VAO_UnitTest {
     private static void glBindVertexArray(int array) {
         if (array == 0) array = GLStateManager.getDefaultVAO();
         GLStateManager.boundVAO = array;
-        VertexAttribState.onBindVertexArray(array);
+        VAOManager.onBindVertexArrayPre(array);
         UniversalVAO.bindVertexArray(array);
     }
 }

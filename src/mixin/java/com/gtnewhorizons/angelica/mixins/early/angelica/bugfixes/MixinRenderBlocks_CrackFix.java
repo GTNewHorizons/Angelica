@@ -254,6 +254,6 @@ public class MixinRenderBlocks_CrackFix {
 	}
 	@Unique
 	private boolean angelica$crackFixOff() {
-		return !AngelicaConfig.fixBlockCrack || angelica$disableCrackFix;
+		return !AngelicaConfig.blockCrackFix || angelica$disableCrackFix;
 	}
 }

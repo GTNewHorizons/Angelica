@@ -6,15 +6,12 @@ import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.irisshaders.iris.api.v0.IrisApi;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.item.ItemStack;
-import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
@@ -42,31 +39,6 @@ public class MixinItemRenderer {
 
         // Wait for hand to lower before setting ID
         ItemIdManager.setItemId(this.itemToRender);
-    }
-
-    /**
-     * Force the equip lower/raise animation whenever the held stack isn't an exact match for
-     * the one being rendered.
-     */
-    @Redirect(
-        method = "updateEquippedItem",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/item/ItemStack;getItemDamage()I", ordinal = 0)
-    )
-    private int iris$animateStackSwap(ItemStack incoming) {
-        if (this.itemToRender != null
-                && !ItemStack.areItemStacksEqual(incoming, this.itemToRender)) {
-            return Integer.MIN_VALUE;
-        }
-        return incoming.getItemDamage();
-    }
-
-    @Redirect(
-        method = "updateEquippedItem",
-        at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/ItemRenderer;itemToRender:Lnet/minecraft/item/ItemStack;", opcode = Opcodes.PUTFIELD, ordinal = 0)
-    )
-    private void iris$commitSlotOnInstantSwap(ItemRenderer self, ItemStack value) {
-        this.itemToRender = value;
-        int equippedItemSlot = Minecraft.getMinecraft().thePlayer.inventory.currentItem;
     }
 
     /**

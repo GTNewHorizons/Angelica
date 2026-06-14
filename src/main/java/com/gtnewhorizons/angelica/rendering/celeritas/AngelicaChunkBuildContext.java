@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvid
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -184,6 +185,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 animatedSprites.add(sprite);
             }
 
+            final boolean isFluid = blockRenderContext.renderType == ExtendedDataHelper.FLUID_RENDER_TYPE;
+
             // If block used vanilla AO, then we can safely compute our own lighting data and ignore what vanilla
             // computed. We suppress vanilla emitting the brightness/color in MixinRenderBlocks.
             // Otherwise, we need to use the block's lightmap values as they are as the ISBRH may have
@@ -212,6 +215,17 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     vertices[vIdx].trueNormal = trueNormal;
+                }
+
+                if (useAoCalculation && isFluid) {
+                    quadView.setup(trueNormal, blockX, blockY, blockZ);
+                    final ModelQuadFacing lightFace = quadView.getLightFace();
+                    final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
+                    final ModelQuadFacing cullFace = quadView.getCullFace();
+                    pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shouldApplyDiffuse, true);
+                    for (int vIdx = 0; vIdx < 4; vIdx++) {
+                        vertices[vIdx].light = quadLightData.lm[vIdx];
+                    }
                 }
             }
 

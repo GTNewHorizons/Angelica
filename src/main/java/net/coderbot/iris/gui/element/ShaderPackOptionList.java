@@ -25,7 +25,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
     private final List<BaseEntry> entries = new ArrayList<>();
 
 	public ShaderPackOptionList(ShaderPackScreen screen, NavigationController navigation, ShaderPack pack, Minecraft client, int width, int height, int top, int bottom, int left, int right) {
-		super(client, width, height, top, bottom, 20);
+		super(client, width, height, top, bottom, 24);
 		this.navigation = navigation;
 		this.screen = screen;
 
@@ -72,7 +72,7 @@ public class ShaderPackOptionList extends IrisGuiSlot {
 			}
 		}
 
-		if (row.size() > 0) {
+		if (!row.isEmpty()) {
 			while (row.size() < columns) {
 				row.add(AbstractElementWidget.EMPTY);
 			}
@@ -93,7 +93,12 @@ public class ShaderPackOptionList extends IrisGuiSlot {
     }
     @Override
     public boolean mouseReleased( int mouseX, int mouseY, int button) {
-        final int relativeY = mouseY - this.top - this.headerPadding + (int) this.amountScrolled - 4;
+        this.scrolling = false;
+        if (mouseY <= this.top || mouseY >= this.bottom) {
+            return false;
+        }
+
+        final int relativeY = mouseY - this.top + (int) this.amountScrolled - hitYOffset();
         final int index = relativeY / this.slotHeight;
 
         if (index < 0 || index >= this.entries.size())
@@ -114,10 +119,30 @@ public class ShaderPackOptionList extends IrisGuiSlot {
     }
 
     @Override
+    protected int hitYOffset() {
+        return 3;
+    }
+
+    @Override
+    protected int hitRightInset() {
+        return 4;
+    }
+
+    @Override
+    protected int hitLeftInset() {
+        return -1;
+    }
+
+    @Override
+    protected int hitXShift() {
+        return 2;
+    }
+
+    @Override
     protected void drawSlot(int index, int x, int y, int i1, Tessellator tessellator, int mouseX, int mouseY) {
         final BaseEntry entry = this.entries.get(index);
         final boolean isMouseOver = this.func_148124_c/*getSlotIndexFromScreenCoords*/(mouseX, mouseY) == index;
-        entry.drawEntry(screen, index, x - 2, y + 4, this.getListWidth(), this.slotHeight, tessellator, mouseX, mouseY, isMouseOver);
+        entry.drawEntry(screen, index, x, y - 2, this.getListWidth(), this.slotHeight, tessellator, mouseX, mouseY, isMouseOver);
     }
 
 

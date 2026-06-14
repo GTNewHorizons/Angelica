@@ -111,6 +111,7 @@ public class DisplayListManager {
         int listMode,
         CommandRecorder recorder,
         List<AccumulatedDraw> draws,
+        DisplayListCallback callback,
         StackTraceElement[] stackTrace,
 
         // Debug logging fields (only used when LOG_DISPLAY_LIST_COMPILATION)
@@ -129,6 +130,19 @@ public class DisplayListManager {
     /** True only for the thread that started recording. */
     public static boolean isRecording() {
         return currentRecorder != null && Thread.currentThread() == recordingThread;
+    }
+
+    public static UnsupportedOperationException unsupportedInList(String what) {
+        return new UnsupportedOperationException(what + " in display lists not yet implemented - if you see this, please report! " + describeCurrentCompilation());
+    }
+
+    public static String describeCurrentCompilation() {
+        if (currentRecorder == null) {
+            return "(not compiling)";
+        }
+        final String mode = glListMode == GL11.GL_COMPILE_AND_EXECUTE ? "GL_COMPILE_AND_EXECUTE" : "GL_COMPILE";
+        final int depth = compilationStack.size() + 1;
+        return "while compiling display list " + glListId + " (" + mode + (depth > 1 ? ", nesting depth " + depth : "") + ")";
     }
 
     public static boolean isCompileAndExecute() {
@@ -159,7 +173,9 @@ public class DisplayListManager {
      * Only use this if you are 100% that the transforms will not be of any use after the display list draw call.
      */
     public static void discardMatrixTransforms() {
-        resetRelativeTransform();
+        if (isRecording()) {
+            resetRelativeTransform();
+        }
     }
 
     /**
@@ -748,7 +764,7 @@ public class DisplayListManager {
             // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws,
+                glListId, glListMode, currentRecorder, accumulatedDraws, transformCallback,
                 compilationStackTrace, pendingTransformOps, multMatrixSources, drawRangeSources
             );
             compilationStack.push(parentContext);
@@ -784,9 +800,21 @@ public class DisplayListManager {
         if (glListMode == 0) {
             throw new RuntimeException("glEndList called outside of a display list!");
         }
+        try {
+            finishCurrentList();
+        } finally {
+            // Non-null here means finishCurrentList threw before transferring or releasing
+            // ownership of the recorder.
+            if (currentRecorder != null) {
+                currentRecorder.delete();
+            }
+            // Must always run, even when compilation fails - a leaked context leaves
+            // isRecording() true forever and every guarded GL call throws afterward.
+            popCompilationContext();
+        }
+    }
 
-        final boolean isNested = !compilationStack.isEmpty();
-
+    private static void finishCurrentList() {
         // Stop compiling mode (works for both root and nested lists now)
         TessellatorManager.stopCapturingDirect();
 
@@ -803,8 +831,9 @@ public class DisplayListManager {
         final boolean hasCommands = !commandBuffer.isEmpty();
 
         if (hasCommands) {
-            final DisplayListVBO compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
+            DisplayListVBO compiledBuffers = null;
             try {
+                compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
                 final IndexedDrawBatchBuilder indexedBuilder = commandBuffer.getIndexedDraws();
                 final List<IndexedDrawBatch> indexedBatches;
                 if (indexedBuilder.isEmpty()) {
@@ -824,16 +853,23 @@ public class DisplayListManager {
                     }
                 }
 
-                compiled = new CompiledDisplayList(commandBuffer.finish(), commandBuffer.getComplexObjects(), compiledBuffers, indexedBatches);
+                final DisplayListCommand[] complexObjects = commandBuffer.getComplexObjects();
+                compiled = new CompiledDisplayList(commandBuffer.finish(), complexObjects, compiledBuffers, indexedBatches);
+                currentRecorder = null;
             } catch (Exception e) {
                 GLStateManager.LOGGER.error("Encountered a fatal issue while trying to compile a display list.");
                 e.printStackTrace();
                 commandBuffer.delete();
+                currentRecorder = null;
+                if (compiledBuffers != null) {
+                    compiledBuffers.delete();
+                }
                 return;
             }
         } else {
             // Free the recorder even if empty
             commandBuffer.delete();
+            currentRecorder = null;
             // Empty display list - per OpenGL spec, still valid after glNewList/glEndList
             compiled = CompiledDisplayList.EMPTY;
         }
@@ -846,6 +882,10 @@ public class DisplayListManager {
         if (LOG_DISPLAY_LIST_COMPILATION) {
             logCompiledDisplayList(glListId, compiled, compilationStackTrace);
         }
+    }
+
+    private static void popCompilationContext() {
+        final boolean isNested = !compilationStack.isEmpty();
 
         // Handle nested compilation - restore parent context
         if (isNested) {
@@ -856,6 +896,7 @@ public class DisplayListManager {
             glListMode = parentContext.listMode;
             currentRecorder = parentContext.recorder;
             accumulatedDraws = parentContext.draws;
+            transformCallback = parentContext.callback;
             compilationStackTrace = parentContext.stackTrace;
             pendingTransformOps = parentContext.pendingOps;
             multMatrixSources = parentContext.matrixSources;
@@ -869,6 +910,7 @@ public class DisplayListManager {
             recordingThread = null;
             accumulatedDraws = null;
             pendingDraw = null;
+            transformCallback = null;
             compilationStackTrace = null;
             pendingTransformOps = null;
             multMatrixSources = null;

@@ -1,5 +1,6 @@
 package net.coderbot.iris.block_rendering;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
@@ -27,9 +28,11 @@ public class BlockMaterialMapping {
 	public record BlockIdMaps(Reference2ObjectMap<Block, Int2IntMap> blockMetaMap, NbtConditionalIdMap<Block> tileEntityMap) {}
 
 	// Meta-key bits OR'd in at runtime
-	public static final int SNOWY_META_BIT = 0x10;
+	public static final int SNOWY_META_BIT = 1 << 16;
 
 	public static final int DOUBLE_PLANT_TOP_BIT = 0x8;
+
+	public static final int WILDCARD_META_KEY = 1 << 30;
 
 	/**
 	 * Creates the standard block meta ID map, the TileEntity NBT-conditional map, and registers
@@ -168,9 +171,15 @@ public class BlockMaterialMapping {
 
 		if (metas.isEmpty()) {
 			for (int meta = 0; meta < 16; meta++) metaMap.putIfAbsent(meta | extraBits, intId);
+			if (ModStatus.isMetadataExtended) metaMap.putIfAbsent(WILDCARD_META_KEY | extraBits, intId);
 		} else {
 			for (int meta : metas) metaMap.putIfAbsent(meta | extraBits, intId);
 		}
+	}
+
+	public static int resolveId(Int2IntMap metaMap, int metaKey) {
+		final int id = metaMap.get(metaKey);
+		return id != -1 ? id : metaMap.get(WILDCARD_META_KEY | (metaKey & SNOWY_META_BIT));
 	}
 
 	/**

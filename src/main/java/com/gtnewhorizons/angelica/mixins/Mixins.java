@@ -116,7 +116,7 @@ public enum Mixins implements IMixins {
                     .setPhase(Phase.EARLY)
                     .addClientMixins("angelica.bugfixes.MixinRenderBlocks_CrackFix")
                     .addExcludedMod(TargetedMod.FALSETWEAKS)
-                    .setApplyIf(() -> AngelicaConfig.fixBlockCrack)),
+                    .setApplyIf(() -> AngelicaConfig.blockCrackFix)),
 
     ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(
         new MixinBuilder("Fix RenderBlockFluid reading the block type from the world access multiple times")
@@ -325,6 +325,15 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins(
             "shaders.MixinItemRendererBackhand"
+        )
+    ),
+
+    IRIS_SHADERS_CHISEL_BEACON(new MixinBuilder("Iris Chisel Beacon Beam")
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addRequiredMod(TargetedMod.CHISEL)
+        .addClientMixins(
+            "chisel.MixinRenderCarvableBeacon"
         )
     ),
 

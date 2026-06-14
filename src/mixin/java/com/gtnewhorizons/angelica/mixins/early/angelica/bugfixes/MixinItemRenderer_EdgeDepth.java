@@ -25,7 +25,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  * 2. During each glint renderItemIn2D call:
  *    a. Pre-pass: no color/depth writes, GL_LEQUAL depth test, increment the stencil 1→2
  *       where depth passes. This determines pixel ownership without corrupting the depth buffer (damn potions...)
- *    b. Color pass: draw only where stencil == 2, GL_ALWAYS depth test, decrement the stencil
+ *    b. Color pass: draw only where stencil == 2, GL_LEQUAL depth test, decrement the stencil
  *       2→1 to reset for the next glint pass.
  *
  * For the shadow pass, all stencil operations are skipped. Shadow FBOs have no stencil attachment.
@@ -127,7 +127,7 @@ public class MixinItemRenderer_EdgeDepth {
         GLStateManager.glColorMask(true, true, true, true);
         GLStateManager.glStencilFunc(GL11.GL_EQUAL, 2, 0x03);
         GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
-        GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
 
         // Restore state for the next glint renderItemIn2D call

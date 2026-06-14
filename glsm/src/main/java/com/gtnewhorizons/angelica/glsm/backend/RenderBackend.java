@@ -8,6 +8,8 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Abstract rendering backend.
@@ -24,6 +26,14 @@ public abstract class RenderBackend {
 
     /** Higher priority backends are preferred. */
     public int getPriority() { return 0; }
+
+    public boolean supportsFileDrop() { return false; }
+
+    public void startFileDrop() {}
+
+    public void stopFileDrop() {}
+
+    public List<String> pollDroppedFiles() { return Collections.emptyList(); }
 
     public abstract int getMinGLSLVersion();
 
@@ -115,7 +125,6 @@ public abstract class RenderBackend {
     public abstract int getTexLevelParameteri(int target, int level, int pname);
     public abstract void generateMipmap(int target);
     public abstract void pixelStorei(int pname, int param);
-    public void pixelStoref(int pname, float param) {}
     public void sampleCoverage(float value, boolean invert) {}
 
 
@@ -237,6 +246,7 @@ public abstract class RenderBackend {
     public abstract int genVertexArrays();
     public abstract void deleteVertexArrays(int array);
     public abstract void bindVertexArray(int array);
+    public abstract boolean isVertexArray(int array);
     public abstract void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long pointer);
     public void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
         vertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memAddress0(pointer));
