@@ -42,6 +42,7 @@ import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.pipeline.transform.GlintScrollInjector;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.postprocess.BufferFlipper;
@@ -838,8 +839,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		if (transformed == null) {
 			// Fallback to synchronous transform if not pre-computed
+			String vertex = source.getVertexSource().orElseThrow(NullPointerException::new);
+			if (GlintScrollInjector.shouldInject(id, source)) {
+				vertex = GlintScrollInjector.apply(vertex);
+			}
 			transformed = TransformPatcher.patchAttributes(
-				source.getVertexSource().orElseThrow(NullPointerException::new),
+				vertex,
 				source.getGeometrySource().orElse(null),
 				source.getTessControlSource().orElse(null),
 				source.getTessEvalSource().orElse(null),
@@ -1784,9 +1789,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			ProgramSource source = resolver.resolveNullable(id);
 			if (source != null && !processedSourceNames.contains(source.getName())) {
 				processedSourceNames.add(source.getName());
+				final ProgramSource src = source;
+				String vertex = src.getVertexSource().orElse(null);
+				if (GlintScrollInjector.shouldInject(id, src)) {
+					vertex = GlintScrollInjector.apply(vertex);
+				}
+				final String vertexSource = vertex;
 				for (InputAvailability avail : INPUT_AVAILABILITIES) {
-					Pair<String, InputAvailability> key = Pair.of(source.getName(), avail);
-					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(source.getVertexSource().orElse(null), source.getGeometrySource().orElse(null), source.getTessControlSource().orElse(null), source.getTessEvalSource().orElse(null), source.getFragmentSource().orElse(null), avail)));
+					Pair<String, InputAvailability> key = Pair.of(src.getName(), avail);
+					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(vertexSource, src.getGeometrySource().orElse(null), src.getTessControlSource().orElse(null), src.getTessEvalSource().orElse(null), src.getFragmentSource().orElse(null), avail)));
 				}
 			}
 		}
