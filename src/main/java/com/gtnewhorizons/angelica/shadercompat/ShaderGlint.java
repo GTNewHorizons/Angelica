@@ -88,7 +88,7 @@ public final class ShaderGlint {
 
         if (colorToTexture.size() >= MAX_CACHE) {
             for (final int id : colorToTexture.values()) {
-                GL11.glDeleteTextures(id);
+                GLStateManager.glDeleteTextures(id);
             }
             colorToTexture.clear();
         }
@@ -108,14 +108,14 @@ public final class ShaderGlint {
         }
         pixels.flip();
 
-        final int texture = GL11.glGenTextures();
+        final int texture = GLStateManager.glGenTextures();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         // Match the vanilla glint texture
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, maskW, maskH, 0,
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL11.GL_REPEAT);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL11.GL_REPEAT);
+        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, maskW, maskH, 0,
             GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
         return texture;
     }
