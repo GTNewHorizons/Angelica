@@ -12,11 +12,18 @@ import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_UL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_UR;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.TOP_FACE;
 
+import com.prupe.mcpatcher.mal.block.RenderPassAPI;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import net.minecraft.util.IIcon;
 
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import com.prupe.mcpatcher.mal.util.WeightedIndex;
+import net.minecraft.util.ResourceLocation;
+
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TileOverrideImpl {
 
@@ -468,8 +475,40 @@ public class TileOverrideImpl {
         }
 
         @Override
+        String checkTileMap() {
+            return null;
+        }
+
+        @Override
         String getMethod() {
             return "compact";
+        }
+
+        @Override
+        protected void loadOverrideIcons(int from, int to, ResourceLocation blankResource) {
+            List<BufferedImage> compactIcons = new ArrayList<>();
+            if(to != 0){
+                properties.error("compact ctm requires exactly 5 icons, got range %d - %d", to, from);
+            }
+            if(to - from != 5){
+                properties.error("compact ctm requires exactly 5 icons, got range %d - %d", to, from);
+            }
+            for (int i = from; i <= to; i++) {
+                ResourceLocation resource = TileLoader
+                    .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
+                if (TexturePackAPI.hasResource(resource)) {
+                    compactIcons.add(tileLoader.loadResourceImage(resource,
+                        renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS));
+                } else {
+                    // Promote from warning to error for compact CTM
+                    properties.error("could not find image %s, required for compact CTM", resource);
+                    tileNames.add(null);
+                }
+            }
+            if(compactIcons.size() == 5){
+                CompactCTMUtils.generateTextures(compactIcons.toArray(new BufferedImage[0]),
+                    this, properties.getResource(), blankResource);
+            }
         }
     }
 }

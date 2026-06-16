@@ -1,5 +1,6 @@
 package com.prupe.mcpatcher.ctm;
 
+import com.prupe.mcpatcher.ctm.TileOverrideImpl.CTMCompact;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import net.minecraft.util.ResourceLocation;
 
@@ -8,7 +9,7 @@ import java.awt.image.BufferedImage;
 
 public class CompactCTMUtils {
 
-    public static void generateTextures(BufferedImage[] compactIcons, TileOverride override,
+    public static void generateTextures(BufferedImage[] compactIcons, CTMCompact override,
                                         ResourceLocation propsLoc, ResourceLocation blankResource){
         BufferedImage cFull = compactIcons[0]; // Full
         BufferedImage cNone = compactIcons[1]; // None

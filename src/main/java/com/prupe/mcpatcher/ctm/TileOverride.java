@@ -33,10 +33,10 @@ public abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private final PropertiesFile properties;
+    protected final PropertiesFile properties;
     private final String baseFilename;
-    private final TileLoader tileLoader;
-    private final int renderPass;
+    protected final TileLoader tileLoader;
+    protected final int renderPass;
     private final int weight;
     private final List<BlockStateMatcher> matchBlocks;
     private final Set<String> matchTiles;
@@ -46,7 +46,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final BitSet biomes;
     private final BitSet height;
 
-    private final List<ResourceLocation> tileNames = new ArrayList<>();
+    protected final List<ResourceLocation> tileNames = new ArrayList<>();
     protected IIcon[] icons;
 
     // Index into this array is formed from these bit values:
@@ -202,7 +202,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         tileLoader.addTile(resource, img, null, true);
     }
 
-    private void loadIcons() {
+    protected void loadIcons() {
         tileNames.clear();
         String tileList = properties.getString("tiles", "");
         ResourceLocation blankResource = RenderPassAPI.instance.getBlankResource(renderPass);
@@ -219,8 +219,6 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             }
         } else {
             Pattern range = Pattern.compile("(\\d+)-(\\d+)");
-            String method = properties.getString("method", "");
-            boolean isCompact = method.equals("compact") || method.equals("ctm_compact");
             for (String token : tileList.split("\\s+")) {
                 Matcher matcher = range.matcher(token);
                 if (token.isEmpty()) {
@@ -229,26 +227,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                     try {
                         int from = Integer.parseInt(matcher.group(1));
                         int to = Integer.parseInt(matcher.group(2));
-                        List<BufferedImage> compactIcons = new ArrayList<>();
-                        for (int i = from; i <= to; i++) {
-                            ResourceLocation resource = TileLoader
-                                .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-                            if (TexturePackAPI.hasResource(resource)) {
-                                if(isCompact){
-                                    compactIcons.add(tileLoader.loadResourceImage(resource,
-                                        renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS));
-                                }else{
-                                    addIcon(resource);
-                                }
-                            } else {
-                                properties.warning("could not find image %s", resource);
-                                tileNames.add(null);
-                            }
-                        }
-                        if(isCompact){
-                            CompactCTMUtils.generateTextures(compactIcons.toArray(new BufferedImage[0]),
-                                this, properties.getResource(), blankResource);
-                        }
+                        loadOverrideIcons(from, to, blankResource);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
                     }
@@ -264,6 +243,19 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                         tileNames.add(null);
                     }
                 }
+            }
+        }
+    }
+
+    protected void loadOverrideIcons(int from, int to, ResourceLocation blankResource){
+        for (int i = from; i <= to; i++) {
+            ResourceLocation resource = TileLoader
+                .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
+            if (TexturePackAPI.hasResource(resource)) {
+                addIcon(resource);
+            } else {
+                properties.warning("could not find image %s", resource);
+                tileNames.add(null);
             }
         }
     }
