@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -80,6 +81,22 @@ public class MixinRendererLivingEntity {
     )
     private void iris$glintStart(CallbackInfo ci) {
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+        ShaderGlint.beginGlint();
+    }
+
+    /**
+     * Bake the glint color into the texture before each armor glint pass. The glint section
+     * re-renders the armor model twice with the grayscale glint mask tinted via the vertex
+     * color; modern packs read the color from the texture instead. See {@link ShaderGlint}.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0),
+        slice = @Slice(from = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0, remap = false)),
+        require = 0
+    )
+    private void iris$tintGlint(CallbackInfo ci) {
+        ShaderGlint.onGlintDraw();
     }
 
     /**
@@ -92,6 +109,7 @@ public class MixinRendererLivingEntity {
     )
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
+        ShaderGlint.endGlint();
     }
 
 }

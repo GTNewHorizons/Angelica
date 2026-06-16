@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
+import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -27,6 +28,16 @@ public class CommonTransformer {
 		} else if (parameters.type == ShaderType.FRAGMENT) {
 			root.injectVariable("in vec4 iris_FrontColor;");
 			root.rename("gl_Color", "iris_FrontColor");
+		}
+
+		if (root.hasVariable("gl_TexCoord")) {
+			if (parameters.type == ShaderType.VERTEX) {
+				root.rename("gl_TexCoord", "irs_texCoords");
+				root.injectVariable("out vec4 irs_texCoords[3];");
+			} else if (parameters.type == ShaderType.FRAGMENT) {
+				root.rename("gl_TexCoord", "irs_texCoords");
+				root.injectVariable("in vec4 irs_texCoords[3];");
+			}
 		}
 
 		if (parameters.type == ShaderType.FRAGMENT) {
@@ -91,7 +102,22 @@ public class CommonTransformer {
 		root.renameAndWrapShadow("shadow2D", "texture");
 		root.renameAndWrapShadow("shadow2DLod", "textureLod");
 
+		if (root.containsCall("textureLodOffset")) {
+			root.injectFunction("vec4 iris_textureLodOffset(sampler2D iris_tlo_s, vec2 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, iris_tlo_c + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_l); }");
+			root.injectFunction("float iris_textureLodOffset(sampler2DShadow iris_tlo_s, vec3 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, vec3(iris_tlo_c.xy + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_c.z), iris_tlo_l); }");
+			root.renameFunctionCall("textureLodOffset", "iris_textureLodOffset");
+		}
+
 		if (parameters.patch == Patch.ATTRIBUTES && parameters.type == ShaderType.VERTEX) {
+			root.mutateTree(tree -> {
+				if (tree.children != null) {
+					tree.children.removeIf(child ->
+						child instanceof GLSLParser.External_declarationContext
+							&& ((GLSLParser.External_declarationContext) child).declaration() != null
+							&& child.getText().contains("gl_PerVertex"));
+				}
+			});
+
 			root.injectVariable("uniform bool angelica_ClipPlanesEnabled;");
 			root.injectVariable("uniform vec4 angelica_ClipPlane[8];");
 			root.appendMain(

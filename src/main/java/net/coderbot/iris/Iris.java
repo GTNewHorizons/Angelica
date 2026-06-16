@@ -567,11 +567,11 @@ public class Iris {
 
             // If it's a folder-based shaderpack, just use the shaders subdirectory
             shaderPackPath = shaderPackRoot.resolve("shaders");
-        }
 
-        if (!Files.exists(shaderPackPath)) {
-            logger.error("Could not load the shaderpack \"{}\" because it appears to lack a \"shaders\" directory", name);
-            return false;
+            if (!Files.exists(shaderPackPath)) {
+                logger.error("Could not load the shaderpack \"{}\" because it appears to lack a \"shaders\" directory", name);
+                return false;
+            }
         }
 
         @SuppressWarnings("unchecked")

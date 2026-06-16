@@ -96,6 +96,12 @@ public final class CommonUniforms {
 
 		}, StateUpdateNotifiers.bindTextureNotifier);
 
+		uniforms.uniform1i("gtextureId", () -> GLStateManager.getBoundTextureForServerState(0),
+			StateUpdateNotifiers.bindTextureNotifier);
+
+		uniforms.uniform1i("textureReloadCount", CapturedRenderingState.INSTANCE::getTextureReloadCount,
+			StateUpdateNotifiers.bindTextureNotifier);
+
 		uniforms.uniform4i("blendFunc", () -> {
             if(GLStateManager.getBlendMode().isEnabled()) {
                 final BlendState blend = GLStateManager.getBlendState();

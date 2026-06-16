@@ -12,6 +12,9 @@ public class CapturedRenderingState {
 	@Setter
     @Getter
     private float tickDelta;
+	@Setter
+	@Getter
+	private int textureReloadCount;
 	@Getter
     private int currentRenderedBlockEntity;
 	private Runnable blockEntityIdListener = null;
