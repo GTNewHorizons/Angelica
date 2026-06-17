@@ -25,6 +25,7 @@ public class DeferredDrawBatcher {
 
     @Getter private static boolean active = false;
     private static DeferredBatchTessellator batchTessellator;
+    private static long entryStateKey;
 
     private DeferredDrawBatcher() {}
 
@@ -41,13 +42,14 @@ public class DeferredDrawBatcher {
         batchTessellator.clearRanges();
         batchTessellator.setParentTessellator(Tessellator.instance);
         batchTessellator.snapshotDefaultModelview();
+        entryStateKey = captureStateKey();
         TessellatorManager.startCapturingDirect(batchTessellator);
     }
 
     /**
      * Exit deferred mode and flush all captured batches. Groups entries by state key
-     * and vertex format, issues one draw per unique group. Restores the GL state that
-     * was active for the last group so vanilla sees consistent state.
+     * and vertex format, issues one draw per unique group. Restores the bracket's entry
+     * state so the trailing vanilla Tessellator.draw() renders with the layer atlas.
      */
     public static void exitAndFlush() {
         active = false;
@@ -56,6 +58,7 @@ public class DeferredDrawBatcher {
         if (!ranges.isEmpty()) {
             ranges.sort(Comparator.comparingLong(DeferredBatchTessellator.DrawRange::stateKey));
             flushSorted(ranges);
+            applyStateKey(entryStateKey);
         }
 
         TessellatorManager.stopCapturingDirect();
@@ -147,7 +150,8 @@ public class DeferredDrawBatcher {
      * - fog state (mode, color, start/end — constant for the frame)
      */
     static long captureStateKey() {
-        final int textureId = GLStateManager.getTextures().getTextureUnitBindings(0).getBinding();
+        final int activeUnit = GLStateManager.getActiveTextureUnit();
+        final int textureId = GLStateManager.getTextures().getTextureUnitBindings(activeUnit).getBinding();
         final int srcRgb = GLStateManager.getBlendState().getSrcRgb();
         final int dstRgb = GLStateManager.getBlendState().getDstRgb();
         final boolean blendEnabled = GLStateManager.getBlendMode().isEnabled();
