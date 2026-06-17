@@ -350,4 +350,8 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean disableErrorChecks;
 
+    @Config.Comment("Fixes various issues with entity overlays, such as z-fighting, damage animations and eyes.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean entityOverlayFixes;
 }
