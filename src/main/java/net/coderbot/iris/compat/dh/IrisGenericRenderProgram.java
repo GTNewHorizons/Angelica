@@ -31,7 +31,6 @@ import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import org.joml.Matrix3f;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -46,12 +45,6 @@ import java.util.Map;
 
 public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgram {
     // Uniforms
-    public final int modelViewUniform;
-    public final int modelViewInverseUniform;
-    public final int projectionUniform;
-    public final int projectionInverseUniform;
-    public final int normalMatrix3fUniform;
-    // Fog/Clip Uniforms
     private final int id;
     private final ProgramUniforms uniforms;
     private final CustomUniforms customUniforms;
@@ -62,7 +55,6 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     private final Matrix4f tempModel = new Matrix4f();
     private final Matrix4f tempProj = new Matrix4f();
     private final Matrix4f tempMat4 = new Matrix4f();
-    private final Matrix3f tempMat3 = new Matrix3f();
 
     private final int instancedShaderOffsetChunkUniform;
     private final int instancedShaderOffsetSubChunkUniform;
@@ -143,12 +135,6 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 0, 0);
         GLStateManager.glEnableVertexAttribArray(0);
 
-        projectionUniform = tryGetUniformLocation2("iris_ProjectionMatrix");
-        projectionInverseUniform = tryGetUniformLocation2("iris_ProjectionMatrixInverse");
-        modelViewUniform = tryGetUniformLocation2("iris_ModelViewMatrix");
-        modelViewInverseUniform = tryGetUniformLocation2("iris_ModelViewMatrixInverse");
-        normalMatrix3fUniform = tryGetUniformLocation2("iris_NormalMatrix");
-
         this.instancedShaderOffsetChunkUniform = this.tryGetUniformLocation2("uOffsetChunk");
         this.instancedShaderOffsetSubChunkUniform = this.tryGetUniformLocation2("uOffsetSubChunk");
         this.instancedShaderCameraChunkPosUniform = this.tryGetUniformLocation2("uCameraPosChunk");
@@ -213,18 +199,6 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         }
     }
 
-    public void setUniform(int index, Matrix3f matrix) {
-        if (index == -1) return;
-
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            FloatBuffer buffer = stack.callocFloat(9);
-            matrix.get(buffer);
-            buffer.rewind();
-
-            GLStateManager.glUniformMatrix3(index, false, buffer);
-        }
-    }
-
     // Override ShaderProgram.bind()
     public void bind(DhApiRenderParam renderParam) {
         GLStateManager.glBindVertexArray(va);
@@ -238,14 +212,8 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         toJOML(tempModel, renderParam.dhModelViewMatrix);
         toJOML(tempProj, renderParam.dhProjectionMatrix);
 
-        setUniform(modelViewUniform, tempModel);
-        setUniform(projectionUniform, tempProj);
         this.setUniform(this.instancedShaderProjectionModelViewMatrixUniform, tempMat4.set(tempProj).mul(tempModel));
-        tempModel.invert();
-        tempProj.invert();
-        setUniform(modelViewInverseUniform, tempModel);
-        setUniform(projectionInverseUniform, tempProj);
-        setUniform(normalMatrix3fUniform, tempModel.transpose3x3(tempMat3));
+        LodRendererEvents.pushDhMatrices(tempProj, tempModel);
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
         DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
@@ -259,6 +227,7 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
     }
 
     public void unbind() {
+        LodRendererEvents.popDhMatrices();
         GLStateManager.glBindVertexArray(0);
         GLStateManager.glUseProgram(0);
         ProgramUniforms.clearActiveUniforms();

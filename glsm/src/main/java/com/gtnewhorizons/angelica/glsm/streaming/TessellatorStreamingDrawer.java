@@ -7,7 +7,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -204,14 +203,8 @@ public class TessellatorStreamingDrawer {
             firstVertex = 0;
         }
 
-        GLStateManager.prepareWideLineEmulation(drawMode);
-        ShaderManager.getInstance().preDraw(flags);
         drawWithQuadConversion(drawMode, firstVertex, vertexCount);
         GLStateManager.glBindVertexArray(0);
-        GLStateManager.glDisableClientState(GL11.GL_VERTEX_ARRAY);
-        GLStateManager.glDisableClientState(GL11.GL_TEXTURE_COORD_ARRAY);
-        GLStateManager.glDisableClientState(GL11.GL_COLOR_ARRAY);
-        GLStateManager.glDisableClientState(GL11.GL_NORMAL_ARRAY);
     }
 
     private static void drawWithQuadConversion(int drawMode, int firstVertex, int vertexCount) {

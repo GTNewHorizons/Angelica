@@ -47,9 +47,7 @@ public enum Mixins implements IMixins {
             , "angelica.bugfixes.MixinRenderGlobal_DestroyBlock"
             , "angelica.bugfixes.MixinRenderMooshroom_MushroomTint"
             , "angelica.bugfixes.MixinRendererLivingEntity_DeferredEntityOverlay"
-            , "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
             , "angelica.bugfixes.MixinRenderWither_ArmorCentering"
-            , "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
             , "angelica.debug.MixinMinecraft_FPSCap"
             , "angelica.ffp.MixinTessellator_CoreProfile"
             , "angelica.glsm.MixinSplashProgressCaching"
@@ -57,6 +55,16 @@ public enum Mixins implements IMixins {
             , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.rendering.MixinRenderGlobal_SelectionBox"
             , "angelica.gui.MixinGuiIngameForge_ModernF3"
+        )
+    ),
+
+    ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.entityOverlayFixes)
+        .addExcludedMod(TargetedMod.CUSTOM_PLAYER_MODELS)
+        .addClientMixins(
+            "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
+            , "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
         )
     ),
 
@@ -117,7 +125,7 @@ public enum Mixins implements IMixins {
                     .setPhase(Phase.EARLY)
                     .addClientMixins("angelica.bugfixes.MixinRenderBlocks_CrackFix")
                     .addExcludedMod(TargetedMod.FALSETWEAKS)
-                    .setApplyIf(() -> AngelicaConfig.fixBlockCrack)),
+                    .setApplyIf(() -> AngelicaConfig.blockCrackFix)),
 
     ANGELICA_FIX_FLUID_RENDERER_CHECKING_BLOCK_AGAIN(
         new MixinBuilder("Fix RenderBlockFluid reading the block type from the world access multiple times")

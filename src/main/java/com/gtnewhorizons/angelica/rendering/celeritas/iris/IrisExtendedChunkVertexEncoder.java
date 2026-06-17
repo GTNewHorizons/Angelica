@@ -7,6 +7,7 @@ import static com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedCh
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Setter;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.coderbot.iris.vertices.NormalHelper;
@@ -55,7 +56,7 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     public void prepareToRenderBlock(BlockRenderContext ctx, Block block, int metadata, short renderType, byte lightValue) {
         this.context = ctx;
         Int2IntMap metaMap = blockMetaMatches != null ? blockMetaMatches.get(block) : null;
-        ctx.blockId = (short) (metaMap != null ? metaMap.get(metadata) : -1);
+        ctx.blockId = (short) (metaMap != null ? BlockMaterialMapping.resolveId(metaMap, metadata) : -1);
         ctx.renderType = renderType;
         ctx.lightValue = lightValue;
     }
@@ -84,7 +85,7 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
 
     private int lookupFluidMeta(Block block, int metadata) {
         final Int2IntMap metaMap = blockMetaMatches.get(block);
-        return metaMap != null ? metaMap.get(metadata) : -1;
+        return metaMap != null ? BlockMaterialMapping.resolveId(metaMap, metadata) : -1;
     }
 
     private static Block liquidCounterpart(Block block) {
