@@ -46,6 +46,8 @@ public class GLSMRedirector {
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String ARBShaderObjects = "org/lwjgl/opengl/ARBShaderObjects";
     private static final String ARBInstancedArrays = "org/lwjgl/opengl/ARBInstancedArrays";
+    private static final String ARBDrawInstanced = "org/lwjgl/opengl/ARBDrawInstanced";
+    private static final String EXTDrawInstanced = "org/lwjgl/opengl/EXTDrawInstanced";
 
     // Redirect VAO related calls from NHLib
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -356,7 +358,8 @@ public class GLSMRedirector {
             .add("glGetFramebufferAttachmentParameteri")
             .add("glBlitFramebuffer");
         final var gl31 = RedirectMap.newMap()
-            .add("glDrawElementsInstanced");
+            .add("glDrawElementsInstanced")
+            .add("glDrawArraysInstanced");
         final var gl32 = RedirectMap.newMap()
             .add("glFramebufferTexture");
         final var gl33 = RedirectMap.newMap()
@@ -458,6 +461,14 @@ public class GLSMRedirector {
         );
         methodRedirects.put(ARBInstancedArrays, RedirectMap.newMap()
             .add("glVertexAttribDivisorARB")
+        );
+        methodRedirects.put(ARBDrawInstanced, RedirectMap.newMap()
+            .add("glDrawArraysInstancedARB", "glDrawArraysInstanced")
+            .add("glDrawElementsInstancedARB", "glDrawElementsInstanced")
+        );
+        methodRedirects.put(EXTDrawInstanced, RedirectMap.newMap()
+            .add("glDrawArraysInstancedEXT", "glDrawArraysInstanced")
+            .add("glDrawElementsInstancedEXT", "glDrawElementsInstanced")
         );
 
         // APPLE
