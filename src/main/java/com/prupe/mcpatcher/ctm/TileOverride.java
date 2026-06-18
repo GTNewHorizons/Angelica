@@ -104,6 +104,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case "sandstone", "top" -> override = new TileOverrideImpl.Top(properties, tileLoader);
             case "repeat", "pattern" -> override = new TileOverrideImpl.Repeat(properties, tileLoader);
             case "ctm_compact", "compact" -> override = new TileOverrideImpl.CTMCompact(properties, tileLoader);
+            case "compact_expanded" -> override = new TileOverrideImpl.CTMCompactExpanded(properties, tileLoader);
             default -> properties.error("unknown method \"%s\"", method);
         }
 

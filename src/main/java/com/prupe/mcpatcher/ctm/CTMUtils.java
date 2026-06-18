@@ -10,6 +10,7 @@ import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.StampedLock;
 
+import com.github.bsideup.jabel.Desugar;
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
@@ -42,6 +43,23 @@ public class CTMUtils {
     private static Overrides overrides = new Overrides();
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
+
+    @Desugar
+    public record CTMCompactContext(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {}
+
+    private static final ThreadLocal<CTMCompactContext> CURRENT_COMPACT = new ThreadLocal<>();
+
+    public static void setCurrentCompact(TileOverrideImpl.CTMCompact compact, RenderBlockState renderBlockState) {
+        CURRENT_COMPACT.set(new CTMCompactContext(compact, renderBlockState.copy()));
+    }
+
+    public static CTMCompactContext getCurrentCompact() {
+        return CURRENT_COMPACT.get();
+    }
+
+    public static void clearCurrentCompact() {
+        CURRENT_COMPACT.remove();
+    }
 
     private static final StampedLock lock = new StampedLock();
 
@@ -220,6 +238,7 @@ public class CTMUtils {
     }
 
     public static void reset() {
+        clearCurrentCompact();
     }
 
     private static boolean checkFace(int face) {

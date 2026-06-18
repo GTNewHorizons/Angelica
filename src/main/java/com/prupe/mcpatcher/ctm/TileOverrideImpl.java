@@ -468,9 +468,54 @@ public class TileOverrideImpl {
         }
     }
 
-    final public static class CTMCompact extends CTM {
+    final public static class CTMCompact extends TileOverride {
+
+        private final CompactConnectingCtmProperties properties;
+        private volatile CompactCtmQuadProcessor processor;
 
         CTMCompact(PropertiesFile propertiesFile, TileLoader tileLoader) {
+            super(propertiesFile, tileLoader);
+            this.properties = new CompactConnectingCtmProperties(propertiesFile);
+        }
+
+        @Override
+        String getMethod() {
+            return "compact";
+        }
+
+        @Override
+        String checkTileMap() {
+            return getNumberOfTiles() == 5 ? null : "requires exactly 5 tiles";
+        }
+
+        @Override
+        boolean requiresFace() {
+            return true;
+        }
+
+        @Override
+        IIcon getTileWorld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
+            return origIcon;
+        }
+
+        @Override
+        IIcon getTileHeld_Impl(RenderBlockState renderBlockState, IIcon origIcon) {
+            return icons.length > 0 ? icons[0] : origIcon;
+        }
+
+        public CompactCtmQuadProcessor getProcessor() {
+            CompactCtmQuadProcessor p = this.processor;
+            if (p == null) {
+                p = new CompactCtmQuadProcessor(icons, properties, this);
+                this.processor = p;
+            }
+            return p;
+        }
+    }
+
+    final public static class CTMCompactExpanded extends CTM {
+
+        CTMCompactExpanded(PropertiesFile propertiesFile, TileLoader tileLoader) {
             super(propertiesFile, tileLoader);
         }
 
@@ -481,7 +526,7 @@ public class TileOverrideImpl {
 
         @Override
         String getMethod() {
-            return "compact";
+            return "compact_expanded";
         }
 
         @Override
@@ -506,7 +551,7 @@ public class TileOverrideImpl {
                 }
             }
             if(compactIcons.size() == 5){
-                CompactCTMUtils.generateTextures(compactIcons.toArray(new BufferedImage[0]),
+                CTMTextureGenerator.generateTextures(compactIcons.toArray(new BufferedImage[0]),
                     this, properties.getResource(), blankResource);
             }
         }
