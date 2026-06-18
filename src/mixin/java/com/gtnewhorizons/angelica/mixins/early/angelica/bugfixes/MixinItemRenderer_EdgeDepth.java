@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.pipeline.ShadowRenderer;
@@ -108,10 +107,6 @@ public class MixinItemRenderer_EdgeDepth {
     @WrapMethod(method = "renderItemIn2D")
     private static void angelica$glintPrepass(Tessellator tess, float minU, float minV, float maxU, float maxV,
                                                int w, int h, float thickness, Operation<Void> original) {
-        // With a shader pack active, bake the legacy vertex-color glint tint into the bound texture
-        // so packs that read glint color only from the texture (e.g. AstraLex) render it.
-        ShaderGlint.onGlintDraw();
-
         if (ShadowRenderer.ACTIVE || !angelica$glintMode || angelica$inPrepass) {
             original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
             return;

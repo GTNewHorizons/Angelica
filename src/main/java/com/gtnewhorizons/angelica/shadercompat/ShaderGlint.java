@@ -1,9 +1,10 @@
 package com.gtnewhorizons.angelica.shadercompat;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.GlintColorHandler;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
@@ -33,45 +34,64 @@ public final class ShaderGlint {
     private static int maskH;
     private static int[] maskLum;
 
-    private static final Int2IntMap colorToTexture = new Int2IntOpenHashMap();
+    private static final Int2IntLinkedOpenHashMap colorToTexture = new Int2IntLinkedOpenHashMap();
     static {
         colorToTexture.defaultReturnValue(0);
     }
 
-    private static boolean glintActive;
-    private static boolean captured;
-    private static float capR, capG, capB, capA;
+    private static final GlintColorHandler COLOR_HANDLER = ShaderGlint::onColorChanged;
+
+    private static boolean injecting;
+    private static boolean swapped;
+
+    private static int prevTexture;
+    private static float prevR, prevG, prevB, prevA;
+
+    private static ByteBuffer tintBuffer;
 
     private ShaderGlint() {}
 
     public static void beginGlint() {
-        glintActive = true;
-        captured = false;
+        if (ShadowRenderer.ACTIVE || !IrisApi.getInstance().isShaderPackInUse()) return;
+
+        swapped = false;
+        injecting = false;
+
+        // Save the texture/color bound before the glint section so endGlint can put them back if we swap
+        prevTexture = GLStateManager.getBoundTextureForServerState(0);
+        final Color4 color = GLStateManager.getColor();
+        prevR = color.getRed();
+        prevG = color.getGreen();
+        prevB = color.getBlue();
+        prevA = color.getAlpha();
+
+        // Observe vertex-color changes for the rest of the glint section
+        GLSMHooks.glintColorHandler = COLOR_HANDLER;
     }
 
     public static void endGlint() {
-        glintActive = false;
-        captured = false;
+        if (GLSMHooks.glintColorHandler != COLOR_HANDLER) return;
+        GLSMHooks.glintColorHandler = null;
+
+        if (swapped) {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);
+            GLStateManager.glColor4f(prevR, prevG, prevB, prevA);
+        }
+        swapped = false;
+        injecting = false;
     }
 
-    public static void onGlintDraw() {
-        if (!glintActive || ShadowRenderer.ACTIVE) return;
-        if (!IrisApi.getInstance().isShaderPackInUse()) return;
+    private static void onColorChanged(float red, float green, float blue, float alpha) {
+        if (injecting) return;
 
-        if (!captured) {
-            final Color4 color = GLStateManager.getColor();
-            capR = color.getRed();
-            capG = color.getGreen();
-            capB = color.getBlue();
-            capA = color.getAlpha();
-            captured = true;
-        }
-
-        final int texture = getTintedTexture(capR, capG, capB);
+        final int texture = getTintedTexture(red, green, blue);
         if (texture <= 0) return;
 
+        injecting = true;
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
-        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, capA);
+        GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, alpha);
+        injecting = false;
+        swapped = true;
     }
 
     private static int getTintedTexture(float r, float g, float b) {
@@ -83,23 +103,21 @@ public final class ShaderGlint {
         final int bi = clamp8(b);
         final int key = (ri << 16) | (gi << 8) | bi;
 
-        final int cached = colorToTexture.get(key);
+        final int cached = colorToTexture.getAndMoveToLast(key);
         if (cached != 0) return cached;
 
         if (colorToTexture.size() >= MAX_CACHE) {
-            for (final int id : colorToTexture.values()) {
-                GLStateManager.glDeleteTextures(id);
-            }
-            colorToTexture.clear();
+            GLStateManager.glDeleteTextures(colorToTexture.remove(colorToTexture.firstIntKey()));
         }
 
         final int texture = uploadTinted(ri / 255.0F, gi / 255.0F, bi / 255.0F);
-        colorToTexture.put(key, texture);
+        colorToTexture.putAndMoveToLast(key, texture);
         return texture;
     }
 
     private static int uploadTinted(float r, float g, float b) {
-        final ByteBuffer pixels = BufferUtils.createByteBuffer(maskW * maskH * 4);
+        final ByteBuffer pixels = tintBuffer;
+        pixels.clear();
         for (final int l : maskLum) {
             pixels.put((byte) Math.round(l * r));
             pixels.put((byte) Math.round(l * g));
@@ -135,6 +153,7 @@ public final class ShaderGlint {
                 final int bb = p & 0xFF;
                 maskLum[i] = (rr + gg + bb) / 3;
             }
+            tintBuffer = BufferUtils.createByteBuffer(maskW * maskH * 4);
             maskLoaded = true;
         } catch (final Exception e) {
             maskFailed = true;

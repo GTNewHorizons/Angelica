@@ -85,21 +85,6 @@ public class MixinRendererLivingEntity {
     }
 
     /**
-     * Bake the glint color into the texture before each armor glint pass. The glint section
-     * re-renders the armor model twice with the grayscale glint mask tinted via the vertex
-     * color; modern packs read the color from the texture instead. See {@link ShaderGlint}.
-     */
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0),
-        slice = @Slice(from = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0, remap = false)),
-        require = 0
-    )
-    private void iris$tintGlint(CallbackInfo ci) {
-        ShaderGlint.onGlintDraw();
-    }
-
-    /**
      * Deactivate GLINT shader after rendering enchantment glint on armor.
      */
     @Inject(

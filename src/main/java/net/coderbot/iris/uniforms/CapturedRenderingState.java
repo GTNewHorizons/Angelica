@@ -12,9 +12,9 @@ public class CapturedRenderingState {
 	@Setter
     @Getter
     private float tickDelta;
-	@Setter
 	@Getter
 	private int textureReloadCount;
+	private Runnable textureReloadListener = null;
 	@Getter
     private int currentRenderedBlockEntity;
 	private Runnable blockEntityIdListener = null;
@@ -32,6 +32,18 @@ public class CapturedRenderingState {
     private Runnable entityColorListener = null;
 
 	private CapturedRenderingState() {
+	}
+
+	public void incrementTextureReloadCount() {
+		this.textureReloadCount++;
+
+		if (this.textureReloadListener != null) {
+			this.textureReloadListener.run();
+		}
+	}
+
+	public void resetTextureReloadCount() {
+		this.textureReloadCount = 0;
 	}
 
     public void setCurrentBlockEntity(int entity) {
@@ -81,6 +93,10 @@ public class CapturedRenderingState {
 
 	public ValueUpdateNotifier getItemIdNotifier() {
 		return listener -> this.itemIdListener = listener;
+	}
+
+	public ValueUpdateNotifier getTextureReloadNotifier() {
+		return listener -> this.textureReloadListener = listener;
 	}
 
     public ValueUpdateNotifier getEntityColorNotifier() { return listener -> this.entityColorListener = listener; }

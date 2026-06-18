@@ -100,7 +100,7 @@ public final class CommonUniforms {
 			StateUpdateNotifiers.bindTextureNotifier);
 
 		uniforms.uniform1i("textureReloadCount", CapturedRenderingState.INSTANCE::getTextureReloadCount,
-			StateUpdateNotifiers.bindTextureNotifier);
+			CapturedRenderingState.INSTANCE.getTextureReloadNotifier());
 
 		uniforms.uniform4i("blendFunc", () -> {
             if(GLStateManager.getBlendMode().isEnabled()) {

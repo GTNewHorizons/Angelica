@@ -38,6 +38,9 @@ public class IrisExclusiveUniforms {
 	private static final Vector4f lightningBoltPositionCache = new Vector4f();
 	private static final Vector4f ZERO_VECTOR_4f = new Vector4f(0, 0, 0, 0);
 
+	private static int cachedSelectedFrame = -1;
+	private static int cachedSelectedBlockId;
+
 	public static void addIrisExclusiveUniforms(UniformHolder uniforms) {
 		WorldInfoUniforms.addWorldInfoUniforms(uniforms);
 
@@ -254,36 +257,59 @@ public class IrisExclusiveUniforms {
 		return 63;
 	}
 
-	private static int getCurrentSelectedBlockId() {
-		final Minecraft mc = Minecraft.getMinecraft();
-		final MovingObjectPosition hit = mc.objectMouseOver;
-		if (mc.theWorld == null || hit == null || hit.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK) {
-			return 0;
+	private static void updateSelectedBlock() {
+		final int frame = SystemTimeUniforms.COUNTER.getAsInt();
+		if (frame == cachedSelectedFrame) {
+			return;
 		}
-		final Block block = mc.theWorld.getBlock(hit.blockX, hit.blockY, hit.blockZ);
-		if (block == null || block.isAir(mc.theWorld, hit.blockX, hit.blockY, hit.blockZ)) {
-			return 0;
-		}
-		final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-		if (blockMetaMatches == null) return 0;
-		final Int2IntMap metaMap = blockMetaMatches.get(block);
-		if (metaMap == null) return 0;
-		final int meta = mc.theWorld.getBlockMetadata(hit.blockX, hit.blockY, hit.blockZ);
-		final int id = BlockMaterialMapping.resolveId(metaMap, meta);
-		return Math.max(id, 0);
-	}
+		cachedSelectedFrame = frame;
 
-	private static Vector3f getCurrentSelectedBlockPos() {
 		final Minecraft mc = Minecraft.getMinecraft();
 		final MovingObjectPosition hit = mc.objectMouseOver;
 		if (mc.theWorld == null || hit == null || hit.typeOfHit != MovingObjectPosition.MovingObjectType.BLOCK) {
-			return selectedBlockPosCache.set(-256.0f, -256.0f, -256.0f);
+			cachedSelectedBlockId = 0;
+			selectedBlockPosCache.set(-256.0f, -256.0f, -256.0f);
+			return;
 		}
+
 		final Vector3dc cam = CameraUniforms.getUnshiftedCameraPosition();
-		return selectedBlockPosCache.set(
+		selectedBlockPosCache.set(
 			(float) ((hit.blockX + 0.5) - cam.x()),
 			(float) ((hit.blockY + 0.5) - cam.y()),
 			(float) ((hit.blockZ + 0.5) - cam.z()));
+
+		final Block block = mc.theWorld.getBlock(hit.blockX, hit.blockY, hit.blockZ);
+		if (block == null || block.isAir(mc.theWorld, hit.blockX, hit.blockY, hit.blockZ)) {
+			cachedSelectedBlockId = 0;
+			return;
+		}
+		final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+		if (blockMetaMatches == null) {
+			cachedSelectedBlockId = 0;
+			return;
+		}
+		final Int2IntMap metaMap = blockMetaMatches.get(block);
+		if (metaMap == null) {
+			cachedSelectedBlockId = 0;
+			return;
+		}
+		final int meta = mc.theWorld.getBlockMetadata(hit.blockX, hit.blockY, hit.blockZ);
+		cachedSelectedBlockId = Math.max(BlockMaterialMapping.resolveId(metaMap, meta), 0);
+	}
+
+	private static int getCurrentSelectedBlockId() {
+		updateSelectedBlock();
+		return cachedSelectedBlockId;
+	}
+
+	private static Vector3f getCurrentSelectedBlockPos() {
+		updateSelectedBlock();
+		return selectedBlockPosCache;
+	}
+
+	private static int worldHeight() {
+		final WorldClient level = Minecraft.getMinecraft().theWorld;
+		return (level != null && level.provider != null) ? level.provider.getHeight() : 256;
 	}
 
 	public static class WorldInfoUniforms {
@@ -297,22 +323,8 @@ public class IrisExclusiveUniforms {
                     return 192.0;
                 }
             });
-			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "heightLimit", () -> {
-                final WorldClient level = Minecraft.getMinecraft().theWorld;
-                if (level != null && level.provider != null) {
-                    return level.provider.getHeight();
-				} else {
-					return 256;
-				}
-			});
-			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "logicalHeightLimit", () -> {
-                final WorldClient level = Minecraft.getMinecraft().theWorld;
-                if (level != null && level.provider != null) {
-                    return level.provider.getHeight();
-				} else {
-					return 256;
-				}
-			});
+			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "heightLimit", IrisExclusiveUniforms::worldHeight);
+			uniforms.uniform1i(UniformUpdateFrequency.PER_FRAME, "logicalHeightLimit", IrisExclusiveUniforms::worldHeight);
 			uniforms.uniform1b(UniformUpdateFrequency.PER_FRAME, "hasCeiling", () -> {
                 final WorldClient level = Minecraft.getMinecraft().theWorld;
 				if (level != null && level.provider != null) {

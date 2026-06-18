@@ -36,6 +36,7 @@ import net.coderbot.iris.shaderpack.option.Profile;
 import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -761,6 +762,9 @@ public class Iris {
     public static void reload() throws IOException {
         // allows shaderpacks to be changed at runtime
         irisConfig.initialize();
+
+        // Reset the texture reload counter
+        CapturedRenderingState.INSTANCE.resetTextureReloadCount();
 
         // Destroy all allocated resources
         destroyEverything();

@@ -19,7 +19,19 @@ public final class SystemTimeUniforms {
 	public static final Timer TIMER = new Timer();
 	public static final FrameCounter COUNTER = new FrameCounter();
 
+	private static LocalDateTime cachedDateTime = LocalDateTime.now();
+	private static long cachedDateTimeAtMs = 0L;
+
 	private SystemTimeUniforms() {
+	}
+
+	private static LocalDateTime dateTimeSnapshot() {
+		final long now = System.currentTimeMillis();
+		if (now - cachedDateTimeAtMs >= 50L) {
+			cachedDateTime = LocalDateTime.now();
+			cachedDateTimeAtMs = now;
+		}
+		return cachedDateTime;
 	}
 
 	/**
@@ -36,15 +48,15 @@ public final class SystemTimeUniforms {
 			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTime", TIMER::getLastFrameTime)
 			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTimeCounter", TIMER::getFrameTimeCounter)
 			.uniform3i(UniformUpdateFrequency.PER_TICK, "currentDate", () -> {
-				final LocalDateTime dt = LocalDateTime.now();
+				final LocalDateTime dt = dateTimeSnapshot();
 				return date.set(dt.getYear(), dt.getMonthValue(), dt.getDayOfMonth());
 			})
 			.uniform3i(UniformUpdateFrequency.PER_TICK, "currentTime", () -> {
-				final LocalDateTime dt = LocalDateTime.now();
+				final LocalDateTime dt = dateTimeSnapshot();
 				return time.set(dt.getHour(), dt.getMinute(), dt.getSecond());
 			})
 			.uniform2i(UniformUpdateFrequency.PER_TICK, "currentYearTime", () -> {
-				final LocalDateTime dt = LocalDateTime.now();
+				final LocalDateTime dt = dateTimeSnapshot();
 				final int elapsed = ((dt.getDayOfYear() - 1) * 86400) + (dt.getHour() * 3600) + (dt.getMinute() * 60) + dt.getSecond();
 				return yearTime.set(elapsed, (dt.toLocalDate().lengthOfYear() * 86400) - elapsed);
 			});

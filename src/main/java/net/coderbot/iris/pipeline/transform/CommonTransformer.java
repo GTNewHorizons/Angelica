@@ -105,10 +105,14 @@ public class CommonTransformer {
 		if (root.containsCall("textureLodOffset")) {
 			root.injectFunction("vec4 iris_textureLodOffset(sampler2D iris_tlo_s, vec2 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, iris_tlo_c + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_l); }");
 			root.injectFunction("float iris_textureLodOffset(sampler2DShadow iris_tlo_s, vec3 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, vec3(iris_tlo_c.xy + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_c.z), iris_tlo_l); }");
+			root.injectFunction("vec4 iris_textureLodOffset(sampler3D iris_tlo_s, vec3 iris_tlo_c, float iris_tlo_l, ivec3 iris_tlo_o) { return textureLod(iris_tlo_s, iris_tlo_c + vec3(iris_tlo_o) / vec3(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_l); }");
+			root.injectFunction("vec4 iris_textureLodOffset(sampler2DArray iris_tlo_s, vec3 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, vec3(iris_tlo_c.xy + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l)).xy), iris_tlo_c.z), iris_tlo_l); }");
+			root.injectFunction("ivec4 iris_textureLodOffset(isampler2D iris_tlo_s, vec2 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, iris_tlo_c + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_l); }");
+			root.injectFunction("uvec4 iris_textureLodOffset(usampler2D iris_tlo_s, vec2 iris_tlo_c, float iris_tlo_l, ivec2 iris_tlo_o) { return textureLod(iris_tlo_s, iris_tlo_c + vec2(iris_tlo_o) / vec2(textureSize(iris_tlo_s, int(iris_tlo_l))), iris_tlo_l); }");
 			root.renameFunctionCall("textureLodOffset", "iris_textureLodOffset");
 		}
 
-		if (parameters.patch == Patch.ATTRIBUTES && parameters.type == ShaderType.VERTEX) {
+		if (parameters.type == ShaderType.VERTEX) {
 			root.mutateTree(tree -> {
 				if (tree.children != null) {
 					tree.children.removeIf(child ->
@@ -117,7 +121,9 @@ public class CommonTransformer {
 							&& child.getText().contains("gl_PerVertex"));
 				}
 			});
+		}
 
+		if (parameters.patch == Patch.ATTRIBUTES && parameters.type == ShaderType.VERTEX) {
 			root.injectVariable("uniform bool angelica_ClipPlanesEnabled;");
 			root.injectVariable("uniform vec4 angelica_ClipPlane[8];");
 			root.appendMain(
