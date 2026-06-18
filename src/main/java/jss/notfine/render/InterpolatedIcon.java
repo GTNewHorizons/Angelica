@@ -29,7 +29,7 @@ public class InterpolatedIcon extends TextureAtlasSprite {
 		}
 	}
 
-	private void updateAnimationInterpolated() throws IllegalArgumentException, IllegalAccessException {
+	protected void updateAnimationInterpolated() throws IllegalArgumentException, IllegalAccessException {
 
 		double d0 = 1.0D - tickCounter / (double) animationMetadata.getFrameTimeSingle(frameCounter);
 		int i = animationMetadata.getFrameIndex(frameCounter);
