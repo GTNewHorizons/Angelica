@@ -30,6 +30,7 @@ public class GLSMCoreExtension implements BeforeAllCallback, AfterAllCallback {
         GLStateManager.setRunningSplash(false);
         GLStateManager.markSplashComplete();
         GLStateManager.BYPASS_CACHE = false;
+        QuadConverter.invalidateEBO();
     }
 
     @Override

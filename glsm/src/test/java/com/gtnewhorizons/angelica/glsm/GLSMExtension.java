@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -75,6 +73,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete();
             GLStateManager.BYPASS_CACHE = false;
+            QuadConverter.invalidateEBO();
             context.getRoot().getStore(GLOBAL).put("GLSMExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
             glRenderer = GL11.glGetString(GL11.GL_RENDERER);

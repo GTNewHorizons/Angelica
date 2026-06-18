@@ -236,6 +236,13 @@ public final class QuadConverter {
         uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_INT, 4);
     }
 
+    static void invalidateEBO() {
+        eboId = 0;
+        maxQuads = 0;
+        scratchEboId = 0;
+        scratchEboCapacity = 0;
+    }
+
     /**
      * Clean up the shared EBO.
      */
