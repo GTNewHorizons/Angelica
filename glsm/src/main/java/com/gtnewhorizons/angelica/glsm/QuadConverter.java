@@ -83,6 +83,14 @@ public final class QuadConverter {
      * @param vertexCount number of vertices (must be multiple of 4)
      */
     public static void drawQuadsAsTriangles(int first, int vertexCount) {
+        drawSharedQuadEbo(first, vertexCount, 1, false);
+    }
+
+    public static void drawQuadsAsTrianglesInstanced(int first, int vertexCount, int primcount) {
+        drawSharedQuadEbo(first, vertexCount, primcount, true);
+    }
+
+    private static void drawSharedQuadEbo(int first, int vertexCount, int primcount, boolean instanced) {
         GLStateManager.preDraw();
         assert first % 4 == 0 : "QuadConverter: first (" + first + ") must be a multiple of 4";
         assert vertexCount % 4 == 0 : "QuadConverter: vertexCount (" + vertexCount + ") must be a multiple of 4";
@@ -92,7 +100,11 @@ public final class QuadConverter {
         RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
         // Index offset: first vertex / 4 quads * 6 indices * 4 bytes per int
         final long indexOffset = (long) (first / 4) * 6 * 4;
-        RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
+        if (instanced) {
+            RENDER_BACKEND.drawElementsInstanced(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset, primcount);
+        } else {
+            RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
+        }
         RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
     }
 
@@ -107,6 +119,10 @@ public final class QuadConverter {
      * @param bytesPerIndex  bytes per index element
      */
     private static void uploadAndDraw(ByteBuffer dst, int triIndexCount, int indexType, int bytesPerIndex) {
+        uploadAndDraw(dst, triIndexCount, indexType, bytesPerIndex, 1, false);
+    }
+
+    private static void uploadAndDraw(ByteBuffer dst, int triIndexCount, int indexType, int bytesPerIndex, int primcount, boolean instanced) {
         GLStateManager.preDraw();
         final int needed = triIndexCount * bytesPerIndex;
         final int prevEbo = GLStateManager.getBoundEBO();
@@ -126,7 +142,11 @@ public final class QuadConverter {
         }
         RENDER_BACKEND.bufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, 0, dst);
 
-        RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L);
+        if (instanced) {
+            RENDER_BACKEND.drawElementsInstanced(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L, primcount);
+        } else {
+            RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L);
+        }
 
         RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
         memFree(dst);
@@ -141,6 +161,14 @@ public final class QuadConverter {
      * @param offset     byte offset into the currently bound EBO
      */
     public static void drawQuadElementsAsTriangles(int indexCount, int type, long offset) {
+        drawQuadElementsFromEbo(indexCount, type, offset, 1, false);
+    }
+
+    public static void drawQuadElementsAsTrianglesInstanced(int indexCount, int type, long offset, int primcount) {
+        drawQuadElementsFromEbo(indexCount, type, offset, primcount, true);
+    }
+
+    private static void drawQuadElementsFromEbo(int indexCount, int type, long offset, int primcount, boolean instanced) {
         if (indexCount == 0) return;
         assert indexCount % 4 == 0 : "QuadConverter: indexCount must be multiple of 4";
         final int quadCount = indexCount / 4;
@@ -155,7 +183,7 @@ public final class QuadConverter {
         triangulateQuads(memAddress0(src), type, memAddress0(dst), GL11.GL_UNSIGNED_INT, quadCount);
 
         memFree(src);
-        uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_INT, 4);
+        uploadAndDraw(dst, triIndexCount, GL11.GL_UNSIGNED_INT, 4, primcount, instanced);
     }
 
     /**

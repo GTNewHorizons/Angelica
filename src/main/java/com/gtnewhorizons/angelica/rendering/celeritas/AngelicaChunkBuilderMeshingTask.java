@@ -151,7 +151,8 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
                                 final boolean isGlobal;
-                                if (TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent(tileEntity)) {
+                                final byte boundsClass = TileEntityRenderBoundsRegistry.classify(tileEntity);
+                                if (boundsClass == TileEntityRenderBoundsRegistry.INFINITE || boundsClass == TileEntityRenderBoundsRegistry.DYNAMIC) {
                                     isGlobal = true;
                                 } else {
                                     AxisAlignedBB aabb;

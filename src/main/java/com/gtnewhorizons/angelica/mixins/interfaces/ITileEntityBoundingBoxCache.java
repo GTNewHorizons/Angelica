@@ -5,5 +5,5 @@ import net.minecraft.util.AxisAlignedBB;
 public interface ITileEntityBoundingBoxCache {
     AxisAlignedBB angelica$getCachedRenderBoundingBox();
 
-    boolean angelica$isInfiniteExtent();
+    byte angelica$boundsClass();
 }

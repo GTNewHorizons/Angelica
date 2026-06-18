@@ -311,6 +311,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void drawArraysInstanced(int mode, int first, int count, int primcount) {
+        GL31.glDrawArraysInstanced(mode, first, count, primcount);
+    }
+
+    @Override
+    public void provokingVertex(int provokeMode) {
+        GL32.glProvokingVertex(provokeMode);
+    }
+
+    @Override
     public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
         org.lwjgl.opengl.GL43.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }

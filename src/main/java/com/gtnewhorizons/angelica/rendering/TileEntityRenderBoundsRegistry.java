@@ -4,15 +4,21 @@ import it.unimi.dsi.fastutil.objects.Reference2ByteOpenHashMap;
 import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.AxisAlignedBB;
 
+import java.util.Set;
+import java.util.concurrent.ConcurrentHashMap;
+
 /**
- * Registry for tracking which TileEntity classes always return INFINITE_EXTENT_AABB.
+ * Registry for tracking which TileEntity classes always return INFINITE_EXTENT_AABB or are known to change at runtime
  */
 public final class TileEntityRenderBoundsRegistry {
     private static final byte UNKNOWN = 0;
-    private static final byte FINITE = 1;
-    private static final byte INFINITE = 2;
+    public static final byte STATIC = 1;
+    public static final byte INFINITE = 2;
+    public static final byte DYNAMIC = 3;
 
     private static final Reference2ByteOpenHashMap<Class<? extends TileEntity>> classRegistry = new Reference2ByteOpenHashMap<>();
+
+    private static final Set<String> dynamicClassNames = ConcurrentHashMap.newKeySet();
 
     static {
         classRegistry.defaultReturnValue(UNKNOWN);
@@ -20,32 +26,38 @@ public final class TileEntityRenderBoundsRegistry {
 
     private TileEntityRenderBoundsRegistry() {}
 
+    public static void registerDynamicClass(String className) {
+        if (className != null && !className.isEmpty()) dynamicClassNames.add(className);
+    }
+
     public static boolean isInfiniteExtentsBox(AxisAlignedBB box) {
         return box == null || Double.isInfinite(box.minX) || Double.isInfinite(box.minY) || Double.isInfinite(box.minZ) || Double.isInfinite(box.maxX) || Double.isInfinite(box.maxY) || Double.isInfinite(box.maxZ);
     }
 
-    public static boolean isAlwaysInfiniteExtent(TileEntity te) {
+    public static byte classify(TileEntity te) {
         final Class<? extends TileEntity> clazz = te.getClass();
         synchronized (classRegistry) {
-            final byte result = classRegistry.getByte(clazz);
-            if (result != UNKNOWN) return result == INFINITE;
+            final byte cached = classRegistry.getByte(clazz);
+            if (cached != UNKNOWN) return cached;
         }
-        return probeAndCache(te, clazz);
-    }
 
-    private static boolean probeAndCache(TileEntity te, Class<? extends TileEntity> clazz) {
-        boolean isInfinite;
-        try {
-            final AxisAlignedBB aabb = te.getRenderBoundingBox();
-            isInfinite = isInfiniteExtentsBox(aabb);
-        } catch (Throwable t) {
-            isInfinite = true;
+        final byte result;
+        if (dynamicClassNames.contains(clazz.getName())) {
+            result = DYNAMIC;
+        } else {
+            boolean isInfinite;
+            try {
+                isInfinite = isInfiniteExtentsBox(te.getRenderBoundingBox());
+            } catch (Throwable t) {
+                isInfinite = true;
+            }
+            result = isInfinite ? INFINITE : STATIC;
         }
 
         synchronized (classRegistry) {
-            classRegistry.put(clazz, isInfinite ? INFINITE : FINITE);
+            classRegistry.put(clazz, result);
         }
-        return isInfinite;
+        return result;
     }
 
     public static void clear() {

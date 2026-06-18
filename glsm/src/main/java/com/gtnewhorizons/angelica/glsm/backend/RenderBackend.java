@@ -87,6 +87,8 @@ public abstract class RenderBackend {
     public abstract void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride);
     public abstract void copyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size);
     public abstract void drawElementsInstanced(int mode, int count, int type, long indices, int primcount);
+    public abstract void drawArraysInstanced(int mode, int first, int count, int primcount);
+    public void provokingVertex(int provokeMode) {}
     public abstract void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex);
     public abstract void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex);
     public abstract void drawBuffer(int mode);
