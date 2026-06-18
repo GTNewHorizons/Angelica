@@ -638,6 +638,9 @@ public class GLStateManager {
         RENDER_BACKEND.bindVertexArray(defaultVAO);
         boundVAO = defaultVAO;
         VAOManager.init(defaultVAO);
+        if (defaultVAO != 0) {
+            RENDER_BACKEND.provokingVertex(GL32.GL_LAST_VERTEX_CONVENTION);
+        }
         if (initCallback != null) {
             initCallback.run();
         }
@@ -2237,6 +2240,10 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(indices.remaining(), GL11.GL_UNSIGNED_BYTE, indices);
+            return;
+        }
         preDraw(mode);
         RENDER_BACKEND.drawElements(mode, indices);
     }
@@ -2350,8 +2357,27 @@ public class GLStateManager {
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTrianglesInstanced(count, type, indices, primcount);
+            return;
+        }
         preDraw(mode);
         RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount);
+    }
+
+    public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadsAsTrianglesInstanced(first, count, primcount);
+        } else if (mode == GL11.GL_QUAD_STRIP) {
+            preDraw();
+            RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_STRIP, first, count & ~1, primcount);
+        } else if (mode == GL11.GL_POLYGON) {
+            preDraw();
+            RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_FAN, first, count, primcount);
+        } else {
+            preDraw(mode);
+            RENDER_BACKEND.drawArraysInstanced(mode, first, count, primcount);
+        }
     }
 
     private static void prepareClientArrays() {
