@@ -48,7 +48,7 @@ public class CTMTextureGenerator {
         expanded[25] = generate(cVert, cNone, cVert, cNone);
         expanded[26] = cNone;
         expanded[27] = generate(cNone, cVert, cNone, cVert);
-        expanded[28] = generate(cVert, cNone, cVert, cNone);
+        expanded[28] = generate(cVert, cCorn, cVert, cNone);
         expanded[29] = generate(cHori, cHori, cNone, cCorn);
         expanded[30] = generate(cVert, cNone, cVert, cCorn);
         expanded[31] = generate(cHori, cHori, cCorn, cNone);

@@ -532,11 +532,11 @@ public class TileOverrideImpl {
         @Override
         protected void loadOverrideIcons(int from, int to, ResourceLocation blankResource) {
             List<BufferedImage> compactIcons = new ArrayList<>();
-            if(to != 0){
-                properties.error("compact ctm requires exactly 5 icons, got range %d - %d", to, from);
+            if(from != 0){
+                properties.error("expanded compact CTM requires range to start at 0, starts at %d", from);
             }
-            if(to - from != 5){
-                properties.error("compact ctm requires exactly 5 icons, got range %d - %d", to, from);
+            if(to - from + 1 != 5){
+                properties.error("expanded compact CTM requires exactly 5 icons, got range %d - %d", from, to);
             }
             for (int i = from; i <= to; i++) {
                 ResourceLocation resource = TileLoader
@@ -546,7 +546,7 @@ public class TileOverrideImpl {
                         renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS));
                 } else {
                     // Promote from warning to error for compact CTM
-                    properties.error("could not find image %s, required for compact CTM", resource);
+                    properties.error("could not find image %s, required for expanded compact CTM", resource);
                     tileNames.add(null);
                 }
             }
