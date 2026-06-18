@@ -150,6 +150,23 @@ class FFPCombineShaderTest {
                 + "\n\n--- Fragment Shader ---\n" + fragSource);
         }
     }
+    @Test
+    void testXaeroMultiUnitSharesUnit0Coordinates() {
+        setupXaeroState();
+
+        FragmentKey fk = FragmentKey.fromState();
+        VertexKey vk = VertexKey.fromState(true, false, true, false, fk.enabledUnitMask());
+        String vertSource = VertexShaderGenerator.generate(vk);
+
+        assertTrue(vertSource.contains("v_TexCoord2 = v_TexCoord0;"),
+            "Unit 2 should share unit 0's real per-vertex coordinate:\n" + vertSource);
+        assertTrue(vertSource.contains("v_TexCoord3 = v_TexCoord0;"),
+            "Unit 3 should share unit 0's real per-vertex coordinate:\n" + vertSource);
+        assertFalse(vertSource.contains("u_CurrentTexCoord2"),
+            "Unit 2 has no per-vertex source yet, so it must not fall back to a single shared value:\n" + vertSource);
+        assertFalse(vertSource.contains("u_CurrentTexCoord3"),
+            "Unit 3 has no per-vertex source yet, so it must not fall back to a single shared value:\n" + vertSource);
+    }
 
     static Stream<Arguments> allCombineFunctions() {
         return Stream.of(

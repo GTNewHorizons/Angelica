@@ -363,7 +363,7 @@ public final class VertexShaderGenerator {
 
         for (int i = 2; i < VertexKey.MAX_UNITS; i++) {
             if (!key.unitTexCoordEnabled(i)) continue;
-            final String src = "u_CurrentTexCoord" + i;
+            final String src = key.unitTexCoordEnabled(0) ? "v_TexCoord0" : "u_CurrentTexCoord" + i;
             if (key.unitTexMatEnabled(i)) {
                 sb.append("  v_TexCoord").append(i).append(" = u_TextureMatrix").append(i).append(" * ").append(src).append(";\n");
             } else {
