@@ -867,6 +867,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void uniform2(int location, FloatBuffer value) {
+        GL20C.glUniform2fv(location, value);
+    }
+
+    @Override
     public void uniform3(int location, FloatBuffer value) {
         GL20C.glUniform3fv(location, value);
     }
@@ -874,6 +879,26 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void uniform4(int location, FloatBuffer value) {
         GL20C.glUniform4fv(location, value);
+    }
+
+    @Override
+    public void uniform1iv(int location, IntBuffer value) {
+        GL20C.glUniform1iv(location, value);
+    }
+
+    @Override
+    public void uniform2iv(int location, IntBuffer value) {
+        GL20C.glUniform2iv(location, value);
+    }
+
+    @Override
+    public void uniform3iv(int location, IntBuffer value) {
+        GL20C.glUniform3iv(location, value);
+    }
+
+    @Override
+    public void uniform4iv(int location, IntBuffer value) {
+        GL20C.glUniform4iv(location, value);
     }
 
     @Override

@@ -6030,15 +6030,15 @@ public class GLStateManager {
     }
 
     public static void glUniform1(int location, IntBuffer values) {
-        if (values.remaining() >= 1) RENDER_BACKEND.uniform1i(location, values.get(values.position()));
+        RENDER_BACKEND.uniform1iv(location, values);
     }
 
     public static void glUniform2(int location, FloatBuffer values) {
-        if (values.remaining() >= 2) RENDER_BACKEND.uniform2f(location, values.get(values.position()), values.get(values.position() + 1));
+        RENDER_BACKEND.uniform2(location, values);
     }
 
     public static void glUniform2(int location, IntBuffer values) {
-        if (values.remaining() >= 2) RENDER_BACKEND.uniform2i(location, values.get(values.position()), values.get(values.position() + 1));
+        RENDER_BACKEND.uniform2iv(location, values);
     }
 
     public static void glUniform3(int location, FloatBuffer values) {
@@ -6046,7 +6046,7 @@ public class GLStateManager {
     }
 
     public static void glUniform3(int location, IntBuffer values) {
-        if (values.remaining() >= 3) RENDER_BACKEND.uniform3i(location, values.get(values.position()), values.get(values.position() + 1), values.get(values.position() + 2));
+        RENDER_BACKEND.uniform3iv(location, values);
     }
 
     public static void glUniform4(int location, FloatBuffer values) {
@@ -6054,7 +6054,7 @@ public class GLStateManager {
     }
 
     public static void glUniform4(int location, IntBuffer values) {
-        if (values.remaining() >= 4) RENDER_BACKEND.uniform4i(location, values.get(values.position()), values.get(values.position() + 1), values.get(values.position() + 2), values.get(values.position() + 3));
+        RENDER_BACKEND.uniform4iv(location, values);
     }
 
     public static void glUniformMatrix2(int location, boolean transpose, FloatBuffer matrices) {
