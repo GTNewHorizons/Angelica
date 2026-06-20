@@ -201,8 +201,13 @@ public abstract class RenderBackend {
     public abstract void uniform3i(int location, int v0, int v1, int v2);
     public abstract void uniform4f(int location, float v0, float v1, float v2, float v3);
     public abstract void uniform4i(int location, int v0, int v1, int v2, int v3);
+    public abstract void uniform2(int location, FloatBuffer value);
     public abstract void uniform3(int location, FloatBuffer value);
     public abstract void uniform4(int location, FloatBuffer value);
+    public abstract void uniform1iv(int location, IntBuffer value);
+    public abstract void uniform2iv(int location, IntBuffer value);
+    public abstract void uniform3iv(int location, IntBuffer value);
+    public abstract void uniform4iv(int location, IntBuffer value);
     public abstract void uniformMatrix3(int location, boolean transpose, FloatBuffer value);
     public abstract void uniformMatrix4(int location, boolean transpose, FloatBuffer value);
     public void uniformMatrix2(int location, boolean transpose, FloatBuffer matrices) {}
