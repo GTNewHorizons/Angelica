@@ -162,10 +162,10 @@ class FFPCombineShaderTest {
             "Unit 2 should share unit 0's real per-vertex coordinate:\n" + vertSource);
         assertTrue(vertSource.contains("v_TexCoord3 = v_TexCoord0;"),
             "Unit 3 should share unit 0's real per-vertex coordinate:\n" + vertSource);
-        assertFalse(vertSource.contains("u_CurrentTexCoord2"),
-            "Unit 2 has no per-vertex source yet, so it must not fall back to a single shared value:\n" + vertSource);
-        assertFalse(vertSource.contains("u_CurrentTexCoord3"),
-            "Unit 3 has no per-vertex source yet, so it must not fall back to a single shared value:\n" + vertSource);
+        assertFalse(vertSource.contains("uniform vec4 u_CurrentTexCoord2"),
+            "Unit 2 uniform must not be declared when v_TexCoord0 is used instead:\n" + vertSource);
+        assertFalse(vertSource.contains("uniform vec4 u_CurrentTexCoord3"),
+            "Unit 3 uniform must not be declared when v_TexCoord0 is used instead:\n" + vertSource);
     }
 
     static Stream<Arguments> allCombineFunctions() {

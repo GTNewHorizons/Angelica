@@ -106,8 +106,10 @@ public final class VertexShaderGenerator {
         if (key.unitTexCoordEnabled(0) && !key.hasVertexTexCoord()) {
             sb.append("uniform vec4 u_CurrentTexCoord0;\n");
         }
-        if (key.unitTexCoordEnabled(2)) sb.append("uniform vec4 u_CurrentTexCoord2;\n");
-        if (key.unitTexCoordEnabled(3)) sb.append("uniform vec4 u_CurrentTexCoord3;\n");
+        final boolean unit2UsesUniform = key.unitTexCoordEnabled(2) && !key.unitTexCoordEnabled(0);
+        final boolean unit3UsesUniform = key.unitTexCoordEnabled(3) && !key.unitTexCoordEnabled(0);
+        if (unit2UsesUniform) sb.append("uniform vec4 u_CurrentTexCoord2;\n");
+        if (unit3UsesUniform) sb.append("uniform vec4 u_CurrentTexCoord3;\n");
 
         if (key.lightmapEnabled() && !key.hasVertexLightmap()) {
             sb.append("uniform vec2 u_CurrentLightmapCoord;\n");
