@@ -49,6 +49,7 @@ public final class VertexKey {
     private static final int BIT_WIDE_LINE           = 36;
     // Per-unit texmat enable: bits 37-40 (unit 0..3). Unit 1 is the lightmap matrix.
     private static final int BIT_UNIT_TEXMAT_BASE    = 37;
+    private static final int BIT_UNIT23_UV_FROM_UNIT0 = 41;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -85,6 +86,7 @@ public final class VertexKey {
     public boolean hasVertexNormal()       { return bit(BIT_HAS_VERTEX_NORMAL); }
     public boolean hasVertexTexCoord()     { return bit(BIT_HAS_VERTEX_TEX); }
     public boolean hasVertexLightmap()    { return bit(BIT_HAS_VERTEX_LIGHTMAP); }
+    public boolean unit23UvFromUnit0()     { return bit(BIT_UNIT23_UV_FROM_UNIT0); }
     /** Color material mode (CM_AMBIENT, CM_DIFFUSE, CM_SPECULAR, CM_EMISSION, CM_AMBIENT_AND_DIFFUSE). Only meaningful when colorMaterialEnabled(). */
     public int colorMaterialMode()        { return (int)((packed >> BIT_COLOR_MAT_MODE) & 0x7); }
 
@@ -212,6 +214,10 @@ public final class VertexKey {
         if (hasNormal) bits |= (1L << BIT_HAS_VERTEX_NORMAL);
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
+
+        if (GLStateManager.consumeUnit23TexCoordSetDuringDraw() && hasTexCoord) {
+            bits |= (1L << BIT_UNIT23_UV_FROM_UNIT0);
+        }
 
         if (GLStateManager.anyClipPlaneEnabled()) {
             bits |= (1L << BIT_CLIP_PLANES);
