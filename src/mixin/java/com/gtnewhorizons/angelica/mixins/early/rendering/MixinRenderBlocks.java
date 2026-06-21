@@ -169,7 +169,7 @@ public abstract class MixinRenderBlocks {
     }
 
     @ModifyExpressionValue(method = { "renderStandardBlockWithColorMultiplier" },
-                    at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/renderer/RenderBlocks;renderAllFaces:Z"))
+        at = @At(value = "FIELD", opcode = Opcodes.GETFIELD, target = "Lnet/minecraft/client/renderer/RenderBlocks;renderAllFaces:Z"))
     private boolean applyAOBrightness(boolean original, @Local(ordinal = 0) Tessellator tessellator) {
         ((StateAwareTessellator)tessellator).angelica$setAppliedAo(this.applyingCeleritasAO);
         return original;

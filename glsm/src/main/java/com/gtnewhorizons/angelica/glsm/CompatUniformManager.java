@@ -59,7 +59,10 @@ public class CompatUniformManager {
     static final int MAT_FIELDS = 5;
     static final int LOC_MAT_BASE = LOC_LIGHT_BASE + 2 * LIGHT_FIELDS; // 43
 
-    static final int LOC_COUNT = LOC_MAT_BASE + MAT_FIELDS; // 48
+    static final int LOC_IRIS_MODELVIEW_INVERSE = LOC_MAT_BASE + MAT_FIELDS; // 48
+    static final int LOC_IRIS_PROJECTION_INVERSE = LOC_IRIS_MODELVIEW_INVERSE + 1; // 49
+
+    static final int LOC_COUNT = LOC_IRIS_PROJECTION_INVERSE + 1; // 50
 
     private static final String[] LIGHT_FIELD_NAMES = {
         "ambient", "diffuse", "specular", "position", "halfVector",
@@ -89,6 +92,8 @@ public class CompatUniformManager {
         UNIFORM_NAMES[LOC_IRIS_NORMAL] = "iris_NormalMatrix";
         UNIFORM_NAMES[LOC_IRIS_LIGHTMAP_TEXTURE_MATRIX] = "iris_LightmapTextureMatrix";
         UNIFORM_NAMES[LOC_IRIS_TEXTURE_MATRIX] = "iris_TextureMatrix";
+        UNIFORM_NAMES[LOC_IRIS_MODELVIEW_INVERSE] = "iris_ModelViewMatrixInverse";
+        UNIFORM_NAMES[LOC_IRIS_PROJECTION_INVERSE] = "iris_ProjectionMatrixInverse";
         UNIFORM_NAMES[LOC_ALPHA_TEST_REF] = "angelica_currentAlphaTest";
         UNIFORM_NAMES[LOC_SCENE_COLOR] = "angelica_SceneColor";
         UNIFORM_NAMES[LOC_CLIP_PLANES] = "angelica_ClipPlane[0]";
@@ -229,10 +234,15 @@ public class CompatUniformManager {
             }
 
             // ModelView Inverse
-            if (locs[LOC_MODELVIEW_INVERSE] != -1) {
+            if (locs[LOC_MODELVIEW_INVERSE] != -1 || locs[LOC_IRIS_MODELVIEW_INVERSE] != -1) {
                 mv.invert(scratchMatrix);
                 scratchMatrix.get(mat4Buf);
-                RENDER_BACKEND.uniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
+                if (locs[LOC_MODELVIEW_INVERSE] != -1) {
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_MODELVIEW_INVERSE], false, mat4Buf);
+                }
+                if (locs[LOC_IRIS_MODELVIEW_INVERSE] != -1) {
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_MODELVIEW_INVERSE], false, mat4Buf);
+                }
             }
         }
 
@@ -266,10 +276,15 @@ public class CompatUniformManager {
             }
 
             // Projection Inverse
-            if (locs[LOC_PROJECTION_INVERSE] != -1) {
+            if (locs[LOC_PROJECTION_INVERSE] != -1 || locs[LOC_IRIS_PROJECTION_INVERSE] != -1) {
                 proj.invert(scratchMatrix);
                 scratchMatrix.get(mat4Buf);
-                RENDER_BACKEND.uniformMatrix4(locs[LOC_PROJECTION_INVERSE], false, mat4Buf);
+                if (locs[LOC_PROJECTION_INVERSE] != -1) {
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_PROJECTION_INVERSE], false, mat4Buf);
+                }
+                if (locs[LOC_IRIS_PROJECTION_INVERSE] != -1) {
+                    RENDER_BACKEND.uniformMatrix4(locs[LOC_IRIS_PROJECTION_INVERSE], false, mat4Buf);
+                }
             }
         }
 

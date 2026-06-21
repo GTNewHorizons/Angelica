@@ -3,7 +3,6 @@ package net.coderbot.iris.compat.dh;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
-import com.mitchej123.lwjgl.MemoryStack;
 import com.seibel.distanthorizons.api.DhApi;
 import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
@@ -26,15 +25,12 @@ import net.coderbot.iris.uniforms.builtin.BuiltinReplacementUniforms;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.DynamicTexture;
-import org.joml.Matrix3f;
-import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL32;
 
-import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -44,11 +40,6 @@ public class IrisLodRenderProgram {
     public final int modelOffsetUniform;
     public final int worldYOffsetUniform;
     public final int mircoOffsetUniform;
-    public final int modelViewUniform;
-    public final int modelViewInverseUniform;
-    public final int projectionUniform;
-    public final int projectionInverseUniform;
-    public final int normalMatrix3fUniform;
     // Fog/Clip Uniforms
     public final int clipDistanceUniform;
     private final int id;
@@ -58,9 +49,6 @@ public class IrisLodRenderProgram {
     private final ProgramImages images;
     private final BlendModeOverride blend;
     private final BufferBlendOverride[] bufferBlendOverrides;
-    private final Matrix4f tempMat4a = new Matrix4f();
-    private final Matrix4f tempMat4b = new Matrix4f();
-    private final Matrix3f tempMat3 = new Matrix3f();
 
     // This will bind  AbstractVertexAttribute
     private IrisLodRenderProgram(String name, boolean isShadowPass, boolean translucent, BlendModeOverride override, BufferBlendOverride[] bufferBlendOverrides, String vertex, String tessControl, String tessEval, String geometry, String fragment, CustomUniforms customUniforms, DeferredWorldRenderingPipeline pipeline) {
@@ -132,11 +120,6 @@ public class IrisLodRenderProgram {
         modelOffsetUniform = tryGetUniformLocation2("modelOffset");
         worldYOffsetUniform = tryGetUniformLocation2("worldYOffset");
         mircoOffsetUniform = tryGetUniformLocation2("mircoOffset");
-        projectionUniform = tryGetUniformLocation2("iris_ProjectionMatrix");
-        projectionInverseUniform = tryGetUniformLocation2("iris_ProjectionMatrixInverse");
-        modelViewUniform = tryGetUniformLocation2("iris_ModelViewMatrix");
-        modelViewInverseUniform = tryGetUniformLocation2("iris_ModelViewMatrixInverse");
-        normalMatrix3fUniform = tryGetUniformLocation2("iris_NormalMatrix");
 
         // Fog/Clip Uniforms
         clipDistanceUniform = tryGetUniformLocation2("clipDistance");
@@ -176,30 +159,6 @@ public class IrisLodRenderProgram {
         return GLStateManager.glGetUniformLocation(this.id, name);
     }
 
-    public void setUniform(int index, Matrix4fc matrix) {
-        if (index == -1 || matrix == null) return;
-
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            FloatBuffer buffer = stack.callocFloat(16);
-            matrix.get(buffer);
-            buffer.rewind();
-
-            GLStateManager.glUniformMatrix4(index, false, buffer);
-        }
-    }
-
-    public void setUniform(int index, Matrix3f matrix) {
-        if (index == -1) return;
-
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            FloatBuffer buffer = stack.callocFloat(9);
-            matrix.get(buffer);
-            buffer.rewind();
-
-            GLStateManager.glUniformMatrix3(index, false, buffer);
-        }
-    }
-
     // Override ShaderProgram.bind()
     public void bind() {
         GLStateManager.glUseProgram(id);
@@ -227,11 +186,8 @@ public class IrisLodRenderProgram {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.LIGHTMAP_TEXTURE_UNIT);
         DynamicTexture lightmapTexture = ((EntityRendererAccessor) Minecraft.getMinecraft().entityRenderer).getLightmapTexture();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTexture.getGlTextureId());
-        setUniform(modelViewUniform, modelView);
-        setUniform(modelViewInverseUniform, modelView.invert(tempMat4a));
-        setUniform(projectionUniform, projection);
-        setUniform(projectionInverseUniform, projection.invert(tempMat4b));
-        setUniform(normalMatrix3fUniform, tempMat4a.set(modelView).invert().transpose3x3(tempMat3));
+
+        LodRendererEvents.pushDhMatrices(projection, modelView);
 
         setUniform(mircoOffsetUniform, 0.01f); // 0.01 block offset
 
