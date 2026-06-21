@@ -12,6 +12,7 @@ import org.lwjgl.opengl.Display;
 
 import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -65,7 +66,7 @@ public class SodiumGameOptionPages {
             firstGroupBuilder.add(getCCVerticalViewDistance());
         }
         
-         if(Iris.enabled) {
+        if(Iris.enabled) {
 
             final OptionImpl<GameSettings, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
                 .setName(I18n.format("options.iris.shadowDistance"))

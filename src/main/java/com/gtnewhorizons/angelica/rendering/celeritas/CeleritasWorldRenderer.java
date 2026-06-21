@@ -78,10 +78,6 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return instance;
     }
 
-    public static CeleritasWorldRenderer peekInstance() {
-        return instance;
-    }
-
     public static CeleritasWorldRenderer getInstanceOrNull() {
         return instance;
     }

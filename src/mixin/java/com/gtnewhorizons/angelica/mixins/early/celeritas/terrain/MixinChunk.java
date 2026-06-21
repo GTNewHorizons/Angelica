@@ -101,7 +101,7 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
 
     @Inject(method = "fillChunk", at = @At("RETURN"))
     private void angelica$createTileEntities(byte[] data, int primaryBitMask, int addBitMask, boolean groundUp, CallbackInfo ci) {
-        Runnable action = () -> {
+        ((ConcurrentTileEntityMap) this.chunkTileEntityMap).withWriteLock(() -> {
             final boolean hasExistingTEs = !this.chunkTileEntityMap.isEmpty();
 
             for (int sectionY = 0; sectionY < this.storageArrays.length; sectionY++) {
@@ -136,13 +136,7 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
                     }
                 }
             }
-        };
-
-        if (this.chunkTileEntityMap instanceof ConcurrentTileEntityMap concurrentMap) {
-            concurrentMap.withWriteLock(action);
-        } else {
-            action.run();
-        }
+        });
     }
 
     @Inject(method = "fillChunk", at = @At("RETURN"))

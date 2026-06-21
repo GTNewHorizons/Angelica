@@ -5,6 +5,7 @@ import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTracker;
 
 import com.cardinalstar.cubicchunks.util.HashMap3D;
 import com.cardinalstar.cubicchunks.util.HashSet3D;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 
 public class CubeStatusTracker implements ChunkTracker {
 
@@ -21,10 +22,22 @@ public class CubeStatusTracker implements ChunkTracker {
     }
 
     /// When true, adjacent cubes will not be checked.
-    private final boolean fastMode;
+    private boolean fastMode = false;
 
-    public CubeStatusTracker(boolean fastMode) {
+    public CubeStatusTracker() {
+
+    }
+
+    @Override
+    public void setFastMode(boolean fastMode) {
         this.fastMode = fastMode;
+
+        this.loadedCubes.forEach(this::pollCube);
+    }
+
+    @Override
+    public boolean isFastModeEnabled() {
+        return fastMode;
     }
 
     public void onCubeLoaded(int cubeX, int cubeY, int cubeZ) {
@@ -96,6 +109,22 @@ public class CubeStatusTracker implements ChunkTracker {
 
     @Override
     public void forEachReady(RenderSectionManager renderSectionManager) {
+        if (this.isFastModeEnabled() != AngelicaConfig.useVanillaChunkTracking) {
+            setFastMode(AngelicaConfig.useVanillaChunkTracking);
+        }
+
+        changedCubes.forEach((x, y, z, state) -> {
+            boolean ready = state == PendingState.Add;
+
+            if (ready) {
+                validCubes.add(x, y, z);
+            } else {
+                validCubes.remove(x, y, z);
+            }
+        });
+
+        changedCubes.clear();
+
         for (var pos : validCubes.fastEntryIterable()) {
             int x = pos.getX();
             int y = pos.getY();
@@ -107,6 +136,10 @@ public class CubeStatusTracker implements ChunkTracker {
 
     @Override
     public void forEachEvent(RenderSectionManager renderSectionManager) {
+        if (this.isFastModeEnabled() != AngelicaConfig.useVanillaChunkTracking) {
+            setFastMode(AngelicaConfig.useVanillaChunkTracking);
+        }
+
         changedCubes.forEach((x, y, z, state) -> {
             boolean ready = state == PendingState.Add;
 
