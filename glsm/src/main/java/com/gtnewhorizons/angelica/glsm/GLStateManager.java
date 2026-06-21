@@ -187,6 +187,14 @@ public class GLStateManager {
     private static boolean dirtyTexCoordAttrib;
     private static boolean dirtyLightmapAttrib = true;
 
+    private static boolean unit23TexCoordSetDuringDraw = false;
+
+    public static boolean consumeUnit23TexCoordSetDuringDraw() {
+        boolean v = unit23TexCoordSetDuringDraw;
+        unit23TexCoordSetDuringDraw = false;
+        return v;
+    }
+
     // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
     // Skip the backend vertexAttrib call in either case.
     public static void flushDeferredVertexAttribs(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
@@ -2158,6 +2166,7 @@ public class GLStateManager {
     }
 
     public static void glBegin(int mode) {
+        unit23TexCoordSetDuringDraw = false;
         if (DisplayListManager.isRecording()) {
             ImmediateModeRecorder.begin(mode);
             return;
@@ -5325,6 +5334,9 @@ public class GLStateManager {
         } else {
             final int unit = target - GL13.GL_TEXTURE0;
             if (unit >= 2 && unit < 4) {
+                if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+                    unit23TexCoordSetDuringDraw = true;
+                }
                 ShaderManager.setCurrentTexCoord(unit, s, t, 0.0f, 1.0f);
             }
         }
