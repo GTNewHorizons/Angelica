@@ -8,6 +8,8 @@ import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+import java.util.Collections;
+import java.util.List;
 
 /**
  * Abstract rendering backend.
@@ -24,6 +26,14 @@ public abstract class RenderBackend {
 
     /** Higher priority backends are preferred. */
     public int getPriority() { return 0; }
+
+    public boolean supportsFileDrop() { return false; }
+
+    public void startFileDrop() {}
+
+    public void stopFileDrop() {}
+
+    public List<String> pollDroppedFiles() { return Collections.emptyList(); }
 
     public abstract int getMinGLSLVersion();
 
@@ -77,6 +87,8 @@ public abstract class RenderBackend {
     public abstract void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride);
     public abstract void copyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size);
     public abstract void drawElementsInstanced(int mode, int count, int type, long indices, int primcount);
+    public abstract void drawArraysInstanced(int mode, int first, int count, int primcount);
+    public void provokingVertex(int provokeMode) {}
     public abstract void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex);
     public abstract void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex);
     public abstract void drawBuffer(int mode);
@@ -115,7 +127,6 @@ public abstract class RenderBackend {
     public abstract int getTexLevelParameteri(int target, int level, int pname);
     public abstract void generateMipmap(int target);
     public abstract void pixelStorei(int pname, int param);
-    public void pixelStoref(int pname, float param) {}
     public void sampleCoverage(float value, boolean invert) {}
 
 
@@ -190,8 +201,13 @@ public abstract class RenderBackend {
     public abstract void uniform3i(int location, int v0, int v1, int v2);
     public abstract void uniform4f(int location, float v0, float v1, float v2, float v3);
     public abstract void uniform4i(int location, int v0, int v1, int v2, int v3);
+    public abstract void uniform2(int location, FloatBuffer value);
     public abstract void uniform3(int location, FloatBuffer value);
     public abstract void uniform4(int location, FloatBuffer value);
+    public abstract void uniform1iv(int location, IntBuffer value);
+    public abstract void uniform2iv(int location, IntBuffer value);
+    public abstract void uniform3iv(int location, IntBuffer value);
+    public abstract void uniform4iv(int location, IntBuffer value);
     public abstract void uniformMatrix3(int location, boolean transpose, FloatBuffer value);
     public abstract void uniformMatrix4(int location, boolean transpose, FloatBuffer value);
     public void uniformMatrix2(int location, boolean transpose, FloatBuffer matrices) {}
@@ -237,6 +253,7 @@ public abstract class RenderBackend {
     public abstract int genVertexArrays();
     public abstract void deleteVertexArrays(int array);
     public abstract void bindVertexArray(int array);
+    public abstract boolean isVertexArray(int array);
     public abstract void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long pointer);
     public void vertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
         vertexAttribPointer(index, size, type, normalized, stride, MemoryUtilities.memAddress0(pointer));

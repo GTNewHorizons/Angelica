@@ -1597,6 +1597,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
         this.customUniforms.update();
 
+		// Make sure SSBO is bound
+		if (ssboHolder != null) {
+			ssboHolder.setupBuffers();
+		}
+
 		// Get ready for world rendering
 		prepareRenderTargets();
 

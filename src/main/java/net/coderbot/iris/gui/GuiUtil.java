@@ -4,10 +4,13 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import cpw.mods.fml.client.config.GuiUtils;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.audio.PositionedSoundRecord;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.Gui;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 /**
  * Class serving as abstraction and
@@ -111,6 +114,32 @@ public final class GuiUtil {
 		font.drawStringWithShadow(text, x + 4, y + 4, 0xFFFFFF);
 	}
 
+	public static void drawScrollingText(FontRenderer font, String text, int centerX, int minX, int maxX, int minY, int maxY, int color) {
+		final int textWidth = font.getStringWidth(text);
+		final int boxWidth = maxX - minX;
+		final int textY = ((minY + maxY) - font.FONT_HEIGHT) / 2 + 1;
+
+		if (textWidth > boxWidth) {
+			final int overflow = textWidth - boxWidth;
+			final double time = System.currentTimeMillis() / 1000.0;
+			final double period = Math.max(overflow * 0.5, 3.0);
+			final double t = (Math.sin((Math.PI / 2.0) * Math.cos((Math.PI * 2.0) * time / period)) / 2.0) + 0.5;
+			final int scroll = (int) (t * overflow);
+
+			final Minecraft mc = client();
+			final int scale = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight).getScaleFactor();
+			GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+			GLStateManager.glScissor(minX * scale, mc.displayHeight - (maxY * scale), boxWidth * scale, (maxY - minY) * scale);
+			font.drawStringWithShadow(text, minX - scroll, textY, color);
+			GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+		} else {
+			int textX = centerX - (textWidth / 2);
+			textX = Math.min(textX, maxX - textWidth);
+			textX = Math.max(textX, minX);
+			font.drawStringWithShadow(text, textX, textY, color);
+		}
+	}
+
 	/**
 	 * Shorten a text to a specific length, adding an ellipsis (...)
 	 * to the end if shortened.
@@ -140,11 +169,23 @@ public final class GuiUtil {
 	 * @return the translated text if found, otherwise the default provided
 	 */
 	public static String translateOrDefault(String defaultText, String translationDesc, Object ... format) {
-        final String translated = I18n.format(translationDesc, format);
+        final String translated = format.length == 0
+            ? translateLenient(translationDesc)
+            : I18n.format(translationDesc, format);
         if(!translated.equals(translationDesc)) {
             return translated;
         }
 		return defaultText;
+	}
+
+	private static final String FORMAT_ERROR_PREFIX = "Format error: ";
+
+	/**
+     * Nasty dirty hack, but it works.
+	 */
+	public static String translateLenient(String key) {
+		final String translated = I18n.format(key);
+		return translated.startsWith(FORMAT_ERROR_PREFIX) ? translated.substring(FORMAT_ERROR_PREFIX.length()) : translated;
 	}
 
 	/**
@@ -155,7 +196,7 @@ public final class GuiUtil {
 	 * or other action.
 	 */
 	public static void playButtonClickSound() {
-//		client().getSoundManager().play(SimpleSoundInstance.forUI(SoundEvents.UI_BUTTON_CLICK, 1));
+		client().getSoundHandler().playSound(PositionedSoundRecord.func_147674_a(new ResourceLocation("gui.button.press"), 1.0F));
 	}
 
 	/**

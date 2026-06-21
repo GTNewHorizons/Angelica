@@ -90,9 +90,9 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 		FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
 		// Draw the label
-		font.drawStringWithShadow(this.trimmedLabel, x + 6, y + 7, 0xFFFFFF);
+		font.drawStringWithShadow(this.trimmedLabel, x + 6, y + 7, this.isValueModified() ? 0xFFC94A : 0xFFFFFF);
 		// Draw the value label
-		font.drawStringWithShadow(this.valueLabel, (x + (width - 2)) - (int)(this.valueSectionWidth * 0.5) - (int)(font.getStringWidth(this.valueLabel) * 0.5), y + 7, 0xFFFFFF);
+		font.drawStringWithShadow(this.valueLabel, (x + (width - 2)) - (int)(this.valueSectionWidth * 0.5) - (int)(font.getStringWidth(this.valueLabel) * 0.5), y + 7, getValueColor());
 	}
 
 	protected final void renderOptionWithValue(int x, int y, int width, int height, boolean hovered) {
@@ -119,16 +119,14 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 	}
 
 	protected final String createTrimmedLabel() {
-		String label = GuiUtil.shortenText(Minecraft.getMinecraft().fontRenderer, this.label, this.maxLabelWidth);
-
-		if (this.isValueModified()) {
-			label = label + " (*)"; //.withStyle(style -> style.withColor(TextColor.fromRgb(0xffc94a)));
-		}
-
-		return label;
+		return GuiUtil.shortenText(Minecraft.getMinecraft().fontRenderer, this.label, this.maxLabelWidth);
 	}
 
 	protected abstract String createValueLabel();
+
+	protected int getValueColor() {
+		return 0xFFFFFF;
+	}
 
 	public abstract boolean applyNextValue();
 
@@ -147,7 +145,13 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 
 	@Override
 	public Optional<String> getCommentBody() {
-		return Optional.ofNullable(getCommentKey()).map(I18n::format);
+		final String key = getCommentKey();
+		if (key == null) {
+			return Optional.empty();
+		}
+		final String translated = GuiUtil.translateLenient(key);
+		// Don't show comment boxes without a translation, otherwise you get something like option.{commentname}.comment
+		return translated.equals(key) ? Optional.empty() : Optional.of(translated);
 	}
 
 	@Override

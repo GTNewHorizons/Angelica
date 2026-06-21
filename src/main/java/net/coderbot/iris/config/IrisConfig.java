@@ -38,6 +38,8 @@ public class IrisConfig {
 	 */
 	private boolean enableDebugOptions;
 
+	private boolean allowUnknownShaders;
+
 	private final Path propertiesPath;
 
 	public IrisConfig(Path propertiesPath) {
@@ -45,6 +47,7 @@ public class IrisConfig {
 		enableShaders = true;
 		disableUpdateMessage = false;
 		enableDebugOptions = false;
+		allowUnknownShaders = false;
 		this.propertiesPath = propertiesPath;
 	}
 
@@ -114,6 +117,25 @@ public class IrisConfig {
 	}
 
 	/**
+	 * Sets whether debug features are enabled.
+	 */
+	public void setDebugEnabled(boolean enabled) {
+		this.enableDebugOptions = enabled;
+	}
+
+	public boolean shouldAllowUnknownShaders() {
+		return allowUnknownShaders;
+	}
+
+	/**
+	 * Sets whether unrecognized shader packs may load.
+	 */
+	public void setUnknown(boolean allow) throws IOException {
+		this.allowUnknownShaders = allow;
+		save();
+	}
+
+	/**
 	 * loads the config file and then populates the string, int, and boolean entries with the parsed entries
 	 *
 	 * @throws IOException if the file cannot be loaded
@@ -132,6 +154,7 @@ public class IrisConfig {
 		shaderPackName = properties.getProperty("shaderPack");
 		enableShaders = !"false".equals(properties.getProperty("enableShaders"));
 		enableDebugOptions = "true".equals(properties.getProperty("enableDebugOptions"));
+		allowUnknownShaders = "true".equals(properties.getProperty("allowUnknownShaders"));
 		disableUpdateMessage = "true".equals(properties.getProperty("disableUpdateMessage"));
         // TODO: GUI
         try {
@@ -159,6 +182,7 @@ public class IrisConfig {
 		properties.setProperty("shaderPack", getShaderPackName().orElse(""));
 		properties.setProperty("enableShaders", enableShaders ? "true" : "false");
 		properties.setProperty("enableDebugOptions", enableDebugOptions ? "true" : "false");
+		properties.setProperty("allowUnknownShaders", allowUnknownShaders ? "true" : "false");
 		properties.setProperty("disableUpdateMessage", disableUpdateMessage ? "true" : "false");
 		properties.setProperty("maxShadowRenderDistance", String.valueOf(IrisVideoSettings.shadowDistance));
 		// NB: This uses ISO-8859-1 with unicode escapes as the encoding

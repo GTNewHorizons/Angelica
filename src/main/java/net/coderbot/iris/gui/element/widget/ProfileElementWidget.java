@@ -60,6 +60,11 @@ public class ProfileElementWidget extends BaseOptionElementWidget<OptionMenuProf
 	}
 
 	@Override
+	protected int getValueColor() {
+		return PROFILE_CUSTOM.equals(this.profileLabel) ? 0xFFFF55 : 0xFFFFFF;
+	}
+
+	@Override
 	public Optional<String> getCommentTitle() {
 		return Optional.of(PROFILE_LABEL);
 	}

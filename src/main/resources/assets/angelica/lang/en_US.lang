@@ -216,6 +216,8 @@ options.angelica.threadedChunkBuilding.tooltip=If enabled, chunk meshing will be
 
 pack.iris.select.title=Select
 pack.iris.configure.title=Configure
+pack.iris.list.label=+ Drag and Drop Shader Packs to add
+pack.iris.list.label.lwjgl2=Install lwjgl3ify to drag and drop Shader Packs
 label.iris.true=On
 label.iris.false=Off
 

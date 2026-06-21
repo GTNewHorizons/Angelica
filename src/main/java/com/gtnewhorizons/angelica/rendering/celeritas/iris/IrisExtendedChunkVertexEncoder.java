@@ -7,11 +7,14 @@ import static com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedCh
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import lombok.Setter;
+import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.coderbot.iris.vertices.NormalHelper;
 import net.coderbot.iris.vertices.NormI8;
 import net.minecraft.block.Block;
+import net.minecraft.block.BlockDynamicLiquid;
+import net.minecraft.block.BlockStaticLiquid;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexEncoder;
 import org.joml.Vector3f;
@@ -53,18 +56,42 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     public void prepareToRenderBlock(BlockRenderContext ctx, Block block, int metadata, short renderType, byte lightValue) {
         this.context = ctx;
         Int2IntMap metaMap = blockMetaMatches != null ? blockMetaMatches.get(block) : null;
-        ctx.blockId = (short) (metaMap != null ? metaMap.get(metadata) : -1);
+        ctx.blockId = (short) (metaMap != null ? BlockMaterialMapping.resolveId(metaMap, metadata) : -1);
         ctx.renderType = renderType;
         ctx.lightValue = lightValue;
     }
 
     @Override
-    public void prepareToRenderFluid(BlockRenderContext ctx, Block block, byte lightValue) {
+    public void prepareToRenderFluid(BlockRenderContext ctx, Block block, int metadata, byte lightValue) {
         this.context = ctx;
-        Int2IntMap metaMap = blockMetaMatches != null ? blockMetaMatches.get(block) : null;
-        ctx.blockId = (short) (metaMap != null ? metaMap.get(0) : -1);
+        ctx.blockId = (short) resolveFluidBlockId(block, metadata);
         ctx.renderType = ExtendedDataHelper.FLUID_RENDER_TYPE;
         ctx.lightValue = lightValue;
+    }
+
+    /**
+     * Try and prevent material flickering
+     */
+    private int resolveFluidBlockId(Block block, int metadata) {
+        if (blockMetaMatches == null) return -1;
+
+        int id = lookupFluidMeta(block, metadata);
+        if (id == -1) {
+            final Block counterpart = liquidCounterpart(block);
+            if (counterpart != null) id = lookupFluidMeta(counterpart, metadata);
+        }
+        return id;
+    }
+
+    private int lookupFluidMeta(Block block, int metadata) {
+        final Int2IntMap metaMap = blockMetaMatches.get(block);
+        return metaMap != null ? BlockMaterialMapping.resolveId(metaMap, metadata) : -1;
+    }
+
+    private static Block liquidCounterpart(Block block) {
+        if (block instanceof BlockStaticLiquid) return Block.getBlockById(Block.getIdFromBlock(block) - 1);
+        if (block instanceof BlockDynamicLiquid) return Block.getBlockById(Block.getIdFromBlock(block) + 1);
+        return null;
     }
 
     @Override

@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
+import com.gtnewhorizons.angelica.event.RenderHandEvent;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
@@ -78,7 +79,8 @@ public class HandRenderer {
                !camera.isSleeping() &&
                !mc.gameSettings.hideGUI &&
                !GameModeUtil.isSpectator() &&
-               !mc.playerController.enableEverythingIsScrewedUpMode();
+               !mc.playerController.enableEverythingIsScrewedUpMode() &&
+               !RenderHandEvent.post();
     }
 
     public boolean isHandTranslucent(InteractionHand hand) {

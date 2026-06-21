@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.compat;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-
+import com.falsepattern.endlessids.config.GeneralConfig;
 import com.gtnewhorizons.angelica.compat.backhand.BackhandReflectionCompat;
 import com.gtnewhorizons.angelica.helpers.LoadControllerHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.CubeStatusEvents;
@@ -16,6 +16,8 @@ public class ModStatus {
     public static boolean isBetterCrashesLoaded;
     public static boolean isNEIDLoaded;
     public static boolean isNEIDMetadataExtended;
+    public static boolean isEIDLoaded;
+    public static boolean isMetadataExtended;
     public static boolean isLotrLoaded;
     public static boolean isChunkAPILoaded;
     public static boolean isEIDBiomeLoaded;
@@ -38,9 +40,9 @@ public class ModStatus {
 
         isBetterCrashesLoaded = Loader.isModLoaded("bettercrashes");
         isNEIDLoaded = Loader.isModLoaded("neid");
+        isEIDLoaded = Loader.isModLoaded("endlessids");
         isLotrLoaded = Loader.isModLoaded("lotr");
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
-        isEIDBiomeLoaded = Loader.isModLoaded("endlessids_biome");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBattlegearLoaded = Loader.isModLoaded("battlegear2");
@@ -73,5 +75,15 @@ public class ModStatus {
         if (isCubicChunksLoaded) {
             CubeStatusEvents.init();
         }
+
+        boolean eidBlockItemExtended = false;
+        boolean eidBiomeExtended = false;
+        if (isEIDLoaded) {
+            eidBlockItemExtended = GeneralConfig.extendBlockItem;
+            eidBiomeExtended = GeneralConfig.extendBiome;
+        }
+
+        isEIDBiomeLoaded = eidBiomeExtended || Loader.isModLoaded("endlessids_biome");
+        isMetadataExtended = isNEIDMetadataExtended || eidBlockItemExtended;
     }
 }

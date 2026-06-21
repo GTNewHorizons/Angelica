@@ -40,6 +40,7 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
@@ -105,6 +106,7 @@ public final class ClientProxy extends CommonProxy {
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         ModStatus.preInit();
+        for (String name : AngelicaConfig.dynamicBoundsTileEntities) TileEntityRenderBoundsRegistry.registerDynamicClass(name);
         super.preInit(event);
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);

@@ -66,7 +66,7 @@ configurations.all {
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.14:dev")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.158:dev")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.1.0") { transitive = false }
 //    runtimeOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:3.0.99")
@@ -76,14 +76,14 @@ dependencies {
 
     // Iris Shaders
     compileOnly('org.jetbrains:annotations:26.0.2')
-    api("com.github.GTNewHorizons:GTNHLib:0.10.0:dev")
+    api("com.github.GTNewHorizons:GTNHLib:0.11.4:dev")
 
     shadowImplementation(project(":glsm")) { transitive = false }
     shadowImplementation(project(":lwjgl3-backend")) { transitive = false }
     shadowImplementation("net.minecraftforge:eventbus:7.0-beta.15")
 
     shadowImplementation("org.anarres:jcpp:1.4.14") // Apache 2.0
-    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-32.g7dd88a4-GTNH") {
+    shadowImplementation("org.taumc:glsl-transformation-lib:0.2.0-33.g3ec381e") {
         exclude module: "antlr4" // we only want to shadow the runtime module
     }
     shadowImplementation("org.antlr:antlr4-runtime:4.13.2")

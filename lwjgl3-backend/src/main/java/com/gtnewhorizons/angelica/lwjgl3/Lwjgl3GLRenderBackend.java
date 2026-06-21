@@ -23,6 +23,9 @@ import org.lwjgl.opengl.GL44C;
 import org.lwjgl.opengl.GL45C;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLDebugMessageCallback;
+import org.lwjgl.sdl.SDL_DropEvent;
+import org.lwjgl.sdl.SDL_EventFilter;
+import org.lwjgl.sdl.SDLEvents;
 import org.lwjgl.system.MemoryStack;
 
 import java.nio.ByteBuffer;
@@ -31,6 +34,10 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.charset.StandardCharsets;
 import java.nio.ShortBuffer;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * LWJGL3 GL implementation of {@link RenderBackend}.
@@ -43,6 +50,10 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     private GLDebugMessageCallback debugCallback;
     private boolean debugOutputActive;
 
+    private SDL_EventFilter dropEventFilter;
+    private final ConcurrentLinkedQueue<String> droppedFiles = new ConcurrentLinkedQueue<>();
+    private volatile boolean watchingDrops;
+
     @Override
     public void init() {
         caps = GL.getCapabilities();
@@ -50,7 +61,49 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void shutdown() {
-        // no-op
+        stopFileDrop();
+    }
+
+    @Override
+    public boolean supportsFileDrop() {
+        return true;
+    }
+
+    @Override
+    public void startFileDrop() {
+        if (watchingDrops) return;
+        dropEventFilter = SDL_EventFilter.create((userData, eventPtr) -> {
+            if (SDL_DropEvent.ntype(eventPtr) == SDLEvents.SDL_EVENT_DROP_FILE) {
+                final String path = SDL_DropEvent.ndataString(eventPtr);
+                if (path != null && !path.isEmpty()) {
+                    droppedFiles.add(path);
+                }
+            }
+            return true;
+        });
+        SDLEvents.SDL_AddEventWatch(dropEventFilter, 0L);
+        watchingDrops = true;
+    }
+
+    @Override
+    public void stopFileDrop() {
+        if (!watchingDrops) return;
+        SDLEvents.SDL_RemoveEventWatch(dropEventFilter, 0L);
+        dropEventFilter.free();
+        dropEventFilter = null;
+        droppedFiles.clear();
+        watchingDrops = false;
+    }
+
+    @Override
+    public List<String> pollDroppedFiles() {
+        if (droppedFiles.isEmpty()) return Collections.emptyList();
+        final List<String> out = new ArrayList<>();
+        String p;
+        while ((p = droppedFiles.poll()) != null) {
+            out.add(p);
+        }
+        return out;
     }
 
     @Override
@@ -296,6 +349,16 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void drawArraysInstanced(int mode, int first, int count, int primcount) {
+        GL31C.glDrawArraysInstanced(mode, first, count, primcount);
+    }
+
+    @Override
+    public void provokingVertex(int provokeMode) {
+        GL32C.glProvokingVertex(provokeMode);
+    }
+
+    @Override
     public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
         GL43C.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
@@ -489,11 +552,6 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void pixelStorei(int pname, int param) {
         GL11C.glPixelStorei(pname, param);
-    }
-
-    @Override
-    public void pixelStoref(int pname, float param) {
-        GL11C.glPixelStoref(pname, param);
     }
 
     @Override
@@ -809,6 +867,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void uniform2(int location, FloatBuffer value) {
+        GL20C.glUniform2fv(location, value);
+    }
+
+    @Override
     public void uniform3(int location, FloatBuffer value) {
         GL20C.glUniform3fv(location, value);
     }
@@ -816,6 +879,26 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void uniform4(int location, FloatBuffer value) {
         GL20C.glUniform4fv(location, value);
+    }
+
+    @Override
+    public void uniform1iv(int location, IntBuffer value) {
+        GL20C.glUniform1iv(location, value);
+    }
+
+    @Override
+    public void uniform2iv(int location, IntBuffer value) {
+        GL20C.glUniform2iv(location, value);
+    }
+
+    @Override
+    public void uniform3iv(int location, IntBuffer value) {
+        GL20C.glUniform3iv(location, value);
+    }
+
+    @Override
+    public void uniform4iv(int location, IntBuffer value) {
+        GL20C.glUniform4iv(location, value);
     }
 
     @Override
@@ -1026,6 +1109,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void bindVertexArray(int array) {
         GL30C.glBindVertexArray(array);
+    }
+
+    @Override
+    public boolean isVertexArray(int array) {
+        return GL30C.glIsVertexArray(array);
     }
 
     @Override
@@ -1318,11 +1406,14 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public boolean supportsDebugOutput() {
-        return caps != null && caps.OpenGL43;
+        return caps != null && (caps.OpenGL43 || caps.GL_KHR_debug);
     }
 
     @Override
     public int setupDebugOutput(DebugMessageHandler handler) {
+        if (caps == null || !(caps.OpenGL43 || caps.GL_KHR_debug)) {
+            return 0;
+        }
         debugCallback = GLDebugMessageCallback.create(
             (source, type, id, severity, length, message, userParam) -> {
                 final String msg = GLDebugMessageCallback.getMessage(length, message);
@@ -1350,6 +1441,9 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public int disableDebugOutput() {
+        if (caps == null || !(caps.OpenGL43 || caps.GL_KHR_debug)) {
+            return 0;
+        }
         GL43C.glDebugMessageCallback(null, 0L);
         if (debugCallback != null) {
             debugCallback.free();

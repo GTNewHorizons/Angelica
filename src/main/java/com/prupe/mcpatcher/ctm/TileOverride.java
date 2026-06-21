@@ -5,6 +5,7 @@ import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_MATERIAL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_TILE;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.NORMALS;
 
+import java.awt.image.BufferedImage;
 import java.util.ArrayList;
 import java.util.BitSet;
 import java.util.HashSet;
@@ -32,10 +33,10 @@ public abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private final PropertiesFile properties;
+    protected final PropertiesFile properties;
     private final String baseFilename;
-    private final TileLoader tileLoader;
-    private final int renderPass;
+    protected final TileLoader tileLoader;
+    protected final int renderPass;
     private final int weight;
     private final List<BlockStateMatcher> matchBlocks;
     private final Set<String> matchTiles;
@@ -45,7 +46,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final BitSet biomes;
     private final BitSet height;
 
-    private final List<ResourceLocation> tileNames = new ArrayList<>();
+    protected final List<ResourceLocation> tileNames = new ArrayList<>();
     protected IIcon[] icons;
 
     // Index into this array is formed from these bit values:
@@ -103,6 +104,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case "sandstone", "top" -> override = new TileOverrideImpl.Top(properties, tileLoader);
             case "repeat", "pattern" -> override = new TileOverrideImpl.Repeat(properties, tileLoader);
             case "ctm_compact", "compact" -> override = new TileOverrideImpl.CTMCompact(properties, tileLoader);
+            case "compact_expanded" -> override = new TileOverrideImpl.CTMCompactExpanded(properties, tileLoader);
             default -> properties.error("unknown method \"%s\"", method);
         }
 
@@ -196,7 +198,12 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         return tileLoader.preloadTile(resource, renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS);
     }
 
-    private void loadIcons() {
+    public void addIcon(ResourceLocation resource, BufferedImage img){
+        tileNames.add(resource);
+        tileLoader.addTile(resource, img, null, true);
+    }
+
+    protected void loadIcons() {
         tileNames.clear();
         String tileList = properties.getString("tiles", "");
         ResourceLocation blankResource = RenderPassAPI.instance.getBlankResource(renderPass);
@@ -221,16 +228,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                     try {
                         int from = Integer.parseInt(matcher.group(1));
                         int to = Integer.parseInt(matcher.group(2));
-                        for (int i = from; i <= to; i++) {
-                            ResourceLocation resource = TileLoader
-                                .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-                            if (TexturePackAPI.hasResource(resource)) {
-                                addIcon(resource);
-                            } else {
-                                properties.warning("could not find image %s", resource);
-                                tileNames.add(null);
-                            }
-                        }
+                        loadOverrideIcons(from, to, blankResource);
                     } catch (NumberFormatException e) {
                         e.printStackTrace();
                     }
@@ -246,6 +244,19 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                         tileNames.add(null);
                     }
                 }
+            }
+        }
+    }
+
+    protected void loadOverrideIcons(int from, int to, ResourceLocation blankResource){
+        for (int i = from; i <= to; i++) {
+            ResourceLocation resource = TileLoader
+                .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
+            if (TexturePackAPI.hasResource(resource)) {
+                addIcon(resource);
+            } else {
+                properties.warning("could not find image %s", resource);
+                tileNames.add(null);
             }
         }
     }
@@ -289,9 +300,6 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             if (token.isEmpty()) {
                 // nothing
             } else if (token.contains("/")) {
-                if (!token.endsWith(".png")) {
-                    token += ".png";
-                }
                 ResourceLocation resource = TexturePackAPI.parseResourceLocation(properties.getResource(), token);
                 if (resource != null) {
                     list.add(resource.toString());

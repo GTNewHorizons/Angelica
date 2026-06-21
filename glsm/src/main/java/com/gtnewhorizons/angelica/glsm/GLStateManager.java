@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizon.gtnhlib.bytebuf.Pointer;
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
@@ -8,6 +9,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
@@ -39,13 +41,11 @@ import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
+import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.ints.IntStack;
@@ -56,13 +56,13 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4d;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.joml.Matrix4fStack;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.LWJGLException;
-
 import org.lwjgl.opengl.ARBShaderObjects;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.Display;
@@ -97,10 +97,10 @@ import java.util.Set;
 import java.util.function.IntSupplier;
 
 import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
 import static com.gtnewhorizons.angelica.glsm.Vendor.MESA;
 import static com.gtnewhorizons.angelica.glsm.Vendor.NVIDIA;
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * OpenGL State Manager - Provides cached state tracking and management for Backend Renderer Actions
@@ -144,7 +144,8 @@ public class GLStateManager {
 
     // Generation counters for FFP uniform dirty tracking. Bumped when the corresponding GLSM state changes.
     // Per-matrix-mode generation counters — avoids re-uploading all matrices when only one mode changed
-    public static int mvGeneration;    // modelview matrix changes
+    public static int mvGeneration;    // modelview matrix changes (any: translation, rotation, scale)
+    public static int mvLinearGeneration;
     public static int projGeneration;  // projection matrix changes
     public static int texMatrixGeneration; // texture matrix changes
     public static int lightingGeneration;
@@ -186,25 +187,26 @@ public class GLStateManager {
     private static boolean dirtyTexCoordAttrib;
     private static boolean dirtyLightmapAttrib = true;
 
-    /** Flush deferred vertex attribute uploads. Called before draw to ensure default attrib values are current. */
-    public static void flushDeferredVertexAttribs() {
-        if (dirtyColorAttrib) {
+    // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
+    // Skip the backend vertexAttrib call in either case.
+    public static void flushDeferredVertexAttribs(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
+        if (!hasColor && dirtyColorAttrib) {
             RENDER_BACKEND.vertexAttrib4f(Usage.COLOR.getAttributeLocation(), color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
             dirtyColorAttrib = false;
         }
-        if (dirtyLightmapAttrib) {
-            RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
-            dirtyLightmapAttrib = false;
-        }
-        if (dirtyNormalAttrib) {
+        if (!hasNormal && dirtyNormalAttrib) {
             final var n = ShaderManager.getCurrentNormal();
             RENDER_BACKEND.vertexAttrib3f(Usage.NORMAL.getAttributeLocation(), n.x, n.y, n.z);
             dirtyNormalAttrib = false;
         }
-        if (dirtyTexCoordAttrib) {
+        if (!hasTexCoord && dirtyTexCoordAttrib) {
             final var tc = ShaderManager.getCurrentTexCoord();
             RENDER_BACKEND.vertexAttrib4f(Usage.PRIMARY_UV.getAttributeLocation(), tc.x, tc.y, tc.z, tc.w);
             dirtyTexCoordAttrib = false;
+        }
+        if (!hasLightmap && dirtyLightmapAttrib) {
+            RENDER_BACKEND.vertexAttrib4f(Usage.SECONDARY_UV.getAttributeLocation(), GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f);
+            dirtyLightmapAttrib = false;
         }
     }
 
@@ -301,6 +303,7 @@ public class GLStateManager {
 
     // Saved generation counters at push time — used to detect whether state actually changed during push/pop scope
     private static final int[] savedMvGen = new int[MAX_ATTRIB_STACK_DEPTH];
+    private static final int[] savedMvLinearGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedProjGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedTexMatGen = new int[MAX_ATTRIB_STACK_DEPTH];
     private static final int[] savedLightingGen = new int[MAX_ATTRIB_STACK_DEPTH];
@@ -453,18 +456,16 @@ public class GLStateManager {
     @Getter protected static int listBase = 0;
 
     @Getter protected static int boundVBO;
-    @Getter protected static int boundEBO;
     @Getter protected static int boundVAO;
-    private static int clientArraysVBO = 0;
-    private static int clientArraysVBOCapacity = 0;
-    private static final int[] clientArraysVBOOffsets = new int[VertexAttribState.MAX_ATTRIBS];
+
+    public static int getBoundEBO() {
+        return VAOManager.boundEBO;
+    }
+
     private static int boundPixelUnpackBuffer;
     private static int boundPixelPackBuffer;
-    private static final Int2IntOpenHashMap vaoEboMap = new Int2IntOpenHashMap();
+    private static PixelUnpackState pixelUnpackState = PixelUnpackState.DEFAULT;
 
-    static {
-        vaoEboMap.defaultReturnValue(0);
-    }
     @Getter private static int defaultVAO; // Non-zero on core profile
 
     public static void reset() {
@@ -486,8 +487,6 @@ public class GLStateManager {
 
         modelViewMatrix.clear();
         projectionMatrix.clear();
-        vaoEboMap.clear();
-        VertexAttribState.reset();
     }
 
     /**
@@ -623,18 +622,25 @@ public class GLStateManager {
             LOGGER.info("GLStateManager cache bypassed");
         }
         if (initConfig != null && initConfig.isLwjglDebug()) {
-            LOGGER.info("Enabling additional LWJGL debug output");
+            if (RENDER_BACKEND.supportsDebugOutput()) {
+                LOGGER.info("Enabling additional LWJGL debug output");
 
-            GLDebug.setupDebugMessageCallback();
-            GLDebug.initDebugState();
+                GLDebug.setupDebugMessageCallback();
+                GLDebug.initDebugState();
 
-            GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+                GLDebug.debugMessage("Angelica Debug Annotator Initialized");
+            } else {
+                LOGGER.info("LWJGL debug output requested but unavailable in this GL context (requires GL 4.3 or GL_KHR_debug); skipping");
+            }
         }
 
         defaultVAO = RENDER_BACKEND.genVertexArrays();
         RENDER_BACKEND.bindVertexArray(defaultVAO);
         boundVAO = defaultVAO;
-        VertexAttribState.init(defaultVAO);
+        VAOManager.init(defaultVAO);
+        if (defaultVAO != 0) {
+            RENDER_BACKEND.provokingVertex(GL32.GL_LAST_VERTEX_CONVENTION);
+        }
         if (initCallback != null) {
             initCallback.run();
         }
@@ -1012,7 +1018,8 @@ public class GLStateManager {
             case GL11.GL_LIST_MODE -> DisplayListManager.getListMode();
             case GL11.GL_MATRIX_MODE -> matrixMode.getMode();
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
-            case GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
+            // GL_TEXTURE_2D makes no sense here, but some mod still queries it...
+            case GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
             case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
@@ -1040,7 +1047,7 @@ public class GLStateManager {
             case GL11.GL_STENCIL_CLEAR_VALUE -> stencilState.getClearValue();
 
             case GL15.GL_ARRAY_BUFFER_BINDING -> boundVBO;
-            case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> boundEBO;
+            case GL15.GL_ELEMENT_ARRAY_BUFFER_BINDING -> VAOManager.boundEBO;
             case GL21.GL_PIXEL_UNPACK_BUFFER_BINDING -> boundPixelUnpackBuffer;
             case GL21.GL_PIXEL_PACK_BUFFER_BINDING -> boundPixelPackBuffer;
 
@@ -1189,6 +1196,22 @@ public class GLStateManager {
         };
     }
 
+    private static final FloatBuffer glGetFloatScratch = BufferUtils.createFloatBuffer(16);
+
+    public static void glGetFloat(int pname, float[] params) {
+        final FloatBuffer buf;
+        if (params.length <= glGetFloatScratch.capacity()) {
+            buf = glGetFloatScratch;
+            buf.clear();
+            buf.limit(params.length);
+        } else {
+            buf = BufferUtils.createFloatBuffer(params.length);
+        }
+        glGetFloat(pname, buf);
+        buf.position(0);
+        buf.get(params);
+    }
+
     // GLStateManager Functions
 
     public static void glBlendColor(float red, float green, float blue, float alpha) {
@@ -1313,7 +1336,7 @@ public class GLStateManager {
 
     public static void glBlendEquation(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glBlendEquation in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glBlendEquation");
         }
         final boolean caching = isCachingEnabled();
         final boolean bypass = BYPASS_CACHE || !caching;
@@ -1328,7 +1351,7 @@ public class GLStateManager {
 
     public static void glBlendEquationSeparate(int modeRGB, int modeAlpha) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glBlendEquationSeparate in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glBlendEquationSeparate");
         }
         final boolean caching = isCachingEnabled();
         final boolean bypass = BYPASS_CACHE || !caching;
@@ -1848,7 +1871,7 @@ public class GLStateManager {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromIntBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1857,13 +1880,14 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, FloatBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromFloatBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1872,13 +1896,14 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, DoubleBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromDoubleBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1887,13 +1912,14 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexImage2DCmd.fromByteBuffer(target, level, internalformat, width, height, border, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -1902,15 +1928,17 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage2D with buffer offset in display lists not yet supported");
+            throw DisplayListManager.unsupportedInList("glTexImage2D with buffer offset");
         }
         TextureInfoCache.INSTANCE.onTexImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels_buffer_offset);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexCoord1f(float s) {
@@ -1998,7 +2026,14 @@ public class GLStateManager {
         }
     }
 
-    /** Shrink texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid. */
+    /**
+     * Defer deleting textures until it has been reclaimed.
+     * Why you might ask?  In compat profile if you bind a texture that doesn't exist, ie a deleted texture,
+     * mesa will silently create it for you, in core this is an error.  Why would you be binding a deleted texture?
+     * Damned if I know, but vanilla and mods do it... they create one, delete it, and then bind it....
+     *
+     * So... we shrink the texture to 1x1 to free GPU memory, unbind from all units, but keep the name valid.
+     * */
     private static void deferDeleteTexture(int id) {
         if (id == 0) return;
 
@@ -2185,72 +2220,83 @@ public class GLStateManager {
         }
     }
 
+    public static void preDraw(int drawMode) {
+        prepareWideLineEmulation(drawMode);
+        ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
+    }
+
+    public static void preDraw() {
+        disableWideLineEmulation();
+        ShaderManager.getInstance().preDraw();
+        prepareClientArrays();
+    }
+
     public static void glDrawElements(int mode, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
-        prepareWideLineEmulation(mode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(indices.remaining(), GL11.GL_UNSIGNED_BYTE, indices);
+            return;
+        }
+        preDraw(mode);
         RENDER_BACKEND.drawElements(mode, indices);
     }
 
     public static void glDrawElements(int mode, IntBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
-        prepareWideLineEmulation(mode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
-        } else {
-            RENDER_BACKEND.drawElements(mode, indices);
+            return;
         }
+
+        preDraw(mode);
+        RENDER_BACKEND.drawElements(mode, indices);
     }
 
     public static void glDrawElements(int mode, ShortBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
             return;
         }
-        prepareWideLineEmulation(mode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices);
-        } else {
-            RENDER_BACKEND.drawElements(mode, indices);
+            return;
         }
+
+        preDraw(mode);
+        RENDER_BACKEND.drawElements(mode, indices);
     }
 
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glDrawElements in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glDrawElements");
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, count, type, indices);
             return;
         }
-        prepareWideLineEmulation(mode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(count, type, indices);
-        } else {
-            RENDER_BACKEND.drawElements(mode, count, type, indices);
+            return;
         }
+
+        preDraw(mode);
+        RENDER_BACKEND.drawElements(mode, count, type, indices);
     }
 
     public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
@@ -2259,7 +2305,7 @@ public class GLStateManager {
         if (recordMode != RecordMode.NONE) {
             // Core profile: a default VAO is generated at init and glBindVertexArray(0)
             // is redirected to it, so a VAO is always bound here — no fallback branches.
-            final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, boundEBO);
+            final IndexedDrawCapture capture = IndexedDrawCapture.create(mode, indices_count, type, indices_buffer_offset, VAOManager.boundEBO);
             if (capture != null) {
                 DisplayListManager.recordIndexedDrawCapture(capture);
             }
@@ -2271,14 +2317,13 @@ public class GLStateManager {
             FeedbackManager.processDrawElements(mode, indices_count, type, indices_buffer_offset);
             return;
         }
-        prepareWideLineEmulation(mode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
-        } else {
-            RENDER_BACKEND.drawElements(mode, indices_count, type, indices_buffer_offset);
+            return;
         }
+
+        preDraw(mode);
+        RENDER_BACKEND.drawElements(mode, indices_count, type, indices_buffer_offset);
         if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
     }
 
@@ -2307,60 +2352,38 @@ public class GLStateManager {
     }
 
     public static void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) {
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        preDraw(mode);
         RENDER_BACKEND.drawElementsBaseVertex(mode, count, type, indices, basevertex);
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTrianglesInstanced(count, type, indices, primcount);
+            return;
+        }
+        preDraw(mode);
         RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount);
     }
 
-    private static void prepareClientArrays() {
-        if (ShaderManager.getInstance().isEnabled() && VertexAttribState.hasAnyClientSideEnabledAttrib()) {
-            uploadClientArraysToVBO();
+    public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadsAsTrianglesInstanced(first, count, primcount);
+        } else if (mode == GL11.GL_QUAD_STRIP) {
+            preDraw();
+            RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_STRIP, first, count & ~1, primcount);
+        } else if (mode == GL11.GL_POLYGON) {
+            preDraw();
+            RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_FAN, first, count, primcount);
+        } else {
+            preDraw(mode);
+            RENDER_BACKEND.drawArraysInstanced(mode, first, count, primcount);
         }
     }
 
-    /**
-     * If any enabled vertex attribute uses a client-side pointer (no VBO), upload all such
-     * attribs into a shared stream VBO so the draw succeeds under core profile.
-     */
-    private static void uploadClientArraysToVBO() {
-        int totalBytes = 0;
-        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
-            clientArraysVBOOffsets[i] = -1;
-            final VertexAttribState.Attrib a = VertexAttribState.get(i);
-            if (!a.enabled || a.clientPointer == null) continue;
-            clientArraysVBOOffsets[i] = totalBytes;
-            totalBytes += a.clientPointer.remaining();
+    private static void prepareClientArrays() {
+        if (VAOManager.hasAnyClientSideEnabledAttrib()) {
+            VAOManager.uploadClientArraysToVBO();
         }
-        if (totalBytes == 0) return;
-
-        if (clientArraysVBO == 0) {
-            clientArraysVBO = RENDER_BACKEND.genBuffers();
-        }
-
-        final int savedVBO = boundVBO;
-        glBindBuffer(GL15.GL_ARRAY_BUFFER, clientArraysVBO);
-
-        if (totalBytes > clientArraysVBOCapacity) {
-            int newCap = Math.max(4096, clientArraysVBOCapacity);
-            while (newCap < totalBytes) newCap *= 2;
-            clientArraysVBOCapacity = newCap;
-        }
-        RENDER_BACKEND.bufferData(GL15.GL_ARRAY_BUFFER, clientArraysVBOCapacity, GL15.GL_STREAM_DRAW);
-
-        for (int i = 0; i < VertexAttribState.MAX_ATTRIBS; i++) {
-            if (clientArraysVBOOffsets[i] < 0) continue;
-            final VertexAttribState.Attrib a = VertexAttribState.get(i);
-            RENDER_BACKEND.bufferSubData(GL15.GL_ARRAY_BUFFER, clientArraysVBOOffsets[i], a.clientPointer.duplicate());
-            RENDER_BACKEND.vertexAttribPointer(i, a.size, a.type, a.normalized, a.stride, (long) clientArraysVBOOffsets[i]);
-        }
-
-        glBindBuffer(GL15.GL_ARRAY_BUFFER, savedVBO);
     }
 
     public static void glDrawArrays(int mode, int first, int count) {
@@ -2379,16 +2402,16 @@ public class GLStateManager {
             FeedbackManager.processDrawArrays(mode, first, count);
             return;
         }
-        prepareWideLineEmulation(mode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTriangles(first, count);
         } else if (mode == GL11.GL_QUAD_STRIP) {
+            preDraw();
             RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
         } else if (mode == GL11.GL_POLYGON) {
+            preDraw();
             RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
         } else {
+            preDraw(mode);
             RENDER_BACKEND.drawArrays(mode, first, count);
         }
         if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
@@ -2535,14 +2558,14 @@ public class GLStateManager {
         final int location = clientStateToAttributeLocation(cap);
         if (location >= 0) glEnableVertexAttribArray(location);
         final int flag = clientStateToVertexFlag(cap);
-        if (flag != 0) ShaderManager.getInstance().enableClientVertexFlag(flag);
+        if (flag != 0) VAOManager.enableClientVertexFlag(flag);
     }
 
     public static void glDisableClientState(int cap) {
         final int location = clientStateToAttributeLocation(cap);
         if (location >= 0) glDisableVertexAttribArray(location);
         final int flag = clientStateToVertexFlag(cap);
-        if (flag != 0) ShaderManager.getInstance().disableClientVertexFlag(flag);
+        if (flag != 0) VAOManager.disableClientVertexFlag(flag);
     }
 
     public static void glVertexAttrib2f(int index, float v0, float v1) {
@@ -2562,7 +2585,7 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
-        VertexAttribState.set(index, size, type, normalized, stride, offset, boundVBO);
+        VAOManager.setAttribute(index, size, type, normalized, stride, offset, boundVBO);
         RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, offset);
     }
 
@@ -2571,40 +2594,40 @@ public class GLStateManager {
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, FloatBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
+        VAOManager.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, DoubleBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
+        VAOManager.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, IntBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
+        VAOManager.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ShortBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer), 0);
+        VAOManager.setAttribute(index, size, type, normalized, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
-        VertexAttribState.set(index, size, type, normalized, stride, pointer, 0);
+        VAOManager.setAttribute(index, size, type, normalized, stride, pointer);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, long offset) {
-        VertexAttribState.set(index, size, type, false, stride, offset, boundVBO);
+        VAOManager.setAttribute(index, size, type, false, stride, offset, boundVBO);
         RENDER_BACKEND.vertexAttribIPointer(index, size, type, stride, offset);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ByteBuffer pointer) {
-        VertexAttribState.set(index, size, type, false, stride, pointer, 0);
+        VAOManager.setAttribute(index, size, type, false, stride, pointer);
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, IntBuffer pointer) {
-        VertexAttribState.set(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer), 0);
+        VAOManager.setAttribute(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribIPointer(int index, int size, int type, int stride, ShortBuffer pointer) {
-        VertexAttribState.set(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer), 0);
+        VAOManager.setAttribute(index, size, type, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexAttribDivisor(int index, int divisor) { RENDER_BACKEND.vertexAttribDivisor(index, divisor); }
@@ -2615,12 +2638,12 @@ public class GLStateManager {
     public static void glVertexAttribBinding(int attribindex, int bindingindex) { RENDER_BACKEND.vertexAttribBinding(attribindex, bindingindex); }
 
     public static void glEnableVertexAttribArray(int index) {
-        VertexAttribState.setEnabled(index, true);
+        VAOManager.enableAttribute(index);
         RENDER_BACKEND.enableVertexAttribArray(index);
     }
 
     public static void glDisableVertexAttribArray(int index) {
-        VertexAttribState.setEnabled(index, false);
+        VAOManager.disableAttribute(index);
         RENDER_BACKEND.disableVertexAttribArray(index);
     }
 
@@ -2655,7 +2678,7 @@ public class GLStateManager {
     public static void glPushClientAttrib(int mask) {
         if (clientAttribStackPointer < CLIENT_ATTRIB_STACK_DEPTH) {
             clientAttribSavedTextureUnit[clientAttribStackPointer] = clientActiveTextureUnit;
-            clientAttribSavedVertexFlags[clientAttribStackPointer] = ShaderManager.getInstance().getCurrentVertexFlags();
+            clientAttribSavedVertexFlags[clientAttribStackPointer] = VAOManager.getCurrentVertexFlags();
             clientAttribStackPointer++;
         }
     }
@@ -2664,7 +2687,7 @@ public class GLStateManager {
         if (clientAttribStackPointer > 0) {
             clientAttribStackPointer--;
             clientActiveTextureUnit = clientAttribSavedTextureUnit[clientAttribStackPointer];
-            ShaderManager.getInstance().setCurrentVertexFlags(clientAttribSavedVertexFlags[clientAttribStackPointer]);
+            VAOManager.setCurrentVertexFlags(clientAttribSavedVertexFlags[clientAttribStackPointer]);
         }
     }
 
@@ -2869,6 +2892,22 @@ public class GLStateManager {
             }
         }
         colorMaterial.enable();
+        bakeCurrentColorIntoTrackedMaterial();
+    }
+
+    public static void disableColorMaterial() {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordDisable(GL11.GL_COLOR_MATERIAL);
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        bakeCurrentColorIntoTrackedMaterial();
+        colorMaterial.disable();
+    }
+
+    private static void bakeCurrentColorIntoTrackedMaterial() {
         final float r = getColor().getRed();
         final float g = getColor().getGreen();
         final float b = getColor().getBlue();
@@ -2897,17 +2936,6 @@ public class GLStateManager {
                 case GL11.GL_EMISSION -> backMaterial.emission.set(r, g, b, a);
             }
         }
-    }
-
-    public static void disableColorMaterial() {
-        final RecordMode mode = DisplayListManager.getRecordMode();
-        if (mode != RecordMode.NONE) {
-            DisplayListManager.recordDisable(GL11.GL_COLOR_MATERIAL);
-            if (mode == RecordMode.COMPILE) {
-                return;
-            }
-        }
-        colorMaterial.disable();
     }
 
     public static void disableLighting() {
@@ -3040,16 +3068,19 @@ public class GLStateManager {
         }
         // Update cached state (FFP shader reads from cache)
         if (isCachingEnabled()) {
-            boolean changed = true;
+            boolean changed = false;
             switch (pname) {
-                case GL11.GL_FOG_DENSITY -> { fogState.setDensity(param); fragmentGeneration++; }
-                case GL11.GL_FOG_START -> { fogState.setStart(param); fragmentGeneration++; }
-                case GL11.GL_FOG_END -> { fogState.setEnd(param); fragmentGeneration++; }
-                case GL11.GL_FOG_MODE -> { fogState.setFogMode((int) param); fragmentGeneration++; }
-                default -> changed = false;
+                case GL11.GL_FOG_DENSITY -> { if (BYPASS_CACHE || fogState.getDensity() != param) { fogState.setDensity(param); changed = true; } }
+                case GL11.GL_FOG_START -> { if (BYPASS_CACHE || fogState.getStart() != param) { fogState.setStart(param); changed = true; } }
+                case GL11.GL_FOG_END -> { if (BYPASS_CACHE || fogState.getEnd() != param) { fogState.setEnd(param); changed = true; } }
+                case GL11.GL_FOG_MODE -> { if (BYPASS_CACHE || fogState.getFogMode() != (int) param) { fogState.setFogMode((int) param); changed = true; } }
+                default -> {}
             }
-            if (changed && GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
-                GLSMHooks.FOG_STATE_CHANGE.post(GLSMHooks.fogStateChangeEvent);
+            if (changed) {
+                fragmentGeneration++;
+                if (GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
+                    GLSMHooks.FOG_STATE_CHANGE.post(GLSMHooks.fogStateChangeEvent);
+                }
             }
         }
     }
@@ -3063,7 +3094,7 @@ public class GLStateManager {
             }
         }
         // Update cached state (FFP shader reads from cache)
-        if (isCachingEnabled() && pname == GL11.GL_FOG_MODE) {
+        if (isCachingEnabled() && pname == GL11.GL_FOG_MODE && (BYPASS_CACHE || fogState.getFogMode() != param)) {
             fogState.setFogMode(param);
             fragmentGeneration++;
             if (GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
@@ -3214,6 +3245,7 @@ public class GLStateManager {
 
         // Snapshot generation counters so we can detect actual changes at pop time
         savedMvGen[attribDepth] = mvGeneration;
+        savedMvLinearGen[attribDepth] = mvLinearGeneration;
         savedProjGen[attribDepth] = projGeneration;
         savedTexMatGen[attribDepth] = texMatrixGeneration;
         savedLightingGen[attribDepth] = lightingGeneration;
@@ -3322,13 +3354,23 @@ public class GLStateManager {
         if ((mask & GL11.GL_TEXTURE_BIT) != 0 && fragmentGeneration != savedFragmentGen[depth]) fragmentGeneration++; // texenv state
         if ((mask & GL11.GL_TRANSFORM_BIT) != 0) {
             if (mvGeneration != savedMvGen[depth]) mvGeneration++;
+            if (mvLinearGeneration != savedMvLinearGen[depth]) mvLinearGeneration++;
             if (projGeneration != savedProjGen[depth]) projGeneration++;
             if (texMatrixGeneration != savedTexMatGen[depth]) texMatrixGeneration++;
         }
         if ((mask & GL11.GL_CURRENT_BIT) != 0) {
-            if (colorGeneration != savedColorGen[depth]) colorGeneration++;
-            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) ShaderManager.bumpNormalGeneration();
-            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) ShaderManager.bumpTexCoordGeneration();
+            if (colorGeneration != savedColorGen[depth]) {
+                colorGeneration++;
+                dirtyColorAttrib = true;
+            }
+            if (ShaderManager.getNormalGeneration() != savedNormalGen[depth]) {
+                ShaderManager.bumpNormalGeneration();
+                dirtyNormalAttrib = true;
+            }
+            if (ShaderManager.getTexCoordGeneration() != savedTexCoordGen[depth]) {
+                ShaderManager.bumpTexCoordGeneration();
+                dirtyTexCoordAttrib = true;
+            }
         }
     }
 
@@ -3422,6 +3464,21 @@ public class GLStateManager {
         }
     }
 
+    public static void setModelViewMatrix(Matrix4fc m) {
+        if (isCachingEnabled()) {
+            modelViewMatrix.set(m);
+            mvGeneration++;
+            mvLinearGeneration++;
+        }
+    }
+
+    public static void setProjectionMatrix(Matrix4fc m) {
+        if (isCachingEnabled()) {
+            projectionMatrix.set(m);
+            projGeneration++;
+        }
+    }
+
     public static Matrix4fStack getMatrixStack() {
         switch (matrixMode.getMode()) {
             case GL11.GL_MODELVIEW -> {
@@ -3439,8 +3496,15 @@ public class GLStateManager {
 
     /** Bump the generation counter for the currently active matrix mode. */
     private static void bumpMatrixGeneration() {
+        bumpMatrixGeneration(true);
+    }
+
+    private static void bumpMatrixGeneration(boolean linearChanged) {
         switch (matrixMode.getMode()) {
-            case GL11.GL_MODELVIEW -> mvGeneration++;
+            case GL11.GL_MODELVIEW -> {
+                mvGeneration++;
+                if (linearChanged) mvLinearGeneration++;
+            }
             case GL11.GL_PROJECTION -> projGeneration++;
             case GL11.GL_TEXTURE -> texMatrixGeneration++;
         }
@@ -3467,7 +3531,7 @@ public class GLStateManager {
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate(x, y, z);
-            bumpMatrixGeneration();
+            bumpMatrixGeneration(false);
         }
     }
 
@@ -3478,7 +3542,7 @@ public class GLStateManager {
         }
         if (isCachingEnabled()) {
             getMatrixStack().translate((float) x, (float) y, (float) z);
-            bumpMatrixGeneration();
+            bumpMatrixGeneration(false);
         }
     }
 
@@ -3698,6 +3762,25 @@ public class GLStateManager {
         return DisplayListManager.getListMode();
     }
 
+    private static boolean handleRemovedTexParam(int target, int pname, int value) {
+        if (pname == GL14.GL_GENERATE_MIPMAP) {
+            if (target == GL11.GL_TEXTURE_2D) {
+                final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+                if (info != null) info.setGenerateMipmap(value != 0);
+            }
+            return true;
+        }
+        return false;
+    }
+
+    private static void maybeGenerateMipmap(int target, int level) {
+        if (target != GL11.GL_TEXTURE_2D) return;
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+        if (info != null && info.isGenerateMipmap() && level == info.getBaseLevel() && level < info.getMaxLevel()) {
+            RENDER_BACKEND.generateMipmap(target);
+        }
+    }
+
     public static boolean updateTexParameteriCache(int target, int texture, int pname, int param) {
         if (target != GL11.GL_TEXTURE_2D) {
             return true;
@@ -3723,6 +3806,10 @@ public class GLStateManager {
                 if (info.getWrapT() == param && !shouldBypassCache()) return false;
                 info.setWrapT(param);
             }
+            case GL12.GL_TEXTURE_BASE_LEVEL -> {
+                if (info.getBaseLevel() == param && !shouldBypassCache()) return false;
+                info.setBaseLevel(param);
+            }
             case GL12.GL_TEXTURE_MAX_LEVEL -> {
                 if (info.getMaxLevel() == param && !shouldBypassCache()) return false;
                 info.setMaxLevel(param);
@@ -3740,6 +3827,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameter(int target, int pname, IntBuffer params) {
+        if (handleRemovedTexParam(target, pname, params.remaining() >= 1 ? params.get(params.position()) : 0)) return;
         if (params.remaining() >= 1) {
             final int val = params.get(params.position());
             final int remapped = remapTexClamp(pname, val);
@@ -3750,6 +3838,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameter(int target, int pname, FloatBuffer params) {
+        if (handleRemovedTexParam(target, pname, params.remaining() >= 1 ? (int) params.get(params.position()) : 0)) return;
         if (params.remaining() >= 1) {
             final float val = params.get(params.position());
             final float remapped = remapTexClamp(pname, val);
@@ -3760,6 +3849,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameteri(int target, int pname, int param) {
+        if (handleRemovedTexParam(target, pname, param)) return;
         param = remapTexClamp(pname, param);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -3799,6 +3889,7 @@ public class GLStateManager {
     }
 
     public static void glTexParameterf(int target, int pname, float param) {
+        if (handleRemovedTexParam(target, pname, param > 0 ? (int) (param + 0.5f) : (int) (param - 0.5f))) return;
         param = remapTexClamp(pname, param);
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -3831,9 +3922,11 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_MAG_FILTER -> info.getMagFilter();
             case GL11.GL_TEXTURE_WRAP_S -> info.getWrapS();
             case GL11.GL_TEXTURE_WRAP_T -> info.getWrapT();
+            case GL12.GL_TEXTURE_BASE_LEVEL -> info.getBaseLevel();
             case GL12.GL_TEXTURE_MAX_LEVEL -> info.getMaxLevel();
             case GL12.GL_TEXTURE_MIN_LOD -> info.getMinLod();
             case GL12.GL_TEXTURE_MAX_LOD -> info.getMaxLod();
+            case GL14.GL_GENERATE_MIPMAP -> info.isGenerateMipmap() ? GL11.GL_TRUE : GL11.GL_FALSE;
             default -> {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
@@ -3949,64 +4042,72 @@ public class GLStateManager {
     public static void glSamplerParameteri(int sampler, int pname, int param) { RENDER_BACKEND.samplerParameteri(sampler, pname, param); }
     public static void glSamplerParameterf(int sampler, int pname, float param) { RENDER_BACKEND.samplerParameterf(sampler, pname, param); }
 
-    private static void glMaterialFront(int pname, FloatBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialFront(int pname, FloatBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> frontMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> frontMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> frontMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> frontMaterial.setEmission(params);
             case GL11.GL_SHININESS -> frontMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                frontMaterial.setAmbient(params);
-                frontMaterial.setDiffuse(params);
+                final boolean a = frontMaterial.setAmbient(params);
+                final boolean d = frontMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> frontMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
-    private static void glMaterialBack(int pname, FloatBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialBack(int pname, FloatBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> backMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> backMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> backMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> backMaterial.setEmission(params);
             case GL11.GL_SHININESS -> backMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                backMaterial.setAmbient(params);
-                backMaterial.setDiffuse(params);
+                final boolean a = backMaterial.setAmbient(params);
+                final boolean d = backMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> backMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
-    private static void glMaterialFront(int pname, IntBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialFront(int pname, IntBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> frontMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> frontMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> frontMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> frontMaterial.setEmission(params);
             case GL11.GL_SHININESS -> frontMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                frontMaterial.setAmbient(params);
-                frontMaterial.setDiffuse(params);
+                final boolean a = frontMaterial.setAmbient(params);
+                final boolean d = frontMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> frontMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
-    private static void glMaterialBack(int pname, IntBuffer params) {
-        switch (pname) {
+    private static boolean glMaterialBack(int pname, IntBuffer params) {
+        return switch (pname) {
             case GL11.GL_AMBIENT -> backMaterial.setAmbient(params);
             case GL11.GL_DIFFUSE -> backMaterial.setDiffuse(params);
             case GL11.GL_SPECULAR -> backMaterial.setSpecular(params);
             case GL11.GL_EMISSION -> backMaterial.setEmission(params);
             case GL11.GL_SHININESS -> backMaterial.setShininess(params);
             case GL11.GL_AMBIENT_AND_DIFFUSE -> {
-                backMaterial.setAmbient(params);
-                backMaterial.setDiffuse(params);
+                final boolean a = backMaterial.setAmbient(params);
+                final boolean d = backMaterial.setDiffuse(params);
+                yield a || d;
             }
             case GL11.GL_COLOR_INDEXES -> backMaterial.setColorIndexes(params);
-        }
+            default -> false;
+        };
     }
 
     public static void glMaterial(int face, int pname, FloatBuffer params) {
@@ -4017,17 +4118,19 @@ public class GLStateManager {
                 return;
             }
         }
+        boolean changed = false;
         if (face == GL11.GL_FRONT) {
-            glMaterialFront(pname, params);
+            changed = glMaterialFront(pname, params);
         } else if (face == GL11.GL_BACK) {
-            glMaterialBack(pname, params);
+            changed = glMaterialBack(pname, params);
         } else if (face == GL11.GL_FRONT_AND_BACK) {
-            glMaterialFront(pname, params);
-            glMaterialBack(pname, params);
+            final boolean f = glMaterialFront(pname, params);
+            final boolean b = glMaterialBack(pname, params);
+            changed = f || b;
         } else {
             throw new RuntimeException("Unsupported face value for glMaterial: " + face);
         }
-        lightingGeneration++;
+        if (changed) lightingGeneration++;
     }
 
     public static void glMaterial(int face, int pname, IntBuffer params) {
@@ -4046,17 +4149,19 @@ public class GLStateManager {
                 return;
             }
         }
+        boolean changed = false;
         if (face == GL11.GL_FRONT) {
-            glMaterialFront(pname, params);
+            changed = glMaterialFront(pname, params);
         } else if (face == GL11.GL_BACK) {
-            glMaterialBack(pname, params);
+            changed = glMaterialBack(pname, params);
         } else if (face == GL11.GL_FRONT_AND_BACK) {
-            glMaterialFront(pname, params);
-            glMaterialBack(pname, params);
+            final boolean f = glMaterialFront(pname, params);
+            final boolean b = glMaterialBack(pname, params);
+            changed = f || b;
         } else {
             throw new RuntimeException("Unsupported face value for glMaterial: " + face);
         }
-        lightingGeneration++;
+        if (changed) lightingGeneration++;
     }
 
     public static void glMaterialf(int face, int pname, float val) {
@@ -4072,17 +4177,19 @@ public class GLStateManager {
             return;
         }
 
+        boolean changed = false;
         if (face == GL11.GL_FRONT) {
-            frontMaterial.setShininess(val);
+            changed = frontMaterial.setShininess(val);
         } else if (face == GL11.GL_BACK) {
-            backMaterial.setShininess(val);
+            changed = backMaterial.setShininess(val);
         } else if (face == GL11.GL_FRONT_AND_BACK) {
-            frontMaterial.setShininess(val);
-            backMaterial.setShininess(val);
+            final boolean f = frontMaterial.setShininess(val);
+            final boolean b = backMaterial.setShininess(val);
+            changed = f || b;
         } else {
             throw new RuntimeException("Unsupported face value for glMaterial: " + face);
         }
-        lightingGeneration++;
+        if (changed) lightingGeneration++;
     }
 
     public static void glMateriali(int face, int pname, int val) {
@@ -4100,7 +4207,7 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_AMBIENT -> lightState.setAmbient(params);
             case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
             case GL11.GL_SPECULAR -> lightState.setSpecular(params);
@@ -4111,9 +4218,9 @@ public class GLStateManager {
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
-            default -> {}
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLight(int light, int pname, IntBuffer params) {
@@ -4133,7 +4240,7 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_AMBIENT -> lightState.setAmbient(params);
             case GL11.GL_DIFFUSE -> lightState.setDiffuse(params);
             case GL11.GL_SPECULAR -> lightState.setSpecular(params);
@@ -4144,9 +4251,9 @@ public class GLStateManager {
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(params);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(params);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(params);
-            default -> {}
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightf(int light, int pname, float param) {
@@ -4158,15 +4265,15 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
             case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
-            default -> {}
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLighti(int light, int pname, int param) {
@@ -4178,16 +4285,15 @@ public class GLStateManager {
             }
         }
         final LightStateStack lightState = lightDataStates[light - GL11.GL_LIGHT0];
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_SPOT_EXPONENT -> lightState.setSpotExponent(param);
             case GL11.GL_SPOT_CUTOFF -> lightState.setSpotCutoff(param);
             case GL11.GL_CONSTANT_ATTENUATION -> lightState.setConstantAttenuation(param);
             case GL11.GL_LINEAR_ATTENUATION -> lightState.setLinearAttenuation(param);
             case GL11.GL_QUADRATIC_ATTENUATION -> lightState.setQuadraticAttenuation(param);
-            default -> {
-            }
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightModel(int pname, FloatBuffer params) {
@@ -4198,14 +4304,13 @@ public class GLStateManager {
                 return;
             }
         }
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
             case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
             case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
-            default -> {
-            }
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightModel(int pname, IntBuffer params) {
@@ -4224,15 +4329,14 @@ public class GLStateManager {
                 return;
             }
         }
-        switch (pname) {
+        final boolean changed = switch (pname) {
             case GL11.GL_LIGHT_MODEL_AMBIENT -> lightModel.setAmbient(params);
             case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(params);
             case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(params);
             case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(params);
-            default -> {
-            }
-        }
-        lightingGeneration++;
+            default -> false;
+        };
+        if (changed) lightingGeneration++;
     }
 
     public static void glLightModelf(int pname, float param) {
@@ -4245,13 +4349,12 @@ public class GLStateManager {
         }
 
         if (isCachingEnabled()) {
-            switch (pname) {
+            final boolean changed = switch (pname) {
                 case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
                 case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
-                default -> {
-                }
-            }
-            lightingGeneration++;
+                default -> false;
+            };
+            if (changed) lightingGeneration++;
         }
     }
 
@@ -4265,14 +4368,13 @@ public class GLStateManager {
         }
 
         if (isCachingEnabled()) {
-            switch (pname) {
+            final boolean changed = switch (pname) {
                 case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.setColorControl(param);
                 case GL11.GL_LIGHT_MODEL_LOCAL_VIEWER -> lightModel.setLocalViewer(param);
                 case GL11.GL_LIGHT_MODEL_TWO_SIDE -> lightModel.setTwoSide(param);
-                default -> {
-                }
-            }
-            lightingGeneration++;
+                default -> false;
+            };
+            if (changed) lightingGeneration++;
         }
     }
 
@@ -4347,7 +4449,6 @@ public class GLStateManager {
                 GLDebug.debugMessage("Activating Program - " + program + ":" + programName);
             }
             RENDER_BACKEND.useProgram(program);
-            CompatUniformManager.onUseProgram(program);
             if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = program;
@@ -4361,7 +4462,7 @@ public class GLStateManager {
     public static void glTexImage1D(int target, int level, int internalformat, int width, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage1D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexImage1D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage1D(target, level, internalformat, width, border, format, type, pixels);
@@ -4371,7 +4472,7 @@ public class GLStateManager {
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, ByteBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexImage3D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
@@ -4381,7 +4482,7 @@ public class GLStateManager {
     public static void glTexImage3D(int target, int level, int internalformat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {
         internalformat = changeFormatIfDeprecated(internalformat);
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexImage3D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexImage3D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage3D(target, level, internalformat, width, height, depth, border, format, type, pixels);
@@ -4390,7 +4491,7 @@ public class GLStateManager {
 
     public static void glTexSubImage1D(int target, int level, int xoffset, int width, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexSubImage1D in display lists not yet implemented");
+            throw DisplayListManager.unsupportedInList("glTexSubImage1D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage1D(target, level, xoffset, width, format, type, pixels);
@@ -4415,9 +4516,14 @@ public class GLStateManager {
     }
 
     public static void prepareWideLineEmulation(int drawMode) {
-        wideLineEmulationActive = wideLineEmulationEnabled
-                && (drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP)
-                && lineState.getWidth() > 1.0f;
+        wideLineEmulationActive =
+            (drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP)
+                && lineState.getWidth() > 1.0f
+                && wideLineEmulationEnabled;
+    }
+
+    public static void disableWideLineEmulation() {
+        wideLineEmulationActive = false;
     }
 
     public static void glFlush() {
@@ -4470,6 +4576,25 @@ public class GLStateManager {
         glShaderSource(shader, sb.toString());
     }
 
+    public static void nglShaderSource(int shader, int count, long strings, long lengths) {
+        if (count <= 0) return;
+        final CharSequence source;
+        if (count == 1) {
+            source = decodeShaderSourceString(strings, lengths, 0);
+        } else {
+            final StringBuilder sb = new StringBuilder();
+            for (int i = 0; i < count; i++) sb.append(decodeShaderSourceString(strings, lengths, i));
+            source = sb.toString();
+        }
+        glShaderSource(shader, source);
+    }
+
+    private static String decodeShaderSourceString(long strings, long lengths, int i) {
+        final long strAddr = MemoryUtilities.memGetAddress(strings + (long) i * Pointer.POINTER_SIZE);
+        final int len = lengths == MemoryUtilities.NULL ? -1 : MemoryUtilities.memGetInt(lengths + (long) i * 4);
+        return len < 0 ? MemoryUtilities.memUTF8(strAddr) : MemoryUtilities.memUTF8(strAddr, len);
+    }
+
     /** Check shader type to determine if fragment output transformation is needed. */
     private static boolean isFragmentShader(int shader) {
         return RENDER_BACKEND.getShaderi(shader, GL20.GL_SHADER_TYPE) == GL20.GL_FRAGMENT_SHADER;
@@ -4479,7 +4604,7 @@ public class GLStateManager {
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, ByteBuffer pixels) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromByteBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -4487,12 +4612,13 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, IntBuffer pixels) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
-            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels));
+            DisplayListManager.recordComplexCommand(TexSubImage2DCmd.fromIntBuffer(target, level, xoffset, yoffset, width, height, format, type, pixels, pixelUnpackState));
             if (mode == RecordMode.COMPILE) {
                 return;
             }
@@ -4500,18 +4626,20 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pixels_buffer_offset) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexSubImage2D with buffer offset in display lists not yet supported");
+            throw DisplayListManager.unsupportedInList("glTexSubImage2D with buffer offset");
         }
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glTexSubImage3D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glTexSubImage3D");
         }
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
@@ -4520,35 +4648,37 @@ public class GLStateManager {
 
     public static void glCopyTexImage1D(int target, int level, int internalFormat, int x, int y, int width, int border) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexImage1D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexImage1D");
         }
         RENDER_BACKEND.copyTexImage1D(target, level, internalFormat, x, y, width, border);
     }
 
     public static void glCopyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexImage2D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexImage2D");
         }
         RENDER_BACKEND.copyTexImage2D(target, level, internalFormat, x, y, width, height, border);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glCopyTexSubImage1D(int target, int level, int xoffset, int x, int y, int width) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexSubImage1D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexSubImage1D");
         }
         RENDER_BACKEND.copyTexSubImage1D(target, level, xoffset, x, y, width);
     }
 
     public static void glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexSubImage2D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexSubImage2D");
         }
         RENDER_BACKEND.copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+        maybeGenerateMipmap(target, level);
     }
 
     public static void glCopyTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int x, int y, int width, int height) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glCopyTexSubImage3D in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glCopyTexSubImage3D");
         }
         RENDER_BACKEND.copyTexSubImage3D(target, level, xoffset, yoffset, zoffset, x, y, width, height);
     }
@@ -4589,6 +4719,12 @@ public class GLStateManager {
     }
 
     public static void glHint(int target, int hint) {
+        // These hint targets are removed in core profile, ignore them
+        switch (target) {
+            case GL11.GL_PERSPECTIVE_CORRECTION_HINT, GL11.GL_POINT_SMOOTH_HINT, GL11.GL_FOG_HINT, GL14.GL_GENERATE_MIPMAP_HINT -> {
+                return;
+            }
+        }
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
             DisplayListManager.recordHint(target, hint);
@@ -4677,7 +4813,7 @@ public class GLStateManager {
 
     public static void glReadBuffer(int mode) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glReadBuffer in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glReadBuffer");
         }
         RENDER_BACKEND.readBuffer(mode);
     }
@@ -4746,18 +4882,16 @@ public class GLStateManager {
         }
     }
 
+    // glPixelStore* isn'tcompiled into display lists, it executes immediately
     public static void glPixelStorei(int pname, int param) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPixelStorei in display lists not yet implemented - if you see this, please report!");
+        if (isCachingEnabled()) {
+            pixelUnpackState = pixelUnpackState.with(pname, param);
         }
         RENDER_BACKEND.pixelStorei(pname, param);
     }
 
     public static void glPixelStoref(int pname, float param) {
-        if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glPixelStoref in display lists not yet implemented - if you see this, please report!");
-        }
-        RENDER_BACKEND.pixelStoref(pname, param);
+        glPixelStorei(pname, param < 0 ? -Math.round(-param) : Math.round(param));
     }
 
     // Display List Commands
@@ -4852,7 +4986,7 @@ public class GLStateManager {
     // Multisample Commands
     public static void glSampleCoverage(float value, boolean invert) {
         if (DisplayListManager.isRecording()) {
-            throw new UnsupportedOperationException("glSampleCoverage in display lists not yet implemented - if you see this, please report!");
+            throw DisplayListManager.unsupportedInList("glSampleCoverage");
         }
         RENDER_BACKEND.sampleCoverage(value, invert);
     }
@@ -4977,13 +5111,13 @@ public class GLStateManager {
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
         if (boundVBO == buffer) boundVBO = 0;
-        if (boundEBO == buffer) boundEBO = 0;
+        if (VAOManager.boundEBO == buffer) VAOManager.boundEBO = 0;
         if (boundPixelUnpackBuffer == buffer) boundPixelUnpackBuffer = 0;
         if (boundPixelPackBuffer == buffer) boundPixelPackBuffer = 0;
 
         // Sweep all VAOs: an unbound VAO may later rebind with a dangling EBO id.
-        for (Int2IntMap.Entry e : vaoEboMap.int2IntEntrySet()) {
-            if (e.getIntValue() == buffer) e.setValue(0);
+        for (VAOManager.VAOData data : VAOManager.vaoMap.values()) {
+            if (data.ebo == buffer) data.ebo = 0;
         }
     }
 
@@ -4992,14 +5126,21 @@ public class GLStateManager {
             // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
             boundVBO = buffer;
         } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
-            boundEBO = buffer;
-            vaoEboMap.put(boundVAO, buffer);
+            VAOManager.onBindEBO(buffer);
         } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
             boundPixelUnpackBuffer = buffer;
         } else if (target == GL21.GL_PIXEL_PACK_BUFFER) {
             boundPixelPackBuffer = buffer;
         }
         RENDER_BACKEND.bindBuffer(target, buffer);
+    }
+
+    public static void forcePixelUnpackState(PixelUnpackState target) {
+        PixelUnpackState.applyDiff(pixelUnpackState, target);
+    }
+
+    public static void restorePixelUnpackState(PixelUnpackState applied) {
+        PixelUnpackState.applyDiff(applied, pixelUnpackState);
     }
 
     static void suspendPixelUnpackBuffer() {
@@ -5069,24 +5210,17 @@ public class GLStateManager {
         }
         if (boundVAO != array) {
             boundVAO = array;
-            boundEBO = vaoEboMap.get(array);
-            VertexAttribState.onBindVertexArray(array);
+            VAOManager.onBindVertexArrayPre(array);
             RENDER_BACKEND.bindVertexArray(array);
-            if (ShaderManager.getInstance().isEnabled()) {
-                ShaderManager.getInstance().onBindVertexArray(array);
-            }
         }
     }
 
     public static void glDeleteVertexArrays(int array) {
-        ShaderManager.getInstance().onDeleteVertexArray(array);
-        VertexAttribState.onDeleteVertexArray(array);
-        vaoEboMap.remove(array);
+        VAOManager.onDeleteVertexArray(array);
         if (array == boundVAO) {
             // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
             boundVAO = defaultVAO;
-            boundEBO = vaoEboMap.get(defaultVAO);
-            VertexAttribState.onBindVertexArray(defaultVAO);
+            VAOManager.onBindVertexArrayPre(defaultVAO);
             RENDER_BACKEND.bindVertexArray(defaultVAO);
         }
         RENDER_BACKEND.deleteVertexArrays(array);
@@ -5094,6 +5228,10 @@ public class GLStateManager {
 
     public static int glGenVertexArrays() {
         return RENDER_BACKEND.genVertexArrays();
+    }
+
+    public static boolean glIsVertexArray(int array) {
+        return RENDER_BACKEND.isVertexArray(array);
     }
 
     public static void glBindVertexArrayAPPLE(int array) {
@@ -5892,15 +6030,15 @@ public class GLStateManager {
     }
 
     public static void glUniform1(int location, IntBuffer values) {
-        if (values.remaining() >= 1) RENDER_BACKEND.uniform1i(location, values.get(values.position()));
+        RENDER_BACKEND.uniform1iv(location, values);
     }
 
     public static void glUniform2(int location, FloatBuffer values) {
-        if (values.remaining() >= 2) RENDER_BACKEND.uniform2f(location, values.get(values.position()), values.get(values.position() + 1));
+        RENDER_BACKEND.uniform2(location, values);
     }
 
     public static void glUniform2(int location, IntBuffer values) {
-        if (values.remaining() >= 2) RENDER_BACKEND.uniform2i(location, values.get(values.position()), values.get(values.position() + 1));
+        RENDER_BACKEND.uniform2iv(location, values);
     }
 
     public static void glUniform3(int location, FloatBuffer values) {
@@ -5908,7 +6046,7 @@ public class GLStateManager {
     }
 
     public static void glUniform3(int location, IntBuffer values) {
-        if (values.remaining() >= 3) RENDER_BACKEND.uniform3i(location, values.get(values.position()), values.get(values.position() + 1), values.get(values.position() + 2));
+        RENDER_BACKEND.uniform3iv(location, values);
     }
 
     public static void glUniform4(int location, FloatBuffer values) {
@@ -5916,7 +6054,7 @@ public class GLStateManager {
     }
 
     public static void glUniform4(int location, IntBuffer values) {
-        if (values.remaining() >= 4) RENDER_BACKEND.uniform4i(location, values.get(values.position()), values.get(values.position() + 1), values.get(values.position() + 2), values.get(values.position() + 3));
+        RENDER_BACKEND.uniform4iv(location, values);
     }
 
     public static void glUniformMatrix2(int location, boolean transpose, FloatBuffer matrices) {

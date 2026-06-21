@@ -13,12 +13,10 @@ public class TopButtonRowEntry extends BaseEntry {
     private static final String NONE_PRESENT_LABEL = I18n.format("options.iris.shaders.nonePresent"); //.withStyle(ChatFormatting.GRAY);
     private static final String SHADERS_DISABLED_LABEL = I18n.format("options.iris.shaders.disabled");
     private static final String SHADERS_ENABLED_LABEL = I18n.format("options.iris.shaders.enabled");
-    private static final int REFRESH_BUTTON_WIDTH = 18;
 
     private final ShaderPackSelectionList shaderPackSelectionList;
     private final IrisElementRow buttons = new IrisElementRow();
     private final EnableShadersButtonElement enableDisableButton;
-    private final IrisElementRow.Element refreshPacksButton;
 
     public boolean allowEnableShadersButton = true;
     public boolean shadersEnabled;
@@ -38,15 +36,7 @@ public class TopButtonRowEntry extends BaseEntry {
 
                 return false;
             });
-        this.refreshPacksButton = new IrisElementRow.IconButtonElement(
-            GuiUtil.Icon.REFRESH,
-            button -> {
-                this.shaderPackSelectionList.refresh();
-
-                GuiUtil.playButtonClickSound();
-                return true;
-            });
-        this.buttons.add(this.enableDisableButton, 0).add(this.refreshPacksButton, REFRESH_BUTTON_WIDTH);
+        this.buttons.add(this.enableDisableButton, 0);
     }
 
     public void setShadersEnabled(boolean shadersEnabled) {
@@ -57,7 +47,7 @@ public class TopButtonRowEntry extends BaseEntry {
 
     @Override
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int listWidth, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
-        this.buttons.setWidth(this.enableDisableButton, (listWidth - 1) - REFRESH_BUTTON_WIDTH);
+        this.buttons.setWidth(this.enableDisableButton, listWidth);
         this.enableDisableButton.centerX = x + (int)(listWidth * 0.5);
 
         this.buttons.drawScreen(x - 2, y - 3, 18, mouseX, mouseY, 0, isMouseOver);

@@ -7,6 +7,7 @@ import net.coderbot.iris.gui.element.IrisElementRow;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.Gui;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
@@ -60,13 +61,12 @@ public class HeaderEntry extends BaseEntry {
 
     @Override
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int slotWidth, int slotHeight, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
-        // Draw dividing line
-        //			fill(x - 3, (y + slotHeight) - 2, x + slotWidth, (y + slotHeight) - 1, 0x66BEBEBE);
+        Gui.drawRect(x - 3, (y + slotHeight) - 3, x + slotWidth, (y + slotHeight) - 2, 0x66BEBEBE);
         final int tickDelta = 0;
         final FontRenderer font = Minecraft.getMinecraft().fontRenderer;
 
-        // Draw header text
-        this.screen.drawCenteredString(font, text, x + (int) (slotWidth * 0.5), y + 5, 0xFFFFFF);
+        GuiUtil.drawScrollingText(font, text, x + (int) (slotWidth * 0.5), x + 5,
+            ((x + slotWidth) - 10) - this.utilityButtons.getWidth(), y + 5, y + 15, 0xFFFFFF);
 
         GuiUtil.bindIrisWidgetsTexture();
 

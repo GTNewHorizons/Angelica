@@ -28,7 +28,7 @@ class VertexAttribDefaultBridgeTest {
     @Test
     void testGlColor4fSetsVertexAttrib() {
         GLStateManager.glColor4f(0.5f, 0.25f, 0.75f, 0.8f);
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         float[] color = getVertexAttrib4f(COLOR_ATTRIB);
         assertEquals(0.5f, color[0], EPSILON, "color.r");
@@ -40,7 +40,7 @@ class VertexAttribDefaultBridgeTest {
     @Test
     void testGlNormal3fSetsVertexAttrib() {
         GLStateManager.glNormal3f(0.0f, 1.0f, 0.0f);
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         float[] normal = getVertexAttrib4f(NORMAL_ATTRIB);
         assertEquals(0.0f, normal[0], EPSILON, "normal.x");
@@ -51,7 +51,7 @@ class VertexAttribDefaultBridgeTest {
     @Test
     void testSetLightmapTextureCoordsOnUnit1SetsVertexAttrib() {
         GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, 240.0f, 128.0f);
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         float[] lm = getVertexAttrib4f(SECONDARY_UV_ATTRIB);
         assertEquals(240.0f, lm[0], EPSILON, "lightmap.s");
@@ -64,7 +64,7 @@ class VertexAttribDefaultBridgeTest {
     void testGlTexCoord2fSetsVertexAttrib() {
         // glTexCoord2f outside recording → sets default vertex attrib 2 (PRIMARY_UV)
         GLStateManager.glTexCoord2f(0.5f, 0.75f);
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         float[] uv = getVertexAttrib4f(PRIMARY_UV_ATTRIB);
         assertEquals(0.5f, uv[0], EPSILON, "texcoord.s");
@@ -77,7 +77,7 @@ class VertexAttribDefaultBridgeTest {
         // Second call is a cache hit — changeColor not called.
         // Vertex attrib should still hold the correct value from the first call.
         GLStateManager.glColor4f(0.3f, 0.6f, 0.9f, 1.0f);
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         float[] color = getVertexAttrib4f(COLOR_ATTRIB);
         assertEquals(0.3f, color[0], EPSILON, "color.r after dedup");
@@ -89,7 +89,7 @@ class VertexAttribDefaultBridgeTest {
     @Test
     void testCompileMode_DoesNotSetVertexAttrib() {
         GLStateManager.glColor4f(0.1f, 0.2f, 0.3f, 1.0f);
-        GLStateManager.flushDeferredVertexAttribs();
+        GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         int listId = GLStateManager.glGenLists(1);
         GLStateManager.glNewList(listId, org.lwjgl.opengl.GL11.GL_COMPILE);

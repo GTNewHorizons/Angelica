@@ -1,11 +1,11 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLDebug;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
 import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
@@ -19,7 +19,19 @@ import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
-public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExtensionContext.Store.CloseableResource {
+public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExecutionCondition, ExtensionContext.Store.CloseableResource {
+
+    // Compat profile is not available on OSX
+    private static final boolean IS_MAC = System.getProperty("os.name", "").toLowerCase().contains("mac");
+    private static final boolean FORCE_RUN = Boolean.getBoolean("angelica.glsm.test.forceRun");
+
+    @Override
+    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+        if (IS_MAC && !FORCE_RUN) {
+            return ConditionEvaluationResult.disabled("Skipped on macOS: needs GL3+ compat profile");
+        }
+        return ConditionEvaluationResult.enabled("OS supports GL3+ compat profile");
+    }
 
     private static final Unsafe theUnsafe;
     static {

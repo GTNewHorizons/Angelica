@@ -227,13 +227,13 @@ public class AngelicaConfig {
 
     @Config.Comment({"Block corners and edges between chunks might have \"cracks\" (various lines/dots) in them.",
             "While using \"Compact Vertex Format\" makes the situation even worse.",
-            "This option fixes it.",
-            "Requires texture reloading (F3 + T) after changing this option to take effect"})
-    @Config.DefaultBoolean(true)
-    public static boolean fixBlockCrack;
+            "This option fixes it, though may lead to other visual artifacts.",
+            "Requires game restart after changing this option to take effect"})
+    @Config.DefaultBoolean(false)
+    public static boolean blockCrackFix;
 
     @Config.Comment({
-            "The \"epsilon\" value for the fixBlockCrack option. ",
+            "The \"epsilon\" value for the blockCrackFix option. ",
             "Set this a bit higher if you can still see lines/dots between solid blocks in dark areas.",
             "May cause intense flickering (z-fighting) between blocks if the value is too high"
     })
@@ -241,7 +241,7 @@ public class AngelicaConfig {
     @Config.DefaultDouble(0.001)
     public static double blockCrackFixEpsilon;
 
-    @Config.Comment("Block classes that have bugs when rendering with the fixBlockCrack can be put here to avoid manipulating them")
+    @Config.Comment("Block classes that have bugs when rendering with the blockCrackFix can be put here to avoid manipulating them")
     @Config.DefaultStringList({
             "net.minecraft.block.BlockCauldron",
             "net.minecraft.block.BlockStairs"
@@ -249,7 +249,7 @@ public class AngelicaConfig {
     public static String[] blockCrackFixBlacklist;
 
     @Config.Comment({"Block classes that have render pass other than 0 but still need to be manipulated.",
-                     "Add a block class here if you see flickering (z-fighting) with fixBlockCrack enabled"
+                     "Add a block class here if you see flickering (z-fighting) with blockCrackFix enabled"
     })
     @Config.DefaultStringList({
             "gregtech.common.blocks.BlockOres",
@@ -268,6 +268,13 @@ public class AngelicaConfig {
                      "Requires texture reload (F3+T) to take effect."})
     @Config.DefaultStringList({"jewelrycraft2:blockCrystal"})
     public static String[] alwaysTranslucentSprites;
+
+    @Config.Comment({"TileEntity classnames whose render bounds change at runtime (e.g. OpenBlocks Guide).",
+                     "These are always rendered and frustum-tested against their live bounds instead of the cached."})
+    @Config.DefaultStringList({"openblocks.common.tileentity.TileEntityGuide",
+                               "openblocks.common.tileentity.TileEntityBuilderGuide"})
+    @Config.RequiresMcRestart
+    public static String[] dynamicBoundsTileEntities;
 
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
@@ -310,6 +317,16 @@ public class AngelicaConfig {
         @Config.DefaultBoolean(true)
         @Config.RequiresMcRestart
         public boolean narrowEars;
+
+        @Config.Comment("Narrow Fisk's Superheroes transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFiskHeroes;
+
+        @Config.Comment("Narrow FoamFix transformer exclusions to allow GL redirection in its repackaged Ears")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFoamFix;
     }
 
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
@@ -340,4 +357,8 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean disableErrorChecks;
 
+    @Config.Comment("Fixes various issues with entity overlays, such as z-fighting, damage animations and eyes.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean entityOverlayFixes;
 }
