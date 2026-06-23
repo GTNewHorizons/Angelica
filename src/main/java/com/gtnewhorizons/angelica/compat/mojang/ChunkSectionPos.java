@@ -27,6 +27,7 @@ public class ChunkSectionPos extends Vector3i {
     }
 
     public static long asLong(int x, int y, int z) {
+        // Use CoordinatePacker so that cubic chunks can change the bit packing layout
         return CoordinatePacker.pack(x, y, z);
     }
 
