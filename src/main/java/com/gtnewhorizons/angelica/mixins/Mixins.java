@@ -582,6 +582,12 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.etfuturum.MixinLayerBetterElytra")
     ),
+    ET_FUTURUM_END_FLASH(new MixinBuilder("Keep the End flash above the horizon when shaders are active")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.etfuturum.MixinEndFlashState")
+    ),
     MCPATCHER_FORGE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures)
