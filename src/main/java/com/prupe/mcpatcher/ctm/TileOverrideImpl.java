@@ -12,15 +12,22 @@ import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_UL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_UR;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.TOP_FACE;
 
+import com.prupe.mcpatcher.mal.block.RenderPassAPI;
+import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import net.minecraft.util.IIcon;
 
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import com.prupe.mcpatcher.mal.util.WeightedIndex;
+import net.minecraft.util.ResourceLocation;
+
+import java.awt.image.BufferedImage;
+import java.util.ArrayList;
+import java.util.List;
 
 public class TileOverrideImpl {
 
-    final static class CTM extends TileOverride {
+    static class CTM extends TileOverride {
 
         CTM(PropertiesFile properties, TileLoader tileLoader) {
             super(properties, tileLoader);
@@ -503,6 +510,50 @@ public class TileOverrideImpl {
                 this.processor = p;
             }
             return p;
+        }
+    }
+
+    final public static class CTMCompactExpanded extends CTM {
+
+        CTMCompactExpanded(PropertiesFile propertiesFile, TileLoader tileLoader) {
+            super(propertiesFile, tileLoader);
+        }
+
+        @Override
+        String checkTileMap() {
+            return null;
+        }
+
+        @Override
+        String getMethod() {
+            return "compact_expanded";
+        }
+
+        @Override
+        protected void loadOverrideIcons(int from, int to, ResourceLocation blankResource) {
+            List<BufferedImage> compactIcons = new ArrayList<>();
+            if(from != 0){
+                properties.error("expanded compact CTM requires range to start at 0, starts at %d", from);
+            }
+            if(to - from + 1 != 5){
+                properties.error("expanded compact CTM requires exactly 5 icons, got range %d - %d", from, to);
+            }
+            for (int i = from; i <= to; i++) {
+                ResourceLocation resource = TileLoader
+                    .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
+                if (TexturePackAPI.hasResource(resource)) {
+                    compactIcons.add(tileLoader.loadResourceImage(resource,
+                        renderPass > RenderPassAPI.MAX_BASE_RENDER_PASS));
+                } else {
+                    // Promote from warning to error for compact CTM
+                    properties.error("could not find image %s, required for expanded compact CTM", resource);
+                    tileNames.add(null);
+                }
+            }
+            if(compactIcons.size() == 5){
+                CTMTextureGenerator.generateTextures(compactIcons.toArray(new BufferedImage[0]),
+                    this, properties.getResource(), blankResource);
+            }
         }
     }
 }

@@ -28,6 +28,7 @@ public enum TargetedMod implements ITargetMod {
     TINKERS_CONSTRUCT(null, "TConstruct"),
     TWILIGHT_FOREST(null, "TwilightForest"),
     BIOMES_O_PLENTY(null, "BiomesOPlenty"),
+    CUSTOM_PLAYER_MODELS("com.tom.cpmcore.CPMLoadingPlugin", "customplayermodels"),
     WITCHERY(null, "witchery");
 
     private final TargetModBuilder builder;

@@ -346,8 +346,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         final ITileEntityBoundingBoxCache teCache = (ITileEntityBoundingBoxCache) tileEntity;
 
-        if (!teCache.angelica$isInfiniteExtent()) {
-            final AxisAlignedBB aabb = teCache.angelica$getCachedRenderBoundingBox();
+        final byte boundsClass = teCache.angelica$boundsClass();
+        if (boundsClass != TileEntityRenderBoundsRegistry.INFINITE) {
+            final AxisAlignedBB aabb = boundsClass == TileEntityRenderBoundsRegistry.DYNAMIC ? tileEntity.getRenderBoundingBox() : teCache.angelica$getCachedRenderBoundingBox();
             if (aabb != null && !this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ)) {
                 return;
             }

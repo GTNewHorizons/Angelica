@@ -12,3 +12,22 @@ jobs:
   release-tags:
     uses: GTNewHorizons/GTNH-Actions-Workflows/.github/workflows/release-tags.yml@master
     secrets: inherit
+
+  notify-discord:
+    needs: [release-tags]
+    runs-on: ubuntu-24.04
+    if: >-
+      ${{ !endsWith(github.ref_name, '-snapshot')
+          && !contains(github.event.head_commit.message, '[snapshot]')
+          && !endsWith(github.ref_name, '-pre') }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Announce release to Discord
+        shell: bash
+        env:
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_RELEASE_WEBHOOK_URL }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          TAG: ${{ github.ref_name }}
+        run: bash .github/scripts/announce-release.sh

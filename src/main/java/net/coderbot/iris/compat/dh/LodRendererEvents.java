@@ -33,6 +33,7 @@ import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.irisshaders.iris.api.v0.IrisApi;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.lwjgl.opengl.GL11;
 
 public class LodRendererEvents {
@@ -45,6 +46,28 @@ public class LodRendererEvents {
     private static int textureWidth;
     private static int textureHeight;
     private static final Matrix4f tempMat4 = new Matrix4f();
+
+    private static boolean dhMatricesActive = false;
+    private static final Matrix4f savedModelView = new Matrix4f();
+    private static final Matrix4f savedProjection = new Matrix4f();
+
+    static void pushDhMatrices(Matrix4fc projection, Matrix4fc modelView) {
+        if (!dhMatricesActive) {
+            savedModelView.set(GLStateManager.getModelViewMatrix());
+            savedProjection.set(GLStateManager.getProjectionMatrix());
+            dhMatricesActive = true;
+        }
+        GLStateManager.setModelViewMatrix(modelView);
+        GLStateManager.setProjectionMatrix(projection);
+    }
+
+    static void popDhMatrices() {
+        if (dhMatricesActive) {
+            GLStateManager.setModelViewMatrix(savedModelView);
+            GLStateManager.setProjectionMatrix(savedProjection);
+            dhMatricesActive = false;
+        }
+    }
 
 
     // constructor //
@@ -181,6 +204,7 @@ public class LodRendererEvents {
         DhApiBeforeRenderCleanupEvent beforeCleanupEvent = new DhApiBeforeRenderCleanupEvent() {
             @Override
             public void beforeCleanup(DhApiEventParam<DhApiRenderParam> event) {
+                popDhMatrices();
                 if (getInstance().shouldOverride) {
                     if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                         getInstance().getShadowShader().unbind();

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
@@ -9,12 +9,12 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
-
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Software emulation of GL feedback mode
@@ -127,12 +127,12 @@ public class FeedbackManager {
     }
 
     private static int positionStride() {
-        final int s = VertexAttribState.get(0).effectiveStride();
+        final int s = VAOManager.getAttribEffectiveStride(0);
         return (s != 0) ? s : 12;
     }
 
     private static long positionOffset() {
-        return VertexAttribState.get(0).offset;
+        return VAOManager.getAttribOffset(0);
     }
 
     public static void processDrawArrays(int mode, int first, int count) {
@@ -151,7 +151,7 @@ public class FeedbackManager {
         computeMVP();
         final int stride = positionStride();
 
-        final int elementSize = VertexAttribState.Attrib.glTypeSizeBytes(type);
+        final int elementSize = VAOManager.Attrib.glTypeSizeBytes(type);
         final int indexByteCount = indexCount * elementSize;
         ensureIndexReadbackCapacity(indexByteCount);
         indexReadbackBuf.clear().limit(indexByteCount);
@@ -255,7 +255,7 @@ public class FeedbackManager {
     }
 
     private static void readPositionBuffer(long offset, ByteBuffer destination) {
-        final int positionVbo = VertexAttribState.get(0).vboId;
+        final int positionVbo = VAOManager.getAttribVBO(0);
         final int previousVbo = GLStateManager.getBoundVBO();
 
         if (positionVbo != 0 && positionVbo != previousVbo) {

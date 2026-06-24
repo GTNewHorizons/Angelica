@@ -3,10 +3,10 @@ package com.gtnewhorizons.angelica.glsm.recording;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BatchedIndexedDrawCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import com.gtnewhorizons.angelica.glsm.recording.support.DisplayListTestFixture;
-import com.gtnewhorizons.angelica.glsm.states.VertexAttribState;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
@@ -307,10 +307,10 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         final ByteBuffer colorSlice = clientData.duplicate().order(ByteOrder.nativeOrder());
         colorSlice.position(8);
-        VertexAttribState.set(0, 2, GL11.GL_FLOAT, false, POS_COLOR_STRIDE, clientData, 0);
-        VertexAttribState.setEnabled(0, true);
-        VertexAttribState.set(1, 4, GL11.GL_UNSIGNED_BYTE, true, POS_COLOR_STRIDE, colorSlice, 0);
-        VertexAttribState.setEnabled(1, true);
+        VAOManager.setAttribute(0, 2, GL11.GL_FLOAT, false, POS_COLOR_STRIDE, clientData);
+        VAOManager.enableAttribute(0);
+        VAOManager.setAttribute(1, 4, GL11.GL_UNSIGNED_BYTE, true, POS_COLOR_STRIDE, colorSlice);
+        VAOManager.enableAttribute(1);
         GLStateManager.glBindVertexArray(0);
 
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2);

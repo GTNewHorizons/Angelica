@@ -52,7 +52,7 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Unique private int angelica$cachedBBMetadata = -1;
     @Unique private Block angelica$cachedBBBlockType = null;
     @Unique private AxisAlignedBB angelica$cachedRenderBB = null;
-    @Unique private byte angelica$infiniteExtentCached = 0;     // 0 = unchecked, 1 = finite, 2 = infinite
+    @Unique private byte angelica$boundsClassCached = 0;        // 0 = unchecked, otherwise STATIC/INFINITE/DYNAMIC
 
     /**
      * @author mitchej123
@@ -114,11 +114,10 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     }
 
     @Override
-    public boolean angelica$isInfiniteExtent() {
-        if (angelica$infiniteExtentCached == 0) {
-            final boolean isInfinite = TileEntityRenderBoundsRegistry.isAlwaysInfiniteExtent((TileEntity) (Object) this);
-            angelica$infiniteExtentCached = isInfinite ? (byte) 2 : (byte) 1;
+    public byte angelica$boundsClass() {
+        if (angelica$boundsClassCached == 0) {
+            angelica$boundsClassCached = TileEntityRenderBoundsRegistry.classify((TileEntity) (Object) this);
         }
-        return angelica$infiniteExtentCached == 2;
+        return angelica$boundsClassCached;
     }
 }
