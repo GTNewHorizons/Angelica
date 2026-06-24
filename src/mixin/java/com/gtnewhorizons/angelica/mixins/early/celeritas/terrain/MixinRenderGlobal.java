@@ -61,22 +61,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique private int celeritas$lastThirdPersonView = -1;
 
     @Unique
-    private static void angelica$drainRenderQueue() {
-        final int budgetNs = 5 * 1000 * 1000;
-        final long startTime = System.nanoTime();
-        int tasksRan = 0;
-
-        while (System.nanoTime() - startTime < budgetNs) {
-            if (AngelicaRenderQueue.processTasks(1) == 0) {
-                break;
-            }
-            tasksRan++;
-        }
-
-        AngelicaRenderQueue.recordFrameStats(tasksRan, System.nanoTime() - startTime);
-    }
-
-    @Unique
     private boolean angelica$isSpectatorMode() {
         return GameModeUtil.isSpectator();
     }
@@ -198,8 +182,6 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public void clipRenderersByFrustum(ICamera camera, float partialTicks) {
-        angelica$drainRenderQueue();
-
         RenderDevice.enterManagedCode();
 
         try {
@@ -293,6 +275,17 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
      */
     @Overwrite
     public boolean updateRenderers(EntityLivingBase e, boolean b) {
+        final int BUDGET_NS = 5 * 1000 * 1000;
+        final long startTime = System.nanoTime();
+        int tasksRan = 0;
+
+        while (System.nanoTime() - startTime < BUDGET_NS) {
+            if (AngelicaRenderQueue.processTasks(1) == 0)
+                break;
+            tasksRan++;
+        }
+
+        AngelicaRenderQueue.recordFrameStats(tasksRan, System.nanoTime() - startTime);
         return true;
     }
 
