@@ -50,6 +50,7 @@ public abstract class MixinRenderBlocks {
     @Unique
     private boolean isRenderingByType = false;
 
+    @Unique
     private boolean applyingCeleritasAO = false;
 
     @Inject(method = "renderBlockByRenderType", at = @At("HEAD"))
@@ -105,11 +106,14 @@ public abstract class MixinRenderBlocks {
     /**
      * @author embeddedt
      * @reason When vanilla would render with AO, hijack the rendering logic and render using flat lighting instead.
+     *         Skip the separateAo redirect when called on a RenderBlocks subclass (e.g. BetterFoliage's
+     *         ExtendedRenderBlocks) so that the per-vertex brightness/color fields get populated by vanilla AO
+     *         for custom geometry shading.
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
         if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
-            (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
+            (((Object)this).getClass() == RenderBlocks.class && Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
             this.applyingCeleritasAO = true;
             try {
                 cir.setReturnValue(this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b));
