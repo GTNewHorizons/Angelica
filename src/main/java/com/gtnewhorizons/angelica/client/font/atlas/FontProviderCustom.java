@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.client.font.atlas;
 
+import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
+import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.GlyphData;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import net.minecraft.client.Minecraft;
@@ -7,6 +9,7 @@ import org.lwjgl.opengl.GL11;
 
 import javax.imageio.ImageIO;
 import java.awt.*;
+import java.awt.font.GlyphVector;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -14,11 +17,10 @@ import java.nio.ByteBuffer;
 
 public final class FontProviderCustom extends FontTextureArray {
     private static final int ATLAS_CHARS = 256;
-    private static final int CHAR_SEPARATOR = 2;
 
     private final Font[] fonts;
 
-    private FontProviderCustom(int size, int layers, int[] layersLookupArray, int filter, Font[] fonts) {
+    private FontProviderCustom(int size, int layers, short[] layersLookupArray, int filter, Font[] fonts) {
         super(size, layers, layersLookupArray, filter);
         this.fonts = fonts;
     }
@@ -28,16 +30,16 @@ public final class FontProviderCustom extends FontTextureArray {
         if (fontAmount == 0) return null;
         final FontMetrics[] fontMetrics = new FontMetrics[fontAmount];
         BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_ARGB);
+        Graphics2D g2d = image.createGraphics();
         for (int i = 0; i < fontAmount; i++) {
-            Graphics2D g2d = image.createGraphics();
             g2d.setFont(fonts[i]);
             fontMetrics[i] = g2d.getFontMetrics();
-            g2d.dispose();
         }
+        g2d.dispose();
 
 
-        int[] layerLookup = new int[256];
-        int layer = 0;
+        short[] layerLookup = new short[256];
+        short layer = 0;
         loop:
         for (int atlasId = 0; atlasId < 256; atlasId++) {
             for (int i = 0; i < 256; i++) {
@@ -113,23 +115,21 @@ public final class FontProviderCustom extends FontTextureArray {
         return size;
     }
 
-    @Override
-    public ByteBuffer generateGlyphData(int atlasId, GlyphData[] glyphs) {
-        int atlasChars = 0;
+    private boolean canDisplayAtlas(int atlasId) {
         for (int i = 0; i < ATLAS_CHARS; i++) {
             final char ch = (char) (i + ATLAS_CHARS * atlasId);
             for (Font font : fonts) {
                 if (font.canDisplay(ch)) {
-                    atlasChars++;
-                    break;
+                    return true;
                 }
             }
         }
-        if (atlasChars == 0) {
-            return null;
-        }
+        return false;
+    }
 
-        final int charSeparator = CHAR_SEPARATOR; //TODO idk
+    @Override
+    public ByteBuffer generateGlyphData(int atlasId, GlyphData[] glyphs) {
+        if (!canDisplayAtlas(atlasId)) return null;
 
         final int imageWidth = textureSize;
         final int imageHeight = textureSize;
@@ -144,57 +144,92 @@ public final class FontProviderCustom extends FontTextureArray {
         g2d.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
         g2d.setRenderingHint(RenderingHints.KEY_TEXT_ANTIALIASING, RenderingHints.VALUE_TEXT_ANTIALIAS_ON);
 
+        int maxCharHeight = 0;
         final FontMetrics[] fontMetrics = new FontMetrics[fonts.length];
         for (int i = 0; i < fontMetrics.length; i++) {
             g2d.setFont(fonts[i]);
-            fontMetrics[i] = g2d.getFontMetrics();
-        }
-
-        int maxCharHeight = 0;
-        for (FontMetrics fm : fontMetrics) {
+            final FontMetrics fm = g2d.getFontMetrics();
+            fontMetrics[i] = fm;
             if (fm.getHeight() > maxCharHeight) maxCharHeight = fm.getHeight();
         }
 
-        int imgX = 1; // position in pixels
-        int imgY = maxCharHeight;
+
+        final int padding = 2;
+
+
+        int imgX = padding; // position in pixels
+        int imgY = maxCharHeight + padding;
 
 
         Font lastFont = null; // Store last font to save on repeated setFont() calls
 
+        final float height = BatchingFontRenderer.getStringHeight();
+
+
+        final int atlasBegin = ATLAS_CHARS * atlasId;
         for (int atlasChar = 0; atlasChar < ATLAS_CHARS; atlasChar++) {
-            final char ch = (char) (atlasChar + ATLAS_CHARS * atlasId);
+            char ch = (char) (atlasChar + atlasBegin);
+
+            final char replacement = GlyphReplacements.getReplacementGlyph(ch);
+            if (replacement != 0) {
+                if (FontConfig.enableGlyphReplacements) {
+                    for (Font font : fonts) {
+                        if (font.canDisplay(replacement)) {
+                            ch = replacement;
+                            break;
+                        }
+                    }
+                }
+            }
+
             for (int i = 0; i < fonts.length; i++) {
-                if (fonts[i].canDisplay(ch)) {
+                final Font font = fonts[i];
+                if (font.canDisplay(ch)) {
+                    if (lastFont != font) {
+                        g2d.setFont(font);
+                        lastFont = font;
+                    }
                     final FontMetrics fm = fontMetrics[i];
 
                     final int lineHeight = fm.getHeight();
                     final float desc = fm.getDescent();
 
-                    final int charHeight = (lineHeight + charSeparator);
+                    final int advanceWidth = fm.charWidth(ch);
 
-                    final int charWidth = fm.charWidth(ch);
+                    final GlyphVector gv = font.createGlyphVector(
+                        g2d.getFontRenderContext(),
+                        Character.toString(ch));
 
-                    if (imgX + charWidth >= imageWidth) {
-                        imgX = 1;
-                        imgY += charHeight;
+                    if (imgX + advanceWidth >= imageWidth) {
+                        imgX = padding;
+                        imgY += (maxCharHeight + padding);
                     }
 
-                    final float charAspectRatio = ((float) charWidth) / lineHeight;
-                    final float inset = 0;
-                    g2d.setFont(fonts[i]);
-                    g2d.drawString(Character.toString(ch), imgX, imgY - desc);
-                    final float uStart = (imgX - inset * charAspectRatio) / imageWidth;
-                    final float vStart = (imgY - lineHeight - inset + 1) / imageHeight;
-                    final float xAdvance = (charAspectRatio * 8 * charWidth / (charWidth + 2 * inset * charAspectRatio)) * FontConfig.customFontScale;
-                    final float glyphW = (charAspectRatio * 8 + 1) * FontConfig.customFontScale;
-                    final float uSz = (charWidth + 2 * inset * charAspectRatio) / imageWidth;
-                    final float vSz = (lineHeight + 2 * inset) / imageHeight;
-                    glyphs[atlasChar] = new GlyphData(uStart, vStart, xAdvance, glyphW, uSz, vSz);
-                    imgX += (charWidth + charSeparator);
+                    final Rectangle bounds = gv.getPixelBounds(
+                        g2d.getFontRenderContext(),
+                        0, 0);
+
+                    g2d.drawGlyphVector(
+                        gv,
+                        imgX - bounds.x,
+                        imgY - desc
+                    );
+                    final float scale = (height / lineHeight) * getGlyphScaleX();
+                    final float glyphW = advanceWidth * scale;
+                    final float xStart = bounds.x * scale;
+                    final float xWidth = bounds.width * scale;
+
+                    final float uStart = (float) (imgX) / imageWidth;
+                    final float vStart = (float) (imgY - lineHeight) / imageHeight;
+
+                    final float uSz = bounds.width / (float) imageWidth;
+                    final float vSz = lineHeight / (float) imageHeight;
+                    glyphs[atlasChar] = new GlyphData(uStart, vStart, xStart, xWidth, glyphW, uSz, vSz);
+                    imgX += bounds.width + padding;
+
                     break;
                 }
             }
-
         }
         g2d.dispose();
 
@@ -209,5 +244,9 @@ public final class FontProviderCustom extends FontTextureArray {
         }
 
         return getPixelBuffer(image);
+    }
+
+    static float getGlyphScaleX() {
+        return (FontConfig.glyphScale * (float) Math.pow(2, FontConfig.glyphAspect));
     }
 }

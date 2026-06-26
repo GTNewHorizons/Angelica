@@ -4,6 +4,7 @@ import biomesoplenty.api.content.BOPCBlocks;
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
+import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -109,6 +110,7 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
         ModelRegistry.registerModid(MOD_ID);
+        ColorCodeUtils.initPreprocessor();
         blockError = new BlockError();
     }
 

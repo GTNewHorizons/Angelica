@@ -41,7 +41,7 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
     private static int globalFPSCount;
 
     PersistentStreamingDrawer(int stride, int elementCapacity, VAOConsumer initVAO) {
-        super(initVAO);
+        super(initVAO, stride);
         sectionSize   = elementCapacity * stride;
         final int totalCapacity = getTotalCapacity();
 
@@ -63,10 +63,9 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
 
     private void ensureCapacity(int needed) {
         if (needed + sectionWriteOffset > sectionSize) {
-            System.out.println("Resizing");
+            System.out.println("Resizing to " + sectionSize * 2 + " bytes.");
             new Exception().printStackTrace();
             resize(sectionSize * 2);
-            return;
         }
     }
 
@@ -77,9 +76,7 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
             advanceSection();
             //System.out.println("Moving to section " + currentSection);
         }
-        if (sectionDrawCount > 5) {
-            ensureCapacity(needed);
-        }
+        ensureCapacity(needed);
         long pointer = sectionWritePointer + sectionWriteOffset;
         sectionWriteOffset += needed;
         sectionDrawCount++;
@@ -206,7 +203,7 @@ public final class PersistentStreamingDrawer extends StreamingDrawer {
             super.initVAO();
         }
         final int start = sectionWriteStart;
-        final int offset = start / dataSize;
+        final int offset = start / stride;
         GL42.glDrawElementsInstancedBaseInstance(
             mode,
             indices_count,

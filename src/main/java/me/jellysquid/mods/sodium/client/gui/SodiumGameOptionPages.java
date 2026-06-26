@@ -1,6 +1,7 @@
 package me.jellysquid.mods.sodium.client.gui;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
@@ -591,8 +592,11 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("options.angelica.texteffects.ampersand_conversion"))
                         .setTooltip(I18n.format("options.angelica.texteffects.ampersand_conversion.tooltip", "\\&"))
                         .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> AngelicaConfig.enableAmpersandConversion = value,
-                                    opts -> AngelicaConfig.enableAmpersandConversion)
+                        .setBinding((opts, value) -> {
+                                AngelicaConfig.enableAmpersandConversion = value;
+                                ColorCodeUtils.initPreprocessor();
+                            },
+                            opts -> AngelicaConfig.enableAmpersandConversion)
                         .build())
                 .build());
 

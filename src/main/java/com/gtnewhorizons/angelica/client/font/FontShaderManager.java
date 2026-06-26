@@ -14,4 +14,15 @@ public final class FontShaderManager {
     static boolean isOverlayShader(char ch) {
         return ((int) ch) < fontShaders.size();
     }
+
+    public static FontOverlayShader begin(char ch, BatchingFontRenderer fontRenderer) {
+        final byte index = (byte) ch;
+        final FontOverlayShader shader = get(index);
+        shader.begin(fontRenderer);
+        return shader;
+    }
+
+    public static FontOverlayShader get(byte index) {
+        return fontShaders.get(index);
+    }
 }

@@ -13,8 +13,7 @@ import java.util.HashMap;
 import java.util.Iterator;
 
 import static com.gtnewhorizons.angelica.AngelicaMod.LOGGER;
-import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.customTextureArray;
-import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.reloadCustomFonts;
+import static com.gtnewhorizons.angelica.client.font.BatchingFontRenderer.reloadFonts;
 
 public final class FontStrategist {
 
@@ -89,11 +88,7 @@ public final class FontStrategist {
                 secondaryFont = font.deriveFont((float) FontConfig.customFontQuality);
             }
         }
-        if (customTextureArray != null) {
-            customTextureArray.delete();
-            customTextureArray = null;
-        }
-        reloadCustomFonts();
+        reloadFonts();
     }
 
     public static boolean isSplashFontRendererActive(FontRenderer fontRenderer) {

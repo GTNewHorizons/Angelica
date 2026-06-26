@@ -63,10 +63,13 @@ configurations {
 // Exclude self-reference from all configurations - prevents transitive Angelica deps from resolving against this project
 configurations.all {
     exclude group: "com.github.GTNewHorizons", module: "Angelica"
+    resolutionStrategy {
+        force 'com.github.GTNewHorizons:Hodgepodge:9:dev'
+    }
 }
 
 dependencies {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.158:dev")
+    implementation("com.github.GTNewHorizons:Hodgepodge:9:dev")
 
     compileOnly("com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap:1.1.0") { transitive = false }
 //    runtimeOnlyNonPublishable("com.github.GTNewHorizons:lwjgl3ify:3.0.99")
@@ -122,6 +125,9 @@ dependencies {
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Draconic-Evolution:1.5.18-GTNH:dev")
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:HoloInventory:2.5.8-GTNH:dev")
      */
+
+    // Font Testing
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Nuclear-Control:2.7.9:dev")
 
     //devOnlyNonPublishable('com.github.GTNewHorizons:worldedit-gtnh:v0.0.9')
 

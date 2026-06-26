@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.client.font;
 
+import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 
 /**
@@ -18,6 +19,7 @@ public final class ColorCodeUtils {
     private ColorCodeUtils() {}
 
     public static final char FORMATTING_CHAR = '§';
+    public static final String FORMATTING_CHAR_STRING = String.valueOf(FORMATTING_CHAR);
     public static final char ESCAPED_AMPERSAND = '';
 
     public static final int SECTION_X_PAYLOAD = 12;
@@ -25,22 +27,28 @@ public final class ColorCodeUtils {
     public static final int GRADIENT_PAYLOAD = 28;
     public static final int GRADIENT_LENGTH = 30;
 
-    /** Valid single {@code &} codes. {@code g} is excluded; {@code &g} only converts as part of a gradient. */
-    public static final String VALID_SINGLE_CODES = "0123456789abcdefklmnorqzvuy";
+    private static final boolean[] isColorCode = new boolean[255];
 
-    private static final String[] SECTION_PREFIX = new String[128];
     static {
-        for (int i = 0; i < VALID_SINGLE_CODES.length(); i++) {
-            char c = VALID_SINGLE_CODES.charAt(i);
-            SECTION_PREFIX[c] = String.valueOf(FORMATTING_CHAR) + c;
+        /** Valid single {@code &} codes. {@code g} is excluded; {@code &g} only converts as part of a gradient. */
+        final String s = "0123456789abcdefklmnorqzvu";
+        for (int i = 0; i < s.length(); i++) {
+            final char ch = s.charAt(i);
+            isColorCode[ch] = true;
+            isColorCode[Character.toUpperCase(ch)] = true;
         }
-        SECTION_PREFIX['x'] = String.valueOf(FORMATTING_CHAR) + 'x';
-        SECTION_PREFIX['g'] = String.valueOf(FORMATTING_CHAR) + 'g';
     }
 
-    public static String sectionPrefix(char code) {
-        char c = (code < 128) ? Character.toLowerCase(code) : code;
-        return (c < 128) ? SECTION_PREFIX[c] : null;
+    public static void initPreprocessor() {
+        if (AngelicaConfig.enableAmpersandConversion) {
+            FontRendering.setTextPreprocessor(new AngelicaTextPreprocessor());
+        } else {
+            FontRendering.setTextPreprocessor((FontRendering.TextPreprocessor) null);
+        }
+    }
+
+    public static String sectionPrefix(final char code) {
+        return FORMATTING_CHAR_STRING + code;
     }
 
     public static int parseHexPairs(CharSequence str, int start, int count) {
@@ -66,21 +74,7 @@ public final class ColorCodeUtils {
         return parseSectionXAt(str, start) != -1;
     }
 
-    private static String lastConversionInput;
-    private static String lastConversionOutput;
-
-    public static String convertAmpersandToSectionX(String text) {
-        if (text == null || !AngelicaConfig.enableAmpersandConversion) return text;
-
-        if (text.equals(lastConversionInput)) return lastConversionOutput;
-
-        final String out = convertImpl(text);
-        lastConversionInput = text;
-        lastConversionOutput = out;
-        return out;
-    }
-
-    private static String convertImpl(String text) {
+    public static String convertImpl(final String text) {
         int idx = text.indexOf('&');
         if (idx == -1) return text;
 
@@ -88,6 +82,16 @@ public final class ColorCodeUtils {
         StringBuilder sb = null;
         int last = 0;
         while (idx != -1 && idx + 1 < len) {
+            final char code = text.charAt(idx + 1);
+            if (code >= 255) continue;
+            if (isColorCode[code]) {
+                if (sb == null) sb = new StringBuilder(len + 16);
+                sb.append(text, last, idx);
+                sb.append(FORMATTING_CHAR).append(text.charAt(idx + 1));
+                last = idx + 2;
+                idx = text.indexOf('&', last);
+                continue;
+            }
             if (idx > 0 && text.charAt(idx - 1) == '\\') {
                 if (sb == null) sb = new StringBuilder(len + 16);
                 sb.append(text, last, idx - 1);
@@ -96,27 +100,28 @@ public final class ColorCodeUtils {
                 idx = text.indexOf('&', last);
                 continue;
             }
-            if (text.charAt(idx + 1) == '#' && idx + 7 < len) {
-                boolean validHex = true;
-                for (int i = 2; i <= 7; i++) {
-                    if (Character.digit(text.charAt(idx + i), 16) == -1) {
-                        validHex = false;
-                        break;
-                    }
-                }
-                if (validHex) {
-                    if (sb == null) sb = new StringBuilder(len + 16);
-                    sb.append(text, last, idx);
-                    sb.append(FORMATTING_CHAR).append('x');
+            if (code == '#') {
+                if (idx + 7 < len) {
+                    boolean validHex = true;
                     for (int i = 2; i <= 7; i++) {
-                        sb.append(FORMATTING_CHAR).append(text.charAt(idx + i));
+                        if (Character.digit(text.charAt(idx + i), 16) == -1) {
+                            validHex = false;
+                            break;
+                        }
                     }
-                    last = idx + 8;
-                    idx = text.indexOf('&', last);
-                    continue;
+                    if (validHex) {
+                        if (sb == null) sb = new StringBuilder(len + 16);
+                        sb.append(text, last, idx);
+                        sb.append(FORMATTING_CHAR).append('x');
+                        for (int i = 2; i <= 7; i++) {
+                            sb.append(FORMATTING_CHAR).append(text.charAt(idx + i));
+                        }
+                        last = idx + 8;
+                        idx = text.indexOf('&', last);
+                        continue;
+                    }
                 }
-            }
-            if (Character.toLowerCase(text.charAt(idx + 1)) == 'g' && idx + 17 < len
+            } else if (Character.toLowerCase(code) == 'g' && idx + 17 < len
                 && text.charAt(idx + 2) == '&' && text.charAt(idx + 3) == '#'
                 && text.charAt(idx + 10) == '&' && text.charAt(idx + 11) == '#') {
                 boolean valid1 = true, valid2 = true;
@@ -136,13 +141,6 @@ public final class ColorCodeUtils {
                     idx = text.indexOf('&', last);
                     continue;
                 }
-            }
-            char code = Character.toLowerCase(text.charAt(idx + 1));
-            if (VALID_SINGLE_CODES.indexOf(code) != -1) {
-                if (sb == null) sb = new StringBuilder(len + 16);
-                sb.append(text, last, idx);
-                sb.append(FORMATTING_CHAR).append(text.charAt(idx + 1));
-                last = idx + 2;
             }
             idx = text.indexOf('&', idx + 1);
         }

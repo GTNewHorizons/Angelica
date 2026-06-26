@@ -49,7 +49,7 @@ public class FontConfigScreen extends GuiScreen {
     private IrisButton fwdButton;
     private IrisButton backButton;
 
-    SliderClone.Option optFontQuality = new SliderClone.Option(6, 72, 6);
+    SliderClone.Option optFontQuality = new SliderClone.Option(18, 72, 1);
     SliderClone.Option optShadowOffset = new SliderClone.Option(0, 2, 0.05f);
     SliderClone.Option optBrightness = new SliderClone.Option(0, 10, 1);
     SliderClone.Option optBoldCopies = new SliderClone.Option(1, 8, 1);
@@ -126,7 +126,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optFontQuality)
             .initialValue(FontConfig.customFontQuality)
-            .setter(this::setFontQuality)
+            .setter(FontConfig::setCustomFontQuality)
             .langKey("options.angelica.fontconfig.font_quality")
             .formatString("%2.0f")
             .build()
@@ -136,7 +136,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optBrightness)
             .initialValue(FontConfig.fontBrightness)
-            .setter(value -> FontConfig.setFontBrightness(value.intValue()))
+            .setter(FontConfig::setFontBrightness)
             .langKey("options.angelica.fontconfig.brightness")
             .formatString("%.0f")
             .build()
@@ -146,7 +146,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optGlyphAspect)
             .initialValue(FontConfig.glyphAspect)
-            .setter(value -> FontConfig.glyphAspect = value)
+            .setter(FontConfig::setGlyphAspect)
             .langKey("options.angelica.fontconfig.glyph_aspect")
             .build()
         );
@@ -155,7 +155,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optGlyphScale)
             .initialValue(FontConfig.glyphScale)
-            .setter(value -> FontConfig.glyphScale = value)
+            .setter(FontConfig::setGlyphScale)
             .langKey("options.angelica.fontconfig.glyph_scale")
             .formatString("x%3.2f")
             .build()
@@ -165,7 +165,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optFontAAStrength)
             .initialValue(FontConfig.fontAAStrength)
-            .setter(value -> FontConfig.setFontAAStrength(value.intValue()))
+            .setter(FontConfig::setFontAAStrength)
             .langKey("options.angelica.fontconfig.font_aa_strength")
             .formatString("%.0f")
             .build()
@@ -175,7 +175,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optFontAAMode)
             .initialValue(FontConfig.fontAAMode)
-            .setter(value -> FontConfig.setFontAAMode(value.intValue()))
+            .setter(FontConfig::setFontAAMode)
             .formatter(this::fontAAModeFormat)
             .langKey("options.angelica.fontconfig.aamode")
             .build()
@@ -195,7 +195,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optGlyphSpacing)
             .initialValue(FontConfig.glyphSpacing)
-            .setter(value -> FontConfig.glyphSpacing = value)
+            .setter(FontConfig::setGlyphSpacing)
             .langKey("options.angelica.fontconfig.glyph_spacing")
             .build()
         );
@@ -224,7 +224,7 @@ public class FontConfigScreen extends GuiScreen {
             .height(sliderHeight)
             .option(optCustomFontScale)
             .initialValue(FontConfig.customFontScale)
-            .setter(value -> FontConfig.customFontScale = value)
+            .setter(FontConfig::setCustomFontScale)
             .langKey("options.angelica.fontconfig.custom_font_scale")
             .formatString("x%3.2f")
             .build()

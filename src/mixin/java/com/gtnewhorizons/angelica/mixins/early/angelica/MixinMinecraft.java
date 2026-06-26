@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.streaming.PersistentStreamingDrawer;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -10,7 +11,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
@@ -62,7 +62,6 @@ public abstract class MixinMinecraft {
     )
     private void angelica$injectLightingFixPostRenderTick(CallbackInfo ci) {
         GLStateManager.glEnable(GL11.GL_LIGHTING);
-        PersistentStreamingDrawer.incrementFPS();
     }
 
     @Inject(
@@ -127,5 +126,6 @@ public abstract class MixinMinecraft {
     @Inject(method = "runTick", at = @At("RETURN"))
     private void angelica$streamingBufferEndFrame(CallbackInfo ci) {
         TessellatorStreamingDrawer.endFrame();
+        PersistentStreamingDrawer.incrementFPS();
     }
 }

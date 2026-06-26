@@ -12,6 +12,9 @@ import org.lwjgl.opengl.GL30;
 
 import javax.imageio.ImageIO;
 import java.awt.image.BufferedImage;
+import java.awt.image.ColorModel;
+import java.awt.image.DataBufferInt;
+import java.awt.image.Raster;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -22,18 +25,19 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
 
 public abstract class FontTextureArray {
     protected final int id;
     protected final int textureSize;
-    protected final int[] layersLookup;
+    protected final short[] layersLookup;
     protected final GlyphData[][] atlasGlyphs = new GlyphData[256][];
 
-    static final boolean DUMP_ATLASES = true;
+    static final boolean DUMP_ATLASES = false;
 
 
-    FontTextureArray(int size, int layers, int[] layersLookupArray, final int filter) {
+    FontTextureArray(int size, int layers, short[] layersLookupArray, final int filter) {
         this.layersLookup = layersLookupArray;
         this.id = GLStateManager.glGenTextures();
         this.textureSize = size;
@@ -80,26 +84,28 @@ public abstract class FontTextureArray {
 //        }
 //    }
 
-    public final GlyphData getGlyphData(final char ch) {
-        final int atlasId = ch / 256;
+    public final GlyphData[] getAtlasGlyphs(final int atlasId) {
         GlyphData[] glyphs = atlasGlyphs[atlasId];
         if (glyphs == null) {
             glyphs = addAtlas(atlasId);
         }
-        return glyphs[ch & 255];
+        return glyphs;
+    }
+
+    public final GlyphData getGlyphData(final char ch) {
+        return getAtlasGlyphs(ch >> 8)[ch & 255];
     }
 
     public final boolean isGlyphAvailable(char ch) {
-        final int atlasId = ch / 256;
-        GlyphData[] glyphs = atlasGlyphs[atlasId];
-        if (glyphs == null) {
-            glyphs = addAtlas(atlasId);
-        }
-        return glyphs[ch & 255] != null;
+        return getAtlasGlyphs(ch >> 8)[ch & 255] != null;
     }
 
-    public int getDepth(char ch) {
-        return layersLookup[ch / 256];
+    public final int getDepth(char ch) {
+        return layersLookup[ch >> 8];
+    }
+
+    public int getTexture() {
+        return id;
     }
 
     protected final void loadAtlas(int atlasId) {
@@ -115,12 +121,15 @@ public abstract class FontTextureArray {
         final GlyphData[] glyphData = new GlyphData[256];
         try {
             final ByteBuffer pixels = generateGlyphData(atlasId, glyphData);
+
+            bind();
+
+            atlasGlyphs[atlasId] = glyphData;
+
             if (pixels == null) {
-                atlasGlyphs[atlasId] = glyphData;
                 return glyphData;
             }
             final int size = (int) Math.sqrt(pixels.capacity());
-            bind();
             GLStateManager.glTexSubImage3D(
                 GL30.GL_TEXTURE_2D_ARRAY,
                 0,
@@ -133,8 +142,6 @@ public abstract class FontTextureArray {
             );
 
             memFree(pixels);
-
-            atlasGlyphs[atlasId] = glyphData;
 
             if (DUMP_ATLASES) {
                 try {
@@ -237,14 +244,33 @@ public abstract class FontTextureArray {
     }
 
     static ByteBuffer getPixelBuffer(BufferedImage image) {
-        final int size = image.getWidth();
-        final ByteBuffer pixelBuffer = memAlloc(size * size);
-        pixelBuffer.clear();
-        final int[] pixelValues = TextureLoader.getImagePixels(image);
-        for (int i : pixelValues) {
-            pixelBuffer.put((byte) ((i >> 24) & 0xFF)); // Only extract alpha
+        final int width = image.getWidth();
+        final int height = image.getHeight();
+        final ByteBuffer pixelBuffer = memAlloc(width * height);
+        long ptr = memAddress0(pixelBuffer);
+
+        // Cheap Path
+        if (image.getRaster().getDataBuffer() instanceof DataBufferInt dataBufferInt) {
+            final int[] pixelValues = dataBufferInt.getData();
+            for (int i : pixelValues) {
+                memPutByte(ptr++, (byte) ((i >> 24) & 0xFF));
+            }
+            pixelBuffer.limit(pixelValues.length);
+            return pixelBuffer;
         }
-        pixelBuffer.position(0).limit(pixelValues.length);
+
+        Raster raster = image.getRaster();
+        ColorModel colorModel = image.getColorModel();
+
+        for (int y = 0; y < height; y++) {
+            for (int x = 0; x < width; x++) {
+                Object pixel = raster.getDataElements(x, y, null);
+                int alpha = colorModel.getAlpha(pixel);
+
+                memPutByte(ptr++, (byte) alpha);
+            }
+        }
+        pixelBuffer.limit(image.getHeight() * image.getWidth());
         return pixelBuffer;
     }
 

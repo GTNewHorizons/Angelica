@@ -7,5 +7,5 @@ public interface VAOConsumer {
      * the VAO with the correct pointers using things such as {@link org.lwjgl.opengl.GL20#glVertexAttribPointer}.
      * @return The Data size that the VAO expects
      */
-    int initialize(int vao, int vbo);
+    void initialize(int vao, int vbo);
 }

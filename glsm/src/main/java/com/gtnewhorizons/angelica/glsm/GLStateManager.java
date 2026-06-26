@@ -1820,6 +1820,37 @@ public class GLStateManager {
         return textures.getTextureUnitBindings(unit).getTexture2D();
     }
 
+    public static void bindTextureToUnit(int unit, int target, int texture) {
+        final int activeUnit = activeTextureUnit.getValue();
+        if (unit == activeTextureUnit.getValue()) {
+            glBindTexture(target, texture);
+            return;
+        }
+
+        final TextureBinding textureUnit = textures.getTextureUnitBindings(unit);
+
+
+        if (target == GL11.GL_TEXTURE_2D) {
+            final int cachedBinding = textureUnit.getTexture2D();
+            if (cachedBinding != texture) {
+                glActiveTexture(GL13.GL_TEXTURE0 + unit);
+                glBindTexture(target, texture);
+                glActiveTexture(GL13.GL_TEXTURE0);
+            }
+        } else if (target == GL30.GL_TEXTURE_2D_ARRAY) {
+            final int cachedBinding = textureUnit.getTexture2DArray();
+            if (cachedBinding != texture) {
+                glActiveTexture(GL13.GL_TEXTURE0 + unit);
+                glBindTexture(target, texture);
+                glActiveTexture(GL13.GL_TEXTURE0);
+            }
+        } else {
+            glActiveTexture(GL13.GL_TEXTURE0 + unit);
+            glBindTexture(target, texture);
+            glActiveTexture(GL13.GL_TEXTURE0);
+        }
+    }
+
     public static void glBindTexture(int target, int texture) {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -2077,6 +2108,7 @@ public class GLStateManager {
         final int savedBinding = textures.getTextureUnitBindings(savedUnit).getTexture2D();
         boolean changedUnit = false;
 
+        boolean isTexture2D = TextureInfoCache.INSTANCE.hasEntry(id);
         // Unbind from all units that have this texture
         for (int i = 0; i <= maxBoundTextureUnit; i++) {
             if (textures.getTextureUnitBindings(i).getTexture2D() == id) {
@@ -2084,7 +2116,15 @@ public class GLStateManager {
                     RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
                     changedUnit = true;
                 }
+                isTexture2D = true;
                 RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, 0);
+            }
+            if (textures.getTextureUnitBindings(i).getTexture2DArray() == id) {
+                if (i != savedUnit) {
+                    RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
+                    changedUnit = true;
+                }
+                RENDER_BACKEND.bindTexture(GL30.GL_TEXTURE_2D_ARRAY, 0);
             }
         }
 
@@ -2092,17 +2132,21 @@ public class GLStateManager {
         if (changedUnit) {
             RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + savedUnit);
         }
-        GL11.glDeleteTextures(id); //TODO find a proper fix
-//        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
-//        RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
-//        suspendPixelUnpackBuffer();
-//        RENDER_BACKEND.texImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, 1, 1, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-//        restorePixelUnpackBuffer();
-//
-//        // Restore previous binding on active unit
-//        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
-//
-//        deferredDeleteTextures.add(id);
+        //GL11.glDeleteTextures(id);
+        if (!isTexture2D) {
+            GL11.glDeleteTextures(id); // Only defer delete GL_TEXTURE_2D textures
+            return;
+        }
+        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, id);
+        RENDER_BACKEND.texParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        suspendPixelUnpackBuffer();
+        RENDER_BACKEND.texImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_R8, 1, 1, 0, GL11.GL_RED, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        restorePixelUnpackBuffer();
+
+        // Restore previous binding on active unit
+        RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, savedBinding == id ? 0 : savedBinding);
+
+        deferredDeleteTextures.add(id);
     }
 
     /** Flush deferred deletes so the driver can recycle names. */
@@ -3174,12 +3218,7 @@ public class GLStateManager {
 
         // Always delete
         for (int i = 0; i <= maxBoundTextureUnit; i++) {
-            if (textures.getTextureUnitBindings(i).getTexture2D() == id) {
-                textures.getTextureUnitBindings(i).setTexture2D(0);
-            }
-            if (textures.getTextureUnitBindings(i).getTexture2DArray() == id) {
-                textures.getTextureUnitBindings(i).setTexture2DArray(0);
-            }
+            textures.getTextureUnitBindings(i).unbindIfEquals(id);
         }
     }
 

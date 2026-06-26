@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
+import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
-import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
@@ -13,12 +13,11 @@ import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -33,7 +32,7 @@ import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LE
  * Fixes the horrible performance of FontRenderer
  * @author eigenraven
  */
-@Mixin(FontRenderer.class)
+@Mixin(value = FontRenderer.class, priority = 999)
 public abstract class MixinFontRenderer implements FontRendererAccessor, IFontParameters {
 
     @Shadow
@@ -115,6 +114,15 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     @Shadow(remap = false)
     protected abstract void bindTexture(ResourceLocation location);
 
+    @Shadow
+    protected abstract void renderStringAtPos(String p_78255_1_, boolean p_78255_2_);
+
+    @Shadow
+    protected abstract void enableAlpha();
+
+    @Shadow
+    protected abstract void resetStyles();
+
     @Unique
     public BatchingFontRenderer angelica$batcher;
 
@@ -122,9 +130,6 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     private void angelica$injectBatcher(GameSettings settings, ResourceLocation fontLocation, TextureManager texManager,
         boolean unicodeMode, CallbackInfo ci) {
         angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.colorCode, this.locationFontTexture);
-        if (GTNHLibCompat.HAS_TEXT_PREPROCESSOR) {
-            GTNHLibCompat.registerPreprocessor();
-        }
     }
 
     @Inject(method = "readFontTexture", at = @At("RETURN"))
@@ -137,67 +142,92 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
      * Batched font renderer is not compatible with display lists, and won't really
      * help performance when display lists are already being used anyway.
      */
-    @Inject(method = "drawString(Ljava/lang/String;IIIZ)I", at = @At("HEAD"), cancellable = true)
-    public void angelica$BatchedFontRendererDrawString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir)
-    {
+
+    /**
+     * @author Sisyphus
+     * @reason Optimize Font rendering performance
+     */
+    @Overwrite
+    public int drawString(String text, int x, int y, int argb, boolean dropShadow) {
+        if (text == null || text.isEmpty()) return 0;
+        text = FontRendering.preprocessText(text);
+
         if (DisplayListManager.getListMode() == 0) {
-            cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
+            return angelica$drawStringBatched(text, x, y, argb, dropShadow);
         }
+
+        this.enableAlpha();
+        this.resetStyles();
+        int width;
+
+        if (dropShadow) {
+            width = this.renderString(text, x + 1, y + 1, argb, true);
+            width = Math.max(width, this.renderString(text, x, y, argb, false));
+        } else {
+            width = this.renderString(text, x, y, argb, false);
+        }
+
+        return width;
     }
 
     /**
-     * See above explanation about batched renderer in display lists.
+     * @author Sisyphus
+     * @reason Optimize Font rendering performance
      */
-    @Inject(method = "renderString", at = @At("HEAD"), cancellable = true)
-    public void angelica$BatchedFontRendererRenderString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir) {
+    @Overwrite
+    private int renderString(String text, int x, int y, int argb, boolean dropShadow) {
+        if (text == null || text.isEmpty()) return 0;
+        text = FontRendering.preprocessText(text);
+
         if (DisplayListManager.getListMode() == 0) {
-            cir.setReturnValue(angelica$drawStringBatched(text, x, y, argb, dropShadow));
+            return angelica$drawStringBatched(text, x, y, argb, dropShadow);
         }
+
+
+        if (this.bidiFlag) {
+            text = this.bidiReorder(text);
+        }
+
+        if ((argb & 0xfc000000) == 0) {
+            argb |= 0xff000000;
+        }
+
+        this.red = (float) (argb >> 16 & 255) / 255.0F;
+        this.blue = (float) (argb >> 8 & 255) / 255.0F;
+        this.green = (float) (argb & 255) / 255.0F;
+        this.alpha = (float) (argb >> 24 & 255) / 255.0F;
+        this.posX = (float) x;
+        this.posY = (float) y;
+        this.renderStringAtPos(text, dropShadow);
+        return (int) this.posX;
     }
 
     @Override
     public final int angelica$drawStringBatched(String text, int x, int y, int argb, boolean dropShadow) {
-        if (text == null)
-        {
-            return 0;
+        if (this.bidiFlag) {
+            text = this.bidiReorder(text);
         }
-        else
-        {
-            text = ColorCodeUtils.convertAmpersandToSectionX(text);
 
-            if (this.bidiFlag)
-            {
-                text = this.bidiReorder(text);
-            }
-
-            if ((argb & 0xfc000000) == 0)
-            {
-                argb |= 0xff000000;
-            }
-
-            this.red = (float)(argb >> 16 & 255) / 255.0F;
-            this.blue = (float)(argb >> 8 & 255) / 255.0F;
-            this.green = (float)(argb & 255) / 255.0F;
-            this.alpha = (float)(argb >> 24 & 255) / 255.0F;
-            this.posX = (float)x;
-            this.posY = (float)y;
-            return angelica$batcher.drawString(text, x, y, argb, dropShadow);
+        if ((argb & 0xfc000000) == 0) {
+            argb |= 0xff000000;
         }
+
+        this.red = (float) (argb >> 16 & 255) / 255.0F;
+        this.blue = (float) (argb >> 8 & 255) / 255.0F;
+        this.green = (float) (argb & 255) / 255.0F;
+        this.alpha = (float) (argb >> 24 & 255) / 255.0F;
+        this.posX = (float) x;
+        this.posY = (float) y;
+        return angelica$batcher.drawString(text, x, y, argb, dropShadow);
     }
 
-    @ModifyConstant(method = "getCharWidth", constant = @Constant(intValue = 7))
-    private int angelica$maxCharWidth(int original) {
-        return Integer.MAX_VALUE;
-    }
-
-    @Inject(method = "getCharWidth", at = @At("HEAD"), cancellable = true)
-    public void getCharWidth(char c, CallbackInfoReturnable<Integer> cir) {
-        cir.setReturnValue((int) angelica$getBatcher().getCharWidthFine(c));
-    }
-
-    @Override
-    public float getGlyphScaleX() {
-        return angelica$getBatcher().getGlyphScaleX();
+    /**
+     * @author Sisyphus
+     * @reason Optimize Font rendering performance
+     */
+    @Overwrite
+    public int getCharWidth(char c) {
+        return (int) angelica$batcher.getCharWidthFine(c);
     }
 
     @Override
@@ -221,28 +251,18 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
     }
 
     @Override
-    public float getGlyphScaleY() {
-        return angelica$getBatcher().getGlyphScaleY();
-    }
-
-    @Override
-    public float getGlyphSpacing() {
-        return angelica$getBatcher().getGlyphSpacing();
-    }
-
-    @Override
     public float getWhitespaceScale() {
-        return angelica$getBatcher().getWhitespaceScale();
+        return angelica$batcher.getWhitespaceScale();
     }
 
     @Override
     public float getShadowOffset() {
-        return angelica$getBatcher().getShadowOffset();
+        return angelica$batcher.getShadowOffset();
     }
 
     @Override
     public float getCharWidthFine(char chr) {
-        return angelica$getBatcher().getCharWidthFine(chr);
+        return angelica$batcher.getCharWidthFine(chr);
     }
 
     @Inject(method = "getFormatFromString", at = @At("HEAD"), cancellable = true)
@@ -258,7 +278,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Unique
     private static String angelica$extractFormat(String text) {
-        text = ColorCodeUtils.convertAmpersandToSectionX(text);
+        text = FontRendering.preprocessText(text);
         final int len = text.length();
         if (len < 2) return "";
 
@@ -328,18 +348,13 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         return result.toString();
     }
 
-    @ModifyVariable(method = "getStringWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private String angelica$convertBeforeWidth(String str) {
-        return ColorCodeUtils.convertAmpersandToSectionX(str);
-    }
-
     @ModifyVariable(method = "listFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private String angelica$convertBeforeListWrap(String str) {
-        return ColorCodeUtils.convertAmpersandToSectionX(str);
+        return FontRendering.preprocessText(str);
     }
 
     @ModifyVariable(method = "wrapFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
     private String angelica$convertBeforeWrap(String str) {
-        return ColorCodeUtils.convertAmpersandToSectionX(str);
+        return FontRendering.preprocessText(str);
     }
 }

@@ -43,6 +43,11 @@ public class TextureInfoCache {
         }
     }
 
+    public boolean hasEntry(int id) {
+        if (id < 0) return false;
+        return cache.containsKey(id);
+    }
+
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
         if (target == GL11.GL_TEXTURE_2D && level == 0) {
             final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());

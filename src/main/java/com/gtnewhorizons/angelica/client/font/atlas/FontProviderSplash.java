@@ -10,10 +10,10 @@ public final class FontProviderSplash extends FontTextureArray {
 
     public static FontProviderSplash create() {
         final int size = getBoundTextureSize();
-        return new FontProviderSplash(size, 1, new int[] {0}, GL11.GL_NEAREST);
+        return new FontProviderSplash(size, 1, new short[] {0}, GL11.GL_NEAREST);
     }
 
-    private FontProviderSplash(int size, int layers, int[] layersLookupArray, int filter) {
+    private FontProviderSplash(int size, int layers, short[] layersLookupArray, int filter) {
         super(size, layers, layersLookupArray, filter);
     }
 
@@ -27,13 +27,12 @@ public final class FontProviderSplash extends FontTextureArray {
                 final float uStart = ((index & 15) * 8) / size;
                 final float vStart = ((index >> 4) * 8) / size;
                 final float xAdvance = charWidth[index];
-                final float glyphW = charWidth[index] - 0.01F;
-                final float uSize = (charWidth[index] - 1.01F) / size;
+                final float glyphW = charWidth[index] - 1F;
+                final float uSize = (charWidth[index] - 1F) / size;
                 final float vSize = 7.99F / size;
 
                 glyphs[i] = new GlyphData(
                     uStart, vStart,
-                    xAdvance,
                     glyphW,
                     uSize,
                     vSize

@@ -19,7 +19,7 @@ public final class StreamingUploader {
         MAP_BUFFER_RANGE
     }
 
-    private static final int MAP_WRITE_INVALIDATE_BUFFER = GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_BUFFER_BIT;
+    public static final int MAP_WRITE_INVALIDATE_BUFFER = GL30.GL_MAP_WRITE_BIT | GL30.GL_MAP_INVALIDATE_BUFFER_BIT;
 
     public static int upload(ByteBuffer data, int capacity) {
         return upload(GLStateManager.getInitConfig().getStreamingUploadStrategy(), data, capacity);

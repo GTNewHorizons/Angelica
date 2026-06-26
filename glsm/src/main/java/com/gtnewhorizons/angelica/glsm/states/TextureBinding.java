@@ -26,4 +26,13 @@ public class TextureBinding implements ISettableState<TextureBinding> {
     public TextureBinding copy() {
         return new TextureBinding().set(this);
     }
+
+    public final void unbindIfEquals(int id) {
+        if (getTexture2D() == id) {
+            this.setTexture2D(0);
+        }
+        if (getTexture2DArray() == id) {
+            setTexture2DArray(0);
+        }
+    }
 }
