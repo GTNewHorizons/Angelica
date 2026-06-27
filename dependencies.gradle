@@ -173,6 +173,9 @@ dependencies {
             testImplementation('org.junit.platform:junit-platform-launcher')
 
             testImplementation('com.tngtech.archunit:archunit-junit5:1.4.1')
+
+            testRuntimeOnly("it.unimi.dsi:fastutil:8.5.18")
+            testRuntimeOnly("org.joml:joml:1.10.8")
         }
     }
 
