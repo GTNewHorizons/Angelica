@@ -177,4 +177,6 @@ dependencies {
     }
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
+
+    compileOnly("com.cardinalstar.cubicchunks:CubicChunks1710:v0.1.5-alpha:dev") { transitive = false }
 }

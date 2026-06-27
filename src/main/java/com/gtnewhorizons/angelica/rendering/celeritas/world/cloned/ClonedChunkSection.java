@@ -4,12 +4,10 @@ import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
-import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
-import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.shorts.Short2ObjectOpenHashMap;
 import mega.fluidlogged.internal.mixin.hook.FLSubChunk;
 
@@ -24,6 +22,8 @@ import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
 import net.minecraftforge.fluids.Fluid;
+
+import java.util.Map;
 
 public class ClonedChunkSection {
 
@@ -53,7 +53,13 @@ public class ClonedChunkSection {
             throw new RuntimeException("Couldn't retrieve chunk at " + pos.toChunkPos());
         }
 
-        ExtendedBlockStorage section = getChunkSection(chunk, pos);
+        ExtendedBlockStorage section;
+
+        if (ModStatus.isCubicChunksLoaded) {
+            section = CubicChunksAPI.getCubeStorage(world, pos.x, pos.y, pos.z);
+        } else {
+            section = getChunkSection(chunk, pos);
+        }
 
         if (section == null) {
             section = EMPTY_SECTION;
@@ -80,7 +86,6 @@ public class ClonedChunkSection {
         }
     }
 
-    @SuppressWarnings("unchecked")
     private void copyBlockEntities(Chunk chunk, ChunkSectionPos pos) {
         this.tileEntities.clear();
 
@@ -88,22 +93,13 @@ public class ClonedChunkSection {
 
         map.readLock();
         try {
-            final Object2ObjectOpenHashMap<ChunkPosition, TileEntity> delegate = map.getDelegate();
-
-            if (!delegate.isEmpty()) {
-                final int minY = pos.getMinY();
-                final int maxY = pos.getMaxY();
-
-                for (Object2ObjectMap.Entry<ChunkPosition, TileEntity> entry : Object2ObjectMaps.fastIterable(delegate)) {
-                    final ChunkPosition tePos = entry.getKey();
-                    if (tePos.chunkPosY < minY || tePos.chunkPosY > maxY) continue;
-
-                    final TileEntity te = entry.getValue();
-                    if (te != null && !te.isInvalid()) {
-                        this.tileEntities.put(ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15), te);
-                    }
-                }
-            }
+            map.forEachInYRange(pos.getMinY(), pos.getMaxY(), entry -> {
+                final ChunkPosition tePos = entry.getKey();
+                this.tileEntities.put(
+                    ChunkSectionPos.packLocal(tePos.chunkPosX & 15, tePos.chunkPosY & 15, tePos.chunkPosZ & 15),
+                    entry.getValue()
+                );
+            });
         } finally {
             map.readUnlock();
         }
@@ -169,12 +165,15 @@ public class ClonedChunkSection {
         this.lastUsedTimestamp = timestamp;
     }
 
-    public static boolean isOutOfBuildLimitVertically(int y) {
+    public static boolean isOutOfBuildLimitVertically(World world, int y) {
+        if (ModStatus.isCubicChunksLoaded) {
+            return y < CubicChunksAPI.getMinHeight(world) || y >= CubicChunksAPI.getMaxHeight(world);
+        }
         return y < 0 || y >= 256;
     }
 
-    private static ExtendedBlockStorage getChunkSection(Chunk chunk, ChunkSectionPos pos) {
-        if (!isOutOfBuildLimitVertically(ChunkSectionPos.getBlockCoord(pos.y))) {
+    private ExtendedBlockStorage getChunkSection(Chunk chunk, ChunkSectionPos pos) {
+        if (!isOutOfBuildLimitVertically(this.world, ChunkSectionPos.getBlockCoord(pos.y))) {
             return chunk.getBlockStorageArray()[pos.y];
         }
         return null;
