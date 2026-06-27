@@ -840,16 +840,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (transformed == null) {
 			// Fallback to synchronous transform if not pre-computed
 			String vertex = source.getVertexSource().orElseThrow(NullPointerException::new);
-			if (GlintScrollInjector.shouldInject(id, source)) {
-				vertex = GlintScrollInjector.apply(vertex);
-			}
+			final boolean scrollGlint = GlintScrollInjector.shouldInject(id, source);
 			transformed = TransformPatcher.patchAttributes(
 				vertex,
 				source.getGeometrySource().orElse(null),
 				source.getTessControlSource().orElse(null),
 				source.getTessEvalSource().orElse(null),
 				source.getFragmentSource().orElseThrow(NullPointerException::new),
-				availability);
+				availability,
+				scrollGlint);
 		}
 
 		String vertex = transformed.get(PatchShaderType.VERTEX);
@@ -1790,14 +1789,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (source != null && !processedSourceNames.contains(source.getName())) {
 				processedSourceNames.add(source.getName());
 				final ProgramSource src = source;
-				String vertex = src.getVertexSource().orElse(null);
-				if (GlintScrollInjector.shouldInject(id, src)) {
-					vertex = GlintScrollInjector.apply(vertex);
-				}
-				final String vertexSource = vertex;
+				final String vertexSource = src.getVertexSource().orElse(null);
+				final boolean scrollGlint = GlintScrollInjector.shouldInject(id, src);
 				for (InputAvailability avail : INPUT_AVAILABILITIES) {
 					Pair<String, InputAvailability> key = Pair.of(src.getName(), avail);
-					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(vertexSource, src.getGeometrySource().orElse(null), src.getTessControlSource().orElse(null), src.getTessEvalSource().orElse(null), src.getFragmentSource().orElse(null), avail)));
+					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(vertexSource, src.getGeometrySource().orElse(null), src.getTessControlSource().orElse(null), src.getTessEvalSource().orElse(null), src.getFragmentSource().orElse(null), avail, scrollGlint)));
 				}
 			}
 		}

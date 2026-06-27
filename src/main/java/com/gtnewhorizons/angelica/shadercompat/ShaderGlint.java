@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.shadercompat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GlintColorHandler;
-import com.gtnewhorizons.angelica.glsm.states.Color4;
 import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -43,9 +42,9 @@ public final class ShaderGlint {
 
     private static boolean injecting;
     private static boolean swapped;
+    private static int depth;
 
     private static int prevTexture;
-    private static float prevR, prevG, prevB, prevA;
 
     private static ByteBuffer tintBuffer;
 
@@ -54,28 +53,27 @@ public final class ShaderGlint {
     public static void beginGlint() {
         if (ShadowRenderer.ACTIVE || !IrisApi.getInstance().isShaderPackInUse()) return;
 
+        // If a glint span is already active, keep the outer span's saved state and
+        // let the nested render ride on its handler.
+        if (depth++ > 0) return;
+
         swapped = false;
         injecting = false;
 
-        // Save the texture/color bound before the glint section so endGlint can put them back if we swap
+        // Save the texture bound before the glint section so endGlint can put it back if we swap
         prevTexture = GLStateManager.getBoundTextureForServerState(0);
-        final Color4 color = GLStateManager.getColor();
-        prevR = color.getRed();
-        prevG = color.getGreen();
-        prevB = color.getBlue();
-        prevA = color.getAlpha();
 
         // Observe vertex-color changes for the rest of the glint section
         GLSMHooks.glintColorHandler = COLOR_HANDLER;
     }
 
     public static void endGlint() {
+        if (depth == 0 || --depth > 0) return;
         if (GLSMHooks.glintColorHandler != COLOR_HANDLER) return;
         GLSMHooks.glintColorHandler = null;
 
         if (swapped) {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);
-            GLStateManager.glColor4f(prevR, prevG, prevB, prevA);
         }
         swapped = false;
         injecting = false;

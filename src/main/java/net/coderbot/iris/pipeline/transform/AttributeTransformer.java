@@ -13,6 +13,10 @@ import java.util.Map;
  */
 class AttributeTransformer {
 	public static void transform(Transformer transformer, AttributeParameters parameters, int version) {
+		if (parameters.scrollGlint && parameters.type == ShaderType.VERTEX) {
+			transformer.replaceExpression("gl_MultiTexCoord0", "(gl_TextureMatrix[0] * gl_MultiTexCoord0)");
+		}
+
 		// Always core profile — minimum GLSL version is 330 (see ShaderTransformer.getStageMinimumVersion)
 		CommonTransformer.transform(transformer, parameters, true, version);
 
