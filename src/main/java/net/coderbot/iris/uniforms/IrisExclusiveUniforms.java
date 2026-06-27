@@ -24,8 +24,12 @@ public class IrisExclusiveUniforms {
 	private static final Vector4f lightningBoltPositionCache = new Vector4f();
 	private static final Vector4f ZERO_VECTOR_4f = new Vector4f(0, 0, 0, 0);
 
-	public static void addIrisExclusiveUniforms(UniformHolder uniforms) {
+	public static void addIrisExclusiveUniforms(UniformHolder uniforms, FrameUpdateNotifier updateNotifier) {
 		WorldInfoUniforms.addWorldInfoUniforms(uniforms);
+
+		// Et Futurum Requiem backports the End Flash
+		final EndFlashStorage endFlashStorage = new EndFlashStorage();
+		updateNotifier.addListener(endFlashStorage::tick);
 
 		//All Iris-exclusive uniforms (uniforms which do not exist in either OptiFine or ShadersMod) should be registered here.
 		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "thunderStrength", IrisExclusiveUniforms::getThunderStrength);
@@ -42,6 +46,8 @@ public class IrisExclusiveUniforms {
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "relativeEyePosition", IrisExclusiveUniforms::getRelativeEyePosition);
 		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", IrisExclusiveUniforms::getLightningBoltPosition);
 		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "cloudTime", IrisExclusiveUniforms::getCloudTime);
+		uniforms.uniform1f(UniformUpdateFrequency.PER_TICK, "endFlashIntensity", endFlashStorage::getCurrentEndFlash);
+		uniforms.uniform1f(UniformUpdateFrequency.PER_TICK, "previousEndFlashIntensity", endFlashStorage::getLastEndFlash);
 	}
 
 	private static float getCloudTime() {

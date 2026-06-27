@@ -169,6 +169,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final CloudSetting cloudSetting;
 	private final boolean shouldRenderUnderwaterOverlay;
 	private final boolean shouldRenderVignette;
+	private final boolean supportsEndFlash;
 	private final boolean shouldRenderSun;
 	private final boolean shouldRenderMoon;
 	private final boolean shouldRenderStars;
@@ -230,6 +231,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.cloudSetting = programs.getPackDirectives().getCloudSetting();
 		this.shouldRenderUnderwaterOverlay = programs.getPackDirectives().underwaterOverlay();
 		this.shouldRenderVignette = programs.getPackDirectives().vignette();
+		this.supportsEndFlash = programs.getPackDirectives().isSupportsEndFlash();
 		this.shouldRenderSun = programs.getPackDirectives().shouldRenderSun();
 		this.shouldRenderMoon = programs.getPackDirectives().shouldRenderMoon();
 		this.shouldRenderStars = programs.getPackDirectives().shouldRenderStars();
@@ -648,6 +650,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	@Override
 	public boolean shouldRenderVignette() {
 		return shouldRenderVignette;
+	}
+
+	@Override
+	public boolean supportsEndFlash() {
+		return supportsEndFlash;
 	}
 
 	@Override

@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.stream.JsonReader;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -209,6 +210,14 @@ public class ShaderPack {
 
 		List<StringPair> finalEnvironmentDefines = new ArrayList<>();
 		environmentDefines.forEach(finalEnvironmentDefines::add);
+
+        // Remove before making PR, other PR has fix too
+		if (AngelicaConfig.modernFallbackMcVersion > 0) {
+			final String modernMcVersion = String.valueOf(AngelicaConfig.modernFallbackMcVersion);
+			finalEnvironmentDefines.replaceAll(pair ->
+				"MC_VERSION".equals(pair.getKey()) ? new StringPair("MC_VERSION", modernMcVersion) : pair);
+		}
+
 		for (FeatureFlags flag : FeatureFlags.values()) {
 			boolean usable = flag.isUsable();
 			Iris.logger.info("FeatureFlag {} usable: {}", flag.name(), usable);
