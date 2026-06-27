@@ -49,6 +49,7 @@ public interface WorldRenderingPipeline {
 
 	boolean shouldDisableVanillaEntityShadows();
 	boolean shouldDisableDirectionalShading();
+	boolean supportsEndFlash();
 	CloudSetting getCloudSetting();
 	boolean shouldRenderUnderwaterOverlay();
 	boolean shouldRenderVignette();
