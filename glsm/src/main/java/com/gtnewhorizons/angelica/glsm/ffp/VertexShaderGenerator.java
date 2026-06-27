@@ -106,8 +106,8 @@ public final class VertexShaderGenerator {
         if (key.unitTexCoordEnabled(0) && !key.hasVertexTexCoord()) {
             sb.append("uniform vec4 u_CurrentTexCoord0;\n");
         }
-        if (key.unitTexCoordEnabled(2)) sb.append("uniform vec4 u_CurrentTexCoord2;\n");
-        if (key.unitTexCoordEnabled(3)) sb.append("uniform vec4 u_CurrentTexCoord3;\n");
+        if (key.unitTexCoordEnabled(2) && !key.unit23UvFromUnit0()) sb.append("uniform vec4 u_CurrentTexCoord2;\n");
+        if (key.unitTexCoordEnabled(3) && !key.unit23UvFromUnit0()) sb.append("uniform vec4 u_CurrentTexCoord3;\n");
 
         if (key.lightmapEnabled() && !key.hasVertexLightmap()) {
             sb.append("uniform vec2 u_CurrentLightmapCoord;\n");
@@ -363,8 +363,10 @@ public final class VertexShaderGenerator {
 
         for (int i = 2; i < VertexKey.MAX_UNITS; i++) {
             if (!key.unitTexCoordEnabled(i)) continue;
-            final String src = "u_CurrentTexCoord" + i;
-            if (key.unitTexMatEnabled(i)) {
+            final String src = key.unit23UvFromUnit0()
+                ? "vec4(a_TexCoord0, 0.0, 1.0)"
+                : "u_CurrentTexCoord" + i;
+            if (!key.unit23UvFromUnit0() && key.unitTexMatEnabled(i)) {
                 sb.append("  v_TexCoord").append(i).append(" = u_TextureMatrix").append(i).append(" * ").append(src).append(";\n");
             } else {
                 sb.append("  v_TexCoord").append(i).append(" = ").append(src).append(";\n");
@@ -383,7 +385,7 @@ public final class VertexShaderGenerator {
 
         emitTexGenComponent(sb, key.texGenModeS(), "s", "S", key);
         emitTexGenComponent(sb, key.texGenModeT(), "t", "T", key);
-        emitTexGenComponent(sb, key.texGenModeR(), "r", "R", key);
+        emitTexGenComponent(sb, key.texGenModeR(), "p", "R", key);
         emitTexGenComponent(sb, key.texGenModeQ(), "q", "Q", key);
 
         // Always apply texture matrix when texgen is active (forced on in VertexKey)

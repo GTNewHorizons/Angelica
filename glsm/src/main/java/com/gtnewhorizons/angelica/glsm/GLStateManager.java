@@ -188,6 +188,14 @@ public class GLStateManager {
     private static boolean dirtyTexCoordAttrib;
     private static boolean dirtyLightmapAttrib = true;
 
+    private static boolean unit23TexCoordSetDuringDraw = false;
+
+    public static boolean consumeUnit23TexCoordSetDuringDraw() {
+        boolean v = unit23TexCoordSetDuringDraw;
+        unit23TexCoordSetDuringDraw = false;
+        return v;
+    }
+
     // vertexFlags bits mark attribs the VBO already supplies; FFP supplies the rest via u_Current* uniforms.
     // Skip the backend vertexAttrib call in either case.
     public static void flushDeferredVertexAttribs(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap) {
@@ -639,6 +647,9 @@ public class GLStateManager {
         RENDER_BACKEND.bindVertexArray(defaultVAO);
         boundVAO = defaultVAO;
         VAOManager.init(defaultVAO);
+        if (defaultVAO != 0) {
+            RENDER_BACKEND.provokingVertex(GL32.GL_LAST_VERTEX_CONVENTION);
+        }
         if (initCallback != null) {
             initCallback.run();
         }
@@ -2161,6 +2172,7 @@ public class GLStateManager {
     }
 
     public static void glBegin(int mode) {
+        unit23TexCoordSetDuringDraw = false;
         if (DisplayListManager.isRecording()) {
             ImmediateModeRecorder.begin(mode);
             return;
@@ -2241,6 +2253,10 @@ public class GLStateManager {
         }
         if (FeedbackManager.isFeedbackMode()) {
             FeedbackManager.processDrawElements(mode, indices);
+            return;
+        }
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTriangles(indices.remaining(), GL11.GL_UNSIGNED_BYTE, indices);
             return;
         }
         preDraw(mode);
@@ -2356,8 +2372,27 @@ public class GLStateManager {
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadElementsAsTrianglesInstanced(count, type, indices, primcount);
+            return;
+        }
         preDraw(mode);
         RENDER_BACKEND.drawElementsInstanced(mode, count, type, indices, primcount);
+    }
+
+    public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
+        if (mode == GL11.GL_QUADS) {
+            QuadConverter.drawQuadsAsTrianglesInstanced(first, count, primcount);
+        } else if (mode == GL11.GL_QUAD_STRIP) {
+            preDraw();
+            RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_STRIP, first, count & ~1, primcount);
+        } else if (mode == GL11.GL_POLYGON) {
+            preDraw();
+            RENDER_BACKEND.drawArraysInstanced(GL11.GL_TRIANGLE_FAN, first, count, primcount);
+        } else {
+            preDraw(mode);
+            RENDER_BACKEND.drawArraysInstanced(mode, first, count, primcount);
+        }
     }
 
     private static void prepareClientArrays() {
@@ -5305,6 +5340,9 @@ public class GLStateManager {
         } else {
             final int unit = target - GL13.GL_TEXTURE0;
             if (unit >= 2 && unit < 4) {
+                if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+                    unit23TexCoordSetDuringDraw = true;
+                }
                 ShaderManager.setCurrentTexCoord(unit, s, t, 0.0f, 1.0f);
             }
         }
@@ -6010,15 +6048,15 @@ public class GLStateManager {
     }
 
     public static void glUniform1(int location, IntBuffer values) {
-        if (values.remaining() >= 1) RENDER_BACKEND.uniform1i(location, values.get(values.position()));
+        RENDER_BACKEND.uniform1iv(location, values);
     }
 
     public static void glUniform2(int location, FloatBuffer values) {
-        if (values.remaining() >= 2) RENDER_BACKEND.uniform2f(location, values.get(values.position()), values.get(values.position() + 1));
+        RENDER_BACKEND.uniform2(location, values);
     }
 
     public static void glUniform2(int location, IntBuffer values) {
-        if (values.remaining() >= 2) RENDER_BACKEND.uniform2i(location, values.get(values.position()), values.get(values.position() + 1));
+        RENDER_BACKEND.uniform2iv(location, values);
     }
 
     public static void glUniform3(int location, FloatBuffer values) {
@@ -6026,7 +6064,7 @@ public class GLStateManager {
     }
 
     public static void glUniform3(int location, IntBuffer values) {
-        if (values.remaining() >= 3) RENDER_BACKEND.uniform3i(location, values.get(values.position()), values.get(values.position() + 1), values.get(values.position() + 2));
+        RENDER_BACKEND.uniform3iv(location, values);
     }
 
     public static void glUniform4(int location, FloatBuffer values) {
@@ -6034,7 +6072,7 @@ public class GLStateManager {
     }
 
     public static void glUniform4(int location, IntBuffer values) {
-        if (values.remaining() >= 4) RENDER_BACKEND.uniform4i(location, values.get(values.position()), values.get(values.position() + 1), values.get(values.position() + 2), values.get(values.position() + 3));
+        RENDER_BACKEND.uniform4iv(location, values);
     }
 
     public static void glUniformMatrix2(int location, boolean transpose, FloatBuffer matrices) {

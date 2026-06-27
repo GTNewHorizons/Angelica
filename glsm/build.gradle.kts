@@ -96,6 +96,8 @@ dependencies {
     // Deps (normally from MC) - compile only, but needed at test runtime
     compileOnly("com.google.guava:guava:${property("guavaVersion")}")
     testRuntimeOnly("com.google.guava:guava:${property("guavaVersion")}")
+    testRuntimeOnly("it.unimi.dsi:fastutil:${property("fastutilVersion")}")
+    testRuntimeOnly("org.joml:joml:${property("jomlVersion")}") { isTransitive = false }
 
     // Test
     testImplementation(sourceSets["stubs"].output)

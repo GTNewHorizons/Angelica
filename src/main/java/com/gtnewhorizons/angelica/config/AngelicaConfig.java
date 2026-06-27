@@ -269,6 +269,13 @@ public class AngelicaConfig {
     @Config.DefaultStringList({"jewelrycraft2:blockCrystal"})
     public static String[] alwaysTranslucentSprites;
 
+    @Config.Comment({"TileEntity classnames whose render bounds change at runtime (e.g. OpenBlocks Guide).",
+                     "These are always rendered and frustum-tested against their live bounds instead of the cached."})
+    @Config.DefaultStringList({"openblocks.common.tileentity.TileEntityGuide",
+                               "openblocks.common.tileentity.TileEntityBuilderGuide"})
+    @Config.RequiresMcRestart
+    public static String[] dynamicBoundsTileEntities;
+
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
     public static boolean enableHardcodedCustomUniforms;
@@ -350,4 +357,13 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean disableErrorChecks;
 
+    @Config.Comment("Fixes various issues with entity overlays, such as z-fighting and eyes.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean entityOverlayFixes;
+
+    @Config.Comment("Swap the vanilla damage overlay with one similar to modern. Fixes specific issues with z-fighting.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean entityModernDamageOverlay;
 }

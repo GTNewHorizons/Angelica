@@ -311,6 +311,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void drawArraysInstanced(int mode, int first, int count, int primcount) {
+        GL31.glDrawArraysInstanced(mode, first, count, primcount);
+    }
+
+    @Override
+    public void provokingVertex(int provokeMode) {
+        GL32.glProvokingVertex(provokeMode);
+    }
+
+    @Override
     public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
         org.lwjgl.opengl.GL43.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
@@ -813,12 +823,37 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void uniform2(int location, FloatBuffer value) {
+        GL20.glUniform2(location, value);
+    }
+
+    @Override
     public void uniform3(int location, FloatBuffer value) {
         GL20.glUniform3(location, value);
     }
 
     @Override
     public void uniform4(int location, FloatBuffer value) {
+        GL20.glUniform4(location, value);
+    }
+
+    @Override
+    public void uniform1iv(int location, IntBuffer value) {
+        GL20.glUniform1(location, value);
+    }
+
+    @Override
+    public void uniform2iv(int location, IntBuffer value) {
+        GL20.glUniform2(location, value);
+    }
+
+    @Override
+    public void uniform3iv(int location, IntBuffer value) {
+        GL20.glUniform3(location, value);
+    }
+
+    @Override
+    public void uniform4iv(int location, IntBuffer value) {
         GL20.glUniform4(location, value);
     }
 
