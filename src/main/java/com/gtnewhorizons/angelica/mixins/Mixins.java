@@ -298,6 +298,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
             , "shaders.MixinGlProgram"
+            , "shaders.MixinTextureManager_ReloadCount"
         )
     ),
 

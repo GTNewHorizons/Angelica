@@ -132,6 +132,11 @@ public class StandardMacros {
 		getBiomeCategoryDefines().forEach((category, ordinal) -> define(standardDefines, category, ordinal));
 		getVanillaBiomeDefines().forEach((biome, id) -> define(standardDefines, biome, id));
 
+		// rain type constants
+		define(standardDefines, "PPT_NONE", "0");
+		define(standardDefines, "PPT_RAIN", "1");
+		define(standardDefines, "PPT_SNOW", "2");
+
 		return ImmutableList.copyOf(standardDefines);
 	}
 

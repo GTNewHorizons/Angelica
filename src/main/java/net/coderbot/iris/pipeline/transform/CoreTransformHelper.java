@@ -51,6 +51,13 @@ class CoreTransformHelper {
         transformer.rename("gl_Vertex", "iris_Vertex");
         transformer.rename("gl_MultiTexCoord0", "iris_MultiTexCoord0");
 
+        for (int i = 1; i <= 7; i++) {
+            transformer.replaceExpression("gl_MultiTexCoord" + i, "vec4(0.0, 0.0, 0.0, 1.0)");
+        }
+
+        transformer.replaceExpression("gl_Color", "vec4(1.0, 1.0, 1.0, 1.0)");
+        transformer.replaceExpression("gl_Normal", "vec3(0.0, 0.0, 1.0)");
+
         transformer.renameFunctionCall("ftransform", "iris_ftransform");
         transformer.injectFunction("vec4 iris_ftransform() { return (iris_ProjectionMatrix * iris_ModelViewMatrix) * iris_Vertex; }");
 

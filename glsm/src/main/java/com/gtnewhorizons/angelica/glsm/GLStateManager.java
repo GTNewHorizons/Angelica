@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import com.gtnewhorizons.angelica.glsm.hooks.GlintColorHandler;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
@@ -1613,6 +1614,11 @@ public class GLStateManager {
                 ImmediateModeRecorder.setColor(red, green, blue, alpha);
             }
             dirtyColorAttrib = true;
+            // Only set while an enchantment-glint span is active
+            final GlintColorHandler glintHandler = GLSMHooks.glintColorHandler;
+            if (glintHandler != null) {
+                glintHandler.onColorChanged(red, green, blue, alpha);
+            }
             return true;
         }
         return false;

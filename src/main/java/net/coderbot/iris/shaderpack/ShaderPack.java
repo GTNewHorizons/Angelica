@@ -207,8 +207,16 @@ public class ShaderPack {
 		this.shaderPackOptions = new ShaderPackOptions(graph, changedConfigs);
 		graph = this.shaderPackOptions.getIncludes();
 
+		final String mcVersionOverride = IdMap.detectLegacySection(root) ? null : IdMap.modernFallbackMcVersion();
+
 		List<StringPair> finalEnvironmentDefines = new ArrayList<>();
-		environmentDefines.forEach(finalEnvironmentDefines::add);
+		for (StringPair define : environmentDefines) {
+			if (mcVersionOverride != null && "MC_VERSION".equals(define.getKey())) {
+				finalEnvironmentDefines.add(new StringPair("MC_VERSION", mcVersionOverride));
+			} else {
+				finalEnvironmentDefines.add(define);
+			}
+		}
 		for (FeatureFlags flag : FeatureFlags.values()) {
 			boolean usable = flag.isUsable();
 			Iris.logger.info("FeatureFlag {} usable: {}", flag.name(), usable);

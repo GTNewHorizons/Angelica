@@ -1,9 +1,9 @@
 package net.coderbot.iris.shaderpack.materialmap;
 
 import net.coderbot.iris.Iris;
-import org.apache.commons.lang3.StringUtils;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -263,7 +263,19 @@ public final class PropertiesTokenizer {
             );
         }
 
-        final String[] splitStates = baseEntry.split(":");
+        // Drop empty segments produced by consecutive colons (like "betterendforge::lumecorn")
+        final String[] splitStates = Arrays.stream(baseEntry.split(":"))
+            .filter(s -> !s.isEmpty())
+            .toArray(String[]::new);
+
+        if (splitStates.length == 0) {
+            return new ParsedBlockIdentifier(
+                new NamespacedId("minecraft", baseEntry),
+                Collections.emptySet(),
+                Collections.emptyMap(),
+                nbtProperties
+            );
+        }
 
         // Vanilla block (minecraft namespaced)
         if (splitStates.length == 1) {
@@ -277,7 +289,7 @@ public final class PropertiesTokenizer {
 
         // Two-segment with no metas/state properties: "minecraft:stone"
         if (splitStates.length == 2
-                && !StringUtils.isNumeric(splitStates[1].substring(0, 1))
+                && !startsWithDigit(splitStates[1])
                 && !splitStates[1].contains("=")) {
             return new ParsedBlockIdentifier(
                 new NamespacedId(splitStates[0], splitStates[1]),
@@ -296,7 +308,7 @@ public final class PropertiesTokenizer {
             id = new NamespacedId("minecraft", splitStates[0]);
             statesStart = 1;
 
-        } else if (StringUtils.isNumeric(splitStates[1].substring(0, 1)) || splitStates[1].contains("=")) {
+        } else if (startsWithDigit(splitStates[1]) || splitStates[1].contains("=")) {
             // "stone:0:something" or "stone:lit=true:something", likely will need this for snowy blocks in the future.
             id = new NamespacedId("minecraft", splitStates[0]);
             statesStart = 1;
@@ -337,6 +349,10 @@ public final class PropertiesTokenizer {
             stateProperties.isEmpty() ? Collections.emptyMap() : stateProperties,
             nbtProperties
         );
+    }
+
+    private static boolean startsWithDigit(String s) {
+        return !s.isEmpty() && Character.isDigit(s.charAt(0));
     }
 
     private static void appendCurrent(boolean inBracket, boolean readingValue,

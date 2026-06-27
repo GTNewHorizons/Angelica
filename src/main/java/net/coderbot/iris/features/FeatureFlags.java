@@ -10,13 +10,13 @@ import java.util.function.BooleanSupplier;
 public enum FeatureFlags {
 	SEPARATE_HARDWARE_SAMPLERS(() -> true, () -> true),
 	PER_BUFFER_BLENDING(() -> true, RenderSystem::supportsBufferBlending),
-	COMPUTE_SHADERS(() -> true, RenderSystem::supportsCompute),
+	COMPUTE_SHADERS(() -> false, RenderSystem::supportsCompute),
 	ENTITY_TRANSLUCENT(() -> true, () -> true),
 	BLOCK_EMISSION_ATTRIBUTE(() -> true, () -> true),
 	CUSTOM_IMAGES(() -> true, RenderSystem::supportsImageLoadStore),
 	SSBO(() -> true, RenderSystem::supportsSSBO),
 	HIGHER_SHADOWCOLOR(() -> true, () -> true),
-	TESSELLATION_SHADERS(() -> true, RenderSystem::supportsTesselation),
+	TESSELLATION_SHADERS(() -> false, RenderSystem::supportsTesselation),
 	REVERSED_CULLING(() -> true, () -> true),
 	CAN_DISABLE_WEATHER(() -> true, () -> true),
 	UNKNOWN(() -> false, () -> false);

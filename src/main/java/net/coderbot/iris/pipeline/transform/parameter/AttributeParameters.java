@@ -7,12 +7,14 @@ import net.coderbot.iris.shaderpack.texture.TextureStage;
 public class AttributeParameters extends Parameters {
 	public final boolean hasGeometry;
 	public final InputAvailability inputs;
+	public final boolean scrollGlint;
 	// WARNING: adding new fields requires updating hashCode and equals methods!
 
-	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs) {
+	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs, boolean scrollGlint) {
 		super(patch, null);
 		this.hasGeometry = hasGeometry;
 		this.inputs = inputs;
+		this.scrollGlint = scrollGlint;
 	}
 
 	@Override
@@ -25,6 +27,7 @@ public class AttributeParameters extends Parameters {
 		final int prime = 31;
 		int result = super.hashCode();
 		result = prime * result + (hasGeometry ? 1231 : 1237);
+		result = prime * result + (scrollGlint ? 1231 : 1237);
 		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
@@ -39,6 +42,8 @@ public class AttributeParameters extends Parameters {
 			return false;
 		AttributeParameters other = (AttributeParameters) obj;
 		if (hasGeometry != other.hasGeometry)
+			return false;
+		if (scrollGlint != other.scrollGlint)
 			return false;
 		if (inputs == null) {
 			if (other.inputs != null)

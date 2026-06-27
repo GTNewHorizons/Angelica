@@ -30,6 +30,7 @@ public class ModStatus {
     public static boolean isCosmeticArmorReworkedLoaded;
     public static boolean isFluidLoggedLoaded;
     public static boolean isBOPLoaded;
+    public static boolean isEtFuturumLoaded;
 
     public static void preInit() {
         if (Loader.isModLoaded("backhand")) {
@@ -49,6 +50,7 @@ public class ModStatus {
         isBaublesLoaded = Loader.isModLoaded("Baubles");
         isCosmeticArmorReworkedLoaded = Loader.isModLoaded("cosmeticarmorreworked");
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
+        isEtFuturumLoaded = Loader.isModLoaded("etfuturum");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBOPLoaded = Loader.isModLoaded("BiomesOPlenty");

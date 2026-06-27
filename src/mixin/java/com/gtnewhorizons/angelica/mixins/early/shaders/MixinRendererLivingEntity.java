@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -80,6 +81,7 @@ public class MixinRendererLivingEntity {
     )
     private void iris$glintStart(CallbackInfo ci) {
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+        ShaderGlint.beginGlint();
     }
 
     /**
@@ -92,6 +94,7 @@ public class MixinRendererLivingEntity {
     )
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
+        ShaderGlint.endGlint();
     }
 
 }
