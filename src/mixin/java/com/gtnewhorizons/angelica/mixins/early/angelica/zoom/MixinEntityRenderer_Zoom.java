@@ -16,10 +16,8 @@ public class MixinEntityRenderer_Zoom {
 
     @ModifyReturnValue(method = "getFOVModifier", at = @At("RETURN"))
     private float angelica$modifyFOV(float original) {
-        if (Zoom.getZoomKey().getIsKeyPressed()) {
-            return original / Zoom.getZoom();
-        }
-        return original;
+        final float current = Zoom.getCurrentZoom();
+        return current > 1.0001F ? original / current : original;
     }
 
     @ModifyConstant(method = "updateCameraAndRender", constant = @Constant(floatValue = 8.0F))
