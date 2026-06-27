@@ -532,6 +532,13 @@ public class SodiumGameOptionPages {
                         .build())
                 .build());
 
+        if (AngelicaConfig.enableZoom) {
+            groups.add(OptionGroup.createBuilder()
+                .add(Settings.ZOOM_SMOOTH.option)
+                .add(Settings.ZOOM_SMOOTH_SPEED.option)
+                .build());
+        }
+
         return new OptionPage(I18n.format("sodium.options.pages.appearance"), ImmutableList.copyOf(groups));
     }
 
