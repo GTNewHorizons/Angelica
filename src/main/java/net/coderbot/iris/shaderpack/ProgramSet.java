@@ -1,6 +1,7 @@
 package net.coderbot.iris.shaderpack;
 
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import net.coderbot.iris.shaderpack.include.AbsolutePackPath;
 import net.coderbot.iris.shaderpack.loading.ProgramId;
@@ -529,7 +530,8 @@ public class ProgramSet {
 
 		String tessControlSource = null;
 		String tessEvalSource = null;
-		if (programSet.pack.hasFeature(net.coderbot.iris.features.FeatureFlags.TESSELLATION_SHADERS)) {
+		if (programSet.pack.hasFeature(FeatureFlags.TESSELLATION_SHADERS)
+				&& FeatureFlags.TESSELLATION_SHADERS.isUsable()) {
 			AbsolutePackPath tessControlPath = directory.resolve(program + ".tcs");
 			tessControlSource = sourceProvider.apply(tessControlPath);
 
@@ -547,6 +549,10 @@ public class ProgramSet {
 	private static ComputeSource readComputeSource(AbsolutePackPath directory,
 												   Function<AbsolutePackPath, String> sourceProvider, String program,
 												   ProgramSet programSet) {
+		if (!FeatureFlags.COMPUTE_SHADERS.isUsable()) {
+			return null;
+		}
+
 		AbsolutePackPath computePath = directory.resolve(program + ".csh");
 		String computeSource = sourceProvider.apply(computePath);
 

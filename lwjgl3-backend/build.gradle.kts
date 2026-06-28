@@ -35,6 +35,10 @@ repositories {
         url = uri("https://nexus.gtnewhorizons.com/repository/public/")
     }
     maven {
+        name = "Minecraft Libraries"
+        url = uri("https://libraries.minecraft.net")
+    }
+    maven {
         name = "Forge"
         url = uri("https://maven.minecraftforge.net/")
     }

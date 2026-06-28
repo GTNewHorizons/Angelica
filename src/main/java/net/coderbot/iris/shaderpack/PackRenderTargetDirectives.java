@@ -55,7 +55,7 @@ public class PackRenderTargetDirectives {
 
 		renderTargetSettings.forEach((index, settings) -> {
 			if (settings.shouldClear()) {
-				buffersToBeCleared.add(index.intValue());
+				buffersToBeCleared.add(index);
 			}
 		});
 

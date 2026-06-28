@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -63,6 +64,7 @@ public class MixinItemRenderer {
     private void iris$glintStart(CallbackInfo ci) {
         ItemIdManager.resetItemId();
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+        ShaderGlint.beginGlint();
     }
 
     /**
@@ -75,5 +77,6 @@ public class MixinItemRenderer {
     )
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
+        ShaderGlint.endGlint();
     }
 }

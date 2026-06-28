@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline.transform;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.antlr.v4.runtime.tree.ParseTree;
+import org.taumc.glsl.ShaderPrinter;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -109,7 +110,10 @@ public class CompatibilityTransformer {
                             continue;
                         }
 
-                        prevTransformer.makeOutDeclaration(inDec.get(in), in);
+                        String outDeclaration = ShaderPrinter.getFormattedShader(inDec.get(in).fully_specified_type())
+                            + " " + in + ";";
+                        prevTransformer.variable = null;
+                        prevTransformer.injectVariable(outDeclaration.replaceFirst("in", "out"));
 
                         if (!prevTransformer.hasAssigment(in)) {
                             prevTransformer.initialize(inDec.get(in), in);
@@ -126,11 +130,37 @@ public class CompatibilityTransformer {
                             if (!prevTransformer.hasAssigment(in)) {
                                 prevTransformer.initialize(inDec.get(in), in);
                             }
+                        } else {
+                            int outComp = vecComponents(outType.getText());
+                            int inComp = vecComponents(inType.getText());
+                            if (outComp < 0 || inComp < 0) {
+                                continue;
+                            }
+
+                            String temp = "iris_template_" + in;
+                            prevTransformer.rename(in, temp);
+                            String newOut = ShaderPrinter.getFormattedShader(inDec.get(in).fully_specified_type())
+                                + " " + in + ";";
+                            prevTransformer.variable = null;
+                            prevTransformer.injectVariable(newOut.replaceFirst("in", "out"));
+                            String cast = outComp < inComp
+                                ? in + " = " + inType.getText() + "(" + temp + ", vec4(0));"
+                                : in + " = " + inType.getText() + "(" + temp + ");";
+                            prevTransformer.appendMain(cast);
                         }
                     }
                 }
             }
             prevType = type;
         }
+    }
+
+    private static int vecComponents(String type) {
+        return switch (type) {
+            case "vec2" -> 2;
+            case "vec3" -> 3;
+            case "vec4" -> 4;
+            default -> -1;
+        };
     }
 }

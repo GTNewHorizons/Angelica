@@ -18,7 +18,7 @@ class CompositeDepthTransformer {
 		final int type = transformer.findType("centerDepthSmooth");
 		if (type != 0) {
 			transformer.injectVariable("uniform sampler2D iris_centerDepthSmooth;");
-			transformer.replaceExpression("centerDepthSmooth", "texture2D(iris_centerDepthSmooth, vec2(0.5)).r");
+			transformer.replaceExpression("centerDepthSmooth", "texture(iris_centerDepthSmooth, vec2(0.5)).r");
 		}
 	}
 }

@@ -77,11 +77,22 @@ public class IdMap {
 	private static final Pattern LEGACY_DIRECTIVE_PATTERN = Pattern.compile(
 		"(?m)^\\s*#\\s*(?:if|elif|ifdef|ifndef)\\b[^\\n]*\\bMC_VERSION\\b[^\\n]*\\b10710\\b");
 
+	/**
+	 * Detects whether a pack's block.properties has a dedicated 1.7.10 section.
+	 */
+	public static boolean detectLegacySection(Path shaderPath) {
+		String rawBlockProperties = readProperties(shaderPath, "block.properties");
+		return rawBlockProperties != null && LEGACY_DIRECTIVE_PATTERN.matcher(rawBlockProperties).find();
+	}
+
+	public static String modernFallbackMcVersion() {
+		return AngelicaConfig.modernFallbackMcVersion > 0
+			? String.valueOf(AngelicaConfig.modernFallbackMcVersion) : "260101";
+	}
+
 	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
 		// Check if block.properties has a dedicated 1.7.10 section
-		String rawBlockProperties = readProperties(shaderPath, "block.properties");
-		this.hasLegacySection = rawBlockProperties != null
-			&& LEGACY_DIRECTIVE_PATTERN.matcher(rawBlockProperties).find();
+		this.hasLegacySection = detectLegacySection(shaderPath);
 
 		Iterable<StringPair> resolvedDefines;
 		if (this.hasLegacySection) {
@@ -100,9 +111,7 @@ public class IdMap {
 				}
 			}
 
-			String modernVersion = AngelicaConfig.modernFallbackMcVersion > 0
-				? String.valueOf(AngelicaConfig.modernFallbackMcVersion) : "260101";
-			modernDefines.add(new StringPair("MC_VERSION", modernVersion));
+			modernDefines.add(new StringPair("MC_VERSION", modernFallbackMcVersion()));
 			resolvedDefines = modernDefines;
 
 			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {

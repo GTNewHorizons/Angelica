@@ -4,6 +4,8 @@ import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
+import cpw.mods.fml.common.gameevent.TickEvent;
+import jss.notfine.core.Settings;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.KeyBinding;
@@ -19,6 +21,13 @@ public class Zoom {
 
     @Getter
     private static float zoom = ZOOM_DEFAULT;
+
+    public static final float ZOOM_SMOOTH_SNAP_EPSILON = 0.001F;
+
+    @Getter
+    private static float currentZoom = 1.0F;
+    private static long zoomLerpLastNano = 0L;
+
     @Getter
     private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
 
@@ -36,6 +45,29 @@ public class Zoom {
     public static void modifyZoom(int eventDWheel) {
         if (eventDWheel == 0) return;
         zoom = MathHelper.clamp_float((float) (zoom * Math.pow(ZOOM_STEP, Integer.signum(eventDWheel))), ZOOM_MIN, ZOOM_MAX);
+    }
+
+    public static void updateZoomLerp() {
+        final long now = System.nanoTime();
+        float dt = zoomLerpLastNano == 0L ? 0.0F : (now - zoomLerpLastNano) / 1.0e9F;
+        zoomLerpLastNano = now;
+
+        final float target = zoomEnabled ? zoom : 1.0F;
+
+        if (dt <= 0.0F || !(boolean) Settings.ZOOM_SMOOTH.option.getStore()) {
+            currentZoom = target;
+            return;
+        }
+
+        // Clamp dt so a long frame (alt-tab, GC pause) does not snap the zoom.
+        dt = Math.min(dt, 0.1F);
+
+        final int rate = (int) Settings.ZOOM_SMOOTH_SPEED.option.getStore();
+        currentZoom += (target - currentZoom) * (1.0F - (float) Math.exp(-dt * rate));
+
+        if (Math.abs(target - currentZoom) < ZOOM_SMOOTH_SNAP_EPSILON) {
+            currentZoom = target;
+        }
     }
 
     private static void resetMouseFilters(Minecraft mc) {
@@ -78,5 +110,11 @@ public class Zoom {
         if (Mouse.getEventButton() >= 0) {
             handleKeyEvent();
         }
+    }
+
+    @SubscribeEvent
+    public void onRenderTick(TickEvent.RenderTickEvent e) {
+        if (e.phase != TickEvent.Phase.START) return;
+        updateZoomLerp();
     }
 }

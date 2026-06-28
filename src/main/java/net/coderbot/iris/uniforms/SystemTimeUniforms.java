@@ -3,7 +3,10 @@ package net.coderbot.iris.uniforms;
 import lombok.Getter;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
+import org.joml.Vector2i;
+import org.joml.Vector3i;
 
+import java.time.LocalDateTime;
 import java.util.OptionalLong;
 import java.util.function.IntSupplier;
 
@@ -16,7 +19,19 @@ public final class SystemTimeUniforms {
 	public static final Timer TIMER = new Timer();
 	public static final FrameCounter COUNTER = new FrameCounter();
 
+	private static LocalDateTime cachedDateTime = LocalDateTime.now();
+	private static long cachedDateTimeAtMs = 0L;
+
 	private SystemTimeUniforms() {
+	}
+
+	private static LocalDateTime dateTimeSnapshot() {
+		final long now = System.currentTimeMillis();
+		if (now - cachedDateTimeAtMs >= 50L) {
+			cachedDateTime = LocalDateTime.now();
+			cachedDateTimeAtMs = now;
+		}
+		return cachedDateTime;
 	}
 
 	/**
@@ -25,10 +40,26 @@ public final class SystemTimeUniforms {
 	 * @param uniforms the program to make the uniforms available to
 	 */
 	public static void addSystemTimeUniforms(UniformHolder uniforms) {
+		final Vector3i date = new Vector3i();
+		final Vector3i time = new Vector3i();
+		final Vector2i yearTime = new Vector2i();
 		uniforms
 			.uniform1i(UniformUpdateFrequency.PER_FRAME, "frameCounter", COUNTER)
 			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTime", TIMER::getLastFrameTime)
-			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTimeCounter", TIMER::getFrameTimeCounter);
+			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTimeCounter", TIMER::getFrameTimeCounter)
+			.uniform3i(UniformUpdateFrequency.PER_TICK, "currentDate", () -> {
+				final LocalDateTime dt = dateTimeSnapshot();
+				return date.set(dt.getYear(), dt.getMonthValue(), dt.getDayOfMonth());
+			})
+			.uniform3i(UniformUpdateFrequency.PER_TICK, "currentTime", () -> {
+				final LocalDateTime dt = dateTimeSnapshot();
+				return time.set(dt.getHour(), dt.getMinute(), dt.getSecond());
+			})
+			.uniform2i(UniformUpdateFrequency.PER_TICK, "currentYearTime", () -> {
+				final LocalDateTime dt = dateTimeSnapshot();
+				final int elapsed = ((dt.getDayOfYear() - 1) * 86400) + (dt.getHour() * 3600) + (dt.getMinute() * 60) + dt.getSecond();
+				return yearTime.set(elapsed, (dt.toLocalDate().lengthOfYear() * 86400) - elapsed);
+			});
 	}
 
 	public static void addFloatFrameMod8Uniform(UniformHolder uniforms) {

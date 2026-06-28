@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline.transform;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.taumc.glsl.Transformer;
+import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -13,6 +14,10 @@ import java.util.Map;
  */
 class AttributeTransformer {
 	public static void transform(Transformer transformer, AttributeParameters parameters, int version) {
+		if (parameters.scrollGlint && parameters.type == ShaderType.VERTEX) {
+			transformer.replaceExpression("gl_MultiTexCoord0", "(gl_TextureMatrix[0] * gl_MultiTexCoord0)", GLSLParser::postfix_expression);
+		}
+
 		// Always core profile — minimum GLSL version is 330 (see ShaderTransformer.getStageMinimumVersion)
 		CommonTransformer.transform(transformer, parameters, true, version);
 

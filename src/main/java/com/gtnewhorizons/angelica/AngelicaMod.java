@@ -16,7 +16,7 @@ import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
         name = "Angelica",
         version = Tags.VERSION,
         dependencies = """
-            required-after:gtnhlib@[0.8.21,);\
+            required-after:gtnhlib@[0.11.19,);\
             before:lwjgl3ify@[1.5.3,);\
             after:hodgepodge@[2.4.4,);\
             after:CodeChickenCore@[1.2.0,);\

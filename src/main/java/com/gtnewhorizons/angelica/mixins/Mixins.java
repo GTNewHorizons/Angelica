@@ -64,7 +64,15 @@ public enum Mixins implements IMixins {
         .addExcludedMod(TargetedMod.CUSTOM_PLAYER_MODELS)
         .addClientMixins(
             "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
-            , "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
+        )
+    ),
+
+    ANGELICA_DAMAGE_OVERLAY(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.entityModernDamageOverlay)
+        .addExcludedMod(TargetedMod.CUSTOM_PLAYER_MODELS)
+        .addClientMixins(
+            "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
         )
     ),
 
@@ -289,6 +297,7 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
             , "shaders.MixinGlProgram"
+            , "shaders.MixinTextureManager_ReloadCount"
         )
     ),
 
