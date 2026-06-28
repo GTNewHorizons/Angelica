@@ -133,7 +133,10 @@ public class DisplayListManager {
     }
 
     public static UnsupportedOperationException unsupportedInList(String what) {
-        return new UnsupportedOperationException(what + " in display lists not yet implemented - if you see this, please report! " + describeCurrentCompilation());
+        final UnsupportedOperationException e = new UnsupportedOperationException( what + " in display lists not yet implemented - if you see this, please report! " + describeCurrentCompilation());
+        GLStateManager.warnOnce("unsupported:" + what, "Aborting display list {} compilation: {} unsupported during recording", glListId, what);
+        abortCompilation();
+        return e;
     }
 
     public static String describeCurrentCompilation() {
@@ -798,7 +801,8 @@ public class DisplayListManager {
      */
     public static void glEndList() {
         if (glListMode == 0) {
-            throw new RuntimeException("glEndList called outside of a display list!");
+            GLStateManager.warnOnce("endlist-outside", "glEndList called outside of a display list!");
+            return;
         }
         try {
             finishCurrentList();
@@ -906,17 +910,56 @@ public class DisplayListManager {
             // Parent's COMPILING callback is now active again
         } else {
             // Not nested - clear all compilation state
-            currentRecorder = null;
-            recordingThread = null;
-            accumulatedDraws = null;
-            pendingDraw = null;
-            transformCallback = null;
-            compilationStackTrace = null;
-            pendingTransformOps = null;
-            multMatrixSources = null;
-            drawRangeSources = null;
-            glListId = -1;
-            glListMode = 0;
+            resetCompilationState();
+        }
+    }
+
+    /** Clear all root-level compilation state back to "not recording". */
+    private static void resetCompilationState() {
+        currentRecorder = null;
+        recordingThread = null;
+        accumulatedDraws = null;
+        pendingDraw = null;
+        transformCallback = null;
+        compilationStackTrace = null;
+        pendingTransformOps = null;
+        multMatrixSources = null;
+        drawRangeSources = null;
+        glListId = -1;
+        glListMode = 0;
+    }
+
+    public static void abortCompilation() {
+        if (glListMode == 0 && compilationStack.isEmpty()) {
+            return;
+        }
+
+        final int levels = compilationStack.size() + (glListMode != 0 ? 1 : 0);
+        for (int i = 0; i < levels; i++) {
+            try {
+                TessellatorManager.stopCapturingDirect();
+            } catch (IllegalStateException ignored) {
+                break;
+            }
+        }
+
+        if (currentRecorder != null) {
+            currentRecorder.delete();
+        }
+        for (CompilationContext ctx : compilationStack) {
+            if (ctx.recorder() != null) {
+                ctx.recorder().delete();
+            }
+        }
+        compilationStack.clear();
+
+        resetCompilationState();
+    }
+
+    public static void abortIfLeaked() {
+        if (glListMode != 0 || !compilationStack.isEmpty()) {
+            GLStateManager.warnOnce("frame-leak", "Display list {} left open across a frame boundary - aborting to recover", glListId);
+            abortCompilation();
         }
     }
 

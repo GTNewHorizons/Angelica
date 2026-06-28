@@ -9,6 +9,9 @@ import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import com.gtnewhorizons.angelica.glsm.recording.support.DisplayListTestFixture;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.EnumSource;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.junit.jupiter.params.provider.ValueSource;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -17,7 +20,10 @@ import org.lwjgl.opengl.GL30;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.nio.IntBuffer;
+import java.nio.ShortBuffer;
 import java.util.List;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -25,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.params.provider.Arguments.arguments;
 
 class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
 
@@ -521,7 +528,153 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
             "listBA: batch[1] must match the second-recorded layout");
     }
 
-    // === local helpers ===
+    private static Stream<Arguments> clientIndexedDrawCases() {
+        return Stream.of(
+            arguments("byte indices", GL11.GL_COMPILE, (Runnable) () -> {
+                final ByteBuffer idx = BufferUtils.createByteBuffer(3);
+                idx.put(new byte[]{0, 1, 2}).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
+            }, GL11.GL_TRIANGLES, 3),
+            arguments("short indices", GL11.GL_COMPILE, (Runnable) () -> {
+                final ShortBuffer idx = BufferUtils.createShortBuffer(3);
+                idx.put(new short[]{0, 1, 2}).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
+            }, GL11.GL_TRIANGLES, 3),
+            arguments("int indices", GL11.GL_COMPILE, (Runnable) () -> {
+                final IntBuffer idx = BufferUtils.createIntBuffer(3);
+                idx.put(new int[]{0, 1, 2}).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
+            }, GL11.GL_TRIANGLES, 3),
+            arguments("explicit count+type", GL11.GL_COMPILE, (Runnable) () -> {
+                final ByteBuffer idx = BufferUtils.createByteBuffer(3 * 2).order(ByteOrder.nativeOrder());
+                idx.putShort((short) 0).putShort((short) 1).putShort((short) 2).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, idx);
+            }, GL11.GL_TRIANGLES, 3),
+            arguments("quads triangulate at record", GL11.GL_COMPILE, (Runnable) () -> {
+                final IntBuffer idx = BufferUtils.createIntBuffer(4);
+                idx.put(new int[]{0, 1, 2, 3}).flip();
+                GLStateManager.glDrawElements(GL11.GL_QUADS, idx);
+            }, GL11.GL_TRIANGLES, 6),
+            arguments("compile-and-execute fires live and bakes", GL11.GL_COMPILE_AND_EXECUTE, (Runnable) () -> {
+                final IntBuffer idx = BufferUtils.createIntBuffer(3);
+                idx.put(new int[]{0, 1, 2}).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
+            }, GL11.GL_TRIANGLES, 3)
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("clientIndexedDrawCases")
+    void clientIndexedDraw_capturedAndWidenedToUnsignedInt(String name, int listMode, Runnable draw, int expectedMode, int expectedCount) {
+        final int list = recordClientIndexDraw(listMode, draw);
+        final BatchedIndexedDrawCmd cmd = firstBatchedCmd(list);
+        assertNotNull(cmd);
+        assertEquals(expectedMode, cmd.getDrawMode());
+        assertEquals(expectedCount, cmd.getIndexCount());
+        assertEquals(GL11.GL_UNSIGNED_INT, cmd.getIndexType(), "client indices always widen to UNSIGNED_INT");
+    }
+
+    @Test
+    void clientVerticesAndIndices_pointersSetDuringRecording_bake() {
+        final float[][] verts = {{0f, 0f, 0f}, {1f, 0f, 0f}, {1f, 1f, 0f}, {0f, 1f, 0f}};
+        final ByteBuffer clientVerts = BufferUtils.createByteBuffer(verts.length * 12).order(ByteOrder.nativeOrder());
+        for (float[] v : verts) {
+            clientVerts.putFloat(v[0]);
+            clientVerts.putFloat(v[1]);
+            clientVerts.putFloat(v[2]);
+        }
+        clientVerts.flip();
+        final IntBuffer indices = BufferUtils.createIntBuffer(6);
+        indices.put(new int[]{0, 1, 2, 2, 3, 0}).flip();
+
+        final int vao = newVao();
+        final int list = newList();
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLStateManager.glBindVertexArray(vao);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+
+        VAOManager.setAttribute(0, 3, GL11.GL_FLOAT, false, 0, clientVerts);
+        VAOManager.enableAttribute(0);
+        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, indices);
+        GLStateManager.glBindVertexArray(0);
+        GLStateManager.glEndList();
+
+        final BatchedIndexedDrawCmd cmd = firstBatchedCmd(list);
+        assertNotNull(cmd);
+        assertEquals(GL11.GL_TRIANGLES, cmd.getDrawMode());
+        assertEquals(6, cmd.getIndexCount());
+        assertEquals(GL11.GL_UNSIGNED_INT, cmd.getIndexType());
+
+        final ByteBuffer owned = readBufferBytes(GL15.GL_ARRAY_BUFFER, firstBatch(list).getSharedVBO(), verts.length * 12);
+        for (int i = 0; i < verts.length; i++) {
+            assertEquals(verts[i][0], owned.getFloat(i * 12), 0f, "pos.x v=" + i);
+            assertEquals(verts[i][1], owned.getFloat(i * 12 + 4), 0f, "pos.y v=" + i);
+            assertEquals(verts[i][2], owned.getFloat(i * 12 + 8), 0f, "pos.z v=" + i);
+        }
+        MemoryUtilities.memFree(owned);
+    }
+
+    @Test
+    void quadOffsetDraw_compileAndExecute_doesNotPauseRecordingForRestOfList() {
+        final int vao = setupPosColorVao(defaultQuadVbo());
+        final int quadEbo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2, 3);
+        final int triEbo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2);
+
+        final int list = newList();
+        GLStateManager.glNewList(list, GL11.GL_COMPILE_AND_EXECUTE);
+        GLStateManager.glBindVertexArray(vao);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, quadEbo);
+        GLStateManager.glDrawElements(GL11.GL_QUADS, 4, GL11.GL_UNSIGNED_SHORT, 0L);
+        assertTrue(DisplayListManager.isRecording(), "recording must resume after a GL_QUADS offset draw");
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, triEbo);
+        GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 3, GL11.GL_UNSIGNED_SHORT, 0L);
+        GLStateManager.glBindVertexArray(0);
+        GLStateManager.glEndList();
+
+        assertEquals(2, allBatchedCmds(list).size(), "both the QUADS draw and the following triangle draw must be recorded");
+    }
+
+    private enum MalformedClientDraw { OVERSIZED_COUNT, INDEX_PAST_VERTEX_BUFFER }
+
+    @ParameterizedTest(name = "{0}")
+    @EnumSource(MalformedClientDraw.class)
+    void malformedClientDraw_skippedAndRecordingSurvives(MalformedClientDraw scenario) {
+        final int list = newList();
+        GLStateManager.glNewList(list, GL11.GL_COMPILE);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        switch (scenario) {
+            case OVERSIZED_COUNT -> {
+                GLStateManager.glBindVertexArray(setupPosColorVao(defaultQuadVbo()));
+                final ByteBuffer idx = BufferUtils.createByteBuffer(3 * 2).order(ByteOrder.nativeOrder());
+                idx.putShort((short) 0).putShort((short) 1).putShort((short) 2).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, 100, GL11.GL_UNSIGNED_SHORT, idx);
+            }
+            case INDEX_PAST_VERTEX_BUFFER -> {
+                final int vbo = uploadPosColorVbo(new float[]{0f, 0f, 1f, 0f}, new byte[][]{{1, 1, 1, 1}, {2, 2, 2, 2}});
+                GLStateManager.glBindVertexArray(setupPosColorVao(vbo));
+                final IntBuffer idx = BufferUtils.createIntBuffer(4);
+                idx.put(new int[]{0, 1, 2, 3}).flip();
+                GLStateManager.glDrawElements(GL11.GL_TRIANGLES, idx);
+            }
+        }
+        assertTrue(DisplayListManager.isRecording(), "recording survives a skipped malformed draw");
+        GLStateManager.glBindVertexArray(0);
+        GLStateManager.glEndList();
+
+        assertNull(firstBatchedCmd(list), "malformed draw must be skipped, not captured or over-read");
+    }
+
+    private int recordClientIndexDraw(int listMode, Runnable draw) {
+        final int vao = setupPosColorVao(defaultQuadVbo());
+        final int list = newList();
+        GLStateManager.glNewList(list, listMode);
+        GLStateManager.glBindVertexArray(vao);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        draw.run();
+        GLStateManager.glBindVertexArray(0);
+        GLStateManager.glEndList();
+        return list;
+    }
 
     private static void assertUintIndices(ByteBuffer ib, int... expected) {
         for (int i = 0; i < expected.length; i++) {
