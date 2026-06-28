@@ -85,6 +85,7 @@ public final class VAOManager {
         a.offset = offset;
         a.vboId = vboId;
         a.clientPointer = null;
+        a.genericPointer = true;
         if (wasClient && a.enabled) {
             clientSideEnabledCount--;
         }
@@ -101,9 +102,22 @@ public final class VAOManager {
         a.offset = 0;
         a.vboId = 0;
         a.clientPointer = pointer;
+        a.genericPointer = true;
         if (!wasClient && a.enabled) {
             clientSideEnabledCount++;
         }
+    }
+
+    public static boolean isGenericPointerEnabled(int index) {
+        if (index < 0 || index >= MAX_ATTRIBS) return false;
+        final Attrib a = currentAttribs[index];
+        return a != null && a.genericPointer && a.enabled;
+    }
+
+    public static void markConventional(int index) {
+        if (index < 0 || index >= MAX_ATTRIBS) return;
+        final Attrib a = currentAttribs[index];
+        if (a != null) a.genericPointer = false;
     }
 
     public static void setEnabled(int index, boolean enabled) {
@@ -239,6 +253,7 @@ public final class VAOManager {
         public long offset;
         public int vboId;
         public ByteBuffer clientPointer;
+        public boolean genericPointer;
 
         public boolean isClientSide() {
             return enabled && clientPointer != null;
@@ -253,6 +268,7 @@ public final class VAOManager {
             offset = 0;
             vboId = 0;
             clientPointer = null;
+            genericPointer = false;
         }
 
         public int effectiveStride() {
