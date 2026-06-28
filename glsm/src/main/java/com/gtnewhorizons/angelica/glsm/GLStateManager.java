@@ -5792,6 +5792,9 @@ public class GLStateManager {
             generateVertexShaderIfNeeded(program);
         }
         RENDER_BACKEND.linkProgram(program);
+        if (ShaderManager.getInstance().isEnabled() && RENDER_BACKEND.getProgrami(program, GL20.GL_LINK_STATUS) == GL11.GL_FALSE) {
+            LOGGER.warn("Program {} failed to link: {}", program, RENDER_BACKEND.getProgramInfoLog(program));
+        }
         CompatUniformManager.onLinkProgram(program);
     }
 
