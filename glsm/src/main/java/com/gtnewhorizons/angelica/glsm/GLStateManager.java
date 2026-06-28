@@ -2470,6 +2470,19 @@ public class GLStateManager {
         if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
     }
 
+    private static void ffpClientArrayPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
+        if (VAOManager.isGenericPointerEnabled(index)) return;
+        VAOManager.setAttribute(index, size, type, normalized, stride, offset, boundVBO);
+        VAOManager.markConventional(index);
+        RENDER_BACKEND.vertexAttribPointer(index, size, type, normalized, stride, offset);
+    }
+
+    private static void ffpClientArrayPointer(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
+        if (VAOManager.isGenericPointerEnabled(index)) return;
+        VAOManager.setAttribute(index, size, type, normalized, stride, pointer);
+        VAOManager.markConventional(index);
+    }
+
     public static void glVertexPointer(int size, int stride, IntBuffer pointer) {
         glVertexPointer(size, GL11.GL_INT, stride, MemoryUtilities.memByteBuffer(pointer));
     }
@@ -2479,40 +2492,40 @@ public class GLStateManager {
     }
 
     public static void glVertexPointer(int size, int stride, FloatBuffer pointer) {
-        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int stride, DoubleBuffer pointer) {
-        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glVertexPointer(int size, int type, int stride, ByteBuffer pointer) {
-        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
+        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer);
     }
 
     public static void glVertexPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        glVertexAttribPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
+        ffpClientArrayPointer(Usage.POSITION.getAttributeLocation(), size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glColorPointer(int size, int stride, FloatBuffer pointer) {
-        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_FLOAT, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int stride, DoubleBuffer pointer) {
-        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_DOUBLE, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, GL11.GL_DOUBLE, Usage.COLOR.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glColorPointer(int size, int type, int stride, ByteBuffer pointer) {
-        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
+        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, boolean unsigned, int stride, ByteBuffer pointer) {
         final int type = unsigned ? GL11.GL_UNSIGNED_BYTE : GL11.GL_BYTE;
-        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
+        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer);
     }
 
     public static void glColorPointer(int size, int type, int stride, long pointer_buffer_offset) {
-        glVertexAttribPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
+        ffpClientArrayPointer(Usage.COLOR.getAttributeLocation(), size, type, Usage.COLOR.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glNormalPointer(int stride, FloatBuffer pointer) {
@@ -2532,33 +2545,33 @@ public class GLStateManager {
     }
 
     public static void glNormalPointer(int type, int stride, ByteBuffer pointer) {
-        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
+        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer);
     }
 
     public static void glNormalPointer(int type, int stride, FloatBuffer pointer) {
-        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_FLOAT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, ShortBuffer pointer) {
-        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_SHORT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, IntBuffer pointer) {
-        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_INT, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, DoubleBuffer pointer) {
-        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_DOUBLE, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, GL11.GL_DOUBLE, Usage.NORMAL.isNormalized(), stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glNormalPointer(int type, int stride, long pointer_buffer_offset) {
-        glVertexAttribPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
+        ffpClientArrayPointer(Usage.NORMAL.getAttributeLocation(), 3, type, Usage.NORMAL.isNormalized(), stride, pointer_buffer_offset);
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ByteBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        glVertexAttribPointer(loc, size, type, false, stride, pointer);
+        ffpClientArrayPointer(loc, size, type, false, stride, pointer);
     }
 
     public static void glTexCoordPointer(int size, int stride, FloatBuffer pointer) {
@@ -2580,31 +2593,31 @@ public class GLStateManager {
     public static void glTexCoordPointer(int size, int type, int stride, FloatBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        glVertexAttribPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(loc, size, GL11.GL_FLOAT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, ShortBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        glVertexAttribPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(loc, size, GL11.GL_SHORT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, IntBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        glVertexAttribPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(loc, size, GL11.GL_INT, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, DoubleBuffer pointer) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        glVertexAttribPointer(loc, size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
+        ffpClientArrayPointer(loc, size, GL11.GL_DOUBLE, false, stride, MemoryUtilities.memByteBuffer(pointer));
     }
 
     public static void glTexCoordPointer(int size, int type, int stride, long pointer_buffer_offset) {
         final int loc = texCoordAttributeLocation();
         if (loc < 0) return;
-        glVertexAttribPointer(loc, size, type, false, stride, pointer_buffer_offset);
+        ffpClientArrayPointer(loc, size, type, false, stride, pointer_buffer_offset);
     }
 
     public static void glEnableClientState(int cap) {
