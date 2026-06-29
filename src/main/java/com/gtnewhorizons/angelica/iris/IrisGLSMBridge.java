@@ -154,6 +154,13 @@ public class IrisGLSMBridge {
             }
         });
 
+        GLSMHooks.immediateExtendedHandler = new ImmediateExtendedAttribs();
+        GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
+            if (Iris.enabled && event.postBind) {
+                ImmediateExtendedAttribs.onProgramBound(event.newProgram);
+            }
+        });
+
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
             if (event.postBind) return;

@@ -7,6 +7,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -36,6 +38,15 @@ public class TessellatorStreamingDrawer {
 
     private static final int[] persistentVAOs = new int[FORMAT_COUNT];
     private static final int[] orphanVAOs = new int[FORMAT_COUNT];
+
+    private static final int EXT_LOC_MID_TEX = 12;
+    private static final int EXT_LOC_TANGENT = 13;
+    private static final int EXT_STRIDE = 12;
+    private static final int[] extendedVAOs = new int[FORMAT_COUNT];
+    private static OrphanStreamingBuffer extBuffer;
+    private static ByteBuffer extScratch;
+    private static long extScratchAddress;
+    private static int extScratchCapacity;
 
     private static ByteBuffer repackBuffer;
     private static long repackAddress;
@@ -94,7 +105,18 @@ public class TessellatorStreamingDrawer {
         repackBuffer.position(0);
         repackBuffer.limit((int)(writePtr - repackAddress));
 
-        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
+        final ImmediateExtendedAttribHandler extHandler = GLSMHooks.immediateExtendedHandler;
+        final boolean wants = extHandler != null && extHandler.wantsExtended();
+        if (wants && tess.drawMode == GL11.GL_QUADS && tess.hasTexture && (vertexCount & 3) == 0) {
+            final int extBytes = vertexCount * EXT_STRIDE;
+            ensureExtScratch(extBytes);
+            extHandler.build(tess.rawBuffer, vertexCount, extScratchAddress);
+            extScratch.position(0);
+            extScratch.limit(extBytes);
+            uploadAndDrawExtended(repackBuffer, extScratch, flags, format, vertexSize, vertexCount);
+        } else {
+            uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
+        }
 
         // Shrink rawBuffer if oversized
         if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
@@ -122,6 +144,7 @@ public class TessellatorStreamingDrawer {
         final ByteBuffer buffer = dt.getWriteBuffer();
         final int vertexSize = format.getVertexSize();
 
+        if (tryExtendedPacked(buffer, flags, format, vertexSize, drawMode, vertexCount)) return;
         uploadAndDraw(buffer, flags, format, vertexSize, drawMode, vertexCount);
     }
 
@@ -135,7 +158,23 @@ public class TessellatorStreamingDrawer {
     public static void drawPacked(ByteBuffer packedData, int drawMode, int flags, int vertexCount) {
         final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
         final int vertexSize = format.getVertexSize();
+        if (tryExtendedPacked(packedData, flags, format, vertexSize, drawMode, vertexCount)) return;
         uploadAndDraw(packedData, flags, format, vertexSize, drawMode, vertexCount);
+    }
+
+    private static boolean tryExtendedPacked(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
+        final ImmediateExtendedAttribHandler extHandler = GLSMHooks.immediateExtendedHandler;
+        if (extHandler == null || !extHandler.wantsExtended()) return false;
+        if (drawMode != GL11.GL_QUADS || !format.hasTexture() || (vertexCount & 3) != 0) return false;
+
+        final int texOffset = (flags == 0xF) ? 16 : 12;
+        final int extBytes = vertexCount * EXT_STRIDE;
+        ensureExtScratch(extBytes);
+        extHandler.buildPacked(memAddress0(packed) + packed.position(), vertexSize, 0, texOffset, vertexCount, extScratchAddress);
+        extScratch.position(0);
+        extScratch.limit(extBytes);
+        uploadAndDrawExtended(packed, extScratch, flags, format, vertexSize, vertexCount);
+        return true;
     }
 
     private static String cachedDebugInfo = "Stream: not initialized";
@@ -215,6 +254,53 @@ public class TessellatorStreamingDrawer {
         }
     }
 
+    private static void uploadAndDrawExtended(ByteBuffer base, ByteBuffer ext, int flags, VertexFormat format, int vertexSize, int vertexCount) {
+        ensureVAO(flags, format);
+        ensureExtendedVAO(flags, format);
+
+        orphanBuffers[flags].upload(base);
+        extBuffer.upload(ext);
+
+        GLStateManager.glBindVertexArray(extendedVAOs[flags]);
+        QuadConverter.drawQuadsAsTriangles(0, vertexCount);
+        GLStateManager.glBindVertexArray(0);
+    }
+
+    private static void ensureExtendedVAO(int flags, VertexFormat format) {
+        if (extBuffer == null) {
+            extBuffer = new OrphanStreamingBuffer();
+        }
+        if (extendedVAOs[flags] != 0) return;
+
+        extendedVAOs[flags] = GLStateManager.glGenVertexArrays();
+        GLStateManager.glBindVertexArray(extendedVAOs[flags]);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
+        format.setupBufferState(0L);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extBuffer.getBufferId());
+        GLStateManager.glEnableVertexAttribArray(EXT_LOC_MID_TEX);
+        GLStateManager.glVertexAttribPointer(EXT_LOC_MID_TEX, 2, GL11.GL_FLOAT, false, EXT_STRIDE, 0L);
+        GLStateManager.glEnableVertexAttribArray(EXT_LOC_TANGENT);
+        GLStateManager.glVertexAttribPointer(EXT_LOC_TANGENT, 4, GL11.GL_BYTE, true, EXT_STRIDE, 8L);
+
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.glBindVertexArray(0);
+    }
+
+    private static void ensureExtScratch(int requiredBytes) {
+        if (extScratch != null && requiredBytes <= extScratchCapacity) return;
+
+        int newCapacity = Math.max(0x4000, extScratchCapacity);
+        while (newCapacity < requiredBytes) {
+            newCapacity *= 2;
+        }
+        if (extScratch != null) memFree(extScratch);
+        extScratch = memAlloc(newCapacity);
+        extScratchAddress = memAddress0(extScratch);
+        extScratchCapacity = newCapacity;
+    }
+
     /**
      * Ensure the repack buffer is large enough for the given byte count.
      * Public for use by external batch systems that need to pack data before calling {@link #drawPacked}.
@@ -274,7 +360,18 @@ public class TessellatorStreamingDrawer {
         for (int i = 0; i < FORMAT_COUNT; i++) {
             if (persistentVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(persistentVAOs[i]); persistentVAOs[i] = 0; }
             if (orphanVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(orphanVAOs[i]); orphanVAOs[i] = 0; }
+            if (extendedVAOs[i] != 0) { GLStateManager.glDeleteVertexArrays(extendedVAOs[i]); extendedVAOs[i] = 0; }
             if (orphanBuffers[i] != null) { orphanBuffers[i].destroy(); orphanBuffers[i] = null; }
+        }
+        if (extBuffer != null) {
+            extBuffer.destroy();
+            extBuffer = null;
+        }
+        if (extScratch != null) {
+            memFree(extScratch);
+            extScratch = null;
+            extScratchAddress = 0;
+            extScratchCapacity = 0;
         }
         if (persistentBuffer != null) {
             persistentBuffer.destroy();

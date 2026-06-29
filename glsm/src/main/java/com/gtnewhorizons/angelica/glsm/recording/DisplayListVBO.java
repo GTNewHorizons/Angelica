@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 /**
  * A class that stores multiple vertex formats & their corresponding buffers.
@@ -8,14 +9,25 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 public final class DisplayListVBO {
 
     private final SubVBO[] vbos;
+    private final int[] extVbos;
 
     DisplayListVBO(SubVBO[] vbos) {
+        this(vbos, null);
+    }
+
+    DisplayListVBO(SubVBO[] vbos, int[] extVbos) {
         this.vbos = vbos;
+        this.extVbos = extVbos;
     }
 
     public void delete() {
         for (SubVBO vbo : vbos) {
             vbo.delete();
+        }
+        if (extVbos != null) {
+            for (int extVbo : extVbos) {
+                if (extVbo != 0) GLStateManager.glDeleteBuffers(extVbo);
+            }
         }
     }
 
