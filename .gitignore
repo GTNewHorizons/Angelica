@@ -37,4 +37,3 @@ addon.local.gradle.kts
 addon.late.local.gradle
 addon.late.local.gradle.kts
 local/
-/iris_search_diff
