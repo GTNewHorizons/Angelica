@@ -1,9 +1,11 @@
 package net.coderbot.iris.gui.element.shaderoptions;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
 import net.coderbot.iris.gui.element.IrisElementRow;
+import net.coderbot.iris.gui.element.ShaderPackOptionList;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -16,57 +18,82 @@ import org.jetbrains.annotations.Nullable;
 
 public class HeaderEntry extends BaseEntry {
 
-    public static final String BACK_BUTTON_TEXT = EnumChatFormatting.ITALIC + "< " + I18n.format("options.iris.back");
-    public static final String RESET_BUTTON_TEXT_INACTIVE = EnumChatFormatting.GRAY + I18n.format("options.iris.reset");
-    public static final String RESET_BUTTON_TEXT_ACTIVE = EnumChatFormatting.YELLOW + I18n.format("options.iris.reset");
-
-    public static final String RESET_HOLD_SHIFT_TOOLTIP = EnumChatFormatting.BOLD + I18n.format("options.iris.reset.tooltip.holdShift");
-    public static final String RESET_TOOLTIP = EnumChatFormatting.RED + I18n.format("options.iris.reset.tooltip");
-    public static final String IMPORT_TOOLTIP = I18n.format("options.iris.importSettings.tooltip");
-    //				.withStyle(style -> style.withColor(TextColor.fromRgb(0x4da6ff)));
-    public static final String EXPORT_TOOLTIP = I18n.format("options.iris.exportSettings.tooltip");
-    //				.withStyle(style -> style.withColor(TextColor.fromRgb(0xfc7d3d)));
+    private static String backButtonText()        { return EnumChatFormatting.ITALIC + "< " + I18n.format("options.iris.back"); }
+    private static String resetButtonInactive()   { return EnumChatFormatting.GRAY   + I18n.format("options.iris.reset"); }
+    private static String resetButtonActive()     { return EnumChatFormatting.YELLOW + I18n.format("options.iris.reset"); }
+    private static String resetHoldShiftTooltip() { return EnumChatFormatting.BOLD   + I18n.format("options.iris.reset.tooltip.holdShift"); }
+    private static String resetTooltip()          { return EnumChatFormatting.RED    + I18n.format("options.iris.reset.tooltip"); }
+    private static String importTooltip()         { return I18n.format("options.iris.importSettings.tooltip"); }
+    private static String exportTooltip()         { return I18n.format("options.iris.exportSettings.tooltip"); }
+    private static String searchButtonText()      { return I18n.format("options.iris.search.button"); }
+    private static String clearButtonText()       { return I18n.format("options.iris.clear.button"); }
+    private static String searchTooltip()         { return I18n.format("options.iris.search.tooltip"); }
+    private static String clearTooltip()          { return I18n.format("options.iris.clear.tooltip"); }
 
     private static final int MIN_SIDE_BUTTON_WIDTH = 42;
     private static final int BUTTON_HEIGHT = 16;
+    private static final int SEARCH_BOX_GAP = 3;
 
     private final ShaderPackScreen screen;
+    private final ShaderPackOptionList optionList;
     private final @Nullable IrisElementRow backButton;
+    /** Width of the left-side button, used to clip the title text away from it. */
+    private final int leftButtonWidth;
     private final IrisElementRow utilityButtons = new IrisElementRow();
     private final IrisElementRow.TextButtonElement resetButton;
     private final IrisElementRow.IconButtonElement importButton;
     private final IrisElementRow.IconButtonElement exportButton;
     private final String text;
 
-    public HeaderEntry(ShaderPackScreen screen, NavigationController navigation, String text, boolean hasBackButton) {
+    /** Non-null only on the main-screen header (search/clear toggle). */
+    private final @Nullable IrisElementRow.TextButtonElement searchToggleButton;
+
+    public HeaderEntry(ShaderPackScreen screen, NavigationController navigation, String text, boolean hasBackButton, ShaderPackOptionList optionList) {
         super(navigation);
 
+        this.optionList = optionList;
+        this.screen = screen;
+        this.text = text;
+
+        IrisElementRow.TextButtonElement toggleRef = null;
+
         if (hasBackButton) {
-            this.backButton = new IrisElementRow().add(new IrisElementRow.TextButtonElement(BACK_BUTTON_TEXT, this::backButtonClicked),
-                Math.max(MIN_SIDE_BUTTON_WIDTH, Minecraft.getMinecraft().fontRenderer.getStringWidth(BACK_BUTTON_TEXT) + 8));
+            // Sub-screen: navigating here while search is active → force-disable so the search box disappears
+            if (optionList.isSearchModeActive()) {
+                optionList.disableSearchMode();
+            }
+            String backText = backButtonText();
+            int w = Math.max(MIN_SIDE_BUTTON_WIDTH, Minecraft.getMinecraft().fontRenderer.getStringWidth(backText) + 8);
+            this.backButton = new IrisElementRow().add(new IrisElementRow.TextButtonElement(backText, this::backButtonClicked), w);
+            this.leftButtonWidth = w;
         } else {
-            this.backButton = null;
+            // Main screen: left button is the search/clear toggle
+            String buttonText = optionList.isSearchModeActive() ? clearButtonText() : searchButtonText();
+            IrisElementRow.TextButtonElement searchBtn = new IrisElementRow.TextButtonElement(buttonText, this::searchButtonClicked);
+            int w = Math.max(MIN_SIDE_BUTTON_WIDTH, Minecraft.getMinecraft().fontRenderer.getStringWidth(buttonText) + 8);
+            this.backButton = new IrisElementRow().add(searchBtn, w);
+            toggleRef = searchBtn;
+            this.leftButtonWidth = w;
+            optionList.setReservedLeftWidth(w + SEARCH_BOX_GAP);
         }
 
-        this.resetButton = new IrisElementRow.TextButtonElement(RESET_BUTTON_TEXT_INACTIVE, this::resetButtonClicked);
+        this.searchToggleButton = toggleRef;
+
+        this.resetButton = new IrisElementRow.TextButtonElement(resetButtonInactive(), this::resetButtonClicked);
         this.importButton = new IrisElementRow.IconButtonElement(GuiUtil.Icon.IMPORT, GuiUtil.Icon.IMPORT_COLORED, this::importSettingsButtonClicked);
         this.exportButton = new IrisElementRow.IconButtonElement(GuiUtil.Icon.EXPORT, GuiUtil.Icon.EXPORT_COLORED, this::exportSettingsButtonClicked);
 
         this.utilityButtons.add(this.importButton, 15).add(this.exportButton, 15)
-            .add(this.resetButton, Math.max(MIN_SIDE_BUTTON_WIDTH, Minecraft.getMinecraft().fontRenderer.getStringWidth((RESET_BUTTON_TEXT_INACTIVE) + 8)));
-
-        this.screen = screen;
-        this.text = text;
+            .add(this.resetButton, Math.max(MIN_SIDE_BUTTON_WIDTH, Minecraft.getMinecraft().fontRenderer.getStringWidth(resetButtonInactive()) + 8));
     }
 
     @Override
     public void drawEntry(ShaderPackScreen screen, int index, int x, int y, int slotWidth, int slotHeight, Tessellator tessellator, int mouseX, int mouseY, boolean isMouseOver) {
         Gui.drawRect(x - 3, (y + slotHeight) - 3, x + slotWidth, (y + slotHeight) - 2, 0x66BEBEBE);
+        // Gui.drawRect leaves GL color set to the rect's color; reset to white so button textures aren't tinted.
+        GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         final int tickDelta = 0;
         final FontRenderer font = Minecraft.getMinecraft().fontRenderer;
-
-        GuiUtil.drawScrollingText(font, text, x + (int) (slotWidth * 0.5), x + 5,
-            ((x + slotWidth) - 10) - this.utilityButtons.getWidth(), y + 5, y + 15, 0xFFFFFF);
 
         GuiUtil.bindIrisWidgetsTexture();
 
@@ -75,26 +102,42 @@ public class HeaderEntry extends BaseEntry {
             backButton.drawScreen(x, y, BUTTON_HEIGHT, mouseX, mouseY, tickDelta, isMouseOver);
         }
 
+        if (optionList.isSearchModeActive() && searchToggleButton != null) {
+            if (searchToggleButton.isHovered()) {
+                ShaderPackScreen.TOP_LAYER_RENDER_QUEUE.add(() -> GuiUtil.drawTextPanel(font, clearTooltip(), mouseX, mouseY - 16));
+            }
+            return;
+        }
+
+        GuiUtil.drawScrollingText(font, text, x + (int) (slotWidth * 0.5),
+            x + leftButtonWidth + 5,
+            ((x + slotWidth) - 10) - this.utilityButtons.getWidth(),
+            y + 5, y + 15, 0xFFFFFF);
+
         final boolean shiftDown = GuiScreen.isShiftKeyDown();
 
         // Set the appearance of the reset button
         this.resetButton.disabled = !shiftDown;
-        this.resetButton.text = shiftDown ? RESET_BUTTON_TEXT_ACTIVE : RESET_BUTTON_TEXT_INACTIVE;
+        this.resetButton.text = shiftDown ? resetButtonActive() : resetButtonInactive();
 
         // Draw the utility buttons
         this.utilityButtons.renderRightAligned((x + slotWidth) - 3, y, BUTTON_HEIGHT, mouseX, mouseY, tickDelta, isMouseOver);
 
         // Draw the reset button's tooltip
         if (this.resetButton.isHovered()) {
-            final String tooltip = shiftDown ? RESET_TOOLTIP : RESET_HOLD_SHIFT_TOOLTIP;
+            final String tooltip = shiftDown ? resetTooltip() : resetHoldShiftTooltip();
             queueBottomRightAnchoredTooltip(mouseX, mouseY, font, tooltip);
         }
         // Draw the import/export button tooltips
         if (this.importButton.isHovered()) {
-            queueBottomRightAnchoredTooltip(mouseX, mouseY, font, IMPORT_TOOLTIP);
+            queueBottomRightAnchoredTooltip(mouseX, mouseY, font, importTooltip());
         }
         if (this.exportButton.isHovered()) {
-            queueBottomRightAnchoredTooltip(mouseX, mouseY, font, EXPORT_TOOLTIP);
+            queueBottomRightAnchoredTooltip(mouseX, mouseY, font, exportTooltip());
+        }
+        // Search-button tooltip
+        if (searchToggleButton != null && searchToggleButton.isHovered()) {
+            ShaderPackScreen.TOP_LAYER_RENDER_QUEUE.add(() -> GuiUtil.drawTextPanel(font, searchTooltip(), mouseX, mouseY - 16));
         }
     }
 
@@ -104,6 +147,9 @@ public class HeaderEntry extends BaseEntry {
 
     @Override
     public boolean mouseClicked(int mouseX, int mouseY, int button) {
+        if (optionList.isSearchModeActive()) {
+            return backButton != null && backButton.mouseClicked(mouseX, mouseY, button);
+        }
         final boolean backButtonResult = backButton != null && backButton.mouseClicked(mouseX, mouseY, button);
         final boolean utilButtonResult = utilityButtons.mouseClicked(mouseX, mouseY, button);
 
@@ -119,6 +165,16 @@ public class HeaderEntry extends BaseEntry {
         this.navigation.back();
         GuiUtil.playButtonClickSound();
 
+        return true;
+    }
+
+    private boolean searchButtonClicked(IrisElementRow.TextButtonElement button) {
+        GuiUtil.playButtonClickSound();
+        if (optionList.isSearchModeActive()) {
+            optionList.disableSearchModeAndRebuild();
+        } else {
+            optionList.enableSearchModeAndRebuild();
+        }
         return true;
     }
 

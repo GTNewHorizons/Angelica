@@ -139,6 +139,10 @@ options.iris.shadowDistance.enabled=Allows you to change the maximum distance fo
 options.iris.shadowDistance.disabled=Your current shader pack has already set a render distance for shadows; you cannot change it.
 options.iris.gui.hide=Hide GUI
 options.iris.gui.show=Show GUI
+options.iris.search.button=Search
+options.iris.clear.button=Clear
+options.iris.search.tooltip=Search Shader Settings (Ctrl + F)
+options.iris.clear.tooltip=Exit Shader Search (Esc)
 
 options.dynamic_lights=Dynamic Lights
 options.dynamic_lights.tooltip=Enables dynamic lights. Modes: OFF - off, FASTEST - 500ms delay, FAST - 250ms delay, FANCY - 50ms delay, REALTIME - no delay.

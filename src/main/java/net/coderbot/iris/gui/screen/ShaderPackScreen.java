@@ -53,8 +53,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
      */
     public static final Set<Runnable> TOP_LAYER_RENDER_QUEUE = new HashSet<>();
 
-    private static final String SELECT_TITLE = EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format("pack.iris.select.title");
-    private static final String CONFIGURE_TITLE = EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format("pack.iris.configure.title");
+    private static String selectTitle()    { return EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format("pack.iris.select.title"); }
+    private static String configureTitle() { return EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format("pack.iris.configure.title"); }
     private static final int COMMENT_PANEL_WIDTH = 314;
 
     private final GuiScreen parent;
@@ -104,6 +104,11 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
         refreshForChangedPack();
     }
+    /** Returns true when the option menu is open and the user has an active search query. */
+    public boolean isOptionMenuSearchActive() {
+        return this.optionMenuOpen && this.shaderOptionList != null && this.shaderOptionList.isSearchModeActive();
+    }
+
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
         GLStateManager.glPushAttrib(GL11.GL_COLOR_BUFFER_BIT);
@@ -124,6 +129,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         if (!this.guiHidden) {
             if (optionMenuOpen && this.shaderOptionList != null) {
                 this.shaderOptionList.drawScreen(mouseX, mouseY, delta);
+                this.shaderOptionList.drawSearchBox();
             } else {
                 this.shaderPackList.drawScreen(mouseX, mouseY, delta);
             }
@@ -144,9 +150,9 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
                 drawCenteredString(this.fontRendererObj, notificationDialog, (int) (this.width * 0.5), 21, 0xFFFFFF);
             } else {
                 if (optionMenuOpen) {
-                    drawCenteredString(this.fontRendererObj, CONFIGURE_TITLE, (int) (this.width * 0.5), 21, 0xFFFFFF);
+                    drawCenteredString(this.fontRendererObj, configureTitle(), (int) (this.width * 0.5), 21, 0xFFFFFF);
                 } else {
-                    drawCenteredString(this.fontRendererObj, SELECT_TITLE, (int) (this.width * 0.5), 21, 0xFFFFFF);
+                    drawCenteredString(this.fontRendererObj, selectTitle(), (int) (this.width * 0.5), 21, 0xFFFFFF);
                 }
             }
 
@@ -206,6 +212,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
         if (Iris.getCurrentPack().isPresent() && this.navigation != null) {
             final ShaderPack currentPack = Iris.getCurrentPack().get();
+
+            if (currentPack.getMenuContainer() != null) {
+                currentPack.getMenuContainer().setSearchQuery(null);
+            }
 
             this.shaderOptionList = new ShaderPackOptionList(this, this.navigation, currentPack, this.mc, this.width, this.height, 32, this.height - 58, 0, this.width);
             this.navigation.setActiveOptionList(this.shaderOptionList);
@@ -364,6 +374,31 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
     @Override
     protected void keyTyped(char typedChar, int keyCode) {
+        // Route all input to the search box while search mode is active
+        if (optionMenuOpen && this.shaderOptionList != null && this.shaderOptionList.isSearchModeActive()) {
+            if (keyCode == Keyboard.KEY_ESCAPE) {
+                this.shaderOptionList.disableSearchModeAndRebuild();
+                return;
+            }
+            // Ctrl+F while search is open: toggle it closed
+            if (keyCode == Keyboard.KEY_F && GuiScreen.isCtrlKeyDown()) {
+                GuiUtil.playButtonClickSound();
+                this.shaderOptionList.disableSearchModeAndRebuild();
+                return;
+            }
+            this.shaderOptionList.handleSearchKeyTyped(typedChar, keyCode);
+            return;
+        }
+
+        // Ctrl+F: open search on the main option screen
+        if (optionMenuOpen && this.shaderOptionList != null
+            && keyCode == Keyboard.KEY_F && GuiScreen.isCtrlKeyDown()) {
+            if (!this.shaderOptionList.isOnSubScreen()) {
+                GuiUtil.playButtonClickSound();
+                this.shaderOptionList.enableSearchModeAndRebuild();
+                return;
+            }
+        }
         if (GuiScreen.isCtrlKeyDown() && keyCode == Keyboard.KEY_D) {
             this.mc.displayGuiScreen(new GuiYesNo((result, id) -> {
                 Iris.setDebug(result);
@@ -496,6 +531,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
 
     public void onClose() {
+        if (this.shaderOptionList != null) {
+            this.shaderOptionList.disableSearchModeAndRebuild();
+        }
+
         if (!dropChanges) {
             applyChanges();
         } else {
