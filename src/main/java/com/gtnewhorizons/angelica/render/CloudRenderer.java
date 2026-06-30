@@ -28,6 +28,9 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.coderbot.iris.shaderpack.CloudSetting;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -106,6 +109,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private boolean cachedEmitTopFace, cachedEmitBottomFace, cachedCameraInsideCloud;
     private int cachedRenderRadius = -1;
     private float cachedCloudInteriorHeight = Float.NaN;
+    private boolean geomBuilt;
 
     private int cloudMode = -1, renderDistance = -1, cloudElevation = -1, scaleMult = -1;
 
@@ -193,6 +197,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         cachedEdgesGeneration = Integer.MIN_VALUE;
         cachedCloudInteriorHeight = Float.NaN;
         cachedVertexCount = 0;
+        geomBuilt = false;
     }
 
     private void initProgram() {
@@ -233,6 +238,9 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (mc.theWorld == null || mc.renderViewEntity == null) return false;
         if (cloudMode != 2 || scaleMult <= 0) return false;
 
+        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        if (pipeline != null && pipeline.getCloudSetting() == CloudSetting.OFF) return false;
+
         boolean textureSetupDone = false;
         if (edges == null) {
             if (mc.renderEngine == null) return false;
@@ -271,7 +279,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         final int renderRadius = (int) Math.ceil(renderDistance * 64.0f / (CELLS_PER_CHUNK * cloudInteriorWidth));
 
-        final boolean anchorInRange = vao != null
+        final boolean anchorInRange = geomBuilt
             && Math.abs(anchorX - anchorCellX) <= anchorMarginCells
             && Math.abs(anchorZ - anchorCellZ) <= anchorMarginCells;
         final boolean geomCacheValid = anchorInRange
@@ -294,6 +302,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             cachedCameraInsideCloud = cameraInsideCloud;
             cachedRenderRadius = renderRadius;
             cachedCloudInteriorHeight = cloudInteriorHeight;
+            geomBuilt = true;
         }
 
         if (vao == null || cachedVertexCount == 0) return true;
