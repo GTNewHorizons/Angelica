@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.cardinalstar.cubicchunks.world.ICubicWorld;
+import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -53,7 +56,18 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     public static AngelicaRenderSectionManager create(ChunkVertexType vertexType, WorldClient world, int renderDistance, CommandList commandList) {
         final ChunkTaskProvider provider = ChunkTaskRegistry.getActiveProvider();
-        return new AngelicaRenderSectionManager(AngelicaRenderPassConfiguration.build(vertexType), world, renderDistance, commandList, 0, 16, provider.threadCount(), provider);
+        final int minSection;
+        final int maxSection;
+
+        if (ModStatus.isCubicChunksLoaded && world instanceof ICubicWorld) {
+            minSection = CubicChunksAPI.getMinSectionY(world);
+            maxSection = CubicChunksAPI.getMaxSectionYExclusive(world);
+        } else {
+            minSection = 0;
+            maxSection = 16;
+        }
+
+        return new AngelicaRenderSectionManager(AngelicaRenderPassConfiguration.build(vertexType), world, renderDistance, commandList, minSection, maxSection, provider.threadCount(), provider);
     }
 
     public void setCameraPosition(double x, double y, double z) {
@@ -125,6 +139,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         if (chunk.isEmpty()) {
             return true;
         }
+
+        if (ModStatus.isCubicChunksLoaded) {
+            final var section = CubicChunksAPI.getCubeStorage(this.world, x, y, z);
+            return section == null || section.isEmpty();
+        }
+
         final var array = chunk.getBlockStorageArray();
         if (y < 0 || y >= array.length) {
             return true;
