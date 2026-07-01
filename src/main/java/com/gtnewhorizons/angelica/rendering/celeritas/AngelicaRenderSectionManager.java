@@ -198,6 +198,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         return IrisShaderProviderHolder.isShadowPass();
     }
 
+    public void markShadowGraphDirty() {
+        if (this.shadowRenderListManager != null) {
+            this.shadowRenderListManager.setNeedsUpdate(true);
+        }
+    }
+
     @Override
     public Collection<String> getDebugStrings() {
         List<String> list = new ArrayList<>(super.getDebugStrings());

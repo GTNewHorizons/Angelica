@@ -692,7 +692,7 @@ public class ShadowRenderer {
 		// Mark the shadow graph as needing update before terrain setup
 		// Modern Celeritas does this to ensure the shadow render lists get populated
 		com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer.getInstance()
-			.getRenderSectionManager().markGraphDirty();
+			.getRenderSectionManager().markShadowGraphDirty();
 
 		// Execute the vanilla terrain setup / culling routines using our shadow frustum.
         mc.renderGlobal.clipRenderersByFrustum(terrainFrustumHolder.getFrustum(), playerCamera.getPartialTicks());
