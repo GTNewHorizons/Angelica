@@ -19,7 +19,6 @@ import net.minecraft.world.ChunkPosition;
 import net.minecraft.world.EnumSkyBlock;
 import net.minecraft.world.World;
 import net.minecraft.world.biome.BiomeGenBase;
-import net.minecraft.world.biome.WorldChunkManager;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.NibbleArray;
 import net.minecraft.world.chunk.storage.ExtendedBlockStorage;
@@ -62,20 +61,20 @@ public class ClonedChunkSection {
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(chunk, section);
 
-        this.biomeData = new BiomeGenBase[16 * 16];
+        this.biomeData = new BiomeGenBase[chunk.getBiomeArray().length];
 
         copyBlockEntities(chunk, pos);
 
-        fillBiomeData(chunk);
+        fillBiomeData();
 
         this.sectionLightData = BlockLightProvider.getInstance().prepareSectionData(chunk, pos.y);
     }
 
-    private void fillBiomeData(Chunk chunk) {
-        final WorldChunkManager wcm = world.getWorldChunkManager();
-        for (int lz = 0; lz < 16; lz++) {
-            for (int lx = 0; lx < 16; lx++) {
-                this.biomeData[lx | (lz << 4)] = chunk.getBiomeGenForWorldCoords(lx, lz, wcm);
+    private void fillBiomeData() {
+        for (int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
+            for (int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
+                int lX = x & 15, lZ = z & 15;
+                this.biomeData[(lZ << 4) | lX] = world.getBiomeGenForCoords(x, z);
             }
         }
     }
