@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.rendering.PlayerReflectionCapture;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.coderbot.iris.Iris;
@@ -468,11 +469,13 @@ public class ShadowRenderer {
 		profiler.endStartSection("build geometry");
 
 		setupEntityShadowState(modelView, cameraX, cameraY, cameraZ);
+		PlayerReflectionCapture.begin(player);
 		try {
 			for (Entity entity : renderedEntitiesList) {
 				RenderManager.instance.renderEntitySimple(entity, tickDelta);
 			}
 		} finally {
+			PlayerReflectionCapture.end();
 			teardownEntityShadowState();
 		}
 
@@ -516,7 +519,7 @@ public class ShadowRenderer {
 	private void renderPlayerEntity(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
 		profiler.startSection("cull");
 
-		Entity player = Minecraft.getMinecraft().thePlayer;
+		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
 
 		// Skip if spectating or outside frustum
 		if (GameModeUtil.isSpectator()) {
@@ -547,7 +550,12 @@ public class ShadowRenderer {
 				shadowEntities++;
 			}
 
-			RenderManager.instance.renderEntitySimple(player, tickDelta);
+			PlayerReflectionCapture.begin(player);
+			try {
+				RenderManager.instance.renderEntitySimple(player, tickDelta);
+			} finally {
+				PlayerReflectionCapture.end();
+			}
 			shadowEntities++;
 		} finally {
 			teardownEntityShadowState();
