@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.notfine.clouds;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.render.CloudRenderer;
 import jss.notfine.core.SettingsManager;
 import net.minecraft.client.renderer.EntityRenderer;
 import org.spongepowered.asm.mixin.Mixin;
@@ -12,7 +14,11 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 public abstract class MixinEntityRenderer {
     @ModifyArg(method = "setupCameraTransform", at = @At(value = "INVOKE", target = "Lorg/lwjgl/util/glu/Project;gluPerspective(FFFF)V", remap = false), index = 3)
     private float notFine$modifyFarPlane(float original) {
-        return Math.max(original, SettingsManager.minimumFarPlaneDistance);
+        float required = SettingsManager.minimumFarPlaneDistance;
+        if (AngelicaConfig.enableVBOClouds) {
+            required = Math.max(required, CloudRenderer.getCloudRenderer().getRequiredFarPlaneDistance());
+        }
+        return Math.max(original, required);
     }
 
 }

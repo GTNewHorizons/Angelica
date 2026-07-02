@@ -26,6 +26,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VertexBufferType;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.FogState;
 import jss.notfine.core.Settings;
 import jss.notfine.gui.options.named.GraphicsQualityOff;
 import net.irisshaders.iris.api.v0.IrisApi;
@@ -45,6 +46,7 @@ import org.embeddedt.embeddium.impl.gl.shader.ShaderType;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.joml.Vector3d;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -76,6 +78,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
     private static final float SCROLL_SPEED = 1.0f / 256.0f;
     private static final float EDGE_OVERLAP = 0.0001f;
+    private static final float INTERIOR_INSET = EDGE_OVERLAP * 8.0f;
 
     private static final boolean BIG_ENDIAN = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
 
@@ -103,11 +106,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private int anchorCellX = Integer.MIN_VALUE, anchorCellZ = Integer.MIN_VALUE;
     private int anchorMarginCells = 0;
     private int cachedEdgesGeneration = Integer.MIN_VALUE;
-    private boolean cachedEmitTopFace, cachedEmitBottomFace, cachedCameraInsideCloud;
+    private boolean cachedEmitTopFace, cachedEmitBottomFace;
     private int cachedRenderRadius = -1;
     private float cachedCloudInteriorHeight = Float.NaN;
 
     private int cloudMode = -1, renderDistance = -1, cloudElevation = -1, scaleMult = -1;
+    private boolean enabled;
 
     private ByteBuffer emitBuffer;
     private long emitBufferAddr;
@@ -136,6 +140,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
     private GlProgram<CloudUniforms> program;
     private final Matrix4f mvpScratch = new Matrix4f();
+    private final Matrix4f mvScratch = new Matrix4f();
 
     public CloudRenderer() {
         ((IReloadableResourceManager) mc.getResourceManager()).registerReloadListener(this);
@@ -174,6 +179,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             invalidateGeometry();
         }
 
+        enabled = newEnabled;
         cloudMode = cloudQualitySetting;
         renderDistance = targetDistance;
         scaleMult = cloudScaleMult;
@@ -184,6 +190,26 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (cloudElevation >= 96) {
             cloudElevation = (int) Settings.CLOUD_HEIGHT.option.getStore();
         }
+    }
+
+    /**
+     * Far-plane distance needed so none of the cloud geometry gets clipped.
+     */
+    public float getRequiredFarPlaneDistance() {
+        if (!enabled || scaleMult <= 0 || renderDistance <= 0) return 0.0f;
+        if (mc.theWorld == null) return 0.0f;
+        final float cloudInteriorWidth = 12.0f * scaleMult;
+        final int renderRadius = (int) Math.ceil(renderDistance * 64.0f / (CELLS_PER_CHUNK * cloudInteriorWidth));
+        final int marginCells = Math.max(CELLS_PER_CHUNK, renderRadius * CELLS_PER_CHUNK / 4);
+        final int marginChunks = (marginCells + CELLS_PER_CHUNK - 1) / CELLS_PER_CHUNK;
+        float radiusBlocks = (renderRadius + marginChunks) * CELLS_PER_CHUNK * cloudInteriorWidth;
+        if (cloudMode != 2) radiusBlocks *= (float) Math.sqrt(2);
+        float verticalSlack = cloudElevation;
+        final Entity view = mc.renderViewEntity;
+        if (view != null) {
+            verticalSlack = Math.abs(cloudElevation + 0.33f - (float) view.posY) + 4.0f * scaleMult;
+        }
+        return radiusBlocks + verticalSlack;
     }
 
     private void invalidateGeometry() {
@@ -215,23 +241,27 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         program.unbind();
     }
 
-    private void uploadFogUniforms(float partialTicks, int renderRadius, float cloudInteriorWidth) {
+    private void uploadFogUniforms() {
         final CloudUniforms u = program.getInterface();
         final boolean fogEnabled = GLStateManager.getFogMode().isEnabled();
         u.setFogEnabled(fogEnabled);
-        if (fogEnabled) {
-            final float start = renderDistance * 16.0f;
-            final float end = renderRadius * CELLS_PER_CHUNK * cloudInteriorWidth;
-            final float range = end - start;
-            u.setFogParams(range != 0.0f ? -1.0f / range : 0.0f, range != 0.0f ? end / range : 1.0f);
-            final Vec3 sky = mc.theWorld.getSkyColor(mc.renderViewEntity, partialTicks);
-            u.setFogColor((float) sky.xCoord, (float) sky.yCoord, (float) sky.zCoord);
+        if (!fogEnabled) return;
+        final FogState fog = GLStateManager.getFogState();
+        final Vector3d color = fog.getFogColor();
+        u.setFogColor((float) color.x, (float) color.y, (float) color.z);
+        switch (fog.getFogMode()) {
+            case GL11.GL_LINEAR -> {
+                final float range = fog.getEnd() - fog.getStart();
+                u.setFogParams(range != 0.0f ? -1.0f / range : 0.0f, range != 0.0f ? fog.getEnd() / range : 1.0f, 0.0f, 0.0f);
+            }
+            case GL11.GL_EXP -> u.setFogParams(0.0f, 0.0f, fog.getDensity(), 1.0f);
+            default -> u.setFogParams(0.0f, 0.0f, fog.getDensity(), 2.0f);
         }
     }
 
     public boolean render(int cloudTicks, float partialTicks) {
         if (mc.theWorld == null || mc.renderViewEntity == null) return false;
-        if (cloudMode != 2 || scaleMult <= 0) return false;
+        if (!enabled || scaleMult <= 0) return false;
 
         boolean textureSetupDone = false;
         if (edges == null) {
@@ -266,32 +296,31 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         final boolean emitTopFace = cameraRelativeY + cloudInteriorHeight >= 0.0F;
         final boolean emitBottomFace = cameraRelativeY <= 0.0F;
-        final boolean cameraInsideY = cameraRelativeY <= 0.0F && cameraRelativeY + cloudInteriorHeight >= 0.0F;
-        final boolean cameraInsideCloud = cameraInsideY && edges.cellOpaque(anchorX, anchorZ);
 
         final int renderRadius = (int) Math.ceil(renderDistance * 64.0f / (CELLS_PER_CHUNK * cloudInteriorWidth));
 
+        final boolean insideBand = cloudMode == 2 && emitTopFace && emitBottomFace;
         final boolean anchorInRange = vao != null
-            && Math.abs(anchorX - anchorCellX) <= anchorMarginCells
-            && Math.abs(anchorZ - anchorCellZ) <= anchorMarginCells;
+            && (insideBand
+                ? anchorX == anchorCellX && anchorZ == anchorCellZ
+                : Math.abs(anchorX - anchorCellX) <= anchorMarginCells
+                    && Math.abs(anchorZ - anchorCellZ) <= anchorMarginCells);
         final boolean geomCacheValid = anchorInRange
             && cachedEdgesGeneration == edgesGeneration
             && cachedEmitTopFace == emitTopFace
             && cachedEmitBottomFace == emitBottomFace
-            && cachedCameraInsideCloud == cameraInsideCloud
             && cachedRenderRadius == renderRadius
             && cachedCloudInteriorHeight == cloudInteriorHeight;
 
         if (!geomCacheValid) {
-            final int marginCells = cameraInsideCloud ? 0 : Math.max(CELLS_PER_CHUNK, renderRadius * CELLS_PER_CHUNK / 4);
-            rebuildGeometry(anchorX, anchorZ, renderRadius, cloudInteriorHeight, emitTopFace, emitBottomFace, cameraInsideCloud, marginCells);
+            final int marginCells = Math.max(CELLS_PER_CHUNK, renderRadius * CELLS_PER_CHUNK / 4);
+            rebuildGeometry(anchorX, anchorZ, renderRadius, cloudInteriorHeight, emitTopFace, emitBottomFace, marginCells);
             anchorCellX = anchorX;
             anchorCellZ = anchorZ;
             anchorMarginCells = marginCells;
             cachedEdgesGeneration = edgesGeneration;
             cachedEmitTopFace = emitTopFace;
             cachedEmitBottomFace = emitBottomFace;
-            cachedCameraInsideCloud = cameraInsideCloud;
             cachedRenderRadius = renderRadius;
             cachedCloudInteriorHeight = cloudInteriorHeight;
         }
@@ -299,8 +328,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (vao == null || cachedVertexCount == 0) return true;
 
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        mc.renderEngine.bindTexture(texture);
-        if (!textureSetupDone) setupCloudTexture();
+        if (cloudTexId != -1 && !textureSetupDone) {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, cloudTexId);
+        } else {
+            mc.renderEngine.bindTexture(texture);
+            if (!textureSetupDone) setupCloudTexture();
+        }
 
         final Vec3 color = mc.theWorld.getCloudColour(partialTicks);
         float r = (float) color.xCoord;
@@ -337,10 +370,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             mv.pushMatrix();
             mv.scale(cloudInteriorWidth, 1.0f, cloudInteriorWidth);
             mv.translate(-(cameraRelativeX + anchorDriftX), cameraRelativeY, -(cameraRelativeZ + anchorDriftZ));
+            mvScratch.set(mv);
             GLStateManager.getProjectionMatrix().mul(mv, mvpScratch);
             mv.popMatrix();
             u.mvp.set(mvpScratch);
-            uploadFogUniforms(partialTicks, renderRadius, cloudInteriorWidth);
+            u.mv.set(mvScratch);
+            uploadFogUniforms();
 
             drawAllFactors(r, g, b, false);
             program.unbind();
@@ -362,15 +397,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private void drawAllFactors(float r, float g, float b, boolean shadersActive) {
         vao.bind();
         GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLStateManager.disableCull();
 
         GLStateManager.disableBlend();
         GLStateManager.glDepthMask(true);
         GLStateManager.glColorMask(false, false, false, false);
-        // Depth prepass: alpha must match color pass so discard threshold writes same depth coverage.
         if (shadersActive) {
             GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, CloudUniforms.ALPHA);
-        } else {
-            program.getInterface().setColorMult(1.0f, 1.0f, 1.0f);
         }
         final int totalQuads = cachedVertexCount / 4;
         GLStateManager.glDrawElements(GL11.GL_TRIANGLES, totalQuads * 6, GL11.GL_UNSIGNED_INT, 0L);
@@ -403,24 +436,31 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         }
 
         vao.unbind();
+        GLStateManager.enableCull();
         GLStateManager.glDepthMask(true);
         GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GLStateManager.disableBlend();
     }
 
-    private void rebuildGeometry(int anchorX, int anchorZ, int renderRadius, float cloudInteriorHeight, boolean emitTopFace, boolean emitBottomFace, boolean cameraInsideCloud, int marginCells) {
+    private void rebuildGeometry(int anchorX, int anchorZ, int renderRadius, float cloudInteriorHeight, boolean emitTopFace, boolean emitBottomFace, int marginCells) {
         prepareEmitBuffer();
 
         final int marginChunks = (marginCells + CELLS_PER_CHUNK - 1) / CELLS_PER_CHUNK;
-        final int chunkRange = cameraInsideCloud ? 0 : (renderRadius + marginChunks);
-        final int outerLo = cameraInsideCloud ? -1 : -chunkRange;
-        final int outerHi = cameraInsideCloud ? 0 : chunkRange;
+        final int chunkRange = renderRadius + marginChunks;
+        final int outerLo = -chunkRange;
+        final int outerHi = chunkRange;
 
-        final int radiusCellsWithMargin = cameraInsideCloud ? CELLS_PER_CHUNK : (chunkRange * CELLS_PER_CHUNK);
+        final int radiusCellsWithMargin = chunkRange * CELLS_PER_CHUNK;
         final int radiusCellsSq = radiusCellsWithMargin * radiusCellsWithMargin;
 
         final float scrollX = anchorX * SCROLL_SPEED;
         final float scrollZ = anchorZ * SCROLL_SPEED;
+
+        if (cloudMode != 2) {
+            emitFastLayer(chunkRange * CELLS_PER_CHUNK, scrollX, scrollZ);
+            finishGeometry();
+            return;
+        }
 
         final int rows = (outerHi - outerLo + 1) * CELLS_PER_CHUNK;
         final int lpr = (rows + 63) >>> 6;
@@ -446,7 +486,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         for (int chunkX = outerLo; chunkX <= outerHi; chunkX++) {
             for (int chunkZ = outerLo; chunkZ <= outerHi; chunkZ++) {
-                emitChunk(chunkX, chunkZ, anchorX, anchorZ, radiusCellsSq, cameraInsideCloud, emitTopFace, emitBottomFace, y1, ye, scrollX, scrollZ);
+                emitChunk(chunkX, chunkZ, anchorX, anchorZ, radiusCellsSq, emitTopFace, emitBottomFace, y1, ye, scrollX, scrollZ);
             }
         }
 
@@ -454,6 +494,53 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             emitTopBottomGlobalGreedy(emitTopFace, emitBottomFace, ye, scrollX, scrollZ);
         }
 
+        if (emitTopFace && emitBottomFace) {
+            emitInteriorFaces(anchorX, anchorZ, y1, scrollX, scrollZ);
+        }
+
+        finishGeometry();
+    }
+
+    private void emitInteriorFaces(int anchorX, int anchorZ, double y1, float scrollX, float scrollZ) {
+        for (int dz = -1; dz <= 1; dz++) {
+            for (int dx = -1; dx <= 1; dx++) {
+                if (!edges.cellOpaque(anchorX + dx, anchorZ + dz)) continue;
+                final double x0 = dx + INTERIOR_INSET;
+                final double x1 = dx + 1 - INTERIOR_INSET;
+                final double z0 = dz + INTERIOR_INSET;
+                final double z1 = dz + 1 - INTERIOR_INSET;
+                final double yb = INTERIOR_INSET;
+                final double yt = y1 - INTERIOR_INSET;
+                final float uL = dx * SCROLL_SPEED + scrollX;
+                final float uR = (dx + 1) * SCROLL_SPEED + scrollX;
+                final float uC = (dx + 0.5F) * SCROLL_SPEED + scrollX;
+                final float vN = dz * SCROLL_SPEED + scrollZ;
+                final float vS = (dz + 1) * SCROLL_SPEED + scrollZ;
+                final float vC = (dz + 0.5F) * SCROLL_SPEED + scrollZ;
+
+                ensureEmitCapacity(6 * QUAD_BYTES);
+                emitCloudQuad(x0, yb, z1, uL, vS, x1, yb, z1, uR, vS, x1, yb, z0, uR, vN, x0, yb, z0, uL, vN, F_TOP, N_POS_Y);
+                emitCloudQuad(x0, yt, z0, uL, vN, x1, yt, z0, uR, vN, x1, yt, z1, uR, vS, x0, yt, z1, uL, vS, F_BOTTOM, N_NEG_Y);
+                emitCloudQuad(x0, yb, z0, uC, vN, x0, yt, z0, uC, vN, x0, yt, z1, uC, vS, x0, yb, z1, uC, vS, F_X, N_POS_X);
+                emitCloudQuad(x1, yb, z1, uC, vS, x1, yt, z1, uC, vS, x1, yt, z0, uC, vN, x1, yb, z0, uC, vN, F_X, N_NEG_X);
+                emitCloudQuad(x0, yb, z0, uL, vC, x1, yb, z0, uR, vC, x1, yt, z0, uR, vC, x0, yt, z0, uL, vC, F_Z, N_POS_Z);
+                emitCloudQuad(x0, yt, z1, uL, vC, x1, yt, z1, uR, vC, x1, yb, z1, uR, vC, x0, yb, z1, uL, vC, F_Z, N_NEG_Z);
+            }
+        }
+    }
+
+    private void emitFastLayer(int radiusCells, float scrollX, float scrollZ) {
+        final double r0 = -radiusCells;
+        final double r1 = radiusCells;
+        final float u0 = -radiusCells * SCROLL_SPEED + scrollX;
+        final float u1 = radiusCells * SCROLL_SPEED + scrollX;
+        final float v0 = -radiusCells * SCROLL_SPEED + scrollZ;
+        final float v1 = radiusCells * SCROLL_SPEED + scrollZ;
+        ensureEmitCapacity(QUAD_BYTES);
+        emitCloudQuad(r0, 0.0, r0, u0, v0, r1, 0.0, r0, u1, v0, r1, 0.0, r1, u1, v1, r0, 0.0, r1, u0, v1, F_BOTTOM, N_POS_Y);
+    }
+
+    private void finishGeometry() {
         final int totalBytes = (int) (writeAddr - emitBufferAddr);
         final int vertexCount = totalBytes / VERTEX_STRIDE;
         if (vertexCount == 0) {
@@ -514,7 +601,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         }
     }
 
-    private void emitChunk(int chunkX, int chunkZ, int anchorX, int anchorZ, int radiusCellsSq, boolean cameraInsideCloud, boolean emitTopFace, boolean emitBottomFace, double y1, double ye, float scrollX, float scrollZ) {
+    private void emitChunk(int chunkX, int chunkZ, int anchorX, int anchorZ, int radiusCellsSq, boolean emitTopFace, boolean emitBottomFace, double y1, double ye, float scrollX, float scrollZ) {
         final float chunkOffsetX = chunkX * (float) CELLS_PER_CHUNK;
         final float chunkOffsetZ = chunkZ * (float) CELLS_PER_CHUNK;
         final int baseU = chunkX * CELLS_PER_CHUNK + anchorX;
@@ -534,42 +621,10 @@ public class CloudRenderer implements IResourceManagerReloadListener {
                 final int relX = chunkX * CELLS_PER_CHUNK + k;
                 final int relZ = chunkZ * CELLS_PER_CHUNK + j;
                 if (relX * relX + relZ * relZ > radiusCellsSq) continue;
-                if (cameraInsideCloud && (Math.abs(relX) > 1 || Math.abs(relZ) > 1)) continue;
                 emittableBits |= 1L << (j * CELLS_PER_CHUNK + k);
             }
         }
         if (emittableBits == 0L) return;
-
-        if (cameraInsideCloud) {
-            long bits = emittableBits;
-            while (bits != 0L) {
-                final int bit = Long.numberOfTrailingZeros(bits);
-                bits &= bits - 1;
-                final int k = bit & 7;
-                final int j = bit >>> 3;
-                final double x0 = chunkOffsetX + k;
-                final double x1 = chunkOffsetX + k + 1;
-                final double z0 = chunkOffsetZ + j;
-                final double z1 = chunkOffsetZ + j + 1;
-                final double xe = x1 - EDGE_OVERLAP;
-                final double zs = z1 - EDGE_OVERLAP;
-                final float uC = (chunkOffsetX + k + 0.5F) * SCROLL_SPEED + scrollX;
-                final float vC = (chunkOffsetZ + j + 0.5F) * SCROLL_SPEED + scrollZ;
-                final float uL = (chunkOffsetX + k) * SCROLL_SPEED + scrollX;
-                final float uR = (chunkOffsetX + k + 1) * SCROLL_SPEED + scrollX;
-                final float vN = (chunkOffsetZ + j) * SCROLL_SPEED + scrollZ;
-                final float vS = (chunkOffsetZ + j + 1) * SCROLL_SPEED + scrollZ;
-
-                ensureEmitCapacity(6 * QUAD_BYTES);
-                emitCloudQuad(x0, 0.0, z1, uL, vS, x1, 0.0, z1, uR, vS, x1, 0.0, z0, uR, vN, x0, 0.0, z0, uL, vN, F_TOP, N_POS_Y);
-                emitCloudQuad(x0, ye, z0, uL, vN, x1, ye, z0, uR, vN, x1, ye, z1, uR, vS, x0, ye, z1, uL, vS, F_BOTTOM, N_NEG_Y);
-                emitCloudQuad(x0, 0.0, z0, uC, vN, x0, y1, z0, uC, vN, x0, y1, z1, uC, vS, x0, 0.0, z1, uC, vS, F_X, N_POS_X);
-                emitCloudQuad(xe, 0.0, z1, uC, vS, xe, y1, z1, uC, vS, xe, y1, z0, uC, vN, xe, 0.0, z0, uC, vN, F_X, N_NEG_X);
-                emitCloudQuad(x0, 0.0, z0, uL, vC, x1, 0.0, z0, uR, vC, x1, y1, z0, uR, vC, x0, y1, z0, uL, vC, F_Z, N_POS_Z);
-                emitCloudQuad(x0, y1, zs, uL, vC, x1, y1, zs, uR, vC, x1, 0.0, zs, uR, vC, x0, 0.0, zs, uL, vC, F_Z, N_NEG_Z);
-            }
-            return;
-        }
 
         if (emitTopFace || emitBottomFace) {
             final int globalColStart = chunkX * CELLS_PER_CHUNK - gridMinX;

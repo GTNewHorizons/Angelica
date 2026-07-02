@@ -83,6 +83,13 @@ public enum Mixins implements IMixins {
             .addClientMixins("angelica.vbo.MixinRenderGlobal")
     ),
 
+    ANGELICA_VBO_CLOUDS_FAR_PLANE(
+        new MixinBuilder()
+            .setApplyIf(() -> AngelicaConfig.enableVBOClouds && !AngelicaConfig.enableNotFineFeatures)
+            .setPhase(Phase.EARLY)
+            .addClientMixins("notfine.clouds.MixinEntityRenderer")
+    ),
+
     ANGELICA_PANORAMA_BLUR(
         new MixinBuilder("Replace main menu panorama with modern equivalent")
             .setPhase(Phase.EARLY)

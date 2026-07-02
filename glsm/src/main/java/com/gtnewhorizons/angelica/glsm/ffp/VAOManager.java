@@ -40,6 +40,7 @@ public final class VAOManager {
             current.vertexFlags = currentVertexFlags;
             current.ebo = boundEBO;
             current.attribs = currentAttribs;
+            current.clientSideEnabledCount = clientSideEnabledCount;
         }
 
         VAOData data = vaoMap.get(vaoId);
@@ -51,8 +52,7 @@ public final class VAOManager {
         currentVertexFlags = data.vertexFlags;
         currentAttribs = data.attribs;
         boundEBO = data.ebo;
-
-        recomputeClientSideCount();
+        clientSideEnabledCount = data.clientSideEnabledCount;
     }
 
     public static void onDeleteVertexArray(int vaoId) {
@@ -68,6 +68,7 @@ public final class VAOManager {
         public Attrib[] attribs;
         public int vertexFlags;
         public int ebo;
+        public int clientSideEnabledCount;
 
         public VAOData() {
             attribs = new Attrib[MAX_ATTRIBS];
@@ -182,14 +183,6 @@ public final class VAOManager {
     }
 
 
-
-    private static void recomputeClientSideCount() {
-        int count = 0;
-        for (int i = 0; i < MAX_ATTRIBS; i++) {
-            if (isClientSideAttrib(i)) count++;
-        }
-        clientSideEnabledCount = count;
-    }
 
     /**
      * Returns true if any currently enabled vertex attribute was registered without a VBO
