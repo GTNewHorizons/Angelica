@@ -11,9 +11,13 @@ import net.minecraft.client.resources.DefaultResourcePack;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
+import cpw.mods.fml.common.Loader;
+
 import java.awt.Font;
+import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -27,13 +31,13 @@ public class FontStrategist {
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
 
     static {
+        HashMap<String, Font> fontSet = new HashMap<>();
+
         if (GraphicsEnvironment.isHeadless()) {
-            LOGGER.warn("GraphicsEnvironment.isHeadless() returned true! Custom fonts will be unavailable. This is likely a MacOS issue.");
-            availableFonts = new Font[0];
+            LOGGER.warn("GraphicsEnvironment.isHeadless() returned true! Only bundled fonts will be available. This is likely a MacOS issue.");
         } else {
             // get available fonts without duplicates (250 copies of dialog.plain need not apply)
             Font[] availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-            HashMap<String, Font> fontSet = new HashMap<>();
             HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
 
             for (Font font : availableFontsDirty) {
@@ -57,10 +61,13 @@ public class FontStrategist {
                 sb.append(". Some fonts may be missing from the font selection menu.");
                 LOGGER.warn(sb.toString());
             }
-            availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
 
-            LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, availableFonts.length);
+            LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, fontSet.size());
         }
+
+        loadBundledFonts(fontSet);
+
+        availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
 
         // create and add the resource pack that provides fonts
         HashMap<String, File> packMap = new HashMap<>();
@@ -72,6 +79,36 @@ public class FontStrategist {
         DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
         List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
         defaultResourcePacks.add(fontResourcePack);
+    }
+
+    // Load .ttf/.otf shipped with the pack so customFontName* can point at a font that isn't installed
+    // on the system. fontfiles/ is SmoothFont's folder, kept so packs built for it work unchanged.
+    private static void loadBundledFonts(HashMap<String, Font> fontSet) {
+        File configDir = Loader.instance().getConfigDir();
+        if (configDir == null) {
+            LOGGER.warn("Loader.instance().getConfigDir() returned null. Bundled fonts will not be loaded.");
+            return;
+        }
+        File parent = configDir.getParentFile();
+        File[] fontDirs = { parent != null ? new File(parent, "fontfiles") : new File("fontfiles"), new File(configDir, "angelica/fonts") };
+        GraphicsEnvironment ge = GraphicsEnvironment.isHeadless() ? null : GraphicsEnvironment.getLocalGraphicsEnvironment();
+        int loaded = 0;
+        for (File dir : fontDirs) {
+            File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".ttf") || name.toLowerCase().endsWith(".otf"));
+            if (files == null) continue;
+            for (File file : files) {
+                try {
+                    Font font = Font.createFont(Font.TRUETYPE_FONT, file);
+                    if (ge != null) ge.registerFont(font);
+                    fontSet.put(font.getFontName(), font);
+                    loaded++;
+                    LOGGER.info("Loaded font {} from {}/{}", font.getFontName(), dir.getName(), file.getName());
+                } catch (FontFormatException | IOException e) {
+                    LOGGER.error("Couldn't load font {}: {}", file.getName(), e.toString());
+                }
+            }
+        }
+        if (loaded > 0) LOGGER.info("Loaded {} bundled font(s) from the pack", loaded);
     }
 
     /**
