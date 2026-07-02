@@ -28,7 +28,7 @@ public class SliderElementWidget extends StringElementWidget {
 		}
 
 		if (GuiScreen.isShiftKeyDown()) {
-			renderTooltip(SET_TO_DEFAULT, mouseX, mouseY, hovered);
+			renderTooltip(setToDefault(), mouseX, mouseY, hovered);
 		} else if (!this.screen.isDisplayingComment()) {
 			renderTooltip(this.unmodifiedLabel, mouseX, mouseY, hovered);
 		}

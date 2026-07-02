@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import net.minecraft.client.Minecraft;
@@ -20,6 +21,7 @@ public class MixinMinecraft_FrameHook {
 
     @Inject(method = "runGameLoop", at = @At("HEAD"))
     private void angelica$onFrameBegin(CallbackInfo ci) {
+        DisplayListManager.abortIfLeaked();
         RENDER_BACKEND.onFrameBegin();
     }
 
