@@ -231,8 +231,7 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableCeleritas)
         .addClientMixins(
-              "celeritas.terrain.ChunkTrackerAccessor"
-            , "celeritas.terrain.MixinChunkProviderClient"
+              "celeritas.terrain.MixinChunkProviderClient"
             , "celeritas.terrain.MixinMinecraft_ChunkUpdates"
             , "celeritas.terrain.MixinRenderGlobal"
             , "celeritas.terrain.MixinRenderSectionManager"

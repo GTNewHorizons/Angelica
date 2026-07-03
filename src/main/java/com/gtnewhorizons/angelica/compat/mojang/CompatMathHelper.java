@@ -1,5 +1,9 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
+import net.minecraft.util.MathHelper;
+
+import com.gtnewhorizons.angelica.compat.ModStatus;
+
 public class CompatMathHelper {
     public static int smallestEncompassingPowerOfTwo(int value) {
         int j = value - 1;
@@ -22,6 +26,15 @@ public class CompatMathHelper {
 
             int k = value % divisor;
             return k == 0 ? value : value + divisor - k;
+        }
+    }
+
+    public static int clampHeight(int y) {
+        if (ModStatus.isCubicChunksLoaded) {
+            // no clamping
+            return y;
+        } else {
+            return MathHelper.clamp_int(y, 0, 255);
         }
     }
 }
