@@ -14,6 +14,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.MathHelper;
 
 import java.io.IOException;
 import java.nio.file.FileSystems;
@@ -142,10 +143,15 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
         topButtonRow.allowEnableShadersButton = !names.isEmpty();
 
         int index = 0;
+        String selectedName = Iris.getIrisConfig().getShaderPackName().orElse(null);
+        int targetSelectionIndex = -1;
 
         for (String name : names) {
+            this.addPackEntry(index, name);
+            if (name.equals(selectedName)) {
+                targetSelectionIndex = index;
+            }
             index++;
-            addPackEntry(index, name);
         }
 
         // Try not to gaslight users in case they swap back and forth from lwjgl2 and lwjgl3
@@ -153,6 +159,29 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
             ? "pack.iris.list.label"
             : "pack.iris.list.label.lwjgl2";
         addLabelEntries(EnumChatFormatting.GRAY.toString() + EnumChatFormatting.ITALIC + I18n.format(footerKey));
+
+        if (targetSelectionIndex != -1) {
+            scrollToIndex(targetSelectionIndex);
+        }
+    }
+
+    /**
+     * Scrolls the list to center the entry at {@code targetIndex} in the viewport.
+     */
+    public void scrollToIndex(int targetIndex) {
+        if (targetIndex < 0 || targetIndex >= this.getSize()) {
+            return;
+        }
+
+        this.elementClicked(targetIndex, false, 0, 0);
+        this.selectedElement = targetIndex;
+
+        int viewportCenterY = (this.bottom - this.top) / 2;
+        int itemCenterPos = (targetIndex * this.slotHeight) + this.headerPadding + (this.slotHeight / 2);
+        float targetScroll = (float) (itemCenterPos - viewportCenterY);
+        float maxScroll = (float) this.func_148135_f();
+
+        this.amountScrolled = MathHelper.clamp_float(targetScroll, 0.0F, maxScroll);
     }
 
     public void addPackEntry(int index, String name) {
