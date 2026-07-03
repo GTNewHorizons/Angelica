@@ -112,7 +112,7 @@ public final class DisplayListVBOBuilder {
             vbo.allocate(bigBuffer, start);
 
             if (wantExt && !quadVaos.isEmpty()) {
-                final int extVbo = buildAndAttachExt(extHandler, format, i, bigBuffer, start, quadVaos, quadStarts, quadCounts);
+                final int extVbo = buildAndAttachExt(extHandler, format, bigBuffer, quadVaos, quadStarts, quadCounts);
                 if (extVbo != 0) extVbos.add(extVbo);
             }
 
@@ -123,30 +123,32 @@ public final class DisplayListVBOBuilder {
         return new DisplayListVBO(vbos, extVbos.toIntArray());
     }
 
-    private static final int EXT_STRIDE = 12;
-    private static final int EXT_LOC_MID_TEX = 12;
-    private static final int EXT_LOC_TANGENT = 13;
-
-    private static int buildAndAttachExt(ImmediateExtendedAttribHandler handler, VertexFormat format, int flags,
-                                         ByteBuffer bigBuffer, int totalVerts,
+    private static int buildAndAttachExt(ImmediateExtendedAttribHandler handler, VertexFormat format,
+                                         ByteBuffer bigBuffer,
                                          List<IVertexArrayObject> quadVaos, IntArrayList quadStarts, IntArrayList quadCounts) {
+        final int extStride = ImmediateExtendedAttribHandler.EXT_STRIDE;
         final int stride = format.getVertexSize();
         final int posOffset = 0;
-        final int texOffset = (flags == 0xF) ? 16 : 12;
+        final int texOffset = ImmediateExtendedAttribHandler.texOffset(format);
 
-        final ByteBuffer ext = memCalloc(totalVerts, EXT_STRIDE);
+        int extVerts = 0;
+        for (int q = 0; q < quadStarts.size(); q++) {
+            extVerts = Math.max(extVerts, quadStarts.getInt(q) + quadCounts.getInt(q));
+        }
+
+        final ByteBuffer ext = memCalloc(extVerts, extStride);
         final long extAddr = memAddress0(ext);
         final long srcBase = memAddress0(bigBuffer);
         for (int q = 0; q < quadVaos.size(); q++) {
             final int rStart = quadStarts.getInt(q);
             final int rCount = quadCounts.getInt(q);
             handler.buildPacked(srcBase + (long) rStart * stride, stride, posOffset, texOffset, rCount,
-                extAddr + (long) rStart * EXT_STRIDE);
+                extAddr + (long) rStart * extStride, extStride);
         }
 
         final int extVbo = GLStateManager.glGenBuffers();
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
-        ext.position(0).limit(totalVerts * EXT_STRIDE);
+        ext.position(0).limit(extVerts * extStride);
         GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         memFree(ext);
@@ -154,10 +156,7 @@ public final class DisplayListVBOBuilder {
         for (IVertexArrayObject iv : quadVaos) {
             iv.bind();
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
-            GLStateManager.glEnableVertexAttribArray(EXT_LOC_MID_TEX);
-            GLStateManager.glVertexAttribPointer(EXT_LOC_MID_TEX, 2, GL11.GL_FLOAT, false, EXT_STRIDE, 0L);
-            GLStateManager.glEnableVertexAttribArray(EXT_LOC_TANGENT);
-            GLStateManager.glVertexAttribPointer(EXT_LOC_TANGENT, 4, GL11.GL_BYTE, true, EXT_STRIDE, 8L);
+            ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, extStride);
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             iv.unbind();
         }

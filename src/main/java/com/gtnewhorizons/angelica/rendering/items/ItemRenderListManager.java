@@ -113,17 +113,17 @@ public class ItemRenderListManager {
     public static void registerReloadListener(){
         IReloadableResourceManager resourceManager = (IReloadableResourceManager) Minecraft.getMinecraft()
             .getResourceManager();
-        resourceManager.registerReloadListener(_ -> {
-            for (CachedVBO value : vboCache.values()) {
-                value.delete();
-            }
-            vboCache.clear();
-        });
+        resourceManager.registerReloadListener(_ -> clearCache());
+    }
+
+    public static void clearCache() {
+        for (CachedVBO value : vboCache.values()) {
+            value.delete();
+        }
+        vboCache.clear();
     }
 
     public static final class CachedVBO {
-        private static final int EXT_STRIDE = 12;
-
         private final IVertexArrayObject vertexBuffer;
         private final IndexBuffer ebo;
         private int expiry;
@@ -146,34 +146,52 @@ public class ItemRenderListManager {
         private void attachExtAttribs(DirectTessellator tessellator) {
             final ImmediateExtendedAttribHandler handler = GLSMHooks.immediateExtendedHandler;
             final VertexFormat format = tessellator.getVertexFormat();
-            if (handler == null || format == null || !format.hasTexture()) return;
-            if (tessellator.getDrawMode() != GL11.GL_QUADS) return;
-
             final int vertexCount = tessellator.getVertexCount();
-            if (vertexCount == 0 || (vertexCount & 3) != 0) return;
+            final boolean capture = handler != null && format != null && format.hasTexture()
+                && tessellator.getDrawMode() == GL11.GL_QUADS
+                && vertexCount != 0 && (vertexCount & 3) == 0
+                && (extVbo != 0 || handler.wantsExtendedCapture());
+            if (!capture) {
+                detachExtAttribs();
+                return;
+            }
 
+            final int extStride = ImmediateExtendedAttribHandler.EXT_STRIDE;
             final int stride = format.getVertexSize();
-            final int texOffset = (format.getVertexFlags() == 0xF) ? 16 : 12;
+            final int texOffset = ImmediateExtendedAttribHandler.texOffset(format);
             final ByteBuffer packed = tessellator.getWriteBuffer();
             final long srcBase = memAddress0(packed) + packed.position();
 
-            final ByteBuffer ext = memCalloc(vertexCount, EXT_STRIDE);
-            handler.buildPacked(srcBase, stride, 0, texOffset, vertexCount, memAddress0(ext));
+            final ByteBuffer ext = memCalloc(vertexCount, extStride);
+            handler.buildPacked(srcBase, stride, 0, texOffset, vertexCount, memAddress0(ext), extStride);
 
-            extVbo = GLStateManager.glGenBuffers();
+            final boolean firstAttach = extVbo == 0;
+            if (firstAttach) {
+                extVbo = GLStateManager.glGenBuffers();
+            }
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
-            ext.position(0).limit(vertexCount * EXT_STRIDE);
+            ext.position(0).limit(vertexCount * extStride);
             GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             memFree(ext);
 
+            if (firstAttach) {
+                vertexBuffer.bind();
+                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+                ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, extStride);
+                GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+                vertexBuffer.unbind();
+            }
+        }
+
+        private void detachExtAttribs() {
+            if (extVbo == 0) return;
             vertexBuffer.bind();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
-            GLStateManager.glEnableVertexAttribArray(12);
-            GLStateManager.glVertexAttribPointer(12, 2, GL11.GL_FLOAT, false, EXT_STRIDE, 0L);
-            GLStateManager.glEnableVertexAttribArray(13);
-            GLStateManager.glVertexAttribPointer(13, 4, GL11.GL_BYTE, true, EXT_STRIDE, 8L);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_MID_TEX);
+            GLStateManager.glDisableVertexAttribArray(ImmediateExtendedAttribHandler.LOC_TANGENT);
             vertexBuffer.unbind();
+            GLStateManager.glDeleteBuffers(extVbo);
+            extVbo = 0;
         }
 
         private void render(int elapsedTicks) {

@@ -4,6 +4,7 @@ import com.google.common.base.Throwables;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.iris.ImmediateExtendedAttribs;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
@@ -771,6 +772,9 @@ public class Iris {
 
         // Load the new shaderpack
         loadShaderpack();
+
+        // Drop the stale program probe and cached item geometry
+        ImmediateExtendedAttribs.onShaderPackChanged();
 
         // Very important - we need to re-create the pipeline straight away.
         // https://github.com/IrisShaders/Iris/issues/1330
