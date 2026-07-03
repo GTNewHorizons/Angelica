@@ -135,7 +135,8 @@ public final class FragmentKey {
         int highestEnabled = -1;
         long unit0Bits = 0;
         for (int i = 0; i < MAX_UNITS; i++) {
-            final boolean texEnabled = GLStateManager.getTextures().getTextureUnitStates(i).isEnabled();
+            // Per Mesa - an enabled unit with no complete texture bound counts as disabled.
+            final boolean texEnabled = GLStateManager.getTextures().getTextureUnitStates(i).isEnabled() && GLStateManager.getTextures().getTextureUnitBindings(i).getBinding() != 0;
             if (texEnabled) highestEnabled = i;
 
             final long unitBits = packUnit(i, texEnabled);

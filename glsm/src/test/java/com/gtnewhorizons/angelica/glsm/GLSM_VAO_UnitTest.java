@@ -122,6 +122,68 @@ public class GLSM_VAO_UnitTest {
         UniversalVAO.deleteVertexArrays(vao);
     }
 
+    @Test
+    void testGenericAttributeSupersedesFfpConventional() {
+        final int vao = UniversalVAO.genVertexArrays();
+        glBindVertexArray(vao);
+        final int vbo = GL15.glGenBuffers();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+        GLStateManager.glVertexAttribPointer(0, 1, GL11.GL_FLOAT, false, 0, 0L);
+        GLStateManager.glEnableVertexAttribArray(0);
+        GLStateManager.glVertexPointer(3, GL11.GL_FLOAT, 0, 0L);
+
+        Assertions.assertEquals(1, VAOManager.get(0).size, "enabled generic attribute must supersede the FFP conventional array at the same location");
+        Assertions.assertTrue(VAOManager.get(0).genericPointer, "location must remain generic-sourced");
+
+        GLStateManager.glDisableVertexAttribArray(0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        GL15.glDeleteBuffers(vbo);
+        UniversalVAO.deleteVertexArrays(vao);
+    }
+
+    @Test
+    void testGenericAttributeWinsRegardlessOfOrder() {
+        final int vao = UniversalVAO.genVertexArrays();
+        glBindVertexArray(vao);
+        final int vbo = GL15.glGenBuffers();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+        GLStateManager.glVertexPointer(3, GL11.GL_FLOAT, 0, 0L);
+        GLStateManager.glVertexAttribPointer(0, 1, GL11.GL_FLOAT, false, 0, 0L);
+        GLStateManager.glEnableVertexAttribArray(0);
+
+        Assertions.assertEquals(1, VAOManager.get(0).size, "generic attribute set after the FFP conventional array must still win");
+        Assertions.assertTrue(VAOManager.get(0).genericPointer, "location must remain generic-sourced");
+
+        GLStateManager.glDisableVertexAttribArray(0);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        GL15.glDeleteBuffers(vbo);
+        UniversalVAO.deleteVertexArrays(vao);
+    }
+
+    @Test
+    void testFfpConventionalAppliesWithoutGenericAttribute() {
+        final int vao = UniversalVAO.genVertexArrays();
+        glBindVertexArray(vao);
+        final int vbo = GL15.glGenBuffers();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, vbo);
+
+        GLStateManager.glVertexPointer(3, GL11.GL_FLOAT, 0, 0L);
+        GLStateManager.glEnableClientState(GL11.GL_VERTEX_ARRAY);
+
+        Assertions.assertEquals(3, VAOManager.get(0).size, "plain FFP conventional array must apply when no generic attribute occupies the location");
+        Assertions.assertFalse(VAOManager.get(0).genericPointer, "location must be conventional-sourced");
+
+        GLStateManager.glDisableClientState(GL11.GL_VERTEX_ARRAY);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        glBindVertexArray(0);
+        GL15.glDeleteBuffers(vbo);
+        UniversalVAO.deleteVertexArrays(vao);
+    }
+
     private static void testClientStates() {
         verifyState(GL11.GL_VERTEX_ARRAY, false, "GL_VERTEX_ARRAY Default State");
         verifyState(GL11.GL_TEXTURE_COORD_ARRAY, false, "GL_TEXTURE_COORD_ARRAY Default State");

@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -612,5 +614,240 @@ class CompatShaderTransformerTest {
         String result = CompatShaderTransformer.transform(src, true);
         assertFalse(result.matches("(?s).*\\bnew\\b(?!\\s*\\().*"), "'new' as identifier must be renamed in core profile output\n\n" + result);
         assertTrue(result.contains("angelica_renamed_new"), "'new' should be renamed to angelica_renamed_new\n\n" + result);
+    }
+
+    private static String compact(String s) {
+        return s.replaceAll("\\s+", "");
+    }
+
+    private static String core(String src) {
+        return compact(CompatShaderTransformer.transform(src, false));
+    }
+
+    private static void assertLoc(String c, int loc, String decl) {
+        assertTrue(c.contains(compact("layout(location=" + loc + ")in" + decl)), decl + " expected at location " + loc + "\n\n" + c);
+    }
+
+    private static void assertNoLoc(String c, int loc, String decl) {
+        assertFalse(c.contains(compact("layout(location=" + loc + ")in" + decl)), decl + " must not be at location " + loc + "\n\n" + c);
+    }
+
+    @Test
+    void testCustomPositionAttributePinnedToLocationZero() {
+        // Betweenlands blshader fix
+        String src = """
+            #version 120
+            attribute vec4 a_position;
+            uniform mat4 u_projMat;
+            uniform vec2 u_outSize;
+            varying vec2 v_texCoord;
+            void main(){
+                gl_Position = u_projMat * vec4(a_position.xy, 0.0, 1.0);
+                v_texCoord = a_position.xy / u_outSize;
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        assertLoc(compact(result), 0, "vec4 a_position");
+        assertTrue(result.contains("#version 330 core"), result);
+    }
+
+    @Test
+    void testMultipleLocationlessInputsGetSequentialLocations() {
+        String c = core("""
+            #version 120
+            attribute vec4 a_pos;
+            attribute vec2 a_uv;
+            varying vec2 v_uv;
+            void main() {
+                v_uv = a_uv;
+                gl_Position = vec4(a_pos.xy, 0.0, 1.0);
+            }
+            """);
+        assertLoc(c, 0, "vec4 a_pos");
+        assertLoc(c, 1, "vec2 a_uv");
+    }
+
+    @Test
+    void testCustomInputReservesAroundGlVertex() {
+        String c = core("""
+            #version 120
+            attribute vec4 a_foo;
+            void main() {
+                gl_Position = ftransform() + a_foo;
+            }
+            """);
+        assertLoc(c, 0, "vec4 angelica_Vertex");
+        assertLoc(c, 1, "vec4 a_foo");
+    }
+
+    @Test
+    void testCustomInputSkipsFfpSlots() {
+        String c = core("""
+            #version 120
+            attribute vec4 a_foo;
+            void main() {
+                gl_Position = vec4(a_foo.xy, 0.0, 1.0) + gl_Color;
+            }
+            """);
+        assertLoc(c, 0, "vec4 a_foo");
+        assertLoc(c, 1, "vec4 angelica_Color");
+    }
+
+    @Test
+    void testExplicitLowLocationReserved() {
+        String c = core("""
+            #version 120
+            layout(location = 0) in vec4 a_x;
+            attribute vec4 a_y;
+            void main() {
+                gl_Position = a_x + a_y;
+            }
+            """);
+        assertLoc(c, 0, "vec4 a_x");
+        assertLoc(c, 1, "vec4 a_y");
+    }
+
+    @Test
+    void testMatrixInputSortedFirst() {
+        String c = core("""
+            #version 120
+            attribute vec4 a_a;
+            attribute mat4 a_m;
+            void main() {
+                gl_Position = a_m * a_a;
+            }
+            """);
+        assertLoc(c, 0, "mat4 a_m");   // 4-slot matrix sorted first
+        assertLoc(c, 4, "vec4 a_a");
+    }
+
+    @Test
+    void testInputNamedLocationStillPinned() {
+        assertLoc(core("""
+            #version 120
+            attribute vec4 a_location;
+            void main() {
+                gl_Position = vec4(a_location.xy, 0.0, 1.0);
+            }
+            """), 0, "vec4 a_location");
+    }
+
+    @Test
+    void testInputWithExplicitLayoutLeftAlone() {
+        String c = core("""
+            #version 120
+            layout(location = 3) in vec4 a_data;
+            attribute vec4 a_position;
+            varying vec2 v_uv;
+            void main() {
+                v_uv = a_data.xy;
+                gl_Position = vec4(a_position.xy, 0.0, 1.0);
+            }
+            """);
+        assertLoc(c, 0, "vec4 a_position");   // sole location-less input
+        assertLoc(c, 3, "vec4 a_data");       // explicit location preserved
+        assertNoLoc(c, 0, "vec4 a_data");
+    }
+
+    @Test
+    void testPinnedShaderRemainsWellFormed() {
+        String src = """
+            #version 120
+            attribute vec4 a_position;
+            void main() {
+                gl_FrontColor = gl_Color;
+                gl_TexCoord[0] = gl_MultiTexCoord0;
+                gl_Position = gl_ModelViewMatrix * vec4(a_position.xyz, 1.0);
+            }
+            """;
+
+        String result = CompatShaderTransformer.transform(src, false);
+        String c = compact(result);
+        assertLoc(c, 0, "vec4 a_position");
+        assertLoc(c, 1, "vec4 angelica_Color");
+        assertTrue(c.contains("uniformmat4angelica_ModelViewMatrix"), "matrix uniform injected\n\n" + result);
+        assertFalse(c.contains("gl_ModelViewMatrix"), "builtin rewritten (not fallback)\n\n" + result);
+
+        final int mainIdx = result.indexOf("void main");
+        assertTrue(mainIdx > 0, result);
+        assertTrue(result.indexOf("angelica_ModelViewMatrix") < mainIdx, "uniform before main\n\n" + result);
+        assertTrue(result.indexOf("a_position") < mainIdx, "pinned input before main\n\n" + result);
+    }
+
+    @Test
+    void testGlVertexShaderDoesNotPinCustomAttribute() {
+        String c = core("""
+            #version 120
+            attribute float activelights;
+            void main() {
+                gl_Position = ftransform();
+                float x = activelights;
+            }
+            """);
+        assertLoc(c, 0, "vec4 angelica_Vertex");
+        assertNoLoc(c, 0, "float activelights");
+    }
+
+    @ParameterizedTest   // array on the declarator (vec4 a[2]) and on the type (vec4[2] a) must both round-trip
+    @ValueSource(strings = {"attribute vec4 positions[2];", "attribute vec4[2] positions;"})
+    void testArrayAttributePreservedEitherSyntax(String decl) {
+        String c = core("""
+            #version 120
+            %s
+            attribute vec4 a_tail;
+            void main() {
+                gl_Position = positions[0] + positions[1] + a_tail;
+            }
+            """.formatted(decl));
+        assertLoc(c, 0, "vec4 positions[2]");   // 2-slot array pinned to 0..1
+        assertLoc(c, 2, "vec4 a_tail");
+    }
+
+    @Test
+    void testMultiDeclaratorSplitIntoSeparateLocations() {
+        String result = CompatShaderTransformer.transform("""
+            #version 120
+            attribute vec4 a, b;
+            void main() {
+                gl_Position = a + b;
+            }
+            """, false);
+        String c = compact(result);
+        assertLoc(c, 0, "vec4 a");
+        assertLoc(c, 1, "vec4 b");
+        assertFalse(result.matches("(?s).*\\battribute\\b.*"), "no deprecated 'attribute' keyword may survive\n\n" + result);
+        assertTrue(result.contains("#version 330 core"), result);
+    }
+
+    @Test
+    void testMultiDeclaratorWithMixedArray() {
+        String result = CompatShaderTransformer.transform("""
+            #version 120
+            attribute vec4 a, b[2];
+            void main() {
+                gl_Position = a + b[0] + b[1];
+            }
+            """, false);
+        String c = compact(result);
+        // b takes 2 slots; sorted before the 1-slot a, so b -> 0..1, a -> 2.
+        assertLoc(c, 0, "vec4 b[2]");
+        assertLoc(c, 2, "vec4 a");
+        assertFalse(result.matches("(?s).*\\battribute\\b.*"), "no deprecated 'attribute' keyword may survive\n\n" + result);
+    }
+
+    @Test
+    void testHexExplicitLocationReserved() {
+        String c = core("""
+            #version 120
+            layout(location = 0x1) in vec4 a_x;
+            attribute vec4 a_y;
+            void main() {
+                gl_Position = a_x + a_y;
+            }
+            """);
+        assertTrue(c.contains("layout(location=0x1)invec4a_x"), "hex explicit location preserved\n\n" + c);
+        assertNoLoc(c, 1, "vec4 a_y");   // must not collide with the hex-reserved slot
+        assertLoc(c, 0, "vec4 a_y");
     }
 }

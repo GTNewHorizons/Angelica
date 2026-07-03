@@ -9,9 +9,11 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.FloatBuffer;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Tests GLSM display list behavior matches OpenGL spec. */
@@ -256,5 +258,31 @@ class DisplayListCompilationGLSMTest {
         assertEquals(0.0f, afterPop.get(12), 0.001f, "After pop: back to identity (pushed state)");
 
         GLStateManager.glEndList();
+    }
+
+    @Test
+    void glsm_unsupportedOpInList_abortsCleanly() {
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+        assertTrue(DisplayListManager.isRecording(), "recording after glNewList");
+
+        assertThrows(UnsupportedOperationException.class, () -> GLStateManager.glReadBuffer(GL11.GL_FRONT));
+
+        assertFalse(DisplayListManager.isRecording(), "recording state must be reset after an in-list throw");
+        assertEquals(DisplayListManager.RecordMode.NONE, DisplayListManager.getRecordMode());
+
+        assertDoesNotThrow(() -> GLStateManager.glReadBuffer(GL11.GL_FRONT));
+        assertDoesNotThrow(GLStateManager::glEndList);
+    }
+
+    @Test
+    void glsm_abortIfLeaked_recoversOpenList() {
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+        assertTrue(DisplayListManager.isRecording());
+
+        DisplayListManager.abortIfLeaked();
+
+        assertFalse(DisplayListManager.isRecording(), "frame-begin backstop must clear a leaked open list");
     }
 }

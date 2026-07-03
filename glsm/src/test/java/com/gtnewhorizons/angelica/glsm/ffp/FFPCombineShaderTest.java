@@ -28,6 +28,7 @@ class FFPCombineShaderTest {
 
     private final List<Integer> shadersToDelete = new ArrayList<>();
     private final List<Integer> programsToDelete = new ArrayList<>();
+    private final List<Integer> texturesToDelete = new ArrayList<>();
 
     @AfterEach
     void cleanup() {
@@ -37,15 +38,25 @@ class FFPCombineShaderTest {
         programsToDelete.clear();
         shadersToDelete.clear();
 
-        // Reset texture units to defaults
+        // Reset texture units to defaults (unbind so a later test does not see a stale binding)
         for (int i = 3; i >= 0; i--) {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             GLStateManager.getTextures().getTexEnvState(i).reset();
             if (i > 0) {
                 GLStateManager.getTextures().getTextureUnitStates(i).disable();
             }
         }
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        for (int t : texturesToDelete) GL11.glDeleteTextures(t);
+        texturesToDelete.clear();
+    }
+
+    private int bindUnitTexture() {
+        final int tex = GL11.glGenTextures();
+        texturesToDelete.add(tex);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+        return tex;
     }
 
     @Test
@@ -113,6 +124,7 @@ class FFPCombineShaderTest {
     void testSingleUnitCombineCompiles() {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.enableTexture();
+        bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_MODULATE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_MODULATE);
@@ -169,6 +181,7 @@ class FFPCombineShaderTest {
     void testAllCombineFunctionsCompile(String name, int glFunc, int numArgs) {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.enableTexture();
+        bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, glFunc);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
@@ -202,6 +215,7 @@ class FFPCombineShaderTest {
     void testCombineScopeDeclaresColorOutsideBlock() {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.enableTexture();
+        bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_MODULATE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_MODULATE);
@@ -258,6 +272,7 @@ class FFPCombineShaderTest {
         // Unit 0: COMBINE / SUBTRACT
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.enableTexture();
+        bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL13.GL_SUBTRACT);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
@@ -273,6 +288,7 @@ class FFPCombineShaderTest {
         // Unit 2: COMBINE / ADD
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
         GLStateManager.enableTexture();
+        bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL13.GL_COMBINE);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_RGB, GL11.GL_ADD);
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL13.GL_COMBINE_ALPHA, GL11.GL_REPLACE);
@@ -286,6 +302,7 @@ class FFPCombineShaderTest {
         // Unit 3: simple MODULATE
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE3);
         GLStateManager.enableTexture();
+        bindUnitTexture();
         GLStateManager.glTexEnvi(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_MODE, GL11.GL_MODULATE);
 
         // Restore active unit
