@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.api.SectionLightData;
 import com.gtnewhorizons.angelica.compat.ExtendedBlockStorageExt;
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.compat.lotr.LOTRCompat;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.compat.mojang.ChunkSectionPos;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
@@ -28,6 +29,8 @@ import java.util.Map;
 public class ClonedChunkSection {
 
     private static final ExtendedBlockStorage EMPTY_SECTION = new ExtendedBlockStorage(0, false);
+    private static final int SECTION_BLOCK_LENGTH = 16;
+    private static final int BIOME_DATA_LENGTH = SECTION_BLOCK_LENGTH * SECTION_BLOCK_LENGTH;
 
     private final ClonedChunkSectionCache backingCache;
     private final World world;
@@ -68,7 +71,7 @@ public class ClonedChunkSection {
         this.pos = pos;
         this.data = new ExtendedBlockStorageExt(chunk, section);
 
-        this.biomeData = new BiomeGenBase[16 * 16];
+        this.biomeData = new BiomeGenBase[BIOME_DATA_LENGTH];
 
         copyBlockEntities(chunk, pos);
 
@@ -78,10 +81,18 @@ public class ClonedChunkSection {
     }
 
     private void fillBiomeData(Chunk chunk) {
-        final WorldChunkManager wcm = world.getWorldChunkManager();
-        for (int lz = 0; lz < 16; lz++) {
-            for (int lx = 0; lx < 16; lx++) {
-                this.biomeData[lx | (lz << 4)] = chunk.getBiomeGenForWorldCoords(lx, lz, wcm);
+        if (LOTRCompat.isLotrProvider(world.provider)) {
+            for (int z = pos.getMinZ(); z <= pos.getMaxZ(); z++) {
+                for (int x = pos.getMinX(); x <= pos.getMaxX(); x++) {
+                    this.biomeData[((z & 15) << 4) | (x & 15)] = world.getBiomeGenForCoords(x, z);
+                }
+            }
+        } else {
+            final WorldChunkManager wcm = world.getWorldChunkManager();
+            for (int lz = 0; lz < SECTION_BLOCK_LENGTH; lz++) {
+                for (int lx = 0; lx < SECTION_BLOCK_LENGTH; lx++) {
+                    this.biomeData[(lz << 4) | lx] = chunk.getBiomeGenForWorldCoords(lx, lz, wcm);
+                }
             }
         }
     }
