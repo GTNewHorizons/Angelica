@@ -90,7 +90,7 @@ public class FontStrategist {
             return;
         }
         File parent = configDir.getParentFile();
-        File[] fontDirs = { parent != null ? new File(parent, "fontfiles") : new File("fontfiles"), new File(configDir, "angelica/fonts") };
+        File[] fontDirs = { new File(parent, "fontfiles"), new File(configDir, "angelica/fonts") };
         GraphicsEnvironment ge = GraphicsEnvironment.isHeadless() ? null : GraphicsEnvironment.getLocalGraphicsEnvironment();
         int loaded = 0;
         for (File dir : fontDirs) {
