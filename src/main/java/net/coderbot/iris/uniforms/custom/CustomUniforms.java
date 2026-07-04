@@ -3,7 +3,9 @@ package net.coderbot.iris.uniforms.custom;
 import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableMap;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMaps;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -41,8 +43,12 @@ public class CustomUniforms implements FunctionContext {
 	private final Map<Object, Object2IntMap<CachedUniform>> locationMap = new Object2ObjectOpenHashMap<>();
 	private final Map<CachedUniform, List<CachedUniform>> dependsOn;
 
+	private final Object2LongOpenHashMap<Object> lastPushedGen = new Object2LongOpenHashMap<>();
+	private long generation;
+
 	private CustomUniforms(CustomUniformFixedInputUniformsHolder inputHolder, Map<String, Builder.Variable> variables) {
 		this.inputHolder = inputHolder;
+		this.lastPushedGen.defaultReturnValue(-1);
 		ExpressionResolver resolver = new ExpressionResolver(
 			IrisFunctions.functions,
 			(name) -> {
@@ -208,15 +214,21 @@ public class CustomUniforms implements FunctionContext {
 
 
 	public void update() {
+		generation++;
 		for (CachedUniform value : this.uniformOrder) {
 			value.update();
 		}
 	}
 
 	public void push(Object pass) {
-		Object2IntMap<CachedUniform> uniforms = this.locationMap.get(pass);
-		if (uniforms != null) {
-			uniforms.forEach(CachedUniform::pushIfChanged);
+		final Object2IntMap<CachedUniform> uniforms = this.locationMap.get(pass);
+		if (uniforms == null) return;
+		if (lastPushedGen.getLong(pass) == generation) {
+			return;
+		}
+		lastPushedGen.put(pass, generation);
+		for (Object2IntMap.Entry<CachedUniform> e : Object2IntMaps.fastIterable(uniforms)) {
+			e.getKey().pushIfChanged(e.getIntValue());
 		}
 	}
 
