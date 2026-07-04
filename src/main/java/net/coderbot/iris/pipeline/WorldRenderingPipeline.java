@@ -37,6 +37,9 @@ public interface WorldRenderingPipeline {
 
 	void onBindTexture(int id);
 
+	/** Re-bind the program/framebuffer for the currently-active Pass, if any. */
+	void rebindCurrentPass();
+
 	void beginHand();
 
 	void beginTranslucents();

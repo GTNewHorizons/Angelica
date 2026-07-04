@@ -112,6 +112,41 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableFontRenderer;
 
+    @Config.Comment("Collapse vanilla sign text into a single batched draw per sign (requires font batching)")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRSignCache;
+
+    @Config.Comment("Cache the vanilla chest mesh and share it across chests")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRChestCache;
+
+    @Config.Comment("Batch and instance living-entity model parts on FFP-managed passes")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableEntityBatching;
+
+    @Config.Comment("Skip the end-of-frame glFlush before the buffer swap [Experimental]")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean skipEndOfFrameFlush;
+
+    @Config.Comment("Cache the vanilla skull mesh per skull type/player skin and batch skull draws")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRSkullCache;
+
+    @Config.Comment("Cache the Thaumcraft jar liquid and batch jar draws")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRJarCache;
+
+    @Config.Comment("Route tile-entity renderers implementing TesrMeshProvider through the batched mesh cache")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRProviderDispatch;
+
     @Config.Comment("Enable full RGB color support (16.7M colors) using &#RRGGBB syntax in text")
     @Config.DefaultBoolean(true)
     public static boolean enableRGBColors;

@@ -104,6 +104,11 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
+	public void rebindCurrentPass() {
+		// no-op: fixed-function pipeline doesn't manage Pass state
+	}
+
+	@Override
 	public void beginHand() {
 	    // stub: nothing to do here
 	}

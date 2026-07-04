@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraftforge.client.GuiIngameForge;
@@ -32,5 +33,23 @@ public class MixinGuiIngameForge {
     private void angelica$endF3TextBatching(int width, int height, CallbackInfo ci) {
         FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
         fra.angelica$getBatcher().endBatch();
+    }
+
+    @Inject(method = "renderHotbar", at = @At("HEAD"), remap = false)
+    private void angelica$startHotbarTextBatching(int width, int height, float partialTicks, CallbackInfo ci) {
+        final FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
+        fra.angelica$getBatcher().beginBatch();
+    }
+
+    @Inject(method = "renderHotbar", at = @At("RETURN"), remap = false)
+    private void angelica$endHotbarTextBatching(int width, int height, float partialTicks, CallbackInfo ci) {
+        final FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
+
+        final boolean depthWasEnabled = GLStateManager.getDepthTest().isEnabled();
+        GLStateManager.disableDepthTest();
+        fra.angelica$getBatcher().endBatch();
+        if (depthWasEnabled) {
+            GLStateManager.enableDepthTest();
+        }
     }
 }

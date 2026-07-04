@@ -8,6 +8,8 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
+import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import cpw.mods.fml.common.eventhandler.EventPriority;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import net.minecraft.client.Minecraft;
@@ -50,6 +52,8 @@ public class CeleritasDebugScreenHandler {
             event.right.add(sm.getDebugInfo());
         }
         event.right.add(TessellatorStreamingDrawer.getDebugInfo());
+        event.right.addAll(TesrBatchRenderer.INSTANCE.getDebugStrings());
+        event.right.add(ModelPartBatcher.INSTANCE.getDebugString());
         event.right.add("");
     }
 

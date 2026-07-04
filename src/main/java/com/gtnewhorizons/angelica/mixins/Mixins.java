@@ -113,6 +113,66 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_TESR_SIGN_CACHE(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableFontRenderer && AngelicaConfig.enableTESRSignCache)
+        .addClientMixins(
+            "angelica.tesr.MixinTileEntitySignRenderer"
+        )
+    ),
+
+    ANGELICA_TESR_CHEST_CACHE(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRChestCache)
+        .addClientMixins(
+            "angelica.tesr.MixinTileEntityChestRenderer",
+            "angelica.tesr.MixinTileEntityEnderChestRenderer"
+        )
+    ),
+
+    ANGELICA_TESR_SKULL_CACHE(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRSkullCache)
+        .addClientMixins(
+            "angelica.tesr.MixinTileEntitySkullRenderer"
+        )
+    ),
+
+    ANGELICA_ENTITY_BATCHING(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableEntityBatching)
+        .addClientMixins(
+            "angelica.entity.MixinModelRenderer",
+            "angelica.entity.MixinRenderGlobal_EntityBatch",
+            "angelica.entity.MixinTextureManager"
+        )
+    ),
+
+    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip the end-of-frame glFlush before the buffer swap")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.skipEndOfFrameFlush)
+        .addClientMixins(
+            "angelica.MixinMinecraft_SkipEndFrameFlush"
+        )
+    ),
+
+    THAUMCRAFT_TESR_JAR_CACHE(new MixinBuilder("Batch TC4 jar liquid via the retained TESR mesh cache")
+        .setPhase(Phase.LATE)
+        .setApplyIf(() -> AngelicaConfig.enableTESRJarCache)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)
+        .addClientMixins(
+            "client.thaumcraft.MixinTileJarRenderer"
+        )
+    ),
+
+    ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch)
+        .addClientMixins(
+            "angelica.tesr.MixinTileEntityRendererDispatcher"
+        )
+    ),
+
     ANGELICA_TRACY(new MixinBuilder("Tracy profiler zones from vanilla Profiler sections")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaMod.tracyEnabled)
@@ -273,6 +333,7 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockLiquid"
             , "celeritas.threading.MixinForgeHooksClient"
             , "celeritas.terrain.MixinChunk"
+            , "celeritas.terrain.MixinDefaultChunkShaderInterface"
         )
     ),
 

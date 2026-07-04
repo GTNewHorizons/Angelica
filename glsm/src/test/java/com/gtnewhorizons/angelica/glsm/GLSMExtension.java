@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import org.junit.jupiter.api.extension.AfterEachCallback;
 import org.junit.jupiter.api.extension.BeforeAllCallback;
@@ -19,6 +20,7 @@ import sun.misc.Unsafe;
 import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
 
 public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExecutionCondition, ExtensionContext.Store.CloseableResource {
@@ -144,6 +146,12 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
     public void beforeEach(ExtensionContext context) throws Exception {
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
 
+        final ShaderManager ffp = ShaderManager.getInstance();
+        if (ffp.isActive()) {
+            ffp.deactivate();
+        }
+        ffp.disable();
+
         // Force-sync VAO binding. Tests may unbind via raw GL, desynchronizing GLSM's cache.
         // Invalidate the cache so glBindVertexArray(0) actually issues the GL call.
         forceBoundVAO(-1);
@@ -168,6 +176,16 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
 
     @Override
     public void afterEach(ExtensionContext context) throws Exception {
+        boolean leakedRecorder = false;
+        for (int i = 0; i < 64 && DisplayListManager.isRecording(); i++) {
+            leakedRecorder = true;
+            DisplayListManager.glEndList();
+        }
+        if (leakedRecorder) {
+            while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+            fail("Test leaked an open display-list recorder! Missing glEndList.");
+        }
+
         final int error = GL11.glGetError();
         assertEquals(GL11.GL_NO_ERROR, error,
             () -> "GL Error: 0x" + Integer.toHexString(error));

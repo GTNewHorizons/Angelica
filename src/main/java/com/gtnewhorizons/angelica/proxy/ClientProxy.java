@@ -41,6 +41,7 @@ import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
+import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
@@ -111,6 +112,7 @@ public final class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
+        MinecraftForge.EVENT_BUS.register(new AngelicaTesrMeshCache.ReloadListener());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
     }

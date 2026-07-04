@@ -224,6 +224,9 @@ public abstract class RenderBackend {
     public abstract void deleteBuffers(IntBuffer buffers);
     public abstract void bindBuffer(int target, int buffer);
     public abstract void bindBufferBase(int target, int index, int buffer);
+    public abstract void bindBufferRange(int target, int index, int buffer, long offset, long size);
+    public abstract int getUniformBlockIndex(int program, CharSequence name);
+    public abstract void uniformBlockBinding(int program, int blockIndex, int binding);
     public abstract void bufferData(int target, long size, int usage);
     public abstract void bufferData(int target, ByteBuffer data, int usage);
     public abstract void bufferData(int target, FloatBuffer data, int usage);
@@ -251,6 +254,10 @@ public abstract class RenderBackend {
     public abstract boolean isBuffer(int buffer);
     public abstract ByteBuffer mapBufferRange(int target, long offset, long length, int access);
     public abstract void flushMappedBufferRange(int target, long offset, long length);
+    public long mapBufferRangeAddress(int target, long offset, long length, int access) {
+        final ByteBuffer buf = mapBufferRange(target, offset, length, access);
+        return buf == null ? 0L : MemoryUtilities.memAddress0(buf);
+    }
 
     public abstract int genVertexArrays();
     public abstract void deleteVertexArrays(int array);

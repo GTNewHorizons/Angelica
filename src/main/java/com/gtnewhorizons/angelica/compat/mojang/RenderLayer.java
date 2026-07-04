@@ -1,16 +1,23 @@
-package com.gtnewhorizons.angelica.compat.toremove;
+package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.google.common.collect.ImmutableList;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import lombok.Getter;
+import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
+import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
+import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.minecraft.util.ResourceLocation;
+import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
+import java.util.Locale;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -59,6 +66,54 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         return TRANSLUCENT;
     }
 
+    private static MultiPhaseParameters.Builder tesrMaterialPhases(ResourceLocation texture, TesrMaterial material) {
+        final MultiPhaseParameters.Builder b = MultiPhaseParameters.builder();
+        if (texture != null) {
+            b.texture(new RenderPhase.Texture(texture, false, false));
+        }
+        if (material.isNoCull()) {
+            b.cull(DISABLE_CULLING);
+        }
+        if (material.isUnlit()) {
+            b.texturing(NO_FFP_LIGHTING);
+        }
+        if (material.isNoDepthWrite()) {
+            b.writeMaskState(COLOR_MASK);
+        }
+        if (material.cutoutAlpha() > 0) {
+            b.alpha(new RenderPhase.Alpha(material.cutoutAlpha()));
+        }
+        if (material.isDepthEqual()) {
+            b.depthTest(EQUAL_DEPTH_TEST);
+        }
+        switch (material.transparency()) {
+            case TRANSLUCENT -> b.transparency(TRANSLUCENT_TRANSPARENCY);
+            case ADDITIVE -> b.transparency(ADDITIVE_TRANSPARENCY);
+            case OPAQUE -> {}
+        }
+        final TesrShader shader = material.shader();
+        if (shader != null) {
+            b.shader(new RenderPhase.Shader("angelica_tesr_shader_" + shader.name(), shader.bind(), shader.release()));
+        }
+        return b;
+    }
+
+    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material) {
+        final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material).shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP);
+        if (material.transparency() == TesrMaterial.Transparency.TRANSLUCENT) {
+            b.target(TRANSLUCENT_TARGET);
+        }
+        final boolean sortsTranslucent = material.transparency() != TesrMaterial.Transparency.OPAQUE;
+        return of("angelica_tesr_" + material.transparency().name().toLowerCase(Locale.ROOT),
+            BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, sortsTranslucent, b.build(false));
+    }
+
+    public static RenderLayer tesrNoPass(ResourceLocation texture, TesrMaterial material) {
+        return of("angelica_tesr_nopass_" + material.transparency().name().toLowerCase(Locale.ROOT),
+            BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, false,
+            tesrMaterialPhases(texture, material).build(false));
+    }
+
     public static RenderLayer getOutline(ResourceLocation texture, RenderPhase.Cull cull) {
         return of("outline", DefaultVertexFormat.POSITION_COLOR_TEXTURE, 7, 256, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(texture, false, false)).cull(cull).depthTest(ALWAYS_DEPTH_TEST).alpha(ONE_TENTH_ALPHA).fog(NO_FOG).target(OUTLINE_TARGET).build(RenderLayer.OutlineMode.IS_OUTLINE));
     }
@@ -67,17 +122,28 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         return this.drawMode;
     }
 
-    static final class MultiPhase extends RenderLayer {
+    static final class MultiPhase extends RenderLayer implements BlendingStateHolder {
         private static final ObjectOpenCustomHashSet<MultiPhase> CACHE;
         private final MultiPhaseParameters phases;
         private final int hash;
         private final Optional<RenderLayer> affectedOutline;
 
+        @Override
+        public TransparencyType getTransparencyType() {
+            return phases.transparency.getTransparencyType();
+        }
+
         private MultiPhase(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, MultiPhaseParameters phases) {
             super(name, vertexFormat, drawMode, expectedBufferSize, () -> {
-                phases.phases.forEach(RenderPhase::startDrawing);
+                final ImmutableList<RenderPhase> p = phases.phases;
+                for (int i = 0, n = p.size(); i < n; i++) {
+                    p.get(i).startDrawing();
+                }
             }, () -> {
-                phases.phases.forEach(RenderPhase::endDrawing);
+                final ImmutableList<RenderPhase> p = phases.phases;
+                for (int i = 0, n = p.size(); i < n; i++) {
+                    p.get(i).endDrawing();
+                }
             });
             this.phases = phases;
             this.affectedOutline = phases.outlineMode == RenderLayer.OutlineMode.AFFECTS_OUTLINE ? phases.texture.getId().map((arg2) -> {
@@ -148,10 +214,11 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         private final RenderPhase.Target target;
         private final RenderPhase.Texturing texturing;
         private final RenderPhase.WriteMaskState writeMaskState;
+        private final RenderPhase.Shader shader;
         private final OutlineMode outlineMode;
         private final ImmutableList<RenderPhase> phases;
 
-        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, OutlineMode outlineMode) {
+        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, RenderPhase.Shader shader, OutlineMode outlineMode) {
             this.texture = texture;
             this.transparency = transparency;
             this.diffuseLighting = diffuseLighting;
@@ -165,8 +232,9 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             this.target = target;
             this.texturing = texturing;
             this.writeMaskState = writeMaskState;
+            this.shader = shader;
             this.outlineMode = outlineMode;
-            this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState);
+            this.phases = ImmutableList.of(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.shader);
         }
 
         @Override
@@ -209,6 +277,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             private RenderPhase.Target target;
             private RenderPhase.Texturing texturing;
             private RenderPhase.WriteMaskState writeMaskState;
+            private RenderPhase.Shader shader;
 
             private Builder() {
                 this.texture = RenderPhase.NO_TEXTURE ;
@@ -224,6 +293,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
                 this.target = RenderPhase.MAIN_TARGET;
                 this.texturing = RenderPhase.DEFAULT_TEXTURING;
                 this.writeMaskState = RenderPhase.ALL_MASK;
+                this.shader = RenderPhase.NO_SHADER;
             }
 
             public Builder texture(RenderPhase.Texture texture) {
@@ -276,12 +346,22 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
                 return this;
             }
 
+            public Builder writeMaskState(RenderPhase.WriteMaskState writeMaskState) {
+                this.writeMaskState = writeMaskState;
+                return this;
+            }
+
+            public Builder shader(RenderPhase.Shader shader) {
+                this.shader = shader;
+                return this;
+            }
+
             public MultiPhaseParameters build(boolean affectsOutline) {
                 return this.build(affectsOutline ? RenderLayer.OutlineMode.AFFECTS_OUTLINE : RenderLayer.OutlineMode.NONE);
             }
 
             public MultiPhaseParameters build(OutlineMode outlineMode) {
-                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, outlineMode);
+                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.shader, outlineMode);
             }
         }
     }

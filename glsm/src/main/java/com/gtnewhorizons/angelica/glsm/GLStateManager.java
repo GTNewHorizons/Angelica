@@ -308,6 +308,13 @@ public class GLStateManager {
         return RENDER_BACKEND.getInteger(GL11.GL_TEXTURE_BINDING_2D);
     }
 
+    private static TextureInfo getBoundTextureInfo() {
+        if (isCachingEnabled()) {
+            return textures.getTextureUnitBindings(activeTextureUnit.getValue()).getOrResolveInfo();
+        }
+        return TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+    }
+
     /**
      * Get the texture bound to a specific texture unit for server-side state operations.
      * If caching is enabled, returns cached value.
@@ -417,6 +424,8 @@ public class GLStateManager {
      */
     public static boolean wideLineEmulationActive = false;
     public static boolean lineStippleActive = false;
+
+    public static boolean instancedFfpDrawActive = false;
 
     // Point state (GL_POINT_BIT)
     @Getter protected static final PointStateStack pointState = new PointStateStack();
@@ -2147,13 +2156,7 @@ public class GLStateManager {
                 return;
             }
         }
-        final int textureUnit = getActiveTextureUnit();
-        if (GLSMHooks.TEXTURE_UNIT_STATE.hasListeners()) {
-            GLSMHooks.textureUnitStateEvent.unit = textureUnit;
-            GLSMHooks.textureUnitStateEvent.enabled = true;
-            GLSMHooks.TEXTURE_UNIT_STATE.post(GLSMHooks.textureUnitStateEvent);
-        }
-        textures.getTextureUnitStates(textureUnit).enable();
+        textures.getTextureUnitStates(getActiveTextureUnit()).enable();
     }
 
     public static void disableTexture() {
@@ -2164,13 +2167,7 @@ public class GLStateManager {
                 return;
             }
         }
-        final int textureUnit = getActiveTextureUnit();
-        if (GLSMHooks.TEXTURE_UNIT_STATE.hasListeners()) {
-            GLSMHooks.textureUnitStateEvent.unit = textureUnit;
-            GLSMHooks.textureUnitStateEvent.enabled = false;
-            GLSMHooks.TEXTURE_UNIT_STATE.post(GLSMHooks.textureUnitStateEvent);
-        }
-        textures.getTextureUnitStates(textureUnit).disable();
+        textures.getTextureUnitStates(getActiveTextureUnit()).disable();
     }
 
     private static final String PIXELTRANSFER_MSG = "glPixelTransfer is not available in GL 3.3 core profile.";
@@ -3384,6 +3381,11 @@ public class GLStateManager {
         }
     }
 
+    private static final boolean[] restoreUnitChanged = new boolean[MAX_TEXTURE_UNITS];
+    private static boolean restoreDepthChanged, restoreBlendChanged, restoreColorMaskChanged, restoreClearColorChanged,
+        restoreDrawBufferChanged, restoreLogicOpChanged, restoreStencilChanged, restoreViewportChanged,
+        restoreLineChanged, restorePointChanged, restorePolygonChanged, restoreActiveUnitChanged;
+
     public static void popState() {
         final int mask = attribs.popInt();
         attribDepth--;
@@ -3396,6 +3398,8 @@ public class GLStateManager {
         }
         modified.clear();
 
+        captureRestoreChanges(mask);
+
         // Second: restore non-boolean state stacks the traditional way
         final IStateStack<?>[] nonBooleanStacks = Feature.maskToNonBooleanStacks(mask);
         for (IStateStack<?> stack : nonBooleanStacks) {
@@ -3407,28 +3411,70 @@ public class GLStateManager {
         applyRestoredState(mask);
     }
 
+    private static void captureRestoreChanges(int mask) {
+        if ((mask & GL11.GL_DEPTH_BUFFER_BIT) != 0) {
+            restoreDepthChanged = depthState.topChanged();
+        }
+        if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0) {
+            restoreBlendChanged = blendState.topChanged();
+            restoreColorMaskChanged = colorMask.topChanged();
+            restoreClearColorChanged = clearColor.topChanged();
+            restoreDrawBufferChanged = drawBuffer.topChanged();
+            restoreLogicOpChanged = logicOpMode.topChanged();
+        }
+        if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0) {
+            restoreStencilChanged = stencilState.topChanged();
+        }
+        if ((mask & GL11.GL_VIEWPORT_BIT) != 0) {
+            restoreViewportChanged = viewportState.topChanged();
+        }
+        if ((mask & GL11.GL_LINE_BIT) != 0) {
+            restoreLineChanged = lineState.topChanged();
+        }
+        if ((mask & GL11.GL_POINT_BIT) != 0) {
+            restorePointChanged = pointState.topChanged();
+        }
+        if ((mask & GL11.GL_POLYGON_BIT) != 0) {
+            restorePolygonChanged = polygonState.topChanged();
+        }
+        if ((mask & GL11.GL_TEXTURE_BIT) != 0) {
+            for (int i = 0; i < MAX_TEXTURE_UNITS; i++) {
+                restoreUnitChanged[i] = textures.getTextureUnitBindings(i).topChanged();
+            }
+            restoreActiveUnitChanged = activeTextureUnit.topChanged();
+        }
+    }
+
     /**
      * After popping GLSM stacks, apply restored state to the GL driver.
      */
     private static void applyRestoredState(int mask) {
-        if ((mask & GL11.GL_DEPTH_BUFFER_BIT) != 0) {
+        if ((mask & GL11.GL_DEPTH_BUFFER_BIT) != 0 && restoreDepthChanged) {
             RENDER_BACKEND.depthFunc(depthState.getFunc());
             RENDER_BACKEND.depthMask(depthState.isEnabled());
             RENDER_BACKEND.clearDepth(depthState.getClearValue());
         }
         if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0) {
-            RENDER_BACKEND.blendFuncSeparate(blendState.getSrcRgb(), blendState.getDstRgb(), blendState.getSrcAlpha(), blendState.getDstAlpha());
-            RENDER_BACKEND.blendEquationSeparate(blendState.getEquationRgb(), blendState.getEquationAlpha());
-            RENDER_BACKEND.blendColor(blendState.getBlendColorR(), blendState.getBlendColorG(), blendState.getBlendColorB(), blendState.getBlendColorA());
-            RENDER_BACKEND.colorMask(colorMask.red, colorMask.green, colorMask.blue, colorMask.alpha);
-            RENDER_BACKEND.clearColor(clearColor.getRed(), clearColor.getGreen(), clearColor.getBlue(), clearColor.getAlpha());
+            if (restoreBlendChanged) {
+                RENDER_BACKEND.blendFuncSeparate(blendState.getSrcRgb(), blendState.getDstRgb(), blendState.getSrcAlpha(), blendState.getDstAlpha());
+                RENDER_BACKEND.blendEquationSeparate(blendState.getEquationRgb(), blendState.getEquationAlpha());
+                RENDER_BACKEND.blendColor(blendState.getBlendColorR(), blendState.getBlendColorG(), blendState.getBlendColorB(), blendState.getBlendColorA());
+            }
+            if (restoreColorMaskChanged) {
+                RENDER_BACKEND.colorMask(colorMask.red, colorMask.green, colorMask.blue, colorMask.alpha);
+            }
+            if (restoreClearColorChanged) {
+                RENDER_BACKEND.clearColor(clearColor.getRed(), clearColor.getGreen(), clearColor.getBlue(), clearColor.getAlpha());
+            }
             // Draw buffer is per-framebuffer state; only restore on the default framebuffer
-            if (drawFramebuffer == 0) {
+            if (restoreDrawBufferChanged && drawFramebuffer == 0) {
                 RENDER_BACKEND.drawBuffer(drawBuffer.getValue());
             }
-            RENDER_BACKEND.logicOp(logicOpMode.getValue());
+            if (restoreLogicOpChanged) {
+                RENDER_BACKEND.logicOp(logicOpMode.getValue());
+            }
         }
-        if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0) {
+        if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0 && restoreStencilChanged) {
             RENDER_BACKEND.stencilFuncSeparate(GL11.GL_FRONT, stencilState.getFuncFront(), stencilState.getRefFront(), stencilState.getValueMaskFront());
             RENDER_BACKEND.stencilFuncSeparate(GL11.GL_BACK, stencilState.getFuncBack(), stencilState.getRefBack(), stencilState.getValueMaskBack());
             RENDER_BACKEND.stencilOpSeparate(GL11.GL_FRONT, stencilState.getFailOpFront(), stencilState.getZFailOpFront(), stencilState.getZPassOpFront());
@@ -3437,17 +3483,17 @@ public class GLStateManager {
             RENDER_BACKEND.stencilMaskSeparate(GL11.GL_BACK, stencilState.getWriteMaskBack());
             RENDER_BACKEND.clearStencil(stencilState.getClearValue());
         }
-        if ((mask & GL11.GL_VIEWPORT_BIT) != 0) {
+        if ((mask & GL11.GL_VIEWPORT_BIT) != 0 && restoreViewportChanged) {
             RENDER_BACKEND.viewport(viewportState.x, viewportState.y, viewportState.width, viewportState.height);
             RENDER_BACKEND.depthRange(viewportState.depthRangeNear, viewportState.depthRangeFar);
         }
-        if ((mask & GL11.GL_LINE_BIT) != 0) {
+        if ((mask & GL11.GL_LINE_BIT) != 0 && restoreLineChanged) {
             RENDER_BACKEND.lineWidth(Math.clamp(lineState.getWidth(), lineWidthMin, lineWidthMax));
         }
-        if ((mask & GL11.GL_POINT_BIT) != 0) {
+        if ((mask & GL11.GL_POINT_BIT) != 0 && restorePointChanged) {
             RENDER_BACKEND.pointSize(pointState.getSize());
         }
-        if ((mask & GL11.GL_POLYGON_BIT) != 0) {
+        if ((mask & GL11.GL_POLYGON_BIT) != 0 && restorePolygonChanged) {
             // Core profile only supports GL_FRONT_AND_BACK; use frontMode (front/back are always kept in sync since glPolygonMode also forces GL_FRONT_AND_BACK)
             RENDER_BACKEND.polygonMode(GL11.GL_FRONT_AND_BACK, polygonState.getFrontMode());
             RENDER_BACKEND.polygonOffset(polygonState.getOffsetFactor(), polygonState.getOffsetUnits());
@@ -3455,12 +3501,19 @@ public class GLStateManager {
             RENDER_BACKEND.frontFace(polygonState.getFrontFace());
         }
         if ((mask & GL11.GL_TEXTURE_BIT) != 0) {
-            // Restore texture bindings for all units, then restore active unit. activeTextureUnit stores the 0-based index, glActiveTexture needs GL_TEXTURE0 + index.
+            // Restore only the units whose binding changed, then restore the active unit.
+            // activeTextureUnit stores the 0-based index, glActiveTexture needs GL_TEXTURE0 + index.
+            boolean unitTouched = false;
             for (int i = 0; i < MAX_TEXTURE_UNITS; i++) {
-                RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
-                RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, textures.getTextureUnitBindings(i).getBinding());
+                if (restoreUnitChanged[i]) {
+                    RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
+                    RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, textures.getTextureUnitBindings(i).getBinding());
+                    unitTouched = true;
+                }
             }
-            RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + activeTextureUnit.getValue());
+            if (unitTouched || restoreActiveUnitChanged) {
+                RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + activeTextureUnit.getValue());
+            }
         }
 
         // Bump generation counters only if state actually changed during this push/pop scope.
@@ -3883,7 +3936,7 @@ public class GLStateManager {
     private static boolean handleRemovedTexParam(int target, int pname, int value) {
         if (pname == GL14.GL_GENERATE_MIPMAP) {
             if (target == GL11.GL_TEXTURE_2D) {
-                final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+                final TextureInfo info = getBoundTextureInfo();
                 if (info != null) info.setGenerateMipmap(value != 0);
             }
             return true;
@@ -3893,7 +3946,7 @@ public class GLStateManager {
 
     private static void maybeGenerateMipmap(int target, int level) {
         if (target != GL11.GL_TEXTURE_2D) return;
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
+        final TextureInfo info = getBoundTextureInfo();
         if (info != null && info.isGenerateMipmap() && level == info.getBaseLevel() && level < info.getMaxLevel()) {
             RENDER_BACKEND.generateMipmap(target);
         }
@@ -3903,7 +3956,10 @@ public class GLStateManager {
         if (target != GL11.GL_TEXTURE_2D) {
             return true;
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        return updateTexParameteriCache(TextureInfoCache.INSTANCE.getInfo(texture), pname, param);
+    }
+
+    static boolean updateTexParameteriCache(TextureInfo info, int pname, int param) {
         if (info == null) {
             return true;
         }
@@ -3950,7 +4006,9 @@ public class GLStateManager {
             final int val = params.get(params.position());
             final int remapped = remapTexClamp(pname, val);
             if (remapped != val) params.put(params.position(), remapped);
-            updateTexParameteriCache(target, getBoundTextureForServerState(), pname, remapped);
+            if (target == GL11.GL_TEXTURE_2D) {
+                updateTexParameteriCache(getBoundTextureInfo(), pname, remapped);
+            }
         }
         RENDER_BACKEND.texParameteriv(target, pname, params);
     }
@@ -3961,7 +4019,9 @@ public class GLStateManager {
             final float val = params.get(params.position());
             final float remapped = remapTexClamp(pname, val);
             if (remapped != val) params.put(params.position(), remapped);
-            updateTexParameterfCache(target, getBoundTextureForServerState(), pname, remapped);
+            if (target == GL11.GL_TEXTURE_2D) {
+                updateTexParameterfCache(getBoundTextureInfo(), pname, remapped);
+            }
         }
         RENDER_BACKEND.texParameterfv(target, pname, params);
     }
@@ -3980,7 +4040,7 @@ public class GLStateManager {
             RENDER_BACKEND.texParameteri(target, pname, param);
             return;
         }
-        if (!updateTexParameteriCache(target, getBoundTextureForServerState(), pname, param)) return;
+        if (!updateTexParameteriCache(getBoundTextureInfo(), pname, param)) return;
 
         RENDER_BACKEND.texParameteri(target, pname, param);
     }
@@ -3989,7 +4049,10 @@ public class GLStateManager {
         if (target != GL11.GL_TEXTURE_2D) {
             return true;
         }
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        return updateTexParameterfCache(TextureInfoCache.INSTANCE.getInfo(texture), pname, param);
+    }
+
+    static boolean updateTexParameterfCache(TextureInfo info, int pname, float param) {
         if (info == null) {
             return true;
         }
@@ -4020,18 +4083,21 @@ public class GLStateManager {
             RENDER_BACKEND.texParameterf(target, pname, param);
             return;
         }
-        if (!updateTexParameterfCache(target, getBoundTextureForServerState(), pname, param)) return;
+        if (!updateTexParameterfCache(getBoundTextureInfo(), pname, param)) return;
 
         RENDER_BACKEND.texParameterf(target, pname, param);
     }
 
     public static int getTexParameterOrDefault(int texture, int pname, IntSupplier defaultSupplier) {
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(texture);
+        return getTexParameterOrDefault(TextureInfoCache.INSTANCE.getInfo(texture), pname, defaultSupplier);
+    }
+
+    static int getTexParameterOrDefault(TextureInfo info, int pname, IntSupplier defaultSupplier) {
         if (info == null) {
             if (isRecordingDisplayList()) {
-                throw new IllegalStateException(String.format(
-                    "glGetTexParameteri called during display list recording with no cached TextureInfo for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", texture));
+                throw new IllegalStateException(
+                    "glGetTexParameteri called during display list recording with no cached TextureInfo. " +
+                        "Cannot query OpenGL state during compilation!");
             }
             return defaultSupplier.getAsInt();
         }
@@ -4048,8 +4114,8 @@ public class GLStateManager {
             default -> {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
-                        "glGetTexParameteri called during display list recording with uncached pname 0x%s for texture %d. " +
-                            "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), texture));
+                        "glGetTexParameteri called during display list recording with uncached pname 0x%s. " +
+                            "Cannot query OpenGL state during compilation!", Integer.toHexString(pname)));
                 }
                 yield defaultSupplier.getAsInt();
             }
@@ -4060,20 +4126,19 @@ public class GLStateManager {
         if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return RENDER_BACKEND.getTexParameteri(target, pname);
         }
-        return getTexParameterOrDefault(getBoundTextureForServerState(), pname, () -> RENDER_BACKEND.getTexParameteri(target, pname));
+        return getTexParameterOrDefault(getBoundTextureInfo(), pname, () -> RENDER_BACKEND.getTexParameteri(target, pname));
     }
 
     public static float glGetTexParameterf(int target, int pname) {
         if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
             return RENDER_BACKEND.getTexParameterf(target, pname);
         }
-        final int boundTexture = getBoundTextureForServerState();
-        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(boundTexture);
+        final TextureInfo info = getBoundTextureInfo();
         if(info == null) {
             if (isRecordingDisplayList()) {
-                throw new IllegalStateException(String.format(
-                    "glGetTexParameterf called during display list recording with no cached TextureInfo for texture %d. " +
-                    "Cannot query OpenGL state during compilation!", boundTexture));
+                throw new IllegalStateException(
+                    "glGetTexParameterf called during display list recording with no cached TextureInfo. " +
+                    "Cannot query OpenGL state during compilation!");
             }
             return RENDER_BACKEND.getTexParameterf(target, pname);
         }
@@ -4084,8 +4149,8 @@ public class GLStateManager {
             default -> {
                 if (isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format(
-                        "glGetTexParameterf called during display list recording with uncached pname 0x%s for texture %d. " +
-                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname), boundTexture));
+                        "glGetTexParameterf called during display list recording with uncached pname 0x%s. " +
+                        "Cannot query OpenGL state during compilation!", Integer.toHexString(pname)));
                 }
                 yield RENDER_BACKEND.getTexParameterf(target, pname);
             }

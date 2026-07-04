@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVert
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
@@ -52,6 +53,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final SmoothLightPipeline smoothLightPipeline;
     private final FlatLightPipeline flatLightPipeline;
     private final QuadLightData quadLightData = new QuadLightData();
+    @Getter private final FloatArrayList teBoundsScratch = new FloatArrayList();
     private final VertexArrayQuadView quadView;
     private final boolean hasColoredLight;
     private final float[] tintResult = new float[3];

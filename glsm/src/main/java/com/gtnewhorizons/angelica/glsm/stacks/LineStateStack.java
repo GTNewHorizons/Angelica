@@ -39,4 +39,8 @@ public class LineStateStack extends LineState implements IStateStack<LineStateSt
     public boolean isEmpty() {
         return pointer == 0;
     }
+
+    public boolean topChanged() {
+        return pointer > 0 && !sameAs(stack[pointer - 1]);
+    }
 }

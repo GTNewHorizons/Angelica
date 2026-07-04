@@ -972,6 +972,21 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void bindBufferRange(int target, int index, int buffer, long offset, long size) {
+        GL30C.glBindBufferRange(target, index, buffer, offset, size);
+    }
+
+    @Override
+    public int getUniformBlockIndex(int program, CharSequence name) {
+        return GL31C.glGetUniformBlockIndex(program, name);
+    }
+
+    @Override
+    public void uniformBlockBinding(int program, int blockIndex, int binding) {
+        GL31C.glUniformBlockBinding(program, blockIndex, binding);
+    }
+
+    @Override
     public void bufferData(int target, long size, int usage) {
         GL15C.glBufferData(target, size, usage);
     }
@@ -1104,6 +1119,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void flushMappedBufferRange(int target, long offset, long length) {
         GL30C.glFlushMappedBufferRange(target, offset, length);
+    }
+
+    @Override
+    public long mapBufferRangeAddress(int target, long offset, long length, int access) {
+        return GL30C.nglMapBufferRange(target, offset, length, access);
     }
 
     @Override

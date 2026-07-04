@@ -5,6 +5,7 @@ import net.minecraft.client.renderer.culling.ClippingHelper;
 import net.minecraft.client.renderer.culling.Frustrum;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
+import org.embeddedt.embeddium.impl.render.viewport.frustum.SimpleFrustum;
 import org.joml.FrustumIntersection;
 import org.joml.Vector3d;
 import org.spongepowered.asm.mixin.Final;
@@ -31,9 +32,9 @@ public abstract class MixinFrustrum implements ViewportProvider {
     @Override
     public Viewport sodium$createViewport() {
         // Shadow frustum subclasses override this via their own ViewportProvider impl.
-        // This default handles vanilla Frustrum only, using the per-instance snapshot
+        // This default handles vanilla Frustrum only, using the per-instance snapshot.
         return new Viewport(
-            this.celeritas$snapshot::testAab,
+            new SimpleFrustum(this.celeritas$snapshot),
             new Vector3d(this.xPosition, this.yPosition, this.zPosition)
         );
     }

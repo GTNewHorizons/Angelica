@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.PlayerReflectionCapture;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
@@ -597,6 +598,8 @@ public class ShadowRenderer {
         modelView.peek().getModel().get(MODELVIEW_BUFFER);
         GLStateManager.glLoadMatrix(MODELVIEW_BUFFER);
 
+        TesrBatchRenderer.INSTANCE.beginPass(TesrBatchRenderer.PASS_SHADOW, modelView.peek().getModel(), cameraX, cameraY, cameraZ);
+
         GbufferPrograms.beginBlockEntities();
         GbufferPrograms.setBlockEntityDefaults();
 
@@ -616,6 +619,8 @@ public class ShadowRenderer {
 
 			shadowTileEntities++;
 		}
+
+        TesrBatchRenderer.INSTANCE.flush();
 
         GbufferPrograms.endBlockEntities();
         GLStateManager.glPopMatrix();

@@ -60,15 +60,7 @@ public class TessellatorStreamingDrawer {
         if (initialized) return;
         initialized = true;
 
-        if (RenderSystem.supportsBufferStorage() && !Boolean.getBoolean("angelica.forceOrphanStreaming")) {
-            try {
-                persistentBuffer = new PersistentStreamingBuffer();
-                LOGGER.info("Persistent streaming buffer created ({}MB)", PersistentStreamingBuffer.DEFAULT_CAPACITY / (1024 * 1024));
-            } catch (Exception e) {
-                LOGGER.warn("Failed to create persistent streaming buffer, using orphan fallback", e);
-                persistentBuffer = null;
-            }
-        }
+        persistentBuffer = PersistentStreamingBuffer.createOrNull(PersistentStreamingBuffer.DEFAULT_CAPACITY);
     }
 
     /**

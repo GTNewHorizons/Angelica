@@ -1,11 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.rendering.tesr.TesrProviderDispatch;
 import com.prupe.mcpatcher.ctm.CTMUtils;
-import it.unimi.dsi.fastutil.ints.Int2IntMap;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
-import net.minecraft.block.Block;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.tileentity.TileEntity;
 import org.spongepowered.asm.mixin.Mixin;
@@ -19,31 +18,19 @@ public class MixinTileEntityRendererDispatcher {
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("HEAD"))
     private void iris$setBlockEntityId(TileEntity te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
         CTMUtils.clearCurrentCompact();
-        if (te == null) {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-            return;
-        }
-        Block block = te.getBlockType();
-        if (block == null) {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-            return;
-        }
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(iris$resolveBlockEntityId(te));
 
-        Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-        if (blockMetaMatches == null) {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-            return;
+        // Rebind Iris's pass in case the previous TESR changed it
+        if (Iris.enabled) {
+            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+            if (pipeline != null) {
+                pipeline.rebindCurrentPass();
+            }
         }
+    }
 
-        Int2IntMap metaMap = blockMetaMatches.get(block);
-        if (metaMap == null) {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-            return;
-        }
-
-        int meta = te.getBlockMetadata();
-        int id = metaMap.get(meta);
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(Math.max(0, id));
+    private static int iris$resolveBlockEntityId(TileEntity te) {
+        return TesrProviderDispatch.resolveBlockEntityId(te);
     }
 
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("RETURN"))

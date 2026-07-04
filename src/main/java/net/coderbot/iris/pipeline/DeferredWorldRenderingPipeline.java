@@ -835,6 +835,19 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+	@Override
+	public void rebindCurrentPass() {
+		final Pass pass = this.current;
+		if (pass == null) {
+			return;
+		}
+		final Program program = pass.getProgram();
+		if (program != null && GLStateManager.getActiveProgram() == program.getProgramId()) {
+			return;
+		}
+		pass.use();
+	}
+
 	private Pass createDefaultPass() {
 		final GlFramebuffer framebufferBeforeTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterPrepare, new int[] {0});
 		final GlFramebuffer framebufferAfterTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, new int[] {0});

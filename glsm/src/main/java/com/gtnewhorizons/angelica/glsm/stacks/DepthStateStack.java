@@ -38,4 +38,8 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
     public boolean isEmpty() {
         return pointer == 0;
     }
+
+    public boolean topChanged() {
+        return pointer > 0 && !sameAs(stack[pointer - 1]);
+    }
 }

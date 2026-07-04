@@ -1,7 +1,7 @@
-package com.gtnewhorizons.angelica.compat.toremove;
+package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -17,7 +17,7 @@ public abstract class RenderPhase {
     protected final String name;
     protected Runnable beginAction;
     private final Runnable endAction;
-    protected static final Transparency NO_TRANSPARENCY = new Transparency("no_transparency", GLStateManager::disableBlend, () -> {
+    protected static final Transparency NO_TRANSPARENCY = new Transparency("no_transparency", TransparencyType.OPAQUE, GLStateManager::disableBlend, () -> {
     });
     protected static final Transparency ADDITIVE_TRANSPARENCY = new Transparency("additive_transparency", () -> {
         GLStateManager.enableBlend();
@@ -33,14 +33,14 @@ public abstract class RenderPhase {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
-    protected static final Transparency GLINT_TRANSPARENCY = new Transparency("glint_transparency", () -> {
+    protected static final Transparency GLINT_TRANSPARENCY = new Transparency("glint_transparency", TransparencyType.DECAL, () -> {
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_COLOR, GL11.GL_ONE,  GL11.GL_ZERO, GL11.GL_ONE);
     }, () -> {
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
     });
-    protected static final Transparency CRUMBLING_TRANSPARENCY = new Transparency("crumbling_transparency", () -> {
+    protected static final Transparency CRUMBLING_TRANSPARENCY = new Transparency("crumbling_transparency", TransparencyType.DECAL, () -> {
         GLStateManager.enableBlend();
         GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_SRC_COLOR, GL11.GL_ONE, GL11.GL_ZERO);
     }, () -> {
@@ -63,6 +63,7 @@ public abstract class RenderPhase {
     protected static final Texture BLOCK_ATLAS_TEXTURE;
     protected static final Texture NO_TEXTURE;
     protected static final Texturing DEFAULT_TEXTURING;
+    protected static final Texturing NO_FFP_LIGHTING;
     protected static final Lightmap ENABLE_LIGHTMAP;
     protected static final Lightmap DISABLE_LIGHTMAP;
     protected static final DiffuseLighting ENABLE_DIFFUSE_LIGHTING;
@@ -82,6 +83,7 @@ public abstract class RenderPhase {
     protected static final Target MAIN_TARGET;
     protected static final Target OUTLINE_TARGET;
     protected static final Target TRANSLUCENT_TARGET;
+    protected static final Shader NO_SHADER = new Shader("no_shader", () -> {}, () -> {});
 
     public RenderPhase(String name, Runnable beginAction, Runnable endAction) {
         this.name = name;
@@ -128,6 +130,7 @@ public abstract class RenderPhase {
         DEFAULT_TEXTURING = new Texturing("default_texturing", () -> {
         }, () -> {
         });
+        NO_FFP_LIGHTING = new Texturing("no_ffp_lighting", GLStateManager::disableLighting, GLStateManager::enableLighting);
         ENABLE_LIGHTMAP = new Lightmap(true);
         DISABLE_LIGHTMAP = new Lightmap(false);
         ENABLE_DIFFUSE_LIGHTING = new DiffuseLighting(true);
@@ -144,35 +147,23 @@ public abstract class RenderPhase {
         NO_FOG = new Fog("no_fog", () -> {
         }, () -> {
         });
-        FOG = new Fog("fog", () -> {
-            // Unclear what this should do
-            // BackgroundRenderer.setFogBlack(), also levelFogColor()
-            AngelicaMod.LOGGER.debug("Fog - Not setting level fog color");
-            GLStateManager.enableFog();
-        }, GLStateManager::disableFog);
+        FOG = new Fog("fog", GLStateManager::enableFog, GLStateManager::disableFog);
         BLACK_FOG = new Fog("black_fog", () -> {
             GLStateManager.fogColor(0.0F, 0.0F, 0.0F, 1.0F);
             GLStateManager.enableFog();
-        }, () -> {
-            // Unclear what this should do
-            // BackgroundRenderer.setFogBlack(), also levelFogColor()
-            AngelicaMod.LOGGER.debug("Fog - Not setting level fog color");
-            GLStateManager.disableFog();
-        });
+        }, GLStateManager::disableFog);
         MAIN_TARGET = new Target("main_target", () -> {
         }, () -> {
         });
         OUTLINE_TARGET = new Target("outline_target", () -> {
-            // TODO: Sodium
-            AngelicaMod.LOGGER.debug("NOT enabling the entity outline framebuffer");
+            // TODO: Sodium - entity outline framebuffer
             //MinecraftClient.getInstance().worldRenderer.getEntityOutlinesFramebuffer().beginWrite(false);
         }, () -> {
             Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(false);
         });
         TRANSLUCENT_TARGET = new Target("translucent_target", () -> {
             if (Minecraft.isFancyGraphicsEnabled()) {
-                // TODO: Sodium
-                AngelicaMod.LOGGER.debug("NOT enabling the translucent framebuffer");
+                // TODO: Sodium - translucent framebuffer
                 // MinecraftClient.getInstance().worldRenderer.getTranslucentFramebuffer().beginWrite(false);
             }
 
@@ -342,24 +333,7 @@ public abstract class RenderPhase {
 
     public static class Lightmap extends Toggleable {
         public Lightmap(boolean lightmap) {
-            super("lightmap", () -> {
-                if (lightmap) {
-                    // TODO: Sodium - LightmapTextureManager
-                    AngelicaMod.LOGGER.debug("Lightmap - enable (not implemented)");
-//                    throw new RuntimeException("Not Implemented Yet");
-//                    MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().enable();
-
-                }
-
-            }, () -> {
-                if (lightmap) {
-                    // TODO: Sodium - LightmapTextureManager
-                    AngelicaMod.LOGGER.debug("Lightmap - disable (not implemented)");
-//                    throw new RuntimeException("Not Implemented Yet");
-//                    MinecraftClient.getInstance().gameRenderer.getLightmapTextureManager().disable();
-                }
-
-            }, lightmap);
+            super("lightmap", () -> {}, () -> {}, lightmap);
         }
     }
 
@@ -395,6 +369,12 @@ public abstract class RenderPhase {
         }
     }
 
+
+    public static class Shader extends RenderPhase {
+        public Shader(String name, Runnable bind, Runnable release) {
+            super(name, bind, release);
+        }
+    }
 
     public static class Texturing extends RenderPhase {
         public Texturing(String string, Runnable runnable, Runnable runnable2) {
@@ -538,8 +518,19 @@ public abstract class RenderPhase {
 
 
     public static class Transparency extends RenderPhase {
+        private final TransparencyType transparencyType;
+
         public Transparency(String string, Runnable runnable, Runnable runnable2) {
+            this(string, TransparencyType.GENERAL_TRANSPARENT, runnable, runnable2);
+        }
+
+        public Transparency(String string, TransparencyType transparencyType, Runnable runnable, Runnable runnable2) {
             super(string, runnable, runnable2);
+            this.transparencyType = transparencyType;
+        }
+
+        public TransparencyType getTransparencyType() {
+            return transparencyType;
         }
     }
 }

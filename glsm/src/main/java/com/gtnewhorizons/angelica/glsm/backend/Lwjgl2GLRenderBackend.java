@@ -929,6 +929,21 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void bindBufferRange(int target, int index, int buffer, long offset, long size) {
+        GL30.glBindBufferRange(target, index, buffer, offset, size);
+    }
+
+    @Override
+    public int getUniformBlockIndex(int program, CharSequence name) {
+        return GL31.glGetUniformBlockIndex(program, name);
+    }
+
+    @Override
+    public void uniformBlockBinding(int program, int blockIndex, int binding) {
+        GL31.glUniformBlockBinding(program, blockIndex, binding);
+    }
+
+    @Override
     public void bufferData(int target, long size, int usage) {
         GL15.glBufferData(target, size, usage);
     }

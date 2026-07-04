@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import lombok.Getter;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL40;
 import org.lwjgl.opengl.GL43;
@@ -26,180 +27,15 @@ public class Program {
     @Getter private final VertexKey vertexKey;
     @Getter private final FragmentKey fragmentKey;
 
-    // Per-program uniform dirty-tracking
-    static final class UploadState {
-        int mvGen = -1, mvLinearGen = -1, projGen = -1, texMatGen = -1;
-        int lightingGen = -1, fragmentGen = -1, colorGen = -1, normalGen = -1, texCoordGen = -1;
-        int texGenGen = -1, clipPlaneGen = -1;
-        float lightmapX = Float.NaN, lightmapY = Float.NaN, lineWidth = Float.NaN;
-        int viewportWidth = -1, viewportHeight = -1;
-        int stippleViewportX = Integer.MIN_VALUE, stippleViewportY = Integer.MIN_VALUE;
-        int stippleViewportW = -1, stippleViewportH = -1;
-        int lineStipple = -1;
-    }
-    final UploadState uploadState = new UploadState();
-
-    // Uniform locations (-1 = not present in this variant)
-    // Matrices
-    public int locModelViewMatrix = -1;
-    public int locProjectionMatrix = -1;
-    public int locMVPMatrix = -1;
-    public int locNormalMatrix = -1;
-    public final int[] locTextureMatrix = { -1, -1, -1, -1 };
-
-    // Current state defaults
-    public int locCurrentNormal = -1;
-    public int locCurrentColor = -1;
-    public final int[] locCurrentTexCoord = { -1, -1, -1, -1 };
-    public int locCurrentLightmapCoord = -1;
-    public int locLightmapTextureMatrix = -1;
-
-    // Lighting - color material path (raw values)
-    public int locLightModelAmbient = -1;
-    public int locMaterialEmission = -1;
-    public int locMaterialAmbient = -1;
-    public int locMaterialDiffuse = -1;
-    public int locMaterialSpecular = -1;
-    public int locMaterialShininess = -1;
-    public int locLight0Ambient = -1;
-    public int locLight0Diffuse = -1;
-    public int locLight0Specular = -1;
-    public int locLight1Ambient = -1;
-    public int locLight1Diffuse = -1;
-    public int locLight1Specular = -1;
-
-    // Lighting - pre-computed path
-    public int locSceneColor = -1;
-    public int locLightProd0Ambient = -1;
-    public int locLightProd0Diffuse = -1;
-    public int locLightProd0Specular = -1;
-    public int locLightProd1Ambient = -1;
-    public int locLightProd1Diffuse = -1;
-    public int locLightProd1Specular = -1;
-
-    // Light positions
-    public int locLight0Position = -1;
-    public int locLight1Position = -1;
-
-    // Normal scale (for rescale normals)
-    public int locNormalScale = -1;
-
-    // TexGen plane uniforms
-    public int locTexGenObjPlaneS = -1;
-    public int locTexGenObjPlaneT = -1;
-    public int locTexGenObjPlaneR = -1;
-    public int locTexGenObjPlaneQ = -1;
-    public int locTexGenEyePlaneS = -1;
-    public int locTexGenEyePlaneT = -1;
-    public int locTexGenEyePlaneR = -1;
-    public int locTexGenEyePlaneQ = -1;
-
-    // Clip planes
-    public int locClipPlanes = -1;
-
-    // Wide line emulation (geometry shader)
-    public int locViewportSize = -1;
-    public int locLineWidth = -1;
-
-    // Line stipple emulation
-    public int locViewport = -1;
-    public int locLineStipple = -1;
-
-    // Fragment uniforms
     public final int[] locSampler = { -1, -1, -1, -1 };
-    public int locAlphaRef = -1;
-    public final int[] locTexEnvColor = { -1, -1, -1, -1 };
-    public int locOverlayColor = -1;
-    public int locFogParams = -1;
-    public int locFogColor = -1;
 
     Program(int programId, VertexKey vertexKey, FragmentKey fragmentKey) {
         this.programId = programId;
         this.vertexKey = vertexKey;
         this.fragmentKey = fragmentKey;
-        resolveLocations();
-    }
-
-    private void resolveLocations() {
-        locModelViewMatrix = loc("u_ModelViewMatrix");
-        locProjectionMatrix = loc("u_ProjectionMatrix");
-        locMVPMatrix = loc("u_MVPMatrix");
-        locNormalMatrix = loc("u_NormalMatrix");
         for (int i = 0; i < 4; i++) {
-            locTextureMatrix[i] = loc("u_TextureMatrix" + i);
-            locCurrentTexCoord[i] = loc("u_CurrentTexCoord" + i);
+            locSampler[i] = RENDER_BACKEND.getUniformLocation(programId, "u_Sampler" + i);
         }
-
-        locCurrentNormal = loc("u_CurrentNormal");
-        locCurrentColor = loc("u_CurrentColor");
-        locCurrentLightmapCoord = loc("u_CurrentLightmapCoord");
-        locLightmapTextureMatrix = loc("u_LightmapTextureMatrix");
-
-        // Color material path
-        locLightModelAmbient = loc("u_LightModelAmbient");
-        locMaterialEmission = loc("u_MaterialEmission");
-        locMaterialAmbient = loc("u_MaterialAmbient");
-        locMaterialDiffuse = loc("u_MaterialDiffuse");
-        locMaterialSpecular = loc("u_MaterialSpecular");
-        locMaterialShininess = loc("u_MaterialShininess");
-        locLight0Ambient = loc("u_Light0Ambient");
-        locLight0Diffuse = loc("u_Light0Diffuse");
-        locLight0Specular = loc("u_Light0Specular");
-        locLight1Ambient = loc("u_Light1Ambient");
-        locLight1Diffuse = loc("u_Light1Diffuse");
-        locLight1Specular = loc("u_Light1Specular");
-
-        // Pre-computed path
-        locSceneColor = loc("u_SceneColor");
-        locLightProd0Ambient = loc("u_LightProd0Ambient");
-        locLightProd0Diffuse = loc("u_LightProd0Diffuse");
-        locLightProd0Specular = loc("u_LightProd0Specular");
-        locLightProd1Ambient = loc("u_LightProd1Ambient");
-        locLightProd1Diffuse = loc("u_LightProd1Diffuse");
-        locLightProd1Specular = loc("u_LightProd1Specular");
-
-        // Light positions
-        locLight0Position = loc("u_Light0Position");
-        locLight1Position = loc("u_Light1Position");
-
-        locNormalScale = loc("u_NormalScale");
-
-        // TexGen
-        locTexGenObjPlaneS = loc("u_TexGenObjPlaneS");
-        locTexGenObjPlaneT = loc("u_TexGenObjPlaneT");
-        locTexGenObjPlaneR = loc("u_TexGenObjPlaneR");
-        locTexGenObjPlaneQ = loc("u_TexGenObjPlaneQ");
-        locTexGenEyePlaneS = loc("u_TexGenEyePlaneS");
-        locTexGenEyePlaneT = loc("u_TexGenEyePlaneT");
-        locTexGenEyePlaneR = loc("u_TexGenEyePlaneR");
-        locTexGenEyePlaneQ = loc("u_TexGenEyePlaneQ");
-
-        // Clip planes
-        locClipPlanes = loc("u_ClipPlane[0]");
-
-        // Wide line emulation
-        locViewportSize = loc("u_ViewportSize");
-        locLineWidth = loc("u_LineWidth");
-
-        // Line stipple emulation
-        locViewport = loc("u_Viewport");
-        locLineStipple = loc("u_LineStipple");
-
-        // Fragment
-        for (int i = 0; i < 4; i++) {
-            locSampler[i] = loc("u_Sampler" + i);
-        }
-        locAlphaRef = loc("u_AlphaRef");
-        for (int i = 0; i < 4; i++) {
-            locTexEnvColor[i] = loc("u_TexEnvColor" + i);
-        }
-        locOverlayColor = loc("u_OverlayColor");
-        locFogParams = loc("u_FogParams");
-        locFogColor = loc("u_FogColor");
-    }
-
-    private int loc(String name) {
-        return RENDER_BACKEND.getUniformLocation(programId, name);
     }
 
     public void destroy() {
@@ -249,6 +85,11 @@ public class Program {
             shaderCount = 0;
 
             final Program ffpProgram = new Program(program, vk, fk);
+
+            final int blockIndex = backend.getUniformBlockIndex(program, FFPUniformBlock.BLOCK_NAME);
+            if (blockIndex != GL31.GL_INVALID_INDEX) {
+                backend.uniformBlockBinding(program, blockIndex, FFPUniformBlock.BINDING_POINT);
+            }
 
             final int previousProgram = GLStateManager.getActiveProgram();
             backend.useProgram(program);

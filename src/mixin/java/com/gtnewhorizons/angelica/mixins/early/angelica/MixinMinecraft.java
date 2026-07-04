@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -125,5 +127,7 @@ public abstract class MixinMinecraft {
     @Inject(method = "runGameLoop", at = @At("RETURN"))
     private void angelica$streamingBufferEndFrame(CallbackInfo ci) {
         TessellatorStreamingDrawer.endFrame();
+        BatchingFontRenderer.endFrame();
+        ShaderManager.endFrame();
     }
 }

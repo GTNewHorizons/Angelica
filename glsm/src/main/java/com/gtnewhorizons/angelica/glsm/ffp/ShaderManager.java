@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
-import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
@@ -53,6 +52,9 @@ public final class ShaderManager {
     @Getter private static final Vec4fStack texCoordStack = new Vec4fStack(currentTexCoords[0]);
     @Getter private static int normalGeneration;
     @Getter private static int texCoordGeneration;
+
+    private int preDrawCalls;
+    private int lastFramePreDrawCalls;
 
     public static Vector4f getCurrentTexCoord() { return currentTexCoords[0]; }
     public static Vector4f getCurrentTexCoord(int unit) { return currentTexCoords[unit]; }
@@ -114,7 +116,6 @@ public final class ShaderManager {
     }
 
     public void preDraw() {
-        if (Tracy.ENABLED) preDrawCalls++;
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
@@ -135,7 +136,7 @@ public final class ShaderManager {
 
         if (!active) return;
 
-
+        preDrawCalls++;
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
         final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
@@ -161,8 +162,15 @@ public final class ShaderManager {
 
     private void uploadUniforms() {
         if (currentProgram != null) {
-            uniforms.upload(currentProgram);
+            uniforms.upload();
         }
+    }
+
+    public static void endFrame() {
+        final ShaderManager sm = Holder.INSTANCE;
+        sm.lastFramePreDrawCalls = sm.preDrawCalls;
+        sm.preDrawCalls = 0;
+        sm.uniforms.endFrame();
     }
 
     public static void setCurrentNormal(float x, float y, float z) {
@@ -194,12 +202,13 @@ public final class ShaderManager {
     }
 
     public String getDebugInfo() {
-        return String.format("FFP: %d programs (%d vert, %d frag variants)",
-            cache.getProgramCount(), cache.getVertexVariantCount(), cache.getFragmentVariantCount());
+        return String.format("FFP: %d programs (%d vert, %d frag variants) | UBO: %d/%d draws wrote (mat %d, light %d, frag %d, misc %d)",
+            cache.getProgramCount(), cache.getVertexVariantCount(), cache.getFragmentVariantCount(),
+            uniforms.lastFrameBlockWrites, lastFramePreDrawCalls,
+            uniforms.lastFrameStagedMatrices, uniforms.lastFrameStagedLighting,
+            uniforms.lastFrameStagedFragment, uniforms.lastFrameStagedMisc);
     }
 
-    public static long preDrawCalls;
-    public static long uniformPushes;
-
+    public int statLastFramePreDrawCalls() { return lastFramePreDrawCalls; }
     public int statProgramCount() { return cache.getProgramCount(); }
 }

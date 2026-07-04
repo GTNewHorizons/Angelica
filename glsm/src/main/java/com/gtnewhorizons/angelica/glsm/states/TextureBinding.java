@@ -1,15 +1,31 @@
 package com.gtnewhorizons.angelica.glsm.states;
 
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import lombok.Getter;
-import lombok.Setter;
 
-@Getter
 public class TextureBinding implements ISettableState<TextureBinding> {
-    @Setter protected int binding;
+    @Getter protected int binding;
+    protected TextureInfo info;
+
+    public void setBinding(int binding) {
+        this.binding = binding;
+        this.info = null;
+    }
+
+    public TextureInfo getOrResolveInfo() {
+        TextureInfo resolved = info;
+        if (resolved == null) {
+            resolved = TextureInfoCache.INSTANCE.getInfo(binding);
+            info = resolved;
+        }
+        return resolved;
+    }
 
     @Override
     public TextureBinding set(TextureBinding state) {
         this.binding = state.binding;
+        this.info = null;
         return this;
     }
 

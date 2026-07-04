@@ -69,6 +69,14 @@ public final class VertexShaderGenerator {
         if (key.hasVertexNormal()) {
             sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
         }
+        if (key.instancedDraw()) {
+            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL0).append(") in vec4 a_InstCol0;\n");
+            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL1).append(") in vec4 a_InstCol1;\n");
+            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL2).append(") in vec4 a_InstCol2;\n");
+            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL3).append(") in vec4 a_InstCol3;\n");
+            sb.append("layout(location = ").append(InstancedAttribs.LOC_COLOR).append(") in vec4 a_InstColor;\n");
+            sb.append("layout(location = ").append(InstancedAttribs.LOC_LIGHTMAP).append(") in vec2 a_InstLightmap;\n");
+        }
         sb.append('\n');
     }
 
@@ -78,117 +86,8 @@ public final class VertexShaderGenerator {
     }
 
     private static void emitUniforms(StringBuilder sb, VertexKey key) {
-        sb.append("// Matrices\n");
-        sb.append("uniform mat4 u_ModelViewMatrix;\n");
-        sb.append("uniform mat4 u_ProjectionMatrix;\n");
-        sb.append("uniform mat4 u_MVPMatrix;\n");
-
-        if (key.lightingEnabled()) {
-            sb.append("uniform mat3 u_NormalMatrix;\n");
-        }
-        if (key.lineStipple()) {
-            sb.append("uniform vec4 u_Viewport;\n");
-        }
-
-        for (int i = 0; i < VertexKey.MAX_UNITS; i++) {
-            if (i == 1) continue;
-            if (key.unitTexMatEnabled(i)) {
-                sb.append("uniform mat4 u_TextureMatrix").append(i).append(";\n");
-            }
-        }
-
-        // TexGen plane uniforms (unit 0 only - TODO: per-unit)
-        if (key.texGenModeS() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneS;\n");
-        if (key.texGenModeS() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneS;\n");
-        if (key.texGenModeT() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneT;\n");
-        if (key.texGenModeT() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneT;\n");
-        if (key.texGenModeR() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneR;\n");
-        if (key.texGenModeR() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneR;\n");
-        if (key.texGenModeQ() == VertexKey.TG_OBJ_LINEAR) sb.append("uniform vec4 u_TexGenObjPlaneQ;\n");
-        if (key.texGenModeQ() == VertexKey.TG_EYE_LINEAR) sb.append("uniform vec4 u_TexGenEyePlaneQ;\n");
-
-        if (!key.hasVertexNormal() && key.lightingEnabled()) {
-            sb.append("uniform vec3 u_CurrentNormal;\n");
-        }
-
-        if (!key.hasVertexColor()) {
-            sb.append("uniform vec4 u_CurrentColor;\n");
-        }
-
-        if (key.unitTexCoordEnabled(0) && !key.hasVertexTexCoord()) {
-            sb.append("uniform vec4 u_CurrentTexCoord0;\n");
-        }
-        if (key.unitTexCoordEnabled(2) && !key.unit23UvFromUnit0()) sb.append("uniform vec4 u_CurrentTexCoord2;\n");
-        if (key.unitTexCoordEnabled(3) && !key.unit23UvFromUnit0()) sb.append("uniform vec4 u_CurrentTexCoord3;\n");
-
-        if (key.lightmapEnabled() && !key.hasVertexLightmap()) {
-            sb.append("uniform vec2 u_CurrentLightmapCoord;\n");
-        }
-
-        if (key.lightmapEnabled()) {
-            sb.append("uniform mat4 u_LightmapTextureMatrix;\n");
-        }
-
-        if (key.lightingEnabled()) {
-            emitLightingUniforms(sb, key);
-        }
-
-        if (key.lightingEnabled() && (key.normalizeEnabled() || key.rescaleNormalsEnabled())) {
-            // normalize is done in shader; rescale uses normalScale
-            if (key.rescaleNormalsEnabled() && !key.normalizeEnabled()) {
-                sb.append("uniform float u_NormalScale;\n");
-            }
-        }
-
-        if (key.clipPlanesEnabled()) {
-            sb.append("uniform vec4 u_ClipPlane[8];\n");
-        }
-
+        sb.append(FFPUniformBlock.GLSL_DECL);
         sb.append('\n');
-    }
-
-    private static void emitLightingUniforms(StringBuilder sb, VertexKey key) {
-        sb.append("\n// Lighting\n");
-
-        if (key.colorMaterialEnabled()) {
-            // When color material is active, we can't pre-compute light products so we upload raw light and material values
-            sb.append("uniform vec4 u_LightModelAmbient;\n");
-            sb.append("uniform vec4 u_MaterialEmission;\n");
-            sb.append("uniform vec4 u_MaterialAmbient;\n");
-            sb.append("uniform vec4 u_MaterialDiffuse;\n");
-            sb.append("uniform vec4 u_MaterialSpecular;\n");
-            sb.append("uniform float u_MaterialShininess;\n");
-
-            if (key.light0Enabled()) {
-                sb.append("uniform vec4 u_Light0Ambient;\n");
-                sb.append("uniform vec4 u_Light0Diffuse;\n");
-                sb.append("uniform vec4 u_Light0Specular;\n");
-                sb.append("uniform vec4 u_Light0Position;\n");
-            }
-            if (key.light1Enabled()) {
-                sb.append("uniform vec4 u_Light1Ambient;\n");
-                sb.append("uniform vec4 u_Light1Diffuse;\n");
-                sb.append("uniform vec4 u_Light1Specular;\n");
-                sb.append("uniform vec4 u_Light1Position;\n");
-            }
-        } else {
-            // Pre-computed: sceneColor + lightProducts
-            sb.append("uniform vec4 u_SceneColor;\n");
-
-            if (key.light0Enabled()) {
-                sb.append("uniform vec4 u_Light0Position;\n");
-                sb.append("uniform vec3 u_LightProd0Ambient;\n");
-                sb.append("uniform vec3 u_LightProd0Diffuse;\n");
-                sb.append("uniform vec3 u_LightProd0Specular;\n");
-            }
-            if (key.light1Enabled()) {
-                sb.append("uniform vec4 u_Light1Position;\n");
-                sb.append("uniform vec3 u_LightProd1Ambient;\n");
-                sb.append("uniform vec3 u_LightProd1Diffuse;\n");
-                sb.append("uniform vec3 u_LightProd1Specular;\n");
-            }
-            sb.append("uniform float u_MaterialShininess;\n");
-        }
     }
 
     private static void emitOutputs(StringBuilder sb, VertexKey key) {
@@ -218,22 +117,30 @@ public final class VertexShaderGenerator {
     private static void emitPositionTransform(StringBuilder sb, VertexKey key) {
         sb.append("  // Position transform\n");
         sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
-        sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
+        if (key.instancedDraw()) {
+            sb.append("  mat4 instMV = mat4(a_InstCol0, a_InstCol1, a_InstCol2, a_InstCol3);\n");
+            sb.append("  vec4 eyePos = instMV * pos4;\n");
+            sb.append("  gl_Position = u_ProjectionMatrix * eyePos;\n");
+        } else {
+            sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
 
-        // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
-        if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key) || key.clipPlanesEnabled()) {
-            sb.append("  vec4 eyePos = u_ModelViewMatrix * pos4;\n");
+            // Eye position needed for lighting, fog, EYE_LINEAR texgen, and clip planes
+            if (key.lightingEnabled() || key.fogEnabled() || texGenNeedsEyePos(key) || key.clipPlanesEnabled()) {
+                sb.append("  vec4 eyePos = u_ModelViewMatrix * pos4;\n");
+            }
         }
         sb.append('\n');
     }
 
     private static void emitNormalTransform(StringBuilder sb, VertexKey key) {
         sb.append("  // Normal transform\n");
-        if (key.hasVertexNormal()) {
-            sb.append("  vec3 normal = u_NormalMatrix * a_Normal;\n");
-        } else {
-            sb.append("  vec3 normal = u_NormalMatrix * u_CurrentNormal;\n");
+        final String srcNormal = key.hasVertexNormal() ? "a_Normal" : "u_CurrentNormal";
+        if (key.instancedDraw()) {
+            sb.append("  vec3 normal = normalize(mat3(instMV) * ").append(srcNormal).append(");\n");
+            sb.append('\n');
+            return;
         }
+        sb.append("  vec3 normal = u_NormalMatrix * ").append(srcNormal).append(";\n");
 
         if (key.normalizeEnabled()) {
             sb.append("  normal = normalize(normal);\n");
@@ -250,6 +157,9 @@ public final class VertexShaderGenerator {
             // Color material: vertex color replaces specific material properties per glColorMaterial mode (Mesa ffvertex_prog.c get_material() bitmask approach)
             sb.append("  vec4 matColor = ");
             sb.append(key.hasVertexColor() ? "a_Color" : "u_CurrentColor");
+            if (key.instancedDraw()) {
+                sb.append(" * a_InstColor");
+            }
             sb.append(";\n");
 
             // Emission source: vertex color for CM_EMISSION, else material uniform
@@ -345,10 +255,11 @@ public final class VertexShaderGenerator {
 
     private static void emitColorPassthrough(StringBuilder sb, VertexKey key) {
         sb.append("  // Color passthrough (no lighting)\n");
-        if (key.hasVertexColor()) {
-            sb.append("  v_Color = a_Color;\n");
+        final String src = key.hasVertexColor() ? "a_Color" : "u_CurrentColor";
+        if (key.instancedDraw()) {
+            sb.append("  v_Color = ").append(src).append(" * a_InstColor;\n");
         } else {
-            sb.append("  v_Color = u_CurrentColor;\n");
+            sb.append("  v_Color = ").append(src).append(";\n");
         }
         sb.append('\n');
     }
@@ -369,7 +280,9 @@ public final class VertexShaderGenerator {
         }
 
         if (key.lightmapEnabled()) {
-            if (key.hasVertexLightmap()) {
+            if (key.instancedDraw()) {
+                sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(a_InstLightmap, 0.0, 1.0);\n");
+            } else if (key.hasVertexLightmap()) {
                 sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(a_TexCoord1, 0.0, 1.0);\n");
             } else {
                 sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(u_CurrentLightmapCoord, 0.0, 1.0);\n");

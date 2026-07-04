@@ -17,7 +17,6 @@ public final class TracyFramePlots {
     private static long lastChunkUpdates;
     private static long lastDrawCalls, lastTexBindMisses, lastProgramSwitches, lastListPlaybacks;
     private static long lastStreamedBytes, lastStreamDraws, lastBufferWraps;
-    private static long lastFfpPreDrawCalls, lastFfpUniformPushes;
     private static long lastSectionsUploaded, lastBytesUploaded;
 
     private TracyFramePlots() {}
@@ -47,9 +46,9 @@ public final class TracyFramePlots {
         lastStreamDraws = delta("gl.streamDraws", TessellatorStreamingDrawer.streamDraws, lastStreamDraws);
         lastBufferWraps = delta("gl.bufferWraps", TessellatorStreamingDrawer.bufferWraps, lastBufferWraps);
 
-        lastFfpPreDrawCalls = delta("ffp.preDrawCalls", ShaderManager.preDrawCalls, lastFfpPreDrawCalls);
-        lastFfpUniformPushes = delta("ffp.uniformPushes", ShaderManager.uniformPushes, lastFfpUniformPushes);
-        Tracy.plotInt("ffp.programs", ShaderManager.getInstance().statProgramCount());
+        final ShaderManager ffp = ShaderManager.getInstance();
+        Tracy.plotInt("ffp.preDrawCalls", ffp.statLastFramePreDrawCalls());
+        Tracy.plotInt("ffp.programs", ffp.statProgramCount());
 
         lastSectionsUploaded = delta("mesh.uploadedSections", RenderRegionManager.getSectionsUploaded(), lastSectionsUploaded);
         lastBytesUploaded = deltaMem("mesh.uploadedBytes", RenderRegionManager.getBytesUploaded(), lastBytesUploaded);
