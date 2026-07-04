@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.ClippingHelperExt;
 import net.minecraft.client.renderer.culling.ClippingHelper;
 import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,6 +19,7 @@ public class MixinClippingHelper implements ClippingHelperExt {
     @Unique private final FrustumIntersection celeritas$frustumIntersection = new FrustumIntersection();
     @Unique private final Matrix4f celeritas$projMatrix = new Matrix4f();
     @Unique private final Matrix4f celeritas$mvMatrix = new Matrix4f();
+    @Unique private final Matrix4f celeritas$combined = new Matrix4f();
 
     @Override
     public FrustumIntersection celeritas$getFrustumIntersection() {
@@ -25,10 +27,16 @@ public class MixinClippingHelper implements ClippingHelperExt {
     }
 
     @Override
+    public Matrix4fc celeritas$getCombinedMatrix() {
+        return this.celeritas$combined;
+    }
+
+    @Override
     public void celeritas$updateFrustumIntersection() {
         this.celeritas$projMatrix.set(this.projectionMatrix);
         this.celeritas$mvMatrix.set(this.modelviewMatrix);
-        this.celeritas$frustumIntersection.set(this.celeritas$projMatrix.mul(this.celeritas$mvMatrix));
+        this.celeritas$combined.set(this.celeritas$projMatrix).mul(this.celeritas$mvMatrix);
+        this.celeritas$frustumIntersection.set(this.celeritas$combined);
     }
 
     /**
