@@ -99,12 +99,20 @@ public class FontStrategist {
             for (File file : files) {
                 try {
                     Font font = Font.createFont(Font.TRUETYPE_FONT, file);
+                    String name = font.getFontName();
+                    if (fontSet.containsKey(name)) {
+                        String deduped = name;
+                        int n = 1;
+                        while (fontSet.containsKey(deduped)) deduped = name + "_" + n++;
+                        LOGGER.warn("Font name {} (from {}) is already registered; registering this one as {}", name, file.getName(), deduped);
+                        name = deduped;
+                    }
                     if (ge != null) ge.registerFont(font);
-                    fontSet.put(font.getFontName(), font);
+                    fontSet.put(name, font);
                     loaded++;
-                    LOGGER.info("Loaded font {} from {}/{}", font.getFontName(), dir.getName(), file.getName());
+                    LOGGER.info("Loaded font {} from {}/{}", name, dir.getName(), file.getName());
                 } catch (FontFormatException | IOException e) {
-                    LOGGER.error("Couldn't load font {}: {}", file.getName(), e.toString());
+                    LOGGER.error("Couldn't load font {}", file.getPath(), e);
                 }
             }
         }
