@@ -36,7 +36,7 @@ public class MixinClippingHelper implements ClippingHelperExt {
         this.celeritas$projMatrix.set(this.projectionMatrix);
         this.celeritas$mvMatrix.set(this.modelviewMatrix);
         this.celeritas$combined.set(this.celeritas$projMatrix).mul(this.celeritas$mvMatrix);
-        this.celeritas$frustumIntersection.set(this.celeritas$combined);
+        this.celeritas$frustumIntersection.set(this.celeritas$combined, false);
     }
 
     /**
