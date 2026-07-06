@@ -1,0 +1,369 @@
+package com.gtnewhorizons.angelica.config;
+
+import com.gtnewhorizon.gtnhlib.config.Config;
+
+@Config(modid = "angelica", filename = "angelica-modules")
+public class AngelicaConfig {
+    @Config.Comment("Enable Celeritas terrain rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableCeleritas;
+
+    @Config.Comment("Enable multi-threaded chunk building for improved performance [Requires Celeritas]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresWorldRestart
+    public static boolean enableThreadedChunkBuilding;
+
+    @Config.Comment("Number of chunk builder threads. 0 = auto-detect, -1 = use single-threaded fallback")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = -1, max = 16)
+    @Config.RequiresWorldRestart
+    public static int chunkBuilderThreadCount;
+
+    @Config.Comment("Enable NotFine Options")
+    @Config.DefaultBoolean(false)
+    public static boolean enableNotFineOptions;
+
+    @Config.Comment("Enable Reese's Sodium Options")
+    @Config.DefaultBoolean(true)
+    public static boolean enableReesesSodiumOptions;
+
+    @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean injectQPRendering;
+
+    @Config.Comment("Enable Angelica's test blocks")
+    @Config.DefaultBoolean(false)
+    @Config.Ignore()
+    public static boolean enableTestBlocks;
+
+    @Config.Comment("Enable Iris Shaders [Requires Celeritas]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableIris;
+
+    @Config.Comment("Enable MCPatcherForge features, still in Alpha. Individual features are toggled in mcpatcher.json")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableMCPatcherForgeFeatures;
+
+    @Config.Comment("Replace main menu panorama with modern equivalent.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enablePanoramaBlurShader;
+
+    @Config.Comment("Replace cloud renderer with a VBO version.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableVBOClouds;
+
+    @Config.Comment("Uses cached attributes for VBO rendering, resulting in less CPU overhead. Disable if you notice any graphical issues.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableVAO;
+
+    @Config.Comment("Enables DSA (Direct State Access) for faster bindings. Disable if you notice terrible performance.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableDSA;
+
+    @Config.Comment("Enable NotFine features")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableNotFineFeatures;
+
+    @Config.Comment("Tweak F3 screen to be closer to modern versions. [From ArchaicFix]")
+    @Config.DefaultBoolean(true)
+    public static boolean modernizeF3Screen;
+
+    @Config.Comment("Show block registry name and meta value in F3, similar to 1.8+. [From ArchaicFix]")
+    @Config.DefaultBoolean(true)
+    public static boolean showBlockDebugInfo;
+
+    @Config.DefaultBoolean(true)
+    @Config.Comment("Hide downloading terrain screen. [From ArchaicFix]")
+    public static boolean hideDownloadingTerrainScreen;
+
+    @Config.Comment("Show memory usage during game load. [From ArchaicFix]")
+    @Config.DefaultBoolean(true)
+    public static boolean showSplashMemoryBar;
+
+    @Config.Comment("Renders the HUD elements once per 20 frames (by default) and reuses the pixels to improve performance. [Experimental]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableHudCaching;
+    @Config.Comment("Inject a conditional early return into all RenderGameOverlayEvent receivers; Requires enableHudCaching")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableHudCachingEventTransformer;
+
+    @Config.Comment("Enable HUD Caching at runtime. Requires enableHudCaching to be on at startup. [Experimental]")
+    @Config.DefaultBoolean(false)
+    public static boolean hudCachingActive;
+
+    @Config.Comment("The amount of frames to wait before updating the HUD elements. [Experimental]")
+    @Config.DefaultInt(20)
+    @Config.RangeInt(min = 1, max = 60)
+    public static int hudCachingFPS = 20;
+
+    @Config.Comment("Batch drawScreen fonts")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableFontRenderer;
+
+    @Config.Comment("Enable full RGB color support (16.7M colors) using &#RRGGBB syntax in text")
+    @Config.DefaultBoolean(true)
+    public static boolean enableRGBColors;
+
+    @Config.Comment("Enable gradient text (&g&#start&#end)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableGradients;
+
+    @Config.Comment("Enable rainbow cycling text (&q)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableRainbow;
+
+    @Config.Comment("Enable wave/bounce animated text (&z)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableWaveText;
+
+    @Config.Comment("Enable upside-down text (&v)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableDinnerboneText;
+
+    @Config.Comment("Enable per-segment drop shadow toggle (&u) and colored shadow (&u&#RRGGBB)")
+    @Config.DefaultBoolean(true)
+    public static boolean enableDropShadow;
+
+    @Config.Comment("Wave text amplitude (how far characters bounce)")
+    @Config.DefaultFloat(2.0f)
+    @Config.RangeFloat(min = 1.0f, max = 8.0f)
+    public static float waveAmplitude;
+
+    @Config.Comment("Convert &-prefix format codes (&#RRGGBB, &c, &l, etc.) at render time")
+    @Config.DefaultBoolean(true)
+    public static boolean enableAmpersandConversion;
+
+    @Config.Comment("Enable Dynamic Lights")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableDynamicLights;
+
+    @Config.Comment("Optimize world update light. [From Hodgepodge]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeWorldUpdateLight;
+
+    @Config.Comment("Optimize Texture Animations. [From Hodgepodge]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean speedupAnimations;
+
+    @Config.Comment("Optimize Texture Loading. [From Hodgepodge]")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeTextureLoading;
+
+    @Config.Comment("Fix RenderBlockFluid reading the block type from the world access multiple times")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean fixFluidRendererCheckingBlockAgain;
+
+    @Config.Comment("Dynamically modifies the render distance of dropped items entities to preserve performance."
+                  + " It starts reducing the render distance when exceeding the threshold set below.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean dynamicItemRenderDistance;
+
+    @Config.Comment("Max amount of dropped item rendered")
+    @Config.DefaultInt(256)
+    @Config.RangeInt(min = 32, max = 2048)
+    public static int droppedItemLimit;
+
+    @Config.Comment("Use total world time instead of normal world time. Allows most shader animations to play when "
+                  + "doDaylightCycle is off, but causes shader animations to desync from time of day.")
+    @Config.DefaultBoolean(false)
+    public static boolean useTotalWorldTime;
+
+    @Config.Comment("Enable Debug Logging")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableDebugLogging;
+
+    @Config.Comment("Enables PBR atlas dumping")
+    @Config.DefaultBoolean(false)
+    @Config.Name("Enable PBR Debug")
+    public static boolean enablePBRDebug;
+
+    @Config.Comment("Enable Zoom")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableZoom;
+
+    @Config.Comment("Optimizes in-world item rendering")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean optimizeInWorldItemRendering;
+
+    @Config.Comment("Upper limit for the amount of VBO's to cache for optimized item rendering. Higher number can potentially use more VRAM.")
+    @Config.DefaultInt(512)
+    @Config.RangeInt(min = 256, max = 1024)
+    public static int itemRendererCacheSize;
+
+    @Config.Comment("Render distance for the spinning mob inside mod spawners")
+    @Config.DefaultDouble(16D)
+    @Config.RangeDouble(min = 16D, max = 64D)
+    public static double mobSpawnerRenderDistance;
+
+    @Config.Comment("Switches to an alternate FPS limiter that gives more stable frametimes, in exchange for slightly " +
+        "more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.")
+    @Config.DefaultBoolean(false)
+    public static boolean sleepBeforeSwap;
+
+    @Config.Comment("Allows unicode languages to use an odd gui scale")
+    @Config.DefaultBoolean(true)
+    public static boolean removeUnicodeEvenScaling;
+
+    @Config.Comment({"Block corners and edges between chunks might have \"cracks\" (various lines/dots) in them.",
+            "While using \"Compact Vertex Format\" makes the situation even worse.",
+            "This option fixes it, though may lead to other visual artifacts.",
+            "Requires game restart after changing this option to take effect"})
+    @Config.DefaultBoolean(false)
+    public static boolean blockCrackFix;
+
+    @Config.Comment({
+            "The \"epsilon\" value for the blockCrackFix option. ",
+            "Set this a bit higher if you can still see lines/dots between solid blocks in dark areas.",
+            "May cause intense flickering (z-fighting) between blocks if the value is too high"
+    })
+    @Config.RangeDouble(min = 0, max = 0.005)
+    @Config.DefaultDouble(0.001)
+    public static double blockCrackFixEpsilon;
+
+    @Config.Comment("Block classes that have bugs when rendering with the blockCrackFix can be put here to avoid manipulating them")
+    @Config.DefaultStringList({
+            "net.minecraft.block.BlockCauldron",
+            "net.minecraft.block.BlockStairs"
+    })
+    public static String[] blockCrackFixBlacklist;
+
+    @Config.Comment({"Block classes that have render pass other than 0 but still need to be manipulated.",
+                     "Add a block class here if you see flickering (z-fighting) with blockCrackFix enabled"
+    })
+    @Config.DefaultStringList({
+            "gregtech.common.blocks.BlockOres",
+            "gregtech.common.blocks.GTBlockOre",
+            "shukaro.artifice.block.world.BlockOre",
+            "bartworks.system.material.BWMetaGeneratedOres",
+            "gtPlusPlus.core.block.base.BlockBaseOre",
+            "org.pfaa.geologica.block.BrokenGeoBlock",
+            "org.pfaa.geologica.block.BrickGeoBlock",
+    })
+    public static String[] blockCrackFixRenderPassWhitelist__;
+
+    @Config.Comment({"List of sprites which should always be treated as translucent.",
+                     "Sprites added to this list will always be considered translucent,",
+                     "",
+                     "Requires texture reload (F3+T) to take effect."})
+    @Config.DefaultStringList({"jewelrycraft2:blockCrystal"})
+    public static String[] alwaysTranslucentSprites;
+
+    @Config.Comment({"TileEntity classnames whose render bounds change at runtime (e.g. OpenBlocks Guide).",
+                     "These are always rendered and frustum-tested against their live bounds instead of the cached."})
+    @Config.DefaultStringList({"openblocks.common.tileentity.TileEntityGuide",
+                               "openblocks.common.tileentity.TileEntityBuilderGuide"})
+    @Config.RequiresMcRestart
+    public static String[] dynamicBoundsTileEntities;
+
+    @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
+    @Config.DefaultBoolean(false)
+    public static boolean enableHardcodedCustomUniforms;
+
+    @Config.Comment("Modern MC_VERSION to try if shader pack has no 1.7.10 section. 0 = default (260101)")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0)
+    public static int modernFallbackMcVersion;
+
+    @Config.Comment("Define IS_IRIS in shader macros.")
+    @Config.DefaultBoolean(true)
+    public static boolean defineIsIris;
+
+    @Config.Comment("ASM transformer exclusion narrowing for mod compatibility. Disable per-mod if narrowing causes class loading issues.")
+    public static TransformerCompat transformerCompat = new TransformerCompat();
+
+    public static class TransformerCompat {
+        @Config.Comment("Narrow DragonAPI transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowDragonAPI;
+
+        @Config.Comment("Narrow Xaeros Minimap/Worldmap transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowXaeros;
+
+        @Config.Comment("Narrow AdvancedLightsabers transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowAdvancedLightsabers;
+
+        @Config.Comment("Narrow Alfheim transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowAlfheim;
+
+        @Config.Comment("Narrow Ears transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowEars;
+
+        @Config.Comment("Narrow Fisk's Superheroes transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFiskHeroes;
+
+        @Config.Comment("Narrow FoamFix transformer exclusions to allow GL redirection in its repackaged Ears")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowFoamFix;
+    }
+
+    @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")
+    @Config.DefaultBoolean(false)
+    public static boolean useVanillaChunkTracking;
+
+    @Config.Comment("Disables additional F3 information added by Angelica.")
+    @Config.DefaultBoolean(false)
+    public static boolean disableF3Additions;
+
+    @Config.Comment("Replaces various FFP uploads with statically allocated VBO's.")
+    @Config.DefaultBoolean(true)
+    public static boolean replaceFFPUploads;
+
+    @Config.Comment("Pinned OpenGL version an integer (e.g. 46, 41, 33). 0 = auto-detect. [33, 46]. (Disable with disableGLVersionPinning=true)")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 46)
+    @Config.RequiresMcRestart
+    public static int pinnedGLVersion;
+
+    @Config.Comment("Disable automatic GL version pinning. When true, always probes from highest on every launch.")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean disableGLVersionPinning;
+
+    @Config.Comment("Disables GL Error checks. Always set to false in dev env or if LWJGL debug is on. Improves performance.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean disableErrorChecks;
+
+    @Config.Comment("Fixes various issues with entity overlays, such as z-fighting and eyes.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean entityOverlayFixes;
+
+    @Config.Comment("Swap the vanilla damage overlay with one similar to modern. Fixes specific issues with z-fighting.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean entityModernDamageOverlay;
+}

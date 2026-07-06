@@ -1,0 +1,230 @@
+package net.coderbot.iris.pipeline;
+
+import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectMaps;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
+import net.coderbot.iris.compat.dh.DHCompat;
+import net.coderbot.iris.features.FeatureFlags;
+import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
+import net.coderbot.iris.gl.texture.TextureType;
+import net.coderbot.iris.helpers.Tri;
+import net.coderbot.iris.shaderpack.CloudSetting;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
+import net.coderbot.iris.uniforms.FrameUpdateNotifier;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.EntityRenderer;
+import net.minecraft.client.shader.Framebuffer;
+
+import java.util.List;
+import java.util.OptionalInt;
+
+public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeline {
+	public FixedFunctionWorldRenderingPipeline() {
+		BlockRenderingSettings.INSTANCE.setDisableDirectionalShading(shouldDisableDirectionalShading());
+		BlockRenderingSettings.INSTANCE.setUseSeparateAo(false);
+		BlockRenderingSettings.INSTANCE.setAmbientOcclusionLevel(1.0f);
+		BlockRenderingSettings.INSTANCE.setUseExtendedVertexFormat(false);
+		BlockRenderingSettings.INSTANCE.setBlockTypeIds(null);
+	}
+
+	@Override
+	public void beginLevelRendering() {
+		final Framebuffer mainFb = Minecraft.getMinecraft().getFramebuffer();
+		if (mainFb == null || mainFb.framebufferWidth < 16 || mainFb.framebufferHeight < 16) {
+			return;
+		}
+		// Use the default Minecraft framebuffer and ensure that no programs are in use
+        mainFb.bindFramebuffer(true);
+		GLStateManager.glUseProgram(0);
+	}
+
+	@Override
+	public void renderShadows(EntityRenderer levelRenderer, Camera camera) {
+		// stub: nothing to do here
+	}
+
+	@Override
+	public void addDebugText(List<String> messages) {
+		// stub: nothing to do here
+	}
+
+	@Override
+	public OptionalInt getForcedShadowRenderDistanceChunksForDisplay() {
+		return OptionalInt.empty();
+	}
+
+	@Override
+	public WorldRenderingPhase getPhase() {
+		return WorldRenderingPhase.NONE;
+	}
+
+	@Override
+	public void setOverridePhase(WorldRenderingPhase phase) {
+
+	}
+
+	@Override
+	public void setPhase(WorldRenderingPhase phase) {
+
+	}
+
+	@Override
+	public void setInputs(InputAvailability availability) {
+
+	}
+
+	@Override
+	public void setSpecialCondition(SpecialCondition special) {
+
+	}
+
+	@Override
+	public RenderTargetStateListener getRenderTargetStateListener() {
+		return RenderTargetStateListener.NOP;
+	}
+
+	@Override
+	public int getCurrentNormalTexture() {
+		return 0;
+	}
+
+	@Override
+	public int getCurrentSpecularTexture() {
+		return 0;
+	}
+
+	@Override
+	public void onBindTexture(int id) {
+
+	}
+
+	@Override
+	public void beginHand() {
+	    // stub: nothing to do here
+	}
+
+	@Override
+	public void beginTranslucents() {
+		// stub: nothing to do here
+	}
+
+	@Override
+	public void finalizeLevelRendering() {
+		// stub: nothing to do here
+	}
+
+	@Override
+	public void destroy() {
+		// stub: nothing to do here
+	}
+
+	@Override
+	public CeleritasTerrainPipeline getCeleritasTerrainPipeline() {
+		// no shaders to override
+		return null;
+	}
+
+	@Override
+	public FrameUpdateNotifier getFrameUpdateNotifier() {
+		// return a dummy notifier
+		return new FrameUpdateNotifier();
+	}
+
+	private static final DHCompat DH_COMPAT = new DHCompat(null, false);
+
+	@Override
+	public DHCompat getDHCompat() {
+		return DH_COMPAT;
+	}
+
+	@Override
+	public boolean shouldDisableVanillaEntityShadows() {
+		return false;
+	}
+
+	@Override
+	public boolean shouldDisableDirectionalShading() {
+		return false;
+	}
+
+	@Override
+	public CloudSetting getCloudSetting() {
+		return CloudSetting.DEFAULT;
+	}
+
+	@Override
+	public boolean shouldRenderUnderwaterOverlay() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderVignette() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderSun() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderMoon() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderStars() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderSkyDisc() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderWeather() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldRenderWeatherParticles() {
+		return true;
+	}
+
+	@Override
+	public boolean shouldWriteRainAndSnowToDepthBuffer() {
+		return false;
+	}
+
+	@Override
+	public boolean shouldRenderParticlesBeforeDeferred() {
+		return false;
+	}
+
+	@Override
+	public boolean allowConcurrentCompute() {
+		return false;
+	}
+
+	@Override
+	public float getSunPathRotation() {
+		// No sun tilt
+		return 0;
+	}
+
+	@Override
+	public boolean hasFeature(FeatureFlags flag) {
+		return false;
+	}
+
+	@Override
+	public Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> getTextureMap() {
+		return Object2ObjectMaps.emptyMap();
+	}
+}

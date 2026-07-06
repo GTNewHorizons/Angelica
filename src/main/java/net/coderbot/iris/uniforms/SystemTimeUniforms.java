@@ -1,0 +1,141 @@
+package net.coderbot.iris.uniforms;
+
+import lombok.Getter;
+import net.coderbot.iris.gl.uniform.UniformHolder;
+import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
+import org.joml.Vector2i;
+import org.joml.Vector3i;
+
+import java.time.LocalDateTime;
+import java.util.OptionalLong;
+import java.util.function.IntSupplier;
+
+/**
+ * Implements uniforms relating the system time (as opposed to the world time)
+ *
+ * @see <a href="https://github.com/IrisShaders/ShaderDoc/blob/master/uniforms.md#system-time">Uniforms: System time</a>
+ */
+public final class SystemTimeUniforms {
+	public static final Timer TIMER = new Timer();
+	public static final FrameCounter COUNTER = new FrameCounter();
+
+	private static LocalDateTime cachedDateTime = LocalDateTime.now();
+	private static long cachedDateTimeAtMs = 0L;
+
+	private SystemTimeUniforms() {
+	}
+
+	private static LocalDateTime dateTimeSnapshot() {
+		final long now = System.currentTimeMillis();
+		if (now - cachedDateTimeAtMs >= 50L) {
+			cachedDateTime = LocalDateTime.now();
+			cachedDateTimeAtMs = now;
+		}
+		return cachedDateTime;
+	}
+
+	/**
+	 * Makes system time uniforms available to the given program
+	 *
+	 * @param uniforms the program to make the uniforms available to
+	 */
+	public static void addSystemTimeUniforms(UniformHolder uniforms) {
+		final Vector3i date = new Vector3i();
+		final Vector3i time = new Vector3i();
+		final Vector2i yearTime = new Vector2i();
+		uniforms
+			.uniform1i(UniformUpdateFrequency.PER_FRAME, "frameCounter", COUNTER)
+			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTime", TIMER::getLastFrameTime)
+			.uniform1f(UniformUpdateFrequency.PER_FRAME, "frameTimeCounter", TIMER::getFrameTimeCounter)
+			.uniform3i(UniformUpdateFrequency.PER_TICK, "currentDate", () -> {
+				final LocalDateTime dt = dateTimeSnapshot();
+				return date.set(dt.getYear(), dt.getMonthValue(), dt.getDayOfMonth());
+			})
+			.uniform3i(UniformUpdateFrequency.PER_TICK, "currentTime", () -> {
+				final LocalDateTime dt = dateTimeSnapshot();
+				return time.set(dt.getHour(), dt.getMinute(), dt.getSecond());
+			})
+			.uniform2i(UniformUpdateFrequency.PER_TICK, "currentYearTime", () -> {
+				final LocalDateTime dt = dateTimeSnapshot();
+				final int elapsed = ((dt.getDayOfYear() - 1) * 86400) + (dt.getHour() * 3600) + (dt.getMinute() * 60) + dt.getSecond();
+				return yearTime.set(elapsed, (dt.toLocalDate().lengthOfYear() * 86400) - elapsed);
+			});
+	}
+
+	public static void addFloatFrameMod8Uniform(UniformHolder uniforms) {
+		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "framemod8", () -> COUNTER.getAsInt() % 8);
+	}
+
+	/**
+	 * A simple frame counter. On each frame, it is incremented by 1, and it wraps around every 720720 frames. It starts
+	 * at zero and goes from there.
+	 */
+	public static class FrameCounter implements IntSupplier {
+		private int count;
+
+		private FrameCounter() {
+			this.count = 0;
+		}
+
+		@Override
+		public int getAsInt() {
+			return count;
+		}
+
+		public void beginFrame() {
+			count = (count + 1) % 720720;
+		}
+
+		public void reset() {
+			count = 0;
+		}
+	}
+
+	/**
+	 * Keeps track of the time that the last frame took to render as well as the number of milliseconds since the start
+	 * of the first frame to the start of the current frame. Updated at the start of each frame.
+	 */
+	public static final class Timer {
+		@Getter
+        private float frameTimeCounter;
+		@Getter
+        private float lastFrameTime;
+
+		// Disabling this because OptionalLong provides a nice wrapper around (boolean valid, long value)
+		@SuppressWarnings("OptionalUsedAsFieldOrParameterType")
+		private OptionalLong lastStartTime;
+
+		public Timer() {
+			reset();
+		}
+
+		public void beginFrame(long frameStartTime) {
+			// Track how much time passed since the last time we began rendering a frame.
+			// If this is the first frame, then use a value of 0.
+			final long diffNs = frameStartTime - lastStartTime.orElse(frameStartTime);
+			// Convert to milliseconds
+			final long diffMs = (diffNs / 1000) / 1000;
+
+			// Convert to seconds with a resolution of 1 millisecond, and store as the time taken for the last frame to complete.
+			lastFrameTime = diffMs / 1000.0F;
+
+			// Advance the current frameTimeCounter by the amount of time the last frame took.
+			frameTimeCounter += lastFrameTime;
+
+			// Prevent the frameTimeCounter from getting too large, since that causes issues with some shaderpacks
+			// This means that it should reset every hour.
+			if (frameTimeCounter >= 3600.0F) {
+				frameTimeCounter = 0.0F;
+			}
+
+			// Finally, update the "last start time" value.
+			lastStartTime = OptionalLong.of(frameStartTime);
+		}
+
+        public void reset() {
+			frameTimeCounter = 0.0F;
+			lastFrameTime = 0.0F;
+			lastStartTime = OptionalLong.empty();
+		}
+	}
+}

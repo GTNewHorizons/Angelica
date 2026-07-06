@@ -1,0 +1,10 @@
+package net.coderbot.iris.pipeline.transform;
+
+public enum Patch {
+	ATTRIBUTES,
+	CELERITAS_TERRAIN,
+	COMPOSITE,
+	COMPUTE,
+	DH_TERRAIN,
+	DH_GENERIC
+}

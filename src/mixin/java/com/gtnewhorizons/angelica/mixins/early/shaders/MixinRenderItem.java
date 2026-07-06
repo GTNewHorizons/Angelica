@@ -1,0 +1,60 @@
+package com.gtnewhorizons.angelica.mixins.early.shaders;
+
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.uniforms.ItemIdManager;
+import net.minecraft.client.renderer.entity.RenderItem;
+import net.minecraft.entity.item.EntityItem;
+import net.minecraft.item.ItemStack;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+
+/**
+ * Mixin to set the currentRenderedItem ID when rendering dropped items.
+ */
+@Mixin(RenderItem.class)
+public class MixinRenderItem {
+
+    /**
+     * Set the item ID before rendering dropped items.
+     * Checks both item.properties and block.properties.
+     */
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
+        at = @At("HEAD")
+    )
+    private void iris$setItemIdBeforeRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+        ItemStack itemStack = entity.getEntityItem();
+        ItemIdManager.setItemId(itemStack);
+    }
+
+    /**
+     * Activate GLINT shader before rendering enchantment glint on dropped items.
+     */
+    @Inject(
+        method = "renderDroppedItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/util/IIcon;IFFFFI)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 0),
+        remap = false
+    )
+    private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.resetItemId();
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+        ShaderGlint.beginGlint();
+    }
+
+    /**
+     * Deactivate GLINT shader after rendering enchantment glint on dropped items.
+     */
+    @Inject(
+        method = "renderDroppedItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/util/IIcon;IFFFFI)V",
+        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthFunc(I)V", ordinal = 1, shift = At.Shift.AFTER),
+        remap = false
+    )
+    private void iris$glintEnd(CallbackInfo ci) {
+        GbufferPrograms.teardownSpecialRenderCondition();
+        ShaderGlint.endGlint();
+    }
+}

@@ -1,0 +1,437 @@
+package net.coderbot.iris.shaderpack;
+
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMaps;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2IntFunction;
+import it.unimi.dsi.fastutil.objects.Object2IntMap;
+import it.unimi.dsi.fastutil.objects.Object2IntMaps;
+import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import lombok.Getter;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.shaderpack.materialmap.BlockEntry;
+import net.coderbot.iris.shaderpack.materialmap.EntityFlatteningMap;
+import net.coderbot.iris.shaderpack.materialmap.BlockRenderType;
+import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
+import net.coderbot.iris.shaderpack.materialmap.PropertiesTokenizer;
+import net.coderbot.iris.shaderpack.option.ShaderPackOptions;
+import net.coderbot.iris.shaderpack.preprocessor.PropertiesPreprocessor;
+import net.minecraft.item.Item;
+import net.minecraft.item.ItemBlock;
+import net.minecraft.item.ItemStack;
+import net.minecraftforge.oredict.OreDictionary;
+
+import java.io.IOException;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Files;
+import java.nio.file.NoSuchFileException;
+import java.nio.file.Path;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.Properties;
+import java.util.regex.Pattern;
+
+/**
+ * A utility class for parsing entries in item.properties, block.properties, and entities.properties files in shaderpacks
+ */
+public class IdMap {
+	/**
+	 * Maps a given item ID to an integer ID
+	 */
+	private final Object2IntMap<NamespacedId> itemIdMap;
+	@Getter
+    private final Int2ObjectMap<List<BlockEntry>> itemNbtEntries;
+
+	/**
+	 * Maps a given entity ID to an integer ID
+	 */
+	private final Object2IntMap<NamespacedId> entityIdMap;
+	@Getter
+    private final Int2ObjectMap<List<BlockEntry>> entityNbtEntries;
+
+	/**
+	 * Maps block states to block ids defined in block.properties
+	 */
+	private Int2ObjectMap<List<BlockEntry>> blockPropertiesMap;
+
+	/**
+	 * A set of render type overrides for specific blocks. Allows shader packs to move blocks to different render types.
+	 */
+	@Getter
+    private Map<NamespacedId, BlockRenderType> blockRenderTypeMap;
+
+	/** True when block.properties contained a preprocessor directive guarding a 1.7.10-specific section. */
+	private final boolean hasLegacySection;
+
+	public boolean hasLegacySection() {
+		return hasLegacySection;
+	}
+
+	private static final Pattern LEGACY_DIRECTIVE_PATTERN = Pattern.compile(
+		"(?m)^\\s*#\\s*(?:if|elif|ifdef|ifndef)\\b[^\\n]*\\bMC_VERSION\\b[^\\n]*\\b10710\\b");
+
+	/**
+	 * Detects whether a pack's block.properties has a dedicated 1.7.10 section.
+	 */
+	public static boolean detectLegacySection(Path shaderPath) {
+		String rawBlockProperties = readProperties(shaderPath, "block.properties");
+		return rawBlockProperties != null && LEGACY_DIRECTIVE_PATTERN.matcher(rawBlockProperties).find();
+	}
+
+	public static String modernFallbackMcVersion() {
+		return AngelicaConfig.modernFallbackMcVersion > 0
+			? String.valueOf(AngelicaConfig.modernFallbackMcVersion) : "260101";
+	}
+
+	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
+		// Check if block.properties has a dedicated 1.7.10 section
+		this.hasLegacySection = detectLegacySection(shaderPath);
+
+		Iterable<StringPair> resolvedDefines;
+		if (this.hasLegacySection) {
+			// Pack has a 1.7.10 section
+			resolvedDefines = environmentDefines;
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, environmentDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+			});
+		} else {
+			// No 1.7.10 section, use modern MC_VERSION and convert entries
+			ArrayList<StringPair> modernDefines = new ArrayList<>();
+			for (StringPair define : environmentDefines) {
+				if (!"MC_VERSION".equals(define.getKey())) {
+					modernDefines.add(define);
+				}
+			}
+
+			modernDefines.add(new StringPair("MC_VERSION", modernFallbackMcVersion()));
+			resolvedDefines = modernDefines;
+
+			loadProperties(shaderPath, "block.properties", shaderPackOptions, modernDefines).ifPresent(blockProperties -> {
+				blockPropertiesMap = parseBlockMap(blockProperties, "block.", "block.properties");
+				blockRenderTypeMap = parseRenderTypeMap(blockProperties, "layer.", "block.properties");
+			});
+		}
+
+		final ParsedIdMap parsedItems = loadProperties(shaderPath, "item.properties", shaderPackOptions, resolvedDefines)
+			.map(p -> parseIdMap(p, "item.", "item.properties"))
+			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
+		itemIdMap = parsedItems.simpleMap();
+		itemNbtEntries = parsedItems.nbtEntries();
+
+		final ParsedIdMap parsedEntities = loadProperties(shaderPath, "entity.properties", shaderPackOptions, resolvedDefines)
+			.map(p -> parseIdMap(p, "entity.", "entity.properties"))
+			.orElse(new ParsedIdMap(Object2IntMaps.emptyMap(), new Int2ObjectOpenHashMap<>()));
+		entityIdMap = augmentEntityIdMap(parsedEntities.simpleMap(), parsedEntities.nbtEntries());
+		entityNbtEntries = parsedEntities.nbtEntries();
+
+		// TODO: Properly override block render layers
+
+		if (blockPropertiesMap == null) {
+			// Fill in with default values...
+			blockPropertiesMap = new Int2ObjectOpenHashMap<>();
+			LegacyIdMap.addLegacyValues(blockPropertiesMap);
+		}
+
+		if (blockRenderTypeMap == null) {
+			blockRenderTypeMap = Collections.emptyMap();
+		}
+	}
+
+	/**
+	 * Loads properties from a properties file in a shaderpack path
+	 */
+	private static Optional<Properties> loadProperties(Path shaderPath, String name, ShaderPackOptions shaderPackOptions,
+													   Iterable<StringPair> environmentDefines) {
+		String fileContents = readProperties(shaderPath, name);
+		if (fileContents == null) {
+			return Optional.empty();
+		}
+
+		String processed = PropertiesPreprocessor.preprocessSource(fileContents, shaderPackOptions, environmentDefines);
+
+		StringReader propertiesReader = new StringReader(processed);
+
+		// Note: ordering of properties is significant
+		// See https://github.com/IrisShaders/Iris/issues/1327 and the relevant putIfAbsent calls in
+		// BlockMaterialMapping
+		Properties properties = new OrderBackedProperties();
+		try {
+			properties.load(propertiesReader);
+		} catch (IOException e) {
+			Iris.logger.error("Error loading " + name + " at " + shaderPath, e);
+
+			return Optional.empty();
+		}
+
+		return Optional.of(properties);
+	}
+
+	private static String readProperties(Path shaderPath, String name) {
+		try {
+			// ID maps should be encoded in ISO_8859_1.
+			return Files.readString(shaderPath.resolve(name), StandardCharsets.ISO_8859_1);
+		} catch (NoSuchFileException e) {
+			Iris.logger.debug("An " + name + " file was not found in the current shaderpack");
+
+			return null;
+		} catch (IOException e) {
+			Iris.logger.error("An IOException occurred reading " + name + " from the current shaderpack", e);
+
+			return null;
+		}
+	}
+
+	/**
+	 * For modern shaderpacks: also expose entries under their 1.7.10 entity names
+	 * so runtime lookups match EntityList's registered names directly.
+	 *
+	 * Modern names whose 1.7.10 counterpart is NBT-discriminated (e.g. wither_skeleton
+	 * is just Skeleton with SkeletonType=1) are routed into the NBT-conditional map
+	 * instead of being aliased into the simple map — otherwise the simple lookup for
+	 * "Skeleton" would short-circuit and match every skeleton variant.
+	 */
+	private static Object2IntMap<NamespacedId> augmentEntityIdMap(
+			Object2IntMap<NamespacedId> idMap,
+			Int2ObjectMap<List<BlockEntry>> nbtEntries) {
+		Object2IntMap<NamespacedId> augmented = new Object2IntOpenHashMap<>(idMap);
+		augmented.defaultReturnValue(-1);
+
+		for (Object2IntMap.Entry<NamespacedId> entry : idMap.object2IntEntrySet()) {
+			NamespacedId id = entry.getKey();
+			if (!"minecraft".equals(id.getNamespace())) {
+				continue;
+			}
+			final int intId = entry.getIntValue();
+
+			BlockEntry nbtMapping = EntityFlatteningMap.toLegacyWithNbt(id.getName());
+			if (nbtMapping != null) {
+				nbtEntries.computeIfAbsent(intId, k -> new ArrayList<>()).add(nbtMapping);
+				continue;
+			}
+
+			String legacyName = EntityFlatteningMap.toLegacy(id.getName());
+			if (legacyName != null) {
+				augmented.putIfAbsent(new NamespacedId(legacyName), intId);
+			}
+		}
+
+		return Object2IntMaps.unmodifiable(augmented);
+	}
+
+    /**
+	 * Parses a space-delimited list of identifiers.
+	 * Identifiers with spaces or special characters can be enclosed in double quotes.
+	 * Use backslash to escape quotes or backslashes within quoted strings.
+	 *
+	 * Examples (input -> parsed result):
+	 *   minecraft:stone natura:berry
+	 *     -> minecraft:stone, natura:berry
+	 *
+	 *   minecraft:stone "Natura:N Crops"
+	 *     -> minecraft:stone, Natura:N Crops
+	 *
+	 *   "SomeDumbMod:Foo\\ \"Bar\":3"
+	 *     -> SomeDumbMod:Foo\ "Bar":3
+	 *
+	 * @param value The space-delimited string to parse
+	 * @param fileName The name of the properties file (for error messages)
+	 * @param key The property key being parsed (for error messages)
+	 * @return List of parsed identifiers
+	 */
+	static List<String> parseIdentifierList(String value, String fileName, String key) {
+		return PropertiesTokenizer.tokenizeValues(value, ' ');
+	}
+
+	record ParsedIdMap(Object2IntMap<NamespacedId> simpleMap, Int2ObjectMap<List<BlockEntry>> nbtEntries) {}
+
+	/**
+	 * Parses a NamespacedId map in OptiFine format
+	 */
+	private static ParsedIdMap parseIdMap(Properties properties, String keyPrefix, String fileName) {
+		Object2IntMap<NamespacedId> idMap = new Object2IntOpenHashMap<>();
+		idMap.defaultReturnValue(-1);
+		Int2ObjectMap<List<BlockEntry>> nbtEntries = new Int2ObjectOpenHashMap<>();
+
+		properties.forEach((keyObject, valueObject) -> {
+			String key = (String) keyObject;
+			String value = (String) valueObject;
+
+			if (!key.startsWith(keyPrefix)) {
+				// Not a valid line, ignore it
+				return;
+			}
+
+			int intId;
+
+			try {
+				intId = Integer.parseInt(key.substring(keyPrefix.length()));
+			} catch (NumberFormatException e) {
+				// Not a valid property line
+				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid key " + key);
+				return;
+			}
+
+			// Parse identifiers
+			for (String part : parseIdentifierList(value, fileName, key)) {
+				if (part.contains("[")) {
+					// NBT-conditional entry
+					try {
+						BlockEntry entry = BlockEntry.parse(part);
+						if (entry.hasNbtProperties()) {
+							nbtEntries.computeIfAbsent(intId, k -> new ArrayList<>()).add(entry);
+						} else {
+							idMap.put(entry.id(), intId);
+						}
+					} catch (Exception e) {
+						Iris.logger.warn("Failed to parse NBT entry in " + fileName + " for key " + key + ": " + part, e);
+					}
+					continue;
+				}
+				if (part.contains("=")) {
+					// Avoid tons of logspam for now
+					Iris.logger.warn("Failed to parse an ResourceLocation in " + fileName + " for the key " + key + ": state properties are currently not supported: " + part);
+					continue;
+				}
+
+				// Note: NamespacedId performs no validation on the content. That will need to be done by whatever is
+				//       converting these things to ResourceLocations.
+				idMap.put(new NamespacedId(part), intId);
+			}
+		});
+
+		return new ParsedIdMap(Object2IntMaps.unmodifiable(idMap), nbtEntries);
+	}
+
+	private static Int2ObjectMap<List<BlockEntry>> parseBlockMap(Properties properties, String keyPrefix, String fileName) {
+		Int2ObjectMap<List<BlockEntry>> entriesById = new Int2ObjectOpenHashMap<>();
+
+		properties.forEach((keyObject, valueObject) -> {
+			final String key = (String) keyObject;
+			StringBuilder value = new StringBuilder((String) valueObject);
+
+			if (!key.startsWith(keyPrefix)) {
+				// Not a valid line, ignore it
+				return;
+			}
+
+			final int intId;
+
+			try {
+				intId = Integer.parseInt(key.substring(keyPrefix.length()));
+			} catch (NumberFormatException e) {
+				// Not a valid property line
+				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid key " + key);
+				return;
+			}
+
+			final List<BlockEntry> entries = new ArrayList<>();
+
+			if (value.toString().contains("minecraft:leaves")) {
+				ArrayList<ItemStack> leaves = OreDictionary.getOres("treeLeaves");
+				for (ItemStack leaf : leaves) {
+					if (leaf.getItem() instanceof ItemBlock) {
+						Iris.logger.warn("Found leaf " + Item.itemRegistry.getNameForObject(leaf.getItem()));
+						value.append(" ").append(Item.itemRegistry.getNameForObject(leaf.getItem()));
+					}
+				}
+			}
+
+			// Parse identifiers
+			for (String part : parseIdentifierList(value.toString(), fileName, key)) {
+				if (part.isEmpty()) {
+					continue;
+				}
+
+				try {
+					entries.add(BlockEntry.parse(part));
+				} catch (Exception e) {
+					Iris.logger.warn("Unexpected error while parsing an entry from " + fileName + " for the key " + key + ":", e);
+				}
+			}
+
+			entriesById.put(intId, Collections.unmodifiableList(entries));
+		});
+
+		return Int2ObjectMaps.unmodifiable(entriesById);
+	}
+
+	/**
+	 * Parses a render layer map.
+	 *
+	 * This feature is used by Chocapic v9 and Wisdom Shaders. Otherwise, it is a rarely-used feature.
+	 */
+	private static Map<NamespacedId, BlockRenderType> parseRenderTypeMap(Properties properties, String keyPrefix, String fileName) {
+		Map<NamespacedId, BlockRenderType> overrides = new HashMap<>();
+
+		properties.forEach((keyObject, valueObject) -> {
+			String key = (String) keyObject;
+			String value = (String) valueObject;
+
+			if (!key.startsWith(keyPrefix)) {
+				// Not a valid line, ignore it
+				return;
+			}
+
+			// Note: We have to remove the prefix "layer." because fromString expects "cutout", not "layer.cutout".
+			String keyWithoutPrefix = key.substring(keyPrefix.length());
+
+			BlockRenderType renderType = BlockRenderType.fromString(keyWithoutPrefix).orElse(null);
+
+			if (renderType == null) {
+				Iris.logger.warn("Failed to parse line in " + fileName + ": invalid block render type: " + key);
+				return;
+			}
+
+			for (String part : parseIdentifierList(value, fileName, key)) {
+				// Note: NamespacedId performs no validation on the content. That will need to be done by whatever is
+				//       converting these things to ResourceLocations.
+				overrides.put(new NamespacedId(part), renderType);
+			}
+		});
+
+		return overrides;
+	}
+
+	public Int2ObjectMap<List<BlockEntry>> getBlockProperties() {
+		return blockPropertiesMap;
+	}
+
+	public Object2IntFunction<NamespacedId> getItemIdMap() {
+		return itemIdMap;
+	}
+
+    public Object2IntFunction<NamespacedId> getEntityIdMap() {
+		return entityIdMap;
+	}
+
+    @Override
+	public boolean equals(Object o) {
+		if (this == o) {
+			return true;
+		}
+
+		if (o == null || getClass() != o.getClass()) {
+			return false;
+		}
+
+		IdMap idMap = (IdMap) o;
+
+		return Objects.equals(itemIdMap, idMap.itemIdMap)
+				&& Objects.equals(entityIdMap, idMap.entityIdMap)
+				&& Objects.equals(blockPropertiesMap, idMap.blockPropertiesMap)
+				&& Objects.equals(blockRenderTypeMap, idMap.blockRenderTypeMap);
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(itemIdMap, entityIdMap, blockPropertiesMap, blockRenderTypeMap);
+	}
+}

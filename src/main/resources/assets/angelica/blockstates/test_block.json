@@ -1,0 +1,5 @@
+{
+  "variants": {
+    "": { "model": "angelica:blocks/test_block" }
+  }
+}
