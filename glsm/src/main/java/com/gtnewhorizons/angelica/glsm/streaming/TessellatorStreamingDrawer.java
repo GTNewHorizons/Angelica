@@ -8,6 +8,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import net.minecraft.client.renderer.Tessellator;
@@ -33,6 +34,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 public class TessellatorStreamingDrawer {
 
     private static final Logger LOGGER = LogManager.getLogger("TessellatorStreamingDrawer");
+
     private static final int FORMAT_COUNT = VertexFlags.BITSET_SIZE; // 16
 
     private static PersistentStreamingBuffer persistentBuffer;
@@ -105,16 +107,19 @@ public class TessellatorStreamingDrawer {
         repackBuffer.limit((int)(writePtr - repackAddress));
 
         final ImmediateExtendedAttribHandler extHandler = GLSMHooks.immediateExtendedHandler;
-        if (extHandler != null && tess.drawMode == GL11.GL_QUADS && tess.hasTexture && (vertexCount & 3) == 0
-                && extHandler.wantsExtended()) {
+        final int extPrim = extHandler == null ? 0 : ImmediateExtendedAttribHandler.extPrimVerts(tess.drawMode, vertexCount);
+        final boolean wantsExt = extHandler != null && extHandler.wantsExtended();
+        final boolean doExt = extPrim != 0 && tess.hasTexture && wantsExt;
+        if (doExt) {
             final int combinedStride = vertexSize + ImmediateExtendedAttribHandler.EXT_STRIDE;
             final int combinedBytes = vertexCount * combinedStride;
             ensureExtScratch(combinedBytes);
             interleaveBase(repackAddress, extScratchAddress, vertexCount, vertexSize, combinedStride);
-            extHandler.build(tess.rawBuffer, vertexCount, extScratchAddress + vertexSize, combinedStride);
+            final int normalIndex = tess.hasNormals ? ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX : -1;
+            extHandler.build(tess.rawBuffer, vertexCount, extPrim, normalIndex, extScratchAddress + vertexSize, combinedStride);
             extScratch.position(0);
             extScratch.limit(combinedBytes);
-            uploadAndDrawExtended(extScratch, flags, format, combinedStride, vertexCount);
+            uploadAndDrawExtended(extScratch, flags, format, combinedStride, tess.drawMode, vertexCount);
             shrinkExtScratchIfOversized(combinedBytes);
         } else {
             uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
@@ -167,18 +172,20 @@ public class TessellatorStreamingDrawer {
     private static boolean tryExtendedPacked(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
         final ImmediateExtendedAttribHandler extHandler = GLSMHooks.immediateExtendedHandler;
         if (extHandler == null || !extHandler.wantsExtended()) return false;
-        if (drawMode != GL11.GL_QUADS || !format.hasTexture() || (vertexCount & 3) != 0) return false;
+        final int extPrim = ImmediateExtendedAttribHandler.extPrimVerts(drawMode, vertexCount);
+        if (extPrim == 0 || !format.hasTexture()) return false;
 
         final long srcBase = memAddress0(packed) + packed.position();
         final int texOffset = ImmediateExtendedAttribHandler.texOffset(format);
+        final int normalOffset = ImmediateExtendedAttribHandler.normalOffset(format);
         final int combinedStride = vertexSize + ImmediateExtendedAttribHandler.EXT_STRIDE;
         final int combinedBytes = vertexCount * combinedStride;
         ensureExtScratch(combinedBytes);
         interleaveBase(srcBase, extScratchAddress, vertexCount, vertexSize, combinedStride);
-        extHandler.buildPacked(srcBase, vertexSize, 0, texOffset, vertexCount, extScratchAddress + vertexSize, combinedStride);
+        extHandler.buildPacked(srcBase, vertexSize, 0, texOffset, normalOffset, vertexCount, extPrim, extScratchAddress + vertexSize, combinedStride);
         extScratch.position(0);
         extScratch.limit(combinedBytes);
-        uploadAndDrawExtended(extScratch, flags, format, combinedStride, vertexCount);
+        uploadAndDrawExtended(extScratch, flags, format, combinedStride, drawMode, vertexCount);
         shrinkExtScratchIfOversized(combinedBytes);
         return true;
     }
@@ -259,14 +266,19 @@ public class TessellatorStreamingDrawer {
     }
 
     private static void drawWithQuadConversion(int drawMode, int firstVertex, int vertexCount) {
-        if (drawMode == GL11.GL_QUADS) {
-            QuadConverter.drawQuadsAsTriangles(firstVertex, vertexCount);
-        } else {
-            GLStateManager.glDrawArrays(drawMode, firstVertex, vertexCount);
+        FfpExtendedAttribs.beginInternalDraw();
+        try {
+            if (drawMode == GL11.GL_QUADS) {
+                QuadConverter.drawQuadsAsTriangles(firstVertex, vertexCount);
+            } else {
+                GLStateManager.glDrawArrays(drawMode, firstVertex, vertexCount);
+            }
+        } finally {
+            FfpExtendedAttribs.endInternalDraw();
         }
     }
 
-    private static void uploadAndDrawExtended(ByteBuffer combined, int flags, VertexFormat format, int combinedStride, int vertexCount) {
+    private static void uploadAndDrawExtended(ByteBuffer combined, int flags, VertexFormat format, int combinedStride, int drawMode, int vertexCount) {
         ensureVAO(flags, format);
         ensureExtendedVAOs(flags, format);
 
@@ -284,7 +296,7 @@ public class TessellatorStreamingDrawer {
             firstVertex = 0;
         }
 
-        QuadConverter.drawQuadsAsTriangles(firstVertex, vertexCount);
+        drawWithQuadConversion(drawMode, firstVertex, vertexCount);
         GLStateManager.glBindVertexArray(0);
     }
 

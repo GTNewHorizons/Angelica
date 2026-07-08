@@ -16,6 +16,7 @@ public final class GLSMHooks {
     public static final EventBus<TextureDeleteEvent> TEXTURE_DELETE = EventBus.create(TextureDeleteEvent.class);
     public static final EventBus<TextureUnitStateEvent> TEXTURE_UNIT_STATE = EventBus.create(TextureUnitStateEvent.class);
     public static final EventBus<ProgramChangeEvent> PROGRAM_CHANGE = EventBus.create(ProgramChangeEvent.class);
+    public static final EventBus<ProgramDeleteEvent> PROGRAM_DELETE = EventBus.create(ProgramDeleteEvent.class);
     public static final EventBus<BlendFuncChangeEvent> BLEND_FUNC_CHANGE = EventBus.create(BlendFuncChangeEvent.class);
     public static final EventBus<FogStateChangeEvent> FOG_STATE_CHANGE = EventBus.create(FogStateChangeEvent.class);
     public static final EventBus<LightmapCoordsEvent> LIGHTMAP_COORDS = EventBus.create(LightmapCoordsEvent.class);
@@ -27,6 +28,7 @@ public final class GLSMHooks {
     public static final TextureDeleteEvent textureDeleteEvent = new TextureDeleteEvent();
     public static final TextureUnitStateEvent textureUnitStateEvent = new TextureUnitStateEvent();
     public static final ProgramChangeEvent programChangeEvent = new ProgramChangeEvent();
+    public static final ProgramDeleteEvent programDeleteEvent = new ProgramDeleteEvent();
     public static final BlendFuncChangeEvent blendFuncChangeEvent = new BlendFuncChangeEvent();
     public static final FogStateChangeEvent fogStateChangeEvent = new FogStateChangeEvent();
     public static final LightmapCoordsEvent lightmapCoordsEvent = new LightmapCoordsEvent();

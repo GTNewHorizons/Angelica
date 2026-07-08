@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vao.BaseVAO;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexedVAO;
@@ -9,6 +10,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
@@ -63,14 +65,19 @@ public final class DisplayListVBOBuilder {
             if (formatData == null) continue;
             final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[i];
             final boolean wantExt = extHandler != null && format.hasTexture();
+            if (extHandler == null && GLSMConfig.extendedAttribsExpected && format.hasTexture()) {
+                GLStateManager.warnOnce("dl-ext-no-handler",
+                    "Textured display list compiled before the immediate ext-attribute handler was installed! POM data will be missing for this geometry.");
+            }
             int start = 0;
             final IVertexArrayObject vao = VAOManager.createStorageVAO(format, -1, 0); // drawMode will be ignored
             final IVertexBuffer vbo = vao.getVBO();
 
-            // Quad draws of this format whose VAOs need the ext attributes attached after upload.
-            final List<IVertexArrayObject> quadVaos = wantExt ? new ArrayList<>() : null;
-            final IntArrayList quadStarts = wantExt ? new IntArrayList() : null;
-            final IntArrayList quadCounts = wantExt ? new IntArrayList() : null;
+            // Quad/triangle draws of this format whose VAOs need the ext attributes attached after upload.
+            final List<IVertexArrayObject> extVaos = wantExt ? new ArrayList<>() : null;
+            final IntArrayList extStarts = wantExt ? new IntArrayList() : null;
+            final IntArrayList extCounts = wantExt ? new IntArrayList() : null;
+            final IntArrayList extPrims = wantExt ? new IntArrayList() : null;
 
             for (FormatData data : formatData) {
                 int vertexCount;
@@ -91,9 +98,21 @@ public final class DisplayListVBOBuilder {
                     final IVertexArrayObject indexedVAO = new IndexedVAO(vbo, IndexBuffer.convertQuadsToTrigs(start, start + vertexCount));
                     vbos[data.drawIndex] = new DisplayListVBO.SubVBO(indexedVAO, GL11.GL_TRIANGLES, 0, vertexCount / 4 * 6);
                     if (wantExt) {
-                        quadVaos.add(indexedVAO);
-                        quadStarts.add(start);
-                        quadCounts.add(vertexCount);
+                        extVaos.add(indexedVAO);
+                        extStarts.add(start);
+                        extCounts.add(vertexCount);
+                        extPrims.add(4);
+                    }
+                } else if (data.drawMode == GL11.GL_TRIANGLES) {
+                    if (wantExt) {
+                        final IVertexArrayObject triVao = new BaseVAO(vbo);
+                        vbos[data.drawIndex] = new DisplayListVBO.SubVBO(triVao, GL11.GL_TRIANGLES, start, vertexCount);
+                        extVaos.add(triVao);
+                        extStarts.add(start);
+                        extCounts.add(vertexCount);
+                        extPrims.add(3);
+                    } else {
+                        vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLES, start, vertexCount);
                     }
                 } else if (data.drawMode == GL11.GL_QUAD_STRIP) {
                     // GL_QUAD_STRIP is removed in core profile; an even-length GL_TRIANGLE_STRIP produces the same quads
@@ -111,8 +130,8 @@ public final class DisplayListVBOBuilder {
             ByteBuffer bigBuffer = mergeAndDelete(allBuffers);
             vbo.allocate(bigBuffer, start);
 
-            if (wantExt && !quadVaos.isEmpty()) {
-                final int extVbo = buildAndAttachExt(extHandler, format, bigBuffer, quadVaos, quadStarts, quadCounts);
+            if (wantExt && !extVaos.isEmpty()) {
+                final int extVbo = buildAndAttachExt(extHandler, format, bigBuffer, extVaos, extStarts, extCounts, extPrims);
                 if (extVbo != 0) extVbos.add(extVbo);
             }
 
@@ -125,24 +144,27 @@ public final class DisplayListVBOBuilder {
 
     private static int buildAndAttachExt(ImmediateExtendedAttribHandler handler, VertexFormat format,
                                          ByteBuffer bigBuffer,
-                                         List<IVertexArrayObject> quadVaos, IntArrayList quadStarts, IntArrayList quadCounts) {
+                                         List<IVertexArrayObject> extVaos, IntArrayList extStarts, IntArrayList extCounts,
+                                         IntArrayList extPrims) {
         final int extStride = ImmediateExtendedAttribHandler.EXT_STRIDE;
         final int stride = format.getVertexSize();
         final int posOffset = 0;
         final int texOffset = ImmediateExtendedAttribHandler.texOffset(format);
+        final int normalOffset = ImmediateExtendedAttribHandler.normalOffset(format);
 
         int extVerts = 0;
-        for (int q = 0; q < quadStarts.size(); q++) {
-            extVerts = Math.max(extVerts, quadStarts.getInt(q) + quadCounts.getInt(q));
+        for (int q = 0; q < extStarts.size(); q++) {
+            extVerts = Math.max(extVerts, extStarts.getInt(q) + extCounts.getInt(q));
         }
 
         final ByteBuffer ext = memCalloc(extVerts, extStride);
         final long extAddr = memAddress0(ext);
         final long srcBase = memAddress0(bigBuffer);
-        for (int q = 0; q < quadVaos.size(); q++) {
-            final int rStart = quadStarts.getInt(q);
-            final int rCount = quadCounts.getInt(q);
-            handler.buildPacked(srcBase + (long) rStart * stride, stride, posOffset, texOffset, rCount,
+        for (int q = 0; q < extStarts.size(); q++) {
+            final int rStart = extStarts.getInt(q);
+            final int rCount = extCounts.getInt(q);
+            final int rPrim = extPrims.getInt(q);
+            handler.buildPacked(srcBase + (long) rStart * stride, stride, posOffset, texOffset, normalOffset, rCount, rPrim,
                 extAddr + (long) rStart * extStride, extStride);
         }
 
@@ -153,7 +175,7 @@ public final class DisplayListVBOBuilder {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         memFree(ext);
 
-        for (IVertexArrayObject iv : quadVaos) {
+        for (IVertexArrayObject iv : extVaos) {
             iv.bind();
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
             ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, extStride);

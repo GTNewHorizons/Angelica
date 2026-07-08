@@ -8,6 +8,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
@@ -2369,12 +2370,17 @@ public class GLStateManager {
             return;
         }
         try {
-            if (mode == GL11.GL_QUADS) {
-                QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
-                return;
+            final boolean ffpExt = FfpExtendedAttribs.maybeBindIndexed(mode, indices_count, type, indices_buffer_offset);
+            try {
+                if (mode == GL11.GL_QUADS) {
+                    QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
+                    return;
+                }
+                preDraw(mode);
+                RENDER_BACKEND.drawElements(mode, indices_count, type, indices_buffer_offset);
+            } finally {
+                if (ffpExt) FfpExtendedAttribs.unbind();
             }
-            preDraw(mode);
-            RENDER_BACKEND.drawElements(mode, indices_count, type, indices_buffer_offset);
         } finally {
             if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
         }
@@ -2455,19 +2461,24 @@ public class GLStateManager {
             FeedbackManager.processDrawArrays(mode, first, count);
             return;
         }
-        if (mode == GL11.GL_QUADS) {
-            QuadConverter.drawQuadsAsTriangles(first, count);
-        } else if (mode == GL11.GL_QUAD_STRIP) {
-            preDraw();
-            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
-        } else if (mode == GL11.GL_POLYGON) {
-            preDraw();
-            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
-        } else {
-            preDraw(mode);
-            RENDER_BACKEND.drawArrays(mode, first, count);
+        final boolean ffpExt = FfpExtendedAttribs.maybeBind(mode, first, count);
+        try {
+            if (mode == GL11.GL_QUADS) {
+                QuadConverter.drawQuadsAsTriangles(first, count);
+            } else if (mode == GL11.GL_QUAD_STRIP) {
+                preDraw();
+                RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
+            } else if (mode == GL11.GL_POLYGON) {
+                preDraw();
+                RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
+            } else {
+                preDraw(mode);
+                RENDER_BACKEND.drawArrays(mode, first, count);
+            }
+        } finally {
+            if (ffpExt) FfpExtendedAttribs.unbind();
+            if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
         }
-        if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
     }
 
     private static void ffpClientArrayPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
@@ -4073,12 +4084,12 @@ public class GLStateManager {
         };
     }
 
-    public static void glGetTexImage(int target, int level, int format, int type, java.nio.ByteBuffer pixels) {
+    public static void glGetTexImage(int target, int level, int format, int type, ByteBuffer pixels) {
         suspendPixelPackBuffer();
         RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
         restorePixelPackBuffer();
     }
-    public static void glGetTexImage(int target, int level, int format, int type, java.nio.IntBuffer pixels) {
+    public static void glGetTexImage(int target, int level, int format, int type, IntBuffer pixels) {
         suspendPixelPackBuffer();
         RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
         restorePixelPackBuffer();
@@ -4100,7 +4111,7 @@ public class GLStateManager {
         restorePixelPackBuffer();
     }
     public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) { RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height); }
-    public static void glClearTexImage(int texture, int level, int format, int type, java.nio.ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
+    public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
 
     public static int glGenSamplers() { return RENDER_BACKEND.genSamplers(); }
     public static void glDeleteSamplers(int sampler) { RENDER_BACKEND.deleteSamplers(sampler); }
@@ -5176,6 +5187,7 @@ public class GLStateManager {
 
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
+        FfpExtendedAttribs.onDeleteBuffer(buffer);
         if (boundVBO == buffer) boundVBO = 0;
         if (VAOManager.boundEBO == buffer) VAOManager.boundEBO = 0;
         if (boundPixelUnpackBuffer == buffer) boundPixelUnpackBuffer = 0;
@@ -5237,31 +5249,40 @@ public class GLStateManager {
         return RENDER_BACKEND.genBuffers();
     }
 
-    public static void glBufferData(int target, long size, int usage) { RENDER_BACKEND.bufferData(target, size, usage); }
-    public static void glBufferData(int target, int[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, float[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, java.nio.ByteBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, java.nio.ShortBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, java.nio.IntBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, java.nio.FloatBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, java.nio.DoubleBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferSubData(int target, long offset, java.nio.ByteBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, java.nio.ShortBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, java.nio.IntBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, java.nio.FloatBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, java.nio.DoubleBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
+    private static void onBufferRespec(int target) {
+        if (FfpExtendedAttribs.isEmpty()) return;
+        if (target == GL15.GL_ARRAY_BUFFER) {
+            FfpExtendedAttribs.onBufferRespecified(boundVBO);
+        } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
+            FfpExtendedAttribs.onBufferRespecified(VAOManager.boundEBO);
+        }
+    }
+
+    public static void glBufferData(int target, long size, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, size, usage); }
+    public static void glBufferData(int target, int[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, float[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, ByteBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, ShortBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, IntBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, FloatBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, DoubleBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferSubData(int target, long offset, ByteBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, ShortBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, IntBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, FloatBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, DoubleBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static ByteBuffer glMapBuffer(int target, int access) { return RENDER_BACKEND.mapBuffer(target, access); }
     public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) { return RENDER_BACKEND.mapBuffer(target, access, length, old_buffer); }
     public static boolean glUnmapBuffer(int target) { return RENDER_BACKEND.unmapBuffer(target); }
-    public static void glGetBufferSubData(int target, long offset, java.nio.ByteBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
-    public static void glGetBufferSubData(int target, long offset, java.nio.ShortBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
-    public static void glGetBufferSubData(int target, long offset, java.nio.IntBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
-    public static void glGetBufferSubData(int target, long offset, java.nio.FloatBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
-    public static void glGetBufferSubData(int target, long offset, java.nio.DoubleBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, ByteBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, ShortBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, IntBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, FloatBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, DoubleBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static int glGetBufferParameteri(int target, int pname) { return RENDER_BACKEND.getBufferParameteri(target, pname); }
-    public static void glBufferStorage(int target, java.nio.ByteBuffer data, int flags) { RENDER_BACKEND.bufferStorage(target, data, flags); }
+    public static void glBufferStorage(int target, ByteBuffer data, int flags) { RENDER_BACKEND.bufferStorage(target, data, flags); }
     public static void glBufferStorage(int target, long size, int flags) { RENDER_BACKEND.bufferStorage(target, size, flags); }
-    public static void glClearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, java.nio.ByteBuffer data) { RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, data); }
+    public static void glClearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, data); }
     public static boolean glIsBuffer(int buffer) { return RENDER_BACKEND.isBuffer(buffer); }
     public static void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) { RENDER_BACKEND.copyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size); }
 
@@ -5899,6 +5920,10 @@ public class GLStateManager {
     public static void glDeleteProgram(int program) {
         if (program == 0) return;
         CompatUniformManager.onDeleteProgram(program);
+        if (GLSMHooks.PROGRAM_DELETE.hasListeners()) {
+            GLSMHooks.programDeleteEvent.program = program;
+            GLSMHooks.PROGRAM_DELETE.post(GLSMHooks.programDeleteEvent);
+        }
 
         if (activeProgram == program) activeProgram = 0;
         RENDER_BACKEND.deleteProgram(program);

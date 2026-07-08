@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -38,6 +39,8 @@ public class MixinInitGLStateManager {
             .streamingDrawerDestroy(TessellatorStreamingDrawer::destroy)
             .postInitCallback(SelectionBoxRenderer::init)
             .build());
+
+        GLSMConfig.extendedAttribsExpected = AngelicaConfig.enableIris;
 
         if (Launch.blackboard != null && Boolean.TRUE.equals(Launch.blackboard.get("fml.deobfuscatedEnvironment"))) {
             System.setProperty("angelica.dumpShaders", "true");

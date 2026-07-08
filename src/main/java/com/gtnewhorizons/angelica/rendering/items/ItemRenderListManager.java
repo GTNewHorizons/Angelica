@@ -147,9 +147,9 @@ public class ItemRenderListManager {
             final ImmediateExtendedAttribHandler handler = GLSMHooks.immediateExtendedHandler;
             final VertexFormat format = tessellator.getVertexFormat();
             final int vertexCount = tessellator.getVertexCount();
+            final int extPrim = handler == null ? 0 : ImmediateExtendedAttribHandler.extPrimVerts(tessellator.getDrawMode(), vertexCount);
             final boolean capture = handler != null && format != null && format.hasTexture()
-                && tessellator.getDrawMode() == GL11.GL_QUADS
-                && vertexCount != 0 && (vertexCount & 3) == 0
+                && extPrim != 0
                 && (extVbo != 0 || handler.wantsExtendedCapture());
             if (!capture) {
                 detachExtAttribs();
@@ -159,11 +159,12 @@ public class ItemRenderListManager {
             final int extStride = ImmediateExtendedAttribHandler.EXT_STRIDE;
             final int stride = format.getVertexSize();
             final int texOffset = ImmediateExtendedAttribHandler.texOffset(format);
+            final int normalOffset = ImmediateExtendedAttribHandler.normalOffset(format);
             final ByteBuffer packed = tessellator.getWriteBuffer();
             final long srcBase = memAddress0(packed) + packed.position();
 
             final ByteBuffer ext = memCalloc(vertexCount, extStride);
-            handler.buildPacked(srcBase, stride, 0, texOffset, vertexCount, memAddress0(ext), extStride);
+            handler.buildPacked(srcBase, stride, 0, texOffset, normalOffset, vertexCount, extPrim, memAddress0(ext), extStride);
 
             final boolean firstAttach = extVbo == 0;
             if (firstAttach) {

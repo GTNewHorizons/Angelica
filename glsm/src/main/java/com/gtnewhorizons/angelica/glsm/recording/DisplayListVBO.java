@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 
 /**
  * A class that stores multiple vertex formats & their corresponding buffers.
@@ -75,7 +76,12 @@ public final class DisplayListVBO {
 
         public void render() {
             vao.bind();
-            vao.draw(drawMode, start, count);
+            FfpExtendedAttribs.beginInternalDraw();
+            try {
+                vao.draw(drawMode, start, count);
+            } finally {
+                FfpExtendedAttribs.endInternalDraw();
+            }
             vao.unbind();
         }
 

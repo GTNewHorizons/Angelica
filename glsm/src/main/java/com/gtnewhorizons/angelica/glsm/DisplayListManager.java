@@ -837,7 +837,12 @@ public class DisplayListManager {
         if (hasCommands) {
             DisplayListVBO compiledBuffers = null;
             try {
-                compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
+                final CommandRecorder pausedVbo = pauseRecording();
+                try {
+                    compiledBuffers = new DisplayListVBOBuilder().addDraws(accumulatedDraws).build();
+                } finally {
+                    resumeRecording(pausedVbo);
+                }
                 final IndexedDrawBatchBuilder indexedBuilder = commandBuffer.getIndexedDraws();
                 final List<IndexedDrawBatch> indexedBatches;
                 if (indexedBuilder.isEmpty()) {
