@@ -188,6 +188,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                 if (canRender) {
                                     materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
                                 }
+                            } else if (!canRenderOffThread) {
+                                // NEVER call canRenderInPass off-thread for non-thread-safe renderers:
+                                // ISBRHs like ForgeMultipart store the queried pass in a static that
+                                // renderWorldBlock reads back later, so concurrent worker calls corrupt
+                                // the pass mid-render on the main thread — microblocks randomly vanish
+                                // (#1439). Defer every pass; renderBlock() re-checks canRenderInPass on
+                                // the main thread, where the static is safe.
+                                deferredBlocks.add(new DeferredBlock(x, y, z, block, meta, pass, null, false));
+                                continue;
                             } else {
                                 // Normal block rendering
                                 canRender = block.canRenderInPass(pass);
@@ -307,8 +316,12 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         }
 
         setRenderPass(pass);
-        // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft set global state in this method that gets read elsewhere renderWorldBlock)
-        block.canRenderInPass(pass);
+        // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft or ForgeMultipart set
+        // global state in this method that gets read later in renderWorldBlock). For deferred blocks this
+        // main-thread call is also the authoritative pass check — the worker no longer asks (#1439).
+        if (!block.canRenderInPass(pass)) {
+            return;
+        }
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
         boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
