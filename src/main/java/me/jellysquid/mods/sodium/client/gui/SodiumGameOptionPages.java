@@ -1,8 +1,22 @@
 package me.jellysquid.mods.sodium.client.gui;
 
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.I18n;
+import net.minecraft.client.settings.GameSettings;
+
+import org.lwjgl.opengl.Display;
+
+import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import cpw.mods.fml.common.Optional.Method;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
@@ -22,19 +36,12 @@ import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
+import me.jellysquid.mods.sodium.client.gui.options.storage.CubicChunksOptionStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
-import net.minecraft.client.Minecraft;
-import net.minecraft.client.resources.I18n;
-import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
-import org.lwjgl.opengl.Display;
-
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 
 public class SodiumGameOptionPages {
     private static final SodiumOptionsStorage sodiumOpts = new SodiumOptionsStorage();
@@ -54,7 +61,13 @@ public class SodiumGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build());
 
+       
+        if (ModStatus.isCubicChunksLoaded) {
+            firstGroupBuilder.add(getCCVerticalViewDistance());
+        }
+        
         if(Iris.enabled) {
+
             final OptionImpl<GameSettings, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
                 .setName(I18n.format("options.iris.shadowDistance"))
                 .setTooltip(I18n.format("options.iris.shadowDistance.sodium_tooltip"))
@@ -497,6 +510,27 @@ public class SodiumGameOptionPages {
                 .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.performance"), ImmutableList.copyOf(groups));
+    }
+
+    @Method(modid = "cubicchunks")
+    private static OptionImpl<?, ?> getCCVerticalViewDistance() {
+        CubicChunksOptionStorage storage = new CubicChunksOptionStorage();
+
+        return OptionImpl.createBuilder(int.class, storage)
+            .setName(I18n.format("sodium.options.cc.vertical_view_distance.name"))
+            .setTooltip(I18n.format("sodium.options.cc.vertical_view_distance.tooltip"))
+            .setControl(option -> new SliderControl(
+                option,
+                CubicChunksVideoSettings.getMinVerticalViewDistance(),
+                CubicChunksVideoSettings.getMaxVerticalViewDistance(),
+                1,
+                ControlValueFormatter.quantity("options.chunks")))
+            .setBinding(
+                (options, value) -> options.verticalViewDistance = value,
+                options -> options.verticalViewDistance)
+            .setImpact(OptionImpact.HIGH)
+            .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+            .build();
     }
 
     public static OptionPage appearance() {

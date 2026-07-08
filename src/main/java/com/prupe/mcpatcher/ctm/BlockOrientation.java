@@ -6,6 +6,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
+import net.minecraftforge.common.util.ForgeDirection;
 
 final class BlockOrientation extends RenderBlockState {
 
@@ -44,7 +45,7 @@ final class BlockOrientation extends RenderBlockState {
     private int textureFace;
     private int textureFaceOrig;
     private int rotateUV;
-    private boolean flipBottom;
+    private boolean flipped;
 
     @Override
     public void clear() {
@@ -57,7 +58,7 @@ final class BlockOrientation extends RenderBlockState {
         offsetsComputed = false;
         haveOffsets = false;
         dx = dy = dz = 0;
-        flipBottom = !fixedBottomFaceUV;
+        flipped = false;
     }
 
     @Override
@@ -102,7 +103,10 @@ final class BlockOrientation extends RenderBlockState {
 
     @Override
     public int[] getOffset(int blockFace, int relativeDirection) {
-        return NEIGHBOR_OFFSET[flipBottom && blockFace == 0 ? 1 : blockFace][rotateUV(relativeDirection)];
+        if(flipped){
+            blockFace = ForgeDirection.OPPOSITES[blockFace];
+        }
+        return NEIGHBOR_OFFSET[blockFace][rotateUV(relativeDirection)];
     }
 
     @Override
@@ -146,8 +150,8 @@ final class BlockOrientation extends RenderBlockState {
     }
 
 
-    public void setFlipBottom(){
-        flipBottom = true;
+    public void flipFace() {
+        flipped = true;
     }
 
     @Override
@@ -175,7 +179,7 @@ final class BlockOrientation extends RenderBlockState {
         copy.textureFace = textureFace;
         copy.textureFaceOrig = textureFaceOrig;
         copy.rotateUV = rotateUV;
-        copy.flipBottom = flipBottom;
+        copy.flipped = flipped;
 
         copy.blockAccess = blockAccess;
         copy.block = block;
@@ -208,7 +212,7 @@ final class BlockOrientation extends RenderBlockState {
         rotateUV = 0;
         textureFace = blockFaceToTextureFace(blockFace);
         metadataBits = (1 << metadata) | (1 << altMetadata);
-        flipBottom = !fixedBottomFaceUV;
+        flipped = !fixedBottomFaceUV && blockFace == ForgeDirection.DOWN.ordinal();
     }
 
     void setBlockMetadata(Block block, int metadata, int face) {

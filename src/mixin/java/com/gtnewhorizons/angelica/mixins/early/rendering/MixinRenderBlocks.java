@@ -21,6 +21,7 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.util.ForgeDirection;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -185,7 +186,7 @@ public abstract class MixinRenderBlocks {
     public IBlockAccess blockAccess;
 
     @Unique
-    private void angelica$handleCompactCtmFace(IIcon icon, CallbackInfo ci) {
+    private void angelica$handleCompactCtmFace(IIcon icon, ForgeDirection direction, CallbackInfo ci) {
         CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
         if (ctx == null) {
             return;
@@ -197,39 +198,39 @@ public abstract class MixinRenderBlocks {
             return;
         }
 
-        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon)) {
+        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon, direction.ordinal())) {
             ci.cancel();
         }
     }
 
     @Inject(method = "renderFaceYNeg", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.DOWN, ci);
     }
 
     @Inject(method = "renderFaceYPos", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.UP, ci);
     }
 
     @Inject(method = "renderFaceZNeg", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.NORTH, ci);
     }
 
     @Inject(method = "renderFaceZPos", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.SOUTH, ci);
     }
 
     @Inject(method = "renderFaceXNeg", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.WEST, ci);
     }
 
     @Inject(method = "renderFaceXPos", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.EAST, ci);
     }
 
     @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
