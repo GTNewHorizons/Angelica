@@ -20,6 +20,10 @@ public class AngelicaConfig {
     @Config.RequiresWorldRestart
     public static int chunkBuilderThreadCount;
 
+    @Config.Comment("Fix randomly invisible Forge Microblocks and other multipart blocks when threaded chunk building is enabled (issue #1439). Prevents chunk builder threads from corrupting render-pass state that some block renderers keep in static fields.")
+    @Config.DefaultBoolean(true)
+    public static boolean fixMultipartPassRace;
+
     @Config.Comment("Enable NotFine Options")
     @Config.DefaultBoolean(false)
     public static boolean enableNotFineOptions;

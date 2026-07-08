@@ -214,6 +214,8 @@ options.angelica.itemdisplaylistcount=物品渲染器缓存限制
 options.angelica.itemdisplaylistcount.tooltip=优化物品渲染器中的VBO缓存数量上限。较高的值将显著提高性能，但可能导致显存占用增加
 options.angelica.threadedChunkBuilding=多线程区块构建
 options.angelica.threadedChunkBuilding.tooltip=如果启用，区块网格化将多线程并行执行，以显著提高区块构建速度。如果您遇到使用自定义方块渲染的模组出现渲染问题，请禁用此项。需要重新加载渲染器才能生效
+options.angelica.multipartPassFix=复合方块渲染修复
+options.angelica.multipartPassFix.tooltip=修复启用多线程区块构建时锻造微型方块等复合方块随机隐形的问题。防止区块构建线程破坏部分方块渲染器全局共享的渲染阶段状态。(GH-1439)
 
 pack.iris.select.title=选择
 pack.iris.configure.title=配置

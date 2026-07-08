@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
@@ -188,7 +189,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                 if (canRender) {
                                     materialOverride = buffers.getRenderPassConfiguration().getMaterialForRenderType(override);
                                 }
-                            } else if (!canRenderOffThread) {
+                            } else if (!canRenderOffThread && AngelicaConfig.fixMultipartPassRace) {
                                 // NEVER call canRenderInPass off-thread for non-thread-safe renderers:
                                 // ISBRHs like ForgeMultipart store the queried pass in a static that
                                 // renderWorldBlock reads back later, so concurrent worker calls corrupt
@@ -319,7 +320,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft or ForgeMultipart set
         // global state in this method that gets read later in renderWorldBlock). For deferred blocks this
         // main-thread call is also the authoritative pass check — the worker no longer asks (#1439).
-        if (!block.canRenderInPass(pass)) {
+        if (!block.canRenderInPass(pass) && AngelicaConfig.fixMultipartPassRace) {
             return;
         }
         tessellator.startDrawingQuads();
