@@ -463,7 +463,9 @@ public enum Mixins implements IMixins {
 
     OPTIMIZE_TEXTURE_LOADING(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.textures.MixinTextureUtil_OptimizeMipmap")
+        .addClientMixins(
+            "angelica.textures.MixinTextureUtil_OptimizeMipmap",
+            "angelica.textures.MixinStitcher")
         .setApplyIf(() -> AngelicaConfig.optimizeTextureLoading)),
 
     REPLACE_FFP(new MixinBuilder()
