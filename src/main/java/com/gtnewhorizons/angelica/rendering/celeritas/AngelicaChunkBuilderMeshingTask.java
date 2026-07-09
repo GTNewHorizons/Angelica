@@ -320,7 +320,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft or ForgeMultipart set
         // global state in this method that gets read later in renderWorldBlock). For deferred blocks this
         // main-thread call is also the authoritative pass check — the worker no longer asks (#1439).
-        if (!block.canRenderInPass(pass) && AngelicaConfig.fixMultipartPassRace) {
+        // EXCEPT for shader pack overrides: they intentionally reroute blocks to a different pass than
+        // canRenderInPass reports (e.g. glass moved to translucent), so they must never be vetoed here.
+        final boolean blockAllowsPass = block.canRenderInPass(pass);
+        if (AngelicaConfig.fixMultipartPassRace && !isShaderPackOverride && !blockAllowsPass) {
             return;
         }
         tessellator.startDrawingQuads();
