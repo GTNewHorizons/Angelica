@@ -212,7 +212,7 @@ final class BlockOrientation extends RenderBlockState {
         rotateUV = 0;
         textureFace = blockFaceToTextureFace(blockFace);
         metadataBits = (1 << metadata) | (1 << altMetadata);
-        if(!fixedBottomFaceUV && blockFace == ForgeDirection.DOWN.ordinal()) flipped = true;
+        flipped = !fixedBottomFaceUV && blockFace == ForgeDirection.DOWN.ordinal();
     }
 
     void setBlockMetadata(Block block, int metadata, int face) {

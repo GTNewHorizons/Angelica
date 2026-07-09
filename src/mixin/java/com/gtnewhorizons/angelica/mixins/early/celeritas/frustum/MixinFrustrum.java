@@ -25,7 +25,7 @@ public abstract class MixinFrustrum implements ViewportProvider {
 
     @Inject(method = "<init>", at = @At("RETURN"))
     private void celeritas$snapshotFrustum(CallbackInfo ci) {
-        this.celeritas$snapshot.set(((ClippingHelperExt) this.clippingHelper).celeritas$getCombinedMatrix());
+        this.celeritas$snapshot.set(((ClippingHelperExt) this.clippingHelper).celeritas$getCombinedMatrix(), false);
     }
 
     @Override
