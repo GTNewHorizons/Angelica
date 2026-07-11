@@ -375,7 +375,8 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> true)
         .addClientMixins(
-            "angelica.upscale.MixinEntityRenderer_FSR"
+            "angelica.upscale.MixinEntityRenderer_FSR",
+            "angelica.upscale.MixinMinecraft_FSR"
         )),
 
     ANGELICA_ZOOM(new MixinBuilder()
