@@ -25,10 +25,12 @@ import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkMeshFormats;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
+import org.joml.FrustumIntersection;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
@@ -100,6 +102,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     @Override
     protected void unloadWorld() {
         DynamicLights.setActiveRenderer(null);
+        MainPassFrustum.clear();
         this.sortedRenderSections.clear();
         this.sortedTileEntities.clear();
         ShadowRenderer.visibleTileEntities.clear();
@@ -257,7 +260,32 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         GLStateManager.glColor4f(1, 1, 1, 1);
     }
 
-    private int renderCulledTileEntities(TileEntityRenderContext renderContext) {
+    /**
+     * The JOML frustum for the current main-pass viewport, or null when the per-section
+     * containment fast path shouldn't be used (feature off, shadow pass, or an unrecognized
+     * viewport) — callers then run the plain per-TE visibility test for every block entity.
+     */
+    private FrustumIntersection frustumForTECulling() {
+        if (!AngelicaConfig.optimizeTileEntityCulling || renderSectionManager.isInShadowPass()) {
+            return null;
+        }
+        return MainPassFrustum.getFor(this.currentViewport);
+    }
+
+    private boolean sectionFullyInFrustum(FrustumIntersection frustum, RenderSection section) {
+        if (frustum == null) {
+            return false;
+        }
+        // The viewport's frustum is camera-relative (Viewport.isBoxVisible subtracts the camera
+        // transform before testing), so section bounds must be translated the same way.
+        final var transform = this.currentViewport.getTransform();
+        final float minX = (float) (section.getOriginX() - transform.x);
+        final float minY = (float) (section.getOriginY() - transform.y);
+        final float minZ = (float) (section.getOriginZ() - transform.z);
+        return frustum.intersectAab(minX, minY, minZ, minX + 16f, minY + 16f, minZ + 16f) == FrustumIntersection.INSIDE;
+    }
+
+    private int renderCulledTileEntities(TileEntityRenderContext renderContext, boolean sortForTranslucency, FrustumIntersection frustum) {
         int count = 0;
         sortedTileEntities.clear();
         SortedRenderLists renderLists = renderSectionManager.getRenderLists();
@@ -294,24 +322,46 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                     continue;
                 }
 
+                // A section entirely inside the frustum can't contain an off-screen TE,
+                // so one containment query replaces a frustum test per block entity.
+                final boolean skipBoxTests = sectionFullyInFrustum(frustum, renderSection);
+
                 for (TileEntity te : blockEntities) {
-                    if (te.shouldRenderInPass(renderContext.pass)) sortedTileEntities.add(te);
+                    if (!te.shouldRenderInPass(renderContext.pass)) continue;
+                    if (!skipBoxTests && !isTileEntityBoxVisible(te)) continue;
+                    if (sortForTranslucency) {
+                        sortedTileEntities.add(te);
+                    } else {
+                        dispatchTE(te, renderContext.partialTicks);
+                        count++;
+                    }
                 }
             }
         }
 
-        sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
-        this.renderBlockEntityList(sortedTileEntities, renderContext);
+        if (sortForTranslucency) {
+            sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
+            for (TileEntity te : sortedTileEntities) {
+                dispatchTE(te, renderContext.partialTicks);
+            }
+            count = sortedTileEntities.size();
+        }
 
-        return sortedTileEntities.size();
+        return count;
     }
 
-    private int renderGlobalTileEntities(TileEntityRenderContext renderContext) {
+    private int renderGlobalTileEntities(TileEntityRenderContext renderContext, boolean sortForTranslucency, FrustumIntersection frustum) {
         int count = 0;
-        sortedRenderSections.clear();
-        sortedRenderSections.addAll(renderSectionManager.getSectionsWithGlobalEntities());
-        sortedRenderSections.sort(renderSectionOrderer.setLastCameraState(lastCameraState));
-        for (var renderSection : sortedRenderSections) {
+        final Iterable<RenderSection> sections;
+        if (sortForTranslucency) {
+            sortedRenderSections.clear();
+            sortedRenderSections.addAll(renderSectionManager.getSectionsWithGlobalEntities());
+            sortedRenderSections.sort(renderSectionOrderer.setLastCameraState(lastCameraState));
+            sections = sortedRenderSections;
+        } else {
+            sections = renderSectionManager.getSectionsWithGlobalEntities();
+        }
+        for (var renderSection : sections) {
             sortedTileEntities.clear();
             var builtContext = renderSection.getBuiltContext();
 
@@ -326,14 +376,26 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 continue;
             }
 
+            final boolean skipBoxTests = sectionFullyInFrustum(frustum, renderSection);
+
             for (TileEntity te : blockEntities) {
-                if (te.shouldRenderInPass(renderContext.pass)) sortedTileEntities.add(te);
+                if (!te.shouldRenderInPass(renderContext.pass)) continue;
+                if (!skipBoxTests && !isTileEntityBoxVisible(te)) continue;
+                if (sortForTranslucency) {
+                    sortedTileEntities.add(te);
+                } else {
+                    dispatchTE(te, renderContext.partialTicks);
+                    count++;
+                }
             }
 
-            count += sortedTileEntities.size();
-
-            sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
-            this.renderBlockEntityList(sortedTileEntities, renderContext);
+            if (sortForTranslucency) {
+                count += sortedTileEntities.size();
+                sortedTileEntities.sort(tileEntityOrderer.setLastCameraState(lastCameraState));
+                for (TileEntity te : sortedTileEntities) {
+                    dispatchTE(te, renderContext.partialTicks);
+                }
+            }
         }
 
         return count;
@@ -342,12 +404,11 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     public int renderBlockEntities(float partialTicks) {
         final int pass = MinecraftForgeClient.getRenderPass();
         teRenderContext.set(partialTicks, pass);
-        if (pass == 0 || !ClientProxy.options().performance.translucencySorting) {
-            return super.renderBlockEntities(teRenderContext);
-        }
+        final boolean sortForTranslucency = pass != 0 && ClientProxy.options().performance.translucencySorting;
+        final FrustumIntersection frustum = frustumForTECulling();
         int count = 0;
-        count += this.renderCulledTileEntities(teRenderContext);
-        count += this.renderGlobalTileEntities(teRenderContext);
+        count += this.renderCulledTileEntities(teRenderContext, sortForTranslucency, frustum);
+        count += this.renderGlobalTileEntities(teRenderContext, sortForTranslucency, frustum);
         return count;
     }
 
@@ -355,17 +416,23 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         if (!tileEntity.shouldRenderInPass(pass)) {
             return;
         }
-
-        final ITileEntityBoundingBoxCache teCache = (ITileEntityBoundingBoxCache) tileEntity;
-
-        final byte boundsClass = teCache.angelica$boundsClass();
-        if (boundsClass != TileEntityRenderBoundsRegistry.INFINITE) {
-            final AxisAlignedBB aabb = boundsClass == TileEntityRenderBoundsRegistry.DYNAMIC ? tileEntity.getRenderBoundingBox() : teCache.angelica$getCachedRenderBoundingBox();
-            if (aabb != null && !this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ)) {
-                return;
-            }
+        if (!isTileEntityBoxVisible(tileEntity)) {
+            return;
         }
+        dispatchTE(tileEntity, partialTicks);
+    }
 
+    private boolean isTileEntityBoxVisible(TileEntity tileEntity) {
+        final ITileEntityBoundingBoxCache teCache = (ITileEntityBoundingBoxCache) tileEntity;
+        final byte boundsClass = teCache.angelica$boundsClass();
+        if (boundsClass == TileEntityRenderBoundsRegistry.INFINITE) {
+            return true;
+        }
+        final AxisAlignedBB aabb = boundsClass == TileEntityRenderBoundsRegistry.DYNAMIC ? tileEntity.getRenderBoundingBox() : teCache.angelica$getCachedRenderBoundingBox();
+        return aabb == null || this.currentViewport.isBoxVisible(aabb.minX, aabb.minY, aabb.minZ, aabb.maxX, aabb.maxY, aabb.maxZ);
+    }
+
+    private void dispatchTE(TileEntity tileEntity, float partialTicks) {
         try {
             TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
         } catch (RuntimeException e) {
