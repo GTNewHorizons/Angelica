@@ -1,0 +1,10 @@
+// glsm/src/main/java/com/gtnewhorizons/angelica/glsm/hooks/GLSMHooks.java
+
+package com.gtnewhorizons.angelica.glsm.hooks;
+
+public class GLSMHooks {
+    public static boolean isFirstPersonView() {
+        // Check if we are in first person view
+        return true; // Replace with actual logic
+    }
+}
