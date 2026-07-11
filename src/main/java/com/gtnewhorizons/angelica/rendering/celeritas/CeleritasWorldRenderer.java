@@ -285,7 +285,22 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return frustum.intersectAab(minX, minY, minZ, minX + 16f, minY + 16f, minZ + 16f) == FrustumIntersection.INSIDE;
     }
 
+    /** Max offset of a block position from its section center: 8 * sqrt(3) ~= 13.86, rounded up. */
+    private static final double SECTION_CENTER_MARGIN = 14.0;
+
+    /** TileEntity.getMaxRenderDistanceSquared() default: 64 blocks. Values above it are mod overrides. */
+    private static final double VANILLA_MAX_TE_RENDER_DISTANCE_SQ = 4096.0D;
+
     private int renderCulledTileEntities(TileEntityRenderContext renderContext, boolean sortForTranslucency, FrustumIntersection frustum) {
+        final int tesrDistance = AngelicaConfig.tesrRenderDistance;
+        final boolean distanceCapped = tesrDistance > 0 && lastCameraState != null;
+        final double capSq = distanceCapped ? (double) tesrDistance * tesrDistance : 0;
+        final float sectionSkipSq = distanceCapped
+            ? (float) ((tesrDistance + SECTION_CENTER_MARGIN) * (tesrDistance + SECTION_CENTER_MARGIN)) : 0;
+        final double camX = distanceCapped ? lastCameraState.x() : 0;
+        final double camY = distanceCapped ? lastCameraState.y() : 0;
+        final double camZ = distanceCapped ? lastCameraState.z() : 0;
+
         int count = 0;
         sortedTileEntities.clear();
         SortedRenderLists renderLists = renderSectionManager.getRenderLists();
@@ -322,11 +337,19 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                     continue;
                 }
 
+                // Culled TEs never have render bounds beyond their own section (those go to the
+                // global list), so a section whose center is beyond cap + margin holds nothing in range.
+                if (distanceCapped
+                    && renderSection.getSquaredDistance((float) camX, (float) camY, (float) camZ) > sectionSkipSq) {
+                    continue;
+                }
+
                 // A section entirely inside the frustum can't contain an off-screen TE,
                 // so one containment query replaces a frustum test per block entity.
                 final boolean skipBoxTests = sectionFullyInFrustum(frustum, renderSection);
 
                 for (TileEntity te : blockEntities) {
+                    if (distanceCapped && te.getDistanceFrom(camX, camY, camZ) > capSq) continue;
                     if (!te.shouldRenderInPass(renderContext.pass)) continue;
                     if (!skipBoxTests && !isTileEntityBoxVisible(te)) continue;
                     if (sortForTranslucency) {
@@ -351,6 +374,13 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     }
 
     private int renderGlobalTileEntities(TileEntityRenderContext renderContext, boolean sortForTranslucency, FrustumIntersection frustum) {
+        final int tesrDistance = AngelicaConfig.tesrRenderDistance;
+        final boolean distanceCapped = tesrDistance > 0 && lastCameraState != null;
+        final double capSq = distanceCapped ? (double) tesrDistance * tesrDistance : 0;
+        final double camX = distanceCapped ? lastCameraState.x() : 0;
+        final double camY = distanceCapped ? lastCameraState.y() : 0;
+        final double camZ = distanceCapped ? lastCameraState.z() : 0;
+
         int count = 0;
         final Iterable<RenderSection> sections;
         if (sortForTranslucency) {
@@ -379,6 +409,14 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             final boolean skipBoxTests = sectionFullyInFrustum(frustum, renderSection);
 
             for (TileEntity te : blockEntities) {
+                // The cap only applies to TEs using the vanilla default render distance. A custom
+                // getMaxRenderDistanceSquared (Eye of Harmony, beacons) or an unbounded render
+                // volume (Space Elevator cable) means the mod manages its own visibility. The limit
+                // is read live, not cached: EnderIO travel anchors raise theirs from 48^2 to 128^2+
+                // only while a travel item is held.
+                if (distanceCapped && te.getDistanceFrom(camX, camY, camZ) > capSq
+                    && te.getMaxRenderDistanceSquared() <= VANILLA_MAX_TE_RENDER_DISTANCE_SQ
+                    && ((ITileEntityBoundingBoxCache) te).angelica$boundsClass() != TileEntityRenderBoundsRegistry.INFINITE) continue;
                 if (!te.shouldRenderInPass(renderContext.pass)) continue;
                 if (!skipBoxTests && !isTileEntityBoxVisible(te)) continue;
                 if (sortForTranslucency) {

@@ -214,6 +214,10 @@ options.angelica.itemdisplaylistcount=物品渲染器缓存限制
 options.angelica.itemdisplaylistcount.tooltip=优化物品渲染器中的VBO缓存数量上限。较高的值将显著提高性能，但可能导致显存占用增加
 options.angelica.threadedChunkBuilding=多线程区块构建
 options.angelica.threadedChunkBuilding.tooltip=如果启用，区块网格化将多线程并行执行，以显著提高区块构建速度。如果您遇到使用自定义方块渲染的模组出现渲染问题，请禁用此项。需要重新加载渲染器才能生效
+options.angelica.tesrRenderDistance=TESR 渲染距离
+options.angelica.tesrRenderDistance.tooltip=动态方块渲染器（箱子、GT 机器、无人机等）的最大绘制距离。原版为 64 格；较低的值可在大型基地中节省 CPU 时间。仅影响使用原版默认距离的方块：自行声明渲染距离或无界渲染体积的方块（鸿蒙之眼、信标、太空电梯）始终绘制。完全由动态渲染器绘制的方块超出此距离后将不可见。
+options.angelica.tesrRenderDistance.value=%s 格
+options.angelica.unlimited=原版
 
 pack.iris.select.title=选择
 pack.iris.configure.title=配置
