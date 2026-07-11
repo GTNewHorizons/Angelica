@@ -210,5 +210,16 @@ public final class ShaderManager {
     }
 
     public int statLastFramePreDrawCalls() { return lastFramePreDrawCalls; }
+    public int statLastFrameBlockWrites() { return uniforms.lastFrameBlockWrites; }
+    public int statLastFrameStagedMatrices() { return uniforms.lastFrameStagedMatrices; }
+    public int statLastFrameStagedLighting() { return uniforms.lastFrameStagedLighting; }
+    public int statLastFrameStagedFragment() { return uniforms.lastFrameStagedFragment; }
+    public int statLastFrameStagedColor() { return uniforms.lastFrameStagedColor; }
+    public int statLastFrameStagedNormal() { return uniforms.lastFrameStagedNormal; }
+    public int statLastFrameStagedTexCoord() { return uniforms.lastFrameStagedTexCoord; }
+    public int statLastFrameStagedLightmap() { return uniforms.lastFrameStagedLightmap; }
+    public int statLastFrameStagedTexGen() { return uniforms.lastFrameStagedTexGen; }
+    public int statLastFrameStagedClipPlanes() { return uniforms.lastFrameStagedClipPlanes; }
+    public int statLastFrameStagedMisc() { return uniforms.lastFrameStagedMisc; }
     public int statProgramCount() { return cache.getProgramCount(); }
 }

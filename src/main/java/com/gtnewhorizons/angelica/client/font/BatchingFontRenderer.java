@@ -450,6 +450,11 @@ public class BatchingFontRenderer {
         GLStateManager.glDepthMask(true);
         restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore);
 
+        discardDeferredText();
+    }
+
+    public static void discardDeferredText() {
+        if (deferredSegments.isEmpty()) return;
         for (int i = 0, n = deferredSegments.size(); i < n; i++) {
             final DeferredTextSegment segment = deferredSegments.get(i);
             segment.owner.clearDeferredCommands();

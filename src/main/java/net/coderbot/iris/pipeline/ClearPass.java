@@ -41,9 +41,6 @@ public class ClearPass {
 
 		GLStateManager.glClearColor(color.x, color.y, color.z, color.w);
         GLStateManager.glClear(clearFlags);
-        if (Minecraft.isRunningOnMac) {
-            GLStateManager.glGetError();
-        }
 		profiler.endSection();
 	}
 

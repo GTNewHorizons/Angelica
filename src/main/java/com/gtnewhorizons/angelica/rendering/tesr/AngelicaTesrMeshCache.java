@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMeshBuilder;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshProvider;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.VertexTransform;
@@ -35,6 +36,9 @@ public final class AngelicaTesrMeshCache {
 
     public static final AngelicaTesrMeshCache INSTANCE = new AngelicaTesrMeshCache(new GtnhMeshBackend(), System::currentTimeMillis);
     private static final Logger LOG = LogManager.getLogger("AngelicaTesrMeshCache");
+
+    public static long cacheHits;
+    public static long cacheMisses;
 
     private final MeshBackend backend;
     private final LongSupplier clock;
@@ -84,7 +88,10 @@ public final class AngelicaTesrMeshCache {
     public void renderCached(Object key, boolean dirty, TesrMeshProvider provider, TileEntity te) {
         Entry entry = entries.get(key);
         if (entry == null || dirty) {
+            if (Tracy.ENABLED) cacheMisses++;
             entry = capture(key, entry, sink -> provider.angelica$build(sink, te));
+        } else {
+            if (Tracy.ENABLED) cacheHits++;
         }
         replay(entry);
         entry.lastUsedMs = clock.getAsLong();
@@ -93,7 +100,10 @@ public final class AngelicaTesrMeshCache {
     public void renderCached(Object key, TesrMeshBuilder builder) {
         Entry entry = entries.get(key);
         if (entry == null) {
+            if (Tracy.ENABLED) cacheMisses++;
             entry = capture(key, null, builder);
+        } else {
+            if (Tracy.ENABLED) cacheHits++;
         }
         replay(entry);
         entry.lastUsedMs = clock.getAsLong();
@@ -229,7 +239,7 @@ public final class AngelicaTesrMeshCache {
             final int drawMode = direct.getDrawMode();
             final VertexFormat format = direct.getVertexFormat();
             final ByteBuffer copy = direct.allocateBufferCopy();
-            final int[] data = VertexTransform.decode(memAddress0(copy), format, vertexCount);
+            final int[] data = VertexTransform.decode(memAddress0(copy), format, vertexCount, drawMode);
             memFree(copy);
             TessellatorManager.stopCapturingDirect();
             direct = null;

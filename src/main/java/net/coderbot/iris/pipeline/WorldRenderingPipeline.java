@@ -40,6 +40,8 @@ public interface WorldRenderingPipeline {
 	/** Re-bind the program/framebuffer for the currently-active Pass, if any. */
 	void rebindCurrentPass();
 
+	default void onEntityRenderBoundary() {}
+
 	void beginHand();
 
 	void beginTranslucents();

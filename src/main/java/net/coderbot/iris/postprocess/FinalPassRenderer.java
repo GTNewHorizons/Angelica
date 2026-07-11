@@ -71,6 +71,11 @@ public class FinalPassRenderer {
 	@Nullable private final Set<GlImage> customImages;
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
+	private int samplerUsage;
+
+	public int getSamplerUsage() {
+		return samplerUsage;
+	}
 
 	public FinalPassRenderer(ProgramSet pack, RenderTargets renderTargets, TextureAccess noiseTexture,
 							 FrameUpdateNotifier updateNotifier, ImmutableSet<Integer> flippedBuffers,
@@ -106,6 +111,10 @@ public class FinalPassRenderer {
 			return pass;
 		}).orElse(null);
 
+		if (Tracy.ENABLED && finalPass != null) {
+			Tracy.message("passGraph final/" + stageName + " mipmapped=" + finalPass.mipmappedBuffers + " readsAlt=" + finalPass.stageReadsFromAlt);
+		}
+
 		final IntList buffersToBeCleared = pack.getPackDirectives().getRenderTargetDirectives().getBuffersToBeCleared();
 
 		// The name of this method might seem a bit odd here, but we want a framebuffer with color attachments that line
@@ -119,30 +128,29 @@ public class FinalPassRenderer {
 		this.lastColorTextureVersion = ((IRenderTargetExt)main).iris$getColorBufferVersion();
 		this.colorHolder.addColorAttachment(0, lastColorTextureId);
 
-		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
-		// This works for the most part, but it's not perfect. A better approach would be creating secondary
-		// framebuffers for every other frame, but that would be a lot more complex...
-
 		final ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
+		final boolean parityFlip = renderTargets.getParityState() != null && renderTargets.getParityState().isEnabled();
 
-		flippedBuffers.forEach((i) -> {
-			final int target = i;
+		if (!parityFlip) {
+			flippedBuffers.forEach((i) -> {
+				final int target = i;
 
-			if (buffersToBeCleared.contains(target)) {
-				return;
-			}
+				if (buffersToBeCleared.contains(target)) {
+					return;
+				}
 
-			final SwapPass swap = new SwapPass();
-			final RenderTarget target1 = renderTargets.get(target);
-			swap.target = target;
-			swap.width = target1.getWidth();
-			swap.height = target1.getHeight();
-			// Non-flipped buffers write to ALT, copy ALT→MAIN to preserve data
-			swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
-			swap.targetTexture = renderTargets.get(target).getMainTexture();
+				final SwapPass swap = new SwapPass();
+				final RenderTarget target1 = renderTargets.get(target);
+				swap.target = target;
+				swap.width = target1.getWidth();
+				swap.height = target1.getHeight();
+				// Non-flipped buffers write to ALT, copy ALT→MAIN to preserve data
+				swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
+				swap.targetTexture = renderTargets.get(target).getMainTexture();
 
-			swapPasses.add(swap);
-		});
+				swapPasses.add(swap);
+			});
+		}
 
 		this.swapPasses = swapPasses.build();
 
@@ -239,8 +247,9 @@ public class FinalPassRenderer {
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
 				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
+				final ImmutableSet<Integer> readsFromAlt = renderTargets.parityResolve(finalPass.stageReadsFromAlt);
 				for (int index : finalPass.mipmappedBuffers) {
-					setupMipmapping(renderTargets.get(index), finalPass.stageReadsFromAlt.contains(index));
+					setupMipmapping(renderTargets.get(index), readsFromAlt.contains(index));
 				}
 			}
 
@@ -301,7 +310,8 @@ public class FinalPassRenderer {
 		ProgramSamplers.clearActiveSamplers();
 		GLStateManager.glUseProgram(0);
 
-		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {
+		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLStateManager.getMaxBoundTextureUnit());
+		for (int i = 0; i <= maxUnit; i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work properly
 			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
@@ -338,7 +348,15 @@ public class FinalPassRenderer {
 		//
 		// Also note that this only applies to one of the two buffers in a render target buffer pair - making it
 		// unlikely that this issue occurs in practice with most shader packs.
-		RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		if (Tracy.ENABLED) {
+			Tracy.beginZone("genMipmap", Tracy.COLOR_IRIS);
+			Tracy.zoneValue(texture);
+		}
+		try {
+			RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		} finally {
+			if (Tracy.ENABLED) Tracy.endZone();
+		}
 
 		int filter = GL11.GL_LINEAR_MIPMAP_LINEAR;
 		if (target.getInternalFormat().getPixelFormat().isInteger()) {
@@ -389,21 +407,21 @@ public class FinalPassRenderer {
 		final ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
 		CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
-		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 		// Bind custom images as samplers BEFORE render target images
 		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 		// Bind custom textures (PNG files from shader pack)
 		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-		IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+		IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 		// Bind custom images as image units AFTER render target images
 		IrisImages.addCustomImages(builder, customImages);
 
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-		IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+		samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+			samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 		}
 
@@ -442,18 +460,18 @@ public class FinalPassRenderer {
                 customUniforms.assignTo(builder);
 
 				CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
-				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 				IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 				IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-				IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+				IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 				IrisImages.addCustomImages(builder, customImages);
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+				samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+					samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 					IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 				}
 

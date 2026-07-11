@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -57,6 +58,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Shadow public Minecraft mc;
     @Shadow @Final private TextureManager renderEngine;
 
+    @Unique private static final String SECTION_SOLID = "draw_chunk_layer_solid";
+    @Unique private static final String SECTION_CUTOUT_MIPPED = "draw_chunk_layer_cutout_mipped";
+    @Unique private static final String SECTION_TRANSLUCENT = "draw_chunk_layer_translucent";
+    @Unique private static final String SECTION_SHADOW_SOLID = "shadow_draw_chunk_layer_solid";
+    @Unique private static final String SECTION_SHADOW_CUTOUT_MIPPED = "shadow_draw_chunk_layer_cutout_mipped";
+    @Unique private static final String SECTION_SHADOW_TRANSLUCENT = "shadow_draw_chunk_layer_translucent";
     @Unique private CeleritasWorldRenderer celeritas$renderer;
     @Unique private int celeritas$frame;
     @Unique private float celeritas$lastFov;
@@ -157,14 +164,15 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final double camY = lerp(entity.lastTickPosY, entity.posY, partialTicks) + entity.getEyeHeight();
         final double camZ = lerp(entity.lastTickPosZ, entity.posZ, partialTicks);
 
+        final boolean shadow = ShadowRenderingState.areShadowsCurrentlyBeingRendered();
         try {
             if (pass == 0) {
-                mc.mcProfiler.endStartSection("draw_chunk_layer_solid");
+                mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_SOLID : SECTION_SOLID);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.SOLID, camX, camY, camZ);
-                mc.mcProfiler.endStartSection("draw_chunk_layer_cutout_mipped");
+                mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_CUTOUT_MIPPED : SECTION_CUTOUT_MIPPED);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, camX, camY, camZ);
             } else {
-                mc.mcProfiler.endStartSection("draw_chunk_layer_translucent");
+                mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_TRANSLUCENT : SECTION_TRANSLUCENT);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.TRANSLUCENT, camX, camY, camZ);
                 RenderChunkEvent.post();
             }
@@ -304,6 +312,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         HandRenderer.INSTANCE.renderSolid(camera.getPartialTicks(), camera, mc.renderGlobal, pipeline);
         mc.mcProfiler.endStartSection("iris_pre_translucent");
         pipeline.beginTranslucents();
+        TesrBatchRenderer.INSTANCE.flushAfterDeferred();
     }
 
     @Redirect(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/entity/Entity;isInRangeToRender3d(DDD)Z"))

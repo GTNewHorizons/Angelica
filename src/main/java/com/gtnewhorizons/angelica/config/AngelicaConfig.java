@@ -127,6 +127,11 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableEntityBatching;
 
+    @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean shaderParityFlip;
+
     @Config.Comment("Skip the end-of-frame glFlush before the buffer swap [Experimental]")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
@@ -141,6 +146,11 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableTESRJarCache;
+
+    @Config.Comment("Cache the vanilla beacon beam mesh and batch beam draws")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableTESRBeaconCache;
 
     @Config.Comment("Route tile-entity renderers implementing TesrMeshProvider through the batched mesh cache")
     @Config.DefaultBoolean(true)

@@ -7,8 +7,10 @@ import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.rendering.tesr.MeshBuffer;
 import com.gtnewhorizons.angelica.rendering.tesr.VertexTransform;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import org.joml.Matrix4fc;
 import org.joml.Vector3f;
+import org.joml.Vector4fc;
 import org.lwjgl.BufferUtils;
 
 import java.nio.ByteBuffer;
@@ -72,11 +74,13 @@ public class SegmentedBufferBuilder {
     private LayerBuffer current;
     private RenderLayer currentType;
     private int currentBlockEntityId;
+    private int currentEntityColor;
     private int segmentStartVertex;
     private long allocatedBytes;
 
     public void begin(RenderLayer type, int blockEntityId) {
-        if (type == currentType && blockEntityId == currentBlockEntityId && current != null) {
+        final int entityColor = packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor());
+        if (type == currentType && blockEntityId == currentBlockEntityId && entityColor == currentEntityColor && current != null) {
             return;
         }
         endSegment();
@@ -90,7 +94,12 @@ public class SegmentedBufferBuilder {
         current = buffer;
         currentType = type;
         currentBlockEntityId = blockEntityId;
+        currentEntityColor = entityColor;
         segmentStartVertex = current.vertexCount;
+    }
+
+    public static int packEntityColor(Vector4fc c) {
+        return ((int) (c.w() * 255f + 0.5f) << 24) | ((int) (c.x() * 255f + 0.5f) << 16) | ((int) (c.y() * 255f + 0.5f) << 8) | (int) (c.z() * 255f + 0.5f);
     }
 
     public void addQuad(ModelQuadView quad) {
@@ -124,7 +133,7 @@ public class SegmentedBufferBuilder {
 
     private void endSegment() {
         if (current != null && current.vertexCount > segmentStartVertex) {
-            segments.add(new BufferSegment(currentType, currentBlockEntityId, segmentStartVertex,
+            segments.add(new BufferSegment(currentType, currentBlockEntityId, currentEntityColor, segmentStartVertex,
                 current.vertexCount - segmentStartVertex, current));
         }
         segmentStartVertex = current == null ? 0 : current.vertexCount;

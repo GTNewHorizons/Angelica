@@ -26,6 +26,7 @@ public class ShadowRenderTargets {
 	private final DepthTexture noTranslucents;
 	private final GlFramebuffer depthSourceFb;
 	private final GlFramebuffer noTranslucentsDestFb;
+	private final DepthCopyStrategy copyStrategy = DepthCopyStrategy.fastest(false);
 	private final boolean[] flipped;
 
 	private final List<GlFramebuffer> ownedFramebuffers;
@@ -160,7 +161,7 @@ public class ShadowRenderTargets {
 			RenderSystem.blitFramebuffer(depthSourceFb.getId(), noTranslucentsDestFb.getId(), 0, 0, resolution, resolution,
 				0, 0, resolution, resolution, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
 		} else {
-			DepthCopyStrategy.fastest(false).copy(depthSourceFb, mainDepth.getTextureId(), noTranslucentsDestFb, noTranslucents.getTextureId(),
+			copyStrategy.copy(depthSourceFb, mainDepth.getTextureId(), noTranslucentsDestFb, noTranslucents.getTextureId(),
 				resolution, resolution);
 		}
 	}

@@ -35,7 +35,7 @@ class RetainedTesrGroupsTest {
         final TestLayer layer = new TestLayer();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 5, null);
+        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 5, null, false);
 
         assertTrue(groups.hasDraws(layer));
         assertEquals(0, groups.streamedInstances);
@@ -54,8 +54,8 @@ class RetainedTesrGroupsTest {
         assertEquals(1, groups.streamPromotions);
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null);
-        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f().translation(4f, 5f, 6f), 0, -1, 5, null);
+        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null, false);
+        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f().translation(4f, 5f, 6f), 0, -1, 5, null, false);
 
         assertFalse(groups.hasDraws(layer), "volatile group must not report retained draws");
         assertEquals(2, groups.streamedInstances);
@@ -79,7 +79,7 @@ class RetainedTesrGroupsTest {
         long streamedFrames = 0;
         for (int frame = 0; frame < RetainedTesrGroups.DEMOTE_AFTER_STABLE_FRAMES + 4; frame++) {
             groups.beginPass(new Matrix4f(), 0, 0, 0);
-            groups.queue(template, layer, TesrMaterial.CURRENT_STATE, fixed, 0, -1, 5, null);
+            groups.queue(template, layer, TesrMaterial.CURRENT_STATE, fixed, 0, -1, 5, null, false);
             if (groups.hasDraws(layer)) break;
             streamedFrames++;
         }
@@ -98,7 +98,7 @@ class RetainedTesrGroupsTest {
         groups.forceStreaming(layer, TesrMaterial.CURRENT_STATE, 5);
         for (int frame = 0; frame < RetainedTesrGroups.DEMOTE_AFTER_STABLE_FRAMES + 4; frame++) {
             groups.beginPass(new Matrix4f(), 0, 0, 0);
-            groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f().translation(frame, 0f, 0f), 0, -1, 5, null);
+            groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f().translation(frame, 0f, 0f), 0, -1, 5, null, false);
             assertFalse(groups.hasDraws(layer), "moving group must keep streaming at frame " + frame);
         }
     }
@@ -113,7 +113,7 @@ class RetainedTesrGroupsTest {
         for (long i = 0; i <= RetainedTesrGroups.IDLE_RESET_FRAMES + 1; i++) {
             groups.beginPass(new Matrix4f(), 0, 0, 0);
         }
-        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 5, null);
+        groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 5, null, false);
 
         assertTrue(groups.hasDraws(layer), "idle reset must demote the group back to retained");
         assertEquals(0, groups.streamedInstances);
@@ -132,7 +132,7 @@ class RetainedTesrGroupsTest {
         final int frames = RetainedTesrGroups.DEMOTE_AFTER_STABLE_FRAMES + 4;
         for (int frame = 0; frame < frames; frame++) {
             groups.beginPass(new Matrix4f(), 0, 0, 0);
-            groups.queue(template, layer, translucent, fixed, 0, -1, 5, null);
+            groups.queue(template, layer, translucent, fixed, 0, -1, 5, null, false);
             assertFalse(groups.hasDraws(layer), "translucent group must keep streaming at frame " + frame);
         }
         assertEquals(frames, groups.streamedInstances);
@@ -146,7 +146,7 @@ class RetainedTesrGroupsTest {
         final TesrMaterial stream = TesrMaterial.builder().translucent().stream().build();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template(), layer, stream, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null);
+        groups.queue(template(), layer, stream, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null, false);
 
         assertFalse(groups.hasDraws(layer), "stream group must not report retained draws");
         assertEquals(1, groups.streamedInstances);
@@ -172,7 +172,7 @@ class RetainedTesrGroupsTest {
             final int frames = RetainedTesrGroups.DEMOTE_AFTER_STABLE_FRAMES + 4;
             for (int frame = 0; frame < frames; frame++) {
                 groups.beginPass(new Matrix4f(), 0, 0, 0);
-                groups.queue(template, layer, material, fixed, 0, -1, 5, null);
+                groups.queue(template, layer, material, fixed, 0, -1, 5, null, false);
                 assertFalse(groups.hasDraws(layer), material.transparency() + " stream group must keep streaming at frame " + frame);
             }
             assertEquals(frames, groups.streamedInstances);
@@ -187,11 +187,11 @@ class RetainedTesrGroupsTest {
         final TesrMaterial stream = TesrMaterial.builder().translucent().stream().build();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template(), layer, stream, new Matrix4f(), 0, -1, 5, null);
+        groups.queue(template(), layer, stream, new Matrix4f(), 0, -1, 5, null, false);
         for (long i = 0; i <= RetainedTesrGroups.IDLE_RESET_FRAMES + 1; i++) {
             groups.beginPass(new Matrix4f(), 0, 0, 0);
         }
-        groups.queue(template(), layer, stream, new Matrix4f(), 0, -1, 5, null);
+        groups.queue(template(), layer, stream, new Matrix4f(), 0, -1, 5, null, false);
 
         assertFalse(groups.hasDraws(layer), "idle reset must not move a stream group to retained");
         assertEquals(2, groups.streamedInstances);
@@ -205,12 +205,26 @@ class RetainedTesrGroupsTest {
         final TesrMaterial stream = TesrMaterial.builder().translucent().stream().build();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer());
-        groups.queue(template(), layer, stream, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null);
+        groups.queue(template(), layer, stream, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null, false);
 
         assertTrue(groups.hasDraws(layer), "instanced-capable stream group accumulates for the hook draw");
         assertEquals(0, groups.streamedInstances, "no segment streaming when instanced");
         BufferSourceProbe.prepare(source);
         assertNull(BufferSourceProbe.segmentsFor(source, layer));
+    }
+
+    @Test
+    void forceStreamSkipsInstanceArraysEvenWhenInstancedCapable() {
+        final AngelicaBufferSource source = new AngelicaBufferSource();
+        final RetainedTesrGroups groups = new RetainedTesrGroups(source);
+        final TestLayer layer = new TestLayer();
+        final TesrMaterial stream = TesrMaterial.builder().translucent().stream().build();
+
+        groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer());
+        groups.queue(template(), layer, stream, new Matrix4f().translation(1f, 2f, 3f), 0, -1, 5, null, true);
+
+        assertFalse(groups.hasDraws(layer), "forceStream instance must not enter the instance arrays");
+        assertEquals(1, groups.streamedInstances);
     }
 
     @Test
@@ -221,7 +235,7 @@ class RetainedTesrGroupsTest {
         final TesrMaterial stream = TesrMaterial.builder().translucent().stream().build();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer());
-        groups.queue(template(), layer, stream, new Matrix4f(), 0, -1, 5, new Matrix4f().translation(0.5f, 0.5f, 0f));
+        groups.queue(template(), layer, stream, new Matrix4f(), 0, -1, 5, new Matrix4f().translation(0.5f, 0.5f, 0f), false);
 
         assertFalse(groups.hasDraws(layer), "texMatrix instance must not enter the instance arrays");
         assertEquals(1, groups.streamedInstances);
@@ -237,7 +251,7 @@ class RetainedTesrGroupsTest {
         final TemplateBuffer triangles = new TemplateBuffer(data, 3, GL11.GL_TRIANGLES);
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(triangles, layer, stream, new Matrix4f(), 0, -1, 5, null);
+        groups.queue(triangles, layer, stream, new Matrix4f(), 0, -1, 5, null, false);
 
         assertTrue(groups.hasDraws(layer), "mismatched drawMode must fall back to retained accumulation");
         assertEquals(0, groups.streamedInstances);
@@ -252,19 +266,19 @@ class RetainedTesrGroupsTest {
         final TemplateBuffer template = template();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null);
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 2, null);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null, false);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 2, null, false);
         assertEquals(2, groups.groupCount());
 
         clock[0] += RetainedTesrGroups.GROUP_TTL_MS + 1;
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null, false);
         groups.sweep(clock[0]);
 
         assertEquals(1, groups.groupCount(), "idle group must be evicted, live group kept");
         assertTrue(groups.hasDraws(layer), "live group still draws this frame");
 
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 2, null);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 2, null, false);
         assertEquals(2, groups.groupCount(), "evicted id must be re-creatable");
     }
 
@@ -276,15 +290,15 @@ class RetainedTesrGroupsTest {
         final TemplateBuffer template = template();
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null);
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 2, null);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null, false);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 2, null, false);
         groups.clear();
 
         assertEquals(0, groups.groupCount());
         assertFalse(groups.hasDraws(layer));
 
         groups.beginPass(new Matrix4f(), 0, 0, 0);
-        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null);
+        groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 1, null, false);
         assertEquals(1, groups.groupCount());
         assertTrue(groups.hasDraws(layer));
     }

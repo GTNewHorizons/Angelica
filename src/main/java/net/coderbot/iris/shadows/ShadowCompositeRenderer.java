@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
@@ -66,6 +67,11 @@ public class ShadowCompositeRenderer {
     private final Set<GlImage> irisCustomImages;
     @Nullable
     private final ShaderStorageBufferHolder ssboHolder;
+    private int samplerUsage;
+
+    public int getSamplerUsage() {
+        return samplerUsage;
+    }
 
     public ShadowCompositeRenderer(WorldRenderingPipeline pipeline, PackDirectives packDirectives, ProgramSource[] sources, ComputeSource[][] computes,
             ShadowRenderTargets renderTargets, @Nullable ShaderStorageBufferHolder ssboHolder, TextureAccess noiseTexture, FrameUpdateNotifier updateNotifier,
@@ -173,7 +179,15 @@ public class ShadowCompositeRenderer {
         //
         // Also note that this only applies to one of the two buffers in a render target buffer pair - making it
         // unlikely that this issue occurs in practice with most shader packs.
-        RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+        if (Tracy.ENABLED) {
+        	Tracy.beginZone("genMipmap", Tracy.COLOR_IRIS);
+        	Tracy.zoneValue(texture);
+        }
+        try {
+        	RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+        } finally {
+        	if (Tracy.ENABLED) Tracy.endZone();
+        }
         RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, target.getInternalFormat().getPixelFormat().isInteger() ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
     }
 
@@ -307,7 +321,7 @@ public class ShadowCompositeRenderer {
         IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
         IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-        IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+        samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
         IrisImages.addShadowColorImages(builder, targets, flipped);
         IrisImages.addCustomImages(builder, irisCustomImages);
         IrisSamplers.addCustomImages(customTextureSamplerInterceptor, irisCustomImages);
@@ -352,7 +366,7 @@ public class ShadowCompositeRenderer {
                 IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
                 IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-                IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+                samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
                 IrisImages.addShadowColorImages(builder, targets, flipped);
 
                 IrisImages.addCustomImages(builder, irisCustomImages);

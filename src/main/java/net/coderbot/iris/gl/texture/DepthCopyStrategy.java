@@ -2,6 +2,7 @@ package net.coderbot.iris.gl.texture;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import org.lwjgl.opengl.GL11;
 
@@ -19,22 +20,32 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			sourceFb.bindAsReadBuffer();
+			if (Tracy.ENABLED) Tracy.beginZone("depthCopyBind", Tracy.COLOR_IRIS);
+			try {
+				sourceFb.bindAsReadBuffer();
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
 
-			RenderSystem.copyTexSubImage2D(
-				destTexture,
-				// target
-				GL11.GL_TEXTURE_2D,
-				// level
-				0,
-				// xoffset, yoffset
-				0, 0,
-				// x, y
-				0, 0,
-				// width
-				width,
-				// height
-				height);
+			if (Tracy.ENABLED) Tracy.beginZone("depthCopyTexSub", Tracy.COLOR_IRIS);
+			try {
+				RenderSystem.copyTexSubImage2D(
+					destTexture,
+					// target
+					GL11.GL_TEXTURE_2D,
+					// level
+					0,
+					// xoffset, yoffset
+					0, 0,
+					// x, y
+					0, 0,
+					// width
+					width,
+					// height
+					height);
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
 		}
 	}
 
@@ -51,10 +62,15 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			RenderSystem.blitFramebuffer(sourceFb.getId(), destFb.getId(), 0, 0, width, height,
-				0, 0, width, height,
-				GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT,
-				GL11.GL_NEAREST);
+			if (Tracy.ENABLED) Tracy.beginZone("depthCopyBlit", Tracy.COLOR_IRIS);
+			try {
+				RenderSystem.blitFramebuffer(sourceFb.getId(), destFb.getId(), 0, 0, width, height,
+					0, 0, width, height,
+					GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT,
+					GL11.GL_NEAREST);
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
 		}
 	}
 
@@ -72,7 +88,12 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			GLStateManager.glCopyImageSubData(sourceTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, destTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
+			if (Tracy.ENABLED) Tracy.beginZone("depthCopyImage", Tracy.COLOR_IRIS);
+			try {
+				GLStateManager.glCopyImageSubData(sourceTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, destTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
 		}
 	}
 

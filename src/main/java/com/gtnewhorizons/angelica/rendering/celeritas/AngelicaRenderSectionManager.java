@@ -274,7 +274,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, CameraTransform occlusionCamera, CameraTransform camera) {
         // Shadow pass graph update is async - must wait for it to complete before rendering
         if (IrisShaderProviderHolder.isShadowPass()) {
-            finishAllGraphUpdates();
+            if (Tracy.ENABLED) Tracy.beginZone("shadowGraphWait", Tracy.COLOR_TERRAIN);
+            try {
+                finishAllGraphUpdates();
+            } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
+            }
         }
         super.renderLayer(matrices, pass, occlusionCamera, camera);
     }
@@ -307,6 +312,15 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         }
         Tracy.plotInt("mesh.regions", regions);
         Tracy.plotInt("mesh.visibleChunks", this.getVisibleChunkCount());
+        if (this.shadowRenderListManager != null) {
+            int shadowRegions = 0, shadowSections = 0;
+            for (var it = this.shadowRenderListManager.getRenderLists().iterator(); it.hasNext(); ) {
+                shadowSections += it.next().getSectionsWithGeometryCount();
+                shadowRegions++;
+            }
+            Tracy.plotInt("shadow.regions", shadowRegions);
+            Tracy.plotInt("shadow.visibleChunks", shadowSections);
+        }
         Tracy.plotInt("mesh.scheduledJobs", this.getBuilder().getScheduledJobCount());
         Tracy.plotInt("mesh.busyThreads", this.getBuilder().getBusyThreadCount());
         final var mem = this.getDeviceMemoryStats();

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
@@ -14,8 +15,11 @@ import org.embeddedt.embeddium.impl.gl.shader.GlShader;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderParser;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderType;
+import org.embeddedt.embeddium.impl.gl.tessellation.GlPrimitiveType;
+import org.embeddedt.embeddium.impl.gl.tessellation.GlTessellation;
 import org.embeddedt.embeddium.impl.render.chunk.DefaultChunkRenderer;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
+import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderList;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.DirectMultiDrawEmitter;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.IndirectMultiDrawEmitter;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.MultiDrawEmitter;
@@ -26,6 +30,7 @@ import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderTextureSlot;
 import org.embeddedt.embeddium.impl.render.chunk.shader.DefaultChunkShaderInterface;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
+import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.lwjgl.opengl.GL11;
 
 import java.util.ArrayList;
@@ -39,6 +44,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private int rgssSampler;
     private boolean rgssSamplerResolved;
     private boolean rgssSamplerBound;
+    private int regionIndex;
 
     public AngelicaChunkRenderer(RenderDevice device, RenderPassConfiguration<?> renderPassConfiguration) {
         super(device, renderPassConfiguration, createEmitter());
@@ -74,27 +80,33 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
 
     @Override
     protected void begin(TerrainRenderPass pass) {
-        final IrisShaderProvider provider = IrisShaderProviderHolder.getProvider();
+        this.regionIndex = 0;
+        if (Tracy.ENABLED) Tracy.beginZone("chunkBegin", Tracy.COLOR_TERRAIN);
+        try {
+            final IrisShaderProvider provider = IrisShaderProviderHolder.getProvider();
 
-        // Check if Iris shaders are active and we have an override
-        if (provider != null && provider.isShadersEnabled()) {
-            final GlProgram<? extends ChunkShaderInterface> override = provider.getShaderOverride(pass);
-            if (override != null) {
-                pass.startDrawing();
-                override.bind();
-                override.getInterface().setupState(pass);
-                this.activeProgram = (GlProgram<ChunkShaderInterface>) override;
-                this.irisProgram = override;
-                this.usingIrisProgram = true;
-                return;
+            // Check if Iris shaders are active and we have an override
+            if (provider != null && provider.isShadersEnabled()) {
+                final GlProgram<? extends ChunkShaderInterface> override = provider.getShaderOverride(pass);
+                if (override != null) {
+                    pass.startDrawing();
+                    override.bind();
+                    override.getInterface().setupState(pass);
+                    this.activeProgram = (GlProgram<ChunkShaderInterface>) override;
+                    this.irisProgram = override;
+                    this.usingIrisProgram = true;
+                    return;
+                }
             }
-        }
 
-        // Fall back to default shader
-        this.usingIrisProgram = false;
-        this.irisProgram = null;
-        super.begin(pass);
-        bindRgssSampler();
+            // Fall back to default shader
+            this.usingIrisProgram = false;
+            this.irisProgram = null;
+            super.begin(pass);
+            bindRgssSampler();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     @Override
@@ -176,6 +188,27 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             return builder.link((shader) -> new DefaultChunkShaderInterface(shader, options));
         } finally {
             loadedShaders.forEach(GlShader::delete);
+        }
+    }
+
+    @Override
+    protected void renderRegion(ChunkShaderInterface shader, CommandList commandList, ChunkRenderList renderList, TerrainRenderPass renderPass, CameraTransform occlusionCamera, CameraTransform camera, long timestamp, boolean useBlockFaceCulling) {
+        if (Tracy.ENABLED) Tracy.beginZone(regionIndex == 0 ? "chunkRegionFirst" : "chunkRegion", Tracy.COLOR_TERRAIN);
+        try {
+            regionIndex++;
+            super.renderRegion(shader, commandList, renderList, renderPass, occlusionCamera, camera, timestamp, useBlockFaceCulling);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    @Override
+    protected void executeBatch(CommandList commandList, GlTessellation tessellation, GlPrimitiveType primitiveType) {
+        if (Tracy.ENABLED) Tracy.beginZone("chunkExecuteBatch", Tracy.COLOR_TERRAIN);
+        try {
+            super.executeBatch(commandList, tessellation, primitiveType);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
     }
 

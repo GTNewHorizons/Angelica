@@ -13,6 +13,8 @@ import lombok.Getter;
 import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -80,6 +82,9 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         if (material.isNoDepthWrite()) {
             b.writeMaskState(COLOR_MASK);
         }
+        if (material.isDepthOnly()) {
+            b.writeMaskState(DEPTH_MASK);
+        }
         if (material.cutoutAlpha() > 0) {
             b.alpha(new RenderPhase.Alpha(material.cutoutAlpha()));
         }
@@ -89,14 +94,29 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         switch (material.transparency()) {
             case TRANSLUCENT -> b.transparency(TRANSLUCENT_TRANSPARENCY);
             case ADDITIVE -> b.transparency(ADDITIVE_TRANSPARENCY);
+            case ADDITIVE_ALPHA -> b.transparency(LIGHTNING_TRANSPARENCY);
+            case GLINT -> b.transparency(GLINT_TRANSPARENCY);
             case OPAQUE -> {}
         }
-        final TesrShader shader = material.shader();
-        if (shader != null) {
-            b.shader(new RenderPhase.Shader("angelica_tesr_shader_" + shader.name(), shader.bind(), shader.release()));
+        switch (material.special()) {
+            case GLINT -> b.shader(SPECIAL_GLINT);
+            case BEACON_BEAM -> b.shader(SPECIAL_BEACON_BEAM);
+            case NONE -> {
+                final TesrShader shader = material.shader();
+                if (shader != null) {
+                    b.shader(new RenderPhase.Shader("angelica_tesr_shader_" + shader.name(), shader.bind(), shader.release()));
+                }
+            }
         }
         return b;
     }
+
+    private static final RenderPhase.Shader SPECIAL_GLINT = new RenderPhase.Shader("angelica_special_glint",
+        () -> GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT),
+        GbufferPrograms::teardownSpecialRenderCondition);
+    private static final RenderPhase.Shader SPECIAL_BEACON_BEAM = new RenderPhase.Shader("angelica_special_beacon_beam",
+        () -> GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM),
+        GbufferPrograms::teardownSpecialRenderCondition);
 
     public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material) {
         final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material).shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP);
@@ -120,6 +140,10 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
 
     public int mode() {
         return this.drawMode;
+    }
+
+    public ResourceLocation getTextureId() {
+        return null;
     }
 
     static final class MultiPhase extends RenderLayer implements BlendingStateHolder {
@@ -159,6 +183,11 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
 
         public Optional<RenderLayer> getAffectedOutline() {
             return this.affectedOutline;
+        }
+
+        @Override
+        public ResourceLocation getTextureId() {
+            return phases.texture.getId().orElse(null);
         }
 
         @Override

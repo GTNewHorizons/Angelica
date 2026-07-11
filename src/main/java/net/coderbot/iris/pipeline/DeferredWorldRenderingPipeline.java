@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -52,6 +53,7 @@ import net.coderbot.iris.postprocess.FinalPassRenderer;
 import net.coderbot.iris.postprocess.FullScreenQuadRenderer;
 import net.coderbot.iris.postprocess.ProgramBuildContext;
 import net.coderbot.iris.rendertarget.IRenderTargetExt;
+import net.coderbot.iris.rendertarget.ParityFlipState;
 import net.coderbot.iris.rendertarget.NativeImageBackedSingleColorTexture;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
@@ -93,6 +95,8 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
+import org.taumc.glsl.ShaderParser;
+import org.taumc.glsl.Transformer;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -164,6 +168,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final ShaderStorageBufferHolder ssboHolder;
 
 	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> attributeTransforms;
+	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> instancedAttributeTransforms;
+	private boolean supportsTesrInstancing = true;
+	private final ParityFlipState parityState = new ParityFlipState(AngelicaConfig.shaderParityFlip);
+	private final Supplier<ImmutableSet<Integer>> flippedGbuffers;
+	private final Supplier<ImmutableSet<Integer>> flippedShadowGbuffers;
+	private final Supplier<ImmutableSet<Integer>> flippedAfterPrepareResolved;
+	private final Supplier<ImmutableSet<Integer>> flippedBeforeShadowResolved;
 
 	private final HorizonRenderer horizonRenderer = new HorizonRenderer();
 
@@ -186,6 +197,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final OptionalInt forcedShadowRenderDistanceChunks;
 	private final CloudSetting dhCloudSetting;
 	private Pass current = null;
+	private RenderCondition currentCondition = null;
 	private WorldRenderingPhase overridePhase = null;
 	private WorldRenderingPhase phase = WorldRenderingPhase.NONE;
 	private boolean isBeforeTranslucent;
@@ -199,6 +211,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private PackDirectives packDirectives;
 	private final Set<FeatureFlags> activeFeatures;
 	private final ProgramFallbackResolver resolver;
+
+	private int packSamplerUsage;
+	private final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+
+	private static final Vector4f EMPTY_CLEAR_COLOR = new Vector4f(1.0F);
 
 	public DeferredWorldRenderingPipeline(ProgramSet programs) {
 		Objects.requireNonNull(programs);
@@ -217,7 +234,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				.orElse(null);
 
 		resolver = new ProgramFallbackResolver(programs);
-		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver);
+		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver, ProgramId.values(), false);
+		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> instancedTransformFutures = submitAttributeTransforms(resolver, INSTANCED_PROGRAM_IDS, true);
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
 		final Optional<ProgramSource> translucentSource = first(programs.getGbuffersWater(), terrainSource);
@@ -262,6 +280,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.renderTargets = new RenderTargets(main.framebufferWidth, main.framebufferHeight, depthTextureId,
             ((IRenderTargetExt)main).iris$getDepthBufferVersion(), depthBufferFormat,
 			programs.getPackDirectives().getRenderTargetDirectives().getRenderTargetSettings(), programs.getPackDirectives());
+		this.renderTargets.setParityState(parityState);
 
 		this.sunPathRotation = programs.getPackDirectives().getSunPathRotation();
 
@@ -365,19 +384,35 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.setup = createSetupComputes(programs.getSetup());
 
 		this.beginRenderer = new CompositeRenderer(programs.getBegin(), programs.getBeginCompute(), flipper, beginBuildContext, programs.getPackDirectives().getExplicitFlips("begin_pre"), null, "begin", TextureStage.BEGIN);
+		recordSamplerUsage(beginRenderer.getSamplerUsage());
 
 		this.flippedBeforeShadow = flipper.snapshot();
 
 		this.prepareRenderer = new CompositeRenderer(programs.getPrepare(), programs.getPrepareCompute(), flipper, prepareBuildContext, programs.getPackDirectives().getExplicitFlips("prepare_pre"), prepareTransformFutures, "prepare", TextureStage.PREPARE);
+		recordSamplerUsage(prepareRenderer.getSamplerUsage());
 
 		flippedAfterPrepare = flipper.snapshot();
 
 		this.deferredRenderer = new CompositeRenderer(programs.getDeferred(), programs.getDeferredCompute(), flipper, deferredBuildContext, programs.getPackDirectives().getExplicitFlips("deferred_pre"), deferredTransformFutures, "deferred", TextureStage.DEFERRED);
+		recordSamplerUsage(deferredRenderer.getSamplerUsage());
 
 		flippedAfterTranslucent = flipper.snapshot();
 
 		this.compositeRenderer = new CompositeRenderer(programs.getComposite(), programs.getCompositeCompute(), flipper, compositeBuildContext, programs.getPackDirectives().getExplicitFlips("composite_pre"), compositeTransformFutures, "composite", TextureStage.COMPOSITE_AND_FINAL);
+		recordSamplerUsage(compositeRenderer.getSamplerUsage());
 		this.finalPassRenderer = new FinalPassRenderer(programs, compositeBuildContext, flipper.snapshot(), this.compositeRenderer.getFlippedAtLeastOnceFinal(), finalTransformFuture, "final");
+		recordSamplerUsage(finalPassRenderer.getSamplerUsage());
+
+		parityState.finalizeParitySet(flipper.snapshot(), programs.getPackDirectives().getRenderTargetDirectives().getBuffersToBeCleared());
+		renderTargets.finalizeParity();
+		if (parityState.isEnabled()) {
+			Iris.logger.info("Parity flip active for buffers {}", parityState.parityBuffers());
+		}
+
+		this.flippedGbuffers = () -> parityState.resolve(isBeforeTranslucent ? flippedAfterPrepare : flippedAfterTranslucent);
+		this.flippedShadowGbuffers = () -> parityState.resolve(shouldRenderPrepareBeforeShadow ? flippedAfterPrepare : flippedBeforeShadow);
+		this.flippedAfterPrepareResolved = () -> parityState.resolve(flippedAfterPrepare);
+		this.flippedBeforeShadowResolved = () -> parityState.resolve(flippedBeforeShadow);
 
 		// [(textured=false,lightmap=false), (textured=true,lightmap=false), (textured=true,lightmap=true)]
 		final ProgramId[] ids = new ProgramId[] {
@@ -415,6 +450,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			} catch (Exception e) {
 				Iris.logger.error("Failed to transform shader: {}", entry.getKey().getLeft(), e);
 				throw new RuntimeException("Shader transformation failed for " + entry.getKey().getLeft(), e);
+			}
+		}
+
+		this.instancedAttributeTransforms = new HashMap<>();
+		for (Map.Entry<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> entry : instancedTransformFutures.entrySet()) {
+			try {
+				this.instancedAttributeTransforms.put(entry.getKey(), entry.getValue().join());
+			} catch (Exception e) {
+				Iris.logger.warn("Instanced transform failed for {}; disabling TESR instancing", entry.getKey().getLeft(), e);
+				supportsTesrInstancing = false;
+				instancedAttributeTransforms.clear();
+				break;
 			}
 		}
 
@@ -484,14 +531,17 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				customTextureManager.getCustomTextureIdMap(TextureStage.SHADOWCOMP),
 				customImages, programs.getPackDirectives().getExplicitFlips("shadowcomp_pre"),
 				customTextureManager.getIrisCustomTextures(), customUniforms);
+			recordSamplerUsage(shadowCompositeRenderer.getSamplerUsage());
 
 			if (programs.getPackDirectives().getShadowDirectives().isShadowEnabled().orElse(true)) {
 				this.shadowRenderer = new ShadowRenderer(programs.getShadow().orElse(null),
-					programs.getPackDirectives(), shadowRenderTargets, shadowCompositeRenderer);
+					programs.getPackDirectives(), shadowRenderTargets, shadowCompositeRenderer,
+					() -> usesSampler(IrisSamplers.USAGE_SHADOWTEX1));
 				Program shadowProgram = table.match(RenderCondition.SHADOW, new InputAvailability(true, true)).getProgram();
 				Program shadowWaterProgram = table.match(RenderCondition.SHADOW_TRANSLUCENT, new InputAvailability(true, true)).getProgram();
 				shadowRenderer.setUsesImages((shadowProgram != null && shadowProgram.getActiveImages() > 0)
 					|| (shadowWaterProgram != null && shadowWaterProgram.getActiveImages() > 0));
+				shadowRenderer.setPlayerReflectionCaptureEnabled((shadowProgram != null && GLStateManager.glGetUniformLocation(shadowProgram.getProgramId(), "playerAtlas_img") != -1) || (shadowWaterProgram != null && GLStateManager.glGetUniformLocation(shadowWaterProgram.getProgramId(), "playerAtlas_img") != -1));
 			} else {
 				shadowRenderer = null;
 			}
@@ -528,7 +578,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		// Terrain pipeline sampler/image factory setup follows.
 
-		Supplier<ImmutableSet<Integer>> flipped = () -> isBeforeTranslucent ? flippedAfterPrepare : flippedAfterTranslucent;
+		Supplier<ImmutableSet<Integer>> flipped = flippedGbuffers;
 
 		IntFunction<ProgramSamplers> createTerrainSamplers = (programId) -> {
 			ProgramSamplers.Builder builder = ProgramSamplers.builder(programId, IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
@@ -536,7 +586,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
 			IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(true, true));
-			IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets);
+			recordSamplerUsage(IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets));
 			IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
 			// Bind custom images as samplers (for texture() access to voxel_sampler, floodfill_sampler, etc.)
@@ -545,7 +595,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
 
 			if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-				IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, Objects.requireNonNull(shadowRenderTargets), null, true);
+				recordSamplerUsage(IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, Objects.requireNonNull(shadowRenderTargets), null, true));
 			}
 
 			return builder.build();
@@ -569,7 +619,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			ProgramSamplers.Builder builder = ProgramSamplers.builder(programId, IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 			ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureManager.getCustomTextureIdMap(TextureStage.GBUFFERS_AND_SHADOW));
 
-			IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flippedAfterPrepare, renderTargets, false, this);
+			IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flippedAfterPrepareResolved, renderTargets, false, this);
 			IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(true, true));
 			IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
@@ -580,7 +630,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			// Only initialize these samplers if the shadow map renderer exists. Otherwise, this program shouldn't be used at all?
 			if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-				IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, Objects.requireNonNull(shadowRenderTargets), null, true);
+				recordSamplerUsage(IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, Objects.requireNonNull(shadowRenderTargets), null, true));
 			}
 
 			return builder.build();
@@ -588,7 +638,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
         IntFunction<ProgramImages> createShadowTerrainImages = (programId) -> {
 			ProgramImages.Builder builder = ProgramImages.builder(programId);
 
-			IrisImages.addRenderTargetImages(builder, () -> flippedAfterPrepare, renderTargets);
+			IrisImages.addRenderTargetImages(builder, flippedAfterPrepareResolved, renderTargets);
 			// Bind custom images as image units (for imageLoad/imageStore - voxelization uses this in shadow pass)
 			IrisImages.addCustomImages(builder, customImages);
 
@@ -618,6 +668,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private RenderTargets getRenderTargets() {
 		return renderTargets;
+	}
+
+	private void recordSamplerUsage(int mask) {
+		packSamplerUsage |= mask;
+	}
+
+	private boolean usesSampler(int bit) {
+		return (packSamplerUsage & bit) != 0;
 	}
 
 	private void checkWorld() {
@@ -804,17 +862,32 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	 */
 	public void onModProgramOverride() {
 		current = null;
+		currentCondition = null;
 	}
 
 	private void matchPass() {
-		if (!isRenderingWorld || isRenderingFullScreenPass || isPostChain || !isMainBound) {
+		if (!shouldOverrideShaders()) {
+			return;
+		}
+
+		matchPass(getCondition(getPhase()));
+	}
+
+	private void matchPass(RenderCondition condition) {
+		currentCondition = condition;
+		beginPass(table.match(condition, inputs));
+	}
+
+	@Override
+	public void onEntityRenderBoundary() {
+		if (!shouldOverrideShaders()) {
 			return;
 		}
 
 		final RenderCondition condition = getCondition(getPhase());
-		final Pass matched = table.match(condition, inputs);
-
-		beginPass(matched);
+		if (condition != currentCondition) {
+			matchPass(condition);
+		}
 	}
 
 	public void beginPass(Pass pass) {
@@ -839,10 +912,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void rebindCurrentPass() {
 		final Pass pass = this.current;
 		if (pass == null) {
+			if (GLStateManager.getActiveProgram() == 0) {
+				matchPass();
+			}
 			return;
 		}
 		final Program program = pass.getProgram();
-		if (program != null && GLStateManager.getActiveProgram() == program.getProgramId()) {
+		final GlFramebuffer expected = isBeforeTranslucent ? pass.framebufferBeforeTranslucents : pass.framebufferAfterTranslucents;
+		if (program != null && GLStateManager.getActiveProgram() == program.getProgramId() && GLStateManager.getDrawFramebuffer() == expected.getId()) {
 			return;
 		}
 		pass.use();
@@ -855,6 +932,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		return new Pass(null, framebufferBeforeTranslucents, framebufferAfterTranslucents, null,
 			null, Collections.emptyList(), false);
+	}
+
+	private static ProgramBuilder beginBuilder(String name, Map<PatchShaderType, String> transformed) {
+		final String vertex = transformed.get(PatchShaderType.VERTEX);
+		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
+		final String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
+		final String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
+		final String fragment = transformed.get(PatchShaderType.FRAGMENT);
+
+		PatchedShaderPrinter.debugPatchedShaders(name, vertex, geometry, tessControl, tessEval, fragment);
+
+		return ProgramBuilder.begin(name, vertex, geometry, tessControl, tessEval, fragment, IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 	}
 
 	private Pass createPass(ProgramSource source, InputAvailability availability, boolean shadow, ProgramId id) {
@@ -876,32 +965,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				scrollGlint);
 		}
 
-		String vertex = transformed.get(PatchShaderType.VERTEX);
-		String geometry = transformed.get(PatchShaderType.GEOMETRY);
-		String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
-		String tessEval = transformed.get(PatchShaderType.TESS_EVAL);
-		String fragment = transformed.get(PatchShaderType.FRAGMENT);
+		ProgramBuilder builder = beginBuilder(source.getName(), transformed);
 
-		PatchedShaderPrinter.debugPatchedShaders(source.getName(), vertex, geometry, tessControl, tessEval, fragment);
-
-		ProgramBuilder builder = ProgramBuilder.begin(source.getName(), vertex, geometry, tessControl, tessEval, fragment,
-			IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
-
-		return createPassInner(builder, source.getDirectives(), availability, shadow, id);
+		final Pass pass = createPassInner(builder, source.getDirectives(), availability, shadow, id);
+		pass.setInstancingKey(source.getName(), availability, shadow);
+		return pass;
 	}
 
-	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
-
+	private void wireGbufferProgram(ProgramBuilder builder, InputAvailability availability, boolean shadow) {
 		CommonUniforms.addDynamicUniforms(builder, FogMode.PER_VERTEX);
         this.customUniforms.assignTo(builder);
 
-		Supplier<ImmutableSet<Integer>> flipped;
-
-		if (shadow) {
-			flipped = () -> (shouldRenderPrepareBeforeShadow ? flippedAfterPrepare : flippedBeforeShadow);
-		} else {
-			flipped = () -> isBeforeTranslucent ? flippedAfterPrepare : flippedAfterTranslucent;
-		}
+		final Supplier<ImmutableSet<Integer>> flipped = shadow ? flippedShadowGbuffers : flippedGbuffers;
 
 		TextureStage textureStage = TextureStage.GBUFFERS_AND_SHADOW;
 
@@ -919,7 +994,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, availability);
 
 		if (!shadow) {
-			IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets);
+			recordSamplerUsage(IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets));
 		}
 
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
@@ -934,10 +1009,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 
 			if (shadowRenderTargets != null) {
-				IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true);
+				recordSamplerUsage(IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true));
 				IrisImages.addShadowColorImages(builder, shadowRenderTargets, null);
 			}
 		}
+	}
+
+	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
+
+		wireGbufferProgram(builder, availability, shadow);
 
 		GlFramebuffer framebufferBeforeTranslucents;
 		GlFramebuffer framebufferAfterTranslucents;
@@ -992,7 +1072,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(hasTexture, hasLightmap));
 		if (!isShadowPass) {
-			IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets);
+			recordSamplerUsage(IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets));
 		}
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
@@ -1000,7 +1080,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		IrisImages.addCustomImages(images, customImages);
 
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, true);
+			recordSamplerUsage(IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, true));
 		}
 
 		if (isShadowPass || IrisImages.hasShadowImages(images)) {
@@ -1069,15 +1149,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	public ImmutableSet<Integer> getFlippedBeforeShadow() {
-		return flippedBeforeShadow;
+		return parityState.resolve(flippedBeforeShadow);
 	}
 
 	public ImmutableSet<Integer> getFlippedAfterPrepare() {
-		return flippedAfterPrepare;
+		return parityState.resolve(flippedAfterPrepare);
 	}
 
 	public ImmutableSet<Integer> getFlippedAfterTranslucent() {
-		return flippedAfterTranslucent;
+		return parityState.resolve(flippedAfterTranslucent);
 	}
 
 	public GlFramebuffer createDHFramebufferShadow(ProgramSource sources) {
@@ -1101,6 +1181,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		@Nullable
 		private final List<BufferBlendOverride> bufferBlendOverrides;
 		private final boolean shadowViewport;
+
+		private String instancingSourceName;
+		private InputAvailability instancingAvailability;
+		private boolean instancingShadow;
+		@Nullable private Program instancedVariant;
+		private boolean instancedVariantAttempted;
 
 		private Pass(@Nullable Program program, GlFramebuffer framebufferBeforeTranslucents, GlFramebuffer framebufferAfterTranslucents,
 					 @Nullable AlphaTestOverride alphaTestOverride, @Nullable BlendModeOverride blendModeOverride, @Nullable List<BufferBlendOverride> bufferBlendOverrides, boolean shadowViewport) {
@@ -1173,11 +1259,67 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			return program;
 		}
 
+		void setInstancingKey(String sourceName, InputAvailability availability, boolean shadow) {
+			this.instancingSourceName = sourceName;
+			this.instancingAvailability = availability;
+			this.instancingShadow = shadow;
+		}
+
+		@Nullable
+		Program getInstancedVariant() {
+			if (!instancedVariantAttempted) {
+				instancedVariantAttempted = true;
+				if (instancingSourceName != null && supportsTesrInstancing) {
+					instancedVariant = buildInstancedVariant(instancingSourceName, instancingAvailability, instancingShadow);
+				}
+			}
+			return instancedVariant;
+		}
+
 		public void destroy() {
 			if (this.program != null) {
 				this.program.destroy();
 			}
+			if (this.instancedVariant != null) {
+				this.instancedVariant.destroy();
+				this.instancedVariant = null;
+			}
 		}
+	}
+
+	@Nullable
+	private Program buildInstancedVariant(String sourceName, InputAvailability availability, boolean shadow) {
+		final Map<PatchShaderType, String> transformed = instancedAttributeTransforms.get(Pair.of(sourceName, availability));
+		if (transformed == null) {
+			return null;
+		}
+		try {
+			final ProgramBuilder builder = beginBuilder(sourceName + "_instanced", transformed);
+			wireGbufferProgram(builder, availability, shadow);
+			final Program variant = builder.build();
+			this.customUniforms.mapholderToPass(builder, variant);
+			return variant;
+		} catch (Exception e) {
+			Iris.logger.warn("TESR instanced variant link failed for {}; disabling TESR instancing", sourceName, e);
+			supportsTesrInstancing = false;
+			return null;
+		}
+	}
+
+	public boolean supportsTesrInstancing() {
+		return supportsTesrInstancing;
+	}
+
+	public boolean hasTesrInstancedVariant() {
+		final Pass pass = current;
+		return pass != null && pass.getInstancedVariant() != null;
+	}
+
+	public void bindTesrInstancedVariant() {
+		final Pass pass = current;
+		final Program variant = pass.getInstancedVariant();
+		variant.use();
+		this.customUniforms.push(variant);
 	}
 
 	@Override
@@ -1277,10 +1419,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private void prepareRenderTargets() {
-		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+		parityState.onFrameStart();
 		// Make sure we're using texture unit 0 for this.
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-		final Vector4f emptyClearColor = new Vector4f(1.0F);
 
 		if (shadowRenderTargets != null) {
 			profiler.startSection("iris_shadow_clear");
@@ -1288,17 +1429,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				if (shadowRenderTargets.isFullClearRequired()) {
 					shadowRenderTargets.onFullClear();
 					for (ClearPass clearPass : shadowClearPassesFull) {
-						clearPass.execute(emptyClearColor);
+						clearPass.execute(EMPTY_CLEAR_COLOR);
 					}
 				}
 			} else {
 				// Clear depth first, regardless of any color clearing.
 				shadowRenderTargets.getDepthSourceFb().bind();
                 GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
-                if (Minecraft.isRunningOnMac) {
-                    GLStateManager.glGetError();
-                }
-
 
 				ImmutableList<ClearPass> passes;
 
@@ -1318,7 +1455,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 
 				for (ClearPass clearPass : passes) {
-					clearPass.execute(emptyClearColor);
+					clearPass.execute(EMPTY_CLEAR_COLOR);
 				}
 			}
 			profiler.endSection();
@@ -1379,6 +1516,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		if (renderTargets.isFullClearRequired()) {
 			renderTargets.onFullClear();
+			parityState.reset();
 			passes = clearPassesFull;
 		} else {
 			passes = clearPasses;
@@ -1420,9 +1558,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				CommonUniforms.addDynamicUniforms(builder, FogMode.PER_VERTEX);
                 this.customUniforms.assignTo(builder);
 
-				Supplier<ImmutableSet<Integer>> flipped;
-
-				flipped = () -> flippedBeforeShadow;
+				final Supplier<ImmutableSet<Integer>> flipped = flippedBeforeShadowResolved;
 
 				TextureStage textureStage = TextureStage.GBUFFERS_AND_SHADOW;
 
@@ -1441,7 +1577,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 					if (shadowRenderTargets != null) {
-						IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true);
+						recordSamplerUsage(IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true));
 						IrisImages.addShadowColorImages(builder, shadowRenderTargets, null);
 					}
 				}
@@ -1494,11 +1630,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				IrisImages.addCustomImages(builder, customImages);
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
-				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+				recordSamplerUsage(IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets));
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
 					if (shadowRenderTargets != null) {
-						IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true);
+						recordSamplerUsage(IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowRenderTargets, null, true));
 						IrisImages.addShadowColorImages(builder, shadowRenderTargets, null);
 					}
 				}
@@ -1516,7 +1652,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginHand() {
-		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+		if (!usesSampler(IrisSamplers.USAGE_DEPTHTEX2)) {
+			return;
+		}
+
 		// We need to copy the current depth texture so that depthtex2 can contain the depth values for
 		// all non-translucent content without the hand, as required.
 		profiler.startSection("iris_hand_depth_copy");
@@ -1526,14 +1665,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginTranslucents() {
-		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		isBeforeTranslucent = false;
 
 		// We need to copy the current depth texture so that depthtex1 can contain the depth values for
 		// all non-translucent content, as required.
-		profiler.startSection("iris_translucent_depth_copy");
-		renderTargets.copyPreTranslucentDepth();
-		profiler.endSection();
+		if (usesSampler(IrisSamplers.USAGE_DEPTHTEX1)) {
+			profiler.startSection("iris_translucent_depth_copy");
+			renderTargets.copyPreTranslucentDepth();
+			profiler.endSection();
+		}
 
 
 		// needed to remove blend mode overrides and similar
@@ -1562,7 +1702,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
-		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 
@@ -1642,8 +1781,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			throw new IllegalStateException("Called beginLevelRendering but level rendering appears to still be in progress?");
 		}
 
-		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
-
 		profiler.startSection("iris_uniforms");
 		updateNotifier.onNewFrame();
 
@@ -1714,7 +1851,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		isRenderingFullScreenPass = true;
 
-		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		profiler.startSection("iris_center_depth");
 		centerDepthSampler.sampleCenterDepth();
 		profiler.endSection();
@@ -1846,23 +1982,67 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private static Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>
-			submitAttributeTransforms(ProgramFallbackResolver resolver) {
+			submitAttributeTransforms(ProgramFallbackResolver resolver, ProgramId[] ids, boolean instanced) {
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>();
 		final Set<String> processedSourceNames = new HashSet<>();
-		for (ProgramId id : ProgramId.values()) {
-			ProgramSource source = resolver.resolveNullable(id);
-			if (source != null && !processedSourceNames.contains(source.getName())) {
-				processedSourceNames.add(source.getName());
-				final ProgramSource src = source;
-				final String vertexSource = src.getVertexSource().orElse(null);
-				final boolean scrollGlint = GlintScrollInjector.shouldInject(id, src);
-				for (InputAvailability avail : INPUT_AVAILABILITIES) {
-					Pair<String, InputAvailability> key = Pair.of(src.getName(), avail);
-					futures.put(key, Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchAttributes(vertexSource, src.getGeometrySource().orElse(null), src.getTessControlSource().orElse(null), src.getTessEvalSource().orElse(null), src.getFragmentSource().orElse(null), avail, scrollGlint)));
-				}
+		for (ProgramId id : ids) {
+			final ProgramSource source = resolver.resolveNullable(id);
+			if (source == null || !processedSourceNames.add(source.getName())) {
+				continue;
+			}
+			if (instanced && referencesMvBuiltinsOutsideVertex(source)) {
+				Iris.logger.info("TESR instancing: {} references MV builtins outside the vertex stage, keeping CPU path", source.getName());
+				continue;
+			}
+			final String vertexSource = source.getVertexSource().orElse(null);
+			final boolean scrollGlint = GlintScrollInjector.shouldInject(id, source);
+			for (InputAvailability avail : INPUT_AVAILABILITIES) {
+				futures.put(Pair.of(source.getName(), avail), Iris.ShaderTransformExecutor.submitTracked(() -> {
+					final String geometry = source.getGeometrySource().orElse(null);
+					final String tessControl = source.getTessControlSource().orElse(null);
+					final String tessEval = source.getTessEvalSource().orElse(null);
+					final String fragment = source.getFragmentSource().orElse(null);
+					return instanced ? TransformPatcher.patchAttributesInstanced(vertexSource, geometry, tessControl, tessEval, fragment, avail, scrollGlint)
+						: TransformPatcher.patchAttributes(vertexSource, geometry, tessControl, tessEval, fragment, avail, scrollGlint);
+				}));
 			}
 		}
 		return futures;
+	}
+
+	private static final ProgramId[] INSTANCED_PROGRAM_IDS = {
+		ProgramId.Block, ProgramId.BlockTrans, ProgramId.Entities, ProgramId.EntitiesTrans,
+		ProgramId.Shadow, ProgramId.ShadowWater
+	};
+
+	private static final String[] MV_BUILTINS = {
+		"gl_ModelViewMatrix", "gl_ModelViewMatrixInverse",
+		"gl_ModelViewProjectionMatrix", "gl_ModelViewProjectionMatrixInverse",
+		"gl_NormalMatrix", "ftransform"
+	};
+
+	static boolean referencesMvBuiltins(String source) {
+		if (source == null) {
+			return false;
+		}
+		try {
+			final Transformer transformer = new Transformer(ShaderParser.parseShader(source).full());
+			for (String builtin : MV_BUILTINS) {
+				if (transformer.containsCall(builtin)) {
+					return true;
+				}
+			}
+			return false;
+		} catch (Exception e) {
+			return true;
+		}
+	}
+
+	private static boolean referencesMvBuiltinsOutsideVertex(ProgramSource source) {
+		return referencesMvBuiltins(source.getGeometrySource().orElse(null))
+			|| referencesMvBuiltins(source.getTessControlSource().orElse(null))
+			|| referencesMvBuiltins(source.getTessEvalSource().orElse(null))
+			|| referencesMvBuiltins(source.getFragmentSource().orElse(null));
 	}
 
 	private static CompletableFuture<Map<PatchShaderType, String>> submitCeleritasTerrainTransform(ProgramSource source) {
@@ -1878,4 +2058,5 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 		return Optional.empty();
 	}
+
 }

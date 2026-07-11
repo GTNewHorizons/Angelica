@@ -10,8 +10,6 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
-import net.coderbot.iris.uniforms.CapturedRenderingState;
-import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -126,17 +124,19 @@ public class MixinRenderGlobal {
         GbufferPrograms.endOutline();
     }
 
+    @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", args = "ldc=global"))
+    private void iris$beginEntityLoop(CallbackInfo ci) {
+        GbufferPrograms.beginEntityLoop();
+    }
+
+    @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", args = "ldc=blockentities"))
+    private void iris$endEntityLoop(CallbackInfo ci) {
+        GbufferPrograms.endEntityLoop();
+    }
+
     @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
     private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
-        int entityId = EntityIdHelper.getEntityId(entity);
-
-        CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
-        GbufferPrograms.beginEntities();
-        try {
-            return original.call(instance, entity, partialTicks);
-        } finally {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
-            GbufferPrograms.endEntities();
-        }
+        GbufferPrograms.onEntityRenderBoundary();
+        return original.call(instance, entity, partialTicks);
     }
 }

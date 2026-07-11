@@ -165,6 +165,14 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_TESR_BEACON_CACHE(new MixinBuilder("Batch the vanilla beacon beam via the retained TESR mesh cache")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.enableTESRBeaconCache)
+        .addClientMixins(
+            "angelica.tesr.MixinTileEntityBeaconRenderer"
+        )
+    ),
+
     ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch)
@@ -183,6 +191,7 @@ public enum Mixins implements IMixins {
         )
         .addClientMixins(
             "angelica.tracy.MixinMinecraft_Tracy"
+            , "angelica.tracy.MixinRenderGlobal_Tracy"
         )
     ),
 

@@ -77,4 +77,12 @@ public enum DepthBufferFormat {
 	public boolean isCombinedStencil() {
 		return combinedStencil;
 	}
+
+	public DepthBufferFormat stripStencil() {
+		return switch (this) {
+			case DEPTH_STENCIL, DEPTH24_STENCIL8 -> DEPTH24;
+			case DEPTH32F_STENCIL8 -> DEPTH32F;
+			default -> this;
+		};
+	}
 }

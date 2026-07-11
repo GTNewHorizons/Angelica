@@ -10,6 +10,7 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL13;
@@ -43,13 +44,14 @@ public final class Tc4JarMeshes {
     private static final RenderBlocks FALLBACK_RENDER_BLOCKS = new RenderBlocks();
 
     private static final ResourceLocation LABEL_TEXTURE = new ResourceLocation("thaumcraft", "textures/models/label.png");
-    private static final TesrMaterial LABEL_MATERIAL = TesrMaterial.builder().color(1f, 1f, 1f, 1f).translucent().noCull().build();
-    private static final TesrMaterial TAG_MATERIAL = TesrMaterial.builder().color(0.1f, 0.1f, 0.1f, 0.8f).translucent().noCull().unlit().build();
+    private static final TesrMaterial LABEL_MATERIAL = TesrMaterial.builder().color(1f, 1f, 1f, 1f).translucent().cutout(1f / 255f).noCull().build();
+    private static final TesrMaterial TAG_MATERIAL = TesrMaterial.builder().color(0.1f, 0.1f, 0.1f, 0.8f).translucent().cutout(1f / 255f).noCull().unlit().build();
     private static final Object LABEL_KEY = new Object();
     private static final Map<Aspect, Object> TAG_KEYS = new HashMap<>();
 
     private static final TesrMeshBuilder LABEL_BUILDER = sink -> {
         final Tessellator t = sink.angelica$bucket(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, LABEL_TEXTURE, LABEL_MATERIAL);
+        t.setNormal(0f, 0f, 1f);
         t.addVertexWithUV(-0.25, 0.25, 0.0, 0.0, 1.0);
         t.addVertexWithUV(0.25, 0.25, 0.0, 1.0, 1.0);
         t.addVertexWithUV(0.25, -0.25, 0.0, 1.0, 0.0);
@@ -64,6 +66,7 @@ public final class Tc4JarMeshes {
         @Override
         public void angelica$build(TesrMeshSink sink) {
             final Tessellator t = sink.angelica$bucket(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, aspect.getImage(), TAG_MATERIAL);
+            t.setNormal(0f, 0f, 1f);
             t.addVertexWithUV(-8.0, 8.0, 0.0, 0.0, 1.0);
             t.addVertexWithUV(8.0, 8.0, 0.0, 1.0, 1.0);
             t.addVertexWithUV(8.0, -8.0, 0.0, 1.0, 0.0);
@@ -71,14 +74,25 @@ public final class Tc4JarMeshes {
         }
     }
 
-    public static void renderLabelBacking() {
+    public static void renderLabelBacking(TileEntity te) {
+        applyBrightness(jarBrightness(te));
         AngelicaTesrMeshCache.INSTANCE.renderCached(LABEL_KEY, LABEL_BUILDER);
     }
 
-    public static void renderLabelTag(Aspect aspect) {
+    public static void renderLabelTag(Aspect aspect, TileEntity te) {
+        applyBrightness(jarBrightness(te));
         final Object key = TAG_KEYS.computeIfAbsent(aspect, k -> new Object());
         TAG_BUILDER.aspect = aspect;
         AngelicaTesrMeshCache.INSTANCE.renderCached(key, TAG_BUILDER);
+    }
+
+    private static int jarBrightness(TileEntity te) {
+        if (te == null || te.getWorldObj() == null) return 200;
+        return Math.max(200, ConfigBlocks.blockJar.getMixedBrightnessForBlock(te.getWorldObj(), te.xCoord, te.yCoord, te.zCoord));
+    }
+
+    private static void applyBrightness(int bright) {
+        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, bright % 65536, (float) (bright / 65536));
     }
 
     private Tc4JarMeshes() {}
@@ -102,11 +116,7 @@ public final class Tc4JarMeshes {
         }
         final int color = te.aspect != null ? te.aspect.getColor() : 0xFFFFFF;
 
-        int bright = 200;
-        if (te.getWorldObj() != null) {
-            bright = Math.max(200, ConfigBlocks.blockJar.getMixedBrightnessForBlock(te.getWorldObj(), te.xCoord, te.yCoord, te.zCoord));
-        }
-        GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, bright % 65536, (float) (bright / 65536));
+        applyBrightness(jarBrightness(te));
 
         final Holder holder = HOLDERS.computeIfAbsent(new LiquidKey(color, level64), k -> new Holder(k.color()));
         GLStateManager.glPushMatrix();

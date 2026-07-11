@@ -10,18 +10,26 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.SegmentedBufferBuilder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
+import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
 import java.nio.ByteBuffer;
@@ -47,6 +55,8 @@ public final class TesrBatchRenderer {
     final InstancedTemplateRenderer instancedRenderer = new InstancedTemplateRenderer();
     private int activePass = -1;
     private long lastSweepMs;
+    private boolean deferredFlushPending;
+    private RetainedTesrGroups pendingDeferredHook;
 
     private final Matrix4f modelView = new Matrix4f();
     private final Matrix4f identity = new Matrix4f();
@@ -59,8 +69,11 @@ public final class TesrBatchRenderer {
     }
 
     public void beginPass(int passKey, Matrix4f baseMV, double camX, double camY, double camZ) {
+        if (deferredFlushPending) {
+            discardDeferred();
+        }
         activePass = passKey;
-        retained[passKey].beginPass(baseMV, camX, camY, camZ, instancedCapable() ? instancedRenderer : null);
+        retained[passKey].beginPass(baseMV, camX, camY, camZ, instancedCapable() ? instancedRenderer : null, deferredPipeline());
         if (passKey == PASS_MAIN_0) {
             final long now = System.currentTimeMillis();
             if (now - lastSweepMs >= SWEEP_INTERVAL_MS) {
@@ -77,10 +90,25 @@ public final class TesrBatchRenderer {
         if (!ShaderManager.getInstance().isEnabled()) return false;
         if (!Iris.enabled) return true;
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        return pipeline == null || pipeline instanceof FixedFunctionWorldRenderingPipeline;
+        if (pipeline == null || pipeline instanceof FixedFunctionWorldRenderingPipeline) return true;
+        return pipeline instanceof DeferredWorldRenderingPipeline deferred && deferred.supportsTesrInstancing();
+    }
+
+    static DeferredWorldRenderingPipeline deferredPipeline() {
+        if (!Iris.enabled) return null;
+        return Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline deferred
+            ? deferred : null;
+    }
+
+    private void discardDeferred() {
+        deferredFlushPending = false;
+        pendingDeferredHook = null;
+        bufferSource.discard();
+        BatchingFontRenderer.discardDeferredText();
     }
 
     public void clearRetained() {
+        discardDeferred();
         for (int i = 0; i < PASS_COUNT; i++) {
             retained[i].clear();
         }
@@ -102,7 +130,7 @@ public final class TesrBatchRenderer {
         if (activePass >= 0) {
             final RenderLayer layer = layerFor(texture, material);
             final int blockEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
-            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, blockEntityId, captureTextureMatrix());
+            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, blockEntityId, captureTextureMatrix(), false);
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
         }
@@ -119,26 +147,30 @@ public final class TesrBatchRenderer {
         boolean noCull;
         boolean unlit;
         boolean noDepthWrite;
+        boolean depthOnly;
         float cutoutAlpha;
         boolean depthEqual;
+        TesrMaterial.SpecialRender special;
         TesrShader shader;
         boolean noPass;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, float cutoutAlpha, boolean depthEqual, TesrShader shader, boolean noPass) {
+        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader, boolean noPass) {
             this.texture = texture;
             this.transparency = transparency;
             this.noCull = noCull;
             this.unlit = unlit;
             this.noDepthWrite = noDepthWrite;
+            this.depthOnly = depthOnly;
             this.cutoutAlpha = cutoutAlpha;
             this.depthEqual = depthEqual;
+            this.special = special;
             this.shader = shader;
             this.noPass = noPass;
             return this;
         }
 
         LayerKey copy() {
-            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, cutoutAlpha, depthEqual, shader, noPass);
+            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader, noPass);
         }
 
         @Override
@@ -146,8 +178,9 @@ public final class TesrBatchRenderer {
             if (!(o instanceof LayerKey other)) return false;
             return Objects.equals(texture, other.texture) && transparency == other.transparency
                 && noCull == other.noCull && unlit == other.unlit && noDepthWrite == other.noDepthWrite
+                && depthOnly == other.depthOnly
                 && Float.floatToIntBits(cutoutAlpha) == Float.floatToIntBits(other.cutoutAlpha)
-                && depthEqual == other.depthEqual && shader == other.shader && noPass == other.noPass;
+                && depthEqual == other.depthEqual && special == other.special && shader == other.shader && noPass == other.noPass;
         }
 
         @Override
@@ -157,8 +190,10 @@ public final class TesrBatchRenderer {
             h = h * 31 + (noCull ? 1 : 0);
             h = h * 31 + (unlit ? 1 : 0);
             h = h * 31 + (noDepthWrite ? 1 : 0);
+            h = h * 31 + (depthOnly ? 1 : 0);
             h = h * 31 + Float.floatToIntBits(cutoutAlpha);
             h = h * 31 + (depthEqual ? 1 : 0);
+            h = h * 31 + Objects.hashCode(special);
             h = h * 31 + System.identityHashCode(shader);
             h = h * 31 + (noPass ? 1 : 0);
             return h;
@@ -197,7 +232,7 @@ public final class TesrBatchRenderer {
     }
 
     private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material, boolean noPass) {
-        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.cutoutAlpha(), material.isDepthEqual(), material.shader(), noPass);
+        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader(), noPass);
         RenderLayer layer = layers.get(key);
         if (layer == null) {
             layer = noPass ? RenderLayer.tesrNoPass(texture, material) : RenderLayer.tesr(texture, material);
@@ -223,11 +258,84 @@ public final class TesrBatchRenderer {
 
     public void flush() {
         final RetainedTesrGroups hook = activePass >= 0 ? retained[activePass] : null;
-        bufferSource.endBatchWithType(TransparencyType.OPAQUE, hook);
-        bufferSource.endBatch(hook);
-        instancedRenderer.endFrame();
-        BatchingFontRenderer.flushDeferredText();
+        if (Tracy.ENABLED) Tracy.beginZone("tesrOpaque", Tracy.COLOR_CLIENT);
+        try {
+            bufferSource.endBatchWithType(TransparencyType.OPAQUE, hook);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+        if (activePass == PASS_MAIN_0 && deferredPipeline() != null) {
+            bufferSource.pauseBatch();
+            pendingDeferredHook = hook;
+            deferredFlushPending = true;
+            activePass = -1;
+            return;
+        }
+        if (Tracy.ENABLED) Tracy.beginZone("tesrBatch", Tracy.COLOR_CLIENT);
+        try {
+            bufferSource.endBatch(hook);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+        if (Tracy.ENABLED) Tracy.beginZone("tesrInstanced", Tracy.COLOR_CLIENT);
+        try {
+            instancedRenderer.endFrame();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+        if (Tracy.ENABLED) Tracy.beginZone("tesrText", Tracy.COLOR_CLIENT);
+        try {
+            BatchingFontRenderer.flushDeferredText();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
         activePass = -1;
+    }
+
+    public void flushAfterDeferred() {
+        if (!deferredFlushPending) return;
+        deferredFlushPending = false;
+        final RetainedTesrGroups hook = pendingDeferredHook;
+        pendingDeferredHook = null;
+        if (Tracy.ENABLED) Tracy.beginZone("tesrDeferred", Tracy.COLOR_CLIENT);
+        try {
+            final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
+            final boolean savedDepthMask = GLStateManager.getDepthState().isEnabled();
+            final boolean savedBlend = GLStateManager.getBlendMode().isEnabled();
+            final int savedSrcRgb = GLStateManager.getBlendState().getSrcRgb();
+            final int savedDstRgb = GLStateManager.getBlendState().getDstRgb();
+            final int savedSrcAlpha = GLStateManager.getBlendState().getSrcAlpha();
+            final int savedDstAlpha = GLStateManager.getBlendState().getDstAlpha();
+            final boolean savedAlphaTest = GLStateManager.getAlphaTest().isEnabled();
+            final int savedAlphaFunc = GLStateManager.getAlphaState().getFunction();
+            final float savedAlphaRef = GLStateManager.getAlphaState().getReference();
+
+            GLStateManager.glDepthMask(true);
+            GLStateManager.enableDepthTest();
+            GLStateManager.enableBlend();
+            GLStateManager.defaultBlendFunc();
+            entityRenderer.enableLightmap(0);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            final boolean wrap = Iris.enabled && GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.NONE;
+            if (wrap) GbufferPrograms.beginBlockEntities();
+            try {
+                bufferSource.endBatch(hook);
+                instancedRenderer.endFrame();
+                AngelicaBufferSource.rebindPass();
+                BatchingFontRenderer.flushDeferredText();
+            } finally {
+                if (wrap) GbufferPrograms.endBlockEntities();
+                entityRenderer.disableLightmap(0);
+                GLStateManager.glDepthMask(savedDepthMask);
+                if (savedBlend) GLStateManager.enableBlend(); else GLStateManager.disableBlend();
+                GLStateManager.tryBlendFuncSeparate(savedSrcRgb, savedDstRgb, savedSrcAlpha, savedDstAlpha);
+                if (savedAlphaTest) GLStateManager.enableAlphaTest(); else GLStateManager.disableAlphaTest();
+                GLStateManager.glAlphaFunc(savedAlphaFunc, savedAlphaRef);
+            }
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     private long lastRebuilds, lastRetainedDraws, lastPromotions, lastStreamed, lastInstDraws, lastInstInstances;
@@ -263,7 +371,69 @@ public final class TesrBatchRenderer {
             retainedBytes / 1048576.0, bufferSource.allocatedBytes() / 1048576.0,
             instancedRenderer.meshCount(), instancedRenderer.meshBytes() / 1048576.0,
             AngelicaTesrMeshCache.INSTANCE.size());
-        return Arrays.asList(line1, line2);
+        final String line3 = rebuildAttributionLine();
+        return line3 == null ? Arrays.asList(line1, line2) : Arrays.asList(line1, line2, line3);
+    }
+
+    private final ObjectArrayList<RetainedTesrGroups.Group> rebuilders = new ObjectArrayList<>();
+
+    private String rebuildAttributionLine() {
+        rebuilders.clear();
+        for (int i = 0; i < PASS_COUNT; i++) {
+            retained[i].collectRebuilders(rebuilders);
+        }
+        if (rebuilders.isEmpty()) return null;
+        rebuilders.sort((a, b) -> Integer.compare(b.rebuildsWindow, a.rebuildsWindow));
+        final StringBuilder sb = new StringBuilder("TESR reb:");
+        final int shown = Math.min(3, rebuilders.size());
+        for (int i = 0; i < shown; i++) {
+            final RetainedTesrGroups.Group group = rebuilders.get(i);
+            if (i > 0) sb.append(',');
+            sb.append(' ').append(group.rebuildsWindow).append("x ").append(RetainedTesrGroups.attribution(group)).append(' ').append(group.builtVertexCount).append('v');
+        }
+        if (rebuilders.size() > shown) {
+            sb.append(" +").append(rebuilders.size() - shown);
+        }
+        for (int i = 0, n = rebuilders.size(); i < n; i++) {
+            rebuilders.get(i).rebuildsWindow = 0;
+        }
+        rebuilders.clear();
+        return sb.toString();
+    }
+
+    public long statRebuilds() { return sumStat(0); }
+    public long statRetainedDraws() { return sumStat(1); }
+    public long statInstancedDraws() { return sumStat(2); }
+    public long statInstancedInstances() { return sumStat(3); }
+    public long statStreamedInstances() { return sumStat(4); }
+    public long statVolatilePromotions() { return sumStat(5); }
+
+    private long sumStat(int which) {
+        long v = 0;
+        for (int i = 0; i < PASS_COUNT; i++) {
+            final RetainedTesrGroups r = retained[i];
+            v += switch (which) {
+                case 0 -> r.rebuilds;
+                case 1 -> r.retainedDraws;
+                case 2 -> r.instancedDraws;
+                case 3 -> r.instancedInstances;
+                case 4 -> r.streamedInstances;
+                default -> r.streamPromotions;
+            };
+        }
+        return v;
+    }
+
+    public long statRetainedBytes() {
+        long v = 0;
+        for (int i = 0; i < PASS_COUNT; i++) {
+            v += retained[i].retainedBytes();
+        }
+        return v;
+    }
+
+    public long statBufferSourceBytes() {
+        return bufferSource.allocatedBytes();
     }
 
     private final MeshBuffer immediateMesh = new MeshBuffer();

@@ -108,6 +108,10 @@ public class TransformPatcher {
         return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs, scrollGlint));
     }
 
+    public static Map<PatchShaderType, String> patchAttributesInstanced(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs, scrollGlint, true));
+    }
+
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {
         return patchAttributes(vertex, geometry, tessControl, tessEval, fragment, inputs, false);
     }

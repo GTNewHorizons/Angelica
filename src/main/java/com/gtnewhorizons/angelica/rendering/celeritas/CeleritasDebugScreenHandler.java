@@ -4,6 +4,9 @@ import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.profiling.BailClassCounts;
+import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
@@ -54,7 +57,20 @@ public class CeleritasDebugScreenHandler {
         event.right.add(TessellatorStreamingDrawer.getDebugInfo());
         event.right.addAll(TesrBatchRenderer.INSTANCE.getDebugStrings());
         event.right.add(ModelPartBatcher.INSTANCE.getDebugString());
+        if (Tracy.ENABLED) {
+            addIfPresent(event.right, RenderClassTimings.TESR.debugLine());
+            addIfPresent(event.right, RenderClassTimings.ENTITY.debugLine());
+            addIfPresent(event.right, RenderClassTimings.SHADOW_ENTITY.debugLine());
+            addIfPresent(event.right, BailClassCounts.MATERIAL.debugLine());
+            addIfPresent(event.right, BailClassCounts.TEMPLATE.debugLine());
+        }
         event.right.add("");
+    }
+
+    private static void addIfPresent(java.util.List<String> lines, String line) {
+        if (!line.isEmpty()) {
+            lines.add(line);
+        }
     }
 
     public static String getFogDebugString() {

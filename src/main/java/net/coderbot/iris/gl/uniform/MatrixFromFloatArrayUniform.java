@@ -9,13 +9,13 @@ import java.util.function.Supplier;
 
 public class MatrixFromFloatArrayUniform extends Uniform {
 	private final FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-	private float[] cachedValue;
+	private final float[] cachedValue = new float[16];
+	private boolean hasValue;
 	private final Supplier<float[]> value;
 
 	MatrixFromFloatArrayUniform(int location, Supplier<float[]> value) {
 		super(location);
 
-		this.cachedValue = null;
 		this.value = value;
 	}
 
@@ -23,8 +23,9 @@ public class MatrixFromFloatArrayUniform extends Uniform {
 	public void update() {
 		float[] newValue = value.get();
 
-		if (!Arrays.equals(newValue, cachedValue)) {
-			cachedValue = Arrays.copyOf(newValue, 16);
+		if (!hasValue || !Arrays.equals(newValue, cachedValue)) {
+			hasValue = true;
+			System.arraycopy(newValue, 0, cachedValue, 0, 16);
 
 			buffer.put(cachedValue);
 			buffer.rewind();

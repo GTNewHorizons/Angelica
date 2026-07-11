@@ -215,8 +215,9 @@ public class CustomUniforms implements FunctionContext {
 
 	public void update() {
 		generation++;
-		for (CachedUniform value : this.uniformOrder) {
-			value.update();
+		final List<CachedUniform> ordered = this.uniformOrder;
+		for (int i = 0, n = ordered.size(); i < n; i++) {
+			ordered.get(i).update();
 		}
 	}
 

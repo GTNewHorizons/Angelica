@@ -134,6 +134,8 @@ public class GLStateManager {
     public static long drawCalls;
     public static long texBindMisses;
     public static long programSwitches;
+    public static int programGeneration;
+    public static int drawFramebufferGeneration;
 
     // Thread Checking - must be early in static init order so isMainThread() works for state initialization
     @Getter private static final Thread MainThread = Thread.currentThread();
@@ -236,6 +238,14 @@ public class GLStateManager {
 
     // Highest texture unit index that has ever had a non-zero binding; limits onDeleteTexture scan range
     private static int maxBoundTextureUnit = 0;
+
+    public static int getMaxBoundTextureUnit() {
+        return maxBoundTextureUnit;
+    }
+
+    public static void trackMaxBoundTextureUnit(int unit) {
+        if (unit > maxBoundTextureUnit) maxBoundTextureUnit = unit;
+    }
     // Lock guard for texture bind callback (prevents recursion from RenderSystem.bindTextureToUnit)
     private static boolean lockBindCallback;
 
@@ -1885,8 +1895,8 @@ public class GLStateManager {
             if (Tracy.ENABLED) texBindMisses++;
             RENDER_BACKEND.bindTexture(target, texture);
             textureUnit.setBinding(texture);
-            if (texture != 0 && activeUnit > maxBoundTextureUnit) {
-                maxBoundTextureUnit = activeUnit;
+            if (texture != 0) {
+                trackMaxBoundTextureUnit(activeUnit);
             }
             if (!lockBindCallback && activeTextureUnit.getValue() == 0) {
                 lockBindCallback = true;
@@ -4597,6 +4607,7 @@ public class GLStateManager {
         if (program == 0 && ffp.isEnabled()) {
             final int prev = activeProgram;
             final boolean caching = isCachingEnabled();
+            if (prev != 0) programGeneration++;
             if (caching) {
                 activeProgram = 0; // Track that FFP was requested
             }
@@ -4618,6 +4629,7 @@ public class GLStateManager {
         final boolean caching = isCachingEnabled();
         if (BYPASS_CACHE || !caching || program != activeProgram) {
             if (Tracy.ENABLED) programSwitches++;
+            programGeneration++;
             final int prev = activeProgram;
             if (caching) {
                 activeProgram = program;
@@ -5732,10 +5744,12 @@ public class GLStateManager {
     public static void glBindFramebuffer(int target, int framebuffer) {
         if (target == GL30.GL_FRAMEBUFFER) {
             if (drawFramebuffer == framebuffer && readFramebuffer == framebuffer) return;
+            if (drawFramebuffer != framebuffer) drawFramebufferGeneration++;
             drawFramebuffer = framebuffer;
             readFramebuffer = framebuffer;
         } else if (target == GL30.GL_DRAW_FRAMEBUFFER) {
             if (drawFramebuffer == framebuffer) return;
+            drawFramebufferGeneration++;
             drawFramebuffer = framebuffer;
         } else if (target == GL30.GL_READ_FRAMEBUFFER) {
             if (readFramebuffer == framebuffer) return;
@@ -5745,7 +5759,7 @@ public class GLStateManager {
     }
 
     public static void glDeleteFramebuffers(int framebuffer) {
-        if (drawFramebuffer == framebuffer) drawFramebuffer = 0;
+        if (drawFramebuffer == framebuffer) { drawFramebuffer = 0; drawFramebufferGeneration++; }
         if (readFramebuffer == framebuffer) readFramebuffer = 0;
         RENDER_BACKEND.deleteFramebuffers(framebuffer);
     }
@@ -6306,7 +6320,7 @@ public class GLStateManager {
         if (program == 0) return;
         CompatUniformManager.onDeleteProgram(program);
 
-        if (activeProgram == program) activeProgram = 0;
+        if (activeProgram == program) { activeProgram = 0; programGeneration++; }
         RENDER_BACKEND.deleteProgram(program);
     }
 

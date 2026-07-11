@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline.transform;
 import net.coderbot.iris.gl.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.taumc.glsl.Transformer;
+import org.taumc.glsl.grammar.GLSLLexer;
 import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.HashMap;
@@ -29,17 +30,23 @@ class AttributeTransformer {
 	}
 
 	private static void transformCore(Transformer transformer, AttributeParameters parameters) {
-		CoreTransformHelper.injectMatrixUniforms(transformer);
+		final boolean instancedVertex = parameters.instanced && parameters.type == ShaderType.VERTEX;
+		final boolean wantsMvInverse = instancedVertex && transformer.containsCall("gl_ModelViewMatrixInverse");
+		CoreTransformHelper.injectMatrixUniforms(transformer, instancedVertex);
 
 		if (parameters.type == ShaderType.VERTEX) {
 			transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
 			transformer.injectVariable("layout(location = 1) in vec4 iris_Color;");
 			transformer.injectVariable("layout(location = 2) in vec4 iris_MultiTexCoord0;");
-			transformer.injectVariable("layout(location = 3) in vec4 iris_MultiTexCoord1;");
+			if (instancedVertex) {
+				transformer.injectVariable("vec4 iris_MultiTexCoord1;");
+			} else {
+				transformer.injectVariable("layout(location = 3) in vec4 iris_MultiTexCoord1;");
+			}
 			transformer.injectVariable("layout(location = 4) in vec3 iris_Normal;");
 
 			transformer.rename("gl_Vertex", "iris_Vertex");
-			transformer.replaceExpression("gl_Color", "(iris_Color * iris_ColorModulator)");
+			transformer.replaceExpression("gl_Color", instancedVertex ? "(iris_Color * iris_ColorModulator * iris_InstColor)" : "(iris_Color * iris_ColorModulator)");
 			transformer.rename("gl_Normal", "iris_Normal");
 
 			// ftransform() = gl_ModelViewProjectionMatrix * gl_Vertex
@@ -69,7 +76,37 @@ class AttributeTransformer {
 				transformer.rename("gl_MultiTexCoord3", "mc_midTexCoord");
 				transformer.injectVariable("in vec4 mc_midTexCoord;");
 			}
+
+			if (instancedVertex) {
+				foldConstantAttribute(transformer, "mc_Entity", "-1.0", "vec2(-1.0, -1.0)", "vec3(-1.0, -1.0, 0.0)", "vec4(-1.0, -1.0, 0.0, 1.0)");
+				foldConstantAttribute(transformer, "mc_midTexCoord", "0.5", "vec2(0.5, 0.5)", "vec3(0.5, 0.5, 0.0)", "vec4(0.5, 0.5, 0.0, 1.0)");
+
+				final StringBuilder init = new StringBuilder(256);
+				init.append("{ iris_ModelViewMatrix = mat4(iris_InstMat0, iris_InstMat1, iris_InstMat2, iris_InstMat3);");
+				init.append(" iris_NormalMatrix = mat3(normalize(iris_InstMat0.xyz), normalize(iris_InstMat1.xyz), normalize(iris_InstMat2.xyz));");
+				if (wantsMvInverse) {
+					init.append(" iris_ModelViewMatrixInverse = inverse(iris_ModelViewMatrix);");
+				}
+				init.append(" iris_MultiTexCoord1 = vec4(iris_InstLightmap, 0.0, 1.0); }");
+				transformer.prependMain(init.toString());
+			}
 		}
+	}
+
+	private static void foldConstantAttribute(Transformer transformer, String name, String floatVal, String vec2Val, String vec3Val, String vec4Val) {
+		final int type = transformer.findType(name);
+		if (type == 0) {
+			return;
+		}
+		final String replacement = switch (type) {
+			case GLSLLexer.FLOAT -> floatVal;
+			case GLSLLexer.VEC2 -> vec2Val;
+			case GLSLLexer.VEC3 -> vec3Val;
+			case GLSLLexer.VEC4 -> vec4Val;
+			default -> throw new IllegalStateException("Unsupported " + name + " type token " + type + " for instanced variant");
+		};
+		transformer.removeVariable(name);
+		transformer.replaceExpression(name, replacement);
 	}
 
 }

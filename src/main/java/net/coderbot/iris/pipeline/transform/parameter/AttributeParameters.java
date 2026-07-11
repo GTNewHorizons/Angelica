@@ -8,13 +8,19 @@ public class AttributeParameters extends Parameters {
 	public final boolean hasGeometry;
 	public final InputAvailability inputs;
 	public final boolean scrollGlint;
+	public final boolean instanced;
 	// WARNING: adding new fields requires updating hashCode and equals methods!
 
 	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs, boolean scrollGlint) {
+		this(patch, hasGeometry, inputs, scrollGlint, false);
+	}
+
+	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs, boolean scrollGlint, boolean instanced) {
 		super(patch, null);
 		this.hasGeometry = hasGeometry;
 		this.inputs = inputs;
 		this.scrollGlint = scrollGlint;
+		this.instanced = instanced;
 	}
 
 	@Override
@@ -28,6 +34,7 @@ public class AttributeParameters extends Parameters {
 		int result = super.hashCode();
 		result = prime * result + (hasGeometry ? 1231 : 1237);
 		result = prime * result + (scrollGlint ? 1231 : 1237);
+		result = prime * result + (instanced ? 1231 : 1237);
 		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
@@ -44,6 +51,8 @@ public class AttributeParameters extends Parameters {
 		if (hasGeometry != other.hasGeometry)
 			return false;
 		if (scrollGlint != other.scrollGlint)
+			return false;
+		if (instanced != other.instanced)
 			return false;
 		if (inputs == null) {
 			if (other.inputs != null)

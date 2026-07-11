@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -27,6 +28,7 @@ public class MixinRenderManager {
     private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
         int entityId = EntityIdHelper.getEntityId(entity);
         CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
+        TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
@@ -36,5 +38,6 @@ public class MixinRenderManager {
             GbufferPrograms.teardownSpecialRenderCondition();
         }
         CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
+        TesrAttribution.currentRenderable = null;
     }
 }

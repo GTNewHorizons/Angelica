@@ -15,11 +15,13 @@ import java.util.concurrent.ConcurrentHashMap;
 @EqualsAndHashCode
 public final class TesrMaterial {
 
-    public enum Transparency { OPAQUE, TRANSLUCENT, ADDITIVE }
+    public enum Transparency { OPAQUE, TRANSLUCENT, ADDITIVE, ADDITIVE_ALPHA, GLINT }
+
+    public enum SpecialRender { NONE, BEACON_BEAM, GLINT }
 
     private static final ConcurrentHashMap<TesrMaterial, TesrMaterial> INTERNED = new ConcurrentHashMap<>();
 
-    public static final TesrMaterial CURRENT_STATE = intern(new TesrMaterial(false, 0, 0, 0, 0, false, 0, 0, false, false, false, false, 0, false, Transparency.OPAQUE, null));
+    public static final TesrMaterial CURRENT_STATE = intern(new TesrMaterial(false, 0, 0, 0, 0, false, 0, 0, false, false, false, false, false, 0, false, Transparency.OPAQUE, SpecialRender.NONE, null));
 
     private static TesrMaterial intern(TesrMaterial material) {
         final TesrMaterial existing = INTERNED.putIfAbsent(material, material);
@@ -33,10 +35,12 @@ public final class TesrMaterial {
     private final boolean isNoCull;
     private final boolean isUnlit;
     private final boolean isNoDepthWrite;
+    private final boolean isDepthOnly;
     private final boolean isStream;
     private final float cutoutAlpha;
     private final boolean isDepthEqual;
     private final Transparency transparency;
+    private final SpecialRender special;
     private final TesrShader shader;
 
     public static Builder builder() {
@@ -51,10 +55,12 @@ public final class TesrMaterial {
         private boolean noCull;
         private boolean unlit;
         private boolean noDepthWrite;
+        private boolean depthOnly;
         private boolean stream;
         private float cutoutAlpha;
         private boolean depthEqual;
         private Transparency transparency = Transparency.OPAQUE;
+        private SpecialRender special = SpecialRender.NONE;
         private TesrShader shader;
 
         public Builder color(float red, float green, float blue, float alpha) {
@@ -89,6 +95,12 @@ public final class TesrMaterial {
             return this;
         }
 
+        /** Depth prepass: writes depth only, no color. Mutually exclusive with noDepthWrite */
+        public Builder depthOnly() {
+            this.depthOnly = true;
+            return this;
+        }
+
         /** Changes every frame, not cached */
         public Builder stream() {
             this.stream = true;
@@ -119,6 +131,23 @@ public final class TesrMaterial {
             return this;
         }
 
+        /** Additive glow scaled by alpha. SRC_ALPHA, ONE */
+        public Builder additiveAlpha() {
+            this.transparency = Transparency.ADDITIVE_ALPHA;
+            return this;
+        }
+
+        /** Vanilla enchantment glint blend. SRC_COLOR, ONE */
+        public Builder glint() {
+            this.transparency = Transparency.GLINT;
+            return this;
+        }
+
+        public Builder special(SpecialRender special) {
+            this.special = special;
+            return this;
+        }
+
         /** Custom shader around this material's batched draws; see {@link TesrShaders#register} */
         public Builder shader(TesrShader shader) {
             this.shader = shader;
@@ -126,7 +155,10 @@ public final class TesrMaterial {
         }
 
         public TesrMaterial build() {
-            return intern(new TesrMaterial(hasColor, red, green, blue, alpha, hasLightmap, lightmapX, lightmapY, noCull, unlit, noDepthWrite, stream, cutoutAlpha, depthEqual, transparency, shader));
+            if (special != SpecialRender.NONE && shader != null) {
+                throw new IllegalStateException("special() and shader() are mutually exclusive");
+            }
+            return intern(new TesrMaterial(hasColor, red, green, blue, alpha, hasLightmap, lightmapX, lightmapY, noCull, unlit, noDepthWrite, depthOnly, stream, cutoutAlpha, depthEqual, transparency, special, shader));
         }
     }
 }

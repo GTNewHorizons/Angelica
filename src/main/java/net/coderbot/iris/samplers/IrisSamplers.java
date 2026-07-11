@@ -33,6 +33,10 @@ public class IrisSamplers {
 	// We need a way to restore these texture bindings.
 	public static final ImmutableSet<Integer> COMPOSITE_RESERVED_TEXTURE_UNITS = ImmutableSet.of(1);
 
+	public static final int USAGE_DEPTHTEX1 = 1;
+	public static final int USAGE_DEPTHTEX2 = 2;
+	public static final int USAGE_SHADOWTEX1 = 4;
+
 	private static GlSampler SHADOW_SAMPLER_NEAREST;
 	private static GlSampler SHADOW_SAMPLER_LINEAR;
 
@@ -120,8 +124,8 @@ public class IrisSamplers {
 		return false;
 	}
 
-	public static boolean addShadowSamplers(SamplerHolder samplers, ShadowRenderTargets shadowRenderTargets, ImmutableSet<Integer> flipped, boolean separateHardwareSamplers) {
-		boolean usesShadows;
+	public static int addShadowSamplers(SamplerHolder samplers, ShadowRenderTargets shadowRenderTargets, ImmutableSet<Integer> flipped, boolean separateHardwareSamplers) {
+		int usage = 0;
 
 		// TODO: figure this out from parsing the shader source code to be 100% compatible with the legacy
 		// shader packs that rely on this behavior.
@@ -133,12 +137,15 @@ public class IrisSamplers {
 		final GlSampler sampler1 = separateHardwareSamplers ? null : (shadowRenderTargets.isHardwareFiltered(1) ? (shadowRenderTargets.isLinearFiltered(1) ? SHADOW_SAMPLER_LINEAR : SHADOW_SAMPLER_NEAREST) : null);
 
 		if (waterShadowEnabled) {
-			usesShadows = true;
 			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, sampler0, "shadowtex0", "watershadow");
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, sampler1, "shadowtex1", "shadow");
+			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, sampler1, "shadowtex1", "shadow")) {
+				usage |= USAGE_SHADOWTEX1;
+			}
 		} else {
-			usesShadows = samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, sampler0, "shadowtex0", "shadow");
-			usesShadows |= samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, sampler1, "shadowtex1");
+			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTexture()::getTextureId, sampler0, "shadowtex0", "shadow");
+			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, sampler1, "shadowtex1")) {
+				usage |= USAGE_SHADOWTEX1;
+			}
 		}
 
 		// Shadow color textures with flip support
@@ -174,10 +181,12 @@ public class IrisSamplers {
 
 		if (shadowRenderTargets.isHardwareFiltered(1) && separateHardwareSamplers) {
 			final GlSampler hwSampler1 = shadowRenderTargets.isLinearFiltered(1) ? SHADOW_SAMPLER_LINEAR : SHADOW_SAMPLER_NEAREST;
-			samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, hwSampler1, "shadowtex1HW");
+			if (samplers.addDynamicSampler(TextureType.TEXTURE_2D, shadowRenderTargets.getDepthTextureNoTranslucents()::getTextureId, hwSampler1, "shadowtex1HW")) {
+				usage |= USAGE_SHADOWTEX1;
+			}
 		}
 
-		return usesShadows;
+		return usage;
 	}
 
 	public static boolean hasPBRSamplers(SamplerHolder samplers) {
@@ -202,16 +211,26 @@ public class IrisSamplers {
 		samplers.addDynamicSampler(pipeline::getCurrentSpecularTexture, StateUpdateNotifiers.specularTextureChangeNotifier, "specular");
 	}
 
-	public static void addWorldDepthSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
+	public static int addWorldDepthSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
+		int usage = 0;
 		samplers.addDynamicSampler(renderTargets::getDepthTexture, "depthtex0");
 		// TODO: Should depthtex2 be made available to gbuffer / shadow programs?
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1");
+		if (samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1")) {
+			usage |= USAGE_DEPTHTEX1;
+		}
+		return usage;
 	}
 
-	public static void addCompositeSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
+	public static int addCompositeSamplers(SamplerHolder samplers, RenderTargets renderTargets) {
+		int usage = 0;
 		samplers.addDynamicSampler(renderTargets::getDepthTexture, "gdepthtex", "depthtex0");
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1");
-		samplers.addDynamicSampler(renderTargets.getDepthTextureNoHand()::getTextureId, "depthtex2");
+		if (samplers.addDynamicSampler(renderTargets.getDepthTextureNoTranslucents()::getTextureId, "depthtex1")) {
+			usage |= USAGE_DEPTHTEX1;
+		}
+		if (samplers.addDynamicSampler(renderTargets.getDepthTextureNoHand()::getTextureId, "depthtex2")) {
+			usage |= USAGE_DEPTHTEX2;
+		}
+		return usage;
 	}
 
 	public static void addCustomTextures(SamplerHolder samplers, Object2ObjectMap<String, TextureAccess> irisCustomTextures) {

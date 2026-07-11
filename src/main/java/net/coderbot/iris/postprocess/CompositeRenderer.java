@@ -6,6 +6,7 @@ import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import lombok.Getter;
 import net.coderbot.iris.features.FeatureFlags;
@@ -68,8 +69,8 @@ public class CompositeRenderer {
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
 	private final TextureStage textureStage;
-	@Getter
-    private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
+	@Getter private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
+	@Getter private int samplerUsage;
 
 	public CompositeRenderer(PackDirectives packDirectives, ProgramSource[] sources, ComputeSource[][] computes, RenderTargets renderTargets,
 							 TextureAccess noiseTexture, FrameUpdateNotifier updateNotifier,
@@ -173,6 +174,12 @@ public class CompositeRenderer {
 
 		this.passes = passes.build();
 		this.flippedAtLeastOnceFinal = flippedAtLeastOnce.build();
+
+		if (Tracy.ENABLED) {
+			for (Pass pass : this.passes) {
+				Tracy.message("passGraph " + stageName + "/" + pass.name + " draw=" + java.util.Arrays.toString(pass.drawBuffers) + " mipmapped=" + pass.mipmappedBuffers + " readsAlt=" + pass.stageReadsFromAlt);
+			}
+		}
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
@@ -283,9 +290,8 @@ public class CompositeRenderer {
 
 			if (ranCompute) {
 				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
+				Program.unbind();
 			}
-
-			Program.unbind();
 
 			if (renderPass instanceof ComputeOnlyPass) {
 				GLDebug.popGroup();
@@ -296,8 +302,9 @@ public class CompositeRenderer {
 			if (!renderPass.mipmappedBuffers.isEmpty()) {
 				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
+				final ImmutableSet<Integer> readsFromAlt = renderTargets.parityResolve(renderPass.stageReadsFromAlt);
 				for (int index : renderPass.mipmappedBuffers) {
-					setupMipmapping(CompositeRenderer.this.renderTargets.get(index), renderPass.stageReadsFromAlt.contains(index));
+					setupMipmapping(CompositeRenderer.this.renderTargets.get(index), readsFromAlt.contains(index));
 				}
 			}
 
@@ -328,7 +335,8 @@ public class CompositeRenderer {
 		GLStateManager.glUseProgram(0);
 
 		// NB: Unbinding all of these textures is necessary for proper shaderpack reloading.
-		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {
+		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLStateManager.getMaxBoundTextureUnit());
+		for (int i = 0; i <= maxUnit; i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work propely
 			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
@@ -352,7 +360,15 @@ public class CompositeRenderer {
 		//
 		// Also note that this only applies to one of the two buffers in a render target buffer pair - making it
 		// unlikely that this issue occurs in practice with most shader packs.
-		RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		if (Tracy.ENABLED) {
+			Tracy.beginZone("genMipmap", Tracy.COLOR_IRIS);
+			Tracy.zoneValue(texture);
+		}
+		try {
+			RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		} finally {
+			if (Tracy.ENABLED) Tracy.endZone();
+		}
 
 		int filter = GL11.GL_LINEAR_MIPMAP_LINEAR;
 		if (target.getInternalFormat().getPixelFormat().isInteger()) {
@@ -389,18 +405,18 @@ public class CompositeRenderer {
 
 		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
-		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-		IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+		IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 		IrisImages.addCustomImages(builder, customImages);
 
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-		IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+		samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+			samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 		}
 
@@ -440,18 +456,18 @@ public class CompositeRenderer {
 
                 this.customUniforms.assignTo(builder);
 
-				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 				IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 				IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-				IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+				IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 				IrisImages.addCustomImages(builder, customImages);
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+				samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+					samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 					IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 				}
 

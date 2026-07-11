@@ -9,6 +9,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.profiler.Profiler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
+import net.coderbot.iris.gl.framebuffer.ParityFramebuffer;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.shaderpack.PackDirectives;
@@ -35,6 +36,8 @@ public class RenderTargets {
 	private DepthCopyStrategy copyStrategy;
 
 	private final List<GlFramebuffer> ownedFramebuffers;
+	private ParityFlipState parity;
+	private final List<PendingParityFramebuffer> pendingParity = new ArrayList<>();
 
 	private int cachedWidth;
 	private int cachedHeight;
@@ -63,7 +66,7 @@ public class RenderTargets {
 		});
 		this.currentDepthTexture = depthTexture;
 		this.currentDepthFormat = depthFormat;
-		this.copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
+		this.copyStrategy = DepthCopyStrategy.fastest(copyDepthFormat().isCombinedStencil());
 		if (Tracy.ENABLED) Tracy.message("depth copy strategy: " + copyStrategy.getClass().getSimpleName());
 
 		this.cachedWidth = width;
@@ -78,8 +81,8 @@ public class RenderTargets {
 
 		this.depthSourceFb = createFramebufferWritingToMain(new int[] {0});
 
-		this.noTranslucents = new DepthTexture(width, height, currentDepthFormat);
-		this.noHand = new DepthTexture(width, height, currentDepthFormat);
+		this.noTranslucents = new DepthTexture(width, height, copyDepthFormat());
+		this.noHand = new DepthTexture(width, height, copyDepthFormat());
 
 		this.noTranslucentsDestFb = createFramebufferWritingToMain(new int[] {0});
 		this.noTranslucentsDestFb.addDepthAttachment(this.noTranslucents.getTextureId());
@@ -138,7 +141,7 @@ public class RenderTargets {
         if (depthFormatChanged) {
             currentDepthFormat = newDepthFormat;
             // Might need a new copy strategy
-            copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
+            copyStrategy = DepthCopyStrategy.fastest(copyDepthFormat().isCombinedStencil());
             if (Tracy.ENABLED) Tracy.message("depth copy strategy: " + copyStrategy.getClass().getSimpleName());
         }
 
@@ -165,8 +168,8 @@ public class RenderTargets {
 
         if (depthFormatChanged || sizeChanged)  {
             // Reallocate depth buffers
-            noTranslucents.resize(newWidth, newHeight, newDepthFormat);
-            noHand.resize(newWidth, newHeight, newDepthFormat);
+            noTranslucents.resize(newWidth, newHeight, copyDepthFormat());
+            noHand.resize(newWidth, newHeight, copyDepthFormat());
             this.translucentDepthDirty = true;
             this.handDepthDirty = true;
         }
@@ -192,7 +195,7 @@ public class RenderTargets {
 			profiler.startSection("iris_depth_realloc");
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
-			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
+			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, copyDepthFormat().getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 			profiler.endSection();
 		} else {
 			copyStrategy.copy(depthSourceFb, getDepthTexture(), noTranslucentsDestFb, noTranslucents.getTextureId(), getCurrentWidth(), getCurrentHeight());
@@ -206,7 +209,7 @@ public class RenderTargets {
 			profiler.startSection("iris_depth_realloc");
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
-			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
+			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, copyDepthFormat().getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
 			profiler.endSection();
 		} else {
 			copyStrategy.copy(depthSourceFb, getDepthTexture(), noHandDestFb, noHand.getTextureId(), getCurrentWidth(), getCurrentHeight());
@@ -308,9 +311,31 @@ public class RenderTargets {
 			throw new IllegalArgumentException("Framebuffer must have at least one color buffer");
 		}
 
-        final GlFramebuffer framebuffer = new GlFramebuffer();
-        ownedFramebuffers.add(framebuffer);
+		if (parity == null || !parity.isEnabled()) {
+			final GlFramebuffer framebuffer = new GlFramebuffer();
+			ownedFramebuffers.add(framebuffer);
+			attachColor(framebuffer, stageWritesToMain, drawBuffers, false);
+			return framebuffer;
+		}
 
+		final ParityFramebuffer framebuffer = new ParityFramebuffer(parity);
+		ownedFramebuffers.add(framebuffer);
+		attachColor(framebuffer, stageWritesToMain, drawBuffers, false);
+		if (!parity.isFinalized()) {
+			pendingParity.add(new PendingParityFramebuffer(framebuffer, stageWritesToMain, drawBuffers));
+		} else if (parity.affectsAny(drawBuffers)) {
+			framebuffer.setOdd(buildOddVariant(stageWritesToMain, drawBuffers));
+		}
+		return framebuffer;
+	}
+
+	private GlFramebuffer buildOddVariant(ImmutableSet<Integer> stageWritesToMain, int[] drawBuffers) {
+		final GlFramebuffer odd = new GlFramebuffer();
+		attachColor(odd, stageWritesToMain, drawBuffers, true);
+		return odd;
+	}
+
+	private void attachColor(GlFramebuffer framebuffer, ImmutableSet<Integer> stageWritesToMain, int[] drawBuffers, boolean flipParityBuffers) {
 		final int[] actualDrawBuffers = new int[drawBuffers.length];
 
 		for (int i = 0; i < drawBuffers.length; i++) {
@@ -324,9 +349,11 @@ public class RenderTargets {
 
 			final RenderTarget target = this.get(drawBuffers[i]);
 
-			final int textureId = stageWritesToMain.contains(drawBuffers[i]) ? target.getMainTexture() : target.getAltTexture();
-
-			framebuffer.addColorAttachment(i, textureId);
+			boolean writesToMain = stageWritesToMain.contains(drawBuffers[i]);
+			if (flipParityBuffers && parity.parityBuffers().contains(drawBuffers[i])) {
+				writesToMain = !writesToMain;
+			}
+			framebuffer.addColorAttachment(i, writesToMain ? target.getMainTexture() : target.getAltTexture());
         }
 
 		framebuffer.drawBuffers(actualDrawBuffers);
@@ -336,13 +363,54 @@ public class RenderTargets {
 		if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
 			throw new IllegalStateException(String.format( "Unexpected error while creating framebuffer: glCheckFramebufferStatus=0x%X, size=%dx%d, drawBuffers=%d", status, cachedWidth, cachedHeight, drawBuffers.length));
 		}
+	}
 
-		return framebuffer;
+	public void setParityState(ParityFlipState parity) {
+		this.parity = parity;
+	}
+
+	public ParityFlipState getParityState() {
+		return parity;
+	}
+
+	public ImmutableSet<Integer> parityResolve(ImmutableSet<Integer> even) {
+		return parity != null ? parity.resolve(even) : even;
+	}
+
+	public void finalizeParity() {
+		if (parity != null) {
+			for (PendingParityFramebuffer pending : pendingParity) {
+				if (parity.isEnabled() && parity.affectsAny(pending.drawBuffers)) {
+					final GlFramebuffer odd = buildOddVariant(pending.stageWritesToMain, pending.drawBuffers);
+					if (pending.framebuffer.hasDepthAttachment()) {
+						odd.addDepthAttachment(currentDepthTexture);
+					}
+					pending.framebuffer.setOdd(odd);
+				}
+			}
+		}
+		pendingParity.clear();
+	}
+
+	private static final class PendingParityFramebuffer {
+		final ParityFramebuffer framebuffer;
+		final ImmutableSet<Integer> stageWritesToMain;
+		final int[] drawBuffers;
+
+		PendingParityFramebuffer(ParityFramebuffer framebuffer, ImmutableSet<Integer> stageWritesToMain, int[] drawBuffers) {
+			this.framebuffer = framebuffer;
+			this.stageWritesToMain = stageWritesToMain;
+			this.drawBuffers = drawBuffers;
+		}
 	}
 
 	public void destroyFramebuffer(GlFramebuffer framebuffer) {
 		framebuffer.destroy();
 		ownedFramebuffers.remove(framebuffer);
+	}
+
+	private DepthBufferFormat copyDepthFormat() {
+		return GLStateManager.capabilities.GL_ARB_copy_image ? currentDepthFormat : currentDepthFormat.stripStencil();
 	}
 
 	public int getCurrentWidth() {
