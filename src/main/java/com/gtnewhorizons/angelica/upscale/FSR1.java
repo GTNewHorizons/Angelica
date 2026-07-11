@@ -2,8 +2,10 @@ package com.gtnewhorizons.angelica.upscale;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.IMinecraftMainFramebuffer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
+import net.minecraft.client.shader.Framebuffer;
 import org.apache.commons.io.IOUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -18,24 +20,26 @@ import java.nio.charset.StandardCharsets;
 /**
  * AMD FidelityFX Super Resolution 1.0 for the world pass.
  *
- * The world renders at a reduced internal resolution (Minecraft and the Iris pipeline both size
- * themselves from Minecraft.displayWidth/Height, which we shrink for the duration of renderWorld),
- * landing in the bottom-left region of the main framebuffer. That region is then blitted out and
- * upscaled back to native resolution in two passes (EASU then RCAS) before the GUI renders on top
- * at native resolution.
+ * For the duration of renderWorld, the main framebuffer is swapped for a scaled one and the
+ * apparent display size is shrunk to match. Everything that sizes itself off the main framebuffer
+ * or the display size — the vanilla pipeline, the Iris render targets, shaderpack viewWidth/Height
+ * uniforms — therefore renders coherently at the reduced resolution. Afterwards the scaled result
+ * is upscaled back into the real main framebuffer in two passes (EASU then RCAS) and the GUI
+ * renders on top at native resolution.
  */
 public final class FSR1 {
 
     private static boolean triedInit = false;
     private static boolean available = false;
 
-    private static int inputTex = 0, inputFbo = 0;
+    private static Framebuffer scaledFb = null;
+    private static Framebuffer savedMainFb = null;
+
     private static int midTex = 0, midFbo = 0;
     private static int easuProgram = 0, rcasProgram = 0;
     private static int uEasuCon0 = -1, uEasuInputMax = -1;
     private static int uRcasSharpness = -1;
 
-    private static int inputW = -1, inputH = -1;
     private static int midW = -1, midH = -1;
 
     private static int nativeW, nativeH, scaledW, scaledH;
@@ -53,7 +57,7 @@ public final class FSR1 {
             && GLContext.getCapabilities().OpenGL33;
     }
 
-    /** Shrinks the apparent display size so the world pass renders at reduced resolution. */
+    /** Swaps in the scaled framebuffer and shrinks the apparent display size for the world pass. */
     public static void beginWorldRender(Minecraft mc) {
         if (renderingScaled || !shouldRun(mc)) {
             return;
@@ -65,17 +69,36 @@ public final class FSR1 {
         if (scaledW >= nativeW || scaledH >= nativeH) {
             return;
         }
+        try {
+            if (scaledFb == null || scaledFb.framebufferWidth != scaledW || scaledFb.framebufferHeight != scaledH) {
+                if (scaledFb != null) {
+                    scaledFb.deleteFramebuffer();
+                }
+                scaledFb = new Framebuffer(scaledW, scaledH, true);
+            }
+        } catch (Exception e) {
+            com.gtnewhorizons.angelica.AngelicaMod.LOGGER
+                .error("FSR1: could not create scaled framebuffer — disabling for this session", e);
+            AngelicaConfig.fsrRenderScale = 100;
+            return;
+        }
+
+        final IMinecraftMainFramebuffer accessor = (IMinecraftMainFramebuffer) mc;
+        savedMainFb = accessor.angelica$getMainFramebuffer();
+        accessor.angelica$setMainFramebuffer(scaledFb);
         mc.displayWidth = scaledW;
         mc.displayHeight = scaledH;
+        scaledFb.bindFramebuffer(true);
         renderingScaled = true;
     }
 
-    /** Restores the display size and upscales the scaled world region to native resolution. */
+    /** Restores the real framebuffer/display size and upscales the world into it. */
     public static void endWorldRender(Minecraft mc) {
         if (!renderingScaled) {
             return;
         }
         renderingScaled = false;
+        ((IMinecraftMainFramebuffer) mc).angelica$setMainFramebuffer(savedMainFb);
         mc.displayWidth = nativeW;
         mc.displayHeight = nativeH;
         try {
@@ -84,22 +107,17 @@ public final class FSR1 {
             com.gtnewhorizons.angelica.AngelicaMod.LOGGER
                 .error("FSR1 upscale failed — disabling render scale for this session", e);
             AngelicaConfig.fsrRenderScale = 100;
+            savedMainFb.bindFramebuffer(true);
         }
+        savedMainFb = null;
     }
 
     private static void upscale(Minecraft mc) {
         if (!ensureResources()) {
             AngelicaConfig.fsrRenderScale = 100;
+            savedMainFb.bindFramebuffer(true);
             return;
         }
-
-        final int mcFbo = mc.getFramebuffer().framebufferObject;
-
-        // 1. Copy the scaled world region out of the main framebuffer.
-        GL30.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, mcFbo);
-        GL30.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, inputFbo);
-        GL30.glBlitFramebuffer(0, 0, scaledW, scaledH, 0, 0, scaledW, scaledH,
-            GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
 
         // Fullscreen-pass state; fixed-function fragment state must not clip or blend our quads.
         final boolean hadDepth = GL11.glIsEnabled(GL11.GL_DEPTH_TEST);
@@ -112,13 +130,11 @@ public final class FSR1 {
         if (hadScissor) GL11.glDisable(GL11.GL_SCISSOR_TEST);
         GLStateManager.glDepthMask(false);
 
-        // 2. EASU: scaled input -> native-size intermediate.
+        // 1. EASU: scaled world -> native-size intermediate.
         GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, midFbo);
         GL11.glViewport(0, 0, nativeW, nativeH);
         GL20.glUseProgram(easuProgram);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, inputTex);
-        // FsrEasuCon con0 (input viewport == input size here, so con1..3 are pure texel offsets
-        // that the texelFetch port derives itself).
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, scaledFb.framebufferTexture);
         GL20.glUniform4f(uEasuCon0,
             (float) scaledW / nativeW,
             (float) scaledH / nativeH,
@@ -127,8 +143,8 @@ public final class FSR1 {
         GL20.glUniform2i(uEasuInputMax, scaledW - 1, scaledH - 1);
         drawFullscreenQuad();
 
-        // 3. RCAS: intermediate -> main framebuffer at native size.
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, mcFbo);
+        // 2. RCAS: intermediate -> the real main framebuffer at native size.
+        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, savedMainFb.framebufferObject);
         GL11.glViewport(0, 0, nativeW, nativeH);
         GL20.glUseProgram(rcasProgram);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, midTex);
@@ -137,10 +153,11 @@ public final class FSR1 {
         GL20.glUniform1f(uRcasSharpness, (float) Math.pow(2.0, -stops));
         drawFullscreenQuad();
 
-        // 4. Cleanup: the GUI expects a sane framebuffer and a cleared depth buffer
-        // (the world's depth lives in the scaled region and is meaningless at native res).
+        // 3. Cleanup: leave the real framebuffer bound with a cleared depth buffer for the GUI
+        // (the world's depth lives in the scaled framebuffer and is meaningless at native res).
         GL20.glUseProgram(0);
         GLStateManager.glDepthMask(true);
+        savedMainFb.bindFramebuffer(true);
         GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
         if (hadDepth) GLStateManager.enableDepthTest();
         if (hadBlend) GLStateManager.enableBlend();
@@ -164,12 +181,6 @@ public final class FSR1 {
         }
         if (!available) {
             return false;
-        }
-        if (inputW != scaledW || inputH != scaledH) {
-            inputTex = recreateTarget(inputTex, scaledW, scaledH);
-            inputFbo = recreateFbo(inputFbo, inputTex);
-            inputW = scaledW;
-            inputH = scaledH;
         }
         if (midW != nativeW || midH != nativeH) {
             midTex = recreateTarget(midTex, nativeW, nativeH);
