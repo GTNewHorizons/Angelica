@@ -217,6 +217,10 @@ options.angelica.itemdisplaylistcount=Item Renderer Cache Limit
 options.angelica.itemdisplaylistcount.tooltip=The upper limit of VBO's to cache in the optimized item renderer. Higher values will significantly increase performance, but may result in increased VRAM usage.
 options.angelica.threadedChunkBuilding=Threaded Chunk Building
 options.angelica.threadedChunkBuilding.tooltip=If enabled, chunk meshing will be performed on multiple threads in parallel, significantly improving chunk build speed. Disable if you experience rendering issues with mods that have custom block renderers. Requires renderer reload to take effect.
+options.angelica.fsrRenderScale=Render Scale (FSR 1.0)
+options.angelica.fsrRenderScale.tooltip=Renders the world at a reduced internal resolution and upscales it with AMD FidelityFX Super Resolution 1.0. The GUI stays at native resolution. 100% disables upscaling. FSR presets: 77% Ultra Quality, 67% Quality, 59% Balanced, 50% Performance. Helps most when shaders make you GPU-bound.
+options.angelica.fsrSharpness=FSR Sharpness
+options.angelica.fsrSharpness.tooltip=Strength of FSR contrast-adaptive sharpening applied after upscaling.
 
 pack.iris.select.title=Select
 pack.iris.configure.title=Configure
