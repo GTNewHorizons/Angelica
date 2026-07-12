@@ -278,7 +278,7 @@ public class TileLoader {
     private boolean registerOneIcon(TextureMap textureMap, String mapName, Map<String, TextureAtlasSprite> map) {
         ResourceLocation resource = tilesToRegister.iterator()
             .next();
-        String name = resource.toString();
+        String name = getRegistrationName(resource);
         if (registerDefaultIcon(name)) {
             tilesToRegister.remove(resource);
             return true;
@@ -317,6 +317,10 @@ public class TileLoader {
         subLogger.finer("%s -> %s icon %dx%d%s", name, mapName, width, width, extra);
         tilesToRegister.remove(resource);
         return true;
+    }
+
+    protected String getRegistrationName(ResourceLocation resource) {
+        return resource.toString();
     }
 
     public void finish() {

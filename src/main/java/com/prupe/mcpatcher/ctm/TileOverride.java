@@ -33,7 +33,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    protected final PropertiesFile properties;
+    public final PropertiesFile properties;
     private final String baseFilename;
     protected final TileLoader tileLoader;
     protected final int renderPass;
@@ -79,7 +79,10 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         if (properties == null) {
             return null;
         }
+        return create(properties, tileLoader);
+    }
 
+    public static TileOverride create(PropertiesFile properties, TileLoader tileLoader) {
         String method = properties.getString("method", "default")
             .toLowerCase();
         TileOverride override = null;
