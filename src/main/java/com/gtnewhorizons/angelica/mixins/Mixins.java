@@ -211,6 +211,8 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "rendering.MixinBlock"
             , "rendering.MixinBlockFluidBase"
+            , "rendering.MixinBlockLiquid"
+            , "rendering.BlockLiquidFlowInvoker"
             , "rendering.AccessorBiomeColorEvent"
             , "rendering.MixinBiomeGenBase"
             , "rendering.MixinChunk"
@@ -414,6 +416,12 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.removeUnicodeEvenScaling)
         .addClientMixins("angelica.bugfixes.MixinScaledResolution_UnicodeFix")),
+
+    FARSEEK_WORLDSLICE_COMPAT(new MixinBuilder("Let Farseek resolve celeritas' WorldSlice so Streams' water renders properly")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.FARSEEK)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
+        .addClientMixins("client.farseek.MixinFarseekIBlockAccessValue")),
 
     SECURITYCRAFT_COMPAT(new MixinBuilder("Fix reflection in SecurityCraft for compat with Angelica")
         .setPhase(Phase.LATE)
