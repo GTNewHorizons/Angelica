@@ -214,7 +214,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             for (int i = 0;; i++) {
                 ResourceLocation resource = TileLoader
                     .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-                if (!TexturePackAPI.hasResource(resource)) {
+                if (!TexturePackAPI.hasResource(resource) && !tileLoader.ignoreMissingTextures()) {
                     break;
                 }
                 if (!addIcon(resource)) {
@@ -240,7 +240,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                         .parseTileAddress(properties.getResource(), token, blankResource);
                     if (resource == null) {
                         tileNames.add(null);
-                    } else if (TexturePackAPI.hasResource(resource)) {
+                    } else if (TexturePackAPI.hasResource(resource) || tileLoader.ignoreMissingTextures()) {
                         addIcon(resource);
                     } else {
                         properties.warning("could not find image %s", resource);
@@ -255,7 +255,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         for (int i = from; i <= to; i++) {
             ResourceLocation resource = TileLoader
                 .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-            if (TexturePackAPI.hasResource(resource)) {
+            if (TexturePackAPI.hasResource(resource) || tileLoader.ignoreMissingTextures()) {
                 addIcon(resource);
             } else {
                 properties.warning("could not find image %s", resource);

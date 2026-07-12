@@ -275,10 +275,10 @@ public class TileLoader {
         return false;
     }
 
-    private boolean registerOneIcon(TextureMap textureMap, String mapName, Map<String, TextureAtlasSprite> map) {
+    protected boolean registerOneIcon(TextureMap textureMap, String mapName, Map<String, TextureAtlasSprite> map) {
         ResourceLocation resource = tilesToRegister.iterator()
             .next();
-        String name = getRegistrationName(resource);
+        String name = resource.toString();
         if (registerDefaultIcon(name)) {
             tilesToRegister.remove(resource);
             return true;
@@ -304,13 +304,7 @@ public class TileLoader {
                 return false;
             }
         }
-        TextureAtlasSprite icon;
-        if(generatedTiles.contains(resource)){
-            icon = new GeneratedCTMAtlasSprite(this, textureMap.anisotropicFiltering > 1, name);
-            textureMap.setTextureEntry(name, icon);
-        }else{
-            icon = (TextureAtlasSprite)textureMap.registerIcon(name);
-        }
+        TextureAtlasSprite icon = registerIconToMap(textureMap, resource, name);
         map.put(name, icon);
         iconMap.put(name, icon);
         String extra = (width == height ? "" : ", " + (height / width) + " frames");
@@ -319,8 +313,15 @@ public class TileLoader {
         return true;
     }
 
-    protected String getRegistrationName(ResourceLocation resource) {
-        return resource.toString();
+    protected TextureAtlasSprite registerIconToMap(TextureMap textureMap, ResourceLocation resource, String name) {
+        TextureAtlasSprite icon;
+        if(generatedTiles.contains(resource)){
+            icon = new GeneratedCTMAtlasSprite(this, textureMap.anisotropicFiltering > 1, name);
+            textureMap.setTextureEntry(name, icon);
+        }else{
+            icon = (TextureAtlasSprite)textureMap.registerIcon(name);
+        }
+        return icon;
     }
 
     public void finish() {
@@ -342,5 +343,9 @@ public class TileLoader {
 
     public IIcon getIcon(ResourceLocation resource) {
         return resource == null ? null : getIcon(resource.toString());
+    }
+
+    public boolean ignoreMissingTextures() {
+        return false;
     }
 }
