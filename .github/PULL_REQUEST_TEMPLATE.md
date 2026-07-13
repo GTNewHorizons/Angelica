@@ -1,4 +1,4 @@
-# Description or your *PR* and other info
+# Description of your *PR* and other info
 <!-- Please include a summary of the change -->
 <!-- Any details that you think are important to review this PR? -->
 <!-- Are there any Issues / PRs related to this one? -->
