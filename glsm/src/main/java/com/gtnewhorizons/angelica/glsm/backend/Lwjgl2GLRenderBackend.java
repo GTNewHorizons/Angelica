@@ -7,6 +7,7 @@ import org.lwjgl.opengl.ARBClearTexture;
 import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.ARBDebugOutputCallback;
 import org.lwjgl.opengl.ARBDirectStateAccess;
+import org.lwjgl.opengl.ARBTimerQuery;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.EXTDirectStateAccess;
 import org.lwjgl.opengl.GLContext;
@@ -1351,6 +1352,46 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean supportsGpuProfiling() {
+        if (!caps.OpenGL33 && !caps.GL_ARB_timer_query) return false;
+        return GL15.glGetQuery(GL33.GL_TIMESTAMP, GL15.GL_QUERY_COUNTER_BITS) > 0;
+    }
+
+    @Override
+    public int genQuery() {
+        return GL15.glGenQueries();
+    }
+
+    @Override
+    public void deleteQuery(int query) {
+        GL15.glDeleteQueries(query);
+    }
+
+    @Override
+    public void queryCounter(int query) {
+        if (caps.OpenGL33) {
+            GL33.glQueryCounter(query, GL33.GL_TIMESTAMP);
+        } else {
+            ARBTimerQuery.glQueryCounter(query, GL33.GL_TIMESTAMP);
+        }
+    }
+
+    @Override
+    public boolean isQueryResultAvailable(int query) {
+        return GL15.glGetQueryObjecti(query, GL15.GL_QUERY_RESULT_AVAILABLE) != 0;
+    }
+
+    @Override
+    public long getQueryResult64(int query) {
+        return caps.OpenGL33 ? GL33.glGetQueryObjectui64(query, GL15.GL_QUERY_RESULT) : ARBTimerQuery.glGetQueryObjectui64(query, GL15.GL_QUERY_RESULT);
+    }
+
+    @Override
+    public long getGpuTimestamp() {
+        return GL32.glGetInteger64(GL33.GL_TIMESTAMP);
+    }
+
+    @Override
     public void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) {
         GL43.glClearBufferSubData(target, internalFormat, offset, size, format, type, data);
     }
@@ -1391,7 +1432,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public int setupDebugOutput(DebugMessageHandler handler) {
         if (caps.OpenGL43 || caps.GL_KHR_debug) {
-            khrCallback = new KHRDebugCallback((source, type, id, severity, message) -> handler.handleMessage(source, type, id, severity, message));
+            khrCallback = new KHRDebugCallback(handler::handleMessage);
             GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
             GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
             GL43.glDebugMessageControl(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_LOW, null, false);
@@ -1406,7 +1447,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
             }
             return 1;
         } else if (caps.GL_ARB_debug_output) {
-            arbCallback = new ARBDebugOutputCallback((source, type, id, severity, message) -> handler.handleMessage(source, type, id, severity, message));
+            arbCallback = new ARBDebugOutputCallback(handler::handleMessage);
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_HIGH, null, true);
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_MEDIUM, null, false);
             ARBDebugOutput.glDebugMessageControlARB(GL11.GL_DONT_CARE, GL11.GL_DONT_CARE, GL43.GL_DEBUG_SEVERITY_LOW, null, false);

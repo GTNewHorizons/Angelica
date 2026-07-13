@@ -441,13 +441,13 @@ public class ShadowRenderer {
 	}
 
 	private void copyPreTranslucentDepth() {
-		profiler.endStartSection("translucent depth copy");
+		profiler.endStartSection("iris_shadow_translucent_depth_copy");
 
 		targets.copyPreTranslucentDepth();
 	}
 
 	private void renderEntities(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
-		profiler.startSection("cull");
+		profiler.startSection("iris_shadow_cull");
 
 		renderedEntitiesList.clear();
 
@@ -462,11 +462,11 @@ public class ShadowRenderer {
 			renderedEntitiesList.add(entity);
 		}
 
-		profiler.endStartSection("sort");
+		profiler.endStartSection("iris_shadow_sort");
 
 		renderedEntitiesList.sort(ENTITY_CLASS_COMPARATOR);
 
-		profiler.endStartSection("build geometry");
+		profiler.endStartSection("iris_shadow_build_geometry");
 
 		setupEntityShadowState(modelView, cameraX, cameraY, cameraZ);
 		PlayerReflectionCapture.begin(player);
@@ -517,7 +517,7 @@ public class ShadowRenderer {
     }
 
 	private void renderPlayerEntity(EntityRenderer levelRenderer, Frustrum frustum, Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float tickDelta) {
-		profiler.startSection("cull");
+		profiler.startSection("iris_shadow_cull");
 
 		EntityPlayer player = Minecraft.getMinecraft().thePlayer;
 
@@ -534,7 +534,7 @@ public class ShadowRenderer {
 			return;
 		}
 
-		profiler.endStartSection("build geometry");
+		profiler.endStartSection("iris_shadow_build_geometry");
 
 		int shadowEntities = 0;
 
@@ -582,7 +582,7 @@ public class ShadowRenderer {
     }
 
 	private void renderTileEntities(Object bufferSource, MatrixStack modelView, double cameraX, double cameraY, double cameraZ, float partialTicks, boolean hasEntityFrustum) {
-		profiler.startSection("build blockentities");
+		profiler.startSection("iris_shadow_build_blockentities");
 
 		int shadowTileEntities = 0;
 		BoxCuller culler = null;
@@ -633,7 +633,7 @@ public class ShadowRenderer {
 		// If the profiler is inactive, it will return InactiveProfiler.INSTANCE
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
 
-		profiler.endStartSection("shadows");
+		profiler.endStartSection("iris_shadows");
 		ACTIVE = true;
 		CURRENT_TARGETS = this.targets;
 
@@ -659,13 +659,13 @@ public class ShadowRenderer {
 
 		PROJECTION.set(shadowProjection);
 
-		profiler.startSection("terrain_setup");
+		profiler.startSection("iris_shadow_terrain_setup");
 
 		if (levelRenderer instanceof CullingDataCache) {
 			((CullingDataCache) levelRenderer).saveState();
 		}
 
-		profiler.startSection("initialize frustum");
+		profiler.startSection("iris_shadow_initialize_frustum");
 
 		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
 		FRUSTUM = terrainFrustumHolder.getFrustum();
@@ -702,7 +702,7 @@ public class ShadowRenderer {
 		// chunks during traversal, and break rendering in concerning ways.
 //		levelRenderer.setFrameId(levelRenderer.getFrameId() + 1);
 
-		profiler.endStartSection("terrain");
+		profiler.endStartSection("iris_shadow_terrain");
 
 		setupGlState(PROJECTION);
 
@@ -715,7 +715,7 @@ public class ShadowRenderer {
 		// Reset viewport in case terrain rendering changed it
 		GLStateManager.glViewport(0, 0, resolution, resolution);
 
-		profiler.endStartSection("entities");
+		profiler.endStartSection("iris_shadow_entities");
 
 		// Get the current tick delta. Normally this is the same as client.getTickDelta(), but when the game is paused,
 		// it is set to a fixed value.
@@ -752,7 +752,7 @@ public class ShadowRenderer {
 			renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, hasEntityFrustum);
 		}
 
-		profiler.endStartSection("draw entities");
+		profiler.endStartSection("iris_shadow_draw_entities");
 
 		// NB: Don't try to draw the translucent parts of entities afterwards. It'll cause problems since some
 		// shader packs assume that everything drawn afterwards is actually translucent and should cast a colored
@@ -760,7 +760,7 @@ public class ShadowRenderer {
 
 		copyPreTranslucentDepth();
 
-		profiler.endStartSection("translucent terrain");
+		profiler.endStartSection("iris_shadow_translucent_terrain");
 
 		// TODO (Iris): Prevent these calls from scheduling translucent sorting...
 		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
@@ -776,11 +776,11 @@ public class ShadowRenderer {
 //			renderBuffersExt.endLevelRendering();
 //		}
 
-		profiler.endStartSection("generate mipmaps");
+		profiler.endStartSection("iris_shadow_generate_mipmaps");
 
 		generateMipmaps();
 
-		profiler.endStartSection("restore gl state");
+		profiler.endStartSection("iris_shadow_restore_gl_state");
 
 		restoreGlState();
 
@@ -788,14 +788,14 @@ public class ShadowRenderer {
 			((CullingDataCache) levelRenderer).restoreState();
 		}
 
-		profiler.endStartSection("shadowcomp");
+		profiler.endStartSection("iris_shadowcomp");
 
 		if (compositeRenderer != null) compositeRenderer.renderAll();
 
 		ACTIVE = false;
 		CURRENT_TARGETS = null;
 		profiler.endSection();
-		profiler.endStartSection("updatechunks");
+		profiler.endStartSection("culling");
 	}
 
 	public void addDebugText(List<String> messages) {

@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
@@ -113,6 +114,7 @@ public final class ShaderManager {
     }
 
     public void preDraw() {
+        if (Tracy.ENABLED) preDrawCalls++;
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
@@ -195,4 +197,9 @@ public final class ShaderManager {
         return String.format("FFP: %d programs (%d vert, %d frag variants)",
             cache.getProgramCount(), cache.getVertexVariantCount(), cache.getFragmentVariantCount());
     }
+
+    public static long preDrawCalls;
+    public static long uniformPushes;
+
+    public int statProgramCount() { return cache.getProgramCount(); }
 }

@@ -10,6 +10,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.tessellator.VertexTransformCallb
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
@@ -52,6 +53,9 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
  */
 @UtilityClass
 public class DisplayListManager {
+    // Tracy profiling counter
+    public static long listPlaybacks;
+
     // -Dangelica.debugDisplayLists: disable transform collapsing and draw merging
     private static final boolean DEBUG_DISPLAY_LISTS;
 
@@ -1017,6 +1021,7 @@ public class DisplayListManager {
     }
 
     private static void executeDisplayList(int list) {
+        if (Tracy.ENABLED) listPlaybacks++;
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
             final CompiledDisplayList compiled = displayListCache.get(list);

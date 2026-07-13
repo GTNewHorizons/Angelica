@@ -83,6 +83,7 @@ import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.apache.commons.lang3.tuple.Pair;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Vector3d;
@@ -1263,11 +1264,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private void prepareRenderTargets() {
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		// Make sure we're using texture unit 0 for this.
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 		final Vector4f emptyClearColor = new Vector4f(1.0F);
 
 		if (shadowRenderTargets != null) {
+			profiler.startSection("iris_shadow_clear");
 			if (packDirectives.getShadowDirectives().isShadowEnabled() == OptionalBoolean.FALSE) {
 				if (shadowRenderTargets.isFullClearRequired()) {
 					shadowRenderTargets.onFullClear();
@@ -1305,8 +1308,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					clearPass.execute(emptyClearColor);
 				}
 			}
+			profiler.endSection();
 		}
 
+		profiler.startSection("iris_clear");
         final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
 
         final int depthTextureId = ((IRenderTargetExt)main).iris$getDepthTextureId();
@@ -1317,6 +1322,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
             main.framebufferHeight, depthBufferFormat, packDirectives);
 
 		if (changed) {
+			profiler.startSection("iris_clear_resize");
 			beginRenderer.recalculateSizes();
 			prepareRenderer.recalculateSizes();
 			deferredRenderer.recalculateSizes();
@@ -1353,6 +1359,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				ComputeProgram.unbind();
 				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
 			}
+			profiler.endSection();
 		}
 
 		final ImmutableList<ClearPass> passes;
@@ -1376,6 +1383,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		// Reset framebuffer and viewport
         Minecraft.getMinecraft().getFramebuffer().bindFramebuffer(true);
+		profiler.endSection();
 	}
 
 	private ComputeProgram[] createShadowComputes(ComputeSource[] compute) {
@@ -1495,18 +1503,24 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void beginHand() {
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		// We need to copy the current depth texture so that depthtex2 can contain the depth values for
 		// all non-translucent content without the hand, as required.
+		profiler.startSection("iris_hand_depth_copy");
 		renderTargets.copyPreHandDepth();
+		profiler.endSection();
 	}
 
 	@Override
 	public void beginTranslucents() {
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		isBeforeTranslucent = false;
 
 		// We need to copy the current depth texture so that depthtex1 can contain the depth values for
 		// all non-translucent content, as required.
+		profiler.startSection("iris_translucent_depth_copy");
 		renderTargets.copyPreTranslucentDepth();
+		profiler.endSection();
 
 
 		// needed to remove blend mode overrides and similar
@@ -1514,7 +1528,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		isRenderingFullScreenPass = true;
 
+		profiler.startSection("iris_deferred");
 		deferredRenderer.renderAll();
+		profiler.endSection();
 
 		GLStateManager.enableBlend();
 		GLStateManager.enableAlphaTest();
@@ -1533,10 +1549,13 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 
+			profiler.startSection("iris_prepare_passes");
 			prepareRenderer.renderAll();
+			profiler.endSection();
 
 			isRenderingFullScreenPass = false;
 		}
@@ -1555,7 +1574,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (!shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;
 
+			profiler.startSection("iris_prepare_passes");
 			prepareRenderer.renderAll();
+			profiler.endSection();
 
 			isRenderingFullScreenPass = false;
 		}
@@ -1608,6 +1629,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			throw new IllegalStateException("Called beginLevelRendering but level rendering appears to still be in progress?");
 		}
 
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+
+		profiler.startSection("iris_uniforms");
 		updateNotifier.onNewFrame();
 
         this.customUniforms.update();
@@ -1616,17 +1640,24 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		if (ssboHolder != null) {
 			ssboHolder.setupBuffers();
 		}
+		profiler.endSection();
 
 		// Get ready for world rendering
 		prepareRenderTargets();
 
 		// Clear custom images that need clearing each frame
-		for (GlImage image : imagesToClear) {
-			image.clear();
+		if (imagesToClear.length > 0) {
+			profiler.startSection("iris_clear_images");
+			for (GlImage image : imagesToClear) {
+				image.clear();
+			}
+			profiler.endSection();
 		}
 
 		isRenderingFullScreenPass = true;
+		profiler.startSection("iris_begin_passes");
 		beginRenderer.renderAll();
+		profiler.endSection();
 		isRenderingFullScreenPass = false;
 
 		setPhase(WorldRenderingPhase.SKY);
@@ -1638,6 +1669,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 //		DimensionSpecialEffects.SkyType skyType = Minecraft.getMinecraft().theWorld.effects().skyType();
 
 		if (true/*skyType == DimensionSpecialEffects.SkyType.NORMAL*/) {
+			profiler.startSection("iris_horizon");
             GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
 			GLStateManager.glDepthMask(false);
 
@@ -1648,6 +1680,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			GLStateManager.glDepthMask(true);
             GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+			profiler.endSection();
 		}
 	}
 
@@ -1668,10 +1701,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		isRenderingFullScreenPass = true;
 
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+		profiler.startSection("iris_center_depth");
 		centerDepthSampler.sampleCenterDepth();
+		profiler.endSection();
 
+		profiler.startSection("iris_composites");
 		compositeRenderer.renderAll();
+		profiler.endSection();
+
+		profiler.startSection("iris_final_pass");
 		finalPassRenderer.renderFinalPass();
+		profiler.endSection();
 
 		isRenderingFullScreenPass = false;
 	}

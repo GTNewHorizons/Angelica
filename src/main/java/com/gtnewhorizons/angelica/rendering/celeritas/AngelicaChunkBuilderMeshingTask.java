@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
@@ -109,6 +110,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final SmoothBiomeColorCache biomeColorCache = getBiomeColorCache();
 
         onEnterExecute();
+        if (Tracy.ENABLED) Tracy.beginZone("meshSection");
 
         final Tessellator tessellator = getTessellator();
         ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
@@ -213,18 +215,34 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
             // Process deferred blocks on main thread if any
             if (deferredBlocks != null && !deferredBlocks.isEmpty()) {
-                processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
+                if (Tracy.ENABLED) Tracy.beginZone("meshDeferred");
+                try {
+                    processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
+                }
             }
 
-            final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes =
-                BuiltSectionMeshParts.groupFromBuildBuffers(buffers,
+            if (Tracy.ENABLED) Tracy.beginZone("meshFinalize");
+            final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes;
+            try {
+                meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers,
                     (float) camera.x - minX, (float) camera.y - minY, (float) camera.z - minZ);
+                renderData.visibilityData = occluder.computeVisibilityEncoding();
+            } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
+            }
 
             if (!meshes.isEmpty()) {
                 renderData.hasBlockGeometry = true;
+                if (Tracy.ENABLED) {
+                    long meshBytes = 0;
+                    for (BuiltSectionMeshParts parts : meshes.values()) {
+                        if (parts.vertexBuffer() != null) meshBytes += parts.vertexBuffer().getLength();
+                    }
+                    Tracy.zoneValue(meshBytes);
+                }
             }
-
-            renderData.visibilityData = occluder.computeVisibilityEncoding();
 
             SmoothBiomeColorCache.clearActiveCache();
             tessellator.setTranslation(0, 0, 0);
@@ -240,6 +258,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         } finally {
             ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
             SmoothBiomeColorCache.clearActiveCache();
+            if (Tracy.ENABLED) Tracy.endZone();
             onExitExecute();
         }
     }

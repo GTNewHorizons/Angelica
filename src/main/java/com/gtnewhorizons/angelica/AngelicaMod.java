@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica;
 
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.proxy.CommonProxy;
 import cpw.mods.fml.common.Mod;
 import cpw.mods.fml.common.SidedProxy;
@@ -30,6 +31,7 @@ public class AngelicaMod {
     public static final String MOD_ID = "angelica";
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
     public static final boolean lwjglDebug = Boolean.getBoolean("org.lwjgl.util.Debug");
+    public static final boolean tracyEnabled = Tracy.ENABLED;
 
     @SidedProxy(
         clientSide = "com.gtnewhorizons.angelica.proxy.ClientProxy",

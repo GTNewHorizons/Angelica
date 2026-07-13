@@ -3,6 +3,7 @@ package net.coderbot.iris.postprocess;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -39,6 +40,7 @@ import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -112,6 +114,7 @@ public class CompositeRenderer {
 			if (source == null || !source.isValid()) {
 				if (computes[i] != null) {
 					final ComputeOnlyPass pass = new ComputeOnlyPass();
+					pass.name = computeOnlyPassName(computes[i], stageName, i);
 					pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
 					passes.add(pass);
 				}
@@ -119,6 +122,7 @@ public class CompositeRenderer {
 			}
 
 			final Pass pass = new Pass();
+			pass.name = "iris_" + source.getName();
 			final ProgramDirectives directives = source.getDirectives();
 
 			Map<PatchShaderType, String> transformed = getTransformed(source, transformFutures, i, stageName);
@@ -213,7 +217,17 @@ public class CompositeRenderer {
 		}
 	}
 
+	private static String computeOnlyPassName(ComputeSource[] computes, String stageName, int index) {
+		for (ComputeSource compute : computes) {
+			if (compute != null) {
+				return "iris_" + compute.getName();
+			}
+		}
+		return "iris_" + stageName + "_compute" + index;
+	}
+
 	private static class Pass {
+		String name;
 		int[] drawBuffers;
 		int viewWidth;
 		int viewHeight;
@@ -251,7 +265,11 @@ public class CompositeRenderer {
 
 		FullScreenQuadRenderer.INSTANCE.begin();
 
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+
 		for (Pass renderPass : passes) {
+			profiler.startSection(renderPass.name);
+			GLDebug.pushGroup(renderPass.name);
 			boolean ranCompute = false;
 			for (ComputeProgram computeProgram : renderPass.computes) {
 				if (computeProgram != null) {
@@ -270,6 +288,8 @@ public class CompositeRenderer {
 			Program.unbind();
 
 			if (renderPass instanceof ComputeOnlyPass) {
+				GLDebug.popGroup();
+				profiler.endSection();
 				continue;
 			}
 
@@ -294,6 +314,8 @@ public class CompositeRenderer {
 			FullScreenQuadRenderer.uploadCompositeMatrices();
 
 			FullScreenQuadRenderer.INSTANCE.renderQuad();
+			GLDebug.popGroup();
+			profiler.endSection();
 		}
 
 		FullScreenQuadRenderer.end();

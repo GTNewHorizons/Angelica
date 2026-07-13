@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.cardinalstar.cubicchunks.world.ICubicWorld;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -179,24 +181,44 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         if (this.biomeRebuildColumns.isEmpty()) {
             return;
         }
-        final int sectionCountY = this.world.getHeight() >> 4;
-        for (final LongIterator it = this.biomeRebuildColumns.iterator(); it.hasNext(); ) {
-            final long column = it.nextLong();
-            final int cx = PositionUtil.unpackChunkX(column);
-            final int cz = PositionUtil.unpackChunkZ(column);
-            for (int cy = 0; cy < sectionCountY; cy++) {
-                this.sectionCache.invalidate(cx, cy, cz);
-                this.scheduleRebuild(cx, cy, cz, false);
+        if (Tracy.ENABLED) Tracy.beginZone("biomeRebuilds", Tracy.COLOR_TERRAIN);
+        try {
+            final int sectionCountY = this.world.getHeight() >> 4;
+            for (final LongIterator it = this.biomeRebuildColumns.iterator(); it.hasNext(); ) {
+                final long column = it.nextLong();
+                final int cx = PositionUtil.unpackChunkX(column);
+                final int cz = PositionUtil.unpackChunkZ(column);
+                for (int cy = 0; cy < sectionCountY; cy++) {
+                    this.sectionCache.invalidate(cx, cy, cz);
+                    this.scheduleRebuild(cx, cy, cz, false);
+                }
             }
+            this.biomeRebuildColumns.clear();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
-        this.biomeRebuildColumns.clear();
     }
 
     @Override
     public void updateChunks(boolean updateImmediately) {
         this.sectionCache.cleanup();
         this.flushBiomeRebuilds();
-        super.updateChunks(updateImmediately);
+        if (Tracy.ENABLED) Tracy.beginZone("graphSearch", Tracy.COLOR_TERRAIN);
+        try {
+            super.updateChunks(updateImmediately);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    @Override
+    public void uploadChunks() {
+        if (Tracy.ENABLED) Tracy.beginZone("sectionUpload", Tracy.COLOR_TERRAIN);
+        try {
+            super.uploadChunks();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     @Override
@@ -276,5 +298,19 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
             LockSupport.parkNanos("Wait", 100000L);
         }
+    }
+
+    public void tracyPlots() {
+        int regions = 0;
+        for (var it = this.getRenderLists().iterator(); it.hasNext(); it.next()) {
+            regions++;
+        }
+        Tracy.plotInt("mesh.regions", regions);
+        Tracy.plotInt("mesh.visibleChunks", this.getVisibleChunkCount());
+        Tracy.plotInt("mesh.scheduledJobs", this.getBuilder().getScheduledJobCount());
+        Tracy.plotInt("mesh.busyThreads", this.getBuilder().getBusyThreadCount());
+        final var mem = this.getDeviceMemoryStats();
+        Tracy.plotInt("mesh.deviceUsed", mem.deviceUsed + mem.indexUsed, TracyBackend.PLOT_FORMAT_MEMORY);
+        Tracy.plotInt("mesh.deviceAllocated", mem.deviceAllocated + mem.indexAllocated, TracyBackend.PLOT_FORMAT_MEMORY);
     }
 }

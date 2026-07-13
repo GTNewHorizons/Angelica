@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.event.RenderChunkEvent;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
@@ -249,7 +250,8 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             GbufferPrograms.beginBlockEntities();
             GbufferPrograms.setBlockEntityDefaults();
         }
-        this.celeritas$renderer.renderBlockEntities(partialTicks);
+        final int blockEntitiesRendered = this.celeritas$renderer.renderBlockEntities(partialTicks);
+        if (Tracy.ENABLED) Tracy.plotInt("blockEntitiesRendered", blockEntitiesRendered);
         if (Iris.enabled) {
             GbufferPrograms.endBlockEntities();
         }
@@ -281,10 +283,15 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final long startTime = System.nanoTime();
         int tasksRan = 0;
 
-        while (System.nanoTime() - startTime < BUDGET_NS) {
-            if (AngelicaRenderQueue.processTasks(1) == 0)
-                break;
-            tasksRan++;
+        if (Tracy.ENABLED) Tracy.beginZone("mtQueue", Tracy.COLOR_TERRAIN);
+        try {
+            while (System.nanoTime() - startTime < BUDGET_NS) {
+                if (AngelicaRenderQueue.processTasks(1) == 0)
+                    break;
+                tasksRan++;
+            }
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
 
         AngelicaRenderQueue.recordFrameStats(tasksRan, System.nanoTime() - startTime);

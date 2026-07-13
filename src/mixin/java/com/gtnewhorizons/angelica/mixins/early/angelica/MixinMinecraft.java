@@ -122,7 +122,7 @@ public abstract class MixinMinecraft {
         }
     }
 
-    @Inject(method = "runTick", at = @At("RETURN"))
+    @Inject(method = "runGameLoop", at = @At("RETURN"))
     private void angelica$streamingBufferEndFrame(CallbackInfo ci) {
         TessellatorStreamingDrawer.endFrame();
     }

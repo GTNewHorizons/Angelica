@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.features.FeatureFlags;
@@ -37,6 +38,7 @@ import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -215,6 +217,8 @@ public class FinalPassRenderer {
 			colorHolder.addColorAttachment(0, lastColorTextureId);
 		}
 
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+		profiler.startSection("iris_final_program");
 		if (this.finalPass != null) {
 			// If there is a final pass, we use the shader-based full screen quad rendering pathway instead of just copying the color buffer.
 
@@ -263,6 +267,7 @@ public class FinalPassRenderer {
 
 			RenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
 		}
+		profiler.endSection();
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
@@ -271,6 +276,8 @@ public class FinalPassRenderer {
 			resetRenderTarget(renderTargets.get(i));
 		}
 
+		profiler.startSection("iris_final_swaps");
+		if (Tracy.ENABLED) Tracy.zoneValue(swapPasses.size());
 		for (SwapPass swapPass : swapPasses) {
 			// NB: We need to use bind(), not bindAsReadBuffer()... Previously we used bindAsReadBuffer() here which
 			//     broke TAA on many packs and on many drivers.
@@ -285,6 +292,7 @@ public class FinalPassRenderer {
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
             GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
 		}
+		profiler.endSection();
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.
 		// Also bind the "main" framebuffer if it isn't already bound.

@@ -12,6 +12,7 @@ tasks.withType<DowngradeFiles>().configureEach { logLevel.set("FATAL") }
 minecraft {
     extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
     extraRunJvmArguments.add("-Dangelica.dumpClass=true")
+     extraRunJvmArguments.add("-Dangelica.tracy=true")
 //     extraRunJvmArguments.add("-Dangelica.useVulkan=true")
 //     extraRunJvmArguments.add("-Dangelica.vulkanDebug=true")
 //    extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=true")

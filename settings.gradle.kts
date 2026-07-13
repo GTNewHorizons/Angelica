@@ -21,3 +21,4 @@ plugins {
 
 include("glsm")
 include("lwjgl3-backend")
+include("tracy-client")

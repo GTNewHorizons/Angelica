@@ -316,6 +316,14 @@ public abstract class RenderBackend {
     public abstract int clientWaitSync(long sync, int flags, long timeout);
     public abstract void deleteSync(long sync);
 
+    public boolean supportsGpuProfiling() { return false; }
+    public int genQuery() { throw new UnsupportedOperationException("timer queries unsupported"); }
+    public void deleteQuery(int query) { throw new UnsupportedOperationException("timer queries unsupported"); }
+    public void queryCounter(int query) { throw new UnsupportedOperationException("timer queries unsupported"); }
+    public boolean isQueryResultAvailable(int query) { throw new UnsupportedOperationException("timer queries unsupported"); }
+    public long getQueryResult64(int query) { throw new UnsupportedOperationException("timer queries unsupported"); }
+    public long getGpuTimestamp() { throw new UnsupportedOperationException("timer queries unsupported"); }
+
     public abstract void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data);
     public abstract void clearTexImage(int texture, int level, int format, int type);
 

@@ -3,6 +3,7 @@ package net.coderbot.iris.shadows;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -38,6 +39,7 @@ import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -101,6 +103,7 @@ public class ShadowCompositeRenderer {
             if (source == null || !source.isValid()) {
                 if (computes[i] != null) {
                     ComputeOnlyPass pass = new ComputeOnlyPass();
+                    pass.name = computeOnlyPassName(computes[i], i);
                     pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, renderTargets);
                     passes.add(pass);
                 }
@@ -108,6 +111,7 @@ public class ShadowCompositeRenderer {
             }
 
             Pass pass = new Pass();
+            pass.name = "iris_" + source.getName();
             ProgramDirectives directives = source.getDirectives();
 
             pass.program = createProgram(source, flipped, flippedAtLeastOnceSnapshot, renderTargets);
@@ -195,7 +199,11 @@ public class ShadowCompositeRenderer {
 
         FullScreenQuadRenderer.INSTANCE.begin();
 
+        final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+
         for (Pass renderPass : passes) {
+            profiler.startSection(renderPass.name);
+            GLDebug.pushGroup(renderPass.name);
             boolean ranCompute = false;
             for (ComputeProgram computeProgram : renderPass.computes) {
                 if (computeProgram != null) {
@@ -215,6 +223,8 @@ public class ShadowCompositeRenderer {
             Program.unbind();
 
             if (renderPass instanceof ComputeOnlyPass) {
+                GLDebug.popGroup();
+                profiler.endSection();
                 continue;
             }
 
@@ -238,6 +248,8 @@ public class ShadowCompositeRenderer {
             this.customUniforms.push(renderPass.program);
 
             FullScreenQuadRenderer.INSTANCE.renderQuad();
+            GLDebug.popGroup();
+            profiler.endSection();
         }
 
         FullScreenQuadRenderer.INSTANCE.end();
@@ -365,8 +377,18 @@ public class ShadowCompositeRenderer {
         }
     }
 
+    private static String computeOnlyPassName(ComputeSource[] computes, int index) {
+        for (ComputeSource compute : computes) {
+            if (compute != null) {
+                return "iris_" + compute.getName();
+            }
+        }
+        return "iris_shadowcomp_compute" + index;
+    }
+
     private static class Pass {
 
+        String name;
         Program program;
         GlFramebuffer framebuffer;
         ImmutableSet<Integer> flippedAtLeastOnce;

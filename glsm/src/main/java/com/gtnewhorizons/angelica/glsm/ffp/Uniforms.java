@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
@@ -64,6 +65,7 @@ public class Uniforms {
         final boolean projChanged = projGen != st.projGen;
         final boolean texMatChanged = texMatGen != st.texMatGen;
         if (mvChanged || projChanged || texMatChanged) {
+            if (Tracy.ENABLED) ShaderManager.uniformPushes++;
             uploadMatrices(program, mvChanged, mvLinearChanged, projChanged, texMatChanged);
             st.mvGen = mvGen;
             st.mvLinearGen = mvLinearGen;
@@ -74,6 +76,7 @@ public class Uniforms {
         if (program.getVertexKey().lightingEnabled()) {
             final int litGen = GLStateManager.lightingGeneration;
             if (litGen != st.lightingGen) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadLighting(program);
                 st.lightingGen = litGen;
             }
@@ -83,6 +86,7 @@ public class Uniforms {
         if (!program.getVertexKey().hasVertexColor()) {
             final int colorGen = GLStateManager.colorGeneration;
             if (colorGen != st.colorGen) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadCurrentColor(program);
                 st.colorGen = colorGen;
             }
@@ -91,6 +95,7 @@ public class Uniforms {
         if (!program.getVertexKey().hasVertexNormal() && program.getVertexKey().lightingEnabled()) {
             final int normalGen = ShaderManager.getNormalGeneration();
             if (normalGen != st.normalGen) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadCurrentNormal(program);
                 st.normalGen = normalGen;
             }
@@ -99,6 +104,7 @@ public class Uniforms {
         if (program.getVertexKey().anyUnitTexCoordEnabled()) {
             final int texGen = ShaderManager.getTexCoordGeneration();
             if (texGen != st.texCoordGen) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadCurrentTexCoords(program);
                 st.texCoordGen = texGen;
             }
@@ -106,6 +112,7 @@ public class Uniforms {
 
         if (program.getVertexKey().lightmapEnabled() && !program.getVertexKey().hasVertexLightmap()) {
             if (GLSMConfig.lastBrightnessX != st.lightmapX || GLSMConfig.lastBrightnessY != st.lightmapY) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadCurrentLightmapCoord(program);
                 st.lightmapX = GLSMConfig.lastBrightnessX;
                 st.lightmapY = GLSMConfig.lastBrightnessY;
@@ -115,6 +122,7 @@ public class Uniforms {
         if (program.getVertexKey().texGenEnabled()) {
             final int tgGen = GLStateManager.texGenGeneration;
             if (tgGen != st.texGenGen) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadTexGen(program);
                 st.texGenGen = tgGen;
             }
@@ -123,6 +131,7 @@ public class Uniforms {
         if (program.getVertexKey().clipPlanesEnabled()) {
             final int cpGen = GLStateManager.clipPlaneGeneration;
             if (cpGen != st.clipPlaneGen) {
+                if (Tracy.ENABLED) ShaderManager.uniformPushes++;
                 uploadClipPlanes(program);
                 st.clipPlaneGen = cpGen;
             }
@@ -130,6 +139,7 @@ public class Uniforms {
 
         final int fragGen = GLStateManager.fragmentGeneration;
         if (fragGen != st.fragmentGen) {
+            if (Tracy.ENABLED) ShaderManager.uniformPushes++;
             uploadFragmentUniforms(program);
             st.fragmentGen = fragGen;
         }

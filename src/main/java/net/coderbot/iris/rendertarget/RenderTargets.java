@@ -3,7 +3,10 @@ package net.coderbot.iris.rendertarget;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import lombok.Getter;
+import net.minecraft.client.Minecraft;
+import net.minecraft.profiler.Profiler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.texture.DepthBufferFormat;
@@ -61,6 +64,7 @@ public class RenderTargets {
 		this.currentDepthTexture = depthTexture;
 		this.currentDepthFormat = depthFormat;
 		this.copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
+		if (Tracy.ENABLED) Tracy.message("depth copy strategy: " + copyStrategy.getClass().getSimpleName());
 
 		this.cachedWidth = width;
 		this.cachedHeight = height;
@@ -135,6 +139,7 @@ public class RenderTargets {
             currentDepthFormat = newDepthFormat;
             // Might need a new copy strategy
             copyStrategy = DepthCopyStrategy.fastest(currentDepthFormat.isCombinedStencil());
+            if (Tracy.ENABLED) Tracy.message("depth copy strategy: " + copyStrategy.getClass().getSimpleName());
         }
 
         if (recreateDepth) {
@@ -183,9 +188,12 @@ public class RenderTargets {
 	public void copyPreTranslucentDepth() {
 		if (translucentDepthDirty) {
 			translucentDepthDirty = false;
+			final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+			profiler.startSection("iris_depth_realloc");
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noTranslucents.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
 			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
+			profiler.endSection();
 		} else {
 			copyStrategy.copy(depthSourceFb, getDepthTexture(), noTranslucentsDestFb, noTranslucents.getTextureId(), getCurrentWidth(), getCurrentHeight());
 		}
@@ -194,9 +202,12 @@ public class RenderTargets {
 	public void copyPreHandDepth() {
 		if (handDepthDirty) {
 			handDepthDirty = false;
+			final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+			profiler.startSection("iris_depth_realloc");
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, noHand.getTextureId());
 			depthSourceFb.bindAsReadBuffer();
 			RenderSystem.copyTexImage2D(GL11.GL_TEXTURE_2D, 0, currentDepthFormat.getGlInternalFormat(), 0, 0, cachedWidth, cachedHeight, 0);
+			profiler.endSection();
 		} else {
 			copyStrategy.copy(depthSourceFb, getDepthTexture(), noHandDestFb, noHand.getTextureId(), getCurrentWidth(), getCurrentHeight());
 		}

@@ -38,3 +38,4 @@ addon.local.gradle.kts
 addon.late.local.gradle
 addon.late.local.gradle.kts
 local/
+tracy-client/src/main/resources/natives/

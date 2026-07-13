@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import lombok.Setter;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -98,17 +99,24 @@ public class ShaderCache {
         }
 
         final VertexKey vk = VertexKey.fromPacked(vkPacked);
-        final String vertSrc = getOrGenerateVertex(vk);
-
         final FragmentKey fk = FragmentKey.fromPacked(fkPacked, fkLen);
-        String fragSrc = findFragSource(fkPacked, fkLen);
-        if (fragSrc == null) {
-            fragSrc = FragmentShaderGenerator.generate(fk);
-            uniqueFragCount++;
+        final String vertSrc;
+        String fragSrc;
+        final String geomSrc;
+        final Program program;
+        if (Tracy.ENABLED) Tracy.beginZone("ffpShaderGen", Tracy.COLOR_FFP);
+        try {
+            vertSrc = getOrGenerateVertex(vk);
+            fragSrc = findFragSource(fkPacked, fkLen);
+            if (fragSrc == null) {
+                fragSrc = FragmentShaderGenerator.generate(fk);
+                uniqueFragCount++;
+            }
+            geomSrc = vk.wideLineEmulation() ? getOrGenerateGeometry(vk) : null;
+            program = Program.create(vk, fk, vertSrc, fragSrc, geomSrc);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
-
-        final String geomSrc = vk.wideLineEmulation() ? getOrGenerateGeometry(vk) : null;
-        final Program program = Program.create(vk, fk, vertSrc, fragSrc, geomSrc);
 
         final int insertIdx = findEmptySlot(hash);
         final int base = insertIdx * SLOT_STRIDE;

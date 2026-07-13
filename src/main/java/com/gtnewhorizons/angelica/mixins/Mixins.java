@@ -113,6 +113,19 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_TRACY(new MixinBuilder("Tracy profiler zones from vanilla Profiler sections")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaMod.tracyEnabled)
+        .addCommonMixins(
+            "angelica.tracy.MixinProfiler_Tracy"
+            , "angelica.tracy.MixinNetHandlerPlayServer_Tracy"
+            , "angelica.tracy.MixinMinecraftServer_Tracy"
+        )
+        .addClientMixins(
+            "angelica.tracy.MixinMinecraft_Tracy"
+        )
+    ),
+
     ANGELICA_ENABLE_DEBUG(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaMod.lwjglDebug)

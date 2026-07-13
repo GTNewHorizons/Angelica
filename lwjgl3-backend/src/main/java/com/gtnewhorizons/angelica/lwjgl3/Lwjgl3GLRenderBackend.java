@@ -1387,6 +1387,42 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean supportsGpuProfiling() {
+        if (!caps.OpenGL33 && !caps.GL_ARB_timer_query) return false;
+        return GL15C.glGetQueryi(GL33C.GL_TIMESTAMP, GL15C.GL_QUERY_COUNTER_BITS) > 0;
+    }
+
+    @Override
+    public int genQuery() {
+        return GL15C.glGenQueries();
+    }
+
+    @Override
+    public void deleteQuery(int query) {
+        GL15C.glDeleteQueries(query);
+    }
+
+    @Override
+    public void queryCounter(int query) {
+        GL33C.glQueryCounter(query, GL33C.GL_TIMESTAMP);
+    }
+
+    @Override
+    public boolean isQueryResultAvailable(int query) {
+        return GL15C.glGetQueryObjecti(query, GL15C.GL_QUERY_RESULT_AVAILABLE) != 0;
+    }
+
+    @Override
+    public long getQueryResult64(int query) {
+        return GL33C.glGetQueryObjectui64(query, GL15C.GL_QUERY_RESULT);
+    }
+
+    @Override
+    public long getGpuTimestamp() {
+        return GL32C.glGetInteger64(GL33C.GL_TIMESTAMP);
+    }
+
+    @Override
     public void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) {
         GL43C.glClearBufferSubData(target, internalFormat, offset, size, format, type, data);
     }

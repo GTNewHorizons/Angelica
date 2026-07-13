@@ -7,6 +7,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -42,6 +43,11 @@ public class TessellatorStreamingDrawer {
     private static int repackCapacity;
 
     private static boolean initialized = false;
+
+    // Tracy profiling counters
+    public static long streamedBytes;
+    public static long streamDraws;
+    public static long bufferWraps;
 
     static {
         // Initial repack buffer: 64KB
@@ -196,6 +202,11 @@ public class TessellatorStreamingDrawer {
         try {
             ensureVAO(flags, format);
 
+            if (Tracy.ENABLED) {
+                streamedBytes += packed.remaining();
+                streamDraws++;
+            }
+
             int firstVertex = -1;
 
             if (persistentBuffer != null) {
@@ -205,6 +216,7 @@ public class TessellatorStreamingDrawer {
             if (firstVertex >= 0) {
                 GLStateManager.glBindVertexArray(persistentVAOs[flags]);
             } else {
+                if (Tracy.ENABLED && persistentBuffer != null) bufferWraps++;
                 GLStateManager.glBindVertexArray(orphanVAOs[flags]);
                 orphanBuffers[flags].upload(packed);
                 firstVertex = 0;
