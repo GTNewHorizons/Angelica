@@ -82,6 +82,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private static final float SCROLL_SPEED = 1.0f / 256.0f;
     private static final float EDGE_OVERLAP = 0.0001f;
     private static final float INTERIOR_INSET = EDGE_OVERLAP * 8.0f;
+    private static final float MAX_FAR_PLANE_DISTANCE = 65536.0f;
 
     private static final boolean BIG_ENDIAN = ByteOrder.nativeOrder() == ByteOrder.BIG_ENDIAN;
 
@@ -169,10 +170,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         final GraphicsQualityOff cloudGraphicsQuality = (GraphicsQualityOff) Settings.MODE_CLOUDS.option.getStore();
         final int cloudQualitySetting = cloudGraphicsQuality == GraphicsQualityOff.FANCY
             || cloudGraphicsQuality == GraphicsQualityOff.DEFAULT && mc.gameSettings.fancyGraphics ? 2 : 1;
+        final float dimCloudHeight = mc.theWorld == null ? 128.0f : mc.theWorld.provider.getCloudHeight();
+        final boolean finiteCloudHeight = Float.isFinite(dimCloudHeight);
         final boolean newEnabled = cloudGraphicsQuality != GraphicsQualityOff.OFF
             && mc.gameSettings.shouldRenderClouds()
             && mc.theWorld != null
-            && mc.theWorld.provider.isSurfaceWorld();
+            && mc.theWorld.provider.isSurfaceWorld()
+            && finiteCloudHeight;
         final int targetDistance = Math.max(mc.gameSettings.renderDistanceChunks, (int) Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
         final int cloudScaleMult = (int) Settings.CLOUD_SCALE.option.getStore();
 
@@ -188,7 +192,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         renderDistance = targetDistance;
         scaleMult = cloudScaleMult;
 
-        cloudElevation = mc.theWorld == null ? 128 : (int) mc.theWorld.provider.getCloudHeight();
+        cloudElevation = finiteCloudHeight ? (int) dimCloudHeight : 128;
         // Allows the setting to work with RFG and similar without hardcoding.
         // The minimum height check is so stuff like Aether cloud height doesn't get messed up.
         if (cloudElevation >= 96) {
@@ -213,7 +217,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (view != null) {
             verticalSlack = Math.abs(cloudElevation + 0.33f - (float) view.posY) + 4.0f * scaleMult;
         }
-        return radiusBlocks + verticalSlack;
+        return Math.min(radiusBlocks + verticalSlack, MAX_FAR_PLANE_DISTANCE);
     }
 
     private void invalidateGeometry() {

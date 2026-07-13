@@ -10,7 +10,7 @@ import java.util.function.BooleanSupplier;
 public enum FeatureFlags {
 	SEPARATE_HARDWARE_SAMPLERS(() -> true, () -> true),
 	PER_BUFFER_BLENDING(() -> true, RenderSystem::supportsBufferBlending),
-	COMPUTE_SHADERS(() -> false, RenderSystem::supportsCompute),
+	COMPUTE_SHADERS(() -> true, RenderSystem::supportsCompute),
 	ENTITY_TRANSLUCENT(() -> true, () -> true),
 	BLOCK_EMISSION_ATTRIBUTE(() -> true, () -> true),
 	CUSTOM_IMAGES(() -> true, RenderSystem::supportsImageLoadStore),
