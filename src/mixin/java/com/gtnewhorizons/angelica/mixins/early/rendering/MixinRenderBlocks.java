@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
+import com.gtnewhorizons.angelica.api.ExtCeleritasRenderBlocks;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -33,7 +34,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderBlocks.class)
-public abstract class MixinRenderBlocks {
+public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Shadow
     public abstract boolean renderStandardBlockWithColorMultiplier(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_);
 
@@ -109,8 +110,7 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
-            (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
+        if (angelica$shouldApplyCeleritasAO()) {
             this.applyingCeleritasAO = true;
             try {
                 cir.setReturnValue(this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b));
@@ -118,6 +118,17 @@ public abstract class MixinRenderBlocks {
                 this.applyingCeleritasAO = false;
             }
         }
+    }
+
+    @Override
+    public boolean angelica$shouldApplyCeleritasAO() {
+        return (this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
+            (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo());
+    }
+
+    @Override
+    public void angelica$setApplyingCeleritasAO(boolean val) {
+        this.applyingCeleritasAO = val;
     }
 
     /**
