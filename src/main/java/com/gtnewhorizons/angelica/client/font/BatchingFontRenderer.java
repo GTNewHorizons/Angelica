@@ -10,6 +10,7 @@ import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LE
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.compat.etfuturum.EtFuturumFontCompat;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -702,30 +703,79 @@ public class BatchingFontRenderer {
 
                 if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
 
-                if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
-                    final char replacement = GlyphReplacements.getReplacementGlyph(chr);
-                    if (replacement != 0) {
-                        if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
-                            || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
-                        ) {
-                            chr = replacement;
+                final boolean surrogatePair = EtFuturumFontCompat.MODERN_FONT_ENABLED && !unicodeFlag
+                    && Character.isHighSurrogate(chr) && (charIdx + 1) < stringEnd
+                    && Character.isLowSurrogate(string.charAt(charIdx + 1));
+                final int codepoint = surrogatePair ? Character.toCodePoint(chr, string.charAt(charIdx + 1)) : chr;
+                final SupplementaryGlyphSource supGlyph = surrogatePair ? supplementarySource(codepoint) : null;
+                final boolean supplementary = supGlyph != null;
+
+                if (!supplementary) {
+                    if (EtFuturumFontCompat.MODERN_FONT_ENABLED && Character.isSurrogate(chr)) {
+                        // Substitute U+FFFD for a bad malformed glyph
+                        final boolean pairedHigh = Character.isHighSurrogate(chr) && charIdx + 1 < stringEnd
+                            && Character.isLowSurrogate(string.charAt(charIdx + 1));
+                        final boolean pairedLow = Character.isLowSurrogate(chr) && charIdx > stringOffset
+                            && Character.isHighSurrogate(string.charAt(charIdx - 1));
+                        if (!pairedHigh && !pairedLow) { warnIsolatedSurrogate(chr, string); }
+                        chr = REPLACEMENT_GLYPH;
+                    }
+                    if (FontConfig.enableCustomFont && FontConfig.enableGlyphReplacements) {
+                        final char replacement = GlyphReplacements.getReplacementGlyph(chr);
+                        if (replacement != 0) {
+                            if (FontProviderCustom.getPrimary().isGlyphAvailable(replacement)
+                                || FontProviderCustom.getFallback().isGlyphAvailable(replacement)
+                            ) {
+                                chr = replacement;
+                            }
                         }
+                    }
+
+                    if (curRandom) {
+                        chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
                     }
                 }
 
-                if (curRandom) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
+                float uStart, vStart, xAdvance, glyphW, uSz, vSz, shadowOffset, provYScale, provBaselineShift;
+                ResourceLocation texture;
+                boolean unifontGlyph;
+                if (supplementary) {
+                    unifontGlyph = supGlyph.isUnifont();
+                    uStart = supGlyph.getUStartCp(codepoint);
+                    vStart = supGlyph.getVStartCp(codepoint);
+                    xAdvance = supGlyph.getXAdvanceCp(codepoint) * glyphScaleX;
+                    if (unifontGlyph) { xAdvance = (int) xAdvance; }
+                    glyphW = supGlyph.getGlyphWCp(codepoint) * glyphScaleX;
+                    uSz = supGlyph.getUSizeCp(codepoint);
+                    vSz = supGlyph.getVSizeCp(codepoint);
+                    shadowOffset = supGlyph.getShadowOffset();
+                    provYScale = supGlyph.getYScaleMultiplier();
+                    provBaselineShift = supGlyph.getBaselineShift();
+                    texture = supGlyph.getTextureCp(codepoint);
+                } else {
+                    final FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
+                    unifontGlyph = fontProvider == FontProviderUnicode.get();
+                    uStart = fontProvider.getUStart(chr);
+                    vStart = fontProvider.getVStart(chr);
+                    xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
+                    if (unifontGlyph) { xAdvance = (int) xAdvance; }
+                    glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
+                    uSz = fontProvider.getUSize(chr);
+                    vSz = fontProvider.getVSize(chr);
+                    shadowOffset = fontProvider.getShadowOffset();
+                    provYScale = fontProvider.getYScaleMultiplier();
+                    provBaselineShift = fontProvider.getBaselineShift();
+                    texture = fontProvider.getTexture(chr);
                 }
 
-                FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
-
-                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
-                float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
+                heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * provYScale / 2)
+                    + provBaselineShift * glyphScaleY;
+                float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * provYScale;
 
                 visibleCharIndex++;
 
                 // Check ASCII space, NBSP, NNBSP
-                if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
+                if (!supplementary && (chr == ' ' || chr == '\u00A0' || chr == '\u202F')) {
                     curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
                     continue;
                 }
@@ -747,17 +797,9 @@ public class BatchingFontRenderer {
                     gradientCharIndex++;
                 }
 
-                final float uStart = fontProvider.getUStart(chr);
-                final float vStart = fontProvider.getVStart(chr);
-                final float xAdvance = fontProvider.getXAdvance(chr) * glyphScaleX;
-                final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
-                final float uSz = fontProvider.getUSize(chr);
-                final float vSz = fontProvider.getVSize(chr);
                 final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
-                final float shadowOffset = fontProvider.getShadowOffset();
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
-                final ResourceLocation texture = fontProvider.getTexture(chr);
                 final int idxId = idxWriterIndex;
 
                 // Wave: Y offset via sine wave
@@ -802,7 +844,7 @@ public class BatchingFontRenderer {
                 if (drawShadow) { charCount += shadowCopies * (curBold ? 2 : 1); }
                 if (curBold) { charCount += boldCopies; }
                 final int vtxCount = 4 * charCount;
-                pushDrawCmd(idxId, vtxCount / 2 * 3, texture, chr > 255);
+                pushDrawCmd(idxId, vtxCount / 2 * 3, texture, unifontGlyph);
 
                 curX += (xAdvance + (curBold ? 1.0f : 0.0f)) + getGlyphSpacing();
                 if (bookMode) { curX = (int) curX; }
@@ -821,6 +863,7 @@ public class BatchingFontRenderer {
                     pushDrawCmd(stIdx, 6, null, false);
                     strikethroughStartX = strikethroughEndX;
                 }
+                if (supplementary) { charIdx++; }
             }
 
             if (curUnderline && underlineStartX != underlineEndX) {
@@ -845,9 +888,64 @@ public class BatchingFontRenderer {
         return curX + (enableShadow ? 1.0f : 0.0f);
     }
 
+    public int getStringWidthBatched(String text) {
+        if (text == null) return 0;
+        text = ColorCodeUtils.convertAmpersandToSectionX(text);
+        final boolean unicodeFlag = underlying.getUnicodeFlag();
+        final float glyphScaleX = getGlyphScaleX();
+        final int len = text.length();
+        boolean bold = false;
+        int width = 0;
+
+        for (int i = 0; i < len; i++) {
+            final char c0 = text.charAt(i);
+
+            if (EtFuturumFontCompat.MODERN_FONT_ENABLED && !unicodeFlag && Character.isHighSurrogate(c0)
+                && i + 1 < len && Character.isLowSurrogate(text.charAt(i + 1))) {
+                final int cp = Character.toCodePoint(c0, text.charAt(i + 1));
+                final SupplementaryGlyphSource src = supplementarySource(cp);
+                if (src != null) {
+                    final int w = (int) (src.getXAdvanceCp(cp) * glyphScaleX);
+                    width += w;
+                    if (bold && w > 0) width += 1;
+                    i++;
+                    continue;
+                }
+            }
+
+            int k = (int) getCharWidthFine(c0);
+            if (k < 0 && i < len - 1) {
+                // §-format code
+                i++;
+                final char code = text.charAt(i);
+                if (code == 'l' || code == 'L') {
+                    bold = true;
+                } else if (code == 'r' || code == 'R') {
+                    bold = false;
+                }
+                k = 0;
+            }
+            width += k;
+            if (bold && k > 0) width += 1;
+        }
+        return width;
+    }
+
+    private static final char REPLACEMENT_GLYPH = '\uFFFD';
+    private static boolean warnedIsolatedSurrogate;
+
+    private static void warnIsolatedSurrogate(char chr, CharSequence string) {
+        if (warnedIsolatedSurrogate) { return; }
+        warnedIsolatedSurrogate = true;
+        FontStrategist.LOGGER.warn(
+            "Split emoji/extended char U+{} in \"{}\". A GUI split a supplementary character into separate Java chars during cursor/text ops. Rendering U+FFFD instead.",
+            Integer.toHexString(chr).toUpperCase(), string, new Throwable("isolated-surrogate draw site"));
+    }
+
     public float getCharWidthFine(char chr) {
         if (chr == ColorCodeUtils.ESCAPED_AMPERSAND) { chr = '&'; }
         if (chr == FORMATTING_CHAR) { return -1; }
+        if (EtFuturumFontCompat.MODERN_FONT_ENABLED && Character.isSurrogate(chr)) { chr = REPLACEMENT_GLYPH; }
 
         if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
             return 4 * this.getWhitespaceScale();
@@ -856,6 +954,20 @@ public class BatchingFontRenderer {
         FontProvider fp = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, underlying.getUnicodeFlag());
 
         return fp.getXAdvance(chr) * this.getGlyphScaleX();
+    }
+
+    public int supplementaryAdvance(int codepoint) {
+        if (!EtFuturumFontCompat.MODERN_FONT_ENABLED) return -1;
+        final SupplementaryGlyphSource src = supplementarySource(codepoint);
+        return src != null ? (int) (src.getXAdvanceCp(codepoint) * getGlyphScaleX()) : -1;
+    }
+
+
+    private SupplementaryGlyphSource supplementarySource(int codepoint) {
+        final FontProviderBitmap bitmap = (!bookMode && !isSplash) ? FontStrategist.findSupplementaryBitmap(codepoint) : null;
+        if (bitmap != null) return bitmap;
+        final FontProviderUnicode unicode = FontProviderUnicode.get();
+        return unicode.hasCodepoint(codepoint) ? unicode : null;
     }
 
     public void overrideBlendFunc(int srcRgb, int dstRgb) {

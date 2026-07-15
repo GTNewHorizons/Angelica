@@ -2,6 +2,12 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
 import com.gtnewhorizon.gtnhlib.util.font.IFontParameters;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.client.font.FontProviderUnicode;
+import com.gtnewhorizons.angelica.client.font.FontStrategist;
+import com.gtnewhorizons.angelica.compat.etfuturum.EtFuturumFontCompat;
+import net.minecraft.client.resources.IResourceManager;
+import java.io.IOException;
+import java.io.InputStream;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_LENGTH;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
@@ -124,6 +130,17 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         angelica$batcher = new BatchingFontRenderer((FontRenderer) (Object) this, this.charWidth, this.colorCode, this.locationFontTexture);
         if (GTNHLibCompat.HAS_TEXT_PREPROCESSOR) {
             GTNHLibCompat.registerPreprocessor();
+        }
+    }
+
+    @Inject(method = "onResourceManagerReload", at = @At("TAIL"))
+    private void angelica$reloadModernFont(IResourceManager manager, CallbackInfo ci) {
+        // FML's SplashFontRenderer calls onResourceManagerReload(null) on the splash thread
+        if (manager == null) return;
+        FontStrategist.reloadFontResources();
+        try (InputStream in = manager.getResource(new ResourceLocation("font/glyph_sizes.bin")).getInputStream()) {
+            FontProviderUnicode.readWidths(in, this.glyphWidth);
+        } catch (IOException ignored) {
         }
     }
 
@@ -311,15 +328,115 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
             }
         }
 
-        if (styles.length() == 0 && effects.length() == 0) return lastColor;
+        if (styles.isEmpty() && effects.isEmpty()) return lastColor;
         final StringBuilder result = EXTRACT_RESULT; result.setLength(0);
         result.append(lastColor).append(styles).append(effects);
         return result.toString();
     }
 
-    @ModifyVariable(method = "getStringWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
-    private String angelica$convertBeforeWidth(String str) {
-        return ColorCodeUtils.convertAmpersandToSectionX(str);
+    @Inject(method = "getStringWidth", at = @At("HEAD"), cancellable = true)
+    private void angelica$batchedStringWidth(String text, CallbackInfoReturnable<Integer> cir) {
+        cir.setReturnValue(angelica$getBatcher().getStringWidthBatched(text));
+    }
+
+    @Unique
+    private static boolean angelica$isFormatColor(char c) {
+        return angelica$charInRange(c, '0', '9') || angelica$charInRange(c, 'a', 'f') || angelica$charInRange(c, 'A', 'F');
+    }
+
+    @Unique
+    private boolean angelica$doesNotNeedsSurrogateWidth(String str) {
+        if (str == null || !EtFuturumFontCompat.MODERN_FONT_ENABLED || this.unicodeFlag) return true;
+        final int len = str.length();
+        for (int i = 0; i + 1 < len; i++) {
+            if (Character.isHighSurrogate(str.charAt(i)) && Character.isLowSurrogate(str.charAt(i + 1))) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    @Inject(method = "sizeStringToWidth", at = @At("HEAD"), cancellable = true)
+    private void angelica$surrogateAwareSize(String str, int wrapWidth, CallbackInfoReturnable<Integer> cir) {
+        if (angelica$doesNotNeedsSurrogateWidth(str)) return;
+        final BatchingFontRenderer batcher = angelica$getBatcher();
+        final int len = str.length();
+        int width = 0;
+        int lastSpace = -1;
+        boolean bold = false;
+        int idx = 0;
+        for (; idx < len; idx++) {
+            final char c0 = str.charAt(idx);
+            if (c0 == '\n') {
+                lastSpace = idx;
+                break;
+            } else if (c0 == FORMATTING_CHAR) {
+                if (idx < len - 1) {
+                    final char code = str.charAt(idx + 1);
+                    idx++;
+                    if (code == 'l' || code == 'L') bold = true;
+                    else if (code == 'r' || code == 'R' || angelica$isFormatColor(code)) bold = false;
+                }
+                continue;
+            } else {
+                if (c0 == ' ') lastSpace = idx;
+                if (EtFuturumFontCompat.MODERN_FONT_ENABLED && !this.unicodeFlag && Character.isHighSurrogate(c0)
+                    && idx + 1 < len && Character.isLowSurrogate(str.charAt(idx + 1))) {
+                    final int sup = batcher.supplementaryAdvance(Character.toCodePoint(c0, str.charAt(idx + 1)));
+                    if (sup >= 0) {
+                        width += sup;
+                        if (bold) width++;
+                        if (width > wrapWidth) break;
+                        idx++;
+                        continue;
+                    }
+                }
+                width += (int) batcher.getCharWidthFine(c0);
+                if (bold) width++;
+            }
+            if (width > wrapWidth) break;
+        }
+        cir.setReturnValue(idx != len && lastSpace != -1 && lastSpace < idx ? lastSpace : idx);
+    }
+
+    @Inject(method = "trimStringToWidth(Ljava/lang/String;IZ)Ljava/lang/String;", at = @At("HEAD"), cancellable = true)
+    private void angelica$surrogateAwareTrim(String str, int width, boolean reverse, CallbackInfoReturnable<String> cir) {
+        if (reverse || angelica$doesNotNeedsSurrogateWidth(str)) return;
+        final BatchingFontRenderer batcher = angelica$getBatcher();
+        final StringBuilder sb = new StringBuilder();
+        final int len = str.length();
+        int accum = 0;
+        boolean prevFormat = false;
+        boolean bold = false;
+        for (int i = 0; i < len && accum < width; i++) {
+            final char c0 = str.charAt(i);
+            if (prevFormat) {
+                // Vanilla trim only toggles bold on §l / §r here; color codes do not reset it
+                prevFormat = false;
+                if (c0 == 'l' || c0 == 'L') bold = true;
+                else if (c0 == 'r' || c0 == 'R') bold = false;
+            } else if (c0 == FORMATTING_CHAR) {
+                prevFormat = true;
+            } else {
+                boolean pair = false;
+                int adv;
+                if (EtFuturumFontCompat.MODERN_FONT_ENABLED && !this.unicodeFlag && Character.isHighSurrogate(c0)
+                    && i + 1 < len && Character.isLowSurrogate(str.charAt(i + 1))) {
+                    final int sup = batcher.supplementaryAdvance(Character.toCodePoint(c0, str.charAt(i + 1)));
+                    if (sup >= 0) { adv = sup; pair = true; } else adv = (int) batcher.getCharWidthFine(c0);
+                } else {
+                    adv = (int) batcher.getCharWidthFine(c0);
+                }
+                accum += adv;
+                if (bold) accum++;
+                if (accum > width) break;
+                sb.append(c0);
+                if (pair) { sb.append(str.charAt(i + 1)); i++; }
+                continue;
+            }
+            sb.append(c0);
+        }
+        cir.setReturnValue(sb.toString());
     }
 
     @ModifyVariable(method = "listFormattedStringToWidth", at = @At("HEAD"), argsOnly = true, ordinal = 0)
