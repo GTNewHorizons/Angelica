@@ -18,4 +18,6 @@ public interface FontProvider {
     float getShadowOffset();
     ResourceLocation getTexture(char chr);
     float getYScaleMultiplier();
+
+    default float getBaselineShift() { return 0.0f; }
 }

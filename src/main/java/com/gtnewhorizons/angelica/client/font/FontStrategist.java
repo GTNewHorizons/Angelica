@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
+import com.gtnewhorizons.angelica.compat.etfuturum.EtFuturumFontCompat;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
 import cpw.mods.fml.client.SplashProgress;
@@ -8,6 +9,7 @@ import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.resources.DefaultResourcePack;
+import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -17,7 +19,10 @@ import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileNotFoundException;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -70,13 +75,28 @@ public class FontStrategist {
         availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
 
         // create and add the resource pack that provides fonts
-        HashMap<String, File> packMap = new HashMap<>();
+        final HashMap<String, File> packMap = new HashMap<>();
         for (int i = 0; i < FontProviderCustom.ATLAS_COUNT; i++) {
             packMap.put(FontProviderCustom.getPrimary().getAtlasResourceName(i), new File(FontProviderCustom.getPrimary().getAtlasFullPath(i)));
             packMap.put(FontProviderCustom.getFallback().getAtlasResourceName(i), new File(FontProviderCustom.getFallback().getAtlasFullPath(i)));
         }
 
-        DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
+        // Override vanilla resource pack with our textures
+        DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap) {
+            @Override
+            public InputStream getInputStream(ResourceLocation location) throws IOException {
+                final File file = packMap.get(location.toString());
+                if (file != null && file.isFile()) {
+                    return new FileInputStream(file);
+                }
+                throw new FileNotFoundException(location.getResourcePath());
+            }
+
+            @Override
+            public boolean resourceExists(ResourceLocation location) {
+                return packMap.containsKey(location.toString());
+            }
+        };
         List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
         defaultResourcePacks.add(fontResourcePack);
     }
@@ -119,6 +139,43 @@ public class FontStrategist {
         if (loaded > 0) LOGGER.info("Loaded {} bundled font(s) from the pack", loaded);
     }
 
+    private static volatile List<FontProviderBitmap> bitmapProviders;
+
+    private static List<FontProviderBitmap> bitmapProviders() {
+        List<FontProviderBitmap> local = bitmapProviders;
+        if (local == null) {
+            synchronized (FontStrategist.class) {
+                local = bitmapProviders;
+                if (local == null) {
+                    local = FontProviderBitmap.loadProviders();
+                    bitmapProviders = local;
+                }
+            }
+        }
+        return local;
+    }
+
+    private static FontProviderBitmap findBitmap(int codepoint) {
+        final List<FontProviderBitmap> providers = bitmapProviders();
+        for (final FontProviderBitmap provider : providers) {
+            if (provider.hasGlyph(codepoint)) {
+                return provider;
+            }
+        }
+        return null;
+    }
+
+    public static FontProviderBitmap findSupplementaryBitmap(int codepoint) {
+        return EtFuturumFontCompat.MODERN_FONT_ENABLED ? findBitmap(codepoint) : null;
+    }
+
+    public static void reloadFontResources() {
+        synchronized (FontStrategist.class) {
+            bitmapProviders = null;
+        }
+        FontProviderUnicode.get().reload();
+    }
+
     /**
      Lets you get a FontProvider per char while respecting font priority and fallbacks, the unicode flag, whether
      SGA is on, if we're in a splash screen, if a font can even display a character in the first place, etc.
@@ -136,8 +193,16 @@ public class FontStrategist {
             if (fp.isGlyphAvailable(chr)) { return fp; }
             fp = FontProviderCustom.getFallback();
             if (fp.isGlyphAvailable(chr)) { return fp; }
+            if (!forceUnicode && EtFuturumFontCompat.MODERN_FONT_ENABLED) {
+                final FontProviderBitmap bitmap = findBitmap(chr);
+                if (bitmap != null) { return bitmap; }
+            }
             return FontProviderUnicode.get();
         } else {
+            if (!forceUnicode && !me.isSplash && EtFuturumFontCompat.MODERN_FONT_ENABLED) {
+                final FontProviderBitmap bitmap = findBitmap(chr);
+                if (bitmap != null) { return bitmap; }
+            }
             if (!forceUnicode && FontProviderMC.get(false).isGlyphAvailable(chr)) {
                 return FontProviderMC.get(false);
             } else {
