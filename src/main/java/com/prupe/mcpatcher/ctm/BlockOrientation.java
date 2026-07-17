@@ -6,6 +6,7 @@ import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
+import net.minecraftforge.common.util.ForgeDirection;
 
 final class BlockOrientation extends RenderBlockState {
 
@@ -39,12 +40,13 @@ final class BlockOrientation extends RenderBlockState {
     private int altMetadata;
     private int metadataBits;
     private int renderType;
+    private boolean iCtmBlock;
 
     private int blockFace;
     private int textureFace;
     private int textureFaceOrig;
     private int rotateUV;
-    private boolean flipBottom;
+    private boolean flipped;
 
     @Override
     public void clear() {
@@ -57,7 +59,7 @@ final class BlockOrientation extends RenderBlockState {
         offsetsComputed = false;
         haveOffsets = false;
         dx = dy = dz = 0;
-        flipBottom = !fixedBottomFaceUV;
+        flipped = false;
     }
 
     @Override
@@ -73,6 +75,11 @@ final class BlockOrientation extends RenderBlockState {
     @Override
     public int getZ() {
         return z;
+    }
+
+    @Override
+    public int getMetadata() {
+        return metadata;
     }
 
     @Override
@@ -102,7 +109,10 @@ final class BlockOrientation extends RenderBlockState {
 
     @Override
     public int[] getOffset(int blockFace, int relativeDirection) {
-        return NEIGHBOR_OFFSET[flipBottom && blockFace == 0 ? 1 : blockFace][rotateUV(relativeDirection)];
+        if(flipped){
+            blockFace = ForgeDirection.OPPOSITES[blockFace];
+        }
+        return NEIGHBOR_OFFSET[blockFace][rotateUV(relativeDirection)];
     }
 
     @Override
@@ -146,14 +156,14 @@ final class BlockOrientation extends RenderBlockState {
     }
 
 
-    public void setFlipBottom(){
-        flipBottom = true;
+    public void flipFace() {
+        flipped = true;
     }
 
     @Override
     public boolean shouldConnectByBlock(Block neighbor, int neighborX, int neighborY, int neighborZ) {
-        return block == neighbor
-            && (metadataBits & (1 << blockAccess.getBlockMetadata(neighborX, neighborY, neighborZ))) != 0;
+        return iCtmBlock ? ((ICTMBlock) block).shouldConnectByBlock(this, neighbor, neighborX, neighborY, neighborZ)
+            : block == neighbor && (metadataBits & (1 << blockAccess.getBlockMetadata(neighborX, neighborY, neighborZ))) != 0;
     }
 
     @Override
@@ -171,11 +181,12 @@ final class BlockOrientation extends RenderBlockState {
         copy.altMetadata = altMetadata;
         copy.metadataBits = metadataBits;
         copy.renderType = renderType;
+        copy.iCtmBlock = iCtmBlock;
         copy.blockFace = blockFace;
         copy.textureFace = textureFace;
         copy.textureFaceOrig = textureFaceOrig;
         copy.rotateUV = rotateUV;
-        copy.flipBottom = flipBottom;
+        copy.flipped = flipped;
 
         copy.blockAccess = blockAccess;
         copy.block = block;
@@ -199,6 +210,7 @@ final class BlockOrientation extends RenderBlockState {
         this.z = z;
         renderType = block.getRenderType();
         metadata = altMetadata = blockAccess.getBlockMetadata(x, y, z);
+        iCtmBlock = block instanceof ICTMBlock;
         offsetsComputed = false;
     }
 
@@ -208,7 +220,7 @@ final class BlockOrientation extends RenderBlockState {
         rotateUV = 0;
         textureFace = blockFaceToTextureFace(blockFace);
         metadataBits = (1 << metadata) | (1 << altMetadata);
-        flipBottom = !fixedBottomFaceUV;
+        flipped = !fixedBottomFaceUV && blockFace == ForgeDirection.DOWN.ordinal();
     }
 
     void setBlockMetadata(Block block, int metadata, int face) {
@@ -219,6 +231,7 @@ final class BlockOrientation extends RenderBlockState {
         renderType = block.getRenderType();
         blockFace = textureFace = textureFaceOrig = face;
         this.metadata = metadata;
+        iCtmBlock = block instanceof ICTMBlock;
         metadataBits = 1 << metadata;
         dx = dy = dz = 0;
         rotateUV = 0;

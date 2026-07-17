@@ -132,3 +132,7 @@ pack.iris.select.title=Выбрать
 pack.iris.configure.title=Настроить
 label.iris.true=Вкл
 label.iris.false=Выкл
+options.iris.search.button=Поиск
+options.iris.clear.button=Очистить
+options.iris.search.tooltip=Поиск настроек шейдеров (Ctrl + F)
+options.iris.clear.tooltip=Выход из поиска шейдеров (Esc)

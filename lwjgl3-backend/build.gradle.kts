@@ -35,6 +35,10 @@ repositories {
         url = uri("https://nexus.gtnewhorizons.com/repository/public/")
     }
     maven {
+        name = "Minecraft Libraries"
+        url = uri("https://libraries.minecraft.net")
+    }
+    maven {
         name = "Forge"
         url = uri("https://maven.minecraftforge.net/")
     }
@@ -57,7 +61,7 @@ dependencies {
     api(project(":glsm"))
 
     compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.15:dev") { isTransitive = false }
-    compileOnly("org.embeddedt.celeritas:celeritas-common:2.5.3-GTNH") { isTransitive = false }
+    compileOnly("org.embeddedt.celeritas:celeritas-common:2.5.5-GTNH") { isTransitive = false }
 
     val osName = System.getProperty("os.name").lowercase()
     val osArch = System.getProperty("os.arch").lowercase()

@@ -5,6 +5,8 @@ import net.coderbot.iris.gl.GlVersion;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
+import org.lwjgl.opengl.GL33;
+import org.lwjgl.opengl.GL41;
 
 import java.util.Optional;
 
@@ -72,10 +74,16 @@ public enum InternalTextureFormat {
 	RG32UI(GL30.GL_RG32UI, GlVersion.GL_30, PixelFormat.RG_INTEGER),
 	RGB32UI(GL30.GL_RGB32UI, GlVersion.GL_30, PixelFormat.RGB_INTEGER),
 	RGBA32UI(GL30.GL_RGBA32UI, GlVersion.GL_30, PixelFormat.RGBA_INTEGER),
+	// 2-bit normalized
+	RGBA2(GL11.GL_RGBA2, GlVersion.GL_11, PixelFormat.RGBA),
+	// 4-bit normalized
+	RGBA4(GL11.GL_RGBA4, GlVersion.GL_11, PixelFormat.RGBA),
 	// Mixed
 	R3_G3_B2(GL11.GL_R3_G3_B2, GlVersion.GL_11, PixelFormat.RGB),
 	RGB5_A1(GL11.GL_RGB5_A1, GlVersion.GL_11, PixelFormat.RGBA),
+	RGB565(GL41.GL_RGB565, GlVersion.GL_41, PixelFormat.RGB),
 	RGB10_A2(GL11.GL_RGB10_A2, GlVersion.GL_11, PixelFormat.RGBA),
+	RGB10_A2UI(GL33.GL_RGB10_A2UI, GlVersion.GL_33, PixelFormat.RGBA_INTEGER),
 	R11F_G11F_B10F(GL30.GL_R11F_G11F_B10F, GlVersion.GL_30, PixelFormat.RGB),
 	RGB9_E5(GL30.GL_RGB9_E5, GlVersion.GL_30, PixelFormat.RGB);
 

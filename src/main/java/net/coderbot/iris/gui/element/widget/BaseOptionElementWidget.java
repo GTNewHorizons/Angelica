@@ -4,16 +4,19 @@ import net.coderbot.iris.gui.GuiUtil;
 import net.coderbot.iris.gui.NavigationController;
 import net.coderbot.iris.gui.screen.ShaderPackScreen;
 import net.coderbot.iris.shaderpack.option.menu.OptionMenuElement;
+import net.coderbot.iris.shaderpack.option.menu.OptionMenuOptionElement;
+import net.coderbot.iris.shaderpack.option.menu.ShaderSearchEngine;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
+import net.minecraft.util.EnumChatFormatting;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.Optional;
 
 public abstract class BaseOptionElementWidget<T extends OptionMenuElement> extends CommentedElementWidget<T> {
-	protected static final String SET_TO_DEFAULT = I18n.format("options.iris.setToDefault");
+	protected static String setToDefault() { return I18n.format("options.iris.setToDefault"); }
 	protected static final String DIVIDER = ": ";
 
 	protected String unmodifiedLabel;
@@ -101,7 +104,7 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 
 	protected final void tryRenderTooltip(int mouseX, int mouseY, boolean hovered) {
 		if (GuiScreen.isShiftKeyDown()) {
-			renderTooltip(SET_TO_DEFAULT, mouseX, mouseY, hovered);
+			renderTooltip(setToDefault(), mouseX, mouseY, hovered);
 		} else if (this.isLabelTrimmed && !this.screen.isDisplayingComment()) {
 			renderTooltip(this.unmodifiedLabel, mouseX, mouseY, hovered);
 		}
@@ -145,13 +148,39 @@ public abstract class BaseOptionElementWidget<T extends OptionMenuElement> exten
 
 	@Override
 	public Optional<String> getCommentBody() {
-		final String key = getCommentKey();
-		if (key == null) {
-			return Optional.empty();
+		Optional<String> base = Optional.ofNullable(getCommentKey()).map(I18n::format);
+
+		if (this.screen == null || !this.screen.isOptionMenuSearchActive()) {
+			return base;
 		}
-		final String translated = GuiUtil.translateLenient(key);
-		// Don't show comment boxes without a translation, otherwise you get something like option.{commentname}.comment
-		return translated.equals(key) ? Optional.empty() : Optional.of(translated);
+
+		String pathLabel = buildTranslatedPath();
+		if (pathLabel == null) {
+			return base;
+		}
+
+		String breadcrumb = EnumChatFormatting.BOLD.toString() + EnumChatFormatting.ITALIC + pathLabel + EnumChatFormatting.RESET;
+		if (base.isPresent()) {
+			return Optional.of(breadcrumb + ". " + base.get());
+		}
+		return Optional.of(breadcrumb);
+	}
+
+	@Nullable
+	private String buildTranslatedPath() {
+		if (!(this.element instanceof OptionMenuOptionElement)) return null;
+		OptionMenuOptionElement optEl = (OptionMenuOptionElement) this.element;
+		String rawPath = optEl.container.getOptionPath(optEl.optionId);
+		String[] segments = rawPath.split("/");
+		StringBuilder display = new StringBuilder();
+		for (String segment : segments) {
+			if ("root".equals(segment)) continue;
+			String translated = ShaderSearchEngine.getDisplaySettingsName(segment).replaceAll("\\s+>", "");
+			String label = translated.isEmpty() ? segment : translated;
+			if (display.length() > 0) display.append(" > ");
+			display.append(label);
+		}
+		return display.length() > 0 ? display.toString() : null;
 	}
 
 	@Override

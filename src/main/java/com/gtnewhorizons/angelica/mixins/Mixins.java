@@ -64,7 +64,15 @@ public enum Mixins implements IMixins {
         .addExcludedMod(TargetedMod.CUSTOM_PLAYER_MODELS)
         .addClientMixins(
             "angelica.bugfixes.MixinRendererLivingEntity_EyeDepth"
-            , "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
+        )
+    ),
+
+    ANGELICA_DAMAGE_OVERLAY(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> AngelicaConfig.entityModernDamageOverlay)
+        .addExcludedMod(TargetedMod.CUSTOM_PLAYER_MODELS)
+        .addClientMixins(
+            "angelica.bugfixes.MixinRendererLivingEntity_OverlayTint"
         )
     ),
 
@@ -73,6 +81,13 @@ public enum Mixins implements IMixins {
             .setApplyIf(() -> AngelicaConfig.enableVBOClouds)
             .setPhase(Phase.EARLY)
             .addClientMixins("angelica.vbo.MixinRenderGlobal")
+    ),
+
+    ANGELICA_VBO_CLOUDS_FAR_PLANE(
+        new MixinBuilder()
+            .setApplyIf(() -> AngelicaConfig.enableVBOClouds && !AngelicaConfig.enableNotFineFeatures)
+            .setPhase(Phase.EARLY)
+            .addClientMixins("notfine.clouds.MixinEntityRenderer")
     ),
 
     ANGELICA_PANORAMA_BLUR(
@@ -196,6 +211,8 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "rendering.MixinBlock"
             , "rendering.MixinBlockFluidBase"
+            , "rendering.MixinBlockLiquid"
+            , "rendering.BlockLiquidFlowInvoker"
             , "rendering.AccessorBiomeColorEvent"
             , "rendering.MixinBiomeGenBase"
             , "rendering.MixinChunk"
@@ -223,8 +240,7 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableCeleritas)
         .addClientMixins(
-              "celeritas.terrain.ChunkTrackerAccessor"
-            , "celeritas.terrain.MixinChunkProviderClient"
+              "celeritas.terrain.MixinChunkProviderClient"
             , "celeritas.terrain.MixinMinecraft_ChunkUpdates"
             , "celeritas.terrain.MixinRenderGlobal"
             , "celeritas.terrain.MixinRenderSectionManager"
@@ -290,6 +306,9 @@ public enum Mixins implements IMixins {
             , "shaders.MixinRenderEndPortal"
             , "shaders.MixinTileEntityRendererDispatcher"
             , "shaders.MixinGlProgram"
+            , "shaders.MixinTextureManager_ReloadCount"
+            , "shaders.AccessorModelBox"
+            , "shaders.MixinModelBiped"
         )
     ),
 
@@ -397,6 +416,12 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.removeUnicodeEvenScaling)
         .addClientMixins("angelica.bugfixes.MixinScaledResolution_UnicodeFix")),
+
+    FARSEEK_WORLDSLICE_COMPAT(new MixinBuilder("Let Farseek resolve celeritas' WorldSlice so Streams' water renders properly")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.FARSEEK)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
+        .addClientMixins("client.farseek.MixinFarseekIBlockAccessValue")),
 
     SECURITYCRAFT_COMPAT(new MixinBuilder("Fix reflection in SecurityCraft for compat with Angelica")
         .setPhase(Phase.LATE)

@@ -12,7 +12,12 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL14;
 
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 public class GlImage extends GlObject {
+	public static final Map<String, GlImage> BY_NAME = new ConcurrentHashMap<>();
+
 	protected final String name;
 	protected final String samplerName;
 	protected final TextureType target;
@@ -42,6 +47,8 @@ public class GlImage extends GlObject {
 		setup(texture, width, height, depth);
 
 		GLStateManager.glBindTexture(target.getGlType(), 0);
+
+		BY_NAME.put(name, this);
 	}
 
 	protected void setup(int texture, int width, int height, int depth) {
@@ -106,6 +113,7 @@ public class GlImage extends GlObject {
 	@Override
 	protected void destroyInternal() {
 		GLStateManager.glDeleteTextures(handle());
+		BY_NAME.remove(name, this);
 	}
 
 	public InternalTextureFormat getInternalFormat() {

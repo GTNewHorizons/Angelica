@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
+import com.gtnewhorizons.angelica.api.ExtCeleritasRenderBlocks;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -21,6 +22,7 @@ import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
+import net.minecraftforge.common.util.ForgeDirection;
 import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -32,7 +34,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(RenderBlocks.class)
-public abstract class MixinRenderBlocks {
+public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Shadow
     public abstract boolean renderStandardBlockWithColorMultiplier(Block p_147736_1_, int p_147736_2_, int p_147736_3_, int p_147736_4_, float p_147736_5_, float p_147736_6_, float p_147736_7_);
 
@@ -108,8 +110,7 @@ public abstract class MixinRenderBlocks {
      */
     @Inject(method = { "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial" }, at = @At("HEAD"), cancellable = true)
     private void handleCeleritasAo(Block block, int x, int y, int z, float r, float g, float b, CallbackInfoReturnable<Boolean> cir) {
-        if ((this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
-            (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo())) {
+        if (angelica$shouldApplyCeleritasAO()) {
             this.applyingCeleritasAO = true;
             try {
                 cir.setReturnValue(this.renderStandardBlockWithColorMultiplier(block, x, y, z, r, g, b));
@@ -117,6 +118,17 @@ public abstract class MixinRenderBlocks {
                 this.applyingCeleritasAO = false;
             }
         }
+    }
+
+    @Override
+    public boolean angelica$shouldApplyCeleritasAO() {
+        return (this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
+            (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo());
+    }
+
+    @Override
+    public void angelica$setApplyingCeleritasAO(boolean val) {
+        this.applyingCeleritasAO = val;
     }
 
     /**
@@ -185,7 +197,7 @@ public abstract class MixinRenderBlocks {
     public IBlockAccess blockAccess;
 
     @Unique
-    private void angelica$handleCompactCtmFace(IIcon icon, CallbackInfo ci) {
+    private void angelica$handleCompactCtmFace(IIcon icon, ForgeDirection direction, CallbackInfo ci) {
         CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
         if (ctx == null) {
             return;
@@ -197,39 +209,39 @@ public abstract class MixinRenderBlocks {
             return;
         }
 
-        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon)) {
+        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon, direction.ordinal())) {
             ci.cancel();
         }
     }
 
     @Inject(method = "renderFaceYNeg", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.DOWN, ci);
     }
 
     @Inject(method = "renderFaceYPos", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.UP, ci);
     }
 
     @Inject(method = "renderFaceZNeg", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.NORTH, ci);
     }
 
     @Inject(method = "renderFaceZPos", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.SOUTH, ci);
     }
 
     @Inject(method = "renderFaceXNeg", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.WEST, ci);
     }
 
     @Inject(method = "renderFaceXPos", at = @At("HEAD"), cancellable = true)
     private void compactCtm_onRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$handleCompactCtmFace(icon, ci);
+        angelica$handleCompactCtmFace(icon, ForgeDirection.EAST, ci);
     }
 
     @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))

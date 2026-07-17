@@ -33,8 +33,6 @@ public class MixinRendererLivingEntity_OverlayTint {
     @Unique private boolean angelica$ffpOverlayActive;
     @Unique private boolean angelica$shaderEntityColorActive;
 
-    @Unique private boolean angelica$emissivePass;
-
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
@@ -101,26 +99,7 @@ public class MixinRendererLivingEntity_OverlayTint {
     }
 
     /**
-     * Prevent bleed by saving last state and comparing with current blend state.
-     */
-    @WrapOperation(
-        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
-        at = @At(value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"),
-        require = 1, expect = 1
-    )
-    private int angelica$detectEmissivePass(RendererLivingEntity self, EntityLivingBase entity, int pass,
-            float partialTick, Operation<Integer> original) {
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
-        final int result = original.call(self, entity, pass, partialTick);
-        final int srcAfter = GLStateManager.glGetInteger(GL14.GL_BLEND_SRC_RGB);
-        final int dstAfter = GLStateManager.glGetInteger(GL14.GL_BLEND_DST_RGB);
-        angelica$emissivePass = srcAfter == GL11.GL_ONE && dstAfter == GL11.GL_ONE;
-        return result;
-    }
-
-    /**
-     * Skip the overlay on emissive eye pass.
+     * Skip the overlay on additive passes (emissive eyes, enchantment glint).
      */
     @WrapOperation(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
@@ -134,9 +113,9 @@ public class MixinRendererLivingEntity_OverlayTint {
         ),
         require = 1, expect = 1
     )
-    private void angelica$untintEmissivePass(ModelBase model, Entity entity,
+    private void angelica$untintAdditivePass(ModelBase model, Entity entity,
             float p1, float p2, float p3, float p4, float p5, float p6, Operation<Void> original) {
-        if (!angelica$skipReRender || !angelica$emissivePass) {
+        if (!angelica$skipReRender || !angelica$isAdditivePass()) {
             original.call(model, entity, p1, p2, p3, p4, p5, p6);
             return;
         }
@@ -167,7 +146,14 @@ public class MixinRendererLivingEntity_OverlayTint {
             angelica$shaderEntityColorActive = false;
         }
         angelica$skipReRender = false;
-        angelica$emissivePass = false;
+    }
+
+    @Unique
+    private static boolean angelica$isAdditivePass() {
+        if (!GLStateManager.glIsEnabled(GL11.GL_BLEND)) return false;
+        if (GLStateManager.glGetInteger(GL14.GL_BLEND_DST_RGB) != GL11.GL_ONE) return false;
+        final int src = GLStateManager.glGetInteger(GL14.GL_BLEND_SRC_RGB);
+        return src == GL11.GL_ONE || src == GL11.GL_SRC_COLOR;
     }
 
     @Unique

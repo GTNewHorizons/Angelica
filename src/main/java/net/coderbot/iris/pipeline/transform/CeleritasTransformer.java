@@ -46,6 +46,10 @@ class CeleritasTransformer {
         vertexReplacements.put("gl_MultiTexCoord2", "iris_LightTexCoord");
         vertexReplacements.forEach(transformer::replaceExpression);
 
+        if (transformer.hasVariable("chunkOffset")) {
+            transformer.removeVariable("chunkOffset");
+        }
+
         final Map<String, String> vertexRenames = new HashMap<>();
         vertexRenames.put("gl_Color", "_vert_color");
         vertexRenames.put("ftransform", "iris_ftransform");

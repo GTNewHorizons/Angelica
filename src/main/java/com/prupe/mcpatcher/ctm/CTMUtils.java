@@ -9,6 +9,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.locks.StampedLock;
+import java.util.function.Consumer;
 
 import com.github.bsideup.jabel.Desugar;
 import net.minecraft.block.Block;
@@ -34,10 +35,22 @@ public class CTMUtils {
 
     public static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    private static class Overrides {
+    public static class Overrides {
         private final List<TileOverride> all = new ArrayList<>();
         private final Map<Block, List<BlockStateMatcher>> block = new IdentityHashMap<>();
         private final Map<String, List<TileOverride>> tile = new HashMap<>();
+
+        public List<TileOverride> getAll() {
+            return all;
+        }
+
+        public Map<Block, List<BlockStateMatcher>> getBlock() {
+            return block;
+        }
+
+        public Map<String, List<TileOverride>> getTile() {
+            return tile;
+        }
     }
 
     private static Overrides overrides = new Overrides();
@@ -82,6 +95,8 @@ public class CTMUtils {
 
     private static final AtomicInteger texturePackChangeCounter = new AtomicInteger(0);
 
+    private static final ArrayList<Consumer<Overrides>> ctmRegistrationCallbacks = new ArrayList<>();
+
     static {
         try {
             Class.forName(MCPatcherUtils.RENDER_PASS_CLASS)
@@ -116,6 +131,9 @@ public class CTMUtils {
                         for (ResourceLocation resource : ResourceList.getInstance()
                             .listResources(TexturePackAPI.MCPATCHER_SUBDIR + "ctm", ".properties", true)) {
                             registerOverrideWithoutLock(newOverrides, TileOverride.create(resource, tileLoader));
+                        }
+                        for (Consumer<Overrides> callback : ctmRegistrationCallbacks) {
+                            callback.accept(newOverrides);
                         }
                     }
                     for (ResourceLocation resource : BlendMethod.getAllBlankResources()) {
@@ -257,7 +275,7 @@ public class CTMUtils {
         return RenderPassAPI.instance.skipDefaultRendering(block);
     }
 
-    private static void registerOverrideWithoutLock(Overrides overrides, TileOverride override) {
+    public static void registerOverrideWithoutLock(Overrides overrides, TileOverride override) {
         if (override != null && !override.isDisabled()) {
             boolean registered = false;
             List<BlockStateMatcher> matchingBlocks = override.getMatchingBlocks();
@@ -307,5 +325,9 @@ public class CTMUtils {
 
     private static TileOverrideIterator.Metadata newMetadataIterator() {
         return new TileOverrideIterator.Metadata(overrides.block, overrides.tile);
+    }
+
+    public static void addCtmRegistrationCallback(Consumer<Overrides> consumer) {
+        ctmRegistrationCallbacks.add(consumer);
     }
 }

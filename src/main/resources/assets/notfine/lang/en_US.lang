@@ -78,3 +78,7 @@ options.void_fog=Void Fog
 options.void_fog.tooltip=Void Fog
 options.hurt_shake=Hurt Screen Shake
 options.background.random=Random
+options.zoom_smooth=Smooth Zoom
+options.zoom_smooth.tooltip=Smoothly interpolates the camera toward the zoom level instead of snapping instantly.
+options.zoom_smooth_speed=Smooth Zoom Speed
+options.zoom_smooth_speed.tooltip=How fast smooth zoom converges to the target zoom. Higher is snappier, lower is floatier. No effect when Smooth Zoom is off.

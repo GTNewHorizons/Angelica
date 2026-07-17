@@ -385,7 +385,7 @@ public final class VertexShaderGenerator {
 
         emitTexGenComponent(sb, key.texGenModeS(), "s", "S", key);
         emitTexGenComponent(sb, key.texGenModeT(), "t", "T", key);
-        emitTexGenComponent(sb, key.texGenModeR(), "r", "R", key);
+        emitTexGenComponent(sb, key.texGenModeR(), "p", "R", key);
         emitTexGenComponent(sb, key.texGenModeQ(), "q", "Q", key);
 
         // Always apply texture matrix when texgen is active (forced on in VertexKey)

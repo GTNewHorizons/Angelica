@@ -78,7 +78,7 @@ public final class FragmentShaderGenerator {
     private static void emitTextureSampling(StringBuilder sb, FragmentKey key) {
         for (int i = 0; i < key.nrEnabledUnits(); i++) {
             if (!key.unitEnabled(i)) continue;
-            sb.append("  vec4 tex").append(i).append("Color = texture(u_Sampler").append(i).append(", v_TexCoord").append(i).append(".st);\n");
+            sb.append("  vec4 tex").append(i).append("Color = textureProj(u_Sampler").append(i).append(", v_TexCoord").append(i).append(");\n");
         }
     }
 

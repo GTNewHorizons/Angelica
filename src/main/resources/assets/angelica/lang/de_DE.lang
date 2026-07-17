@@ -145,3 +145,7 @@ pack.iris.select.title=Auswählen
 pack.iris.configure.title=Konfigurieren
 label.iris.true=An
 label.iris.false=Aus
+options.iris.search.button=Suchen
+options.iris.clear.button=Schließen
+options.iris.search.tooltip=Shader-Einstellungen durchsuchen (Strg + F)
+options.iris.clear.tooltip=Shader-Suche beenden (Esc)

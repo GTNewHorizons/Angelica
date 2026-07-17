@@ -4,6 +4,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.util.IIcon;
+import net.minecraftforge.common.util.ForgeDirection;
 
 public final class CompactCtmQuadProcessor {
 
@@ -52,29 +53,33 @@ public final class CompactCtmQuadProcessor {
         this.override = compact;
     }
 
-    public boolean processFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon origIcon) {
-        if(renderBlockState instanceof BlockOrientation blockOrientation){
-            blockOrientation.setFlipBottom();
+    public boolean processFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon origIcon, int face) {
+        boolean shouldFlip = face == ForgeDirection.DOWN.ordinal();
+        if(ForgeDirection.OPPOSITES[face] == renderBlockState.getBlockFace()){
+            shouldFlip = !shouldFlip;
+        }
+        if(shouldFlip && renderBlockState instanceof BlockOrientation blockOrientation){
+            blockOrientation.flipFace();
         }
         int neighborBits = override.getNeighborBits(renderBlockState, origIcon);
 
         int ctmIndex = TileOverride.neighborMap[neighborBits & 0xFF];
         IIcon replacement = getReplacementIcon(ctmIndex);
         if (replacement != null) {
-            renderWholeFace(rb, renderBlockState, replacement);
+            renderWholeFace(rb, renderBlockState, replacement, face);
             return true;
         }
 
         if (neighborBits == 0 || neighborBits == 0xFF) {
             IIcon sprite = sprites[getCompactSpriteIndex(neighborBits)];
             if (sprite != null) {
-                renderWholeFace(rb, renderBlockState, sprite);
+                renderWholeFace(rb, renderBlockState, sprite, face);
                 return true;
             }
             return false;
         }
 
-        renderSplitFace(rb, renderBlockState, neighborBits);
+        renderSplitFace(rb, renderBlockState, neighborBits, face);
         return true;
     }
 
@@ -117,8 +122,7 @@ public final class CompactCtmQuadProcessor {
         return SPRITE_DEFAULT;
     }
 
-    private void renderSplitFace(RenderBlocks rb, RenderBlockState renderBlockState, int connections) {
-        final int face = renderBlockState.getBlockFace();
+    private void renderSplitFace(RenderBlocks rb, RenderBlockState renderBlockState, int connections, int face) {
 
         final double minX = rb.renderMinX, minY = rb.renderMinY, minZ = rb.renderMinZ;
         final double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
@@ -155,7 +159,7 @@ public final class CompactCtmQuadProcessor {
             }
             setQuadrantBounds(rb, face, q, minX, minY, minZ, maxX, maxY, maxZ);
             rb.overrideBlockTexture = icon;
-            renderFace(rb, renderBlockState, icon);
+            renderFace(rb, renderBlockState, icon, face);
         }
 
         if (ao) {
@@ -219,18 +223,17 @@ public final class CompactCtmQuadProcessor {
         return (sky << 16) | (block & 0xFFFF);
     }
 
-    private void renderWholeFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon icon) {
+    private void renderWholeFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon icon, int face) {
         IIcon saved = rb.overrideBlockTexture;
         rb.overrideBlockTexture = icon;
         try {
-            renderFace(rb, renderBlockState, icon);
+            renderFace(rb, renderBlockState, icon, face);
         } finally {
             rb.overrideBlockTexture = saved;
         }
     }
 
-    private void renderFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon icon) {
-        int face = renderBlockState.getBlockFace();
+    private void renderFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon icon, int face) {
         Block block = renderBlockState.getBlock();
         int x = renderBlockState.getX();
         int y = renderBlockState.getY();

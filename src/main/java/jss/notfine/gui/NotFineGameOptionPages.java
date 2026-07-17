@@ -1,6 +1,7 @@
 package jss.notfine.gui;
 
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
@@ -169,6 +170,12 @@ public class NotFineGameOptionPages {
                 .build());
         }
 
+        if (AngelicaConfig.enableZoom) {
+            groups.add(OptionGroup.createBuilder()
+                .add(Settings.ZOOM_SMOOTH.option)
+                .add(Settings.ZOOM_SMOOTH_SPEED.option)
+                .build());
+        }
 
         return new OptionPage(I18n.format("options.video"), ImmutableList.copyOf(groups));
     }

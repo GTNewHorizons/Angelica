@@ -16,7 +16,7 @@ public enum FeatureFlags {
 	CUSTOM_IMAGES(() -> true, RenderSystem::supportsImageLoadStore),
 	SSBO(() -> true, RenderSystem::supportsSSBO),
 	HIGHER_SHADOWCOLOR(() -> true, () -> true),
-	TESSELLATION_SHADERS(() -> true, RenderSystem::supportsTesselation),
+	TESSELLATION_SHADERS(() -> false, RenderSystem::supportsTesselation),
 	REVERSED_CULLING(() -> true, () -> true),
 	CAN_DISABLE_WEATHER(() -> true, () -> true),
 	UNKNOWN(() -> false, () -> false);

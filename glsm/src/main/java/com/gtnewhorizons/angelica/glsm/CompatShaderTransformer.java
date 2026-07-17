@@ -1,5 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
+import org.taumc.glsl.grammar.GLSLLexer;
+import org.taumc.glsl.grammar.GLSLParser;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 
@@ -8,9 +13,11 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -182,8 +189,9 @@ public class CompatShaderTransformer {
             transformer.rename("gl_FrontColor", "angelica_FrontColor");
             transformer.prependMain("angelica_FrontColor = vec4(1.0);");
 
-            // Vertex attributes — replaces removed FFP vertex inputs with explicit in declarations
-            transformVertexAttributes(transformer, source);
+            final FFPInputs ffp = FFPInputs.detect(source);
+            assignVertexInputLocations(transformer, ffp);
+            transformVertexAttributes(transformer, source, ffp);
         } else {
             if (source.contains("gl_Color")) {
                 transformer.injectVariable("in vec4 angelica_FrontColor;");
@@ -310,31 +318,170 @@ public class CompatShaderTransformer {
     /**
      * Replace removed FFP vertex attributes with explicit {@code in} declarations at core profile attribute locations.
      */
-    private static void transformVertexAttributes(Transformer transformer, String source) {
-        if (source.contains("gl_Vertex") || source.contains("ftransform")) {
+    private static void transformVertexAttributes(Transformer transformer, String source, FFPInputs ffp) {
+        if (ffp.position()) {
             transformer.injectVariable("layout(location = 0) in vec4 angelica_Vertex;");
             transformer.rename("gl_Vertex", "angelica_Vertex");
         }
         // gl_Color in vertex shaders is the per-vertex color attribute, distinct from the fragment gl_Color (interpolated gl_FrontColor) handled above
-        if (source.contains("gl_Color")) {
+        if (ffp.color()) {
             transformer.injectVariable("layout(location = 1) in vec4 angelica_Color;");
             transformer.rename("gl_Color", "angelica_Color");
         }
-        if (source.contains("gl_MultiTexCoord0")) {
+        if (ffp.uv0()) {
             transformer.injectVariable("layout(location = 2) in vec4 angelica_MultiTexCoord0;");
             transformer.rename("gl_MultiTexCoord0", "angelica_MultiTexCoord0");
         }
-        if (source.contains("gl_MultiTexCoord1")) {
+        if (ffp.uv1()) {
             transformer.injectVariable("layout(location = 3) in vec4 angelica_MultiTexCoord1;");
             transformer.rename("gl_MultiTexCoord1", "angelica_MultiTexCoord1");
         }
-        if (source.contains("gl_Normal")) {
+        if (ffp.normal()) {
             transformer.injectVariable("layout(location = 4) in vec3 angelica_Normal;");
             transformer.rename("gl_Normal", "angelica_Normal");
         }
         if (source.contains("ftransform")) {
             transformer.replaceExpression("ftransform()", "(angelica_ProjectionMatrix * angelica_ModelViewMatrix * angelica_Vertex)");
         }
+    }
+
+    private static final int MAX_VERTEX_ATTRIBS = 16;
+
+    private record FFPInputs(boolean position, boolean color, boolean uv0, boolean uv1, boolean normal) {
+        static FFPInputs detect(String source) {
+            return new FFPInputs(
+                source.contains("gl_Vertex") || source.contains("ftransform"),
+                source.contains("gl_Color"),
+                source.contains("gl_MultiTexCoord0"),
+                source.contains("gl_MultiTexCoord1"),
+                source.contains("gl_Normal"));
+        }
+    }
+
+    /** Adaptation of Mesa's assign_attribute_or_color_locations */
+    private static void assignVertexInputLocations(Transformer transformer, FFPInputs ffp) {
+        int used = 0;
+        if (ffp.position()) used |= 1 << Usage.POSITION.getAttributeLocation();
+        if (ffp.color()) used |= 1 << Usage.COLOR.getAttributeLocation();
+        if (ffp.uv0()) used |= 1 << Usage.PRIMARY_UV.getAttributeLocation();
+        if (ffp.uv1()) used |= 1 << Usage.SECONDARY_UV.getAttributeLocation();
+        if (ffp.normal()) used |= 1 << Usage.NORMAL.getAttributeLocation();
+
+        record Input(String name, String baseType, String arraySuffix, int slots, int index) {}
+        final List<Input> toAssign = new ArrayList<>();
+        int index = 0;
+
+        for (TerminalNode storage : transformer.collectStorage()) {
+            final int tokenType = storage.getSymbol().getType();
+            if (tokenType != GLSLLexer.ATTRIBUTE && tokenType != GLSLLexer.IN) continue;
+
+            ParseTree node = storage.getParent();
+            while (node != null && !(node instanceof GLSLParser.Single_declarationContext)) {
+                node = node.getParent();
+            }
+            if (!(node instanceof GLSLParser.Single_declarationContext decl)) continue;
+            if (decl.typeless_declaration() == null) continue;
+
+            final GLSLParser.Type_specifierContext typeSpec = decl.fully_specified_type().type_specifier();
+            final String baseType = GlslTransformUtils.getFormattedShader(typeSpec.type_specifier_nonarray(), "").trim();
+            final int typeArraySlots = arraySlots(typeSpec.array_specifier());
+            final String typeArray = arraySuffix(typeSpec.array_specifier());
+
+            if (hasLayoutQualifier(decl)) {
+                final int loc = explicitLocation(decl);
+                final int slots = baseSlots(baseType) * typeArraySlots * arraySlots(decl.typeless_declaration().array_specifier());
+                if (loc >= 0) used |= slotMask(slots) << loc;
+                continue;
+            }
+
+            final List<GLSLParser.Typeless_declarationContext> declarators = new ArrayList<>();
+            declarators.add(decl.typeless_declaration());
+            if (decl.getParent() instanceof GLSLParser.Init_declarator_listContext list) {
+                declarators.addAll(list.typeless_declaration());
+            }
+            for (GLSLParser.Typeless_declarationContext d : declarators) {
+                if (d.IDENTIFIER() == null) continue;
+                final int slots = baseSlots(baseType) * typeArraySlots * arraySlots(d.array_specifier());
+                final String arraySuffix = typeArray + arraySuffix(d.array_specifier());
+                toAssign.add(new Input(d.IDENTIFIER().getText(), baseType, arraySuffix, slots, index++));
+            }
+        }
+
+        toAssign.sort((a, b) -> a.slots() != b.slots() ? b.slots() - a.slots() : a.index() - b.index());
+
+        for (Input in : toAssign) {
+            final int loc = findAvailableSlots(used, in.slots());
+            if (loc < 0) continue;
+            used |= slotMask(in.slots()) << loc;
+            transformer.removeVariable(in.name());
+            transformer.variable = null;
+            transformer.injectVariable("layout(location = " + loc + ") in " + in.baseType() + " " + in.name() + in.arraySuffix() + ";");
+        }
+    }
+
+    private static String arraySuffix(GLSLParser.Array_specifierContext arraySpec) {
+        return arraySpec != null ? GlslTransformUtils.getFormattedShader(arraySpec, "").trim() : "";
+    }
+
+    private static int arraySlots(GLSLParser.Array_specifierContext arraySpec) {
+        if (arraySpec == null) return 1;
+        int product = 1;
+        for (GLSLParser.DimensionContext dim : arraySpec.dimension()) {
+            if (dim.constant_expression() == null) continue;
+            try {
+                product *= Integer.decode(GlslTransformUtils.getFormattedShader(dim.constant_expression(), "").trim());
+            } catch (NumberFormatException ignored) {}
+        }
+        return product;
+    }
+
+    private static int baseSlots(String type) {
+        final String dims = type.startsWith("dmat") ? type.substring(4) : type.startsWith("mat") ? type.substring(3) : null;
+        if (dims != null && !dims.isEmpty() && Character.isDigit(dims.charAt(0))) {
+            return dims.charAt(0) - '0';
+        }
+        return 1;
+    }
+
+    private static int slotMask(int slots) {
+        return (slots >= 32) ? -1 : (1 << slots) - 1;
+    }
+
+    private static int findAvailableSlots(int used, int needed) {
+        if (needed <= 0) return -1;
+        final int mask = slotMask(needed);
+        for (int i = 0; i <= MAX_VERTEX_ATTRIBS - needed; i++) {
+            if (((mask << i) & ~used) == (mask << i)) return i;
+        }
+        return -1;
+    }
+
+    private static int explicitLocation(GLSLParser.Single_declarationContext decl) {
+        final GLSLParser.Type_qualifierContext qualifier = decl.fully_specified_type().type_qualifier();
+        if (qualifier == null) return -1;
+        for (GLSLParser.Single_type_qualifierContext single : qualifier.single_type_qualifier()) {
+            final GLSLParser.Layout_qualifierContext layout = single.layout_qualifier();
+            if (layout == null) continue;
+            for (GLSLParser.Layout_qualifier_idContext id : layout.layout_qualifier_id_list().layout_qualifier_id()) {
+                if (id.IDENTIFIER() != null && "location".equals(id.IDENTIFIER().getText()) && id.constant_expression() != null) {
+                    try {
+                        return Integer.decode(GlslTransformUtils.getFormattedShader(id.constant_expression(), "").trim());
+                    } catch (NumberFormatException ignored) {
+                        return -1;
+                    }
+                }
+            }
+        }
+        return -1;
+    }
+
+    private static boolean hasLayoutQualifier(GLSLParser.Single_declarationContext decl) {
+        final GLSLParser.Type_qualifierContext qualifier = decl.fully_specified_type().type_qualifier();
+        if (qualifier == null) return false;
+        for (GLSLParser.Single_type_qualifierContext single : qualifier.single_type_qualifier()) {
+            if (single.layout_qualifier() != null) return true;
+        }
+        return false;
     }
 
     private static void dumpShader(String original, String transformed, boolean isFragment, boolean wasTransformed) {

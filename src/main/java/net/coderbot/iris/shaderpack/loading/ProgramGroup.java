@@ -1,6 +1,11 @@
 package net.coderbot.iris.shaderpack.loading;
 
+import lombok.Getter;
+
+@Getter
 public enum ProgramGroup {
+	Setup("setup"),
+	Begin("begin"),
 	Shadow("shadow"),
 	ShadowComposite("shadowcomp"),
 	Prepare("prepare"),
@@ -17,7 +22,4 @@ public enum ProgramGroup {
 		this.baseName = baseName;
 	}
 
-	public String getBaseName() {
-		return baseName;
-	}
 }

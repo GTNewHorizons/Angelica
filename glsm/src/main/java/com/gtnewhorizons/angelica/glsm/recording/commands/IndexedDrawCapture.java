@@ -9,8 +9,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetLong;
@@ -52,20 +50,14 @@ public final class IndexedDrawCapture {
         return freed;
     }
 
-    private static final Set<String> WARN_ONCE = ConcurrentHashMap.newKeySet();
-
-    private static void warnOnce(String key, String fmt, Object... args) {
-        if (WARN_ONCE.add(key)) GLStateManager.LOGGER.warn(fmt, args);
-    }
-
     public static IndexedDrawCapture create(int mode, int indicesCount, int srcIndexType, long indicesOffset, int eboId) {
         if (indicesCount == 0) return null;
         if (eboId == 0) {
-            warnOnce("no-ebo", "[IndexedDrawCapture] glDrawElements in display list with no EBO bound — skipping (mode={} count={} offset={})", mode, indicesCount, indicesOffset);
+            GLStateManager.warnOnce("no-ebo", "[IndexedDrawCapture] glDrawElements in display list with no EBO bound — skipping (mode={} count={} offset={})", mode, indicesCount, indicesOffset);
             return null;
         }
         if (mode == GL11.GL_QUADS && (indicesCount % 4) != 0) {
-            warnOnce("quads-misaligned", "[IndexedDrawCapture] GL_QUADS with indicesCount={} not a multiple of 4 — skipping", indicesCount);
+            GLStateManager.warnOnce("quads-misaligned", "[IndexedDrawCapture] GL_QUADS with indicesCount={} not a multiple of 4 — skipping", indicesCount);
             return null;
         }
         final int srcIndexSize = VAOManager.Attrib.glTypeSizeBytes(srcIndexType);
@@ -74,29 +66,53 @@ public final class IndexedDrawCapture {
         final int prevEBO = GLStateManager.getBoundEBO();
         final int prevVBO = GLStateManager.getBoundVBO();
         ByteBuffer eboSrc = null;
+        try {
+            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+            final int eboBufferSize = GLStateManager.glGetBufferParameteri(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
+            if (eboBufferSize <= 0) {
+                GLStateManager.warnOnce("ebo-size", "[IndexedDrawCapture] GL_BUFFER_SIZE={} for EBO {}", eboBufferSize, eboId);
+                return null;
+            }
+            final long eboReadSize = (long) indicesCount * srcIndexSize;
+            if (indicesOffset < 0 || indicesOffset + eboReadSize > eboBufferSize) {
+                GLStateManager.warnOnce("ebo-range", "[IndexedDrawCapture] EBO range {}+{} exceeds buffer size {} — skipping", indicesOffset, eboReadSize, eboBufferSize);
+                return null;
+            }
+            eboSrc = MemoryUtilities.memAlloc((int) eboReadSize);
+            GLStateManager.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, indicesOffset, eboSrc);
+            return bake(mode, indicesCount, srcIndexType, MemoryUtilities.memAddress0(eboSrc));
+        } finally {
+            if (eboSrc != null) MemoryUtilities.memFree(eboSrc);
+            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevVBO);
+        }
+    }
+
+    public static IndexedDrawCapture createFromClientIndices(int mode, int indicesCount, int srcIndexType, long indexSrcAddr, long srcByteLength) {
+        if (indicesCount == 0) return null;
+        if (indexSrcAddr == 0L) return null;
+        if (mode == GL11.GL_QUADS && (indicesCount % 4) != 0) {
+            GLStateManager.warnOnce("quads-misaligned", "[IndexedDrawCapture] GL_QUADS with indicesCount={} not a multiple of 4 - skipping", indicesCount);
+            return null;
+        }
+        final int idxSize = VAOManager.Attrib.glTypeSizeBytes(srcIndexType);
+        if (idxSize <= 0) return null;
+        if ((long) indicesCount * idxSize > srcByteLength) {
+            GLStateManager.warnOnce("client-idx-range", "[IndexedDrawCapture] index count {} ({} bytes) exceeds client buffer {} bytes - skipping", indicesCount, (long) indicesCount * idxSize, srcByteLength);
+            return null;
+        }
+        return bake(mode, indicesCount, srcIndexType, indexSrcAddr);
+    }
+
+    private static IndexedDrawCapture bake(int mode, int indicesCount, int srcIndexType, long indexSrcAddr) {
         AttribSnapshot snap = null;
         ByteBuffer vertexData = null;
         ByteBuffer indexData = null;
         boolean success = false;
         try {
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-            final int eboBufferSize = GLStateManager.glGetBufferParameteri(GL15.GL_ELEMENT_ARRAY_BUFFER, GL15.GL_BUFFER_SIZE);
-            if (eboBufferSize <= 0) {
-                warnOnce("ebo-size", "[IndexedDrawCapture] GL_BUFFER_SIZE={} for EBO {}", eboBufferSize, eboId);
-                return null;
-            }
-            final long eboReadSize = (long) indicesCount * srcIndexSize;
-            if (indicesOffset < 0 || indicesOffset + eboReadSize > eboBufferSize) {
-                warnOnce("ebo-range", "[IndexedDrawCapture] EBO range {}+{} exceeds buffer size {} — skipping", indicesOffset, eboReadSize, eboBufferSize);
-                return null;
-            }
-            eboSrc = MemoryUtilities.memAlloc((int) eboReadSize);
-            GLStateManager.glGetBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, indicesOffset, eboSrc);
-            final long eboSrcAddr = MemoryUtilities.memAddress0(eboSrc);
-
-            final long minMax = QuadConverter.scanMinMaxIndex(eboSrcAddr, srcIndexType, indicesCount);
+            final long minMax = QuadConverter.scanMinMaxIndex(indexSrcAddr, srcIndexType, indicesCount);
             if (minMax == -1L) {
-                warnOnce("min-max", "[IndexedDrawCapture] failed to determine min/max vertex for indexType={}", srcIndexType);
+                GLStateManager.warnOnce("min-max", "[IndexedDrawCapture] failed to determine min/max vertex for indexType={}", srcIndexType);
                 return null;
             }
             final int minVtx = (int) (minMax & 0xFFFFFFFFL);
@@ -110,7 +126,7 @@ public final class IndexedDrawCapture {
                 if (snap.get(i) != null) enabledCount++;
             }
             if (enabledCount == 0) {
-                warnOnce("no-attribs", "[IndexedDrawCapture] no enabled attributes — skipping");
+                GLStateManager.warnOnce("no-attribs", "[IndexedDrawCapture] no enabled attributes — skipping");
                 return null;
             }
             final int[] locations = new int[enabledCount];
@@ -137,6 +153,13 @@ public final class IndexedDrawCapture {
             for (int a = 0; a < enabledCount; a++) {
                 final AttribSnapshot.AttribDesc d = snap.get(locations[a]);
                 final int relOffset = (int) (d.offset() - d.readBufferBaseOffset());
+
+                final long readStart = relOffset + (long) minVtx * d.effectiveStride();
+                final long readEnd = relOffset + (long) maxVtx * d.effectiveStride() + (long) d.size() * d.typeSizeBytes();
+                if (readStart < 0 || readEnd > d.readBuffer().capacity()) {
+                    GLStateManager.warnOnce("vtx-oob", "[IndexedDrawCapture] attrib {} read extent {} exceeds snapshot {} bytes - skipping", d.location(), readEnd, d.readBuffer().capacity());
+                    return null;
+                }
                 if (a == 0) {
                     sharedSrcBuffer = d.readBuffer();
                     sharedSrcStride = d.effectiveStride();
@@ -169,12 +192,12 @@ public final class IndexedDrawCapture {
                 final int quadCount = indicesCount / 4;
                 bakedIndexCount = quadCount * 6;
                 indexData = MemoryUtilities.memAlloc(bakedIndexCount * 4);
-                QuadConverter.triangulateQuads(eboSrcAddr, srcIndexType, MemoryUtilities.memAddress0(indexData), GL11.GL_UNSIGNED_INT, quadCount, minVtx);
+                QuadConverter.triangulateQuads(indexSrcAddr, srcIndexType, MemoryUtilities.memAddress0(indexData), GL11.GL_UNSIGNED_INT, quadCount, minVtx);
                 bakedDrawMode = GL11.GL_TRIANGLES;
             } else {
                 bakedIndexCount = indicesCount;
                 indexData = MemoryUtilities.memAlloc(bakedIndexCount * 4);
-                QuadConverter.widenIndices(eboSrcAddr, srcIndexType, MemoryUtilities.memAddress0(indexData), GL11.GL_UNSIGNED_INT, indicesCount, minVtx);
+                QuadConverter.widenIndices(indexSrcAddr, srcIndexType, MemoryUtilities.memAddress0(indexData), GL11.GL_UNSIGNED_INT, indicesCount, minVtx);
                 bakedDrawMode = mode;
             }
 
@@ -184,14 +207,11 @@ public final class IndexedDrawCapture {
             success = true;
             return out;
         } finally {
-            if (eboSrc != null) MemoryUtilities.memFree(eboSrc);
             if (snap != null) snap.free();
             if (!success) {
                 if (vertexData != null) MemoryUtilities.memFree(vertexData);
                 if (indexData != null) MemoryUtilities.memFree(indexData);
             }
-            GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEBO);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, prevVBO);
         }
     }
 

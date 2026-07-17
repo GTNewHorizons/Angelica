@@ -40,6 +40,7 @@ public final class VAOManager {
             current.vertexFlags = currentVertexFlags;
             current.ebo = boundEBO;
             current.attribs = currentAttribs;
+            current.clientSideEnabledCount = clientSideEnabledCount;
         }
 
         VAOData data = vaoMap.get(vaoId);
@@ -51,8 +52,7 @@ public final class VAOManager {
         currentVertexFlags = data.vertexFlags;
         currentAttribs = data.attribs;
         boundEBO = data.ebo;
-
-        recomputeClientSideCount();
+        clientSideEnabledCount = data.clientSideEnabledCount;
     }
 
     public static void onDeleteVertexArray(int vaoId) {
@@ -68,6 +68,7 @@ public final class VAOManager {
         public Attrib[] attribs;
         public int vertexFlags;
         public int ebo;
+        public int clientSideEnabledCount;
 
         public VAOData() {
             attribs = new Attrib[MAX_ATTRIBS];
@@ -85,6 +86,7 @@ public final class VAOManager {
         a.offset = offset;
         a.vboId = vboId;
         a.clientPointer = null;
+        a.genericPointer = true;
         if (wasClient && a.enabled) {
             clientSideEnabledCount--;
         }
@@ -101,9 +103,22 @@ public final class VAOManager {
         a.offset = 0;
         a.vboId = 0;
         a.clientPointer = pointer;
+        a.genericPointer = true;
         if (!wasClient && a.enabled) {
             clientSideEnabledCount++;
         }
+    }
+
+    public static boolean isGenericPointerEnabled(int index) {
+        if (index < 0 || index >= MAX_ATTRIBS) return false;
+        final Attrib a = currentAttribs[index];
+        return a != null && a.genericPointer && a.enabled;
+    }
+
+    public static void markConventional(int index) {
+        if (index < 0 || index >= MAX_ATTRIBS) return;
+        final Attrib a = currentAttribs[index];
+        if (a != null) a.genericPointer = false;
     }
 
     public static void setEnabled(int index, boolean enabled) {
@@ -169,14 +184,6 @@ public final class VAOManager {
 
 
 
-    private static void recomputeClientSideCount() {
-        int count = 0;
-        for (int i = 0; i < MAX_ATTRIBS; i++) {
-            if (isClientSideAttrib(i)) count++;
-        }
-        clientSideEnabledCount = count;
-    }
-
     /**
      * Returns true if any currently enabled vertex attribute was registered without a VBO
      * (i.e. as a client-side pointer). In core profile, such attribs are treated as null
@@ -239,6 +246,7 @@ public final class VAOManager {
         public long offset;
         public int vboId;
         public ByteBuffer clientPointer;
+        public boolean genericPointer;
 
         public boolean isClientSide() {
             return enabled && clientPointer != null;
@@ -253,6 +261,7 @@ public final class VAOManager {
             offset = 0;
             vboId = 0;
             clientPointer = null;
+            genericPointer = false;
         }
 
         public int effectiveStride() {

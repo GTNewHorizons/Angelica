@@ -7,8 +7,9 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+
 public class AngelicaRenderQueue {
-    private static final Thread MAIN_THREAD = Thread.currentThread();
     private static final Queue<Runnable> TASKS = new ConcurrentLinkedQueue<>();
 
     // Metrics
@@ -33,16 +34,21 @@ public class AngelicaRenderQueue {
     }
 
     private static final Executor EXECUTOR = (runnable) -> {
-        if(Thread.currentThread() == MAIN_THREAD) {
+        if(GLStateManager.isMainThread()) {
             runnable.run();
         } else {
             TASKS.add(runnable);
-            LockSupport.unpark(MAIN_THREAD);
+            LockSupport.unpark(GLStateManager.getMainThread());
         }
     };
 
     public static Executor executor() {
         return EXECUTOR;
+    }
+
+    public static void submit(Runnable runnable) {
+        TASKS.add(runnable);
+        LockSupport.unpark(GLStateManager.getMainThread());
     }
 
     public static int processTasks(int max) {
