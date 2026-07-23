@@ -248,4 +248,9 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     private void compactCtm_resetAfterBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
         CTMUtils.clearCurrentCompact();
     }
+
+    @Inject(method = "renderBlockAsItem", at = @At("HEAD"))
+    private void compactCtm_resetBeforeItem(Block block, int meta, float brightness, CallbackInfo ci) {
+        CTMUtils.clearCurrentCompact();
+    }
 }
