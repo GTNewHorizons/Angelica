@@ -214,6 +214,10 @@ options.angelica.itemdisplaylistcount=物品渲染器缓存限制
 options.angelica.itemdisplaylistcount.tooltip=优化物品渲染器中的VBO缓存数量上限。较高的值将显著提高性能，但可能导致显存占用增加
 options.angelica.threadedChunkBuilding=多线程区块构建
 options.angelica.threadedChunkBuilding.tooltip=如果启用，区块网格化将多线程并行执行，以显著提高区块构建速度。如果您遇到使用自定义方块渲染的模组出现渲染问题，请禁用此项。需要重新加载渲染器才能生效
+options.angelica.fsrRenderScale=渲染比例 (FSR 1.0)
+options.angelica.fsrRenderScale.tooltip=以较低的内部分辨率渲染世界，并使用 AMD FidelityFX Super Resolution 1.0 放大回原生分辨率。界面始终保持原生分辨率。100% 表示关闭。FSR 预设：77% 超高质量，67% 质量，59% 平衡，50% 性能。在着色器导致 GPU 瓶颈时收益最大。
+options.angelica.fsrSharpness=FSR 锐化
+options.angelica.fsrSharpness.tooltip=放大后应用的对比度自适应锐化强度。
 
 pack.iris.select.title=选择
 pack.iris.configure.title=配置

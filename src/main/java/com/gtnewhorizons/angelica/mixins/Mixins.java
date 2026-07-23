@@ -373,6 +373,14 @@ public enum Mixins implements IMixins {
             , "angelica.textures.MixinTextureUtil"
         )),
 
+    FSR_UPSCALING(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> true)
+        .addClientMixins(
+            "angelica.upscale.MixinEntityRenderer_FSR",
+            "angelica.upscale.MixinMinecraft_FSR"
+        )),
+
     ANGELICA_ZOOM(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableZoom)
