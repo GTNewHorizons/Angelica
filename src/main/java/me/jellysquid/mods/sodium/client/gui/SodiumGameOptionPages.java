@@ -3,16 +3,18 @@ package me.jellysquid.mods.sodium.client.gui;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.function.IntSupplier;
+import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
+import net.minecraft.util.MathHelper;
 
 import org.lwjgl.opengl.Display;
 
 import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -35,6 +37,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.CubicChunksOptionStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStorage;
@@ -61,11 +64,11 @@ public class SodiumGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build());
 
-       
+
         if (ModStatus.isCubicChunksLoaded) {
             firstGroupBuilder.add(getCCVerticalViewDistance());
         }
-        
+
         if(Iris.enabled) {
 
             final OptionImpl<GameSettings, Integer> maxShadowDistanceSlider = OptionImpl.createBuilder(int.class, vanillaOpts)
@@ -169,6 +172,29 @@ public class SodiumGameOptionPages {
     public static OptionPage quality() {
         final List<OptionGroup> groups = new ArrayList<>();
 
+        final OptionImpl<GameSettings, Integer> mipmapLevels = OptionImpl.createBuilder(int.class, vanillaOpts)
+            .setName(I18n.format("options.mipmapLevels"))
+            .setTooltip(I18n.format("sodium.options.mipmap_levels.tooltip"))
+            .setControl(option -> new SliderControl(option, 0, 4, 1, ControlValueFormatter.multiplier()))
+            .setBinding((opts, value) -> opts.mipmapLevels = value, opts -> opts.mipmapLevels)
+            .setImpact(OptionImpact.MEDIUM)
+            .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+            .build();
+
+        final OptionImpl<SodiumGameOptions, TextureFilterMode> textureFilterMode =
+            OptionImpl.createBuilder(TextureFilterMode.class, sodiumOpts)
+                .setName(I18n.format("sodium.options.texture_filtering.name"))
+                .setTooltip(I18n.format("sodium.options.texture_filtering.tooltip"))
+                .setControl(option -> new CyclingControl<>(option, TextureFilterMode.class,
+                    TextureFilterMode.selectableValues(SodiumGameOptions.anisotropySupported())))
+                .setBinding((opts, value) -> opts.quality.textureFilterMode = value,
+                    opts -> SodiumGameOptions.resolveFilterMode(opts.quality.textureFilterMode))
+                .setImpact(OptionImpact.MEDIUM)
+                .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD, OptionFlag.REQUIRES_RENDERER_RELOAD)
+                .build();
+
+        textureFilterMode.iris$dynamicallyEnable(() -> mipmapLevels.getValue() > 0);
+
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
                         .setName(I18n.format("options.graphics"))
@@ -222,6 +248,9 @@ public class SodiumGameOptionPages {
                     .setImpact(OptionImpact.LOW)
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .build())
+                .add(textureFilterMode)
+                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue, mipmapLevels::getValue),
+                    SodiumGameOptions.anisotropySupported())
                 // TODO
                 /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(new TranslatableText("options.biomeBlendRadius"))
@@ -245,14 +274,7 @@ public class SodiumGameOptionPages {
 
 
         groups.add(OptionGroup.createBuilder()
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(I18n.format("options.mipmapLevels"))
-                        .setTooltip(I18n.format("sodium.options.mipmap_levels.tooltip"))
-                        .setControl(option -> new SliderControl(option, 0, 4, 1, ControlValueFormatter.multiplier()))
-                        .setBinding((opts, value) -> opts.mipmapLevels = value, opts -> opts.mipmapLevels)
-                        .setImpact(OptionImpact.MEDIUM)
-                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
-                        .build())
+                .add(mipmapLevels)
                 .build());
         groups.add(OptionGroup.createBuilder()
         .add(Settings.MODE_GLINT_INV.option)
@@ -510,6 +532,27 @@ public class SodiumGameOptionPages {
                 .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.performance"), ImmutableList.copyOf(groups));
+    }
+
+    public static OptionImpl<GameSettings, Integer> anisotropicFilteringSlider(MinecraftOptionsStorage storage,
+        Supplier<TextureFilterMode> mode, IntSupplier mipmapLevels) {
+        final int min = SodiumGameOptions.minAnisotropyLevel();
+        final int max = Math.max(SodiumGameOptions.maxAnisotropyLevel(), min + 1);
+        final OptionImpl<GameSettings, Integer> option = OptionImpl.createBuilder(int.class, storage)
+            .setName(I18n.format("sodium.options.anisotropic_filtering.name"))
+            .setTooltip(I18n.format("sodium.options.anisotropic_filtering.tooltip"))
+            .setControl(opt -> new SliderControl(opt, min, max, 1, value -> (1 << value) + "x"))
+            .setBinding(
+                (opts, value) -> opts.anisotropicFiltering = 1 << MathHelper.clamp_int(value, min, max),
+                opts -> MathHelper.clamp_int(Integer.numberOfTrailingZeros(Math.max(opts.anisotropicFiltering, 1)), min, max))
+            .setImpact(OptionImpact.MEDIUM)
+            .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+            .build();
+
+        option.iris$dynamicallyEnable(() -> mipmapLevels.getAsInt() > 0 && mode.get().usesAnisotropy()
+            && SodiumGameOptions.anisotropySupported());
+
+        return option;
     }
 
     @Method(modid = "cubicchunks")

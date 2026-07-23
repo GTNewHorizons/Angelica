@@ -107,7 +107,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
             }
 
             // Just use the first page for now
-            this.currentPage = this.pages.get(0);
+            this.currentPage = this.pages.getFirst();
         }
 
         this.rebuildGUIPages();
@@ -272,13 +272,11 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
             dirtyStorages.add(option.getStorage());
         }));
 
-        if (flags.contains(OptionFlag.REQUIRES_RENDERER_RELOAD)) {
-            this.mc.renderGlobal.loadRenderers();
-        }
-
         if (flags.contains(OptionFlag.REQUIRES_ASSET_RELOAD)) {
-            this.mc.getTextureMapBlocks().setMipmapLevels(this.mc.gameSettings.mipmapLevels);
+            SodiumGameOptions.applyAtlasSettings();
             this.mc.refreshResources();
+        } else if (flags.contains(OptionFlag.REQUIRES_RENDERER_RELOAD)) {
+            this.mc.renderGlobal.loadRenderers();
         }
 
         for (OptionStorage<?> storage : dirtyStorages) {

@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
@@ -219,7 +220,9 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, NativeImage nativeImage, TextureMap texMap, int miplevel) {
             super(info.name().toString());
             super.initSprite(atlasWidth, atlasHeight, x, y, false);
-            super.loadSprite(getMipmapGenerator(info, atlasWidth, atlasHeight).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, texMap.anisotropicFiltering > 1);
+            final boolean useAnisotropicFiltering = texMap.anisotropicFiltering > 1
+                || SodiumGameOptions.needsForcedSpritePadding();
+            super.loadSprite(getMipmapGenerator(info, atlasWidth, atlasHeight).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, useAnisotropicFiltering);
         }
 
         @Override

@@ -48,19 +48,18 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final WorldSlice worldSlice;
     @Getter
     private final BlockRenderContext blockRenderContext = new BlockRenderContext();
-
-    private List<IDynamicLightSource> chunkLightSources;
-    private DynamicLights dynamicLightsInstance;
-
     private final LightDataCache lightDataCache = new LightDataCache();
     private final SmoothLightPipeline smoothLightPipeline;
     private final FlatLightPipeline flatLightPipeline;
     private final QuadLightData quadLightData = new QuadLightData();
     private final VertexArrayQuadView quadView;
+    private final boolean hasColoredLight;
+    private final float[] tintResult = new float[3];
+    private List<IDynamicLightSource> chunkLightSources;
+    private DynamicLights dynamicLightsInstance;
     private boolean lightPipelineReady = false;
     private int originX, originY, originZ;
     private float cachedSkylightSubtracted;
-    private final boolean hasColoredLight;
 
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
@@ -98,19 +97,24 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         }
     }
 
-    private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride) {
+    private Material selectMaterial(Material material, TextureAtlasSprite sprite, boolean isShaderPackOverride,
+                                    boolean useRenderPassOptimization) {
         // Don't apply transparency-based optimization when shader pack explicitly overrides the material
-        if (!ClientProxy.options().performance.useRenderPassOptimization || isShaderPackOverride) {
+        if (isShaderPackOverride) {
             return material;
         }
-        if (sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
-            final var transparencyLevel = ((SpriteExtension)sprite).celeritas$getTransparencyLevel();
-            if (transparencyLevel == SpriteTransparencyLevel.OPAQUE && material == AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL) {
+
+        if (useRenderPassOptimization
+            && sprite != null && sprite.getClass() == TextureAtlasSprite.class && !sprite.hasAnimationMetadata()) {
+            final var transparencyLevel = ((SpriteExtension) sprite).celeritas$getTransparencyLevel();
+            if (transparencyLevel == SpriteTransparencyLevel.OPAQUE
+                && material == AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL) {
                 return AngelicaRenderPassConfiguration.SOLID_MATERIAL;
             } else if (material == AngelicaRenderPassConfiguration.TRANSLUCENT_MATERIAL && transparencyLevel != SpriteTransparencyLevel.TRANSLUCENT) {
                 return AngelicaRenderPassConfiguration.CUTOUT_MIPPED_MATERIAL;
             }
         }
+
         return material;
     }
 
@@ -123,7 +127,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             return;
         }
 
-        final var animatedSprites = ((MinecraftBuiltRenderSectionData<TextureAtlasSprite, TileEntity>)buffers.getSectionContextBundle()).animatedSprites;
+        final var animatedSprites = ((MinecraftBuiltRenderSectionData<TextureAtlasSprite, TileEntity>) buffers.getSectionContextBundle()).animatedSprites;
 
         if ((vertexCount & 0x3) != 0) {
             throw new IllegalStateException("Only quads are supported, got: " + vertexCount);
@@ -132,6 +136,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final boolean hasDynamicLights = chunkLightSources != null && !chunkLightSources.isEmpty();
         final boolean separateAo = BlockRenderingSettings.INSTANCE.shouldUseSeparateAo();
         final boolean celeritasSmoothLighting = ClientProxy.options().quality.useCeleritasSmoothLighting;
+        final boolean useRenderPassOptimization = ClientProxy.options().performance.useRenderPassOptimization;
         final boolean shaderActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean useAoCalculation = lightPipelineReady && (separateAo || celeritasSmoothLighting || shaderActive);
         final boolean shouldApplyDiffuse = !BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
@@ -150,7 +155,9 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final short originalBlockId = blockRenderContext.blockId;
 
         int stateIdx = 0;
-        int facesAtBaseMaterial = 0;
+        boolean hasCachedMaterial = false;
+        TextureAtlasSprite lastSprite = null;
+        Material lastMaterial = null;
 
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;
@@ -243,16 +250,14 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             // Apply RGB block light tint from provider
             applyBlockLightTint(worldX, worldY, worldZ, vertices);
 
-            final int faceBit = 1 << facing.ordinal();
             final Material correctMaterial;
-            if ((facesAtBaseMaterial & faceBit) != 0) {
-                // Face already has a non-demoted quad, skip selectMaterial entirely
-                correctMaterial = material;
+            if (hasCachedMaterial && sprite == lastSprite) {
+                correctMaterial = lastMaterial;
             } else {
-                correctMaterial = selectMaterial(material, sprite, isShaderPackOverride);
-                if (correctMaterial == material) {
-                    facesAtBaseMaterial |= faceBit;
-                }
+                correctMaterial = selectMaterial(material, sprite, isShaderPackOverride, useRenderPassOptimization);
+                lastSprite = sprite;
+                lastMaterial = correctMaterial;
+                hasCachedMaterial = true;
             }
             final var builder = buffers.get(correctMaterial);
 
@@ -266,8 +271,6 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             builder.getVertexBuffer(facing).push(vertices, correctMaterial);
         }
     }
-
-    private final float[] tintResult = new float[3];
 
     private void applyBlockLightTint(int x, int y, int z, ChunkVertexEncoder.Vertex[] vertices) {
         if (!hasColoredLight) return;

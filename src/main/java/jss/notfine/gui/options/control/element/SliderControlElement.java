@@ -28,7 +28,7 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
 
     @Override
     public String getLabel() {
-        return super.getLabel() + formatter.format(option.getValue());
+        return super.getLabel() + formatValue(formatter.format(option.getValue()));
     }
 
     @Override
