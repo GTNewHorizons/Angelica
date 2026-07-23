@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.compat.etfuturum.EndFlashCompat;
 import com.gtnewhorizons.angelica.compat.etfuturum.EtFuturumCompat;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
@@ -46,7 +47,9 @@ public class IrisExclusiveUniforms {
 
 		// Et Futurum Requiem backports the End Flash
 		final EndFlashStorage endFlashStorage = new EndFlashStorage();
-		updateNotifier.addListener(endFlashStorage::tick);
+		if (EndFlashCompat.isAvailable()) {
+			updateNotifier.addListener(endFlashStorage::tick);
+		}
 
 		//All Iris-exclusive uniforms (uniforms which do not exist in either OptiFine or ShadersMod) should be registered here.
 		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "thunderStrength", IrisExclusiveUniforms::getThunderStrength);
