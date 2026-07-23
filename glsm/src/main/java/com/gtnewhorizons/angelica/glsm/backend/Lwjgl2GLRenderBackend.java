@@ -327,7 +327,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void copyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) {
-        throw new UnsupportedOperationException("GLRenderBackend.copyBufferSubData should not be called — LWJGL service handles this");
+        GL31.glCopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size);
     }
 
     @Override
@@ -620,6 +620,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public void getTexImage(int target, int level, int format, int type, IntBuffer pixels) {
         GL11.glGetTexImage(target, level, format, type, pixels);
+    }
+
+    @Override
+    public void getTexImage(int target, int level, int format, int type, long pixelBufferOffset) {
+        GL11.glGetTexImage(target, level, format, type, pixelBufferOffset);
     }
 
     @Override
@@ -1059,6 +1064,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void flushMappedBufferRange(int target, long offset, long length) {
+        GL30.glFlushMappedBufferRange(target, offset, length);
+    }
+
+    @Override
     public int genVertexArrays() {
         return GL30.glGenVertexArrays();
     }
@@ -1247,6 +1257,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public int createBuffers() {
         return GL45.glCreateBuffers();
+    }
+
+    @Override
+    public void namedBufferData(int buffer, long size, int usage) {
+        GL45.glNamedBufferData(buffer, size, usage);
     }
 
     @Override

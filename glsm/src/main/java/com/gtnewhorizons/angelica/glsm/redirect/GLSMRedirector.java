@@ -48,6 +48,11 @@ public class GLSMRedirector {
     private static final String ARBInstancedArrays = "org/lwjgl/opengl/ARBInstancedArrays";
     private static final String ARBDrawInstanced = "org/lwjgl/opengl/ARBDrawInstanced";
     private static final String EXTDrawInstanced = "org/lwjgl/opengl/EXTDrawInstanced";
+    private static final String ARBBufferObject = "org/lwjgl/opengl/ARBBufferObject";
+    private static final String ARBVertexBufferObject = "org/lwjgl/opengl/ARBVertexBufferObject";
+    private static final String ARBBufferStorage = "org/lwjgl/opengl/ARBBufferStorage";
+    private static final String ARBCopyBuffer = "org/lwjgl/opengl/ARBCopyBuffer";
+    private static final String ARBMapBufferRange = "org/lwjgl/opengl/ARBMapBufferRange";
 
     // Redirect VAO related calls from NHLib
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -285,11 +290,16 @@ public class GLSMRedirector {
             .add("glBindBuffer")
             .add("glDeleteBuffers")
             .add("glBufferData")
+            .add("nglBufferData")
             .add("glBufferSubData")
+            .add("nglBufferSubData")
             .add("glMapBuffer")
             .add("glUnmapBuffer")
             .add("glGetBufferSubData")
+            .add("nglGetBufferSubData")
             .add("glGetBufferParameteri")
+            .add("glGetBufferParameter")
+            .add("glGetBufferParameteriv")
             .add("glIsBuffer");
         final var gl20 = RedirectMap.newMap()
             .add("glBlendEquationSeparate")
@@ -356,10 +366,13 @@ public class GLSMRedirector {
             .add("glVertexAttribIPointer")
             .add("glGenerateMipmap")
             .add("glGetFramebufferAttachmentParameteri")
-            .add("glBlitFramebuffer");
+            .add("glBlitFramebuffer")
+            .add("glMapBufferRange")
+            .add("glFlushMappedBufferRange");
         final var gl31 = RedirectMap.newMap()
             .add("glDrawElementsInstanced")
-            .add("glDrawArraysInstanced");
+            .add("glDrawArraysInstanced")
+            .add("glCopyBufferSubData");
         final var gl32 = RedirectMap.newMap()
             .add("glFramebufferTexture");
         final var gl33 = RedirectMap.newMap()
@@ -383,6 +396,10 @@ public class GLSMRedirector {
         final var gl44 = RedirectMap.newMap()
             .add("glBufferStorage")
             .add("glClearTexImage");
+        final var gl45 = RedirectMap.newMap()
+            .add("glCreateBuffers")
+            .add("glNamedBufferData")
+            .add("glNamedBufferSubData");
 
         // Merge all GL version maps into the flat lookup
         glMethodRedirects.putAll(gl11);
@@ -398,6 +415,7 @@ public class GLSMRedirector {
         glMethodRedirects.putAll(gl42);
         glMethodRedirects.putAll(gl43);
         glMethodRedirects.putAll(gl44);
+        glMethodRedirects.putAll(gl45);
 
         // MINECRAFT
         methodRedirects.put(OpenGlHelper, RedirectMap.newMap()
@@ -469,6 +487,31 @@ public class GLSMRedirector {
         methodRedirects.put(EXTDrawInstanced, RedirectMap.newMap()
             .add("glDrawArraysInstancedEXT", "glDrawArraysInstanced")
             .add("glDrawElementsInstancedEXT", "glDrawElementsInstanced")
+        );
+        final var arbBufferObject = RedirectMap.newMap()
+            .add("glBindBufferARB", "glBindBuffer")
+            .add("glGenBuffersARB", "glGenBuffers")
+            .add("glDeleteBuffersARB", "glDeleteBuffers")
+            .add("glIsBufferARB", "glIsBuffer")
+            .add("glBufferDataARB", "glBufferData")
+            .add("glBufferSubDataARB", "glBufferSubData")
+            .add("glGetBufferSubDataARB", "glGetBufferSubData")
+            .add("glMapBufferARB", "glMapBuffer")
+            .add("glUnmapBufferARB", "glUnmapBuffer")
+            .add("glGetBufferParameterARB", "glGetBufferParameter")
+            .add("glGetBufferParameteriARB", "glGetBufferParameteri")
+            .add("glGetBufferParameterivARB", "glGetBufferParameteriv");
+        methodRedirects.put(ARBBufferObject, arbBufferObject);
+        methodRedirects.put(ARBVertexBufferObject, arbBufferObject);
+        methodRedirects.put(ARBBufferStorage, RedirectMap.newMap()
+            .add("glBufferStorage")
+        );
+        methodRedirects.put(ARBCopyBuffer, RedirectMap.newMap()
+            .add("glCopyBufferSubData")
+        );
+        methodRedirects.put(ARBMapBufferRange, RedirectMap.newMap()
+            .add("glMapBufferRange")
+            .add("glFlushMappedBufferRange")
         );
 
         // APPLE

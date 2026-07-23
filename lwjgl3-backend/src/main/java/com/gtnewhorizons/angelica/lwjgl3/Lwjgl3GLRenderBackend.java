@@ -660,6 +660,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void getTexImage(int target, int level, int format, int type, long pixelBufferOffset) {
+        GL11C.glGetTexImage(target, level, format, type, pixelBufferOffset);
+    }
+
+    @Override
     public int getFramebufferAttachmentParameteri(int target, int attachment, int pname) {
         return GL30C.glGetFramebufferAttachmentParameteri(target, attachment, pname);
     }
@@ -1097,6 +1102,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void flushMappedBufferRange(int target, long offset, long length) {
+        GL30C.glFlushMappedBufferRange(target, offset, length);
+    }
+
+    @Override
     public int genVertexArrays() {
         return GL30C.glGenVertexArrays();
     }
@@ -1279,6 +1289,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public int createBuffers() {
         return GL45C.glCreateBuffers();
+    }
+
+    @Override
+    public void namedBufferData(int buffer, long size, int usage) {
+        GL45C.glNamedBufferData(buffer, size, usage);
     }
 
     @Override
