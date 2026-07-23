@@ -5,6 +5,7 @@ package net.coderbot.iris.gl.shader;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.GL11;
@@ -16,8 +17,8 @@ public class ProgramCreator {
 	private static final Logger LOGGER = LogManager.getLogger("ProgramCreator");
 
 	public static final int MC_ENTITY = 11;
-	public static final int MC_MID_TEX_COORD = 12;
-	public static final int AT_TANGENT = 13;
+	public static final int MC_MID_TEX_COORD = ImmediateExtendedAttribHandler.LOC_MID_TEX;
+	public static final int AT_TANGENT = ImmediateExtendedAttribHandler.LOC_TANGENT;
 	public static final int AT_MIDBLOCK = 14;
 
 	public static int create(String name, GlShader... shaders) {
