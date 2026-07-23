@@ -121,9 +121,9 @@ public class DSAUnsupported implements DSAAccess {
 
     @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
-        final int buffer = RENDER_BACKEND.genBuffers();
+        final int buffer = GLStateManager.glGenBuffers();
         GLStateManager.glBindBuffer(target, buffer);
-        RENDER_BACKEND.bufferData(target, data, usage);
+        GLStateManager.glBufferData(target, data, usage);
         GLStateManager.glBindBuffer(target, 0);
 
         return buffer;

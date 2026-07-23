@@ -104,8 +104,8 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int bufferStorage(int target, FloatBuffer data, int usage) {
-        final int buffer = RENDER_BACKEND.createBuffers();
-        RENDER_BACKEND.namedBufferData(buffer, data, usage);
+        final int buffer = GLStateManager.glCreateBuffers();
+        GLStateManager.glNamedBufferData(buffer, data, usage);
         return buffer;
     }
 

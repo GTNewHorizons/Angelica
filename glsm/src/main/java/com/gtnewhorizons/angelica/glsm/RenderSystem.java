@@ -304,7 +304,7 @@ public class RenderSystem {
     }
 
     public static void bufferData(int target, FloatBuffer data, int usage) {
-        RENDER_BACKEND.bufferData(target, data, usage);
+        GLStateManager.glBufferData(target, data, usage);
     }
 
     public static int bufferStorage(int target, FloatBuffer data, int usage) {
@@ -450,7 +450,7 @@ public class RenderSystem {
     }
 
     public static int createBuffers() {
-        return RENDER_BACKEND.genBuffers();
+        return GLStateManager.glGenBuffers();
     }
 
     public static void bindBufferBase(int target, int index, int buffer) {
@@ -458,13 +458,13 @@ public class RenderSystem {
     }
 
     public static void bufferStorage(int target, long size, int flags) {
-        RENDER_BACKEND.bufferStorage(target, size, flags);
+        GLStateManager.glBufferStorage(target, size, flags);
     }
 
     public static void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, int[] data) {
         final ByteBuffer buf = BufferUtils.createByteBuffer(data.length * 4);
         buf.asIntBuffer().put(data);
-        RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, buf);
+        GLStateManager.glClearBufferSubData(target, internalFormat, offset, size, format, type, buf);
     }
 
     public static void deleteBuffers(int buffer) {

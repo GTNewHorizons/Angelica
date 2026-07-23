@@ -151,6 +151,7 @@ public abstract class RenderBackend {
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, IntBuffer pixels);
     public abstract void getTexImage(int target, int level, int format, int type, ByteBuffer pixels);
     public abstract void getTexImage(int target, int level, int format, int type, IntBuffer pixels);
+    public abstract void getTexImage(int target, int level, int format, int type, long pixelBufferOffset);
     public abstract int getFramebufferAttachmentParameteri(int target, int attachment, int pname);
 
     public abstract int createShader(int type);
@@ -249,6 +250,7 @@ public abstract class RenderBackend {
     public abstract int getBufferParameteri(int target, int pname);
     public abstract boolean isBuffer(int buffer);
     public abstract ByteBuffer mapBufferRange(int target, long offset, long length, int access);
+    public abstract void flushMappedBufferRange(int target, long offset, long length);
 
     public abstract int genVertexArrays();
     public abstract void deleteVertexArrays(int array);
@@ -292,6 +294,7 @@ public abstract class RenderBackend {
     public abstract void namedFramebufferDrawBuffers(int framebuffer, IntBuffer bufs);
     public abstract void blitNamedFramebuffer(int readFramebuffer, int drawFramebuffer, int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1, int mask, int filter);
     public abstract int createBuffers();
+    public abstract void namedBufferData(int buffer, long size, int usage);
     public abstract void namedBufferData(int buffer, ByteBuffer data, int usage);
     public abstract void namedBufferData(int buffer, FloatBuffer data, int usage);
     public abstract void namedBufferSubData(int buffer, long offset, ByteBuffer data);
