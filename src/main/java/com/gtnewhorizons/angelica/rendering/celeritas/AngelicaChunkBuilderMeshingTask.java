@@ -150,9 +150,23 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
+                                double maxRenderDistanceSq;
+                                try {
+                                    maxRenderDistanceSq = tileEntity.getMaxRenderDistanceSquared();
+                                } catch (Throwable t) {
+                                    maxRenderDistanceSq = 4096.0D;
+                                }
                                 final boolean isGlobal;
                                 final byte boundsClass = TileEntityRenderBoundsRegistry.classify(tileEntity);
                                 if (boundsClass == TileEntityRenderBoundsRegistry.INFINITE || boundsClass == TileEntityRenderBoundsRegistry.DYNAMIC) {
+                                    isGlobal = true;
+                                } else if (maxRenderDistanceSq != 4096.0D) {
+                                    // Any custom render distance means the mod manages its own visibility -
+                                    // raised (Eye of Harmony, beacons) or even DYNAMIC: EnderIO travel
+                                    // anchors report 48^2 normally but 128^2+ while a travel staff is held.
+                                    // Such TEs go to the global list, whose render loop re-reads the limit
+                                    // live each frame; the culled list's TESR distance cap and whole-section
+                                    // distance skip only ever see TEs on the constant vanilla default.
                                     isGlobal = true;
                                 } else {
                                     AxisAlignedBB aabb;

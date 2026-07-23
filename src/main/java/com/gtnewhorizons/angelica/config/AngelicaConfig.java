@@ -20,6 +20,15 @@ public class AngelicaConfig {
     @Config.RequiresWorldRestart
     public static int chunkBuilderThreadCount;
 
+    @Config.Comment("Skip per-block-entity frustum tests for chunk sections that are entirely inside the view frustum. Pure CPU optimization for worlds with many animated blocks (TESRs); does not change what is rendered.")
+    @Config.DefaultBoolean(true)
+    public static boolean optimizeTileEntityCulling;
+
+    @Config.Comment("Maximum distance in blocks at which animated block renderers (TESRs) are drawn. Only applies to block entities using the vanilla default render distance (64 blocks); mods that raise their own render distance (Eye of Harmony, beacons, Space Elevator) always follow their own setting. Lowering this saves CPU time in large bases; blocks drawn entirely by their special renderer (e.g. chests) disappear beyond this distance. 0 = vanilla behavior.")
+    @Config.DefaultInt(64)
+    @Config.RangeInt(min = 0, max = 64)
+    public static int tesrRenderDistance;
+
     @Config.Comment("Enable NotFine Options")
     @Config.DefaultBoolean(false)
     public static boolean enableNotFineOptions;
