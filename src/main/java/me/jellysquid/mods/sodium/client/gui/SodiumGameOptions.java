@@ -105,6 +105,10 @@ public class SodiumGameOptions {
     }
 
     public static boolean anisotropySupported() {
+        return maxAnisotropyLevel() > 0;
+    }
+
+    public static boolean hasAnisotropyRange() {
         return maxAnisotropyLevel() > MIN_ANISOTROPY_LEVEL;
     }
 

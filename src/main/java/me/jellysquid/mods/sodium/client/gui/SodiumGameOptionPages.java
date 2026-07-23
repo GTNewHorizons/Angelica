@@ -550,7 +550,7 @@ public class SodiumGameOptionPages {
             .build();
 
         option.iris$dynamicallyEnable(() -> mipmapLevels.getAsInt() > 0 && mode.get().usesAnisotropy()
-            && SodiumGameOptions.anisotropySupported());
+            && SodiumGameOptions.hasAnisotropyRange());
 
         return option;
     }
