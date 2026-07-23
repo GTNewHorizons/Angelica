@@ -8,7 +8,7 @@ import ganymedes01.etfuturum.api.client.EndFlashAPI;
  */
 public final class EndFlashCompat {
 
-    private static final boolean AVAILABLE = Loader.isModLoaded("etfuturum");
+    private static final boolean AVAILABLE = Loader.isModLoaded("etfuturum") && EndFlashCompat.class.getResource("/ganymedes01/etfuturum/api/client/EndFlashAPI.class") != null;
 
     private EndFlashCompat() {}
 
