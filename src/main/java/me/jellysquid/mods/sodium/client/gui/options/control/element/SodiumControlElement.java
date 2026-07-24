@@ -16,6 +16,11 @@ public class SodiumControlElement<T> extends AbstractWidget implements ControlEl
         this.dim = dim;
     }
 
+    protected String formatValue(String value) {
+        return this.option.isAvailable() ? value
+            : String.valueOf(EnumChatFormatting.GRAY) + EnumChatFormatting.STRIKETHROUGH + value;
+    }
+
     @Override
     public void render(int mouseX, int mouseY, float delta) {
         String name = this.option.getName();

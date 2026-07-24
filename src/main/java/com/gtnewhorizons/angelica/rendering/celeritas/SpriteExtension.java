@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import com.gtnewhorizons.angelica.utils.MipmapStrategy;
 import org.embeddedt.embeddium.impl.render.chunk.sprite.SpriteTransparencyLevel;
 
 public interface SpriteExtension {
@@ -10,4 +11,5 @@ public interface SpriteExtension {
 
     /** One-shot: returns true if marked, then resets. */
     boolean celeritas$shouldUpdate();
+    void celeritas$setMipmapStrategy(MipmapStrategy strategy, boolean explicit, int textureType);
 }
