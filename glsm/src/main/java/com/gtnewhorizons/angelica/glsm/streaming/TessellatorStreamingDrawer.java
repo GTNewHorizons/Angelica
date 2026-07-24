@@ -88,13 +88,18 @@ public class TessellatorStreamingDrawer {
         final int vertexSize = format.getVertexSize();
 
         final int requiredBytes = vertexCount * vertexSize;
-        ensureRepackCapacity(requiredBytes);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            ensureRepackCapacity(requiredBytes);
 
-        final long writePtr = format.writeToBuffer0(repackAddress, tess.rawBuffer, tess.rawBufferIndex);
-        repackBuffer.position(0);
-        repackBuffer.limit((int)(writePtr - repackAddress));
+            final long writePtr = format.writeToBuffer0(repackAddress, tess.rawBuffer, tess.rawBufferIndex);
+            repackBuffer.position(0);
+            repackBuffer.limit((int)(writePtr - repackAddress));
 
-        uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
+            uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
+        }
 
         // Shrink rawBuffer if oversized
         if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
@@ -187,24 +192,29 @@ public class TessellatorStreamingDrawer {
      * Tries the persistent ring buffer first, falls back to orphan buffer on overflow.
      */
     private static void uploadAndDraw(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
-        ensureVAO(flags, format);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            ensureVAO(flags, format);
 
-        int firstVertex = -1;
+            int firstVertex = -1;
 
-        if (persistentBuffer != null) {
-            firstVertex = persistentBuffer.upload(packed, vertexSize);
+            if (persistentBuffer != null) {
+                firstVertex = persistentBuffer.upload(packed, vertexSize);
+            }
+
+            if (firstVertex >= 0) {
+                GLStateManager.glBindVertexArray(persistentVAOs[flags]);
+            } else {
+                GLStateManager.glBindVertexArray(orphanVAOs[flags]);
+                orphanBuffers[flags].upload(packed);
+                firstVertex = 0;
+            }
+
+            drawWithQuadConversion(drawMode, firstVertex, vertexCount);
+            GLStateManager.glBindVertexArray(0);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
-
-        if (firstVertex >= 0) {
-            GLStateManager.glBindVertexArray(persistentVAOs[flags]);
-        } else {
-            GLStateManager.glBindVertexArray(orphanVAOs[flags]);
-            orphanBuffers[flags].upload(packed);
-            firstVertex = 0;
-        }
-
-        drawWithQuadConversion(drawMode, firstVertex, vertexCount);
-        GLStateManager.glBindVertexArray(0);
     }
 
     private static void drawWithQuadConversion(int drawMode, int firstVertex, int vertexCount) {

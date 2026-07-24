@@ -877,9 +877,14 @@ public class DisplayListManager {
             // Empty display list - per OpenGL spec, still valid after glNewList/glEndList
             compiled = CompiledDisplayList.EMPTY;
         }
-        final CompiledDisplayList previous = displayListCache.put(glListId, compiled);
-        if (previous != null && previous != CompiledDisplayList.EMPTY && previous != compiled) {
-            previous.delete();
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            final CompiledDisplayList previous = displayListCache.put(glListId, compiled);
+            if (previous != null && previous != CompiledDisplayList.EMPTY && previous != compiled) {
+                previous.delete();
+            }
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
 
         // Log compilation details if enabled (before context restoration changes glListId)
@@ -1012,33 +1017,43 @@ public class DisplayListManager {
     }
 
     private static void executeDisplayList(int list) {
-        final CompiledDisplayList compiled = displayListCache.get(list);
-        if (compiled != null) {
-            compiled.render(list);
-            return;
-        }
-
-        // Fall back to VBOManager or legacy display list
-        if (list < 0) {
-            // Negative IDs are VBOManager space (entity models, etc.)
-            final VertexBuffer vbo = VBOManager.get(list);
-            if (vbo != null) {
-                vbo.render();
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            final CompiledDisplayList compiled = displayListCache.get(list);
+            if (compiled != null) {
+                compiled.render(list);
+                return;
             }
-            // Per OpenGL spec: if list is undefined, glCallList has no effect
+
+            // Fall back to VBOManager or legacy display list
+            if (list < 0) {
+                // Negative IDs are VBOManager space (entity models, etc.)
+                final VertexBuffer vbo = VBOManager.get(list);
+                if (vbo != null) {
+                    vbo.render();
+                }
+                // Per OpenGL spec: if list is undefined, glCallList has no effect
+            }
+            // An uncached positive-ID list = no-op (per OpenGL spec)
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
-        // An uncached positive-ID list = no-op (per OpenGL spec)
     }
 
     /**
      * Delete display lists and free their VBO resources.
      */
     public static void glDeleteLists(int list, int range) {
-        for (int i = list; i < list + range; i++) {
-            CompiledDisplayList compiled = displayListCache.remove(i);
-            if (compiled != null) {
-                compiled.delete();
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            for (int i = list; i < list + range; i++) {
+                CompiledDisplayList compiled = displayListCache.remove(i);
+                if (compiled != null) {
+                    compiled.delete();
+                }
             }
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
     }
 
