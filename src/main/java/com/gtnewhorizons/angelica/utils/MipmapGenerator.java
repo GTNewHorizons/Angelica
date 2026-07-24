@@ -4,19 +4,14 @@ import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import org.embeddedt.embeddium.api.util.ColorARGB;
 import org.embeddedt.embeddium.impl.texture.MipmapHelper;
 
-import java.util.Arrays;
-
 /**
  * Mipmap downsampling for atlas sprites, replacing vanilla's {@code TextureUtil.generateMipmapData}.
  */
 public final class MipmapGenerator {
 
     private static final float CUTOUT_ALPHA_REF = 0.5f;
-    private static final float STRICT_CUTOUT_ALPHA_REF = 0.3f;
+    private static final float STRICT_COVERAGE_TARGET = 0.35f;
     private static final float ALPHA_BIAS = 0.025f;
-    private static final float AUTO_STRICT_COVERAGE = 0.35f;
-    private static final IntArrayFIFOQueue SOLIDIFY_QUEUE_SCRATCH = new IntArrayFIFOQueue(64);
-    private static int[] solidifyColorScratch = new int[0];
 
     private MipmapGenerator() {
     }
@@ -33,10 +28,6 @@ public final class MipmapGenerator {
         return resolved == MipmapStrategy.CUTOUT
             || resolved == MipmapStrategy.STRICT_CUTOUT
             || resolved == MipmapStrategy.DARK_CUTOUT;
-    }
-
-    private static float alphaReferenceFor(MipmapStrategy resolved) {
-        return resolved == MipmapStrategy.STRICT_CUTOUT ? STRICT_CUTOUT_ALPHA_REF : CUTOUT_ALPHA_REF;
     }
 
     static void solidify(int[] image, int width, int height) {
@@ -56,15 +47,8 @@ public final class MipmapGenerator {
             return;
         }
 
-        int[] color = solidifyColorScratch;
-        if (color.length < size) {
-            color = new int[size];
-            solidifyColorScratch = color;
-        } else {
-            Arrays.fill(color, 0, size, 0);
-        }
-        final IntArrayFIFOQueue queue = SOLIDIFY_QUEUE_SCRATCH;
-        queue.clear();
+        final int[] color = new int[size];
+        final IntArrayFIFOQueue queue = new IntArrayFIFOQueue(64);
 
         for (int i = 0; i < size; i++) {
             final int pixel = image[i];
@@ -200,65 +184,6 @@ public final class MipmapGenerator {
         return total / quads;
     }
 
-    private static float[] alphaTestCoverage(int[] image, int width, float[] alphaRefs, int border) {
-        final int height = image.length / width;
-        final float alphaFactor = (float) 1.0 / 255.0f;
-        final float[] totals = new float[alphaRefs.length];
-        int quads = 0;
-
-        for (int y = border; y < height - border - 1; y++) {
-            for (int x = border; x < width - border - 1; x++) {
-                final int i = x + y * width;
-                final float a00 = scaledAlpha(image[i], alphaFactor);
-                final float a10 = scaledAlpha(image[i + 1], alphaFactor);
-                final float a01 = scaledAlpha(image[i + width], alphaFactor);
-                final float a11 = scaledAlpha(image[i + width + 1], alphaFactor);
-
-                final float lo = Math.min(Math.min(a00, a10), Math.min(a01, a11));
-                final float hi = Math.max(Math.max(a00, a10), Math.max(a01, a11));
-                quads++;
-
-                for (int r = 0; r < alphaRefs.length; r++) {
-                    final float alphaRef = alphaRefs[r];
-                    if (lo > alphaRef) {
-                        totals[r] += 1.0f;
-                        continue;
-                    }
-                    if (hi <= alphaRef) {
-                        continue;
-                    }
-
-                    int hits = 0;
-                    for (int sy = 0; sy < 4; sy++) {
-                        final float fy = (sy + 0.5f) / 4.0f;
-                        for (int sx = 0; sx < 4; sx++) {
-                            final float fx = (sx + 0.5f) / 4.0f;
-                            final float top = a00 + (a10 - a00) * fx;
-                            final float bottom = a01 + (a11 - a01) * fx;
-                            if (top + (bottom - top) * fy > alphaRef) {
-                                hits++;
-                            }
-                        }
-                    }
-                    totals[r] += hits / 16.0f;
-                }
-            }
-        }
-
-        final float[] result = new float[alphaRefs.length];
-        if (quads == 0) {
-            final float only = scaledAlpha(image[0], alphaFactor);
-            for (int r = 0; r < alphaRefs.length; r++) {
-                result[r] = only > alphaRefs[r] ? 1.0f : 0.0f;
-            }
-            return result;
-        }
-        for (int r = 0; r < alphaRefs.length; r++) {
-            result[r] = totals[r] / quads;
-        }
-        return result;
-    }
-
     private static float scaledAlpha(int color, float alphaFactor) {
         return clamp01(ColorARGB.unpackAlpha(color) * alphaFactor);
     }
@@ -307,7 +232,6 @@ public final class MipmapGenerator {
         final MipmapStrategy resolved = resolve(strategy, hasTransparentPixel);
         final boolean isCutout = isCutoutStrategy(strategy, hasTransparentPixel);
         final boolean darkCutout = resolved == MipmapStrategy.DARK_CUTOUT;
-        final boolean autoResolved = strategy == null || strategy == MipmapStrategy.AUTO;
 
         final int[][] result = new int[mipLevel + 1][];
         final int[] base = currentMips[0];
@@ -325,20 +249,15 @@ public final class MipmapGenerator {
             return result;
         }
 
-        float alphaRef = alphaReferenceFor(resolved);
-        float originalCoverage;
-
-        if (!isCutout) {
-            originalCoverage = 0.0f;
-        } else if (autoResolved) {
-            final float[] coverage = alphaTestCoverage(base, width, new float[]{alphaRef, STRICT_CUTOUT_ALPHA_REF}, border);
-            originalCoverage = coverage[0];
-            if (originalCoverage < AUTO_STRICT_COVERAGE) {
-                alphaRef = STRICT_CUTOUT_ALPHA_REF;
-                originalCoverage = coverage[1];
-            }
-        } else {
+        final boolean autoResolved = strategy == null || strategy == MipmapStrategy.AUTO;
+        final boolean strictCoverage = resolved == MipmapStrategy.STRICT_CUTOUT;
+        final float alphaRef = CUTOUT_ALPHA_REF;
+        float originalCoverage = 0.0f;
+        if (isCutout) {
             originalCoverage = alphaTestCoverage(base, width, alphaRef, 1.0f, border);
+            if (strictCoverage || (autoResolved && originalCoverage < STRICT_COVERAGE_TARGET)) {
+                originalCoverage = Math.max(originalCoverage, STRICT_COVERAGE_TARGET);
+            }
         }
 
         for (int level = 1; level <= mipLevel; level++) {
