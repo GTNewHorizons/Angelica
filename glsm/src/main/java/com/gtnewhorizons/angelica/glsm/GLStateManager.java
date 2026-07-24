@@ -97,6 +97,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntSupplier;
 
 import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
@@ -251,6 +252,18 @@ public class GLStateManager {
     @Getter @Setter private static Thread drawableGLHolder = MainThread;
     // Reference to DrawableGL (main display context) - works with both FML and BLS splash
     @Setter private static Drawable drawableGL = null;
+
+    private static final ReentrantLock DRAW_LOCK = new ReentrantLock();
+
+    public static boolean acquireDrawLock() {
+        if (splashComplete) return false;
+        DRAW_LOCK.lock();
+        return true;
+    }
+
+    public static void releaseDrawLock() {
+        DRAW_LOCK.unlock();
+    }
 
     public static boolean isCachingEnabled() {
         if (splashComplete) return true;
@@ -2244,15 +2257,25 @@ public class GLStateManager {
     }
 
     public static void preDraw(int drawMode) {
-        prepareWideLineEmulation(drawMode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        final boolean locked = acquireDrawLock();
+        try {
+            prepareWideLineEmulation(drawMode);
+            ShaderManager.getInstance().preDraw();
+            prepareClientArrays();
+        } finally {
+            if (locked) releaseDrawLock();
+        }
     }
 
     public static void preDraw() {
-        disableWideLineEmulation();
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        final boolean locked = acquireDrawLock();
+        try {
+            disableWideLineEmulation();
+            ShaderManager.getInstance().preDraw();
+            prepareClientArrays();
+        } finally {
+            if (locked) releaseDrawLock();
+        }
     }
 
     public static void glDrawElements(int mode, ByteBuffer indices) {
@@ -3246,6 +3269,7 @@ public class GLStateManager {
         splashComplete = true;
         drawableGLHolder = null;
         drawableGL = null;
+        ImmediateModeRecorder.cleanupOrphanTessellators();
     }
 
     public static void glNewList(int list, int mode) {
