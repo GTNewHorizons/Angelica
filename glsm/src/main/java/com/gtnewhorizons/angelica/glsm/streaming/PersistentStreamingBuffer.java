@@ -167,7 +167,9 @@ public class PersistentStreamingBuffer implements StreamingBuffer {
     private boolean syncOldest() {
         if (fenceQueue.isEmpty()) return false;
         final FencedRegion region = fenceQueue.first();
-        region.fence.sync();
+        if (!region.fence.sync()) {
+            GLStateManager.LOGGER.warn("Streaming buffer fence wait did not signal; reclaiming {} bytes anyway", region.bytes);
+        }
         region.fence.delete();
         fenceQueue.dequeue();
         remaining += region.bytes;
