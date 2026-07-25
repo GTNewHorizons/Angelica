@@ -94,6 +94,21 @@ public abstract class IrisGuiSlot extends GuiSlot {
         if (leftMouseDown && mouseX >= scrollBarX && mouseX <= rightEdge) {
             scrolling = true;
             this.initialClickY = (float) mouseY;
+
+            int contentOverflow = this.func_148135_f();
+            if (contentOverflow < 1) {
+                contentOverflow = 1;
+            }
+
+            int scrollPosSize = (this.bottom - this.top) * (this.bottom - this.top) / this.getContentHeight();
+            if (scrollPosSize < 32) {
+                scrollPosSize = 32;
+            }
+            if (scrollPosSize > this.bottom - this.top - 8) {
+                scrollPosSize = this.bottom - this.top - 8;
+            }
+
+            this.scrollMultiplier = -1.0F / ((float) (this.bottom - this.top - scrollPosSize) / (float) contentOverflow);
         } else if ((leftMouseDown || rightMouseDown)) {
             final int index = relativeY / this.slotHeight;
 
@@ -128,7 +143,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
 
         // Scrollbar nonsense
         if (scrolling) {
-            this.amountScrolled += ((float) mouseY - this.initialClickY);
+            this.amountScrolled -= ((float) mouseY - this.initialClickY) * this.scrollMultiplier;
             this.initialClickY = mouseY;
         } else if (this.mc.currentScreen != null ){
             while (!this.mc.gameSettings.touchscreen && Mouse.next()) {
