@@ -24,8 +24,11 @@ public class SettingsManager {
         new File(Launch.minecraftHome + File.separator + "optionsnf.txt")
     );
 
+    public static final float VANILLA_CLOUD_HEIGHT = 128.0f;
+
     public static int minimumFarPlaneDistance;
-    public static double cloudTranslucencyCheck;
+    public static float cloudHeightOffset;
+    public static AlwaysNever cloudTranslucencyMode = AlwaysNever.DEFAULT;
     public static boolean shadows;
     public static boolean droppedItemDetail;
     public static boolean leavesOpaque;
@@ -41,19 +44,27 @@ public class SettingsManager {
     }
 
     public static void cloudsUpdated() {
+        cloudHeightOffset = (int)Settings.CLOUD_HEIGHT.option.getStore() - VANILLA_CLOUD_HEIGHT;
         if(Settings.MODE_CLOUDS.option.getStore() != GraphicsQualityOff.OFF) {
             minimumFarPlaneDistance = 32 * ((int)Settings.RENDER_DISTANCE_CLOUDS.option.getStore());
-            minimumFarPlaneDistance += (int)Settings.CLOUD_HEIGHT.option.getStore();
             mc.gameSettings.clouds = true;
         } else {
             minimumFarPlaneDistance = 128;
             mc.gameSettings.clouds = false;
         }
-        switch((AlwaysNever)Settings.MODE_CLOUD_TRANSLUCENCY.option.getStore()) {
-            case DEFAULT -> cloudTranslucencyCheck = (int)Settings.CLOUD_HEIGHT.option.getStore();
-            case ALWAYS -> cloudTranslucencyCheck = Double.NEGATIVE_INFINITY;
-            case NEVER -> cloudTranslucencyCheck = Double.POSITIVE_INFINITY;
-        }
+        cloudTranslucencyMode = (AlwaysNever)Settings.MODE_CLOUD_TRANSLUCENCY.option.getStore();
+    }
+
+    public static float currentCloudHeight() {
+        return mc.theWorld == null ? VANILLA_CLOUD_HEIGHT : mc.theWorld.provider.getCloudHeight();
+    }
+
+    public static double cloudRenderOrderHeight() {
+        return switch(cloudTranslucencyMode) {
+            case ALWAYS -> Double.NEGATIVE_INFINITY;
+            case NEVER -> Double.POSITIVE_INFINITY;
+            default -> currentCloudHeight();
+        };
     }
 
     public static void downfallDistanceUpdated() {

@@ -490,7 +490,7 @@ public enum Mixins implements IMixins {
             "clouds.MixinEntityRenderer",
             "clouds.MixinGameSettings",
             //"clouds.MixinRenderGlobal",
-            "clouds.MixinWorldType",
+            "clouds.MixinWorldProvider",
 
             "fix.MixinRenderItem",
 

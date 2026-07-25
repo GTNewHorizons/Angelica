@@ -17,6 +17,8 @@ public abstract class MixinEntityRenderer {
         float required = SettingsManager.minimumFarPlaneDistance;
         if (AngelicaConfig.enableVBOClouds) {
             required = Math.max(required, CloudRenderer.getCloudRenderer().getRequiredFarPlaneDistance());
+        } else {
+            required += SettingsManager.currentCloudHeight();
         }
         return Math.max(original, required);
     }
