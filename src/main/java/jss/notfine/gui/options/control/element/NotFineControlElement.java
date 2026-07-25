@@ -1,6 +1,7 @@
 package jss.notfine.gui.options.control.element;
 
 import jss.notfine.gui.GuiCustomMenu;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlElement;
@@ -22,6 +23,10 @@ public class NotFineControlElement<T> extends GuiButton implements ControlElemen
         enabled = option.isAvailable();
     }
 
+    private static String disabledStyle() {
+        return String.valueOf(EnumChatFormatting.GRAY) + EnumChatFormatting.STRIKETHROUGH;
+    }
+
     @Override
     public void drawButton(Minecraft mc, int mouseX, int mouseY) {
         displayString = getLabel();
@@ -34,7 +39,9 @@ public class NotFineControlElement<T> extends GuiButton implements ControlElemen
         String name = option.getName();
         String label;
         enabled = option.isAvailable();
-        if(enabled && option.hasChanged()) {
+        if (!enabled) {
+            label = disabledStyle() + name;
+        } else if (option.hasChanged()) {
             label = EnumChatFormatting.ITALIC + name;
         } else {
             label = name;
@@ -43,17 +50,20 @@ public class NotFineControlElement<T> extends GuiButton implements ControlElemen
         return label;
     }
 
+    protected String formatValue(String value) {
+        return option.isAvailable() ? value : disabledStyle() + value;
+    }
+
     protected void onOptionValueChanged() {
         option.applyChanges();
 
         Collection<OptionFlag> flags = option.getFlags();
         Minecraft mc = Minecraft.getMinecraft();
-        if(flags.contains(OptionFlag.REQUIRES_RENDERER_RELOAD)) {
-            mc.renderGlobal.loadRenderers();
-        }
-        if(flags.contains(OptionFlag.REQUIRES_ASSET_RELOAD)) {
-            mc.getTextureMapBlocks().setMipmapLevels(mc.gameSettings.mipmapLevels);
+        if (flags.contains(OptionFlag.REQUIRES_ASSET_RELOAD)) {
+            SodiumGameOptions.applyAtlasSettings();
             mc.refreshResources();
+        } else if (flags.contains(OptionFlag.REQUIRES_RENDERER_RELOAD)) {
+            mc.renderGlobal.loadRenderers();
         }
         GuiCustomMenu.dirtyStorages.add(option.getStorage());
     }

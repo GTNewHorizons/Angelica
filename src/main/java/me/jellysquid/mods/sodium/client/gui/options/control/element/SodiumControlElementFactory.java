@@ -49,7 +49,7 @@ public class SodiumControlElementFactory implements ControlElementFactory {
             super.render(mouseX, mouseY, delta);
 
             Enum<T> value = this.option.getValue();
-            String name = this.names[value.ordinal()];
+            String name = this.formatValue(this.names[value.ordinal()]);
 
             int strWidth = this.getTextWidth(name);
             this.drawString(name, this.dim.getLimitX() - strWidth - 6, this.dim.getCenterY() - 4, 0xFFFFFFFF);
@@ -120,7 +120,7 @@ public class SodiumControlElementFactory implements ControlElementFactory {
             int sliderWidth = this.sliderBounds.getWidth();
             int sliderHeight = this.sliderBounds.getHeight();
 
-            String label = this.formatter.format(this.option.getValue());
+            String label = this.formatValue(this.formatter.format(this.option.getValue()));
             int labelWidth = this.font.getStringWidth(label);
 
             this.drawString(label, sliderX + sliderWidth - labelWidth, sliderY + (sliderHeight / 2) - 4, 0xFFFFFFFF);
@@ -137,12 +137,12 @@ public class SodiumControlElementFactory implements ControlElementFactory {
             double thumbOffset = MathHelper.clamp_double((double) (this.getIntValue() - this.min) / this.range * sliderWidth, 0, sliderWidth);
 
             double thumbX = sliderX + thumbOffset - THUMB_WIDTH;
-            double trackY = sliderY + (sliderHeight / 2) - ((double) TRACK_HEIGHT / 2);
+            double trackY = sliderY + ((double) sliderHeight / 2) - ((double) TRACK_HEIGHT / 2);
 
             this.drawRect(thumbX, sliderY, thumbX + (THUMB_WIDTH * 2), sliderY + sliderHeight, 0xFFFFFFFF);
             this.drawRect(sliderX, trackY, sliderX + sliderWidth, trackY + TRACK_HEIGHT, 0xFFFFFFFF);
 
-            String label = String.valueOf(this.getIntValue());
+            String label = this.formatter.format(this.getIntValue());
 
             int labelWidth = this.font.getStringWidth(label);
 

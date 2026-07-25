@@ -10,6 +10,7 @@ import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components.Sea
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab.Tab;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab.TabFrame;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
+import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
@@ -239,13 +240,11 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         }));
 
 
-        if (flags.contains(OptionFlag.REQUIRES_RENDERER_RELOAD)) {
-            this.mc.renderGlobal.loadRenderers();
-        }
-
         if (flags.contains(OptionFlag.REQUIRES_ASSET_RELOAD)) {
-            this.mc.getTextureMapBlocks().setMipmapLevels(this.mc.gameSettings.mipmapLevels);
+            SodiumGameOptions.applyAtlasSettings();
             this.mc.refreshResources();
+        } else if (flags.contains(OptionFlag.REQUIRES_RENDERER_RELOAD)) {
+            this.mc.renderGlobal.loadRenderers();
         }
 
         for (OptionStorage<?> storage : dirtyStorages) {

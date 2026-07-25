@@ -25,7 +25,7 @@ public class CyclingControlElement<T extends Enum<T>> extends NotFineControlElem
     @Override
     public String getLabel() {
         Enum<T> value = option.getValue();
-        return super.getLabel() + names[value.ordinal()];
+        return super.getLabel() + formatValue(names[value.ordinal()]);
     }
 
     @Override
