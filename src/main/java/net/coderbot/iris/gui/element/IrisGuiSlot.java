@@ -95,7 +95,7 @@ public abstract class IrisGuiSlot extends GuiSlot {
             scrolling = true;
             this.initialClickY = (float) mouseY;
 
-            int contentOverflow = this.func_148135_f();
+            int contentOverflow = this.func_148135_f/*getMaxScroll*/();
             if (contentOverflow < 1) {
                 contentOverflow = 1;
             }
