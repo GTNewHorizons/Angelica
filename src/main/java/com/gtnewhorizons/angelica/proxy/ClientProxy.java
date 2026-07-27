@@ -296,7 +296,7 @@ public final class ClientProxy extends CommonProxy {
                     event.left.set(i + 4, String.format(
                         "lc: %d b: %s bl: %d sl: %d rl: %d",
                         chunk.getTopFilledSegment() + 15,
-                        this.mc.theWorld.getBiomeGenForCoords(bX & 15, bZ & 15).biomeName,
+                        this.mc.theWorld.getBiomeGenForCoords(bX, bZ).biomeName,
                         chunk.getSavedLightValue(EnumSkyBlock.Block, bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15),
                         chunk.getSavedLightValue(EnumSkyBlock.Sky, bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15),
                         chunk.getBlockLightValue(bX & 15, CompatMathHelper.clampHeight(bY), bZ & 15, 0)));
