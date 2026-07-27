@@ -29,6 +29,9 @@ public final class GeometryShaderGenerator {
         if (key.fogEnabled()) {
             sb.append("in float v_FogCoord_gs[];\n");
         }
+        if (key.lineStipple()) {
+            sb.append("flat in vec2 v_LineStart_gs[];\n");
+        }
         sb.append('\n');
 
         sb.append("out vec4 v_Color;\n");
@@ -41,6 +44,9 @@ public final class GeometryShaderGenerator {
         if (key.unitTexCoordEnabled(3))       sb.append("out vec4 v_TexCoord3;\n");
         if (key.fogEnabled()) {
             sb.append("out float v_FogCoord;\n");
+        }
+        if (key.lineStipple()) {
+            sb.append("flat out vec2 v_LineStart;\n");
         }
         sb.append('\n');
 
@@ -84,6 +90,9 @@ public final class GeometryShaderGenerator {
         if (key.unitTexCoordEnabled(3))       sb.append("    v_TexCoord3 = v_TexCoord3_gs").append(idx).append(";\n");
         if (key.fogEnabled()) {
             sb.append("    v_FogCoord = v_FogCoord_gs").append(idx).append(";\n");
+        }
+        if (key.lineStipple()) {
+            sb.append("    v_LineStart = v_LineStart_gs[0];\n");
         }
 
         if (key.clipPlanesEnabled()) {

@@ -20,6 +20,7 @@ public final class FragmentShaderGenerator {
         sb.append("out vec4 fragColor;\n\n");
 
         sb.append("void main() {\n");
+        emitLineStipple(sb, key);
         emitTextureSampling(sb, key);
         emitTexEnvChain(sb, key);
         emitSpecularAdd(sb, key);
@@ -46,7 +47,17 @@ public final class FragmentShaderGenerator {
         if (key.fogMode() != FragmentKey.FOG_NONE) {
             sb.append("in float v_FogCoord;\n");
         }
+        if (key.lineStipple()) {
+            sb.append("flat in vec2 v_LineStart;\n");
+        }
         sb.append('\n');
+    }
+
+    private static void emitLineStipple(StringBuilder sb, FragmentKey key) {
+        if (!key.lineStipple()) return;
+        sb.append("  vec2 stippleDelta = abs(gl_FragCoord.xy - v_LineStart);\n");
+        sb.append("  int stippleBit = int(floor(max(stippleDelta.x, stippleDelta.y) / float(u_LineStipple >> 16))) & 15;\n");
+        sb.append("  if (((u_LineStipple >> stippleBit) & 1) == 0) discard;\n\n");
     }
 
     private static void emitUniforms(StringBuilder sb, FragmentKey key) {
@@ -58,6 +69,9 @@ public final class FragmentShaderGenerator {
         }
         if (key.alphaTestEnabled()) {
             sb.append("uniform float u_AlphaRef;\n");
+        }
+        if (key.lineStipple()) {
+            sb.append("uniform int u_LineStipple;\n");
         }
         // Per-unit texEnvColor uniforms
         for (int i = 0; i < key.nrEnabledUnits(); i++) {

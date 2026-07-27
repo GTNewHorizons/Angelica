@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 import org.lwjgl.BufferUtils;
@@ -12,7 +11,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 public class GLSM_MatrixStack_UnitTest {
 
     final static FloatBuffer buffer = BufferUtils.createFloatBuffer(16);

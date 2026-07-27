@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.util.GLBit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -21,7 +20,7 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_PushPop_UnitTest {
 
     @BeforeEach

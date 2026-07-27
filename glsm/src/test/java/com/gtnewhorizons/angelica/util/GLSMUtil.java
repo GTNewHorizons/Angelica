@@ -9,11 +9,13 @@ import org.lwjgl.opengl.GL13;
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.util.HashSet;
 import java.util.Set;
 import java.util.stream.IntStream;
 
 import static org.junit.jupiter.api.Assertions.assertAll;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 public class GLSMUtil {
@@ -39,7 +41,10 @@ public class GLSMUtil {
         GL11.GL_MAP2_VERTEX_3, GL11.GL_MAP2_VERTEX_4
     };
 
-    private static final Set<Integer> FFP_ONLY_CAPS = Set.of(
+    private static final Set<Integer> FFP_ONLY_CAPS = ffpOnlyCaps();
+
+    private static Set<Integer> ffpOnlyCaps() {
+        final Set<Integer> caps = new HashSet<>(Set.of(
         // Enable/disable caps (BooleanState ffpStateOnly=true)
         GL11.GL_FOG, GL11.GL_ALPHA_TEST, GL11.GL_LIGHTING,
         GL12.GL_RESCALE_NORMAL, GL11.GL_NORMALIZE, GL11.GL_COLOR_MATERIAL,
@@ -68,8 +73,15 @@ public class GLSMUtil {
         // Fog params
         GL11.GL_FOG_COLOR, GL11.GL_FOG_DENSITY,
         GL11.GL_FOG_START, GL11.GL_FOG_END,
-        GL11.GL_FOG_MODE, GL11.GL_FOG_INDEX
-    );
+        GL11.GL_FOG_MODE, GL11.GL_FOG_INDEX,
+        // Also removed from core profile
+        GL11.GL_POINT_SMOOTH, GL11.GL_POLYGON_STIPPLE,
+        GL11.GL_INDEX_LOGIC_OP, GL11.GL_AUTO_NORMAL));
+
+        for (int cap : MAP1_STATES) caps.add(cap);
+        for (int cap : MAP2_STATES) caps.add(cap);
+        return caps;
+    }
 
     private static boolean isFFPOnly(int glCap) {
         return FFP_ONLY_CAPS.contains(glCap);
@@ -81,7 +93,10 @@ public class GLSMUtil {
 
     public static void verifyIsEnabled(int glCap, boolean expected, String message) {
         if (isFFPOnly(glCap)) {
-            assertEquals(expected, GLStateManager.glIsEnabled(glCap), message + " - GLSM State Mismatch");
+            assertAll(message,
+                () -> assertFalse(GL11.glIsEnabled(glCap), "GL State Mismatch - cache-only cap reached the driver"),
+                () -> assertEquals(expected, GLStateManager.glIsEnabled(glCap), "GLSM State Mismatch")
+            );
         } else {
             assertAll(message,
                 () -> assertEquals(expected, GL11.glIsEnabled(glCap), "GL State Mismatch"),
@@ -96,7 +111,10 @@ public class GLSMUtil {
 
     public static void verifyState(int glCap, boolean expected, String message) {
         if (isFFPOnly(glCap)) {
-            assertEquals(expected, GLStateManager.glGetBoolean(glCap), message + " - GLSM State Mismatch");
+            assertAll(message,
+                () -> assertFalse(GL11.glGetBoolean(glCap), "GL State Mismatch - cache-only cap reached the driver"),
+                () -> assertEquals(expected, GLStateManager.glGetBoolean(glCap), "GLSM State Mismatch")
+            );
         } else {
             assertAll(message,
                 () -> assertEquals(expected, GL11.glGetBoolean(glCap), "GL State Mismatch"),
