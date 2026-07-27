@@ -6,6 +6,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.TextureMapExtension;
 import com.gtnewhorizons.angelica.utils.MipmapStrategies;
 import com.gtnewhorizons.angelica.utils.MipmapStrategy;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.minecraft.block.Block;
@@ -27,7 +29,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyArg;
-import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -74,15 +75,15 @@ public class MixinTextureMap implements TextureMapExtension {
     /**
      * Brackets each block's icon registration so the sprites it registers can be attributed to it.
      */
-    @Redirect(
+    @WrapOperation(
         method = "registerIcons",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/block/Block;registerBlockIcons(Lnet/minecraft/client/renderer/texture/IIconRegister;)V"))
-    private void angelica$trackBlockIcons(Block block, IIconRegister reg) {
+    private void angelica$trackBlockIcons(Block block, IIconRegister reg, Operation<Void> original) {
         MipmapStrategies.beginBlock(block);
         try {
-            block.registerBlockIcons(reg);
+            original.call(block, reg);
         } finally {
             MipmapStrategies.endBlock();
         }
