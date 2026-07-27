@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -12,7 +11,7 @@ import java.nio.IntBuffer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 class ArrayUniformUploadGLTest {
 
     private static int compile(int type, String src) {

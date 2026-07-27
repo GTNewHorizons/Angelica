@@ -6,13 +6,15 @@ import com.gtnewhorizons.angelica.glsm.recording.DisplayListVBO;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 
 import java.util.HashSet;
 import java.util.Set;
 
-import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.*;
-import static org.junit.jupiter.api.Assertions.*;
+import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.createColorDraw;
+import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.createDisplayList;
+import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.createSimpleDraw;
+import static com.gtnewhorizons.angelica.glsm.DisplayListTestHelper.createTextureDraw;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 
 /**
  * Tests for display list format-based batching behavior.
@@ -24,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  *   <li>Different formats produce separate VBOs</li>
  * </ul>
  */
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_DisplayList_Batching_Test {
 
     private static int getVBOCount(CompiledDisplayList compiledDisplayList) {

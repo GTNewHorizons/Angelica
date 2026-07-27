@@ -146,9 +146,13 @@ val downgradeTestClasses by tasks.registering(DowngradeFiles::class) {
     dependsOn(tasks.named("testClasses"))
 }
 
-tasks.test {
-    useJUnitPlatform()
+val GL_TASK_TAGS = mapOf(
+    "glCompatTest" to "gl-compat",
+    "glCoreTest" to "gl-core",
+    "glSharedTest" to "gl-shared",
+)
 
+fun Test.configureGlsmJava8() {
     javaLauncher = javaToolchains.launcherFor {
         languageVersion = JavaLanguageVersion.of(8)
         if (System.getProperty("os.name").lowercase().contains("mac")
@@ -171,23 +175,53 @@ tasks.test {
     classpath = downgradedTest
         .plus(downgradedMain)
         .plus(downgradedDeps)
-        .plus(classpath.minus(mainClassesDirs).minus(testClassesDirs).minus(depsToDowngrade))
+        .plus(sourceSets["test"].runtimeClasspath.minus(mainClassesDirs).minus(testClassesDirs).minus(depsToDowngrade))
 
     val extractNatives = rootProject.tasks.named("extractNatives2")
     dependsOn(extractNatives)
     jvmArgs("-Djava.library.path=${extractNatives.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}")
 }
 
+tasks.test {
+    useJUnitPlatform {
+        excludeTags = GL_TASK_TAGS.values.toSet()
+    }
+    configureGlsmJava8()
+}
+
+val glTestTasks = GL_TASK_TAGS.map { (taskName, tag) ->
+    tasks.register<Test>(taskName) {
+        description = "Runs the $tag GL tests in their own JVM, so they get their own Display and GL profile."
+        group = "verification"
+        useJUnitPlatform {
+            includeTags = setOf(tag)
+        }
+        configureGlsmJava8()
+    }
+}
+
+(listOf(tasks.test) + glTestTasks).zipWithNext { earlier, later ->
+    later.configure { mustRunAfter(earlier) }
+}
+tasks.test { finalizedBy(glTestTasks) }
+
 val verifyTestsRan by tasks.registering {
-    val resultsDir = layout.buildDirectory.dir("test-results/test")
-    dependsOn(tasks.test)
-    doLast {
-        val dir = resultsDir.get().asFile
-        val xmls = dir.listFiles { f -> f.name.startsWith("TEST-") && f.name.endsWith(".xml") } ?: emptyArray()
-        check(xmls.isNotEmpty()) {
-            ":glsm:test produced no TEST-*.xml in $dir - test task likely went NO-SOURCE"
+    dependsOn(tasks.test, glTestTasks)
+}
+(listOf(tasks.test) + glTestTasks).forEach { testTask ->
+    val name = testTask.name
+    val verify = tasks.register("verify${name.replaceFirstChar { it.uppercase() }}Ran") {
+        val resultsDir = layout.buildDirectory.dir("test-results/$name")
+        dependsOn(testTask)
+        doLast {
+            val dir = resultsDir.get().asFile
+            val xmls = dir.listFiles { f -> f.name.startsWith("TEST-") && f.name.endsWith(".xml") } ?: emptyArray()
+            check(xmls.isNotEmpty()) {
+                ":glsm:$name produced no TEST-*.xml in $dir - test task likely went NO-SOURCE"
+            }
         }
     }
+    verifyTestsRan.configure { dependsOn(verify) }
 }
 tasks.check { dependsOn(verifyTestsRan) }
 

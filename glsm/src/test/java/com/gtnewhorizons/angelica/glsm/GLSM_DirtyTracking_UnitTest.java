@@ -4,7 +4,6 @@ import org.joml.Vector4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -13,7 +12,7 @@ import java.nio.FloatBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 public class GLSM_DirtyTracking_UnitTest {
 
     static final FloatBuffer f4b = ByteBuffer.allocateDirect(4 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();

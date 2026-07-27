@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -23,7 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * need the full Minecraft environment. These tests focus on matrix
  * operations and display list lifecycle which work with raw GL calls.</p>
  */
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_DisplayList_Stress_Test {
 
     private final List<Integer> testLists = new ArrayList<>();

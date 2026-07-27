@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_DisplayList_UnitTest {
 
     @Test

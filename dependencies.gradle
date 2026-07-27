@@ -97,6 +97,10 @@ dependencies {
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
 
+    // BQ Testing
+//    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.74-GTNH:dev")
+
+
     // Display List Testing
     /*
     runtimeOnlyNonPublishable("com.github.GTNewHorizons:Applied-Energistics-2-Unofficial:rv3-beta-749-GTNH:dev")

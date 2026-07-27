@@ -1,13 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
-import com.gtnewhorizons.angelica.glsm.GLSMExtension;
+import com.gtnewhorizons.angelica.glsm.GLCompatTest;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader.UploadStrategy;
 import org.junit.jupiter.api.Assumptions;
-import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
-import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader.UploadStrategy;
-import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 
@@ -15,9 +14,10 @@ import java.nio.ByteBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class StreamingBufferTest {
 
     @ParameterizedTest
