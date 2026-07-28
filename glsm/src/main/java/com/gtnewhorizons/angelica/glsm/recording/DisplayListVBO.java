@@ -62,10 +62,13 @@ public final class DisplayListVBO {
         }
 
         public void render() {
-            vao.bind();
-            vao.draw(drawMode, start, count);
-            vao.unbind();
+        if (vao == null) return;
+        vao.bind();
+        if (count <= 0) { vao.unbind(); return; }
+        vao.draw(drawMode, start, count);
+        vao.unbind();
         }
+
 
         public IVertexArrayObject getVAO() {
             return vao;
