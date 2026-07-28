@@ -1,6 +1,12 @@
 package net.coderbot.iris.shadow;
 
+import com.gtnewhorizons.angelica.compat.etfuturum.EndFlashCompat;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
+import net.coderbot.iris.Iris;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.multiplayer.WorldClient;
+import net.minecraft.world.WorldProviderEnd;
 import org.joml.Matrix4f;
 
 import static com.gtnewhorizons.angelica.compat.mojang.Constants.DEGREES_TO_RADIANS;
@@ -40,22 +46,40 @@ public class ShadowMatrices {
 	}
 
 	public static void createBaselineModelViewMatrix(MatrixStack target, float shadowAngle, float sunPathRotation) {
-		final float skyAngle;
-
-		if (shadowAngle < 0.25f) {
-			skyAngle = shadowAngle + 0.75f;
-		} else {
-			skyAngle = shadowAngle - 0.25f;
-		}
-
 		target.peek().getNormal().identity();
 		target.peek().getModel().identity();
 
 		target.peek().getModel().translate(0.0f, 0.0f, -100.0f);
-        target.rotateX(90F * DEGREES_TO_RADIANS);
-        target.rotateZ(skyAngle * -360.0f * DEGREES_TO_RADIANS);
-        target.rotateX(sunPathRotation * DEGREES_TO_RADIANS);
+
+		if (isEndFlashShadow()) {
+			// Project shadows from the End flash direction instead of the sun/moon.
+			target.rotateX((0.0f - EndFlashCompat.getXAngle()) * DEGREES_TO_RADIANS);
+			target.rotateY(EndFlashCompat.getYAngle() * DEGREES_TO_RADIANS);
+		} else {
+			final float skyAngle;
+
+			if (shadowAngle < 0.25f) {
+				skyAngle = shadowAngle + 0.75f;
+			} else {
+				skyAngle = shadowAngle - 0.25f;
+			}
+
+			target.rotateX(90F * DEGREES_TO_RADIANS);
+			target.rotateZ(skyAngle * -360.0f * DEGREES_TO_RADIANS);
+			target.rotateX(sunPathRotation * DEGREES_TO_RADIANS);
+		}
     }
+
+	private static boolean isEndFlashShadow() {
+		final Minecraft mc = Minecraft.getMinecraft();
+		if (mc == null) {
+			return false;
+		}
+		final WorldClient world = mc.theWorld;
+		return world != null && world.provider instanceof WorldProviderEnd
+			&& EndFlashCompat.isAvailable()
+			&& Iris.getPipelineManager().getPipeline().map(WorldRenderingPipeline::supportsEndFlash).orElse(false);
+	}
 
 	public static void snapModelViewToGrid(MatrixStack target, float shadowIntervalSize, double cameraX, double cameraY, double cameraZ) {
 		if (Math.abs(shadowIntervalSize) == 0.0F) {

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraftforge.client.ForgeHooksClient;
 import org.apache.logging.log4j.LogManager;
@@ -11,6 +12,7 @@ import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.PixelFormat;
 import org.lwjgl.LWJGLUtil;
 import org.spongepowered.asm.mixin.Mixin;
@@ -63,15 +65,22 @@ public abstract class MixinForgeHooksClient_CoreProfile {
         final int platformMaxMinor = (LWJGLUtil.getPlatform() == LWJGLUtil.PLATFORM_MACOSX) ? 1 : 6;
         final int platformMax = platformMaxMajor * 10 + platformMaxMinor;
 
+        int maxProbe = platformMax;
+
         // Try pinned version first if configured
         final int pinned = angelica$clampPinned(AngelicaConfig.pinnedGLVersion, platformMax);
         if (pinned >= 33) {
             final Exception e = angelica$tryCreate(attribs, format, setMajor, setMinor, pinned / 10, pinned % 10);
             if (e == null) {
-                LOGGER.info("Created GL {}.{} core profile context (pinned)", pinned / 10, pinned % 10);
-                return;
+                final int cap = angelica$validateContext(pinned / 10, pinned % 10);
+                if (cap == 0) {
+                    LOGGER.info("Created GL {}.{} core profile context (pinned)", pinned / 10, pinned % 10);
+                    return;
+                }
+                maxProbe = Math.min(maxProbe, cap);
+            } else {
+                LOGGER.warn("Pinned GL version {}.{} failed, probing from highest", pinned / 10, pinned % 10);
             }
-            LOGGER.warn("Pinned GL version {}.{} failed, probing from highest", pinned / 10, pinned % 10);
         }
 
         // Probe from highest to lowest
@@ -80,8 +89,14 @@ public abstract class MixinForgeHooksClient_CoreProfile {
             final int maxMinor = (major == 4) ? platformMaxMinor : 3;
             final int minMinor = (major == 3) ? 3 : 0;
             for (int minor = maxMinor; minor >= minMinor; --minor) {
+                if (major * 10 + minor > maxProbe) continue;
                 final Exception e = angelica$tryCreate(attribs, format, setMajor, setMinor, major, minor);
                 if (e == null) {
+                    final int cap = angelica$validateContext(major, minor);
+                    if (cap != 0) {
+                        maxProbe = Math.min(maxProbe, cap);
+                        continue;
+                    }
                     final int version = major * 10 + minor;
                     LOGGER.info("Created GL {}.{} core profile context", major, minor);
                     // Auto-pin if below platform max, or update a stale pin
@@ -125,6 +140,20 @@ public abstract class MixinForgeHooksClient_CoreProfile {
             try { Display.destroy(); } catch (Exception ignored) {}
             return e;
         }
+    }
+
+    @Unique
+    private static int angelica$validateContext(int major, int minor) {
+        final String glVersion = GLStateManager.glGetString(GL11.GL_VERSION);
+        final int actual = RenderSystem.parseMajorMinor(glVersion);
+        final boolean core = (GLStateManager.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK) & GL32.GL_CONTEXT_CORE_PROFILE_BIT) != 0;
+        if (RenderSystem.isContextValid(major, minor, actual, core)) {
+            return 0;
+        }
+        LOGGER.warn("Requested GL {}.{} core context but driver returned \"{}\" (core profile: {}, GPU: {}); falling back to a lower version", major, minor, glVersion, core, GLStateManager.glGetString(GL11.GL_RENDERER));
+        try { Display.destroy(); } catch (Exception ignored) {}
+        final int requested = major * 10 + minor;
+        return (actual >= 0 && actual < requested) ? actual : requested - 1;
     }
 
     @Unique

@@ -75,7 +75,9 @@ public final class DisplayListVBO {
         }
 
         public void render() {
+            if (vao == null) return;
             vao.bind();
+            if (count <= 0) { vao.unbind(); return; }
             FfpExtendedAttribs.beginInternalDraw();
             try {
                 vao.draw(drawMode, start, count);
@@ -84,6 +86,7 @@ public final class DisplayListVBO {
             }
             vao.unbind();
         }
+
 
         public IVertexArrayObject getVAO() {
             return vao;

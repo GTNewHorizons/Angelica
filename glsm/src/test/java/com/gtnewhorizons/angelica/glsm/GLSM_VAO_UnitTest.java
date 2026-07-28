@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.util.GLSMUtil;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
@@ -13,7 +12,7 @@ import org.lwjgl.opengl.GL30;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 public class GLSM_VAO_UnitTest {
 
     @Test

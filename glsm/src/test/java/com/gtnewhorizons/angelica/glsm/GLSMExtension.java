@@ -8,9 +8,11 @@ import org.junit.jupiter.api.extension.ConditionEvaluationResult;
 import org.junit.jupiter.api.extension.ExecutionCondition;
 import org.junit.jupiter.api.extension.ExtensionContext;
 import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.ContextAttribs;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.PixelFormat;
 import sun.misc.Unsafe;
 
@@ -45,6 +47,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
     }
 
     private static boolean started = false;
+    private static Throwable startFailure;
     private static DisplayMode displayMode;
     public static String glVendor;
     public static String glRenderer;
@@ -55,21 +58,23 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
 
     @Override
     public void beforeAll(ExtensionContext context) throws LWJGLException {
-        if (!started) {
-            started = true;
-
+        if (startFailure != null) {
+            throw new IllegalStateException("GLSMExtension context setup failed earlier in this JVM", startFailure);
+        }
+        if (started) return;
+        try {
             displayMode = new DisplayMode(800, 600);
+            final GLSMInitConfig config = GLSMInitConfig.builder().displaySize(displayMode.getWidth(), displayMode.getHeight()).build();
+            setMainThread(Thread.currentThread());
+
+            latchRenderSystemOnCoreContext(config);
+
             Display.setDisplayModeAndFullscreen(displayMode);
             Display.setResizable(false);
             Display.setFullscreen(false);
-            final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(8);
-            Display.create(format);
+            Display.create(new PixelFormat().withDepthBits(24).withStencilBits(8));
 
-            setMainThread(Thread.currentThread());
-
-            GLStateManager.initialize(GLSMInitConfig.builder()
-                .displaySize(displayMode.getWidth(), displayMode.getHeight())
-                .build());
+            GLStateManager.initialize(config);
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete();
             GLStateManager.BYPASS_CACHE = false;
@@ -81,6 +86,30 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             System.out.println("OpenGL Vendor: " + glVendor);
             System.out.println("OpenGL Renderer: " + glRenderer);
             System.out.println("OpenGL Version: " + glVersion);
+
+            final int profileMask = GL11.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK);
+            if ((profileMask & GL32.GL_CONTEXT_COMPATIBILITY_PROFILE_BIT) == 0) {
+                throw new IllegalStateException("Expected a GL compatibility context, got profile mask 0x" + Integer.toHexString(profileMask) + " (" + glVersion + ")");
+            }
+            started = true;
+        } catch (LWJGLException | RuntimeException | Error e) {
+            startFailure = e;
+            throw e;
+        }
+    }
+
+
+    private static void latchRenderSystemOnCoreContext(GLSMInitConfig config) throws LWJGLException {
+        Display.setDisplayModeAndFullscreen(displayMode);
+        Display.setResizable(false);
+        Display.setFullscreen(false);
+        Display.create(
+            new PixelFormat().withDepthBits(24).withStencilBits(8),
+            new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true));
+        try {
+            GLStateManager.initialize(config);
+        } finally {
+            Display.destroy();
         }
     }
 
@@ -95,7 +124,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
         }
     }
 
-    private static void setMainThread(Thread thread) {
+    static void setMainThread(Thread thread) {
         try {
             final Field f = GLStateManager.class.getDeclaredField("MainThread");
             final Object base = theUnsafe.staticFieldBase(f);

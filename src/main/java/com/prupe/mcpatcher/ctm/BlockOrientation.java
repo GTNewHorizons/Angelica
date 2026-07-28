@@ -40,6 +40,7 @@ final class BlockOrientation extends RenderBlockState {
     private int altMetadata;
     private int metadataBits;
     private int renderType;
+    private boolean iCtmBlock;
 
     private int blockFace;
     private int textureFace;
@@ -74,6 +75,11 @@ final class BlockOrientation extends RenderBlockState {
     @Override
     public int getZ() {
         return z;
+    }
+
+    @Override
+    public int getMetadata() {
+        return metadata;
     }
 
     @Override
@@ -156,8 +162,8 @@ final class BlockOrientation extends RenderBlockState {
 
     @Override
     public boolean shouldConnectByBlock(Block neighbor, int neighborX, int neighborY, int neighborZ) {
-        return block == neighbor
-            && (metadataBits & (1 << blockAccess.getBlockMetadata(neighborX, neighborY, neighborZ))) != 0;
+        return iCtmBlock ? ((ICTMBlock) block).shouldConnectByBlock(this, neighbor, neighborX, neighborY, neighborZ)
+            : block == neighbor && (metadataBits & (1 << blockAccess.getBlockMetadata(neighborX, neighborY, neighborZ))) != 0;
     }
 
     @Override
@@ -175,6 +181,7 @@ final class BlockOrientation extends RenderBlockState {
         copy.altMetadata = altMetadata;
         copy.metadataBits = metadataBits;
         copy.renderType = renderType;
+        copy.iCtmBlock = iCtmBlock;
         copy.blockFace = blockFace;
         copy.textureFace = textureFace;
         copy.textureFaceOrig = textureFaceOrig;
@@ -203,6 +210,7 @@ final class BlockOrientation extends RenderBlockState {
         this.z = z;
         renderType = block.getRenderType();
         metadata = altMetadata = blockAccess.getBlockMetadata(x, y, z);
+        iCtmBlock = block instanceof ICTMBlock;
         offsetsComputed = false;
     }
 
@@ -223,6 +231,7 @@ final class BlockOrientation extends RenderBlockState {
         renderType = block.getRenderType();
         blockFace = textureFace = textureFaceOrig = face;
         this.metadata = metadata;
+        iCtmBlock = block instanceof ICTMBlock;
         metadataBits = 1 << metadata;
         dx = dy = dz = 0;
         rotateUV = 0;

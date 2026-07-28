@@ -91,21 +91,26 @@ public final class QuadConverter {
     }
 
     private static void drawSharedQuadEbo(int first, int vertexCount, int primcount, boolean instanced) {
-        GLStateManager.preDraw();
-        assert first % 4 == 0 : "QuadConverter: first (" + first + ") must be a multiple of 4";
-        assert vertexCount % 4 == 0 : "QuadConverter: vertexCount (" + vertexCount + ") must be a multiple of 4";
-        final int quadCount = vertexCount / 4;
-        final int prevEbo = GLStateManager.getBoundEBO();
-        ensureCapacity(first / 4 + quadCount);
-        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        // Index offset: first vertex / 4 quads * 6 indices * 4 bytes per int
-        final long indexOffset = (long) (first / 4) * 6 * 4;
-        if (instanced) {
-            RENDER_BACKEND.drawElementsInstanced(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset, primcount);
-        } else {
-            RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            GLStateManager.preDraw();
+            assert first % 4 == 0 : "QuadConverter: first (" + first + ") must be a multiple of 4";
+            assert vertexCount % 4 == 0 : "QuadConverter: vertexCount (" + vertexCount + ") must be a multiple of 4";
+            final int quadCount = vertexCount / 4;
+            final int prevEbo = GLStateManager.getBoundEBO();
+            ensureCapacity(first / 4 + quadCount);
+            RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+            // Index offset: first vertex / 4 quads * 6 indices * 4 bytes per int
+            final long indexOffset = (long) (first / 4) * 6 * 4;
+            if (instanced) {
+                RENDER_BACKEND.drawElementsInstanced(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset, primcount);
+            } else {
+                RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, quadCount * 6, INDEX_TYPE, indexOffset);
+            }
+            RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
-        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
     }
 
     /**
@@ -123,32 +128,37 @@ public final class QuadConverter {
     }
 
     private static void uploadAndDraw(ByteBuffer dst, int triIndexCount, int indexType, int bytesPerIndex, int primcount, boolean instanced) {
-        GLStateManager.preDraw();
-        final int needed = triIndexCount * bytesPerIndex;
-        final int prevEbo = GLStateManager.getBoundEBO();
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            GLStateManager.preDraw();
+            final int needed = triIndexCount * bytesPerIndex;
+            final int prevEbo = GLStateManager.getBoundEBO();
 
-        if (scratchEboId == 0) {
-            scratchEboId = RENDER_BACKEND.genBuffers();
+            if (scratchEboId == 0) {
+                scratchEboId = RENDER_BACKEND.genBuffers();
+            }
+
+            RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, scratchEboId);
+
+            if (needed > scratchEboCapacity) {
+                // Power-of-2 growth -- allocate full capacity, upload actual data
+                int newCap = Math.max(4096, scratchEboCapacity);
+                while (newCap < needed) newCap *= 2;
+                RENDER_BACKEND.bufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, newCap, GL15.GL_STREAM_DRAW);
+                scratchEboCapacity = newCap;
+            }
+            RENDER_BACKEND.bufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, 0, dst);
+
+            if (instanced) {
+                RENDER_BACKEND.drawElementsInstanced(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L, primcount);
+            } else {
+                RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L);
+            }
+
+            RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
-
-        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, scratchEboId);
-
-        if (needed > scratchEboCapacity) {
-            // Power-of-2 growth — allocate full capacity, upload actual data
-            int newCap = Math.max(4096, scratchEboCapacity);
-            while (newCap < needed) newCap *= 2;
-            RENDER_BACKEND.bufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, newCap, GL15.GL_STREAM_DRAW);
-            scratchEboCapacity = newCap;
-        }
-        RENDER_BACKEND.bufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, 0, dst);
-
-        if (instanced) {
-            RENDER_BACKEND.drawElementsInstanced(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L, primcount);
-        } else {
-            RENDER_BACKEND.drawElements(GL11.GL_TRIANGLES, triIndexCount, indexType, 0L);
-        }
-
-        RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, prevEbo);
         memFree(dst);
     }
 

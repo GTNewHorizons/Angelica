@@ -109,6 +109,8 @@ abstract public class RenderBlockState {
 
     abstract public int getZ();
 
+    abstract public int getMetadata();
+
     abstract public int getBlockFace();
 
     abstract public int getTextureFace();

@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLSMCoreExtension;
+import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
@@ -14,7 +13,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 class FFPUnboundTextureUnitTest {
 
     private final List<Integer> texturesToDelete = new ArrayList<>();

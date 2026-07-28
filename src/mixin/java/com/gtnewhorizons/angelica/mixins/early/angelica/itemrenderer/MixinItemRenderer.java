@@ -27,6 +27,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -43,6 +44,10 @@ public abstract class MixinItemRenderer {
 
     @WrapMethod(method = "renderItemIn2D")
     private static void angelica$cacheItem(Tessellator tessellator, float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness, Operation<Void> original) {
+        if (GLStateManager.isRecordingDisplayList() || TessellatorManager.isCurrentlyCapturing() || TessellatorManager.shouldInterceptDraw(Tessellator.instance)) {
+            original.call(tessellator, minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
+            return;
+        }
         final ItemRenderListManager.CachedVBO vbo = ItemRenderListManager.pre(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
         if (vbo != null) {
             final DirectTessellator tess = TessellatorManager.startCapturingDirect();

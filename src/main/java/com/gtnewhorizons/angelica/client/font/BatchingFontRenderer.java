@@ -327,6 +327,15 @@ public class BatchingFontRenderer {
     private int fontAAStrengthLast = -1;
 
     private void flushBatch() {
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            flushBatchInner();
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
+        }
+    }
+
+    private void flushBatchInner() {
         if (vertexDataPos == 0) {
             clearBatch();
             return;

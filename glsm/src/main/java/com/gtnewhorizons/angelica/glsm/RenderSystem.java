@@ -146,6 +146,9 @@ public class RenderSystem {
                 coreProfile = true;
                 GLStateManager.LOGGER.info("GL 3.3 core profile detected, enabling FFP shader emulation.");
                 ShaderManager.getInstance().enable();
+            } else {
+                throw new IllegalStateException("Non-core GL context (profile mask 0x" + Integer.toHexString(profileMask)
+                    + "); FFP emulation requires a core profile and nothing would render. Context creation should have rejected this.");
             }
         }
 
@@ -301,7 +304,7 @@ public class RenderSystem {
     }
 
     public static void bufferData(int target, FloatBuffer data, int usage) {
-        RENDER_BACKEND.bufferData(target, data, usage);
+        GLStateManager.glBufferData(target, data, usage);
     }
 
     public static int bufferStorage(int target, FloatBuffer data, int usage) {
@@ -447,7 +450,7 @@ public class RenderSystem {
     }
 
     public static int createBuffers() {
-        return RENDER_BACKEND.genBuffers();
+        return GLStateManager.glGenBuffers();
     }
 
     public static void bindBufferBase(int target, int index, int buffer) {
@@ -455,13 +458,13 @@ public class RenderSystem {
     }
 
     public static void bufferStorage(int target, long size, int flags) {
-        RENDER_BACKEND.bufferStorage(target, size, flags);
+        GLStateManager.glBufferStorage(target, size, flags);
     }
 
     public static void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, int[] data) {
         final ByteBuffer buf = BufferUtils.createByteBuffer(data.length * 4);
         buf.asIntBuffer().put(data);
-        RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, buf);
+        GLStateManager.glClearBufferSubData(target, internalFormat, offset, size, format, type, buf);
     }
 
     public static void deleteBuffers(int buffer) {
@@ -549,7 +552,7 @@ public class RenderSystem {
         }
     }
 
-    /** Parse a GL version string (e.g. "4.6.0 NVIDIA ...") into concatenated digits "460". Inlined from StandardMacros.getGlVersion(). */
+    /** Parse a GL version string (e.g. "4.6.0 NVIDIA ...") into concatenated digits "460" */
     static String parseGlVersionString(String info) {
         final Matcher matcher = SEMVER_PATTERN.matcher(Objects.requireNonNull(info));
         if (!matcher.matches()) {
@@ -560,5 +563,19 @@ public class RenderSystem {
         String bugfix = matcher.group("bugfix");
         if (bugfix == null || bugfix.isEmpty()) bugfix = "0";
         return major + minor + bugfix;
+    }
+
+    /** Parse a GL version string into packed major*10+minor (e.g. "4.3.0 - Build ..." -> 43), or -1 if unparseable. */
+    public static int parseMajorMinor(String glVersion) {
+        if (glVersion == null) return -1;
+        final Matcher matcher = SEMVER_PATTERN.matcher(glVersion.trim());
+        if (!matcher.matches()) return -1;
+        return Integer.parseInt(matcher.group("major")) * 10 + Integer.parseInt(matcher.group("minor"));
+    }
+
+    public static boolean isContextValid(int requestedMajor, int requestedMinor, int actualVersion, boolean coreBitSet) {
+        if (!coreBitSet) return false;
+        if (actualVersion < 0) return true;
+        return actualVersion >= requestedMajor * 10 + requestedMinor;
     }
 }

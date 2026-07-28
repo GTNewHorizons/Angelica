@@ -153,6 +153,11 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
+	public boolean supportsEndFlash() {
+		return false;
+	}
+
+	@Override
 	public CloudSetting getCloudSetting() {
 		return CloudSetting.DEFAULT;
 	}

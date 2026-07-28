@@ -17,6 +17,7 @@ public enum TargetedMod implements ITargetMod {
     DRAGON_API("Reika.DragonAPI.Auxiliary.DragonAPIASMHandler", "DragonAPI"),
     ET_FUTURUM_REQUIEM(null, "etfuturum"),
     EXTRAUTILS(null, "ExtraUtilities"),
+    FARSEEK("farseek.core.FarseekCoreMod", "farseek"),
     FALSETWEAKS("com.falsepattern.falsetweaks.asm.CoreLoadingPlugin", "falsetweaks"),
     MINEFACTORY_RELOADED(null, "MineFactoryReloaded"),
     NTM_SPACE("com.hbm.dim.SolarSystem"),

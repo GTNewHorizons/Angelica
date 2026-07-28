@@ -70,6 +70,7 @@ public class ShaderProperties {
 	@Getter private OptionalBoolean shadowPlayer = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean shadowBlockEntities = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean shadowLightBlockEntities = OptionalBoolean.DEFAULT;
+	@Getter private OptionalBoolean supportsEndFlash = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean underwaterOverlay = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean sun = OptionalBoolean.DEFAULT;
 	@Getter private OptionalBoolean moon = OptionalBoolean.DEFAULT;
@@ -205,6 +206,7 @@ public class ShaderProperties {
 			handleBooleanDirective(key, value, "shadowPlayer", bool -> shadowPlayer = bool);
 			handleBooleanDirective(key, value, "shadowBlockEntities", bool -> shadowBlockEntities = bool);
 			handleBooleanDirective(key, value, "shadowLightBlockEntities", bool -> shadowLightBlockEntities = bool);
+			handleBooleanDirective(key, value, "endFlashShadows", bool -> supportsEndFlash = bool);
 			handleBooleanDirective(key, value, "underwaterOverlay", bool -> underwaterOverlay = bool);
 			handleBooleanDirective(key, value, "sun", bool -> sun = bool);
 			handleBooleanDirective(key, value, "moon", bool -> moon = bool);

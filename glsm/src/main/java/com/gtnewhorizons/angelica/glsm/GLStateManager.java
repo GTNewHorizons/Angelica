@@ -58,8 +58,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4d;
 import org.joml.Matrix4f;
-import org.joml.Matrix4fc;
 import org.joml.Matrix4fStack;
+import org.joml.Matrix4fc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -90,6 +90,7 @@ import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
+import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -97,6 +98,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.ReentrantLock;
 import java.util.function.IntSupplier;
 
 import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
@@ -252,6 +254,18 @@ public class GLStateManager {
     // Reference to DrawableGL (main display context) - works with both FML and BLS splash
     @Setter private static Drawable drawableGL = null;
 
+    private static final ReentrantLock DRAW_LOCK = new ReentrantLock();
+
+    public static boolean acquireDrawLock() {
+        if (splashComplete) return false;
+        DRAW_LOCK.lock();
+        return true;
+    }
+
+    public static void releaseDrawLock() {
+        DRAW_LOCK.unlock();
+    }
+
     public static boolean isCachingEnabled() {
         if (splashComplete) return true;
         return Thread.currentThread() == drawableGLHolder;
@@ -368,16 +382,16 @@ public class GLStateManager {
     @Getter protected static final BooleanStateStack ditherState = new BooleanStateStack(GL11.GL_DITHER, true); // Defaults to true per OpenGL spec
     @Getter protected static final BooleanStateStack stencilTest = new BooleanStateStack(GL11.GL_STENCIL_TEST);
     @Getter protected static final BooleanStateStack lineSmoothState = new BooleanStateStack(GL11.GL_LINE_SMOOTH);
-    @Getter protected static final BooleanStateStack lineStippleState = new BooleanStateStack(GL11.GL_LINE_STIPPLE);
-    @Getter protected static final BooleanStateStack pointSmoothState = new BooleanStateStack(GL11.GL_POINT_SMOOTH);
+    @Getter protected static final BooleanStateStack lineStippleState = new BooleanStateStack(GL11.GL_LINE_STIPPLE, false, true);
+    @Getter protected static final BooleanStateStack pointSmoothState = new BooleanStateStack(GL11.GL_POINT_SMOOTH, false, true);
     @Getter protected static final BooleanStateStack polygonSmoothState = new BooleanStateStack(GL11.GL_POLYGON_SMOOTH);
-    @Getter protected static final BooleanStateStack polygonStippleState = new BooleanStateStack(GL11.GL_POLYGON_STIPPLE);
+    @Getter protected static final BooleanStateStack polygonStippleState = new BooleanStateStack(GL11.GL_POLYGON_STIPPLE, false, true);
     @Getter protected static final BooleanStateStack multisampleState = new BooleanStateStack(GL13.GL_MULTISAMPLE, true); // Defaults to true per OpenGL spec
     @Getter protected static final BooleanStateStack sampleAlphaToCoverageState = new BooleanStateStack(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE);
     @Getter protected static final BooleanStateStack sampleAlphaToOneState = new BooleanStateStack(GL13.GL_SAMPLE_ALPHA_TO_ONE);
     @Getter protected static final BooleanStateStack sampleCoverageState = new BooleanStateStack(GL13.GL_SAMPLE_COVERAGE);
     @Getter protected static final BooleanStateStack colorLogicOpState = new BooleanStateStack(GL11.GL_COLOR_LOGIC_OP);
-    @Getter protected static final BooleanStateStack indexLogicOpState = new BooleanStateStack(GL11.GL_INDEX_LOGIC_OP);
+    @Getter protected static final BooleanStateStack indexLogicOpState = new BooleanStateStack(GL11.GL_INDEX_LOGIC_OP, false, true);
 
     // Polygon offset states (enable bits)
     @Getter protected static final BooleanStateStack polygonOffsetPointState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_POINT);
@@ -397,6 +411,7 @@ public class GLStateManager {
      * {@link com.gtnewhorizons.angelica.glsm.ffp.VertexKey}.
      */
     public static boolean wideLineEmulationActive = false;
+    public static boolean lineStippleActive = false;
 
     // Point state (GL_POINT_BIT)
     @Getter protected static final PointStateStack pointState = new PointStateStack();
@@ -408,25 +423,25 @@ public class GLStateManager {
     @Getter protected static final StencilStateStack stencilState = new StencilStateStack();
     private static int stencilBitMask = 0xFFFFFFFF;
 
-    @Getter protected static final BooleanStateStack autoNormalState = new BooleanStateStack(GL11.GL_AUTO_NORMAL);
-    @Getter protected static final BooleanStateStack map1Color4State = new BooleanStateStack(GL11.GL_MAP1_COLOR_4);
-    @Getter protected static final BooleanStateStack map1IndexState = new BooleanStateStack(GL11.GL_MAP1_INDEX);
-    @Getter protected static final BooleanStateStack map1NormalState = new BooleanStateStack(GL11.GL_MAP1_NORMAL);
-    @Getter protected static final BooleanStateStack map1TextureCoord1State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_1);
-    @Getter protected static final BooleanStateStack map1TextureCoord2State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_2);
-    @Getter protected static final BooleanStateStack map1TextureCoord3State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_3);
-    @Getter protected static final BooleanStateStack map1TextureCoord4State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_4);
-    @Getter protected static final BooleanStateStack map1Vertex3State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_3);
-    @Getter protected static final BooleanStateStack map1Vertex4State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_4);
-    @Getter protected static final BooleanStateStack map2Color4State = new BooleanStateStack(GL11.GL_MAP2_COLOR_4);
-    @Getter protected static final BooleanStateStack map2IndexState = new BooleanStateStack(GL11.GL_MAP2_INDEX);
-    @Getter protected static final BooleanStateStack map2NormalState = new BooleanStateStack(GL11.GL_MAP2_NORMAL);
-    @Getter protected static final BooleanStateStack map2TextureCoord1State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_1);
-    @Getter protected static final BooleanStateStack map2TextureCoord2State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_2);
-    @Getter protected static final BooleanStateStack map2TextureCoord3State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_3);
-    @Getter protected static final BooleanStateStack map2TextureCoord4State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_4);
-    @Getter protected static final BooleanStateStack map2Vertex3State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_3);
-    @Getter protected static final BooleanStateStack map2Vertex4State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_4);
+    @Getter protected static final BooleanStateStack autoNormalState = new BooleanStateStack(GL11.GL_AUTO_NORMAL, false, true);
+    @Getter protected static final BooleanStateStack map1Color4State = new BooleanStateStack(GL11.GL_MAP1_COLOR_4, false, true);
+    @Getter protected static final BooleanStateStack map1IndexState = new BooleanStateStack(GL11.GL_MAP1_INDEX, false, true);
+    @Getter protected static final BooleanStateStack map1NormalState = new BooleanStateStack(GL11.GL_MAP1_NORMAL, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord1State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_1, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord2State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_2, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord3State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_3, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord4State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_4, false, true);
+    @Getter protected static final BooleanStateStack map1Vertex3State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_3, false, true);
+    @Getter protected static final BooleanStateStack map1Vertex4State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_4, false, true);
+    @Getter protected static final BooleanStateStack map2Color4State = new BooleanStateStack(GL11.GL_MAP2_COLOR_4, false, true);
+    @Getter protected static final BooleanStateStack map2IndexState = new BooleanStateStack(GL11.GL_MAP2_INDEX, false, true);
+    @Getter protected static final BooleanStateStack map2NormalState = new BooleanStateStack(GL11.GL_MAP2_NORMAL, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord1State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_1, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord2State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_2, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord3State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_3, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord4State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_4, false, true);
+    @Getter protected static final BooleanStateStack map2Vertex3State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_3, false, true);
+    @Getter protected static final BooleanStateStack map2Vertex4State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_4, false, true);
 
     // Clip plane states
     @Getter protected static final BooleanStateStack[] clipPlaneStates = new BooleanStateStack[MAX_CLIP_PLANES];
@@ -1037,6 +1052,7 @@ public class GLStateManager {
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
             // GL_TEXTURE_2D makes no sense here, but some mod still queries it...
             case GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
+            case GL13.GL_ACTIVE_TEXTURE -> GL13.GL_TEXTURE0 + getActiveTextureUnitForServerState();
             case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
@@ -1045,14 +1061,17 @@ public class GLStateManager {
             case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.colorControl;
 
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
-            case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
+            case GL11.GL_BLEND_DST, GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
-            case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL11.GL_BLEND_SRC, GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
             case GL14.GL_BLEND_EQUATION -> blendState.getEquationRgb();
             case GL20.GL_BLEND_EQUATION_ALPHA -> blendState.getEquationAlpha();
 
             case GL11.GL_LOGIC_OP_MODE -> logicOpMode.getValue();
             case GL11.GL_DRAW_BUFFER -> drawBuffer.getValue();
+
+            case GL11.GL_CULL_FACE_MODE -> polygonState.getCullFaceMode();
+            case GL11.GL_FRONT_FACE -> polygonState.getFrontFace();
 
             case GL11.GL_STENCIL_FUNC -> stencilState.getFuncFront();
             case GL11.GL_STENCIL_REF -> stencilState.getRefFront();
@@ -1092,6 +1111,10 @@ public class GLStateManager {
 
         switch (pname) {
             case GL11.GL_VIEWPORT -> viewportState.get(params);
+            case GL11.GL_POLYGON_MODE -> {
+                params.put(0, polygonState.getFrontMode());
+                params.put(1, polygonState.getBackMode());
+            }
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
                     params.put(0, glGetInteger(pname));
@@ -2244,15 +2267,25 @@ public class GLStateManager {
     }
 
     public static void preDraw(int drawMode) {
-        prepareWideLineEmulation(drawMode);
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        final boolean locked = acquireDrawLock();
+        try {
+            prepareLineEmulation(drawMode);
+            ShaderManager.getInstance().preDraw();
+            prepareClientArrays();
+        } finally {
+            if (locked) releaseDrawLock();
+        }
     }
 
     public static void preDraw() {
-        disableWideLineEmulation();
-        ShaderManager.getInstance().preDraw();
-        prepareClientArrays();
+        final boolean locked = acquireDrawLock();
+        try {
+            disableLineEmulation();
+            ShaderManager.getInstance().preDraw();
+            prepareClientArrays();
+        } finally {
+            if (locked) releaseDrawLock();
+        }
     }
 
     public static void glDrawElements(int mode, ByteBuffer indices) {
@@ -3256,6 +3289,7 @@ public class GLStateManager {
         splashComplete = true;
         drawableGLHolder = null;
         drawableGL = null;
+        ImmediateModeRecorder.cleanupOrphanTessellators();
     }
 
     public static void glNewList(int list, int mode) {
@@ -4065,8 +4099,8 @@ public class GLStateManager {
             return RENDER_BACKEND.getTexLevelParameteri(target, level, pname);
         }
         return switch (pname) {
-            case GL11.GL_TEXTURE_WIDTH -> info.getWidth();
-            case GL11.GL_TEXTURE_HEIGHT -> info.getHeight();
+            case GL11.GL_TEXTURE_WIDTH -> Math.max(info.getWidth() >> level, 1);
+            case GL11.GL_TEXTURE_HEIGHT -> Math.max(info.getHeight() >> level, 1);
             case GL11.GL_TEXTURE_INTERNAL_FORMAT -> {
                 if (info.needsInternalFormatResolve() && isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format("glGetTexLevelParameteri(GL_TEXTURE_INTERNAL_FORMAT) needs to resolve a generic compressed format for texture %d during display list recording", getBoundTextureForServerState()));
@@ -4592,15 +4626,21 @@ public class GLStateManager {
         }
     }
 
-    public static void prepareWideLineEmulation(int drawMode) {
-        wideLineEmulationActive =
-            (drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP)
-                && lineState.getWidth() > 1.0f
-                && wideLineEmulationEnabled;
+    public static void prepareLineEmulation(int drawMode) {
+        final boolean isLine = drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP;
+        wideLineEmulationActive = isLine && lineState.getWidth() > 1.0f && wideLineEmulationEnabled;
+        setLineStippleActive(isLine && lineStippleState.isEnabled());
     }
 
-    public static void disableWideLineEmulation() {
+    public static void disableLineEmulation() {
         wideLineEmulationActive = false;
+        setLineStippleActive(false);
+    }
+
+    private static void setLineStippleActive(boolean active) {
+        if (lineStippleActive == active) return;
+        lineStippleActive = active;
+        RENDER_BACKEND.provokingVertex(active ? GL32.GL_FIRST_VERTEX_CONVENTION : GL32.GL_LAST_VERTEX_CONVENTION);
     }
 
     public static void glFlush() {
@@ -5185,18 +5225,21 @@ public class GLStateManager {
         RENDER_BACKEND.deleteBuffers(buffers);
     }
 
+    public static void glDeleteBuffers(int[] buffers) {
+        for (int buffer : buffers) {
+            glDeleteBuffers(buffer);
+        }
+    }
+
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
         FfpExtendedAttribs.onDeleteBuffer(buffer);
-        if (boundVBO == buffer) boundVBO = 0;
-        if (VAOManager.boundEBO == buffer) VAOManager.boundEBO = 0;
-        if (boundPixelUnpackBuffer == buffer) boundPixelUnpackBuffer = 0;
-        if (boundPixelPackBuffer == buffer) boundPixelPackBuffer = 0;
+        if (boundVBO == buffer) glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        if (VAOManager.boundEBO == buffer) glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        if (boundPixelUnpackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+        if (boundPixelPackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
 
-        // Sweep all VAOs: an unbound VAO may later rebind with a dangling EBO id.
-        for (VAOManager.VAOData data : VAOManager.vaoMap.values()) {
-            if (data.ebo == buffer) data.ebo = 0;
-        }
+        VAOManager.onDeleteBuffer(buffer);
     }
 
     public static void glBindBuffer(int target, int buffer) {
@@ -5221,9 +5264,21 @@ public class GLStateManager {
         PixelUnpackState.applyDiff(applied, pixelUnpackState);
     }
 
+    private static boolean warnedUntrackedPixelBuffer;
+
+    private static void warnUntrackedPixelBuffer(int binding, String name) {
+        if (warnedUntrackedPixelBuffer || initConfig == null || !initConfig.isLwjglDebug()) return;
+        final int actual = RENDER_BACKEND.getInteger(binding);
+        if (actual == 0) return;
+        warnedUntrackedPixelBuffer = true;
+        LOGGER.warn("{} is bound to {} but GLSM's cache says 0; a call site bypassed GLStateManager.glBindBuffer", name, actual, new Throwable());
+    }
+
     static void suspendPixelUnpackBuffer() {
         if (boundPixelUnpackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+        } else {
+            warnUntrackedPixelBuffer(GL21.GL_PIXEL_UNPACK_BUFFER_BINDING, "GL_PIXEL_UNPACK_BUFFER");
         }
     }
 
@@ -5236,6 +5291,8 @@ public class GLStateManager {
     static void suspendPixelPackBuffer() {
         if (boundPixelPackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
+        } else {
+            warnUntrackedPixelBuffer(GL21.GL_PIXEL_PACK_BUFFER_BINDING, "GL_PIXEL_PACK_BUFFER");
         }
     }
 
@@ -5249,6 +5306,26 @@ public class GLStateManager {
         return RENDER_BACKEND.genBuffers();
     }
 
+    public static void glGenBuffers(IntBuffer buffers) {
+        for (int i = buffers.position(); i < buffers.limit(); i++) buffers.put(i, RENDER_BACKEND.genBuffers());
+    }
+
+    public static void glGenBuffers(int[] buffers) {
+        for (int i = 0; i < buffers.length; i++) buffers[i] = RENDER_BACKEND.genBuffers();
+    }
+
+    public static int glCreateBuffers() {
+        return RENDER_BACKEND.createBuffers();
+    }
+
+    public static void glCreateBuffers(IntBuffer buffers) {
+        for (int i = buffers.position(); i < buffers.limit(); i++) buffers.put(i, RENDER_BACKEND.createBuffers());
+    }
+
+    public static void glCreateBuffers(int[] buffers) {
+        for (int i = 0; i < buffers.length; i++) buffers[i] = RENDER_BACKEND.createBuffers();
+    }
+
     private static void onBufferRespec(int target) {
         if (FfpExtendedAttribs.isEmpty()) return;
         if (target == GL15.GL_ARRAY_BUFFER) {
@@ -5258,33 +5335,263 @@ public class GLStateManager {
         }
     }
 
+    private static void onNamedBufferRespec(int buffer) {
+        if (FfpExtendedAttribs.isEmpty()) return;
+        FfpExtendedAttribs.onBufferRespecified(buffer);
+    }
+
     public static void glBufferData(int target, long size, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, size, usage); }
-    public static void glBufferData(int target, int[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, float[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, ByteBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, ShortBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, IntBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, FloatBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, DoubleBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, LongBuffer data, int usage) { glBufferData(target, MemoryUtilities.memByteBuffer(data), usage); }
+    public static void glBufferData(int target, int[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, float[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, short[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferData(target, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferData(int target, long[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferData(target, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferData(int target, double[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferData(target, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+
+    public static void nglBufferData(int target, long size, long data, int usage) {
+        if (data == 0L) {
+            glBufferData(target, size, usage);
+            return;
+        }
+        glBufferData(target, MemoryUtilities.memByteBuffer(data, checkedSize(size)), usage);
+    }
+
     public static void glBufferSubData(int target, long offset, ByteBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static void glBufferSubData(int target, long offset, ShortBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static void glBufferSubData(int target, long offset, IntBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static void glBufferSubData(int target, long offset, FloatBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static void glBufferSubData(int target, long offset, DoubleBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, LongBuffer data) { glBufferSubData(target, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glBufferSubData(int target, long offset, short[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferSubData(target, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferSubData(int target, long offset, int[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferSubData(target, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferSubData(int target, long offset, long[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferSubData(target, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferSubData(int target, long offset, float[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferSubData(target, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferSubData(int target, long offset, double[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferSubData(target, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+
+    public static void nglBufferSubData(int target, long offset, long size, long data) { glBufferSubData(target, offset, MemoryUtilities.memByteBuffer(data, checkedSize(size))); }
+
     public static ByteBuffer glMapBuffer(int target, int access) { return RENDER_BACKEND.mapBuffer(target, access); }
+    public static ByteBuffer glMapBuffer(int target, int access, ByteBuffer old_buffer) { return glMapBuffer(target, access); }
     public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) { return RENDER_BACKEND.mapBuffer(target, access, length, old_buffer); }
+    public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access) { return RENDER_BACKEND.mapBufferRange(target, offset, length, access); }
+    public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access, ByteBuffer old_buffer) { return glMapBufferRange(target, offset, length, access); }
+    public static void glFlushMappedBufferRange(int target, long offset, long length) { RENDER_BACKEND.flushMappedBufferRange(target, offset, length); }
     public static boolean glUnmapBuffer(int target) { return RENDER_BACKEND.unmapBuffer(target); }
+
     public static void glGetBufferSubData(int target, long offset, ByteBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static void glGetBufferSubData(int target, long offset, ShortBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static void glGetBufferSubData(int target, long offset, IntBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static void glGetBufferSubData(int target, long offset, FloatBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
     public static void glGetBufferSubData(int target, long offset, DoubleBuffer data) { RENDER_BACKEND.getBufferSubData(target, offset, data); }
+    public static void glGetBufferSubData(int target, long offset, LongBuffer data) { glGetBufferSubData(target, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glGetBufferSubData(int target, long offset, short[] data) {
+        final ByteBuffer copy = MemoryUtilities.memAlloc(data.length << 1);
+        glGetBufferSubData(target, offset, copy);
+        copy.asShortBuffer().get(data);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glGetBufferSubData(int target, long offset, int[] data) {
+        final ByteBuffer copy = MemoryUtilities.memAlloc(data.length << 2);
+        glGetBufferSubData(target, offset, copy);
+        copy.asIntBuffer().get(data);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glGetBufferSubData(int target, long offset, long[] data) {
+        final ByteBuffer copy = MemoryUtilities.memAlloc(data.length << 3);
+        glGetBufferSubData(target, offset, copy);
+        copy.asLongBuffer().get(data);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glGetBufferSubData(int target, long offset, float[] data) {
+        final ByteBuffer copy = MemoryUtilities.memAlloc(data.length << 2);
+        glGetBufferSubData(target, offset, copy);
+        copy.asFloatBuffer().get(data);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glGetBufferSubData(int target, long offset, double[] data) {
+        final ByteBuffer copy = MemoryUtilities.memAlloc(data.length << 3);
+        glGetBufferSubData(target, offset, copy);
+        copy.asDoubleBuffer().get(data);
+        MemoryUtilities.memFree(copy);
+    }
+
+    public static void nglGetBufferSubData(int target, long offset, long size, long data) { glGetBufferSubData(target, offset, MemoryUtilities.memByteBuffer(data, checkedSize(size))); }
+
     public static int glGetBufferParameteri(int target, int pname) { return RENDER_BACKEND.getBufferParameteri(target, pname); }
-    public static void glBufferStorage(int target, ByteBuffer data, int flags) { RENDER_BACKEND.bufferStorage(target, data, flags); }
-    public static void glBufferStorage(int target, long size, int flags) { RENDER_BACKEND.bufferStorage(target, size, flags); }
+    public static int glGetBufferParameter(int target, int pname) { return glGetBufferParameteri(target, pname); }
+    public static void glGetBufferParameter(int target, int pname, IntBuffer params) { params.put(params.position(), glGetBufferParameteri(target, pname)); }
+    public static void glGetBufferParameteriv(int target, int pname, IntBuffer params) { params.put(params.position(), glGetBufferParameteri(target, pname)); }
+    public static void glGetBufferParameteriv(int target, int pname, int[] params) { params[0] = glGetBufferParameteri(target, pname); }
+
+    public static void glBufferStorage(int target, long size, int flags) { onBufferRespec(target); RENDER_BACKEND.bufferStorage(target, size, flags); }
+    public static void glBufferStorage(int target, ByteBuffer data, int flags) { onBufferRespec(target); RENDER_BACKEND.bufferStorage(target, data, flags); }
+    public static void glBufferStorage(int target, ShortBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
+    public static void glBufferStorage(int target, IntBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
+    public static void glBufferStorage(int target, FloatBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
+    public static void glBufferStorage(int target, DoubleBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
+    public static void glBufferStorage(int target, short[] data, int flags) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferStorage(target, copy, flags);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferStorage(int target, int[] data, int flags) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferStorage(target, copy, flags);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferStorage(int target, float[] data, int flags) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferStorage(target, copy, flags);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glBufferStorage(int target, double[] data, int flags) {
+        final ByteBuffer copy = copyOf(data);
+        glBufferStorage(target, copy, flags);
+        MemoryUtilities.memFree(copy);
+    }
+
+    public static void glNamedBufferData(int buffer, long size, int usage) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferData(buffer, size, usage); }
+    public static void glNamedBufferData(int buffer, ByteBuffer data, int usage) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferData(buffer, data, usage); }
+    public static void glNamedBufferData(int buffer, FloatBuffer data, int usage) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferData(buffer, data, usage); }
+    public static void glNamedBufferData(int buffer, ShortBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
+    public static void glNamedBufferData(int buffer, IntBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
+    public static void glNamedBufferData(int buffer, LongBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
+    public static void glNamedBufferData(int buffer, DoubleBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
+    public static void glNamedBufferData(int buffer, short[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferData(buffer, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferData(int buffer, int[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferData(buffer, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferData(int buffer, long[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferData(buffer, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferData(int buffer, float[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferData(buffer, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferData(int buffer, double[] data, int usage) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferData(buffer, copy, usage);
+        MemoryUtilities.memFree(copy);
+    }
+
+    public static void glNamedBufferSubData(int buffer, long offset, ByteBuffer data) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferSubData(buffer, offset, data); }
+    public static void glNamedBufferSubData(int buffer, long offset, ShortBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glNamedBufferSubData(int buffer, long offset, IntBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glNamedBufferSubData(int buffer, long offset, LongBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glNamedBufferSubData(int buffer, long offset, FloatBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glNamedBufferSubData(int buffer, long offset, DoubleBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
+    public static void glNamedBufferSubData(int buffer, long offset, short[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferSubData(buffer, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferSubData(int buffer, long offset, int[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferSubData(buffer, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferSubData(int buffer, long offset, long[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferSubData(buffer, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferSubData(int buffer, long offset, float[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferSubData(buffer, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+    public static void glNamedBufferSubData(int buffer, long offset, double[] data) {
+        final ByteBuffer copy = copyOf(data);
+        glNamedBufferSubData(buffer, offset, copy);
+        MemoryUtilities.memFree(copy);
+    }
+
     public static void glClearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearBufferSubData(target, internalFormat, offset, size, format, type, data); }
     public static boolean glIsBuffer(int buffer) { return RENDER_BACKEND.isBuffer(buffer); }
     public static void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) { RENDER_BACKEND.copyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size); }
+
+    private static int checkedSize(long size) {
+        if (size < 0 || size > Integer.MAX_VALUE) {
+            throw new IllegalArgumentException("Buffer range does not fit a ByteBuffer wrapper: " + size);
+        }
+        return (int) size;
+    }
+
+    private static ByteBuffer copyOf(short[] data) {
+        final ByteBuffer bb = MemoryUtilities.memAlloc(data.length << 1);
+        bb.asShortBuffer().put(data);
+        return bb;
+    }
+
+    private static ByteBuffer copyOf(int[] data) {
+        final ByteBuffer bb = MemoryUtilities.memAlloc(data.length << 2);
+        bb.asIntBuffer().put(data);
+        return bb;
+    }
+
+    private static ByteBuffer copyOf(long[] data) {
+        final ByteBuffer bb = MemoryUtilities.memAlloc(data.length << 3);
+        bb.asLongBuffer().put(data);
+        return bb;
+    }
+
+    private static ByteBuffer copyOf(float[] data) {
+        final ByteBuffer bb = MemoryUtilities.memAlloc(data.length << 2);
+        bb.asFloatBuffer().put(data);
+        return bb;
+    }
+
+    private static ByteBuffer copyOf(double[] data) {
+        final ByteBuffer bb = MemoryUtilities.memAlloc(data.length << 3);
+        bb.asDoubleBuffer().put(data);
+        return bb;
+    }
 
     public static void glBindVertexArray(int array) {
         if (DisplayListManager.isRecording()) {
@@ -6190,7 +6497,7 @@ public class GLStateManager {
         RENDER_BACKEND.getUniformiv(program, location, params);
     }
     public static void glGetTexImage(int target, int level, int format, int type, long pixels) {
-        GL11.glGetTexImage(target, level, format, type, pixels);
+        RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
     }
 
     /**

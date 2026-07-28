@@ -33,6 +33,9 @@ public class Program {
         int texGenGen = -1, clipPlaneGen = -1;
         float lightmapX = Float.NaN, lightmapY = Float.NaN, lineWidth = Float.NaN;
         int viewportWidth = -1, viewportHeight = -1;
+        int stippleViewportX = Integer.MIN_VALUE, stippleViewportY = Integer.MIN_VALUE;
+        int stippleViewportW = -1, stippleViewportH = -1;
+        int lineStipple = -1;
     }
     final UploadState uploadState = new UploadState();
 
@@ -97,6 +100,10 @@ public class Program {
     // Wide line emulation (geometry shader)
     public int locViewportSize = -1;
     public int locLineWidth = -1;
+
+    // Line stipple emulation
+    public int locViewport = -1;
+    public int locLineStipple = -1;
 
     // Fragment uniforms
     public final int[] locSampler = { -1, -1, -1, -1 };
@@ -173,6 +180,10 @@ public class Program {
         // Wide line emulation
         locViewportSize = loc("u_ViewportSize");
         locLineWidth = loc("u_LineWidth");
+
+        // Line stipple emulation
+        locViewport = loc("u_Viewport");
+        locLineStipple = loc("u_LineStipple");
 
         // Fragment
         for (int i = 0; i < 4; i++) {

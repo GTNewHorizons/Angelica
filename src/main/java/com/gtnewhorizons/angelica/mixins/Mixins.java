@@ -211,6 +211,8 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "rendering.MixinBlock"
             , "rendering.MixinBlockFluidBase"
+            , "rendering.MixinBlockLiquid"
+            , "rendering.BlockLiquidFlowInvoker"
             , "rendering.AccessorBiomeColorEvent"
             , "rendering.MixinBiomeGenBase"
             , "rendering.MixinChunk"
@@ -248,7 +250,8 @@ public enum Mixins implements IMixins {
             , "celeritas.frustum.MixinFrustrum"
             , "celeritas.features.culling.MixinEffectRenderer"
             , "celeritas.features.mipmaps.MixinTextureAtlasSprite"
-            , "celeritas.features.mipmaps.MixinTextureUtil"
+            , "celeritas.features.mipmaps.MixinTextureMetadataSection"
+            , "celeritas.features.mipmaps.MixinTextureMetadataSectionSerializer"
             , "celeritas.features.textures.MixinTextureMap"
             , "celeritas.features.textures.MixinTextureAtlasSprite"
             , "celeritas.biome_blending.MixinBlockGrass"
@@ -415,6 +418,12 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.removeUnicodeEvenScaling)
         .addClientMixins("angelica.bugfixes.MixinScaledResolution_UnicodeFix")),
 
+    FARSEEK_WORLDSLICE_COMPAT(new MixinBuilder("Let Farseek resolve celeritas' WorldSlice so Streams' water renders properly")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.FARSEEK)
+        .setApplyIf(() -> AngelicaConfig.enableCeleritas)
+        .addClientMixins("client.farseek.MixinFarseekIBlockAccessValue")),
+
     SECURITYCRAFT_COMPAT(new MixinBuilder("Fix reflection in SecurityCraft for compat with Angelica")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.SECURITYCRAFT)
@@ -481,7 +490,7 @@ public enum Mixins implements IMixins {
             "clouds.MixinEntityRenderer",
             "clouds.MixinGameSettings",
             //"clouds.MixinRenderGlobal",
-            "clouds.MixinWorldType",
+            "clouds.MixinWorldProvider",
 
             "fix.MixinRenderItem",
 

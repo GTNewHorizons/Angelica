@@ -33,7 +33,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
 
     private static final MCLogger logger = MCLogger.getLogger(MCLogger.Category.CONNECTED_TEXTURES, "CTM");
 
-    protected final PropertiesFile properties;
+    public final PropertiesFile properties;
     private final String baseFilename;
     protected final TileLoader tileLoader;
     protected final int renderPass;
@@ -79,7 +79,10 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         if (properties == null) {
             return null;
         }
+        return create(properties, tileLoader);
+    }
 
+    public static TileOverride create(PropertiesFile properties, TileLoader tileLoader) {
         String method = properties.getString("method", "default")
             .toLowerCase();
         TileOverride override = null;
@@ -211,7 +214,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             for (int i = 0;; i++) {
                 ResourceLocation resource = TileLoader
                     .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-                if (!TexturePackAPI.hasResource(resource)) {
+                if (!TexturePackAPI.hasResource(resource) && !tileLoader.ignoreMissingTextures()) {
                     break;
                 }
                 if (!addIcon(resource)) {
@@ -237,7 +240,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
                         .parseTileAddress(properties.getResource(), token, blankResource);
                     if (resource == null) {
                         tileNames.add(null);
-                    } else if (TexturePackAPI.hasResource(resource)) {
+                    } else if (TexturePackAPI.hasResource(resource) || tileLoader.ignoreMissingTextures()) {
                         addIcon(resource);
                     } else {
                         properties.warning("could not find image %s", resource);
@@ -252,7 +255,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         for (int i = from; i <= to; i++) {
             ResourceLocation resource = TileLoader
                 .parseTileAddress(properties.getResource(), String.valueOf(i), blankResource);
-            if (TexturePackAPI.hasResource(resource)) {
+            if (TexturePackAPI.hasResource(resource) || tileLoader.ignoreMissingTextures()) {
                 addIcon(resource);
             } else {
                 properties.warning("could not find image %s", resource);

@@ -10,6 +10,8 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.util.Arrays;
+import java.util.Queue;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
  * Records immediate mode GL calls (glBegin/glEnd/glVertex) via {@link DirectTessellator}.
@@ -18,28 +20,37 @@ import java.util.Arrays;
 public final class ImmediateModeRecorder {
     private static final CallbackTessellator tessellator = new CallbackTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
 
-    /** Separate tessellator for the splash thread. Nulled after splash completes. */
-    private static DirectTessellator splashTessellator;
+    private record ThreadTessellator(Thread thread, DirectTessellator tessellator) {}
+
+    private static final Queue<ThreadTessellator> threadTessellators = new ConcurrentLinkedQueue<>();
+    private static final ThreadLocal<DirectTessellator> threadTessellator = ThreadLocal.withInitial(() -> {
+        final DirectTessellator t = new DirectTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
+        threadTessellators.add(new ThreadTessellator(Thread.currentThread(), t));
+        cleanupOrphanTessellators();
+        return t;
+    });
 
     private ImmediateModeRecorder() {
 
     }
 
-    public static void initSplashTessellator() {
-        splashTessellator = new DirectTessellator(TessellatorManager.DEFAULT_BUFFER_SIZE);
+    public static int getThreadTessellatorCount() {
+        return threadTessellators.size();
     }
 
-    public static void destroySplashTessellator() {
-        splashTessellator.delete();
-        splashTessellator = null;
+    public static synchronized void cleanupOrphanTessellators() {
+        threadTessellators.removeIf(tt -> {
+            if (tt.thread().isAlive()) return false;
+            tt.tessellator().delete();
+            return true;
+        });
     }
 
     private static DirectTessellator tessellator() {
-        final DirectTessellator splash = splashTessellator;
-        if (splash != null && Thread.currentThread() != GLStateManager.getMainThread()) {
-            return splash;
+        if (Thread.currentThread() == GLStateManager.getMainThread()) {
+            return tessellator;
         }
-        return tessellator;
+        return threadTessellator.get();
     }
 
     public static DirectTessellator getInternalTessellator() {

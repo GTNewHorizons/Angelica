@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.util.GLBit;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -21,7 +20,7 @@ import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_PushPop_UnitTest {
 
     @BeforeEach
@@ -1131,5 +1130,53 @@ class GLSM_PushPop_UnitTest {
         // Cleanup
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+    }
+
+    @Test
+    void testBlendFuncGL11AliasesMatchGL14() {
+        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+
+        verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA, "Blend Source");
+        verifyState(GL14.GL_BLEND_SRC_RGB, GL11.GL_SRC_ALPHA, "Blend Source RGB");
+        verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination");
+        verifyState(GL14.GL_BLEND_DST_RGB, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination RGB");
+
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+    }
+
+    @Test
+    void testBlendFuncSeparateGL11AliasesTrackRgb() {
+        GLStateManager.glBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+
+        verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA, "Blend Source");
+        verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination");
+        verifyState(GL14.GL_BLEND_SRC_ALPHA, GL11.GL_ONE, "Blend Source Alpha");
+        verifyState(GL14.GL_BLEND_DST_ALPHA, GL11.GL_ZERO, "Blend Destination Alpha");
+
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+    }
+
+    @Test
+    void testPolygonStateReadBack() {
+        GLStateManager.glCullFace(GL11.GL_FRONT);
+        GLStateManager.glFrontFace(GL11.GL_CW);
+        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+
+        verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode");
+        verifyState(GL11.GL_FRONT_FACE, GL11.GL_CW, "Front Face");
+        verifyState(GL11.GL_POLYGON_MODE, new int[] { GL11.GL_LINE, GL11.GL_LINE }, "Polygon Mode");
+
+        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLStateManager.glFrontFace(GL11.GL_CCW);
+        GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_FILL);
+    }
+
+    @Test
+    void testActiveTextureReadBack() {
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE1, "Active Texture");
+
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - Reset");
     }
 }

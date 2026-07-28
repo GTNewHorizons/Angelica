@@ -11,7 +11,6 @@ options.graphics.ultra=ウルトラ
 options.off=オフ
 options.on=オン
 options.cloud_height=雲の高さ
-options.cloud_height.tooltip=雲の高さを設定します。
 options.cloud_scale=雲の大きさ
 options.cloud_scale.tooltip=雲の大きさを設定します。
 options.gui_background=背景テーマ

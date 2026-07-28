@@ -1,5 +1,6 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.compat.etfuturum.EndFlashCompat;
 import com.gtnewhorizons.angelica.compat.etfuturum.EtFuturumCompat;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
@@ -41,8 +42,14 @@ public class IrisExclusiveUniforms {
 	private static int cachedSelectedFrame = -1;
 	private static int cachedSelectedBlockId;
 
-	public static void addIrisExclusiveUniforms(UniformHolder uniforms) {
+	public static void addIrisExclusiveUniforms(UniformHolder uniforms, FrameUpdateNotifier updateNotifier) {
 		WorldInfoUniforms.addWorldInfoUniforms(uniforms);
+
+		// Et Futurum Requiem backports the End Flash
+		final EndFlashStorage endFlashStorage = new EndFlashStorage();
+		if (EndFlashCompat.isAvailable()) {
+			updateNotifier.addListener(endFlashStorage::tick);
+		}
 
 		//All Iris-exclusive uniforms (uniforms which do not exist in either OptiFine or ShadersMod) should be registered here.
 		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "thunderStrength", IrisExclusiveUniforms::getThunderStrength);
@@ -59,6 +66,8 @@ public class IrisExclusiveUniforms {
 		uniforms.uniform3d(UniformUpdateFrequency.PER_FRAME, "relativeEyePosition", IrisExclusiveUniforms::getRelativeEyePosition);
 		uniforms.uniform4f(UniformUpdateFrequency.PER_TICK, "lightningBoltPosition", IrisExclusiveUniforms::getLightningBoltPosition);
 		uniforms.uniform1f(UniformUpdateFrequency.PER_FRAME, "cloudTime", IrisExclusiveUniforms::getCloudTime);
+		uniforms.uniform1f(UniformUpdateFrequency.PER_TICK, "endFlashIntensity", endFlashStorage::getCurrentEndFlash);
+		uniforms.uniform1f(UniformUpdateFrequency.PER_TICK, "previousEndFlashIntensity", endFlashStorage::getLastEndFlash);
 		uniforms.uniform1b(UniformUpdateFrequency.PER_TICK, "feetInWater", IrisExclusiveUniforms::isFeetInWater);
 		uniforms.uniform1b(UniformUpdateFrequency.PER_TICK, "isRiding", IrisExclusiveUniforms::isRiding);
 		uniforms.uniform1b(UniformUpdateFrequency.PER_TICK, "vehicleInWater", IrisExclusiveUniforms::isVehicleInWater);

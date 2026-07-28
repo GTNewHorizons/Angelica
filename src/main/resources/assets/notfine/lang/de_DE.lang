@@ -10,7 +10,6 @@ options.graphics.ultra=Ultra
 options.off=Aus
 options.on=An
 options.cloud_height=Wolkenhöhe
-options.cloud_height.tooltip=Wolkenhöhe
 options.cloud_scale=Wolkengröße
 options.cloud_scale.tooltip=Wolkengröße
 options.gui_background=Hintergrund

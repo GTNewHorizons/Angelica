@@ -9,12 +9,12 @@ import net.minecraft.util.ResourceLocation;
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
 
-final public class PropertiesFile {
+public class PropertiesFile {
 
-    private final MCLogger logger;
-    private final ResourceLocation resource;
-    private final String prefix;
-    private final Properties properties;
+    protected final MCLogger logger;
+    protected final ResourceLocation resource;
+    protected final String prefix;
+    protected final Properties properties;
     private int errorCount;
 
     public static PropertiesFile get(MCLogger logger, ResourceLocation resource) {
@@ -146,5 +146,17 @@ final public class PropertiesFile {
         } else {
             return resource.equals(((PropertiesFile) that).resource);
         }
+    }
+
+    public MCLogger getLogger() {
+        return logger;
+    }
+
+    public String getPrefix() {
+        return prefix;
+    }
+
+    public Properties getProperties() {
+        return properties;
     }
 }

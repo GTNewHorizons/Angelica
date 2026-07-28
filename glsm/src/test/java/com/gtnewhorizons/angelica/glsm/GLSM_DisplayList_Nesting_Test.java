@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -15,7 +14,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
  * Tests for nested display list execution.
  * Verifies that child display lists compose correctly with parent transforms.
  */
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_DisplayList_Nesting_Test {
 
     private int parentList = -1;

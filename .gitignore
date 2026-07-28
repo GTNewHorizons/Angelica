@@ -12,6 +12,7 @@ build/
 /config/
 /crash-reports/
 /logs/
+tmp/
 options.txt
 /saves/
 usernamecache.json

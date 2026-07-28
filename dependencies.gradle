@@ -90,12 +90,16 @@ dependencies {
     compileOnly "org.apache.ant:ant:1.8.2"
 
     // Celeritas (transitive=false: deps provided by GTNHLib/runtime)
-    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.5-GTNH") { transitive = false }
+    embedOnly("org.embeddedt.celeritas:celeritas-common:2.5.8-GTNH") { transitive = false }
     embedOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:2.5.3-GTNH") { transitive = false }
 
     // Because who doesn't want NEI
     devOnlyNonPublishable('com.github.GTNewHorizons:NotEnoughItems:2.8.35-GTNH:dev')
     devOnlyNonPublishable('com.github.GTNewHorizons:CodeChickenCore:1.4.7:dev')
+
+    // BQ Testing
+//    devOnlyNonPublishable("com.github.GTNewHorizons:BetterQuesting:3.8.74-GTNH:dev")
+
 
     // Display List Testing
     /*
@@ -144,7 +148,7 @@ dependencies {
     compileOnly(rfg.deobf("curse.maven:campfirebackport-387444:4611675"))
     compileOnly(rfg.deobf("curse.maven:xaeros-minimap-263420:5060684"))
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
-    compileOnly(rfg.deobf("curse.maven:et-futurum-requiem-441392:5873837"))
+    compileOnly("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.49-GTNH:dev")
     compileOnly(rfg.deobf("curse.maven:biomes-o-plenty-220318:2499612"))
 
     devOnlyNonPublishable("com.github.GTNewHorizons:CosmeticArmorReworked:1.0.3-GTNH:dev")

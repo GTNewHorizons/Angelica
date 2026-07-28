@@ -2,17 +2,25 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.resources.IReloadableResourceManager;
+import net.minecraft.client.resources.IResourceManager;
+import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.util.ResourceLocation;
 
 import java.io.IOException;
 import java.io.InputStream;
 
-public final class FontProviderUnicode implements FontProvider {
+public final class FontProviderUnicode implements FontProvider, IResourceManagerReloadListener {
 
     private FontProviderUnicode() {
+        onResourceManagerReload(Minecraft.getMinecraft().getResourceManager());
+        ((IReloadableResourceManager) Minecraft.getMinecraft().getResourceManager()).registerReloadListener(this);
+    }
+
+    @Override
+    public void onResourceManagerReload(IResourceManager resourceManager) {
         try {
-            InputStream inputstream = Minecraft.getMinecraft().getResourceManager()
-                .getResource(new ResourceLocation("font/glyph_sizes.bin")).getInputStream();
+            InputStream inputstream = resourceManager.getResource(new ResourceLocation("font/glyph_sizes.bin")).getInputStream();
             //noinspection ResultOfMethodCallIgnored
             inputstream.read(this.glyphWidth);
         }

@@ -193,11 +193,6 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         scaleMult = cloudScaleMult;
 
         cloudElevation = finiteCloudHeight ? (int) dimCloudHeight : 128;
-        // Allows the setting to work with RFG and similar without hardcoding.
-        // The minimum height check is so stuff like Aether cloud height doesn't get messed up.
-        if (cloudElevation >= 96) {
-            cloudElevation = (int) Settings.CLOUD_HEIGHT.option.getStore();
-        }
     }
 
     /**

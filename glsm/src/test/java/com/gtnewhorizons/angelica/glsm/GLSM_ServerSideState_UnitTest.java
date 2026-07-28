@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL11;
@@ -15,7 +14,10 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.fail;
 
 /**
  * Tests for server-side GL state synchronization between SharedDrawable and DrawableGL contexts.
@@ -24,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.*;
  * be properly synchronized in the GLSM cache. Client-side state (texture bindings, active unit)
  * is per-context and should NOT be shared.
  */
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 public class GLSM_ServerSideState_UnitTest {
 
     private SharedDrawable sharedDrawable;

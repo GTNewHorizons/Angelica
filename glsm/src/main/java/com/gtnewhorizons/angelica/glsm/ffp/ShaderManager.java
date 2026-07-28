@@ -6,8 +6,10 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import lombok.Getter;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -66,9 +68,31 @@ public final class ShaderManager {
     }
 
     public void enable() {
+        warmUp();
         enabled = true;
 
         GLStateManager.LOGGER.info("FFP shader emulation enabled");
+    }
+
+    // Force loading of classes before the SplashThread kicks off
+    // Ensure it's GL free
+    private static void warmUp() {
+        try {
+            final long[] fkScratch = new long[FragmentKey.MAX_UNITS];
+            final int fkLen = FragmentKey.packFromState(fkScratch);
+            final int fragMask = FragmentKey.unitMaskFromPacked(fkScratch, fkLen);
+            final long vkPacked = VertexKey.packFromState(true, true, true, true, fragMask);
+            final VertexKey vk = VertexKey.fromPacked(vkPacked);
+            VertexShaderGenerator.generate(vk);
+            FragmentShaderGenerator.generate(FragmentKey.fromPacked(fkScratch, fkLen));
+            GeometryShaderGenerator.generate(vk);
+            final Class<?>[] touched = { Program.class, ShaderCache.class, TessellatorStreamingDrawer.class, QuadConverter.class };
+            for (Class<?> c : touched) {
+                c.getName();
+            }
+        } catch (Throwable t) {
+            GLStateManager.LOGGER.warn("FFP warmup failed; draw-path classes will resolve lazily", t);
+        }
     }
 
     public void disable() {
