@@ -5227,11 +5227,7 @@ public class GLStateManager {
         if (boundPixelUnpackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
         if (boundPixelPackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
 
-        // Sweep all VAOs: an unbound VAO may later rebind with a dangling EBO id.
-        for (VAOManager.VAOData data : VAOManager.vaoMap.values()) {
-            if (data.ebo == buffer) data.ebo = 0;
-        }
-
+        VAOManager.onDeleteBuffer(buffer);
     }
 
     public static void glBindBuffer(int target, int buffer) {
