@@ -1051,6 +1051,7 @@ public class GLStateManager {
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
             // GL_TEXTURE_2D makes no sense here, but some mod still queries it...
             case GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
+            case GL13.GL_ACTIVE_TEXTURE -> GL13.GL_TEXTURE0 + getActiveTextureUnitForServerState();
             case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
@@ -1059,14 +1060,17 @@ public class GLStateManager {
             case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.colorControl;
 
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
-            case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
+            case GL11.GL_BLEND_DST, GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
-            case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL11.GL_BLEND_SRC, GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
             case GL14.GL_BLEND_EQUATION -> blendState.getEquationRgb();
             case GL20.GL_BLEND_EQUATION_ALPHA -> blendState.getEquationAlpha();
 
             case GL11.GL_LOGIC_OP_MODE -> logicOpMode.getValue();
             case GL11.GL_DRAW_BUFFER -> drawBuffer.getValue();
+
+            case GL11.GL_CULL_FACE_MODE -> polygonState.getCullFaceMode();
+            case GL11.GL_FRONT_FACE -> polygonState.getFrontFace();
 
             case GL11.GL_STENCIL_FUNC -> stencilState.getFuncFront();
             case GL11.GL_STENCIL_REF -> stencilState.getRefFront();
@@ -1106,6 +1110,10 @@ public class GLStateManager {
 
         switch (pname) {
             case GL11.GL_VIEWPORT -> viewportState.get(params);
+            case GL11.GL_POLYGON_MODE -> {
+                params.put(0, polygonState.getFrontMode());
+                params.put(1, polygonState.getBackMode());
+            }
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
                     params.put(0, glGetInteger(pname));
