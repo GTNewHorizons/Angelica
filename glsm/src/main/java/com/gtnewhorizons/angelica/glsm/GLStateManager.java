@@ -5233,27 +5233,37 @@ public class GLStateManager {
 
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
-        FfpExtendedAttribs.onDeleteBuffer(buffer);
-        if (boundVBO == buffer) glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        if (VAOManager.boundEBO == buffer) glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
-        if (boundPixelUnpackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
-        if (boundPixelPackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
+        final boolean locked = acquireDrawLock();
+        try {
+            FfpExtendedAttribs.onDeleteBuffer(buffer);
+            if (boundVBO == buffer) glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            if (VAOManager.boundEBO == buffer) glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+            if (boundPixelUnpackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+            if (boundPixelPackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
 
-        VAOManager.onDeleteBuffer(buffer);
+            VAOManager.onDeleteBuffer(buffer);
+        } finally {
+            if (locked) releaseDrawLock();
+        }
     }
 
     public static void glBindBuffer(int target, int buffer) {
-        if (target == GL15.GL_ARRAY_BUFFER) {
-            // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
-            boundVBO = buffer;
-        } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
-            VAOManager.onBindEBO(buffer);
-        } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
-            boundPixelUnpackBuffer = buffer;
-        } else if (target == GL21.GL_PIXEL_PACK_BUFFER) {
-            boundPixelPackBuffer = buffer;
+        final boolean locked = acquireDrawLock();
+        try {
+            if (target == GL15.GL_ARRAY_BUFFER) {
+                // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
+                boundVBO = buffer;
+            } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
+                VAOManager.onBindEBO(buffer);
+            } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
+                boundPixelUnpackBuffer = buffer;
+            } else if (target == GL21.GL_PIXEL_PACK_BUFFER) {
+                boundPixelPackBuffer = buffer;
+            }
+            RENDER_BACKEND.bindBuffer(target, buffer);
+        } finally {
+            if (locked) releaseDrawLock();
         }
-        RENDER_BACKEND.bindBuffer(target, buffer);
     }
 
     public static void forcePixelUnpackState(PixelUnpackState target) {
@@ -5602,22 +5612,32 @@ public class GLStateManager {
         if (array == 0) {
             array = defaultVAO;
         }
-        if (boundVAO != array) {
-            boundVAO = array;
-            VAOManager.onBindVertexArrayPre(array);
-            RENDER_BACKEND.bindVertexArray(array);
+        final boolean locked = acquireDrawLock();
+        try {
+            if (boundVAO != array) {
+                boundVAO = array;
+                VAOManager.onBindVertexArrayPre(array);
+                RENDER_BACKEND.bindVertexArray(array);
+            }
+        } finally {
+            if (locked) releaseDrawLock();
         }
     }
 
     public static void glDeleteVertexArrays(int array) {
-        VAOManager.onDeleteVertexArray(array);
-        if (array == boundVAO) {
-            // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
-            boundVAO = defaultVAO;
-            VAOManager.onBindVertexArrayPre(defaultVAO);
-            RENDER_BACKEND.bindVertexArray(defaultVAO);
+        final boolean locked = acquireDrawLock();
+        try {
+            VAOManager.onDeleteVertexArray(array);
+            if (array == boundVAO) {
+                // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
+                boundVAO = defaultVAO;
+                VAOManager.onBindVertexArrayPre(defaultVAO);
+                RENDER_BACKEND.bindVertexArray(defaultVAO);
+            }
+            RENDER_BACKEND.deleteVertexArrays(array);
+        } finally {
+            if (locked) releaseDrawLock();
         }
-        RENDER_BACKEND.deleteVertexArrays(array);
     }
 
     public static int glGenVertexArrays() {
