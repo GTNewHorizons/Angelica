@@ -8,7 +8,9 @@ import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.renderer.ItemRenderer;
+import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
+import net.minecraftforge.client.IItemRenderer;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -16,7 +18,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
- * Mixin to handle item rendering in first-person.
+ * Mixin to handle item rendering in first-person, and to set the currentRenderedItem for every
+ * item rendered on an entity.
  */
 @Mixin(ItemRenderer.class)
 public class MixinItemRenderer {
@@ -50,6 +53,30 @@ public class MixinItemRenderer {
         at = @At("RETURN")
     )
     private void iris$resetFirstPersonItemId(float partialTicks, CallbackInfo ci) {
+        ItemIdManager.resetItemId();
+    }
+
+    /**
+     * Set the item ID for any item rendered on an entity.
+     */
+    @Inject(
+        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+        at = @At("HEAD"),
+        remap = false
+    )
+    private void iris$setEntityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type, CallbackInfo ci) {
+        ItemIdManager.setItemId(itemStack);
+    }
+
+    /**
+     * Clear the ID once the item is drawn.
+     */
+    @Inject(
+        method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
+        at = @At("RETURN"),
+        remap = false
+    )
+    private void iris$clearEntityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type, CallbackInfo ci) {
         ItemIdManager.resetItemId();
     }
 
