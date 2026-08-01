@@ -17,7 +17,8 @@ import org.spongepowered.asm.mixin.injection.At;
 public class MixinRenderBlocks_FaceNormals {
 
     @WrapOperation(
-        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier"},
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceYNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
     )
     private void angelica$normalYNeg(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon, Operation<Void> original) {
@@ -26,7 +27,8 @@ public class MixinRenderBlocks_FaceNormals {
     }
 
     @WrapOperation(
-        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier"},
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceYPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
     )
     private void angelica$normalYPos(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon, Operation<Void> original) {
@@ -35,7 +37,8 @@ public class MixinRenderBlocks_FaceNormals {
     }
 
     @WrapOperation(
-        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier"},
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceZNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
     )
     private void angelica$normalZNeg(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon, Operation<Void> original) {
@@ -44,7 +47,8 @@ public class MixinRenderBlocks_FaceNormals {
     }
 
     @WrapOperation(
-        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier"},
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceZPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
     )
     private void angelica$normalZPos(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon, Operation<Void> original) {
@@ -53,7 +57,8 @@ public class MixinRenderBlocks_FaceNormals {
     }
 
     @WrapOperation(
-        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier"},
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceXNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
     )
     private void angelica$normalXNeg(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon, Operation<Void> original) {
@@ -62,7 +67,8 @@ public class MixinRenderBlocks_FaceNormals {
     }
 
     @WrapOperation(
-        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier"},
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceXPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
     )
     private void angelica$normalXPos(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon, Operation<Void> original) {
