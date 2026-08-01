@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.irisshaders.iris.api.v0.IrisApi;
 
 public final class FallingBlockRendering {
 
@@ -9,7 +11,11 @@ public final class FallingBlockRendering {
     private FallingBlockRendering() {
     }
 
+    public static boolean isActive() {
+        return active && TessellatorManager.isOnMainThread() && IrisApi.getInstance().isShaderPackInUse();
+    }
+
     public static boolean skipDirectionalShading() {
-        return active && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
+        return isActive() && BlockRenderingSettings.INSTANCE.shouldDisableDirectionalShading();
     }
 }

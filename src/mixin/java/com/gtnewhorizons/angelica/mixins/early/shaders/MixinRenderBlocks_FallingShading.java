@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.minecraft.client.renderer.RenderBlocks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,12 +14,12 @@ import org.spongepowered.asm.mixin.injection.ModifyConstant;
 @Mixin(RenderBlocks.class)
 public class MixinRenderBlocks_FallingShading {
 
-    @WrapOperation(
+    @ModifyExpressionValue(
         method = "renderStandardBlock",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z")
     )
-    private boolean angelica$forceNonAoForFallingBlocks(Operation<Boolean> original) {
-        return !FallingBlockRendering.active && original.call();
+    private boolean angelica$forceNonAoForFallingBlocks(boolean original) {
+        return original && !FallingBlockRendering.isActive();
     }
 
     @ModifyConstant(method = "renderStandardBlockWithColorMultiplier", constant = @Constant(floatValue = 0.5F))

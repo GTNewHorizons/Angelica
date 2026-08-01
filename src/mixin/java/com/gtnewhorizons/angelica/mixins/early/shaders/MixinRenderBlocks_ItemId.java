@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
@@ -16,18 +17,20 @@ public class MixinRenderBlocks_ItemId {
 
     @WrapMethod(method = "renderBlockAsItem")
     private void iris$blockItemId(Block block, int metadata, float brightness, Operation<Void> original) {
-        final int prevItemId = ItemIdManager.getItemId();
-        final int prevBlockEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
-
         // renderBlockAsItem is shared with GUI and HUD item rendering
-        final boolean worldRender = ItemIdManager.isWorldRenderActive();
-        if (prevItemId > 0 || !worldRender) {
+        if (!ItemIdManager.isWorldRenderActive() || !TessellatorManager.isOnMainThread()) {
             original.call(block, metadata, brightness);
             return;
         }
 
+        final int prevItemId = ItemIdManager.getItemId();
+        final int prevBlockEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
+
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(1);
-        ItemIdManager.setBlockId(block, metadata);
+
+        if (prevItemId <= 0) {
+            ItemIdManager.setBlockId(block, metadata);
+        }
 
         try {
             original.call(block, metadata, brightness);

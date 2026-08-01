@@ -781,7 +781,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	public boolean shouldOverrideShaders() {
-		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain && isMainBound;
+		return isRenderingLevelGeometry() && isMainBound;
+	}
+
+	public boolean isRenderingLevelGeometry() {
+		return isRenderingWorld && !isRenderingFullScreenPass && !isPostChain;
 	}
 
 	public Pass getActivePassProgram() {

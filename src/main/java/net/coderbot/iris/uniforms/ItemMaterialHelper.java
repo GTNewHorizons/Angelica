@@ -24,6 +24,7 @@ public class ItemMaterialHelper {
     private static final int CACHE_MISS_SENTINEL = Integer.MIN_VALUE;
     private static final Reference2ObjectMap<Item, NamespacedId> ITEM_NAME_CACHE = new Reference2ObjectOpenHashMap<>();
     private static final Reference2ObjectMap<Block, Int2IntMap> BLOCK_MATERIAL_CACHE = new Reference2ObjectOpenHashMap<>();
+
     /**
      * Get the material ID for an ItemStack.
      * For ItemBlock: checks block.properties first, then item.properties.
@@ -123,11 +124,7 @@ public class ItemMaterialHelper {
         }
 
         final Item item = Item.getItemFromBlock(block);
-        if (item != null) {
-            return getMaterialId(item, metadata);
-        }
-
-        return -1;
+        return item != null ? lookupItemPropertiesId(item) : -1;
     }
 
     /**
@@ -158,16 +155,17 @@ public class ItemMaterialHelper {
         }
 
         // Fall back to item.properties
-        Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
-        if (itemIds != null) {
-            String itemIdString = Item.itemRegistry.getNameForObject(item);
-            if (itemIdString != null) {
-                ResourceLocation itemId = new ResourceLocation(itemIdString);
-                return itemIds.applyAsInt(new NamespacedId(itemId.getResourceDomain(), itemId.getResourcePath()));
-            }
+        return lookupItemPropertiesId(item);
+    }
+
+    private static int lookupItemPropertiesId(Item item) {
+        final Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
+        if (itemIds == null) {
+            return -1;
         }
 
-        return -1;
+        final NamespacedId name = getCachedItemName(item);
+        return name == null ? -1 : itemIds.applyAsInt(name);
     }
 
     /**
