@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.terrain;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
+import com.gtnewhorizons.angelica.event.RenderChunkEvent;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -164,6 +165,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             } else {
                 mc.mcProfiler.endStartSection("draw_chunk_layer_translucent");
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.TRANSLUCENT, camX, camY, camZ);
+                RenderChunkEvent.post();
             }
         } finally {
             RenderDevice.exitManagedCode();
