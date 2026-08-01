@@ -1,9 +1,11 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.RenderItemFrame;
 import net.minecraft.entity.item.EntityItemFrame;
 import org.spongepowered.asm.mixin.Mixin;
@@ -38,6 +40,11 @@ public class MixinRenderItemFrame {
     @Unique
     private static void angelica$renderCached(RenderItemFrame renderer, EntityItemFrame frame,
                                               Operation<Void> original, int keyIndex) {
+        if (GLStateManager.isRecordingDisplayList() || TessellatorManager.isCurrentlyCapturing()
+            || TessellatorManager.shouldInterceptDraw(Tessellator.instance)) {
+            original.call(renderer, frame);
+            return;
+        }
         int list = BlockRenderListManager.getItemFrameDisplayList(keyIndex);
         if (list == 0) {
             list = BlockRenderListManager.startCompiling();
