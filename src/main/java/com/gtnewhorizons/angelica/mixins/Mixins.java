@@ -157,6 +157,7 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addClientMixins(
             "angelica.itemrenderer.MixinItemRenderer",
+            "angelica.itemrenderer.MixinRenderItemFrame",
             "angelica.itemrenderer.MixinRenderBlocks"
         )
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
