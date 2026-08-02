@@ -57,8 +57,8 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.joml.Matrix4d;
 import org.joml.Matrix4f;
-import org.joml.Matrix4fc;
 import org.joml.Matrix4fStack;
+import org.joml.Matrix4fc;
 import org.joml.Vector3d;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
@@ -381,16 +381,16 @@ public class GLStateManager {
     @Getter protected static final BooleanStateStack ditherState = new BooleanStateStack(GL11.GL_DITHER, true); // Defaults to true per OpenGL spec
     @Getter protected static final BooleanStateStack stencilTest = new BooleanStateStack(GL11.GL_STENCIL_TEST);
     @Getter protected static final BooleanStateStack lineSmoothState = new BooleanStateStack(GL11.GL_LINE_SMOOTH);
-    @Getter protected static final BooleanStateStack lineStippleState = new BooleanStateStack(GL11.GL_LINE_STIPPLE);
-    @Getter protected static final BooleanStateStack pointSmoothState = new BooleanStateStack(GL11.GL_POINT_SMOOTH);
+    @Getter protected static final BooleanStateStack lineStippleState = new BooleanStateStack(GL11.GL_LINE_STIPPLE, false, true);
+    @Getter protected static final BooleanStateStack pointSmoothState = new BooleanStateStack(GL11.GL_POINT_SMOOTH, false, true);
     @Getter protected static final BooleanStateStack polygonSmoothState = new BooleanStateStack(GL11.GL_POLYGON_SMOOTH);
-    @Getter protected static final BooleanStateStack polygonStippleState = new BooleanStateStack(GL11.GL_POLYGON_STIPPLE);
+    @Getter protected static final BooleanStateStack polygonStippleState = new BooleanStateStack(GL11.GL_POLYGON_STIPPLE, false, true);
     @Getter protected static final BooleanStateStack multisampleState = new BooleanStateStack(GL13.GL_MULTISAMPLE, true); // Defaults to true per OpenGL spec
     @Getter protected static final BooleanStateStack sampleAlphaToCoverageState = new BooleanStateStack(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE);
     @Getter protected static final BooleanStateStack sampleAlphaToOneState = new BooleanStateStack(GL13.GL_SAMPLE_ALPHA_TO_ONE);
     @Getter protected static final BooleanStateStack sampleCoverageState = new BooleanStateStack(GL13.GL_SAMPLE_COVERAGE);
     @Getter protected static final BooleanStateStack colorLogicOpState = new BooleanStateStack(GL11.GL_COLOR_LOGIC_OP);
-    @Getter protected static final BooleanStateStack indexLogicOpState = new BooleanStateStack(GL11.GL_INDEX_LOGIC_OP);
+    @Getter protected static final BooleanStateStack indexLogicOpState = new BooleanStateStack(GL11.GL_INDEX_LOGIC_OP, false, true);
 
     // Polygon offset states (enable bits)
     @Getter protected static final BooleanStateStack polygonOffsetPointState = new BooleanStateStack(GL11.GL_POLYGON_OFFSET_POINT);
@@ -410,6 +410,7 @@ public class GLStateManager {
      * {@link com.gtnewhorizons.angelica.glsm.ffp.VertexKey}.
      */
     public static boolean wideLineEmulationActive = false;
+    public static boolean lineStippleActive = false;
 
     // Point state (GL_POINT_BIT)
     @Getter protected static final PointStateStack pointState = new PointStateStack();
@@ -421,25 +422,25 @@ public class GLStateManager {
     @Getter protected static final StencilStateStack stencilState = new StencilStateStack();
     private static int stencilBitMask = 0xFFFFFFFF;
 
-    @Getter protected static final BooleanStateStack autoNormalState = new BooleanStateStack(GL11.GL_AUTO_NORMAL);
-    @Getter protected static final BooleanStateStack map1Color4State = new BooleanStateStack(GL11.GL_MAP1_COLOR_4);
-    @Getter protected static final BooleanStateStack map1IndexState = new BooleanStateStack(GL11.GL_MAP1_INDEX);
-    @Getter protected static final BooleanStateStack map1NormalState = new BooleanStateStack(GL11.GL_MAP1_NORMAL);
-    @Getter protected static final BooleanStateStack map1TextureCoord1State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_1);
-    @Getter protected static final BooleanStateStack map1TextureCoord2State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_2);
-    @Getter protected static final BooleanStateStack map1TextureCoord3State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_3);
-    @Getter protected static final BooleanStateStack map1TextureCoord4State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_4);
-    @Getter protected static final BooleanStateStack map1Vertex3State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_3);
-    @Getter protected static final BooleanStateStack map1Vertex4State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_4);
-    @Getter protected static final BooleanStateStack map2Color4State = new BooleanStateStack(GL11.GL_MAP2_COLOR_4);
-    @Getter protected static final BooleanStateStack map2IndexState = new BooleanStateStack(GL11.GL_MAP2_INDEX);
-    @Getter protected static final BooleanStateStack map2NormalState = new BooleanStateStack(GL11.GL_MAP2_NORMAL);
-    @Getter protected static final BooleanStateStack map2TextureCoord1State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_1);
-    @Getter protected static final BooleanStateStack map2TextureCoord2State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_2);
-    @Getter protected static final BooleanStateStack map2TextureCoord3State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_3);
-    @Getter protected static final BooleanStateStack map2TextureCoord4State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_4);
-    @Getter protected static final BooleanStateStack map2Vertex3State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_3);
-    @Getter protected static final BooleanStateStack map2Vertex4State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_4);
+    @Getter protected static final BooleanStateStack autoNormalState = new BooleanStateStack(GL11.GL_AUTO_NORMAL, false, true);
+    @Getter protected static final BooleanStateStack map1Color4State = new BooleanStateStack(GL11.GL_MAP1_COLOR_4, false, true);
+    @Getter protected static final BooleanStateStack map1IndexState = new BooleanStateStack(GL11.GL_MAP1_INDEX, false, true);
+    @Getter protected static final BooleanStateStack map1NormalState = new BooleanStateStack(GL11.GL_MAP1_NORMAL, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord1State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_1, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord2State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_2, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord3State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_3, false, true);
+    @Getter protected static final BooleanStateStack map1TextureCoord4State = new BooleanStateStack(GL11.GL_MAP1_TEXTURE_COORD_4, false, true);
+    @Getter protected static final BooleanStateStack map1Vertex3State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_3, false, true);
+    @Getter protected static final BooleanStateStack map1Vertex4State = new BooleanStateStack(GL11.GL_MAP1_VERTEX_4, false, true);
+    @Getter protected static final BooleanStateStack map2Color4State = new BooleanStateStack(GL11.GL_MAP2_COLOR_4, false, true);
+    @Getter protected static final BooleanStateStack map2IndexState = new BooleanStateStack(GL11.GL_MAP2_INDEX, false, true);
+    @Getter protected static final BooleanStateStack map2NormalState = new BooleanStateStack(GL11.GL_MAP2_NORMAL, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord1State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_1, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord2State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_2, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord3State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_3, false, true);
+    @Getter protected static final BooleanStateStack map2TextureCoord4State = new BooleanStateStack(GL11.GL_MAP2_TEXTURE_COORD_4, false, true);
+    @Getter protected static final BooleanStateStack map2Vertex3State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_3, false, true);
+    @Getter protected static final BooleanStateStack map2Vertex4State = new BooleanStateStack(GL11.GL_MAP2_VERTEX_4, false, true);
 
     // Clip plane states
     @Getter protected static final BooleanStateStack[] clipPlaneStates = new BooleanStateStack[MAX_CLIP_PLANES];
@@ -1050,6 +1051,7 @@ public class GLStateManager {
             case GL11.GL_SHADE_MODEL -> shadeModelState.getValue();
             // GL_TEXTURE_2D makes no sense here, but some mod still queries it...
             case GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_BINDING_2D -> getBoundTextureForServerState();
+            case GL13.GL_ACTIVE_TEXTURE -> GL13.GL_TEXTURE0 + getActiveTextureUnitForServerState();
             case GL11.GL_COLOR_MATERIAL_FACE -> colorMaterialFace.getValue();
             case GL11.GL_COLOR_MATERIAL_PARAMETER -> colorMaterialParameter.getValue();
             case GL11.GL_MODELVIEW_STACK_DEPTH -> getMatrixStackDepth(modelViewMatrix);
@@ -1058,14 +1060,17 @@ public class GLStateManager {
             case GL12.GL_LIGHT_MODEL_COLOR_CONTROL -> lightModel.colorControl;
 
             case GL14.GL_BLEND_DST_ALPHA -> blendState.getDstAlpha();
-            case GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
+            case GL11.GL_BLEND_DST, GL14.GL_BLEND_DST_RGB -> blendState.getDstRgb();
             case GL14.GL_BLEND_SRC_ALPHA -> blendState.getSrcAlpha();
-            case GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
+            case GL11.GL_BLEND_SRC, GL14.GL_BLEND_SRC_RGB -> blendState.getSrcRgb();
             case GL14.GL_BLEND_EQUATION -> blendState.getEquationRgb();
             case GL20.GL_BLEND_EQUATION_ALPHA -> blendState.getEquationAlpha();
 
             case GL11.GL_LOGIC_OP_MODE -> logicOpMode.getValue();
             case GL11.GL_DRAW_BUFFER -> drawBuffer.getValue();
+
+            case GL11.GL_CULL_FACE_MODE -> polygonState.getCullFaceMode();
+            case GL11.GL_FRONT_FACE -> polygonState.getFrontFace();
 
             case GL11.GL_STENCIL_FUNC -> stencilState.getFuncFront();
             case GL11.GL_STENCIL_REF -> stencilState.getRefFront();
@@ -1105,6 +1110,10 @@ public class GLStateManager {
 
         switch (pname) {
             case GL11.GL_VIEWPORT -> viewportState.get(params);
+            case GL11.GL_POLYGON_MODE -> {
+                params.put(0, polygonState.getFrontMode());
+                params.put(1, polygonState.getBackMode());
+            }
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
                     params.put(0, glGetInteger(pname));
@@ -2259,7 +2268,7 @@ public class GLStateManager {
     public static void preDraw(int drawMode) {
         final boolean locked = acquireDrawLock();
         try {
-            prepareWideLineEmulation(drawMode);
+            prepareLineEmulation(drawMode);
             ShaderManager.getInstance().preDraw();
             prepareClientArrays();
         } finally {
@@ -2270,7 +2279,7 @@ public class GLStateManager {
     public static void preDraw() {
         final boolean locked = acquireDrawLock();
         try {
-            disableWideLineEmulation();
+            disableLineEmulation();
             ShaderManager.getInstance().preDraw();
             prepareClientArrays();
         } finally {
@@ -4606,15 +4615,21 @@ public class GLStateManager {
         }
     }
 
-    public static void prepareWideLineEmulation(int drawMode) {
-        wideLineEmulationActive =
-            (drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP)
-                && lineState.getWidth() > 1.0f
-                && wideLineEmulationEnabled;
+    public static void prepareLineEmulation(int drawMode) {
+        final boolean isLine = drawMode == GL11.GL_LINES || drawMode == GL11.GL_LINE_STRIP || drawMode == GL11.GL_LINE_LOOP;
+        wideLineEmulationActive = isLine && lineState.getWidth() > 1.0f && wideLineEmulationEnabled;
+        setLineStippleActive(isLine && lineStippleState.isEnabled());
     }
 
-    public static void disableWideLineEmulation() {
+    public static void disableLineEmulation() {
         wideLineEmulationActive = false;
+        setLineStippleActive(false);
+    }
+
+    private static void setLineStippleActive(boolean active) {
+        if (lineStippleActive == active) return;
+        lineStippleActive = active;
+        RENDER_BACKEND.provokingVertex(active ? GL32.GL_FIRST_VERTEX_CONVENTION : GL32.GL_LAST_VERTEX_CONVENTION);
     }
 
     public static void glFlush() {
@@ -5207,30 +5222,36 @@ public class GLStateManager {
 
     private static void invalidateDeletedBuffer(int buffer) {
         if (buffer == 0) return;
-        if (boundVBO == buffer) boundVBO = 0;
-        if (VAOManager.boundEBO == buffer) VAOManager.boundEBO = 0;
-        if (boundPixelUnpackBuffer == buffer) boundPixelUnpackBuffer = 0;
-        if (boundPixelPackBuffer == buffer) boundPixelPackBuffer = 0;
+        final boolean locked = acquireDrawLock();
+        try {
+            if (boundVBO == buffer) glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            if (VAOManager.boundEBO == buffer) glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+            if (boundPixelUnpackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+            if (boundPixelPackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
 
-        // Sweep all VAOs: an unbound VAO may later rebind with a dangling EBO id.
-        for (VAOManager.VAOData data : VAOManager.vaoMap.values()) {
-            if (data.ebo == buffer) data.ebo = 0;
+            VAOManager.onDeleteBuffer(buffer);
+        } finally {
+            if (locked) releaseDrawLock();
         }
-
     }
 
     public static void glBindBuffer(int target, int buffer) {
-        if (target == GL15.GL_ARRAY_BUFFER) {
-            // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
-            boundVBO = buffer;
-        } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
-            VAOManager.onBindEBO(buffer);
-        } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
-            boundPixelUnpackBuffer = buffer;
-        } else if (target == GL21.GL_PIXEL_PACK_BUFFER) {
-            boundPixelPackBuffer = buffer;
+        final boolean locked = acquireDrawLock();
+        try {
+            if (target == GL15.GL_ARRAY_BUFFER) {
+                // if (boundVBO == buffer) return; TODO figure out why this breaks switching async occlusion mode
+                boundVBO = buffer;
+            } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
+                VAOManager.onBindEBO(buffer);
+            } else if (target == GL21.GL_PIXEL_UNPACK_BUFFER) {
+                boundPixelUnpackBuffer = buffer;
+            } else if (target == GL21.GL_PIXEL_PACK_BUFFER) {
+                boundPixelPackBuffer = buffer;
+            }
+            RENDER_BACKEND.bindBuffer(target, buffer);
+        } finally {
+            if (locked) releaseDrawLock();
         }
-        RENDER_BACKEND.bindBuffer(target, buffer);
     }
 
     public static void forcePixelUnpackState(PixelUnpackState target) {
@@ -5241,9 +5262,21 @@ public class GLStateManager {
         PixelUnpackState.applyDiff(applied, pixelUnpackState);
     }
 
+    private static boolean warnedUntrackedPixelBuffer;
+
+    private static void warnUntrackedPixelBuffer(int binding, String name) {
+        if (warnedUntrackedPixelBuffer || initConfig == null || !initConfig.isLwjglDebug()) return;
+        final int actual = RENDER_BACKEND.getInteger(binding);
+        if (actual == 0) return;
+        warnedUntrackedPixelBuffer = true;
+        LOGGER.warn("{} is bound to {} but GLSM's cache says 0; a call site bypassed GLStateManager.glBindBuffer", name, actual, new Throwable());
+    }
+
     static void suspendPixelUnpackBuffer() {
         if (boundPixelUnpackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
+        } else {
+            warnUntrackedPixelBuffer(GL21.GL_PIXEL_UNPACK_BUFFER_BINDING, "GL_PIXEL_UNPACK_BUFFER");
         }
     }
 
@@ -5256,6 +5289,8 @@ public class GLStateManager {
     static void suspendPixelPackBuffer() {
         if (boundPixelPackBuffer != 0) {
             RENDER_BACKEND.bindBuffer(GL21.GL_PIXEL_PACK_BUFFER, 0);
+        } else {
+            warnUntrackedPixelBuffer(GL21.GL_PIXEL_PACK_BUFFER_BINDING, "GL_PIXEL_PACK_BUFFER");
         }
     }
 
@@ -5551,22 +5586,32 @@ public class GLStateManager {
         if (array == 0) {
             array = defaultVAO;
         }
-        if (boundVAO != array) {
-            boundVAO = array;
-            VAOManager.onBindVertexArrayPre(array);
-            RENDER_BACKEND.bindVertexArray(array);
+        final boolean locked = acquireDrawLock();
+        try {
+            if (boundVAO != array) {
+                boundVAO = array;
+                VAOManager.onBindVertexArrayPre(array);
+                RENDER_BACKEND.bindVertexArray(array);
+            }
+        } finally {
+            if (locked) releaseDrawLock();
         }
     }
 
     public static void glDeleteVertexArrays(int array) {
-        VAOManager.onDeleteVertexArray(array);
-        if (array == boundVAO) {
-            // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
-            boundVAO = defaultVAO;
-            VAOManager.onBindVertexArrayPre(defaultVAO);
-            RENDER_BACKEND.bindVertexArray(defaultVAO);
+        final boolean locked = acquireDrawLock();
+        try {
+            VAOManager.onDeleteVertexArray(array);
+            if (array == boundVAO) {
+                // Deleting the bound VAO implicitly unbinds it. Rebind the default VAO.
+                boundVAO = defaultVAO;
+                VAOManager.onBindVertexArrayPre(defaultVAO);
+                RENDER_BACKEND.bindVertexArray(defaultVAO);
+            }
+            RENDER_BACKEND.deleteVertexArrays(array);
+        } finally {
+            if (locked) releaseDrawLock();
         }
-        RENDER_BACKEND.deleteVertexArrays(array);
     }
 
     public static int glGenVertexArrays() {

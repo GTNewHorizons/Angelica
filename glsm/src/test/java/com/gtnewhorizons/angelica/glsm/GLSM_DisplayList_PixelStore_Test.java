@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -10,7 +9,7 @@ import java.nio.ByteOrder;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 public class GLSM_DisplayList_PixelStore_Test {
 
     private static final int SRC = 8;

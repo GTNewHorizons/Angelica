@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.ContextAttribs;
@@ -16,6 +17,7 @@ import org.lwjgl.opengl.SharedDrawable;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
+@Tag(GLTestTags.SHARED)
 class SharedDrawableVaoTest {
 
     private static final String VERT_330 = "#version 330 core\nvoid main() { gl_Position = vec4(0.0); }\n";

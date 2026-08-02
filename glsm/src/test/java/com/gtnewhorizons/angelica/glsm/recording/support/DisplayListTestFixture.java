@@ -2,13 +2,12 @@ package com.gtnewhorizons.angelica.glsm.recording.support;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
-import com.gtnewhorizons.angelica.glsm.GLSMExtension;
+import com.gtnewhorizons.angelica.glsm.GLCompatTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BatchedIndexedDrawCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -20,7 +19,7 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 public abstract class DisplayListTestFixture {
 
     public static final float[] DEFAULT_QUAD_POSITIONS = {0f, 0f, 1f, 0f, 1f, 1f, 0f, 1f};

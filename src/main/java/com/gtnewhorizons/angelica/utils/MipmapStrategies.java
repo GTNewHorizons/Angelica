@@ -8,8 +8,10 @@ import net.minecraft.block.BlockLeaves;
 import net.minecraft.block.BlockMushroom;
 import net.minecraft.block.BlockRedstoneWire;
 
+import java.util.Deque;
 import java.util.LinkedList;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * Fallback {@link MipmapStrategy} assignments for sprites that carry no metadata.
@@ -17,8 +19,8 @@ import java.util.Map;
 public final class MipmapStrategies {
 
     private static final Map<Class<?>, MipmapStrategy> CLASS_RULES = new Object2ObjectOpenHashMap<>();
-    private static final Map<String, MipmapStrategy> SPRITE_RULES = new Object2ObjectOpenHashMap<>();
-    private static final LinkedList<MipmapStrategy> STRATEGY_STACK = new LinkedList<>();
+    private static final Map<String, MipmapStrategy> SPRITE_RULES = new ConcurrentHashMap<>();
+    private static final ThreadLocal<Deque<MipmapStrategy>> STRATEGY_STACK = ThreadLocal.withInitial(LinkedList::new);
 
     static {
         CLASS_RULES.put(BlockLeaves.class, MipmapStrategy.DARK_CUTOUT);
@@ -33,16 +35,17 @@ public final class MipmapStrategies {
 
     public static void reset() {
         SPRITE_RULES.clear();
-        STRATEGY_STACK.clear();
+        STRATEGY_STACK.remove();
     }
 
     public static void beginBlock(Block block) {
-        STRATEGY_STACK.push(resolve(block.getClass()));
+        STRATEGY_STACK.get().push(resolve(block.getClass()));
     }
 
     public static void endBlock() {
-        if (!STRATEGY_STACK.isEmpty()) {
-            STRATEGY_STACK.pop();
+        final Deque<MipmapStrategy> stack = STRATEGY_STACK.get();
+        if (!stack.isEmpty()) {
+            stack.pop();
         }
     }
 
@@ -51,7 +54,7 @@ public final class MipmapStrategies {
             return;
         }
 
-        MipmapStrategy strategy = STRATEGY_STACK.peek();
+        MipmapStrategy strategy = STRATEGY_STACK.get().peek();
         if (strategy == null && textureType == 0 && iconName.contains("leaves")) {
             strategy = MipmapStrategy.DARK_CUTOUT;
         }
@@ -59,10 +62,8 @@ public final class MipmapStrategies {
             return;
         }
 
-        final MipmapStrategy existing = SPRITE_RULES.get(iconName);
-        if (existing == null || strategy.conflictPrecedence() > existing.conflictPrecedence()) {
-            SPRITE_RULES.put(iconName, strategy);
-        }
+        SPRITE_RULES.merge(iconName, strategy,
+            (existing, incoming) -> incoming.conflictPrecedence() > existing.conflictPrecedence() ? incoming : existing);
     }
 
     public static MipmapStrategy inheritedFor(int textureType, String iconName) {

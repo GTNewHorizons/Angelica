@@ -4,8 +4,10 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
 import com.gtnewhorizons.angelica.glsm.states.LightState;
+import com.gtnewhorizons.angelica.glsm.states.LineState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
+import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import org.joml.Math;
 import org.joml.Matrix3f;
@@ -135,6 +137,31 @@ public class Uniforms {
         // Wide line emulation uniforms
         if (program.locLineWidth != -1 && program.locViewportSize != -1) {
             uploadWideLineUniforms(program);
+        }
+
+        if (program.locLineStipple != -1) {
+            uploadLineStippleUniforms(program);
+        }
+    }
+
+    private void uploadLineStippleUniforms(Program program) {
+        final Program.UploadState st = program.uploadState;
+        final LineState line = GLStateManager.getLineState();
+
+        final int factor = line.getStippleFactor() < 1 ? 1 : line.getStippleFactor();
+        final int packed = (line.getStipplePattern() & 0xFFFF) | (factor << 16);
+        if (packed != st.lineStipple) {
+            RENDER_BACKEND.uniform1i(program.locLineStipple, packed);
+            st.lineStipple = packed;
+        }
+
+        final ViewportState vp = GLStateManager.getViewportState();
+        if (vp.x != st.stippleViewportX || vp.y != st.stippleViewportY || vp.width != st.stippleViewportW || vp.height != st.stippleViewportH) {
+            RENDER_BACKEND.uniform4f(program.locViewport, vp.x, vp.y, vp.width, vp.height);
+            st.stippleViewportX = vp.x;
+            st.stippleViewportY = vp.y;
+            st.stippleViewportW = vp.width;
+            st.stippleViewportH = vp.height;
         }
     }
 

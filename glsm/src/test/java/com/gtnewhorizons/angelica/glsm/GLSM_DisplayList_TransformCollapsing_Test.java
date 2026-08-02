@@ -7,7 +7,6 @@ import it.unimi.dsi.fastutil.ints.IntList;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -18,7 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /** Tests for transform collapsing optimization in display lists. */
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_DisplayList_TransformCollapsing_Test {
 
     private int testList = -1;

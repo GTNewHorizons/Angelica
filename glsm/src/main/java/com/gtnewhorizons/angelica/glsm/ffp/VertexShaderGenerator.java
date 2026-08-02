@@ -29,6 +29,9 @@ public final class VertexShaderGenerator {
             emitColorPassthrough(sb, key);
         }
         emitTexCoordPassthrough(sb, key);
+        if (key.lineStipple()) {
+            emitLineStart(sb);
+        }
         if (key.fogEnabled()) {
             emitFogDistance(sb, key);
         }
@@ -45,6 +48,7 @@ public final class VertexShaderGenerator {
                            .replace("v_TexCoord2", "v_TexCoord2_gs")
                            .replace("v_TexCoord3", "v_TexCoord3_gs")
                            .replace("v_FogCoord", "v_FogCoord_gs")
+                           .replace("v_LineStart", "v_LineStart_gs")
                            .replace("v_Color", "v_Color_gs");
         }
         return source;
@@ -68,6 +72,11 @@ public final class VertexShaderGenerator {
         sb.append('\n');
     }
 
+    private static void emitLineStart(StringBuilder sb) {
+        sb.append("  vec2 ndc = gl_Position.xy / gl_Position.w;\n");
+        sb.append("  v_LineStart = u_Viewport.xy + (ndc * 0.5 + 0.5) * u_Viewport.zw;\n\n");
+    }
+
     private static void emitUniforms(StringBuilder sb, VertexKey key) {
         sb.append("// Matrices\n");
         sb.append("uniform mat4 u_ModelViewMatrix;\n");
@@ -76,6 +85,9 @@ public final class VertexShaderGenerator {
 
         if (key.lightingEnabled()) {
             sb.append("uniform mat3 u_NormalMatrix;\n");
+        }
+        if (key.lineStipple()) {
+            sb.append("uniform vec4 u_Viewport;\n");
         }
 
         for (int i = 0; i < VertexKey.MAX_UNITS; i++) {
@@ -182,6 +194,9 @@ public final class VertexShaderGenerator {
     private static void emitOutputs(StringBuilder sb, VertexKey key) {
         sb.append("// Outputs\n");
         sb.append("out vec4 v_Color;\n");
+        if (key.lineStipple()) {
+            sb.append("flat out vec2 v_LineStart;\n");
+        }
         if (key.separateSpecular()) {
             sb.append("out vec3 v_SpecularColor;\n");
         }

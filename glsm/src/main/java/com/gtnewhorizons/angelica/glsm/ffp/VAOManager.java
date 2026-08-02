@@ -15,6 +15,8 @@ public final class VAOManager {
 
     public static final Int2ObjectOpenHashMap<VAOData> vaoMap = new Int2ObjectOpenHashMap<>();
 
+    static final Int2ObjectOpenHashMap<VAOData> eboOwners = new Int2ObjectOpenHashMap<>();
+
     private static VAOData current = null;
     private static int currentVertexFlags = 0;
     private static Attrib[] currentAttribs = null;
@@ -38,7 +40,11 @@ public final class VAOManager {
         // Save old VAO data
         if (current != null) {
             current.vertexFlags = currentVertexFlags;
-            current.ebo = boundEBO;
+            if (current.ebo != boundEBO) {
+                removeEboOwner(current.ebo, current);
+                current.ebo = boundEBO;
+                addEboOwner(current.ebo, current);
+            }
             current.attribs = currentAttribs;
             current.clientSideEnabledCount = clientSideEnabledCount;
         }
@@ -56,7 +62,46 @@ public final class VAOManager {
     }
 
     public static void onDeleteVertexArray(int vaoId) {
-        vaoMap.remove(vaoId);
+        final VAOData data = vaoMap.remove(vaoId);
+        if (data == null) return;
+        removeEboOwner(data.ebo, data);
+        if (data == current) current = null;
+    }
+
+    public static void onDeleteBuffer(int buffer) {
+        if (buffer == 0) return;
+        VAOData owner = eboOwners.remove(buffer);
+        while (owner != null) {
+            final VAOData next = owner.nextEboOwner;
+            owner.nextEboOwner = null;
+            owner.ebo = 0;
+            owner = next;
+        }
+    }
+
+    private static void addEboOwner(int ebo, VAOData data) {
+        if (ebo == 0) return;
+        data.nextEboOwner = eboOwners.put(ebo, data);
+    }
+
+    private static void removeEboOwner(int ebo, VAOData data) {
+        if (ebo == 0) return;
+        VAOData node = eboOwners.get(ebo);
+        if (node == data) {
+            final VAOData next = data.nextEboOwner;
+            if (next == null) eboOwners.remove(ebo); else eboOwners.put(ebo, next);
+            data.nextEboOwner = null;
+            return;
+        }
+        while (node != null) {
+            final VAOData next = node.nextEboOwner;
+            if (next == data) {
+                node.nextEboOwner = data.nextEboOwner;
+                data.nextEboOwner = null;
+                return;
+            }
+            node = next;
+        }
     }
 
     public static void enableClientVertexFlag(int flag) { currentVertexFlags |= flag; }
@@ -69,6 +114,7 @@ public final class VAOManager {
         public int vertexFlags;
         public int ebo;
         public int clientSideEnabledCount;
+        private VAOData nextEboOwner;
 
         public VAOData() {
             attribs = new Attrib[MAX_ATTRIBS];

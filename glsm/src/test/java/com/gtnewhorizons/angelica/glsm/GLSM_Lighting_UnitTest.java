@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 
@@ -10,10 +9,10 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyLightState;
-import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyMaterialState;
+import static com.gtnewhorizons.angelica.util.GLSMUtil.verifyState;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 public class GLSM_Lighting_UnitTest {
 
     static final FloatBuffer f4b = ByteBuffer.allocateDirect(4 << 2).order(ByteOrder.nativeOrder()).asFloatBuffer();

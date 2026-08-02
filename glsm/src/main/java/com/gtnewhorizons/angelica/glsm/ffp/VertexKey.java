@@ -50,6 +50,7 @@ public final class VertexKey {
     // Per-unit texmat enable: bits 37-40 (unit 0..3). Unit 1 is the lightmap matrix.
     private static final int BIT_UNIT_TEXMAT_BASE    = 37;
     private static final int BIT_UNIT23_UV_FROM_UNIT0 = 41;
+    private static final int BIT_LINE_STIPPLE        = 42;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -98,6 +99,7 @@ public final class VertexKey {
     public boolean texGenEnabled()        { return texGenModeS() != TG_NONE || texGenModeT() != TG_NONE || texGenModeR() != TG_NONE || texGenModeQ() != TG_NONE; }
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
+    public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -225,6 +227,10 @@ public final class VertexKey {
 
         if (GLStateManager.wideLineEmulationActive) {
             bits |= (1L << BIT_WIDE_LINE);
+        }
+
+        if (GLStateManager.lineStippleActive) {
+            bits |= (1L << BIT_LINE_STIPPLE);
         }
 
         return bits;

@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
 
@@ -16,7 +15,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
  * Verifies that per-buffer blend operations (glEnablei/glDisablei) properly invalidate
  * the GLSM blend cache so subsequent global blend enable/disable calls are not skipped.
  */
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 class GLSM_BlendUnknownState_UnitTest {
 
     @BeforeEach
