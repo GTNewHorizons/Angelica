@@ -1,0 +1,77 @@
+package com.gtnewhorizons.angelica.mixins.early.shaders;
+
+import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
+import net.minecraft.block.Block;
+import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.IIcon;
+import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
+
+/**
+ * Emits a per-face normal while a falling block is rendering, so shader packs can light it.
+ */
+@Mixin(RenderBlocks.class)
+public class MixinRenderBlocks_FaceNormals {
+
+    @Redirect(
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceYNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
+    )
+    private void angelica$normalYNeg(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon) {
+        if (FallingBlockRendering.isActive()) Tessellator.instance.setNormal(0.0F, -1.0F, 0.0F);
+        instance.renderFaceYNeg(block, x, y, z, icon);
+    }
+
+    @Redirect(
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceYPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
+    )
+    private void angelica$normalYPos(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon) {
+        if (FallingBlockRendering.isActive()) Tessellator.instance.setNormal(0.0F, 1.0F, 0.0F);
+        instance.renderFaceYPos(block, x, y, z, icon);
+    }
+
+    @Redirect(
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceZNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
+    )
+    private void angelica$normalZNeg(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon) {
+        if (FallingBlockRendering.isActive()) Tessellator.instance.setNormal(0.0F, 0.0F, -1.0F);
+        instance.renderFaceZNeg(block, x, y, z, icon);
+    }
+
+    @Redirect(
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceZPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
+    )
+    private void angelica$normalZPos(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon) {
+        if (FallingBlockRendering.isActive()) Tessellator.instance.setNormal(0.0F, 0.0F, 1.0F);
+        instance.renderFaceZPos(block, x, y, z, icon);
+    }
+
+    @Redirect(
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceXNeg(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
+    )
+    private void angelica$normalXNeg(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon) {
+        if (FallingBlockRendering.isActive()) Tessellator.instance.setNormal(-1.0F, 0.0F, 0.0F);
+        instance.renderFaceXNeg(block, x, y, z, icon);
+    }
+
+    @Redirect(
+        method = {"renderBlockSandFalling", "renderStandardBlockWithColorMultiplier",
+                  "renderStandardBlockWithAmbientOcclusion", "renderStandardBlockWithAmbientOcclusionPartial"},
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderFaceXPos(Lnet/minecraft/block/Block;DDDLnet/minecraft/util/IIcon;)V")
+    )
+    private void angelica$normalXPos(RenderBlocks instance, Block block, double x, double y, double z, IIcon icon) {
+        if (FallingBlockRendering.isActive()) Tessellator.instance.setNormal(1.0F, 0.0F, 0.0F);
+        instance.renderFaceXPos(block, x, y, z, icon);
+    }
+}
