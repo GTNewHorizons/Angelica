@@ -157,6 +157,7 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addClientMixins(
             "angelica.itemrenderer.MixinItemRenderer",
+            "angelica.itemrenderer.MixinRenderItemFrame",
             "angelica.itemrenderer.MixinRenderBlocks"
         )
         .setApplyIf(() -> AngelicaConfig.optimizeInWorldItemRendering)),
@@ -292,8 +293,12 @@ public enum Mixins implements IMixins {
             , "shaders.MixinLocale"
             , "shaders.MixinRender"
             , "shaders.MixinRenderBiped"
+            , "shaders.MixinRenderBlocks_FaceNormals"
+            , "shaders.MixinRenderBlocks_FallingShading"
+            , "shaders.MixinRenderBlocks_ItemId"
             , "shaders.MixinRenderDragon"
             , "shaders.MixinRenderEntityFlame"
+            , "shaders.MixinRenderFallingBlock"
             , "shaders.MixinRendererLivingEntity"
             , "shaders.MixinRenderGlobal"
             , "shaders.AccessorEntityHorse"
