@@ -71,10 +71,20 @@ public final class FSR1 {
         }
         try {
             if (scaledFb == null || scaledFb.framebufferWidth != scaledW || scaledFb.framebufferHeight != scaledH) {
-                if (scaledFb != null) {
-                    scaledFb.deleteFramebuffer();
-                }
+                // Create the replacement BEFORE deleting the old framebuffer: GL recycles
+                // freed object names, and a recycled id that GLSM's bind caches still
+                // consider bound would make GLSM skip the next real bind. Fresh-then-free
+                // ordering guarantees distinct ids, keeping every cache transition honest.
+                final Framebuffer old = scaledFb;
                 scaledFb = new Framebuffer(scaledW, scaledH, true);
+                if (old != null) {
+                    old.deleteFramebuffer();
+                }
+                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, scaledFb.framebufferObject);
+                final int status = GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+                if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+                    throw new IllegalStateException("scaled framebuffer incomplete: 0x" + Integer.toHexString(status));
+                }
             }
         } catch (Exception e) {
             com.gtnewhorizons.angelica.AngelicaMod.LOGGER
@@ -130,10 +140,13 @@ public final class FSR1 {
         if (hadScissor) GL11.glDisable(GL11.GL_SCISSOR_TEST);
         GLStateManager.glDepthMask(false);
 
+        // All framebuffer/viewport/program state MUST go through GLStateManager: it caches
+        // these and elides "redundant" changes, so any raw GL call here desyncs the cache
+        // and later GLSM-routed binds get skipped (world renders into the wrong FBO).
         // 1. EASU: scaled world -> native-size intermediate.
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, midFbo);
-        GL11.glViewport(0, 0, nativeW, nativeH);
-        GL20.glUseProgram(easuProgram);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, midFbo);
+        GLStateManager.glViewport(0, 0, nativeW, nativeH);
+        GLStateManager.glUseProgram(easuProgram);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, scaledFb.framebufferTexture);
         GL20.glUniform4f(uEasuCon0,
             (float) scaledW / nativeW,
@@ -144,9 +157,9 @@ public final class FSR1 {
         drawFullscreenQuad();
 
         // 2. RCAS: intermediate -> the real main framebuffer at native size.
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, savedMainFb.framebufferObject);
-        GL11.glViewport(0, 0, nativeW, nativeH);
-        GL20.glUseProgram(rcasProgram);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, savedMainFb.framebufferObject);
+        GLStateManager.glViewport(0, 0, nativeW, nativeH);
+        GLStateManager.glUseProgram(rcasProgram);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, midTex);
         // Slider 0..100 -> 2..0 stops of sharpness reduction (100 = sharpest).
         final float stops = (100 - AngelicaConfig.fsrSharpness) / 50.0f;
@@ -155,10 +168,10 @@ public final class FSR1 {
 
         // 3. Cleanup: leave the real framebuffer bound with a cleared depth buffer for the GUI
         // (the world's depth lives in the scaled framebuffer and is meaningless at native res).
-        GL20.glUseProgram(0);
+        GLStateManager.glUseProgram(0);
         GLStateManager.glDepthMask(true);
         savedMainFb.bindFramebuffer(true);
-        GL11.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
         if (hadDepth) GLStateManager.enableDepthTest();
         if (hadBlend) GLStateManager.enableBlend();
         if (hadAlpha) GLStateManager.enableAlphaTest();
@@ -191,29 +204,35 @@ public final class FSR1 {
         return true;
     }
 
+    // Fresh-before-free + GLSM-routed lifecycle: raw deletes free GL names behind
+    // GLSM's back, and recycled names alias its bind caches (see upscale()).
     private static int recreateTarget(int oldTex, int w, int h) {
-        if (oldTex != 0) {
-            GL11.glDeleteTextures(oldTex);
-        }
-        final int tex = GL11.glGenTextures();
+        final int tex = GLStateManager.glGenTextures();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-        GL11.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-        GL11.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0, GL11.GL_RGBA,
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, w, h, 0, GL11.GL_RGBA,
             GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+        if (oldTex != 0) {
+            GLStateManager.glDeleteTextures(oldTex);
+        }
         return tex;
     }
 
     private static int recreateFbo(int oldFbo, int tex) {
-        if (oldFbo != 0) {
-            GL30.glDeleteFramebuffers(oldFbo);
-        }
-        final int fbo = GL30.glGenFramebuffers();
-        GL30.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GL30.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
+        final int fbo = GLStateManager.glGenFramebuffers();
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0,
             GL11.GL_TEXTURE_2D, tex, 0);
+        if (oldFbo != 0) {
+            GLStateManager.glDeleteFramebuffers(oldFbo);
+        }
+        final int status = GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER);
+        if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+            throw new IllegalStateException("FSR1 mid framebuffer incomplete: 0x" + Integer.toHexString(status));
+        }
         return fbo;
     }
 
@@ -222,14 +241,14 @@ public final class FSR1 {
             final int vert = compile(GL20.GL_VERTEX_SHADER, load("fullscreen.vsh"));
             easuProgram = link(vert, compile(GL20.GL_FRAGMENT_SHADER, load("easu.fsh")));
             rcasProgram = link(vert, compile(GL20.GL_FRAGMENT_SHADER, load("rcas.fsh")));
-            GL20.glUseProgram(easuProgram);
+            GLStateManager.glUseProgram(easuProgram);
             GL20.glUniform1i(GL20.glGetUniformLocation(easuProgram, "uSource"), 0);
             uEasuCon0 = GL20.glGetUniformLocation(easuProgram, "uCon0");
             uEasuInputMax = GL20.glGetUniformLocation(easuProgram, "uInputMax");
-            GL20.glUseProgram(rcasProgram);
+            GLStateManager.glUseProgram(rcasProgram);
             GL20.glUniform1i(GL20.glGetUniformLocation(rcasProgram, "uSource"), 0);
             uRcasSharpness = GL20.glGetUniformLocation(rcasProgram, "uSharpness");
-            GL20.glUseProgram(0);
+            GLStateManager.glUseProgram(0);
             return true;
         } catch (Exception e) {
             com.gtnewhorizons.angelica.AngelicaMod.LOGGER.error("FSR1 shader init failed", e);
