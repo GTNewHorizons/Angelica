@@ -60,7 +60,7 @@ repositories {
 dependencies {
     api(project(":glsm"))
 
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.15:dev") { isTransitive = false }
+    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.31:dev") { isTransitive = false }
     compileOnly("org.embeddedt.celeritas:celeritas-common:2.5.8-GTNH") { isTransitive = false }
 
     val osName = System.getProperty("os.name").lowercase()
