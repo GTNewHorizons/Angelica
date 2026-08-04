@@ -572,6 +572,15 @@ public final class GLDebug {
         }
     }
 
+    /**
+     * Overload that lets you gate the String concat behind the debugState
+     */
+    public static void pushGroup(String prefix, int value) {
+        if (debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
+            debugState.pushGroup(prefix + value);
+        }
+    }
+
     public static void pushGroup(String group) {
         if (debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
             debugState.pushGroup(group);
