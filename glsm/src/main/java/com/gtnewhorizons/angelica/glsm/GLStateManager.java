@@ -3329,7 +3329,7 @@ public class GLStateManager {
     }
 
     public static void glCallList(int list) {
-        GLDebug.pushGroup("glCallList " + list);
+        GLDebug.pushGroup("glCallList ", list);
         try {
             DisplayListManager.glCallList(list);
         } finally {
