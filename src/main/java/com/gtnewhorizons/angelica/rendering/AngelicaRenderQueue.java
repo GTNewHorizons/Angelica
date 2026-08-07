@@ -15,6 +15,7 @@ public class AngelicaRenderQueue {
     // Metrics
     private static volatile int lastFrameTasksRan = 0;
     private static volatile long lastFrameTimeNs = 0;
+    private static volatile long lastFrameLongestTaskNs = 0;
 
     public static int getQueueDepth() {
         return TASKS.size();
@@ -28,9 +29,14 @@ public class AngelicaRenderQueue {
         return lastFrameTimeNs;
     }
 
-    public static void recordFrameStats(int tasksRan, long timeNs) {
+    public static long getLastFrameLongestTaskNs() {
+        return lastFrameLongestTaskNs;
+    }
+
+    public static void recordFrameStats(int tasksRan, long timeNs, long longestTaskNs) {
         lastFrameTasksRan = tasksRan;
         lastFrameTimeNs = timeNs;
+        lastFrameLongestTaskNs = longestTaskNs;
     }
 
     private static final Executor EXECUTOR = (runnable) -> {

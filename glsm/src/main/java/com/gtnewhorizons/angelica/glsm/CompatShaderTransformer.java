@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator;
 import org.antlr.v4.runtime.tree.ParseTree;
@@ -75,12 +76,7 @@ public class CompatShaderTransformer {
         "gl_NormalMatrix", "angelica_NormalMatrix"
     );
 
-    private static final Path DUMP_DIR;
     private static final AtomicInteger dumpCounter = new AtomicInteger(0);
-
-    static {
-        DUMP_DIR = Boolean.parseBoolean(System.getProperty("angelica.dumpShaders", "false")) ? Paths.get("compat_shaders") : null;
-    }
 
     private static final int CACHE_SIZE = 256;
     private record CacheKey(String source, boolean isFragment) {}
@@ -534,18 +530,19 @@ public class CompatShaderTransformer {
     }
 
     private static void dumpShader(String original, String transformed, boolean isFragment, boolean wasTransformed) {
-        if (DUMP_DIR == null) return;
+        final Path dir = SystemProperties.shaderDumpDir("compat");
+        if (dir == null) return;
         final int id = dumpCounter.getAndIncrement();
         final String suffix = isFragment ? ".frag.glsl" : ".vert.glsl";
         try {
-            Files.createDirectories(DUMP_DIR);
+            Files.createDirectories(dir);
             // Capture caller info for identification
             final String caller = identifyCaller();
             final String header = "// Compat shader dump #" + id + " (" + (isFragment ? "fragment" : "vertex") + ")"
                 + "\n// Transformed: " + wasTransformed
                 + "\n// Caller: " + caller + "\n\n";
-            Files.writeString(DUMP_DIR.resolve(id + "_original" + suffix), header + original, StandardCharsets.UTF_8);
-            Files.writeString(DUMP_DIR.resolve(id + "_transformed" + suffix), header + transformed, StandardCharsets.UTF_8);
+            Files.writeString(dir.resolve(id + "_original" + suffix), header + original, StandardCharsets.UTF_8);
+            Files.writeString(dir.resolve(id + "_transformed" + suffix), header + transformed, StandardCharsets.UTF_8);
         } catch (IOException e) {
             GLStateManager.LOGGER.warn("Failed to dump compat shader: {}", e.getMessage());
         }
@@ -642,7 +639,7 @@ public class CompatShaderTransformer {
         final String translated = SpirvShaderTranslator.glslToGlslEs(source, glShaderType, "compat");
         if (translated == null) {
             throw new IllegalStateException("SpirvShaderTranslator failed for shader kind 0x"
-                + Integer.toHexString(glShaderType) + "; see preceding shaderc error + run/client/compat_shaders/");
+                + Integer.toHexString(glShaderType) + "; see preceding shaderc error + run/client/angelica_dumps/compat/");
         }
         return translated;
     }

@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import net.minecraft.tileentity.TileEntity;
 import org.junit.jupiter.api.Test;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 
 class TesrProviderDispatchTest {
@@ -28,6 +29,6 @@ class TesrProviderDispatchTest {
 
     @Test
     void nullTileEntityResolvesToZeroBlockEntityId() {
-        org.junit.jupiter.api.Assertions.assertEquals(0, TesrProviderDispatch.resolveBlockEntityId(null));
+        assertEquals(0, TesrProviderDispatch.resolveBlockEntityId(null));
     }
 }

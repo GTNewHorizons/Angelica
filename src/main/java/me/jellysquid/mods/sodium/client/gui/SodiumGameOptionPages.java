@@ -17,7 +17,11 @@ import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.rendering.celeritas.MultiDrawModeResolver;
+import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
+import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import cpw.mods.fml.common.Optional.Method;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import jss.notfine.core.Settings;
@@ -140,7 +144,7 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                         .setBinding((opts, value) -> {
                             opts.enableVsync = value;
-                            Display.setVSyncEnabled(opts.enableVsync);
+                            GLStateManager.setVSyncEnabled(opts.enableVsync);
                         }, opts -> opts.enableVsync)
                         .setImpact(OptionImpact.VARIES)
                         .build())
@@ -300,8 +304,7 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("sodium.options.multidraw_mode.name"))
                         .setTooltip(I18n.format("sodium.options.multidraw_mode.tooltip"))
                         .setControl(o -> {
-                            boolean indirectSupported = GLStateManager.capabilities != null && (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect);
-                            MultiDrawMode[] allowed = indirectSupported ? MultiDrawMode.values() : new MultiDrawMode[]{MultiDrawMode.DIRECT, MultiDrawMode.INDIVIDUAL};
+                            MultiDrawMode[] allowed = MultiDrawModeResolver.indirectSupported() ? MultiDrawMode.values() : new MultiDrawMode[]{MultiDrawMode.DIRECT, MultiDrawMode.INDIVIDUAL};
                             return new CyclingControl<>(o, MultiDrawMode.class, allowed);
                         })
                         .setBinding((opts, value) -> opts.advanced.multiDrawMode = value, opts -> opts.advanced.multiDrawMode)
@@ -445,6 +448,25 @@ public class SodiumGameOptionPages {
                         .setBinding((opts, value) -> opts.advanced.ignoreDriverBlacklist = value, opts -> opts.advanced.ignoreDriverBlacklist)
                         .build()
                 )
+                .build());
+
+        final OptionImpl<AngelicaConfig, GpuCullingMode> gpuCullingMode =
+                OptionImpl.createBuilder(GpuCullingMode.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.gpuCullingMode"))
+                        .setTooltip(I18n.format("options.angelica.gpuCullingMode.tooltip"))
+                        .setControl(o -> new CyclingControl<>(o, GpuCullingMode.class, new GpuCullingMode[]{
+                                GpuCullingMode.CPU_ONLY, GpuCullingMode.COMPUTE}))
+                        .setBinding((opts, value) -> {
+                                AngelicaConfig.gpuCullingMode = value;
+                                AngelicaConfig.applyGpuCullingMode();
+                            }, opts -> AngelicaConfig.gpuCullingMode)
+                        .setImpact(OptionImpact.HIGH)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .setEnabled(true)
+                        .build();
+        gpuCullingMode.iris$dynamicallyEnable(GpuCulling::isAvailable);
+        groups.add(OptionGroup.createBuilder()
+                .add(gpuCullingMode)
                 .build());
 
         return new OptionPage(I18n.format("sodium.options.pages.advanced"), ImmutableList.copyOf(groups));

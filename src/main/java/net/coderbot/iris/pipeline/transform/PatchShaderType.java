@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
-import net.coderbot.iris.gl.shader.ShaderType;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 
 public enum PatchShaderType {
 	VERTEX(ShaderType.VERTEX),

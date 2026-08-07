@@ -6,11 +6,13 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.system.APIUtil;
 import org.lwjgl.system.SharedLibrary;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.file.Files;
 import java.nio.file.StandardCopyOption;
+import java.util.Arrays;
 
 @Lwjgl3Aware
 final class TracyNativeLoader {
@@ -62,7 +64,7 @@ final class TracyNativeLoader {
         final File dir = new File(System.getProperty("angelica.tracy.dir", "angelica" + File.separator + "natives" + File.separator + "tracy"));
         final File target = new File(dir, "libTracyClient-" + TRACY_VERSION + "-" + platform + "." + ext);
         try {
-            if (!target.isFile() || target.length() != lib.length) {
+            if (!target.isFile() || target.length() != lib.length || !Arrays.equals(Files.readAllBytes(target.toPath()), lib)) {
                 if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("cannot create " + dir);
                 final File tmp = File.createTempFile("libTracyClient", "." + ext, dir);
                 Files.write(tmp.toPath(), lib);
@@ -82,7 +84,7 @@ final class TracyNativeLoader {
     }
 
     private static byte[] readAll(InputStream in) throws IOException {
-        final java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream(1 << 20);
+        final ByteArrayOutputStream out = new ByteArrayOutputStream(1 << 20);
         final byte[] buf = new byte[16384];
         int n;
         while ((n = in.read(buf)) > 0) out.write(buf, 0, n);

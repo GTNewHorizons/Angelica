@@ -1,13 +1,13 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.taumc.glsl.ShaderParser;
 
-import java.lang.reflect.Field;
 import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -58,9 +58,7 @@ class AttributeTransformerInstancedTest {
 
     @BeforeAll
     static void initShaderTransformer() throws Exception {
-        Field maxGlsl = RenderSystem.class.getDeclaredField("maxGlslVersion");
-        maxGlsl.setAccessible(true);
-        maxGlsl.setInt(null, 460);
+        Reflect.setStatic(RenderSystem.class, "maxGlslVersion", 460);
         ShaderTransformer.init();
     }
 

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLTypes;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -315,17 +316,7 @@ public final class VAOManager {
         }
 
         public int typeSizeBytes() {
-            return glTypeSizeBytes(type);
-        }
-
-        public static int glTypeSizeBytes(int glType) {
-            return switch (glType) {
-                case GL11.GL_FLOAT, GL11.GL_INT, GL11.GL_UNSIGNED_INT -> 4;
-                case GL11.GL_DOUBLE -> 8;
-                case GL11.GL_SHORT, GL11.GL_UNSIGNED_SHORT -> 2;
-                case GL11.GL_BYTE, GL11.GL_UNSIGNED_BYTE -> 1;
-                default -> 4;
-            };
+            return GLTypes.sizeBytes(type);
         }
 
         public float readComponent(ByteBuffer buf, int base, int component) {

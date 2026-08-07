@@ -6,6 +6,18 @@ TRACY_VERSION="${TRACY_VERSION:-v0.13.1}"
 OUT_DIR="${OUT_DIR:-dist/tracy-natives}"
 TRACY_REPO="https://github.com/wolfpld/tracy"
 
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
+case "$(uname -s)" in
+    Darwin) PLAT_OS="macos" ;;
+    Linux) PLAT_OS="linux" ;;
+    *) PLAT_OS="windows" ;;
+esac
+case "$(uname -m)" in
+    arm64|aarch64) PLAT_ARCH="arm64" ;;
+    *) PLAT_ARCH="x64" ;;
+esac
+RES_DIR="${RES_DIR:-$REPO_ROOT/tracy-client/src/main/resources/natives/tracy/$PLAT_OS-$PLAT_ARCH}"
+
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
 
@@ -29,9 +41,9 @@ cmake -S "$SRC_DIR" -B "$BUILD_DIR" \
     -DTRACY_ON_DEMAND=ON \
     -DTRACY_DELAYED_INIT=ON \
     -DTRACY_MANUAL_LIFETIME=ON \
-    -DTRACY_NO_CALLSTACK=ON \
     -DTRACY_NO_SAMPLING=ON \
     -DTRACY_NO_SYSTEM_TRACING=ON \
+    -DTRACY_NO_CRASH_HANDLER=ON \
     -DTRACY_LTO=OFF
 cmake --build "$BUILD_DIR" --config Release --parallel
 
@@ -41,7 +53,10 @@ for NAME in libTracyClient.so libTracyClient.dylib TracyClient.dll; do
     if [[ -n "$LIB" ]]; then
         cp -L "$LIB" "$OUT_DIR/$NAME"
         cp "$SRC_DIR/LICENSE" "$OUT_DIR/LICENSE"
-        echo "built: $OUT_DIR/$NAME ($TRACY_VERSION)"
+        mkdir -p "$RES_DIR"
+        cp -L "$LIB" "$RES_DIR/$NAME"
+        cp "$SRC_DIR/LICENSE" "$RES_DIR/LICENSE"
+        echo "built: $OUT_DIR/$NAME ($TRACY_VERSION), staged: $RES_DIR/$NAME"
         exit 0
     fi
 done

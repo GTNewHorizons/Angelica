@@ -6,10 +6,16 @@ import lombok.Getter;
 
 public class TextureBinding implements ISettableState<TextureBinding> {
     @Getter protected int binding;
+    @Getter protected int target;
     protected TextureInfo info;
 
     public void setBinding(int binding) {
+        setBinding(binding, 0);
+    }
+
+    public void setBinding(int binding, int target) {
         this.binding = binding;
+        this.target = target;
         this.info = null;
     }
 
@@ -25,6 +31,7 @@ public class TextureBinding implements ISettableState<TextureBinding> {
     @Override
     public TextureBinding set(TextureBinding state) {
         this.binding = state.binding;
+        this.target = state.target;
         this.info = null;
         return this;
     }

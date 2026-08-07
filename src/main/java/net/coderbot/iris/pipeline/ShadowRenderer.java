@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.toremove.MatrixStack;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
@@ -13,6 +14,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.rendering.PlayerReflectionCapture;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaRenderSectionManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.Iris;
@@ -26,6 +28,7 @@ import net.coderbot.iris.shaderpack.ShadowCullState;
 import net.coderbot.iris.shadow.ShadowMatrices;
 import net.coderbot.iris.shadows.CullingDataCache;
 import net.coderbot.iris.shadows.ShadowCompositeRenderer;
+import net.coderbot.iris.shadows.ShadowGraphGate;
 import net.coderbot.iris.shadows.ShadowRenderTargets;
 import net.coderbot.iris.shadows.frustum.BoxCuller;
 import net.coderbot.iris.shadows.frustum.CullEverythingFrustum;
@@ -36,6 +39,7 @@ import net.coderbot.iris.shadows.frustum.fallback.BoxCullingFrustum;
 import net.coderbot.iris.shadows.frustum.fallback.NonCullingFrustum;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.CelestialUniforms;
+import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.EntityRenderer;
@@ -48,6 +52,7 @@ import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.profiler.Profiler;
 import net.minecraft.tileentity.TileEntity;
+import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -70,11 +75,17 @@ import java.util.Objects;
 import java.util.function.BooleanSupplier;
 
 public class ShadowRenderer {
+	private static final long P_SHADOW_ENTITIES_RENDERED = Tracy.plotHandle("shadow.entitiesRendered");
+	private static final Tracy.ZoneId Z_GEN_MIPMAP = Tracy.zoneId("genMipmap", Tracy.COLOR_IRIS);
+	private static final Tracy.ZoneId Z_SHADOW_FRUSTUM = Tracy.zoneId("shadowFrustum", Tracy.COLOR_IRIS);
+	private static final Tracy.ZoneId Z_SHADOW_VIEWPORT = Tracy.zoneId("shadowViewport", Tracy.COLOR_IRIS);
+	private static final Tracy.ZoneId Z_SHADOW_MODEL_PARTS = Tracy.zoneId("shadowModelParts", Tracy.COLOR_IRIS);
+
 	public static final Matrix4f MODELVIEW = new Matrix4f();
     public static final FloatBuffer MODELVIEW_BUFFER = BufferUtils.createFloatBuffer(16);
 	public static final Matrix4f PROJECTION = new Matrix4f();
-	public static final List<TileEntity> visibleTileEntities = new ArrayList<>();
-	public static final List<TileEntity> globalTileEntities = new ArrayList<>();
+	public static final List<List<TileEntity>> visibleTileEntities = new ArrayList<>();
+	public static final List<List<TileEntity>> globalTileEntities = new ArrayList<>();
 	public static boolean ACTIVE = false;
 
 	public static Frustrum FRUSTUM;
@@ -114,14 +125,51 @@ public class ShadowRenderer {
 	private final CelestialUniforms celestialUniforms;
 
 
-	private final AdvancedShadowCullingFrustum cachedAdvancedFrustum = new AdvancedShadowCullingFrustum();
+	private static final class FrustumCaches {
+		final AdvancedShadowCullingFrustum advancedFrustum = new AdvancedShadowCullingFrustum();
+		BoxCuller boxCuller;
+		BoxCullingFrustum boxCullingFrustum;
+		BoxCuller advancedBoxCuller;
+		double lastBoxCullerDistance = -1;
+		double lastAdvancedBoxCullerDistance = -1;
+	}
+
+	private static final long SHADOW_RELAY_MAX_AGE_NANOS = 250_000_000L;
+
+	public static boolean SHADOW_TERRAIN_RELAID = true;
+	private static float activeShadowAngle = Float.NaN;
+
+	private final FrustumCaches terrainFrustumCaches = new FrustumCaches();
+	private final FrustumCaches entityFrustumCaches = new FrustumCaches();
+	private float lastGraphShadowAngle = Float.NaN;
+	private float relayShadowAngle = Float.NaN;
+	private FrustumHolder preSubmitFrustumHolder = new FrustumHolder();
+	private final FrustumCaches preSubmitFrustumCaches = new FrustumCaches();
+	private boolean preSubmitActive;
+	private float preSubmittedShadowAngle = Float.NaN;
+
+	public void preSubmitGraphUpdate(int frame, boolean spectator) {
+		final AngelicaRenderSectionManager rsm = CeleritasWorldRenderer.getInstance().getRenderSectionManager();
+		final float currentShadowAngle = getShadowAngle();
+		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle)) {
+			rsm.markShadowGraphDirty();
+			lastGraphShadowAngle = currentShadowAngle;
+		}
+		if (!rsm.isShadowGraphDirty()) return;
+
+		preSubmitFrustumHolder = createShadowFrustum(renderDistanceMultiplier, preSubmitFrustumHolder, preSubmitFrustumCaches);
+		if (!(preSubmitFrustumHolder.getFrustum() instanceof ViewportProvider provider)) return;
+		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
+		preSubmitFrustumHolder.getFrustum().setPosition(entityPos.x, entityPos.y, entityPos.z);
+
+		if (rsm.preSubmitShadowGraphUpdate(provider.sodium$createViewport(), frame, spectator)) {
+			preSubmittedShadowAngle = lastGraphShadowAngle;
+			preSubmitActive = true;
+		}
+	}
+	private long lastRelayNanos;
 	private final Vector3f shadowLightVectorCache = new Vector3f();
-	private BoxCuller cachedBoxCuller;
-	private BoxCullingFrustum cachedBoxCullingFrustum;
-	private BoxCuller cachedAdvancedBoxCuller;
 	private BoxCuller cachedTileEntityCuller;
-	private double lastBoxCullerDistance = -1;
-	private double lastAdvancedBoxCullerDistance = -1;
 	private double lastTileEntityCullerDistance = -1;
 	private final boolean shouldRenderDH;
 	private final float nearPlane, farPlane;
@@ -130,6 +178,8 @@ public class ShadowRenderer {
 	public ShadowRenderer(ProgramSource shadow, PackDirectives directives, ShadowRenderTargets shadowRenderTargets, ShadowCompositeRenderer compositeRenderer, BooleanSupplier packUsesShadowtex1) {
 
 		this.profiler = Minecraft.getMinecraft().mcProfiler;
+		SHADOW_TERRAIN_RELAID = true;
+		activeShadowAngle = Float.NaN;
 
 		final PackShadowDirectives shadowDirectives = directives.getShadowDirectives();
 		this.nearPlane = shadowDirectives.getNearPlane();
@@ -195,18 +245,20 @@ public class ShadowRenderer {
 		// Use entity position for shadow matrix
 		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
 
+		final float angle = Float.isNaN(activeShadowAngle) ? getShadowAngle() : activeShadowAngle;
+
 		// Set up our modelview matrix stack
 		final MatrixStack modelView = new MatrixStack();
-		ShadowMatrices.createModelViewMatrix(modelView, getShadowAngle(), intervalSize, sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
+		ShadowMatrices.createModelViewMatrix(modelView, angle, intervalSize, sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
 
 		return modelView;
 	}
 
-	private MatrixStack getShadowModelView() {
+	private MatrixStack getShadowModelView(float shadowAngle) {
 		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
 
 		shadowModelView.reset();
-		ShadowMatrices.createModelViewMatrix(shadowModelView, getShadowAngle(), this.intervalSize, this.sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
+		ShadowMatrices.createModelViewMatrix(shadowModelView, shadowAngle, this.intervalSize, this.sunPathRotation, entityPos.x, entityPos.y, entityPos.z);
 		return shadowModelView;
 	}
 
@@ -306,7 +358,7 @@ public class ShadowRenderer {
 
 	private void setupMipmappingForTexture(int texture, int filteringMode) {
 		if (Tracy.ENABLED) {
-			Tracy.beginZone("genMipmap", Tracy.COLOR_IRIS);
+			Tracy.beginZone(Z_GEN_MIPMAP);
 			Tracy.zoneValue(texture);
 		}
 		try {
@@ -317,7 +369,7 @@ public class ShadowRenderer {
 		RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, filteringMode);
 	}
 
-	private FrustumHolder createShadowFrustum(float renderMultiplier, FrustumHolder holder) {
+	private FrustumHolder createShadowFrustum(float renderMultiplier, FrustumHolder holder, FrustumCaches caches) {
 		// TODO: Cull entities / block entities with Advanced Frustum Culling even if voxelization is detected.
 		String distanceInfo;
 		String cullingInfo;
@@ -340,7 +392,7 @@ public class ShadowRenderer {
 			} else {
 				distanceInfo = distance + " blocks (set by shader pack)";
 				cullingInfo = "distance only " + reason;
-				holder.setInfo(getOrCreateBoxCullingFrustum(distance), distanceInfo, cullingInfo);
+				holder.setInfo(getOrCreateBoxCullingFrustum(distance, caches), distanceInfo, cullingInfo);
 			}
 		} else {
 			BoxCuller boxCuller;
@@ -370,7 +422,7 @@ public class ShadowRenderer {
 					return holder.setInfo(CULL_EVERYTHING_FRUSTUM, distanceInfo, cullingInfo);
 				}
 
-				boxCuller = getOrCreateAdvancedBoxCuller(distance);
+				boxCuller = getOrCreateAdvancedBoxCuller(distance, caches);
 			}
 
 			cullingInfo = (hasSafeZone ? "Safe Zone" : "Advanced") + " Frustum Culling enabled";
@@ -388,35 +440,35 @@ public class ShadowRenderer {
 					shadowLightVectorCache, boxCuller, distanceCuller);
 				return holder.setInfo(safeZoneFrustum, distanceInfo, cullingInfo);
 			} else {
-				cachedAdvancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), projView, shadowLightVectorCache, boxCuller);
-				return holder.setInfo(cachedAdvancedFrustum, distanceInfo, cullingInfo);
+				caches.advancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), projView, shadowLightVectorCache, boxCuller);
+				return holder.setInfo(caches.advancedFrustum, distanceInfo, cullingInfo);
 			}
 		}
 
 		return holder;
 	}
 
-	private BoxCullingFrustum getOrCreateBoxCullingFrustum(double distance) {
-		if (cachedBoxCuller == null) {
-			cachedBoxCuller = new BoxCuller(distance);
-			cachedBoxCullingFrustum = new BoxCullingFrustum(cachedBoxCuller);
-			lastBoxCullerDistance = distance;
-		} else if (lastBoxCullerDistance != distance) {
-			cachedBoxCuller.setMaxDistance(distance);
-			lastBoxCullerDistance = distance;
+	private static BoxCullingFrustum getOrCreateBoxCullingFrustum(double distance, FrustumCaches caches) {
+		if (caches.boxCuller == null) {
+			caches.boxCuller = new BoxCuller(distance);
+			caches.boxCullingFrustum = new BoxCullingFrustum(caches.boxCuller);
+			caches.lastBoxCullerDistance = distance;
+		} else if (caches.lastBoxCullerDistance != distance) {
+			caches.boxCuller.setMaxDistance(distance);
+			caches.lastBoxCullerDistance = distance;
 		}
-		return cachedBoxCullingFrustum;
+		return caches.boxCullingFrustum;
 	}
 
-	private BoxCuller getOrCreateAdvancedBoxCuller(double distance) {
-		if (cachedAdvancedBoxCuller == null) {
-			cachedAdvancedBoxCuller = new BoxCuller(distance);
-			lastAdvancedBoxCullerDistance = distance;
-		} else if (lastAdvancedBoxCullerDistance != distance) {
-			cachedAdvancedBoxCuller.setMaxDistance(distance);
-			lastAdvancedBoxCullerDistance = distance;
+	private static BoxCuller getOrCreateAdvancedBoxCuller(double distance, FrustumCaches caches) {
+		if (caches.advancedBoxCuller == null) {
+			caches.advancedBoxCuller = new BoxCuller(distance);
+			caches.lastAdvancedBoxCullerDistance = distance;
+		} else if (caches.lastAdvancedBoxCullerDistance != distance) {
+			caches.advancedBoxCuller.setMaxDistance(distance);
+			caches.lastAdvancedBoxCullerDistance = distance;
 		}
-		return cachedAdvancedBoxCuller;
+		return caches.advancedBoxCuller;
 	}
 
 	private BoxCuller getOrCreateTileEntityCuller(double distance) {
@@ -431,8 +483,6 @@ public class ShadowRenderer {
 	}
 
 	private void setupGlState(Matrix4f projMatrix) {
-		// Bind shadow framebuffer and set viewport to shadow resolution
-		targets.getDepthSourceFb().bind();
 		GLStateManager.glViewport(0, 0, resolution, resolution);
 
 		// Set up our projection matrix and load it into the legacy matrix stack
@@ -454,6 +504,9 @@ public class ShadowRenderer {
 
 		// Make sure to unload the projection matrix
 		RenderSystem.restoreProjectionMatrix();
+
+		GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+		GLStateManager.glClearDepth(1.0);
 
 		// Restore main framebuffer and viewport
 		Minecraft mc = Minecraft.getMinecraft();
@@ -514,7 +567,7 @@ public class ShadowRenderer {
 		}
 
 		renderedShadowEntities = renderedEntitiesList.size();
-		if (Tracy.ENABLED) Tracy.plotInt("shadow.entitiesRendered", renderedShadowEntities);
+		if (Tracy.ENABLED) Tracy.plotInt(P_SHADOW_ENTITIES_RENDERED, renderedShadowEntities);
 
 		profiler.endSection();
 	}
@@ -524,15 +577,15 @@ public class ShadowRenderer {
 	private Frustrum createEntityShadowFrustum(double entityX, double entityY, double entityZ) {
         // Shader packs can shrink the entity shadow distance so faraway entities skip the shadow pass
         entityFrustumConstrained = false;
-		if (Tracy.ENABLED) Tracy.beginZone("shadowFrustum", Tracy.COLOR_IRIS);
+		if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_FRUSTUM);
 		try {
 			if (entityShadowDistanceMultiplier == 1.0F || entityShadowDistanceMultiplier < 0.0F) {
 				entityFrustumHolder.setInfo(terrainFrustumHolder.getFrustum(), terrainFrustumHolder.getDistanceInfo(), terrainFrustumHolder.getCullingInfo());
-			} else {
-				entityFrustumConstrained = true;
-				entityFrustumHolder = createShadowFrustum(renderDistanceMultiplier * entityShadowDistanceMultiplier, entityFrustumHolder);
+				return entityFrustumHolder.getFrustum();
 			}
 
+			entityFrustumConstrained = true;
+			entityFrustumHolder = createShadowFrustum(renderDistanceMultiplier * entityShadowDistanceMultiplier, entityFrustumHolder, entityFrustumCaches);
 			final Frustrum frustum = entityFrustumHolder.getFrustum();
 			frustum.setPosition(entityX, entityY, entityZ);
 			return frustum;
@@ -542,13 +595,11 @@ public class ShadowRenderer {
 	}
 
 	private void applyEntityShadowViewport(Frustrum entityShadowFrustum) {
-		if (AngelicaConfig.enableCeleritas) {
-			if (Tracy.ENABLED) Tracy.beginZone("shadowViewport", Tracy.COLOR_IRIS);
-			try {
-				CeleritasWorldRenderer.getInstance().setCurrentViewport(((ViewportProvider) entityShadowFrustum).sodium$createViewport());
-			} finally {
-				if (Tracy.ENABLED) Tracy.endZone();
-			}
+		if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_VIEWPORT);
+		try {
+			CeleritasWorldRenderer.getInstance().setCurrentViewport(((ViewportProvider) entityShadowFrustum).sodium$createViewport());
+		} finally {
+			if (Tracy.ENABLED) Tracy.endZone();
 		}
 	}
 
@@ -558,6 +609,10 @@ public class ShadowRenderer {
 		} else if (shouldRenderPlayer) {
 			renderPlayerEntity(levelRenderer, entityShadowFrustum, null, modelView, entityX, entityY, entityZ, tickDelta);
 		}
+	}
+
+	private static boolean voxelizationActive() {
+		return Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline deferred && deferred.getShadowVoxelizationCompute() != null;
 	}
 
 	private void renderSolidShadowTerrain(Minecraft mc, RenderGlobal rg, Camera playerCamera) {
@@ -576,7 +631,7 @@ public class ShadowRenderer {
 
     /** Flushes shadow-pass batched model parts while GL_POLYGON_OFFSET_FILL is still enabled. */
     private static void flushShadowModelParts() {
-        if (Tracy.ENABLED) Tracy.beginZone("shadowModelParts", Tracy.COLOR_IRIS);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_MODEL_PARTS);
         final boolean alphaEnabled = GLStateManager.getAlphaTest().isEnabled();
         final int alphaFunc = GLStateManager.getAlphaState().getFunction();
         final float alphaRef = GLStateManager.getAlphaState().getReference();
@@ -674,8 +729,21 @@ public class ShadowRenderer {
 	}
 
     private void renderTileEntity(TileEntity tile, double cameraX, double cameraY, double cameraZ, float partialTicks) {
-        if (tile.getDistanceFrom(cameraX, cameraY, cameraZ) >= tile.getMaxRenderDistanceSquared()) {
+        final double distSq = tile.getDistanceFrom(cameraX, cameraY, cameraZ);
+        if (distSq >= tile.getMaxRenderDistanceSquared()) {
             return;
+        }
+        if (AngelicaConfig.cullShadowTileEntities) {
+            final int maxD = AngelicaConfig.shadowTileEntityMaxDistance;
+            if (distSq >= (double) maxD * maxD) {
+                return;
+            }
+            if (AngelicaConfig.shadowSkipInMeshTileEntities) {
+                final Block block = tile.getBlockType();
+                if (block != null && block.getRenderType() != -1) {
+                    return;
+                }
+            }
         }
         int brightness = tile.getWorldObj().getLightBrightnessForSkyBlocks(tile.xCoord, tile.yCoord, tile.zCoord, 0);
         GLStateManager.setLightmapTextureCoords(GL13.GL_TEXTURE1, (float) brightness % 65536, (float) brightness / 65536);
@@ -710,21 +778,29 @@ public class ShadowRenderer {
         GbufferPrograms.setBlockEntityDefaults();
         ModelPartBatcher.INSTANCE.begin(ModelPartBatcher.Mode.BLOCK_ENTITIES, true);
 
-		for (TileEntity tileEntity : visibleTileEntities) {
-			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
-                continue;
-			}
-            renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
+		for (int b = 0, bn = visibleTileEntities.size(); b < bn; b++) {
+			final List<TileEntity> bucket = visibleTileEntities.get(b);
+			for (int i = 0, n = bucket.size(); i < n; i++) {
+				final TileEntity tileEntity = bucket.get(i);
+				if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
+					continue;
+				}
+				renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
 
-			shadowTileEntities++;
+				shadowTileEntities++;
+			}
 		}
-		for (TileEntity tileEntity : globalTileEntities) {
-			if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
-				continue;
-			}
-			renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
+		for (int b = 0, bn = globalTileEntities.size(); b < bn; b++) {
+			final List<TileEntity> bucket = globalTileEntities.get(b);
+			for (int i = 0, n = bucket.size(); i < n; i++) {
+				final TileEntity tileEntity = bucket.get(i);
+				if (hasEntityFrustum && (culler.isCulled(tileEntity.xCoord - 1, tileEntity.yCoord - 1, tileEntity.zCoord - 1, tileEntity.xCoord + 1, tileEntity.yCoord + 1, tileEntity.zCoord + 1))) {
+					continue;
+				}
+				renderTileEntity(tileEntity, cameraX, cameraY, cameraZ, partialTicks);
 
-			shadowTileEntities++;
+				shadowTileEntities++;
+			}
 		}
 
         flushShadowModelParts();
@@ -758,8 +834,32 @@ public class ShadowRenderer {
 		visibleTileEntities.clear();
 		globalTileEntities.clear();
 
+		final float currentShadowAngle = getShadowAngle();
+		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle)) {
+			CeleritasWorldRenderer.getInstance().getRenderSectionManager().markShadowGraphDirty();
+			lastGraphShadowAngle = currentShadowAngle;
+		}
+
+		final boolean deferActive = shouldRenderTerrain;
+		final long frameNanos = System.nanoTime();
+		final boolean consumePreSubmit = preSubmitActive;
+		preSubmitActive = false;
+
+		final boolean relayTerrain = !deferActive
+			|| voxelizationActive()
+			|| !targets.isTerrainSnapshotValid()
+			|| consumePreSubmit
+			|| CeleritasWorldRenderer.getInstance().getRenderSectionManager().isShadowGraphDirty()
+			|| frameNanos - lastRelayNanos >= SHADOW_RELAY_MAX_AGE_NANOS;
+		if (relayTerrain) {
+
+			relayShadowAngle = consumePreSubmit && !CeleritasWorldRenderer.getInstance().getRenderSectionManager().isShadowGraphDirty() ? preSubmittedShadowAngle : currentShadowAngle;
+		}
+		activeShadowAngle = relayShadowAngle;
+		SHADOW_TERRAIN_RELAID = relayTerrain;
+
 		// Create our camera
-		final MatrixStack modelView = getShadowModelView();
+		final MatrixStack modelView = getShadowModelView(relayShadowAngle);
 		MODELVIEW.set(modelView.peek().getModel());
 
 		final Matrix4f shadowProjection;
@@ -780,7 +880,7 @@ public class ShadowRenderer {
 
 		profiler.startSection("iris_shadow_initialize_frustum");
 
-		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder);
+		terrainFrustumHolder = createShadowFrustum(renderDistanceMultiplier, terrainFrustumHolder, terrainFrustumCaches);
 		FRUSTUM = terrainFrustumHolder.getFrustum();
 
 		// Use the player/entity position for shadow rendering
@@ -794,19 +894,18 @@ public class ShadowRenderer {
 
 		profiler.endSection();
 
-		// Always schedule a terrain update
-		// TODO: Only schedule a terrain update if the sun / moon is moving, or the shadow map camera moved.
-		// We have to ensure that we don't regenerate clouds every frame, since that's what needsUpdate ends up doing.
-		// This took up to 10% of the frame time before we applied this fix! That's really bad!
-//		boolean regenerateClouds = levelRenderer.shouldRegenerateClouds();
-//		((LevelRenderer) levelRenderer).needsUpdate();
-//		levelRenderer.setShouldRegenerateClouds(regenerateClouds);
+		// Save the main camera viewport before shadow pass overwrites it.
+		// clipRenderersByFrustum -> setupTerrain sets currentViewport to the shadow frustum.
+		// If the shadow pass throws or the main setupTerrain doesn't run after us, the shadow
+		// viewport would persist and corrupt entity culling in the main pass.
+		final Viewport savedViewport = CeleritasWorldRenderer.getInstance().getCurrentViewport();
 
-		// Mark the shadow graph as needing update before terrain setup
-		// Modern Celeritas does this to ensure the shadow render lists get populated
-		com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer.getInstance()
-			.getRenderSectionManager().markShadowGraphDirty();
-
+		// Pair setupGlState / restoreGlState with try-finally so any throw between them
+		// (translucent terrain, entity rendering, mipmaps, etc.) still unwinds the
+		// projection push and the shadow framebuffer binding. Without this, a single
+		// mid-pass throw strands shadow GL state into the next frame's vanilla rendering.
+		boolean setupGlStateRan = false;
+		try {
 		// Execute the vanilla terrain setup / culling routines using our shadow frustum.
         mc.renderGlobal.clipRenderersByFrustum(terrainFrustumHolder.getFrustum(), playerCamera.getPartialTicks());
 
@@ -816,20 +915,38 @@ public class ShadowRenderer {
 //		levelRenderer.setFrameId(levelRenderer.getFrameId() + 1);
 
 		setupGlState(PROJECTION);
+		setupGlStateRan = true;
 
 		// Get the current tick delta. Normally this is the same as client.getTickDelta(), but when the game is paused,
 		// it is set to a fixed value.
 		final float tickDelta = CapturedRenderingState.INSTANCE.getTickDelta();
 
+		profiler.endStartSection("iris_shadow_terrain");
+		if (relayTerrain) {
+			try (GLDebug.Scope s = GLDebug.scope("shadow:terrain")) {
+				renderSolidShadowTerrain(mc, rg, playerCamera);
+			}
+			if (deferActive) {
+				targets.captureTerrainSnapshot();
+				lastRelayNanos = frameNanos;
+			}
+		} else {
+			try (GLDebug.Scope s = GLDebug.scope("shadow:terrain_restore")) {
+				targets.restoreTerrainSnapshot();
+			}
+		}
+
 		profiler.endStartSection("iris_shadow_entities");
 		final Frustrum entityShadowFrustum = createEntityShadowFrustum(entityX, entityY, entityZ);
 		applyEntityShadowViewport(entityShadowFrustum);
-		renderShadowEntitiesAndPlayer(levelRenderer, entityShadowFrustum, modelView, entityX, entityY, entityZ, tickDelta);
-		profiler.endStartSection("iris_shadow_terrain");
-		renderSolidShadowTerrain(mc, rg, playerCamera);
+		try (GLDebug.Scope s = GLDebug.scope("shadow:entities")) {
+			renderShadowEntitiesAndPlayer(levelRenderer, entityShadowFrustum, modelView, entityX, entityY, entityZ, tickDelta);
+		}
 
 		if (shouldRenderBlockEntities) {
-			renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, entityFrustumConstrained);
+			try (GLDebug.Scope s = GLDebug.scope("shadow:block_entities")) {
+				renderTileEntities(null, modelView, entityX, entityY, entityZ, tickDelta, entityFrustumConstrained);
+			}
 		}
 
 		profiler.endStartSection("iris_shadow_draw_entities");
@@ -846,7 +963,9 @@ public class ShadowRenderer {
 		// It doesn't matter a ton, since this just means that they won't be sorted in the getNormal rendering pass.
 		// Just something to watch out for, however...
 		if (shouldRenderTranslucent) {
-            rg.sortAndRender(mc.renderViewEntity, 1, playerCamera.getPartialTicks());
+			try (GLDebug.Scope s = GLDebug.scope("shadow:translucent")) {
+				rg.sortAndRender(mc.renderViewEntity, 1, playerCamera.getPartialTicks());
+			}
 		}
 
 		// Note: Apparently tripwire isn't rendered in the shadow pass.
@@ -861,8 +980,14 @@ public class ShadowRenderer {
 		generateMipmaps();
 
 		profiler.endStartSection("iris_shadow_restore_gl_state");
-
-		restoreGlState();
+		} finally {
+			if (setupGlStateRan) {
+				restoreGlState();
+			}
+			if (savedViewport != null) {
+				CeleritasWorldRenderer.getInstance().setCurrentViewport(savedViewport);
+			}
+		}
 
 		if (levelRenderer instanceof CullingDataCache) {
 			((CullingDataCache) levelRenderer).restoreState();

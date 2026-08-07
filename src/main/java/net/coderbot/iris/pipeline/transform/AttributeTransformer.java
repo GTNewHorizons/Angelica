@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
-import net.coderbot.iris.gl.shader.ShaderType;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;

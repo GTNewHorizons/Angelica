@@ -32,9 +32,16 @@ public final class RenderClassTimings {
         counts.addTo(cls, 1);
     }
 
-    public void flushFrame() {
+    public void flushFrame(boolean plot) {
         if (nanos.isEmpty()) {
             debugLine = "";
+            return;
+        }
+        final boolean debugScreen = Minecraft.getMinecraft().gameSettings.showDebugInfo;
+        if (!plot && !debugScreen) {
+            debugLine = "";
+            nanos.clear();
+            counts.clear();
             return;
         }
         Class<?> a = null, b = null, c = null;
@@ -43,7 +50,7 @@ public final class RenderClassTimings {
         while (it.hasNext()) {
             final Reference2LongMap.Entry<Class<?>> entry = it.next();
             final long v = entry.getLongValue();
-            if (v >= PLOT_THRESHOLD_NS) {
+            if (plot && v >= PLOT_THRESHOLD_NS) {
                 Tracy.plotInt(plotName(entry.getKey()), v);
             }
             if (v > an) {
@@ -57,7 +64,7 @@ public final class RenderClassTimings {
                 c = entry.getKey(); cn = v;
             }
         }
-        if (a == null || !Minecraft.getMinecraft().gameSettings.showDebugInfo) {
+        if (a == null || !debugScreen) {
             debugLine = "";
         } else {
             final StringBuilder sb = new StringBuilder(label).append(": ");

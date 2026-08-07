@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -17,7 +18,6 @@ import org.lwjgl.opengl.KHRDebug;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
 import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
@@ -148,11 +148,10 @@ public class Program {
         return shader;
     }
 
-    private static final Path FFP_DUMP_DIR = Paths.get("ffp_shaders");
-
     // Post-translation GLSL ES dump, paired with ShaderCache's pre-translation 330 core dump.
     private static void dumpTranslatedFFPShader(int type, String translatedSrc, String name) {
-        if (!Boolean.parseBoolean(System.getProperty("angelica.dumpShaders", "false"))) return;
+        final Path dir = SystemProperties.shaderDumpDir("ffp");
+        if (dir == null) return;
         final String suffix = switch (type) {
             case GL20.GL_VERTEX_SHADER -> ".vert.glsl";
             case GL20.GL_FRAGMENT_SHADER -> ".frag.glsl";
@@ -160,8 +159,8 @@ public class Program {
             default -> ".glsl";
         };
         try {
-            Files.createDirectories(FFP_DUMP_DIR);
-            Files.writeString(FFP_DUMP_DIR.resolve(name + ".gles" + suffix), translatedSrc);
+            Files.createDirectories(dir);
+            Files.writeString(dir.resolve(name + ".gles" + suffix), translatedSrc);
         } catch (IOException e) {
             GLStateManager.LOGGER.warn("Failed to dump translated FFP shader: {}", e.getMessage());
         }

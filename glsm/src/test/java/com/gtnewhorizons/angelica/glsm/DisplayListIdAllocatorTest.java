@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import java.util.HashSet;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -181,7 +183,7 @@ class DisplayListIdAllocatorTest {
     void noDoubleAllocation() {
         DisplayListIDAllocator alloc = new DisplayListIDAllocator();
         // Allocate many IDs and verify uniqueness
-        java.util.Set<Integer> seen = new java.util.HashSet<>();
+        Set<Integer> seen = new HashSet<>();
         for (int i = 0; i < 500; i++) {
             int id = alloc.allocRange(1);
             assertTrue(seen.add(id), "Duplicate ID returned: " + id);

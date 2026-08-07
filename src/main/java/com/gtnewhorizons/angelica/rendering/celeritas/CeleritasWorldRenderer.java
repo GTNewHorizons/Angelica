@@ -48,6 +48,7 @@ import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
+import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
@@ -58,6 +59,12 @@ import net.coderbot.iris.pipeline.ShadowRenderer;
 
 public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, AngelicaRenderSectionManager, BlockRenderLayer, TileEntity, CeleritasWorldRenderer.TileEntityRenderContext> implements IDynamicLightWorldRenderer {
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
+
+    private static final Tracy.ZoneId Z_TESR_COLLECT = Tracy.zoneId("tesrCollect", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_DISPATCH = Tracy.zoneId("tesrDispatch", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_MODEL_PARTS = Tracy.zoneId("tesrModelParts", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_RENDER_TE = Tracy.zoneId("tesrRenderTE", Tracy.COLOR_CLIENT);
+
     private final Minecraft mc;
     private static CeleritasWorldRenderer instance;
 
@@ -128,6 +135,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         ShadowRenderer.globalTileEntities.clear();
         TesrBatchRenderer.INSTANCE.clearRetained();
         ModelPartBatcher.INSTANCE.clear();
+        GpuCulling.onWorldUnload();
         super.unloadWorld();
     }
 
@@ -212,6 +220,8 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         }
     }
 
+    private CameraState lastMainCameraState;
+
     @Override
     public void setupTerrain(Viewport viewport, CameraState cameraState, int frame, boolean spectator, boolean updateChunksImmediately) {
         var transform = viewport.getTransform();
@@ -224,6 +234,14 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         this.useEntityCulling = ClientProxy.options().performance.useEntityCulling;
 
+        if (renderSectionManager.isInShadowPass()) {
+            if (lastMainCameraState != null) {
+                cameraState = lastMainCameraState;
+            }
+        } else {
+            lastMainCameraState = cameraState;
+        }
+
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 
         // Process deferred dynamic light chunk rebuilds with frustum culling
@@ -231,14 +249,21 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             DynamicLights.get().processChunkRebuilds(viewport);
         }
 
-        // Collect tile entities for shadow pass rendering
-        if (renderSectionManager.isInShadowPass() && IrisShaderProviderHolder.isActive()) {
-            collectTileEntitiesForShadow();
+        if (renderSectionManager.isInShadowPass()) {
+            if (IrisShaderProviderHolder.isActive()) {
+                collectTileEntitiesForShadow();
+            }
+        } else if (IrisShaderProviderHolder.isActive()) {
+            IrisShaderProviderHolder.getProvider().preSubmitShadowGraph(frame, spectator);
         }
     }
 
     public void setCurrentViewport(Viewport viewport) {
         this.currentViewport = viewport;
+    }
+
+    public Viewport getCurrentViewport() {
+        return this.currentViewport;
     }
 
     @SuppressWarnings("unchecked")
@@ -266,7 +291,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 final var context = renderSection.getBuiltContext();
                 if (context instanceof MinecraftBuiltRenderSectionData<?, ?> mcData) {
                     final var culledEntities = (List<TileEntity>) mcData.culledBlockEntities;
-                    ShadowRenderer.visibleTileEntities.addAll(culledEntities);
+                    if (!culledEntities.isEmpty()) {
+                        ShadowRenderer.visibleTileEntities.add(culledEntities);
+                    }
                 }
             }
         }
@@ -275,7 +302,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             final var context = renderSection.getBuiltContext();
             if (context instanceof MinecraftBuiltRenderSectionData<?, ?> mcData) {
                 final var globalEntities = (List<TileEntity>) mcData.globalBlockEntities;
-                ShadowRenderer.globalTileEntities.addAll(globalEntities);
+                if (!globalEntities.isEmpty()) {
+                    ShadowRenderer.globalTileEntities.add(globalEntities);
+                }
             }
         }
     }
@@ -335,7 +364,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             this.teCamZ = TileEntityRendererDispatcher.staticPlayerZ;
             frameTEs.clear();
             frameOverride.clear();
-            if (Tracy.ENABLED) Tracy.beginZone("tesrCollect", Tracy.COLOR_CLIENT);
+            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_COLLECT);
             try {
                 super.renderBlockEntities(teRenderContext);
             } finally {
@@ -343,7 +372,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             }
             this.teFrustum = null;
             this.teTransform = null;
-            if (Tracy.ENABLED) Tracy.beginZone("tesrDispatch", Tracy.COLOR_CLIENT);
+            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
                 for (int i = 0; i < frameTEs.size(); i++) {
                     final TileEntity te = frameTEs.get(i);
@@ -362,7 +391,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 if (Tracy.ENABLED) Tracy.endZone();
             }
         } else {
-            if (Tracy.ENABLED) Tracy.beginZone("tesrDispatch", Tracy.COLOR_CLIENT);
+            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DISPATCH);
             try {
                 sortedTileEntities.clear();
                 for (int i = 0; i < frameOverride.size(); i++) {
@@ -382,7 +411,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 if (Tracy.ENABLED) Tracy.endZone();
             }
         }
-        if (Tracy.ENABLED) Tracy.beginZone("tesrModelParts", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_MODEL_PARTS);
         try {
             ModelPartBatcher.INSTANCE.flush();
         } finally {
@@ -514,9 +543,11 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             final long start = Tracy.ENABLED ? System.nanoTime() : 0L;
             final boolean attribute = Tracy.ENABLED && TesrAttribution.currentRenderable == null;
             if (attribute) TesrAttribution.currentRenderable = tileEntity.getClass();
+            if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_RENDER_TE);
             try {
                 TileEntityRendererDispatcher.instance.renderTileEntity(tileEntity, partialTicks);
             } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
                 if (attribute) TesrAttribution.currentRenderable = null;
                 if (Tracy.ENABLED) RenderClassTimings.TESR.add(teLabelClass(tileEntity), System.nanoTime() - start);
             }

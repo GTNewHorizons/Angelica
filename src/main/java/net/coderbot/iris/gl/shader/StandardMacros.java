@@ -17,6 +17,7 @@ import net.coderbot.iris.uniforms.VanillaBiomeList;
 import net.minecraft.world.biome.BiomeGenBase;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import org.lwjgl.LWJGLUtil;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
@@ -83,6 +84,9 @@ public class StandardMacros {
 			define(standardDefines, "IRIS_VERSION", "10803");
 			define(standardDefines, "IRIS_HAS_TRANSLUCENCY_SORTING");
 			define(standardDefines, "MAX_COLOR_BUFFERS", String.valueOf(IrisLimits.MAX_COLOR_BUFFERS));
+		}
+		if (BackendManager.RENDER_BACKEND.isSDLGPU()) {
+			define(standardDefines, "IS_ANGELICA_SDLGPU");
 		}
 
 		if (DHCompat.isPresent()) {
@@ -191,6 +195,10 @@ public class StandardMacros {
 	 * @see <a href="https://github.com/sp614x/optifine/blob/9c6a5b5326558ccc57c6490b66b3be3b2dc8cbef/OptiFineDoc/doc/shaders.txt#L709-L714">Optifine Doc</a>
 	 */
 	public static String getOsString() {
+        // Force MC_OS_LINUX under SDL_GPU on Mac to avoid shaderpack gates!
+        if (BackendManager.RENDER_BACKEND.isSDLGPU() && LWJGLUtil.getPlatform() == LWJGLUtil.PLATFORM_MACOSX) {
+            return "MC_OS_LINUX";
+        }
         return switch (LWJGLUtil.getPlatform()) {
             case LWJGLUtil.PLATFORM_MACOSX -> "MC_OS_MAC";
             case LWJGLUtil.PLATFORM_LINUX -> "MC_OS_LINUX";

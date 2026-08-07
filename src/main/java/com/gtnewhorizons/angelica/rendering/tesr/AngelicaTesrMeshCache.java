@@ -75,6 +75,8 @@ public final class AngelicaTesrMeshCache {
         long lastUsedMs;
     }
 
+    private static final Tracy.ZoneId Z_TESR_CAPTURE = Tracy.zoneId("tesrCapture", Tracy.COLOR_CLIENT);
+
     AngelicaTesrMeshCache(MeshBackend backend, LongSupplier clock) {
         this(backend, clock, (template, texture, material) -> TesrBatchRenderer.INSTANCE.queue(template, texture, material));
     }
@@ -117,6 +119,15 @@ public final class AngelicaTesrMeshCache {
     }
 
     private Entry capture(Object key, Entry existing, TesrMeshBuilder builder) {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_CAPTURE);
+        try {
+            return captureInner(key, existing, builder);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    private Entry captureInner(Object key, Entry existing, TesrMeshBuilder builder) {
         Entry entry = existing;
         if (entry == null) {
             entry = new Entry();
@@ -129,7 +140,7 @@ public final class AngelicaTesrMeshCache {
         sink.close();
         if (entry.buckets.isEmpty() && sink.openedAnyBucket && !warnedEmptyCapture) {
             warnedEmptyCapture = true;
-            LOG.warn("Capture produced 0 vertices across all buckets");
+            LOG.debug("Capture produced 0 vertices across all buckets for {}", key.getClass().getName());
         }
         entry.version++;
         return entry;

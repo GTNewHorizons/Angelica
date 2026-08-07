@@ -2,9 +2,11 @@ package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.CeleritasTerrainParameters;
@@ -113,6 +115,17 @@ public class TransformPatcher {
             }
         }
 
+        if (result != null) {
+            final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
+            if (processor != null) {
+                for (Map.Entry<PatchShaderType, String> entry : result.entrySet()) {
+                    final String src = entry.getValue();
+                    if (src == null) continue;
+                    processor.onTransformed(src, entry.getKey().glShaderType);
+                }
+            }
+        }
+
         return result;
     }
 
@@ -170,7 +183,14 @@ public class TransformPatcher {
             return null;
         }
         Map<PatchShaderType, String> result = ShaderTransformer.transformCompute(compute, new ComputeParameters(Patch.COMPUTE, stage, textureMap));
-        return result != null ? result.get(PatchShaderType.COMPUTE) : null;
+        final String transformed = result != null ? result.get(PatchShaderType.COMPUTE) : null;
+        if (transformed != null) {
+            final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
+            if (processor != null) {
+                processor.onTransformed(transformed, PatchShaderType.COMPUTE.glShaderType);
+            }
+        }
+        return transformed;
     }
 
     public static void clearCache() {

@@ -21,6 +21,8 @@ import java.util.Arrays;
 @Mixin(ModelBiped.class)
 public abstract class MixinModelBiped {
 
+    @Unique private static final Tracy.ZoneId Z_PLAYER_REFLECTION_CAPTURE = Tracy.zoneId("playerReflectionCapture", Tracy.COLOR_IRIS);
+
     @Unique private static final Matrix4f angelica$mat = new Matrix4f();
     @Unique private static final Vector3f angelica$vec = new Vector3f();
 
@@ -35,7 +37,7 @@ public abstract class MixinModelBiped {
         final ModelBiped model = (ModelBiped) (Object) this;
         final float[] data = PlayerReflectionCapture.vertexScratch();
 
-        if (Tracy.ENABLED) Tracy.beginZone("playerReflectionCapture", Tracy.COLOR_IRIS);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_PLAYER_REFLECTION_CAPTURE);
         try {
             // Six 48-vertex blocks = body parts, each base box + overlay box
             int o = 0;

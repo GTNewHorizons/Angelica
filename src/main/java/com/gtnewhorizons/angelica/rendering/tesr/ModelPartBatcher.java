@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.api.tesr.ModelPartMeshBuilder;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
@@ -197,7 +198,7 @@ public final class ModelPartBatcher {
         return active;
     }
 
-    public static boolean partDraw(ModelRenderer part, float scale) {
+    public static boolean partDraw(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {
         final ModelPartBatcher r = INSTANCE;
         if (!r.active) {
             r.bail(BailReason.INACTIVE);
@@ -207,14 +208,14 @@ public final class ModelPartBatcher {
             r.bail(BailReason.RECORDING);
             return false;
         }
-        if (!r.queuePart(part, scale)) {
+        if (!r.queuePart(part, scale, builder)) {
             r.liveFallbacks++;
             return false;
         }
         return true;
     }
 
-    private boolean queuePart(ModelRenderer part, float scale) {
+    private boolean queuePart(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {
         if (shaderPipeline != null) {
             if (GLStateManager.getActiveProgram() != shaderPipeline.getActivePassProgramId()) {
                 bail(BailReason.FOREIGN_PROGRAM);
@@ -224,7 +225,7 @@ public final class ModelPartBatcher {
             bail(BailReason.HURT_FLASH);
             return false;
         }
-        final PartTemplate entry = templateFor(part, scale);
+        final PartTemplate entry = templateFor(part, scale, builder);
         if (entry.emptyVanillaPart) {
             return true;
         }
@@ -276,7 +277,7 @@ public final class ModelPartBatcher {
         final Color4 color = GLStateManager.getColor();
         final int colorABGR = ColorABGR.pack(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
         final int packedLight = ((int) GLSMConfig.lastBrightnessY << 16) | ((int) GLSMConfig.lastBrightnessX & 0xFFFF);
-        final int mvGen = GLStateManager.mvGeneration;
+        final int mvGen = GLStateManager.getMvGeneration();
         if (!mvCaptured || mvGen != lastMvGeneration) {
             modelView.set(GLStateManager.getModelViewMatrix());
             lastMvGeneration = mvGen;
@@ -307,22 +308,29 @@ public final class ModelPartBatcher {
         return GLStateManager.getDepthState().getFunc() == GL11.GL_EQUAL && !GLStateManager.getDepthState().isEnabled();
     }
 
-    private PartTemplate templateFor(ModelRenderer part, float scale) {
+    private PartTemplate templateFor(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {
         PartTemplate entry = templates.get(part);
         if (entry == null || entry.scale != scale) {
-            entry = capture(part, scale, entry);
+            entry = capture(part, scale, entry, builder);
         }
         entry.lastUsedMs = lastSweepMs;
         return entry;
     }
 
-    private PartTemplate capture(ModelRenderer part, float scale, PartTemplate reuse) {
+    private PartTemplate capture(ModelRenderer part, float scale, PartTemplate reuse, ModelPartMeshBuilder builder) {
         final PartTemplate entry = reuse != null ? reuse : new PartTemplate();
         entry.scale = scale;
         entry.template = null;
         entry.emptyVanillaPart = false;
         final List<ModelBox> boxes = part.cubeList;
-        if (boxes != null && !boxes.isEmpty()) {
+        if (builder != null) {
+            final Tessellator tess = captureBackend.beginCapture(DefaultVertexFormat.POSITION_TEXTURE_NORMAL);
+            try {
+                builder.angelica$buildPart(tess, part, scale);
+            } finally {
+                entry.template = captureBackend.endCaptureToTemplate();
+            }
+        } else if (boxes != null && !boxes.isEmpty()) {
             final Tessellator tess = captureBackend.beginCapture(DefaultVertexFormat.POSITION_TEXTURE_NORMAL);
             for (int i = 0, n = boxes.size(); i < n; i++) {
                 boxes.get(i).render(tess, scale);

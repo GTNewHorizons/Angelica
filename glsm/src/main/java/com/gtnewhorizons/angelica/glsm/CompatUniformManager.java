@@ -177,10 +177,10 @@ public class CompatUniformManager {
         final int[] locs = pu.locs;
 
         // Matrix uniforms — skip if this program's storage already holds the current generation
-        final int mvGen = GLStateManager.mvGeneration;
-        final int mvLinearGen = GLStateManager.mvLinearGeneration;
-        final int projGen = GLStateManager.projGeneration;
-        final int texMatGen = GLStateManager.texMatrixGeneration;
+        final int mvGen = GLStateManager.getMvGeneration();
+        final int mvLinearGen = GLStateManager.getMvLinearGeneration();
+        final int projGen = GLStateManager.getProjGeneration();
+        final int texMatGen = GLStateManager.getTexMatrixGeneration();
         final boolean mvChanged = mvGen != pu.lastMvGen;
         final boolean mvLinearChanged = mvLinearGen != pu.lastMvLinearGen;
         final boolean projChanged = projGen != pu.lastProjGen;
@@ -194,14 +194,14 @@ public class CompatUniformManager {
         }
 
         // Fragment-category uniforms (fog, alpha) — skip if generation unchanged
-        final int fragGen = GLStateManager.fragmentGeneration;
+        final int fragGen = GLStateManager.getFragmentGeneration();
         if (fragGen != pu.lastFragmentGen) {
             pu.lastFragmentGen = fragGen;
             uploadFragmentUniforms(locs);
         }
 
         // Lighting-derived uniforms (scene color, light sources, material)
-        final int litGen = GLStateManager.lightingGeneration;
+        final int litGen = GLStateManager.getLightingGeneration();
         if (litGen != pu.lastLightingGen) {
             pu.lastLightingGen = litGen;
             if (locs[LOC_SCENE_COLOR] != -1) uploadSceneColor(locs);
@@ -211,7 +211,7 @@ public class CompatUniformManager {
 
         // Clip plane equations + enabled bool — uploaded when enable state or equations change
         if (locs[LOC_CLIP_PLANES] != -1 || locs[LOC_CLIP_PLANES_ENABLED] != -1) {
-            final int cpGen = GLStateManager.clipPlaneGeneration;
+            final int cpGen = GLStateManager.getClipPlaneGeneration();
             if (cpGen != pu.lastClipPlaneGen) {
                 pu.lastClipPlaneGen = cpGen;
                 uploadClipPlanes(locs);

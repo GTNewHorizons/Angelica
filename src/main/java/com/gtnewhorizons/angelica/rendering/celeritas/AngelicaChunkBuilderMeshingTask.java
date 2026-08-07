@@ -19,6 +19,7 @@ import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.World;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -51,6 +52,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> {
+    private static final Tracy.ZoneId Z_MESH_SECTION = Tracy.zoneId("meshSection");
+    private static final Tracy.ZoneId Z_MESH_DEFERRED = Tracy.zoneId("meshDeferred");
+    private static final Tracy.ZoneId Z_MESH_FINALIZE = Tracy.zoneId("meshFinalize");
+
     protected final RenderSection render;
     protected final int buildTime;
     protected final Vector3d camera;
@@ -109,7 +114,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final SmoothBiomeColorCache biomeColorCache = getBiomeColorCache();
 
         onEnterExecute();
-        if (Tracy.ENABLED) Tracy.beginZone("meshSection");
+        if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_SECTION);
 
         final Tessellator tessellator = getTessellator();
         ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
@@ -123,7 +128,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             final BlockRenderContext blockRenderContext = buildContext.getBlockRenderContext();
 
             final NbtConditionalIdMap<Block> teMap = BlockRenderingSettings.INSTANCE.getBlockNbtMap();
-            final net.minecraft.world.World mcWorld = Minecraft.getMinecraft().theWorld;
+            final World mcWorld = Minecraft.getMinecraft().theWorld;
             final long currentTick = mcWorld != null ? mcWorld.getTotalWorldTime() : 0L;
 
             final boolean threaded = isThreaded();
@@ -234,7 +239,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
             // Process deferred blocks on main thread if any
             if (deferredBlocks != null && !deferredBlocks.isEmpty()) {
-                if (Tracy.ENABLED) Tracy.beginZone("meshDeferred");
+                if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_DEFERRED);
                 try {
                     processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
                 } finally {
@@ -242,7 +247,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                 }
             }
 
-            if (Tracy.ENABLED) Tracy.beginZone("meshFinalize");
+            if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_FINALIZE);
             final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes;
             try {
                 meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers,

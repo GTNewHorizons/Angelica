@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
@@ -10,6 +11,7 @@ import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.ARBTimerQuery;
 import org.lwjgl.opengl.ContextCapabilities;
 import org.lwjgl.opengl.EXTDirectStateAccess;
+import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -28,6 +30,8 @@ import org.lwjgl.opengl.GL44;
 import org.lwjgl.opengl.GL45;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjgl.opengl.KHRDebugCallback;
+import org.lwjgl.opengl.Display;
+
 
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
@@ -98,7 +102,24 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean isCurrent() {
+        try {
+            return Display.isCurrent();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    @Override
     public int getMinGLSLVersion() {return 330;}
+
+    @Override
+    public void setVSyncEnabled(boolean enabled) {Display.setVSyncEnabled(enabled);}
+
+    @Override
+    public boolean isAnisotropicSupported() {
+        return caps != null && caps.GL_EXT_texture_filter_anisotropic;
+    }
 
     @Override
     public void flush() {GL11.glFlush();}
@@ -323,7 +344,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
-        org.lwjgl.opengl.GL43.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
+        GL43.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
 
     @Override
@@ -333,8 +354,7 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void drawElementsBaseVertex(int mode, int count, int type, long indices, int baseVertex) {
-        // On GL path, LWJGL3 service dispatches directly. This is only called via VulkanRenderBackend.
-        throw new UnsupportedOperationException("GLRenderBackend.drawElementsBaseVertex should not be called — LWJGL service handles this");
+        GL32.glDrawElementsBaseVertex(mode, count, type, indices, baseVertex);
     }
 
     @Override
@@ -944,6 +964,17 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public int getIndexedBufferBinding(int target, int index) {
+        final int pname = (target == GL43.GL_SHADER_STORAGE_BUFFER) ? GL43.GL_SHADER_STORAGE_BUFFER_BINDING : GL31.GL_UNIFORM_BUFFER_BINDING;
+        return GL30.glGetInteger(pname, index);
+    }
+
+    @Override
+    public int getIntegerIndexed(int pname, int index) {
+        return GL30.glGetInteger(pname, index);
+    }
+
+    @Override
     public void bufferData(int target, long size, int usage) {
         GL15.glBufferData(target, size, usage);
     }
@@ -1073,6 +1104,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     public boolean isBuffer(int buffer) {
         return GL15.glIsBuffer(buffer);
     }
+
+    @Override
+    public boolean isTexture(int texture) {
+        return GL11.glIsTexture(texture);
+    }
+
+    @Override public boolean isFramebuffer(int framebuffer) { return GL30.glIsFramebuffer(framebuffer); }
+    @Override public boolean isRenderbuffer(int renderbuffer) { return GL30.glIsRenderbuffer(renderbuffer); }
+    @Override public boolean isSampler(int sampler) { return GL33.glIsSampler(sampler); }
+    @Override public boolean isQuery(int query) { return GL15.glIsQuery(query); }
 
     @Override
     public ByteBuffer mapBufferRange(int target, long offset, long length, int access) {
@@ -1301,6 +1342,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public float getTextureParameterf(int texture, int target, int pname) {
+        return ARBDirectStateAccess.glGetTextureParameterf(texture, pname);
+    }
+
+    @Override
     public int getTextureLevelParameteri(int texture, int level, int pname) {
         return ARBDirectStateAccess.glGetTextureLevelParameteri(texture, level, pname);
     }
@@ -1406,6 +1452,26 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
         return GL32.glGetInteger64(GL33.GL_TIMESTAMP);
     }
 
+    @Override public void genQueries(IntBuffer ids) { GL15.glGenQueries(ids); }
+    @Override public int genQueries() { return GL15.glGenQueries(); }
+    @Override public void deleteQueries(int id) { GL15.glDeleteQueries(id); }
+    @Override public void beginQuery(int target, int id) { GL15.glBeginQuery(target, id); }
+    @Override public void endQuery(int target) { GL15.glEndQuery(target); }
+    @Override public void getQueryObjectui(int id, int pname, IntBuffer params) { GL15.glGetQueryObjectu(id, pname, params); }
+    @Override public int getQueryObjecti(int id, int pname) { return GL15.glGetQueryObjecti(id, pname); }
+
+    @Override public void waitSync(long sync, int flags, long timeout) { LWJGL.glWaitSync(sync, flags, timeout); }
+    @Override public int getSynci(long sync, int pname, IntBuffer length) { return LWJGL.glGetSynci(sync, pname, length); }
+    @Override public void queryCounter(int id, int target) {
+        if (caps.OpenGL33) GL33.glQueryCounter(id, target); else ARBTimerQuery.glQueryCounter(id, target);
+    }
+    @Override public long getQueryObjectui64(int id, int pname) {
+        return caps.OpenGL33 ? GL33.glGetQueryObjectui64(id, pname) : ARBTimerQuery.glGetQueryObjectui64(id, pname);
+    }
+    @Override public void uniform3fv(int location, float[] values) { GL20.glUniform3f(location, values[0], values[1], values[2]); }
+    @Override public void uniform4fv(int location, float[] values) { GL20.glUniform4f(location, values[0], values[1], values[2], values[3]); }
+    @Override public void bindFragDataLocation(int program, int colorNumber, CharSequence name) { GL30.glBindFragDataLocation(program, colorNumber, name); }
+
     @Override
     public void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) {
         GL43.glClearBufferSubData(target, internalFormat, offset, size, format, type, data);
@@ -1422,7 +1488,13 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
 
     @Override
     public void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
-        GL42.glBindImageTexture(unit, texture, level, layered, layer, access, format);
+        if (GLStateManager.capabilities.OpenGL42 || GLStateManager.capabilities.GL_ARB_shader_image_load_store) {
+            GL42.glBindImageTexture(unit, texture, level, layered, layer, access, format);
+        } else if (GLStateManager.capabilities.GL_EXT_shader_image_load_store) {
+            EXTShaderImageLoadStore.glBindImageTextureEXT(unit, texture, level, layered, layer, access, format);
+        } else {
+            GLStateManager.warnOnce("bindImageTexture", "glBindImageTexture ignored: no image load/store support");
+        }
     }
 
     @Override
@@ -1574,6 +1646,78 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
         if (activeDebugExtension == 1) {
             KHRDebug.glDebugMessageInsert(source, type, id, severity, message);
         }
+    }
+
+    @Override
+    public void debugMessageControl(int source, int type, int severity, IntBuffer ids, boolean enabled) {
+        if (activeDebugExtension == 1) {
+            GL43.glDebugMessageControl(source, type, severity, ids, enabled);
+        }
+    }
+
+    @Override
+    public void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
+        GL14.glMultiDrawArrays(mode, firsts, counts);
+    }
+
+    @Override
+    public void primitiveRestartIndex(int index) {
+        GL31.glPrimitiveRestartIndex(index);
+    }
+
+    @Override
+    public void pointParameterf(int pname, float param) {
+        GL14.glPointParameterf(pname, param);
+    }
+
+    @Override
+    public void pointParameteri(int pname, int param) {
+        GL14.glPointParameteri(pname, param);
+    }
+
+    @Override
+    public void getActiveAttrib(int program, int index, IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name) {
+        GL20.glGetActiveAttrib(program, index, length, size, type, name);
+    }
+
+    @Override
+    public String getActiveAttrib(int program, int index, int maxLength, IntBuffer sizeType) {
+        return GL20.glGetActiveAttrib(program, index, maxLength, sizeType);
+    }
+
+    @Override
+    public int genRenderbuffers() {
+        return GL30.glGenRenderbuffers();
+    }
+
+    @Override
+    public void deleteRenderbuffers(int renderbuffer) {
+        GL30.glDeleteRenderbuffers(renderbuffer);
+    }
+
+    @Override
+    public void bindRenderbuffer(int target, int renderbuffer) {
+        GL30.glBindRenderbuffer(target, renderbuffer);
+    }
+
+    @Override
+    public void renderbufferStorage(int target, int internalformat, int width, int height) {
+        GL30.glRenderbufferStorage(target, internalformat, width, height);
+    }
+
+    @Override
+    public void renderbufferStorageMultisample(int target, int samples, int internalformat, int width, int height) {
+        GL30.glRenderbufferStorageMultisample(target, samples, internalformat, width, height);
+    }
+
+    @Override
+    public void framebufferRenderbuffer(int target, int attachment, int renderbuffertarget, int renderbuffer) {
+        GL30.glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
+    }
+
+    @Override
+    public void clearBufferData(int target, int internalformat, int format, int type, ByteBuffer data) {
+        GL43.glClearBufferData(target, internalformat, format, type, data);
     }
 
 }

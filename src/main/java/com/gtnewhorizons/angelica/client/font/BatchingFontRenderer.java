@@ -433,6 +433,9 @@ public class BatchingFontRenderer {
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
         final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
 
+        final boolean depthTestBefore = GLStateManager.getDepthTest().isEnabled();
+        final boolean depthMaskBefore = GLStateManager.getDepthState().isEnabled();
+
         deferredSegments.get(0).owner.setupFontDrawState();
         GLStateManager.glDepthMask(false);
         flushLastTexture = DUMMY_RESOURCE_LOCATION;
@@ -447,8 +450,8 @@ public class BatchingFontRenderer {
                 drawCommands(segment.owner.batchCommands.elements(), segment.cmdStart, segment.cmdEnd, segment.owner);
             }
         }
-        GLStateManager.glDepthMask(true);
         restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore);
+        restoreDepth(depthTestBefore, depthMaskBefore);
 
         discardDeferredText();
     }
@@ -506,6 +509,8 @@ public class BatchingFontRenderer {
         final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
         final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        final boolean depthTestBefore = GLStateManager.getDepthTest().isEnabled();
+        final boolean depthMaskBefore = GLStateManager.getDepthState().isEnabled();
 
         setupFontDrawState();
         try (MemoryStack stack = stackPush()) {
@@ -519,6 +524,7 @@ public class BatchingFontRenderer {
         flushTextureChanged = false;
         drawCommands(batchCommands.elements(), deferredCmdWatermark, cmdCount, this);
         restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore);
+        restoreDepth(depthTestBefore, depthMaskBefore);
 
         truncateBatchToWatermark();
     }
@@ -603,6 +609,15 @@ public class BatchingFontRenderer {
         }
         if (flushTextureChanged) {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
+        }
+    }
+
+    private static void restoreDepth(boolean testBefore, boolean maskBefore) {
+        if (testBefore != GLStateManager.getDepthTest().isEnabled()) {
+            if (testBefore) GLStateManager.enableDepthTest(); else GLStateManager.disableDepthTest();
+        }
+        if (maskBefore != GLStateManager.getDepthState().isEnabled()) {
+            GLStateManager.glDepthMask(maskBefore);
         }
     }
 

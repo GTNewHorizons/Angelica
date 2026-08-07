@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLSMCoreExtension;
+import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
@@ -17,7 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 class InstancedFFPDrawGLTest {
 
     private static final int TEMPLATE_STRIDE = 32;
@@ -70,6 +69,7 @@ class InstancedFFPDrawGLTest {
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glLoadIdentity();
+        GLStateManager.glViewport(0, 0, 800, 600);
         GLStateManager.disableDepthTest();
         GLStateManager.disableCull();
 
@@ -101,6 +101,7 @@ class InstancedFFPDrawGLTest {
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glLoadIdentity();
+        GLStateManager.glViewport(0, 0, 800, 600);
         GLStateManager.disableDepthTest();
         GLStateManager.disableCull();
 
@@ -134,6 +135,7 @@ class InstancedFFPDrawGLTest {
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glLoadIdentity();
+        GLStateManager.glViewport(0, 0, 800, 600);
         GLStateManager.enableDepthTest();
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         GLStateManager.disableCull();

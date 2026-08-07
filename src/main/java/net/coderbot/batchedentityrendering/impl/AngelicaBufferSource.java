@@ -79,7 +79,7 @@ public class AngelicaBufferSource implements Groupable {
     private void ensurePrepared() {
         if (prepared) return;
         prepared = true;
-        typeToSegment.clear();
+        clearSegmentLists();
         for (SegmentedBufferBuilder builder : builders) {
             final List<BufferSegment> builderSegments = builder.getSegments();
             for (int i = 0, n = builderSegments.size(); i < n; i++) {
@@ -218,10 +218,16 @@ public class AngelicaBufferSource implements Groupable {
         layer.endDrawing();
     }
 
+    private void clearSegmentLists() {
+        for (List<BufferSegment> segments : typeToSegment.values()) {
+            segments.clear();
+        }
+    }
+
     private void finish() {
         releaseAttribState();
         clearCurrentId();
-        typeToSegment.clear();
+        clearSegmentLists();
         final long now = System.currentTimeMillis();
         final long maxIdle = getTargetClearTime();
         for (SegmentedBufferBuilder builder : builders) {

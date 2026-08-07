@@ -40,6 +40,7 @@ public class RenderSystem {
     private static boolean supportsCompute;
     private static boolean supportsImageLoadStore;
     private static boolean supportsSSBO;
+    private static boolean supportsMultiDrawIndirect;
     private static boolean supportsBufferStorage;
     private static boolean supportsClearTexture;
     private static boolean supportsTesselation;
@@ -111,7 +112,7 @@ public class RenderSystem {
                 || GLStateManager.capabilities.GL_ARB_shader_image_load_store
                 || GLStateManager.capabilities.GL_EXT_shader_image_load_store;
         supportsSSBO = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_shader_storage_buffer_object;
-
+        supportsMultiDrawIndirect = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect;
         supportsBufferStorage = !isGLES && (GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_buffer_storage);
         supportsClearTexture = GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_clear_texture;
 
@@ -347,12 +348,16 @@ public class RenderSystem {
         return dsaState.getTexParameteri(texture, target, pname);
     }
 
+    public static float getTexParameterf(int texture, int target, int pname) {
+        return dsaState.getTexParameterf(texture, target, pname);
+    }
+
     public static int getTexLevelParameteri(int texture, int level, int pname) {
         return dsaState.getTexLevelParameteri(texture, level, pname);
     }
 
     public static void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
-        RENDER_BACKEND.bindImageTexture(unit, texture, level, layered, layer, access, format);
+        GLStateManager.glBindImageTexture(unit, texture, level, layered, layer, access, format);
     }
 
     public static int getMaxImageUnits() {
@@ -360,6 +365,7 @@ public class RenderSystem {
     }
 
     public static boolean supportsImageLoadStore() {
+        if (RENDER_BACKEND.isSDLGPU()) return true;
         return supportsImageLoadStore;
     }
 
@@ -384,6 +390,10 @@ public class RenderSystem {
 
     public static boolean supportsSSBO() {
         return supportsSSBO;
+    }
+
+    public static boolean supportsMultiDrawIndirect() {
+        return supportsMultiDrawIndirect;
     }
 
     public static boolean supportsBufferStorage() {
@@ -466,9 +476,14 @@ public class RenderSystem {
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
     }
 
-    public static void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2,
-            int height2, int bufferChoice, int filter) {
-        dsaState.blitFramebuffer(source, dest, offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
+    public static void blitFramebuffer(int source, int dest, int offsetX, int offsetY, int width, int height, int offsetX2, int offsetY2, int width2, int height2, int bufferChoice, int filter) {
+        final boolean scissor = GLStateManager.glIsEnabled(GL11.GL_SCISSOR_TEST);
+        if (scissor) GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        try {
+            dsaState.blitFramebuffer(source, dest, offsetX, offsetY, width, height, offsetX2, offsetY2, width2, height2, bufferChoice, filter);
+        } finally {
+            if (scissor) GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+        }
     }
 
     public static int createFramebuffer() {
@@ -482,7 +497,7 @@ public class RenderSystem {
     // TODO: Proper notification of compute support
     public static boolean supportsCompute() {
         try {
-            return GLStateManager.capabilities.GL_ARB_compute_shader;
+            return GLStateManager.capabilities.GL_ARB_compute_shader || GLStateManager.capabilities.OpenGL43;
         } catch (Exception ignored) {
             return false;
         }
@@ -490,6 +505,10 @@ public class RenderSystem {
 
     public static int createBuffers() {
         return GLStateManager.glGenBuffers();
+    }
+
+    public static int getIndexedBufferBinding(int target, int index) {
+        return RENDER_BACKEND.getIndexedBufferBinding(target, index);
     }
 
     public static void bindBufferBase(int target, int index, int buffer) {

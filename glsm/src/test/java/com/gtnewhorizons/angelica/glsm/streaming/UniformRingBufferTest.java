@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
-import com.gtnewhorizons.angelica.glsm.GLSMCoreExtension;
+import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL31;
 
@@ -13,7 +12,7 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 class UniformRingBufferTest {
 
     private static final int BLOCK = 64;

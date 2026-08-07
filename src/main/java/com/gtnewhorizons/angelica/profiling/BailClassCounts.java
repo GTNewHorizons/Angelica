@@ -26,9 +26,15 @@ public final class BailClassCounts {
         counts.addTo(cls == null ? Object.class : cls, 1);
     }
 
-    public void flushFrame() {
+    public void flushFrame(boolean plot) {
         if (counts.isEmpty()) {
             debugLine = "";
+            return;
+        }
+        final boolean debugScreen = Minecraft.getMinecraft().gameSettings.showDebugInfo;
+        if (!plot && !debugScreen) {
+            debugLine = "";
+            counts.clear();
             return;
         }
         Class<?> a = null, b = null, c = null;
@@ -37,7 +43,7 @@ public final class BailClassCounts {
         while (it.hasNext()) {
             final Reference2IntMap.Entry<Class<?>> entry = it.next();
             final int v = entry.getIntValue();
-            Tracy.plotInt(plotName(entry.getKey()), v);
+            if (plot) Tracy.plotInt(plotName(entry.getKey()), v);
             if (v > an) {
                 c = b; cn = bn;
                 b = a; bn = an;
@@ -49,7 +55,7 @@ public final class BailClassCounts {
                 c = entry.getKey(); cn = v;
             }
         }
-        if (!Minecraft.getMinecraft().gameSettings.showDebugInfo) {
+        if (!debugScreen) {
             debugLine = "";
         } else {
             final StringBuilder sb = new StringBuilder(label).append(": ");

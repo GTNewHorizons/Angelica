@@ -74,13 +74,13 @@ public class LightState implements ISettableState<LightState> {
         this.rawPosition = new Vector4f(position);
         this.position = position;
         this.position.mul(GLStateManager.getModelViewMatrix());
-        this.posMvGeneration = GLStateManager.mvGeneration;
+        this.posMvGeneration = GLStateManager.getMvGeneration();
 
         this.rawSpotDirection = new Vector3f(spotDirection);
         this.spotDirection = spotDirection;
         GLStateManager.getModelViewMatrix().get3x3(matrix3f);
         this.spotDirection.mul(matrix3f);
-        this.spotDirLinearGeneration = GLStateManager.mvLinearGeneration;
+        this.spotDirLinearGeneration = GLStateManager.getMvLinearGeneration();
     }
 
     public boolean setAmbient(FloatBuffer newBuffer) {
@@ -152,7 +152,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     private boolean applyPosition(Vector4f raw) {
-        final int mvGen = GLStateManager.mvGeneration;
+        final int mvGen = GLStateManager.getMvGeneration();
         if (GLStateManager.shouldBypassCache() || this.posMvGeneration != mvGen || !this.rawPosition.equals(raw)) {
             this.rawPosition.set(raw);
             this.posMvGeneration = mvGen;
@@ -175,7 +175,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     private boolean applySpotDirection(Vector3f raw) {
-        final int mvLinearGen = GLStateManager.mvLinearGeneration;
+        final int mvLinearGen = GLStateManager.getMvLinearGeneration();
         if (GLStateManager.shouldBypassCache() || this.spotDirLinearGeneration != mvLinearGen || !this.rawSpotDirection.equals(raw)) {
             this.rawSpotDirection.set(raw);
             this.spotDirLinearGeneration = mvLinearGen;

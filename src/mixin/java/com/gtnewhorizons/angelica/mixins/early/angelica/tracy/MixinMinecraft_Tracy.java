@@ -13,6 +13,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
 public class MixinMinecraft_Tracy {
+    private static final Tracy.ZoneId Z_SWAP_BUFFERS = Tracy.zoneId("swapBuffers", Tracy.COLOR_SWAP);
+
     @Inject(method = "runGameLoop", at = @At("RETURN"))
     private void angelica$tracyFrameMark(CallbackInfo ci) {
         TracyFramePlots.onFrame((Minecraft) (Object) this);
@@ -33,7 +35,7 @@ public class MixinMinecraft_Tracy {
 
     @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V"))
     private void angelica$tracySwapBegin(CallbackInfo ci) {
-        Tracy.beginZone("swapBuffers", Tracy.COLOR_SWAP);
+        Tracy.beginZone(Z_SWAP_BUFFERS);
     }
 
     @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V", shift = At.Shift.AFTER))

@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -20,11 +21,18 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraftforge.client.event.RenderGameOverlayEvent;
 import org.lwjgl.opengl.GL11;
 
+import java.util.ArrayList;
+import java.util.List;
+
 public class CeleritasDebugScreenHandler {
     public static final CeleritasDebugScreenHandler INSTANCE = new CeleritasDebugScreenHandler();
 
     /** Toggle for fog debug display on F3 screen */
     public static boolean showFogDebug = false;
+
+    private static final long REBUILD_INTERVAL_NS = 500_000_000L;
+    private List<String> cachedRight;
+    private long lastBuildNanos;
 
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onRenderGameOverlayTextEvent(RenderGameOverlayEvent.Text event) {
@@ -47,27 +55,45 @@ public class CeleritasDebugScreenHandler {
             event.left.add(getDynamicLightsDebugString());
         }
 
-        event.right.add("");
-        event.right.add(EnumChatFormatting.GREEN + "Angelica " + Tags.VERSION + " [Celeritas Renderer] [" + RENDER_BACKEND.getName() + "]");
-        event.right.addAll(renderer.getDebugStrings());
-        final ShaderManager sm = ShaderManager.getInstance();
-        if (sm != null) {
-            event.right.add(sm.getDebugInfo());
+        final long now = System.nanoTime();
+        if (cachedRight == null || now - lastBuildNanos >= REBUILD_INTERVAL_NS) {
+            cachedRight = buildRightLines(renderer);
+            lastBuildNanos = now;
         }
-        event.right.add(TessellatorStreamingDrawer.getDebugInfo());
-        event.right.addAll(TesrBatchRenderer.INSTANCE.getDebugStrings());
-        event.right.add(ModelPartBatcher.INSTANCE.getDebugString());
-        if (Tracy.ENABLED) {
-            addIfPresent(event.right, RenderClassTimings.TESR.debugLine());
-            addIfPresent(event.right, RenderClassTimings.ENTITY.debugLine());
-            addIfPresent(event.right, RenderClassTimings.SHADOW_ENTITY.debugLine());
-            addIfPresent(event.right, BailClassCounts.MATERIAL.debugLine());
-            addIfPresent(event.right, BailClassCounts.TEMPLATE.debugLine());
-        }
-        event.right.add("");
+        event.right.addAll(cachedRight);
     }
 
-    private static void addIfPresent(java.util.List<String> lines, String line) {
+    private static List<String> buildRightLines(CeleritasWorldRenderer renderer) {
+        final List<String> lines = new ArrayList<>();
+        lines.add("");
+        lines.add(EnumChatFormatting.GREEN + "Angelica " + Tags.VERSION + " [Celeritas Renderer] [" + RENDER_BACKEND.getName() + "]");
+        lines.addAll(renderer.getDebugStrings());
+        final ShaderManager sm = ShaderManager.getInstance();
+        if (sm != null) {
+            lines.add(sm.getDebugInfo());
+        }
+        lines.add(TessellatorStreamingDrawer.getDebugInfo());
+        lines.add(TesrBatchRenderer.INSTANCE.getDebugSummaryLine());
+        final String transferInfo = RENDER_BACKEND.getTransferDebugInfo();
+        if (transferInfo != null) {
+            lines.add(transferInfo);
+        }
+        if (SystemProperties.DEBUG_F3_DETAIL) {
+            lines.addAll(TesrBatchRenderer.INSTANCE.getDebugDetailStrings());
+            lines.add(ModelPartBatcher.INSTANCE.getDebugString());
+            if (Tracy.ENABLED) {
+                addIfPresent(lines, RenderClassTimings.TESR.debugLine());
+                addIfPresent(lines, RenderClassTimings.ENTITY.debugLine());
+                addIfPresent(lines, RenderClassTimings.SHADOW_ENTITY.debugLine());
+                addIfPresent(lines, BailClassCounts.MATERIAL.debugLine());
+                addIfPresent(lines, BailClassCounts.TEMPLATE.debugLine());
+            }
+        }
+        lines.add("");
+        return lines;
+    }
+
+    private static void addIfPresent(List<String> lines, String line) {
         if (!line.isEmpty()) {
             lines.add(line);
         }

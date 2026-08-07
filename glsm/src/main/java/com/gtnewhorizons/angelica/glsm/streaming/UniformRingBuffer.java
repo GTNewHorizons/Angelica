@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.streaming;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
@@ -25,7 +26,7 @@ public final class UniformRingBuffer {
     private int orphanWraps;
 
     public UniformRingBuffer(int capacity, int blockSize) {
-        this(capacity, blockSize, GlStreamingRing.FORCE_ORPHAN_STREAMING);
+        this(capacity, blockSize, SystemProperties.FORCE_ORPHAN_STREAMING);
     }
 
     public UniformRingBuffer(int capacity, int blockSize, boolean forceOrphan) {
@@ -85,6 +86,7 @@ public final class UniformRingBuffer {
     public boolean isPersistent() { return ring != null; }
     public int getWraps() { return ring != null ? ring.wraps() : orphanWraps; }
     public int getFencesIssued() { return ring != null ? ring.fencesIssued() : 0; }
+    public int getForcedReclaims() { return ring != null ? ring.forcedReclaims() : 0; }
 
     public void destroy() {
         if (ring != null) {

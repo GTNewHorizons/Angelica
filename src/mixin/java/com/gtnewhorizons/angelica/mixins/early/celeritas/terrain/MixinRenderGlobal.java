@@ -55,6 +55,9 @@ import static org.joml.Math.lerp;
  */
 @Mixin(value = RenderGlobal.class, priority = 900)
 public class MixinRenderGlobal implements IRenderGlobalExt {
+    @Unique private static final long P_BLOCK_ENTITIES_RENDERED = Tracy.plotHandle("blockEntitiesRendered");
+    @Unique private static final Tracy.ZoneId Z_MT_QUEUE = Tracy.zoneId("mtQueue", Tracy.COLOR_TERRAIN);
+
     @Shadow public Minecraft mc;
     @Shadow @Final private TextureManager renderEngine;
 
@@ -259,7 +262,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
             GbufferPrograms.setBlockEntityDefaults();
         }
         final int blockEntitiesRendered = this.celeritas$renderer.renderBlockEntities(partialTicks);
-        if (Tracy.ENABLED) Tracy.plotInt("blockEntitiesRendered", blockEntitiesRendered);
+        if (Tracy.ENABLED) Tracy.plotInt(P_BLOCK_ENTITIES_RENDERED, blockEntitiesRendered);
         if (Iris.enabled) {
             GbufferPrograms.endBlockEntities();
         }
@@ -291,18 +294,25 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         final long startTime = System.nanoTime();
         int tasksRan = 0;
 
-        if (Tracy.ENABLED) Tracy.beginZone("mtQueue", Tracy.COLOR_TERRAIN);
+        long longestTaskNs = 0;
+
+        if (Tracy.ENABLED) Tracy.beginZone(Z_MT_QUEUE);
         try {
-            while (System.nanoTime() - startTime < BUDGET_NS) {
+            long taskStart = startTime;
+            while (taskStart - startTime < BUDGET_NS) {
                 if (AngelicaRenderQueue.processTasks(1) == 0)
                     break;
                 tasksRan++;
+                final long taskEnd = System.nanoTime();
+                final long elapsed = taskEnd - taskStart;
+                if (elapsed > longestTaskNs) longestTaskNs = elapsed;
+                taskStart = taskEnd;
             }
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
 
-        AngelicaRenderQueue.recordFrameStats(tasksRan, System.nanoTime() - startTime);
+        AngelicaRenderQueue.recordFrameStats(tasksRan, System.nanoTime() - startTime, longestTaskNs);
         return true;
     }
 

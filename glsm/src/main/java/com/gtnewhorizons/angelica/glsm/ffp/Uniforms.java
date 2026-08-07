@@ -24,9 +24,8 @@ import java.nio.FloatBuffer;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAllocFloat;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCalloc;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutInt;
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
@@ -41,6 +40,7 @@ public class Uniforms {
     private final long stagingAddress = memAddress0(staging);
     private UniformRingBuffer ring;
     private boolean bound;
+    private boolean contentChanged;
 
     private int mvGen = -1, mvLinearGen = -1, projGen = -1, texMatGen = -1;
     private int lightingGen = -1, fragmentGen = -1, colorGen = -1, normalGen = -1, texCoordGen = -1;
@@ -50,6 +50,7 @@ public class Uniforms {
     private int lineStipple = -1;
 
     int blockWrites;
+    int blockSkips;
     int stagedMatrices;
     int stagedLighting;
     int stagedFragment;
@@ -61,6 +62,7 @@ public class Uniforms {
     int stagedClipPlanes;
     int stagedMisc;
     int lastFrameBlockWrites;
+    int lastFrameBlockSkips;
     int lastFrameStagedMatrices;
     int lastFrameStagedLighting;
     int lastFrameStagedFragment;
@@ -82,9 +84,10 @@ public class Uniforms {
 
     public void upload() {
         boolean dirty = false;
+        contentChanged = false;
 
-        final int mvG = GLStateManager.mvGeneration;
-        final int projG = GLStateManager.projGeneration;
+        final int mvG = GLStateManager.getMvGeneration();
+        final int projG = GLStateManager.getProjGeneration();
         final boolean mvChanged = mvG != mvGen;
         final boolean projChanged = projG != projGen;
         if (mvChanged || projChanged) {
@@ -94,26 +97,26 @@ public class Uniforms {
             stagedMatrices++;
             dirty = true;
         }
-        final int mvLinG = GLStateManager.mvLinearGeneration;
+        final int mvLinG = GLStateManager.getMvLinearGeneration();
         if (mvLinG != mvLinearGen) {
             stageNormalMatrix();
             mvLinearGen = mvLinG;
             dirty = true;
         }
-        final int texMatG = GLStateManager.texMatrixGeneration;
+        final int texMatG = GLStateManager.getTexMatrixGeneration();
         if (texMatG != texMatGen) {
             stageTextureMatrices();
             texMatGen = texMatG;
             dirty = true;
         }
-        final int litG = GLStateManager.lightingGeneration;
+        final int litG = GLStateManager.getLightingGeneration();
         if (litG != lightingGen) {
             stageLighting();
             lightingGen = litG;
             stagedLighting++;
             dirty = true;
         }
-        final int colG = GLStateManager.colorGeneration;
+        final int colG = GLStateManager.getColorGeneration();
         if (colG != colorGen) {
             stageCurrentColor();
             colorGen = colG;
@@ -140,28 +143,28 @@ public class Uniforms {
         final float brightX = GLSMConfig.lastBrightnessX;
         final float brightY = GLSMConfig.lastBrightnessY;
         if (brightX != lightmapX || brightY != lightmapY) {
-            memPutFloat(stagingAddress + FFPUniformBlock.CURRENT_LIGHTMAP_COORD, brightX);
-            memPutFloat(stagingAddress + FFPUniformBlock.CURRENT_LIGHTMAP_COORD + 4, brightY);
+            putFloat(FFPUniformBlock.CURRENT_LIGHTMAP_COORD, brightX);
+            putFloat(FFPUniformBlock.CURRENT_LIGHTMAP_COORD + 4, brightY);
             lightmapX = brightX;
             lightmapY = brightY;
             stagedLightmap++;
             dirty = true;
         }
-        final int tgG = GLStateManager.texGenGeneration;
+        final int tgG = GLStateManager.getTexGenGeneration();
         if (tgG != texGenGen) {
             stageTexGen();
             texGenGen = tgG;
             stagedTexGen++;
             dirty = true;
         }
-        final int cpG = GLStateManager.clipPlaneGeneration;
+        final int cpG = GLStateManager.getClipPlaneGeneration();
         if (cpG != clipPlaneGen) {
             stageClipPlanes();
             clipPlaneGen = cpG;
             stagedClipPlanes++;
             dirty = true;
         }
-        final int fragG = GLStateManager.fragmentGeneration;
+        final int fragG = GLStateManager.getFragmentGeneration();
         if (fragG != fragmentGen) {
             stageFragment();
             fragmentGen = fragG;
@@ -170,19 +173,16 @@ public class Uniforms {
         }
         final float lw = GLStateManager.getLineState().getWidth();
         if (lw != lineWidth) {
-            memPutFloat(stagingAddress + FFPUniformBlock.LINE_WIDTH, lw);
+            putFloat(FFPUniformBlock.LINE_WIDTH, lw);
             lineWidth = lw;
             stagedMisc++;
             dirty = true;
         }
         final ViewportState vp = GLStateManager.getViewportState();
         if (vp.x != viewportX || vp.y != viewportY || vp.width != viewportWidth || vp.height != viewportHeight) {
-            memPutFloat(stagingAddress + FFPUniformBlock.VIEWPORT_SIZE, vp.width);
-            memPutFloat(stagingAddress + FFPUniformBlock.VIEWPORT_SIZE + 4, vp.height);
-            memPutFloat(stagingAddress + FFPUniformBlock.VIEWPORT, vp.x);
-            memPutFloat(stagingAddress + FFPUniformBlock.VIEWPORT + 4, vp.y);
-            memPutFloat(stagingAddress + FFPUniformBlock.VIEWPORT + 8, vp.width);
-            memPutFloat(stagingAddress + FFPUniformBlock.VIEWPORT + 12, vp.height);
+            putFloat(FFPUniformBlock.VIEWPORT_SIZE, vp.width);
+            putFloat(FFPUniformBlock.VIEWPORT_SIZE + 4, vp.height);
+            putVec4(FFPUniformBlock.VIEWPORT, vp.x, vp.y, vp.width, vp.height);
             viewportX = vp.x;
             viewportY = vp.y;
             viewportWidth = vp.width;
@@ -194,13 +194,17 @@ public class Uniforms {
         final int stippleFactor = line.getStippleFactor() < 1 ? 1 : line.getStippleFactor();
         final int stipplePacked = (line.getStipplePattern() & 0xFFFF) | (stippleFactor << 16);
         if (stipplePacked != lineStipple) {
-            memPutInt(stagingAddress + FFPUniformBlock.LINE_STIPPLE, stipplePacked);
+            putInt(FFPUniformBlock.LINE_STIPPLE, stipplePacked);
             lineStipple = stipplePacked;
             stagedMisc++;
             dirty = true;
         }
 
         if (dirty || !bound) {
+            if (!contentChanged && bound) {
+                blockSkips++;
+                return;
+            }
             if (ring == null) {
                 ring = new UniformRingBuffer(RING_CAPACITY, FFPUniformBlock.SIZE);
             }
@@ -229,7 +233,7 @@ public class Uniforms {
         GLStateManager.getModelViewMatrix().normal(normalMatrix);
         putMat3(FFPUniformBlock.NORMAL_MATRIX, normalMatrix);
         final float scale = 1.0f / normalMatrix.getColumn(0, tempVec3).length();
-        memPutFloat(stagingAddress + FFPUniformBlock.NORMAL_SCALE, scale);
+        putFloat(FFPUniformBlock.NORMAL_SCALE, scale);
     }
 
     private void stageTextureMatrices() {
@@ -250,7 +254,7 @@ public class Uniforms {
         putVec4(FFPUniformBlock.MATERIAL_AMBIENT, mat.ambient);
         putVec4(FFPUniformBlock.MATERIAL_DIFFUSE, mat.diffuse);
         putVec4(FFPUniformBlock.MATERIAL_SPECULAR, mat.specular);
-        memPutFloat(stagingAddress + FFPUniformBlock.MATERIAL_SHININESS, mat.shininess);
+        putFloat(FFPUniformBlock.MATERIAL_SHININESS, mat.shininess);
         putVec4(FFPUniformBlock.LIGHT0_AMBIENT, light0.ambient);
         putVec4(FFPUniformBlock.LIGHT0_DIFFUSE, light0.diffuse);
         putVec4(FFPUniformBlock.LIGHT0_SPECULAR, light0.specular);
@@ -304,11 +308,14 @@ public class Uniforms {
         for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
             cps.putEyePlane(i, clipPlaneBuf);
         }
-        memCopy(memAddress0(clipPlaneBuf), stagingAddress + FFPUniformBlock.CLIP_PLANES, 32 * 4);
+        final long src = memAddress0(clipPlaneBuf);
+        for (int i = 0; i < 32 * 4; i += 4) {
+            putInt(FFPUniformBlock.CLIP_PLANES + i, memGetInt(src + i));
+        }
     }
 
     private void stageFragment() {
-        memPutFloat(stagingAddress + FFPUniformBlock.ALPHA_REF, GLStateManager.getAlphaState().getReference());
+        putFloat(FFPUniformBlock.ALPHA_REF, GLStateManager.getAlphaState().getReference());
 
         for (int i = 0; i < 4; i++) {
             final var envState = GLStateManager.getTextures().getTexEnvState(i);
@@ -336,38 +343,31 @@ public class Uniforms {
             fog.getFogAlpha());
     }
 
-    private void putMat4(int offset, Matrix4f m) {
+    private void putFloat(int offset, float v) {
         final long a = stagingAddress + offset;
-        memPutFloat(a, m.m00());
-        memPutFloat(a + 4, m.m01());
-        memPutFloat(a + 8, m.m02());
-        memPutFloat(a + 12, m.m03());
-        memPutFloat(a + 16, m.m10());
-        memPutFloat(a + 20, m.m11());
-        memPutFloat(a + 24, m.m12());
-        memPutFloat(a + 28, m.m13());
-        memPutFloat(a + 32, m.m20());
-        memPutFloat(a + 36, m.m21());
-        memPutFloat(a + 40, m.m22());
-        memPutFloat(a + 44, m.m23());
-        memPutFloat(a + 48, m.m30());
-        memPutFloat(a + 52, m.m31());
-        memPutFloat(a + 56, m.m32());
-        memPutFloat(a + 60, m.m33());
+        final int bits = Float.floatToRawIntBits(v);
+        if (memGetInt(a) != bits) contentChanged = true;
+        memPutInt(a, bits);
+    }
+
+    private void putInt(int offset, int v) {
+        final long a = stagingAddress + offset;
+        if (memGetInt(a) != v) contentChanged = true;
+        memPutInt(a, v);
+    }
+
+    private void putMat4(int offset, Matrix4f m) {
+        putVec4(offset, m.m00(), m.m01(), m.m02(), m.m03());
+        putVec4(offset + 16, m.m10(), m.m11(), m.m12(), m.m13());
+        putVec4(offset + 32, m.m20(), m.m21(), m.m22(), m.m23());
+        putVec4(offset + 48, m.m30(), m.m31(), m.m32(), m.m33());
     }
 
     /** std140 mat3: three vec4-aligned columns. */
     private void putMat3(int offset, Matrix3f m) {
-        final long a = stagingAddress + offset;
-        memPutFloat(a, m.m00());
-        memPutFloat(a + 4, m.m01());
-        memPutFloat(a + 8, m.m02());
-        memPutFloat(a + 16, m.m10());
-        memPutFloat(a + 20, m.m11());
-        memPutFloat(a + 24, m.m12());
-        memPutFloat(a + 32, m.m20());
-        memPutFloat(a + 36, m.m21());
-        memPutFloat(a + 40, m.m22());
+        putVec3(offset, m.m00(), m.m01(), m.m02());
+        putVec3(offset + 16, m.m10(), m.m11(), m.m12());
+        putVec3(offset + 32, m.m20(), m.m21(), m.m22());
     }
 
     private void putVec4(int offset, Vector4f v) {
@@ -375,18 +375,16 @@ public class Uniforms {
     }
 
     private void putVec4(int offset, float x, float y, float z, float w) {
-        final long a = stagingAddress + offset;
-        memPutFloat(a, x);
-        memPutFloat(a + 4, y);
-        memPutFloat(a + 8, z);
-        memPutFloat(a + 12, w);
+        putFloat(offset, x);
+        putFloat(offset + 4, y);
+        putFloat(offset + 8, z);
+        putFloat(offset + 12, w);
     }
 
     private void putVec3(int offset, float x, float y, float z) {
-        final long a = stagingAddress + offset;
-        memPutFloat(a, x);
-        memPutFloat(a + 4, y);
-        memPutFloat(a + 8, z);
+        putFloat(offset, x);
+        putFloat(offset + 4, y);
+        putFloat(offset + 8, z);
     }
 
     private void putPlane(int offset, float[] plane) {
@@ -398,6 +396,7 @@ public class Uniforms {
             ring.endFrame();
         }
         lastFrameBlockWrites = blockWrites;
+        lastFrameBlockSkips = blockSkips;
         lastFrameStagedMatrices = stagedMatrices;
         lastFrameStagedLighting = stagedLighting;
         lastFrameStagedFragment = stagedFragment;
@@ -409,6 +408,7 @@ public class Uniforms {
         lastFrameStagedClipPlanes = stagedClipPlanes;
         lastFrameStagedMisc = stagedMisc;
         blockWrites = 0;
+        blockSkips = 0;
         stagedMatrices = 0;
         stagedLighting = 0;
         stagedFragment = 0;

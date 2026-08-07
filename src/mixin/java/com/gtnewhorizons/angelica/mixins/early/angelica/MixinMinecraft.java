@@ -19,6 +19,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
@@ -97,6 +98,16 @@ public abstract class MixinMinecraft {
         final long time = System.nanoTime();
         AngelicaMod.proxy.putFrametime(time - angelica$lastFrameTime);
         angelica$lastFrameTime = time;
+    }
+
+    @Redirect(method = {"startGame", "toggleFullscreen"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;setVSyncEnabled(Z)V", remap = false))
+    private void angelica$redirectVSync(boolean sync) {
+        GLStateManager.setVSyncEnabled(sync);
+    }
+
+    @Inject(method = "startGame", at = @At("RETURN"))
+    private void angelica$markSplashCompleteOnStartGame(CallbackInfo ci) {
+        GLStateManager.markSplashComplete("startGame");
     }
 
     @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))

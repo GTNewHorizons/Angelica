@@ -50,6 +50,12 @@ public final class TesrBatchRenderer {
 
     private static final long SWEEP_INTERVAL_MS = 5_000L;
 
+    private static final Tracy.ZoneId Z_TESR_OPAQUE = Tracy.zoneId("tesrOpaque", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_BATCH = Tracy.zoneId("tesrBatch", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_INSTANCED = Tracy.zoneId("tesrInstanced", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_TEXT = Tracy.zoneId("tesrText", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_TESR_DEFERRED = Tracy.zoneId("tesrDeferred", Tracy.COLOR_CLIENT);
+
     private final AngelicaBufferSource bufferSource = new AngelicaBufferSource();
     private final RetainedTesrGroups[] retained = new RetainedTesrGroups[PASS_COUNT];
     final InstancedTemplateRenderer instancedRenderer = new InstancedTemplateRenderer();
@@ -138,7 +144,7 @@ public final class TesrBatchRenderer {
 
     private static Matrix4f captureTextureMatrix() {
         final Matrix4f texMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
-        return MatrixHelper.isIdentity(texMatrix) ? null : new Matrix4f(texMatrix);
+        return MatrixHelper.isIdentity(texMatrix) ? null : texMatrix;
     }
 
     static final class LayerKey {
@@ -258,7 +264,7 @@ public final class TesrBatchRenderer {
 
     public void flush() {
         final RetainedTesrGroups hook = activePass >= 0 ? retained[activePass] : null;
-        if (Tracy.ENABLED) Tracy.beginZone("tesrOpaque", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_OPAQUE);
         try {
             bufferSource.endBatchWithType(TransparencyType.OPAQUE, hook);
         } finally {
@@ -271,19 +277,19 @@ public final class TesrBatchRenderer {
             activePass = -1;
             return;
         }
-        if (Tracy.ENABLED) Tracy.beginZone("tesrBatch", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_BATCH);
         try {
             bufferSource.endBatch(hook);
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
-        if (Tracy.ENABLED) Tracy.beginZone("tesrInstanced", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_INSTANCED);
         try {
             instancedRenderer.endFrame();
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
-        if (Tracy.ENABLED) Tracy.beginZone("tesrText", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_TEXT);
         try {
             BatchingFontRenderer.flushDeferredText();
         } finally {
@@ -297,7 +303,7 @@ public final class TesrBatchRenderer {
         deferredFlushPending = false;
         final RetainedTesrGroups hook = pendingDeferredHook;
         pendingDeferredHook = null;
-        if (Tracy.ENABLED) Tracy.beginZone("tesrDeferred", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_DEFERRED);
         try {
             final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
             final boolean savedDepthMask = GLStateManager.getDepthState().isEnabled();
@@ -338,41 +344,54 @@ public final class TesrBatchRenderer {
         }
     }
 
-    private long lastRebuilds, lastRetainedDraws, lastPromotions, lastStreamed, lastInstDraws, lastInstInstances;
+    private long lastRebuilds, lastRetainedDraws, lastStreamed, lastInstInstances;
+    private long lastSummaryNanos;
 
-    public List<String> getDebugStrings() {
-        long rebuilds = 0, retainedDraws = 0, promotions = 0, streamed = 0, retainedBytes = 0, instDraws = 0, instInstances = 0;
+    public String getDebugSummaryLine() {
+        long rebuilds = 0, retainedDraws = 0, streamed = 0, instInstances = 0, retainedBytes = 0;
         int groupCount = 0, streamingCount = 0;
         for (int i = 0; i < PASS_COUNT; i++) {
             final RetainedTesrGroups r = retained[i];
             rebuilds += r.rebuilds;
             retainedDraws += r.retainedDraws;
-            promotions += r.streamPromotions;
             streamed += r.streamedInstances;
-            instDraws += r.instancedDraws;
             instInstances += r.instancedInstances;
             retainedBytes += r.retainedBytes();
             groupCount += r.groupCount();
             streamingCount += r.streamingGroupCount();
         }
-        final String line1 = String.format("TESR: %d grp (%d strm), reb %d, drw %d, stream %d, inst %d/%d, promo %d",
+        final long now = System.nanoTime();
+        final long elapsed = now - lastSummaryNanos;
+        final String line = String.format("TESR: %d grp (%d strm), reb %d/s, drw %d/s, inst %d/s, stream %d/s, mem %.1fMB",
             groupCount, streamingCount,
-            rebuilds - lastRebuilds, retainedDraws - lastRetainedDraws,
-            streamed - lastStreamed,
-            instInstances - lastInstInstances, instDraws - lastInstDraws,
-            promotions - lastPromotions);
+            perSecond(rebuilds - lastRebuilds, elapsed),
+            perSecond(retainedDraws - lastRetainedDraws, elapsed),
+            perSecond(instInstances - lastInstInstances, elapsed),
+            perSecond(streamed - lastStreamed, elapsed),
+            (retainedBytes + bufferSource.allocatedBytes() + instancedRenderer.meshBytes()) / 1048576.0);
+        lastSummaryNanos = now;
         lastRebuilds = rebuilds;
         lastRetainedDraws = retainedDraws;
-        lastPromotions = promotions;
         lastStreamed = streamed;
-        lastInstDraws = instDraws;
         lastInstInstances = instInstances;
-        final String line2 = String.format("TESR mem: ret %.1fMB, seg %.1fMB, tmpl %d/%.1fMB, cache %d",
+        return line;
+    }
+
+    private static long perSecond(long delta, long elapsedNanos) {
+        return elapsedNanos <= 0 ? 0 : delta * 1_000_000_000L / elapsedNanos;
+    }
+
+    public List<String> getDebugDetailStrings() {
+        long retainedBytes = 0;
+        for (int i = 0; i < PASS_COUNT; i++) {
+            retainedBytes += retained[i].retainedBytes();
+        }
+        final String mem = String.format("TESR mem: ret %.1fMB, seg %.1fMB, tmpl %d/%.1fMB, cache %d",
             retainedBytes / 1048576.0, bufferSource.allocatedBytes() / 1048576.0,
             instancedRenderer.meshCount(), instancedRenderer.meshBytes() / 1048576.0,
             AngelicaTesrMeshCache.INSTANCE.size());
-        final String line3 = rebuildAttributionLine();
-        return line3 == null ? Arrays.asList(line1, line2) : Arrays.asList(line1, line2, line3);
+        final String attribution = rebuildAttributionLine();
+        return attribution == null ? Arrays.asList(mem) : Arrays.asList(mem, attribution);
     }
 
     private final ObjectArrayList<RetainedTesrGroups.Group> rebuilders = new ObjectArrayList<>();

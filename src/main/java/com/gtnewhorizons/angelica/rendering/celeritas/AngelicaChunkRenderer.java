@@ -1,12 +1,14 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.rendering.culling.GpuIndirectMultiDrawEmitter;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
+import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
@@ -19,7 +21,10 @@ import org.embeddedt.embeddium.impl.gl.tessellation.GlPrimitiveType;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlTessellation;
 import org.embeddedt.embeddium.impl.render.chunk.DefaultChunkRenderer;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
+import org.embeddedt.embeddium.impl.render.chunk.data.SectionRenderDataStorage;
 import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderList;
+import org.embeddedt.embeddium.impl.render.chunk.multidraw.DrawCommandSink;
+import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.DirectMultiDrawEmitter;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.IndirectMultiDrawEmitter;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.MultiDrawEmitter;
@@ -38,6 +43,11 @@ import java.util.List;
 
 class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private static final int BLOCK_TEXTURE_UNIT = 0;
+    private static final Tracy.ZoneId Z_CHUNK_BEGIN = Tracy.zoneId("chunkBegin", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_CHUNK_REGION_FIRST = Tracy.zoneId("chunkRegionFirst", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_CHUNK_REGION = Tracy.zoneId("chunkRegion", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_CHUNK_ASSEMBLE_REGION = Tracy.zoneId("chunkAssembleRegion", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_CHUNK_EXECUTE_BATCH = Tracy.zoneId("chunkExecuteBatch", Tracy.COLOR_TERRAIN);
 
     private GlProgram<? extends ChunkShaderInterface> irisProgram;
     private boolean usingIrisProgram;
@@ -56,15 +66,27 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     }
 
     private static MultiDrawEmitter createEmitter() {
-        MultiDrawMode mode = ClientProxy.options().advanced.multiDrawMode;
+        final MultiDrawMode configured = ClientProxy.options().advanced.multiDrawMode;
+        final MultiDrawMode mode = MultiDrawModeResolver.resolve();
 
-        if (mode == MultiDrawMode.INDIRECT) {
-            boolean supported = GLStateManager.capabilities != null && (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect);
-            if (!supported) {
+        if (mode != configured) {
+            if (mode == MultiDrawMode.INDIRECT) {
+                AngelicaMod.LOGGER.info("Backend requires indirect draw; {} -> INDIRECT", configured);
+            } else {
                 AngelicaMod.LOGGER.warn("Indirect multi-draw not supported (requires GL 4.3 / ARB_multi_draw_indirect), falling back to Direct");
-                mode = MultiDrawMode.DIRECT;
             }
         }
+
+        if (BackendManager.RENDER_BACKEND.isIndirectRequired() && mode != MultiDrawMode.INDIRECT) {
+            throw new IllegalStateException("Indirect multi-draw was required by the backend but resolved mode is " + mode);
+        }
+
+        final GpuCulling.Availability availability = GpuCulling.availability();
+        if (availability == GpuCulling.Availability.AVAILABLE) {
+            AngelicaMod.LOGGER.info("Compute-driven chunk culling available, mode={}", GpuCulling.mode());
+            return new GpuIndirectMultiDrawEmitter(GpuCulling.culler(), GpuCulling.sectionMeta());
+        }
+        AngelicaMod.LOGGER.warn("GPU culling unavailable ({}); terrain will use CPU culling", availability);
 
         return switch (mode) {
             case DIRECT -> new DirectMultiDrawEmitter();
@@ -81,7 +103,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     @Override
     protected void begin(TerrainRenderPass pass) {
         this.regionIndex = 0;
-        if (Tracy.ENABLED) Tracy.beginZone("chunkBegin", Tracy.COLOR_TERRAIN);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_CHUNK_BEGIN);
         try {
             final IrisShaderProvider provider = IrisShaderProviderHolder.getProvider();
 
@@ -167,10 +189,6 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
 
     @Override
     protected GlProgram<ChunkShaderInterface> createShader(String path, ChunkShaderOptions options) {
-        if (this.enableLegacyGLPatches) {
-            return super.createShader(path, options);
-        }
-
         final ShaderConstants constants = options.constants();
         final List<GlShader> loadedShaders = new ArrayList<>();
 
@@ -192,11 +210,29 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     }
 
     @Override
-    protected void renderRegion(ChunkShaderInterface shader, CommandList commandList, ChunkRenderList renderList, TerrainRenderPass renderPass, CameraTransform occlusionCamera, CameraTransform camera, long timestamp, boolean useBlockFaceCulling) {
-        if (Tracy.ENABLED) Tracy.beginZone(regionIndex == 0 ? "chunkRegionFirst" : "chunkRegion", Tracy.COLOR_TERRAIN);
+    protected void drawRegion(ChunkShaderInterface shader, CommandList commandList, RenderRegion region,
+                              CameraTransform camera, long timestamp) {
+        if (Tracy.ENABLED) Tracy.beginZone(regionIndex == 0 ? Z_CHUNK_REGION_FIRST : Z_CHUNK_REGION);
         try {
             regionIndex++;
-            super.renderRegion(shader, commandList, renderList, renderPass, occlusionCamera, camera, timestamp, useBlockFaceCulling);
+            super.drawRegion(shader, commandList, region, camera, timestamp);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    @Override
+    protected void assembleRegion(DrawCommandSink sink, RenderRegion region, SectionRenderDataStorage storage,
+                                  ChunkRenderList renderList, CameraTransform occlusionCamera,
+                                  TerrainRenderPass renderPass, boolean useBlockFaceCulling) {
+        if (getEmitter() instanceof GpuIndirectMultiDrawEmitter gpu && gpu.isComputeActiveThisPass()) {
+            gpu.prepareRegion(region);
+            return;
+        }
+
+        if (Tracy.ENABLED) Tracy.beginZone(Z_CHUNK_ASSEMBLE_REGION);
+        try {
+            super.assembleRegion(sink, region, storage, renderList, occlusionCamera, renderPass, useBlockFaceCulling);
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
@@ -204,7 +240,14 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
 
     @Override
     protected void executeBatch(CommandList commandList, GlTessellation tessellation, GlPrimitiveType primitiveType) {
-        if (Tracy.ENABLED) Tracy.beginZone("chunkExecuteBatch", Tracy.COLOR_TERRAIN);
+        if (Tracy.ENABLED) {
+            final MultiDrawEmitter emitter = getEmitter();
+            // The compute path reports itself through GpuIndirectMultiDrawEmitter; counting it here too double-counts.
+            if (!(emitter instanceof GpuIndirectMultiDrawEmitter gpu && gpu.isComputeActiveThisPass())) {
+                TerrainDrawStats.recordBatch(emitter.getPendingCommandCount());
+            }
+            Tracy.beginZone(Z_CHUNK_EXECUTE_BATCH);
+        }
         try {
             super.executeBatch(commandList, tessellation, primitiveType);
         } finally {

@@ -1,18 +1,22 @@
 package com.gtnewhorizons.angelica.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
+import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 
 @Config(modid = "angelica", filename = "angelica-modules")
 public class AngelicaConfig {
-    @Config.Comment("Enable Celeritas terrain rendering")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean enableCeleritas;
-
-    @Config.Comment("Enable multi-threaded chunk building for improved performance [Requires Celeritas]")
+    @Config.Comment("Enable multi-threaded chunk building for improved performance")
     @Config.DefaultBoolean(true)
     @Config.RequiresWorldRestart
     public static boolean enableThreadedChunkBuilding;
+
+    @Config.Comment({
+        "GPU-driven chunk culling mode (requires compute shader support):",
+        "  CPU_ONLY - Compute culling off; CPU emitter handles culling.",
+        "  COMPUTE  - GPU compute frustum cull."
+    })
+    @Config.DefaultEnum("CPU_ONLY")
+    public static GpuCullingMode gpuCullingMode;
 
     @Config.Comment("Number of chunk builder threads. 0 = auto-detect, -1 = use single-threaded fallback")
     @Config.DefaultInt(0)
@@ -38,7 +42,7 @@ public class AngelicaConfig {
     @Config.Ignore()
     public static boolean enableTestBlocks;
 
-    @Config.Comment("Enable Iris Shaders [Requires Celeritas]")
+    @Config.Comment("Enable Iris Shaders")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableIris;
@@ -205,11 +209,6 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean speedupAnimations;
 
-    @Config.Comment("Optimize Texture Loading. [From Hodgepodge]")
-    @Config.DefaultBoolean(true)
-    @Config.RequiresMcRestart
-    public static boolean optimizeTextureLoading;
-
     @Config.Comment("Fix RenderBlockFluid reading the block type from the world access multiple times")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -323,6 +322,7 @@ public class AngelicaConfig {
 
     @Config.Comment("Register HardcodedCustomUniforms in Iris Shaders. May help with compatibility in certain shader packs")
     @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
     public static boolean enableHardcodedCustomUniforms;
 
     @Config.Comment("Modern MC_VERSION to try if shader pack has no 1.7.10 section. 0 = default (260101)")
@@ -333,6 +333,19 @@ public class AngelicaConfig {
     @Config.Comment("Define IS_IRIS in shader macros.")
     @Config.DefaultBoolean(true)
     public static boolean defineIsIris;
+
+    @Config.Comment("Cull tile entities in the Iris shadow pass.")
+    @Config.DefaultBoolean(true)
+    public static boolean cullShadowTileEntities;
+
+    @Config.Comment("Max distance (blocks) a tile entity is re-drawn into the shadow pass when cullShadowTileEntities is on")
+    @Config.DefaultInt(32)
+    @Config.RangeInt(min = 8, max = 256)
+    public static int shadowTileEntityMaxDistance;
+
+    @Config.Comment({"Skip tile entities whose block already renders in the terrain mesh (getRenderType() != -1) from the shadow pass"})
+    @Config.DefaultBoolean(true)
+    public static boolean shadowSkipInMeshTileEntities;
 
     @Config.Comment("ASM transformer exclusion narrowing for mod compatibility. Disable per-mod if narrowing causes class loading issues.")
     public static TransformerCompat transformerCompat = new TransformerCompat();
@@ -419,8 +432,12 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static GLProfile glProfile;
 
+    public static void applyGpuCullingMode() {
+        GpuCulling.setMode(gpuCullingMode == null ? GpuCullingMode.CPU_ONLY : gpuCullingMode);
+    }
+
     public static GLProfile getEffectiveGlProfile() {
-        final String sys = System.getProperty("angelica.glProfile", "").trim().toUpperCase();
+        final String sys = SystemProperties.GL_PROFILE.trim().toUpperCase();
         if ("GLES".equals(sys)) return GLProfile.ES;
         if (sys.isEmpty()) return glProfile;
         try { return GLProfile.valueOf(sys); } catch (IllegalArgumentException e) { return glProfile; }

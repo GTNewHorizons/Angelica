@@ -1,5 +1,10 @@
 package me.flashyreese.mods.reeses_sodium_options.util;
 
+import java.util.Collection;
+import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
+import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
+import me.jellysquid.mods.sodium.client.gui.options.control.Control;
+import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import com.google.common.collect.ImmutableList;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
@@ -99,16 +104,16 @@ class StringUtilsTest {
 
         @Override public String getName() { return name; }
         @Override public String getTooltip() { return tooltip; }
-        @Override public me.jellysquid.mods.sodium.client.gui.options.OptionImpact getImpact() { return null; }
-        @Override public me.jellysquid.mods.sodium.client.gui.options.control.Control<Object> getControl() { return null; }
+        @Override public OptionImpact getImpact() { return null; }
+        @Override public Control<Object> getControl() { return null; }
         @Override public Object getValue() { return null; }
         @Override public void setValue(Object value) {}
         @Override public void reset() {}
-        @Override public me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage<?> getStorage() { return null; }
+        @Override public OptionStorage<?> getStorage() { return null; }
         @Override public boolean isAvailable() { return true; }
         @Override public boolean hasChanged() { return false; }
         @Override public void applyChanges() {}
-        @Override public java.util.Collection<me.jellysquid.mods.sodium.client.gui.options.OptionFlag> getFlags() { return List.of(); }
+        @Override public Collection<OptionFlag> getFlags() { return List.of(); }
     }
 
     private static class MockOptionPage extends OptionPage {

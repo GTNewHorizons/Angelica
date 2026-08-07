@@ -9,6 +9,9 @@ import org.lwjgl.opengl.GL11;
 public interface DepthCopyStrategy {
 	// FB -> T
 	class Gl20CopyTexture implements DepthCopyStrategy {
+		private static final Tracy.ZoneId Z_DEPTH_COPY_BIND = Tracy.zoneId("depthCopyBind", Tracy.COLOR_IRIS);
+		private static final Tracy.ZoneId Z_DEPTH_COPY_TEX_SUB = Tracy.zoneId("depthCopyTexSub", Tracy.COLOR_IRIS);
+
 		private Gl20CopyTexture() {
 			// private
 		}
@@ -20,14 +23,14 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			if (Tracy.ENABLED) Tracy.beginZone("depthCopyBind", Tracy.COLOR_IRIS);
+			if (Tracy.ENABLED) Tracy.beginZone(Z_DEPTH_COPY_BIND);
 			try {
 				sourceFb.bindAsReadBuffer();
 			} finally {
 				if (Tracy.ENABLED) Tracy.endZone();
 			}
 
-			if (Tracy.ENABLED) Tracy.beginZone("depthCopyTexSub", Tracy.COLOR_IRIS);
+			if (Tracy.ENABLED) Tracy.beginZone(Z_DEPTH_COPY_TEX_SUB);
 			try {
 				RenderSystem.copyTexSubImage2D(
 					destTexture,
@@ -51,6 +54,8 @@ public interface DepthCopyStrategy {
 
 	// FB -> FB
 	class Gl30BlitFbCombinedDepthStencil implements DepthCopyStrategy {
+		private static final Tracy.ZoneId Z_DEPTH_COPY_BLIT = Tracy.zoneId("depthCopyBlit", Tracy.COLOR_IRIS);
+
 		private Gl30BlitFbCombinedDepthStencil() {
 			// private
 		}
@@ -62,7 +67,7 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			if (Tracy.ENABLED) Tracy.beginZone("depthCopyBlit", Tracy.COLOR_IRIS);
+			if (Tracy.ENABLED) Tracy.beginZone(Z_DEPTH_COPY_BLIT);
 			try {
 				RenderSystem.blitFramebuffer(sourceFb.getId(), destFb.getId(), 0, 0, width, height,
 					0, 0, width, height,
@@ -77,6 +82,8 @@ public interface DepthCopyStrategy {
 	// T -> T
 	// Fastest
 	class Gl43CopyImage implements DepthCopyStrategy {
+		private static final Tracy.ZoneId Z_DEPTH_COPY_IMAGE = Tracy.zoneId("depthCopyImage", Tracy.COLOR_IRIS);
+
 		private Gl43CopyImage() {
 			// private
 		}
@@ -88,7 +95,7 @@ public interface DepthCopyStrategy {
 
 		@Override
 		public void copy(GlFramebuffer sourceFb, int sourceTexture, GlFramebuffer destFb, int destTexture, int width, int height) {
-			if (Tracy.ENABLED) Tracy.beginZone("depthCopyImage", Tracy.COLOR_IRIS);
+			if (Tracy.ENABLED) Tracy.beginZone(Z_DEPTH_COPY_IMAGE);
 			try {
 				GLStateManager.glCopyImageSubData(sourceTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, destTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, width, height, 1);
 			} finally {

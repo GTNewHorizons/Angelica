@@ -10,6 +10,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RenderGlobal.class)
 public abstract class MixinRenderGlobal_EntityBatch {
+    private static final Tracy.ZoneId Z_ENTITY_MODEL_PARTS = Tracy.zoneId("entityModelParts", Tracy.COLOR_CLIENT);
 
     @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", args = "ldc=entities"))
     private void angelica$beginEntityBatch(CallbackInfo ci) {
@@ -18,7 +19,7 @@ public abstract class MixinRenderGlobal_EntityBatch {
 
     @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", args = "ldc=blockentities"))
     private void angelica$flushEntityBatch(CallbackInfo ci) {
-        if (Tracy.ENABLED) Tracy.beginZone("entityModelParts", Tracy.COLOR_CLIENT);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_ENTITY_MODEL_PARTS);
         try {
             ModelPartBatcher.INSTANCE.flush();
         } finally {

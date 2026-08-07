@@ -30,6 +30,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     static final long IDLE_RESET_FRAMES = 100;
     static final long GROUP_TTL_MS = AngelicaTesrMeshCache.LRU_TIMEOUT_MS;
 
+    private static final Tracy.ZoneId Z_TESR_REBUILD = Tracy.zoneId("tesrRebuild", Tracy.COLOR_CLIENT);
+
     private final AngelicaBufferSource source;
     private final LongSupplier clock;
     private long nowMs;
@@ -76,6 +78,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         final IntArrayList instLights = new IntArrayList();
         final IntArrayList instColors = new IntArrayList();
         final ObjectArrayList<Matrix4f> instTexMatrices = new ObjectArrayList<>();
+        private final ObjectArrayList<Matrix4f> texMatrixPool = new ObjectArrayList<>();
+        private int texMatrixPoolUsed;
         long hashAcc;
         int count;
 
@@ -90,6 +94,26 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         final MeshBuffer mesh = new MeshBuffer();
         ByteBuffer scratch;
         int meshBytes;
+
+        void addTexMatrix(Matrix4f src) {
+            if (src == null) {
+                instTexMatrices.add(null);
+                return;
+            }
+            if (texMatrixPoolUsed == texMatrixPool.size()) {
+                texMatrixPool.add(new Matrix4f());
+            }
+            instTexMatrices.add(texMatrixPool.get(texMatrixPoolUsed++).set(src));
+        }
+
+        void clearInstances() {
+            instTemplates.clear();
+            instMatrices.clear();
+            instLights.clear();
+            instColors.clear();
+            instTexMatrices.clear();
+            texMatrixPoolUsed = 0;
+        }
 
         Group(RenderLayer layer, TesrMaterial material, int blockEntityId) {
             this.layer = layer;
@@ -189,11 +213,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             group.entityColor = SegmentedBufferBuilder.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor());
             group.count = 0;
             group.hashAcc = 0;
-            group.instTemplates.clear();
-            group.instMatrices.clear();
-            group.instLights.clear();
-            group.instColors.clear();
-            group.instTexMatrices.clear();
+            group.clearInstances();
             if (!group.anchored || TesrAnchorMath.shouldReanchor(camX, camY, camZ, group.anchorX, group.anchorY, group.anchorZ)) {
                 group.anchorX = TesrAnchorMath.anchorCoord(camX);
                 group.anchorY = TesrAnchorMath.anchorCoord(camY);
@@ -239,7 +259,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         group.instMatrices.addElements(group.instMatrices.size(), matScratch);
         group.instLights.add(packedLight);
         group.instColors.add(colorABGR);
-        group.instTexMatrices.add(texMatrix);
+        group.addTexMatrix(texMatrix);
     }
 
     @Override
@@ -278,6 +298,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                     applyGroupRenderState(group);
                     if (!variantBound) {
                         variantBound = true;
+                        deferred.rebindCurrentPass();
                         deferred.bindTesrInstancedVariant();
                     }
                     instancedDraws += instanced.drawGroup(group.instTemplates, group.instMatrices, group.instLights, group.instColors, group.count, nowMs);
@@ -356,11 +377,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         group.prevFrameHash = 0;
         group.stableFrames = 0;
         group.builtCount = -1;
-        group.instTemplates.clear();
-        group.instMatrices.clear();
-        group.instLights.clear();
-        group.instColors.clear();
-        group.instTexMatrices.clear();
+        group.clearInstances();
         group.mesh.delete();
         group.meshBytes = 0;
     }
@@ -429,7 +446,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         rebuilds++;
         group.rebuildsWindow++;
         if (Tracy.ENABLED) {
-            Tracy.beginZone("tesrRebuild", Tracy.COLOR_CLIENT);
+            Tracy.beginZone(Z_TESR_REBUILD);
             Tracy.zoneText(attribution(group));
         }
         try {

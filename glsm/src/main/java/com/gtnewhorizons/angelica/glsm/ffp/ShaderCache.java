@@ -26,6 +26,8 @@ import java.util.IdentityHashMap;
  * </pre>
  */
 public class ShaderCache {
+    private static final Tracy.ZoneId Z_FFP_SHADER_GEN = Tracy.zoneId("ffpShaderGen", Tracy.COLOR_FFP);
+
     private static final int SLOT_STRIDE = 6;
     private static final int INITIAL_CAPACITY = 64; // power of 2
     private static final long EMPTY_MARKER = 0L; // slot [1] == 0 means empty (fkLen >= 1 guarantees nonzero)
@@ -104,7 +106,7 @@ public class ShaderCache {
         String fragSrc;
         final String geomSrc;
         final Program program;
-        if (Tracy.ENABLED) Tracy.beginZone("ffpShaderGen", Tracy.COLOR_FFP);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_FFP_SHADER_GEN);
         try {
             vertSrc = getOrGenerateVertex(vk);
             fragSrc = findFragSource(fkPacked, fkLen);

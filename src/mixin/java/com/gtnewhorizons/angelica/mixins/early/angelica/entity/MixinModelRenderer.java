@@ -12,7 +12,7 @@ public abstract class MixinModelRenderer {
 
     @Redirect(method = {"render", "renderWithRotation"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", remap = false))
     private void angelica$batchPart(int list, float scale) {
-        if (!ModelPartBatcher.partDraw((ModelRenderer) (Object) this, scale)) {
+        if (!ModelPartBatcher.partDraw((ModelRenderer) (Object) this, scale, null)) {
             GLStateManager.glCallList(list);
         }
     }

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.lwjgl3;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.DebugMessageHandler;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
@@ -24,11 +25,16 @@ import org.lwjgl.opengl.GL42C;
 import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GL44C;
 import org.lwjgl.opengl.GL45C;
+import org.lwjgl.opengl.GL46C;
+import org.lwjgl.opengl.ARBPolygonOffsetClamp;
+import org.lwjgl.opengl.EXTPolygonOffsetClamp;
+import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLDebugMessageCallback;
 import org.lwjgl.sdl.SDL_DropEvent;
 import org.lwjgl.sdl.SDL_EventFilter;
 import org.lwjgl.sdl.SDLEvents;
+import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
@@ -147,10 +153,27 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public boolean isCurrent() {
+        try {
+            return GL.getCapabilities() != null;
+        } catch (IllegalStateException e) {
+            return false;
+        }
+    }
+
+    @Override
     public int getPriority() { return 50; }
 
     @Override
     public int getMinGLSLVersion() {return 330;}
+
+    @Override
+    public void setVSyncEnabled(boolean enabled) {SDLVideo.SDL_GL_SetSwapInterval(enabled ? 1 : 0);}
+
+    @Override
+    public boolean isAnisotropicSupported() {
+        return caps != null && caps.GL_EXT_texture_filter_anisotropic;
+    }
 
     @Override
     public void flush() {GL11C.glFlush();}
@@ -242,6 +265,21 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void polygonOffset(float factor, float units) {
         GL11C.glPolygonOffset(factor, units);
+    }
+
+    @Override
+    public void polygonOffsetClamp(float factor, float units, float clamp) {
+        if (caps == null) {
+            super.polygonOffsetClamp(factor, units, clamp);
+        } else if (caps.OpenGL46) {
+            GL46C.glPolygonOffsetClamp(factor, units, clamp);
+        } else if (caps.GL_ARB_polygon_offset_clamp) {
+            ARBPolygonOffsetClamp.glPolygonOffsetClamp(factor, units, clamp);
+        } else if (caps.GL_EXT_polygon_offset_clamp) {
+            EXTPolygonOffsetClamp.glPolygonOffsetClampEXT(factor, units, clamp);
+        } else {
+            super.polygonOffsetClamp(factor, units, clamp);
+        }
     }
 
     @Override
@@ -1013,6 +1051,17 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public int getIndexedBufferBinding(int target, int index) {
+        final int pname = (target == GL43C.GL_SHADER_STORAGE_BUFFER) ? GL43C.GL_SHADER_STORAGE_BUFFER_BINDING : GL31C.GL_UNIFORM_BUFFER_BINDING;
+        return GL31C.glGetIntegeri(pname, index);
+    }
+
+    @Override
+    public int getIntegerIndexed(int pname, int index) {
+        return GL31C.glGetIntegeri(pname, index);
+    }
+
+    @Override
     public void bufferData(int target, long size, int usage) {
         GL15C.glBufferData(target, size, usage);
     }
@@ -1174,6 +1223,16 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     public boolean isBuffer(int buffer) {
         return GL15C.glIsBuffer(buffer);
     }
+
+    @Override
+    public boolean isTexture(int texture) {
+        return GL11C.glIsTexture(texture);
+    }
+
+    @Override public boolean isFramebuffer(int framebuffer) { return GL30C.glIsFramebuffer(framebuffer); }
+    @Override public boolean isRenderbuffer(int renderbuffer) { return GL30C.glIsRenderbuffer(renderbuffer); }
+    @Override public boolean isSampler(int sampler) { return GL33C.glIsSampler(sampler); }
+    @Override public boolean isQuery(int query) { return GL15C.glIsQuery(query); }
 
     @Override
     public ByteBuffer mapBufferRange(int target, long offset, long length, int access) {
@@ -1406,6 +1465,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public float getTextureParameterf(int texture, int target, int pname) {
+        return GL45C.glGetTextureParameterf(texture, pname);
+    }
+
+    @Override
     public int getTextureLevelParameteri(int texture, int level, int pname) {
         return GL45C.glGetTextureLevelParameteri(texture, level, pname);
     }
@@ -1506,6 +1570,23 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
         return GL32C.glGetInteger64(GL33C.GL_TIMESTAMP);
     }
 
+    @Override public void genQueries(IntBuffer ids) { GL15C.glGenQueries(ids); }
+    @Override public int genQueries() { return GL15C.glGenQueries(); }
+    @Override public void deleteQueries(int id) { GL15C.glDeleteQueries(id); }
+    @Override public void beginQuery(int target, int id) { GL15C.glBeginQuery(target, id); }
+    @Override public void endQuery(int target) { GL15C.glEndQuery(target); }
+    @Override public void getQueryObjectui(int id, int pname, IntBuffer params) { GL15C.glGetQueryObjectuiv(id, pname, params); }
+    @Override public int getQueryObjecti(int id, int pname) { return GL15C.glGetQueryObjecti(id, pname); }
+
+    @Override public void waitSync(long sync, int flags, long timeout) { GL32C.glWaitSync(sync, flags, timeout); }
+    @Override public int getSynci(long sync, int pname, IntBuffer length) { return GL32C.glGetSynci(sync, pname, length); }
+    @Override public void queryCounter(int id, int target) { GL33C.glQueryCounter(id, target); }
+    @Override public long getQueryObjectui64(int id, int pname) { return GL33C.glGetQueryObjectui64(id, pname); }
+    @Override public void uniform3fv(int location, float[] values) { GL20C.glUniform3fv(location, values); }
+    @Override public void uniform4fv(int location, float[] values) { GL20C.glUniform4fv(location, values); }
+    @Override public void getInteger(int pname, int[] params) { GL11C.glGetIntegerv(pname, params); }
+    @Override public void bindFragDataLocation(int program, int colorNumber, CharSequence name) { GL30C.glBindFragDataLocation(program, colorNumber, name); }
+
     @Override
     public void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) {
         GL43C.glClearBufferSubData(target, internalFormat, offset, size, format, type, data);
@@ -1522,7 +1603,13 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
-        GL42C.glBindImageTexture(unit, texture, level, layered, layer, access, format);
+        if (GLStateManager.capabilities.OpenGL42 || GLStateManager.capabilities.GL_ARB_shader_image_load_store) {
+            GL42C.glBindImageTexture(unit, texture, level, layered, layer, access, format);
+        } else if (GLStateManager.capabilities.GL_EXT_shader_image_load_store) {
+            EXTShaderImageLoadStore.glBindImageTextureEXT(unit, texture, level, layered, layer, access, format);
+        } else {
+            GLStateManager.warnOnce("bindImageTexture", "glBindImageTexture ignored: no image load/store support");
+        }
     }
 
     @Override
@@ -1614,6 +1701,91 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void debugMessageInsert(int source, int type, int id, int severity, CharSequence message) {
         GL43C.glDebugMessageInsert(source, type, id, severity, message);
+    }
+
+    @Override
+    public void debugMessageControl(int source, int type, int severity, IntBuffer ids, boolean enabled) {
+        GL43C.glDebugMessageControl(source, type, severity, ids, enabled);
+    }
+
+    @Override
+    public void multiDrawArrays(int mode, IntBuffer firsts, IntBuffer counts) {
+        GL14C.glMultiDrawArrays(mode, firsts, counts);
+    }
+
+    @Override
+    public void primitiveRestartIndex(int index) {
+        GL31C.glPrimitiveRestartIndex(index);
+    }
+
+    @Override
+    public void pointParameterf(int pname, float param) {
+        GL14C.glPointParameterf(pname, param);
+    }
+
+    @Override
+    public void pointParameteri(int pname, int param) {
+        GL14C.glPointParameteri(pname, param);
+    }
+
+    @Override
+    public void getActiveAttrib(int program, int index, IntBuffer length, IntBuffer size, IntBuffer type, ByteBuffer name) {
+        final String nameStr = GL20C.glGetActiveAttrib(program, index, size, type);
+        if (name != null && nameStr != null) {
+            final byte[] bytes = nameStr.getBytes(StandardCharsets.UTF_8);
+            final int n = Math.min(bytes.length, name.remaining());
+            name.put(bytes, 0, n);
+            if (length != null && length.remaining() > 0) length.put(0, n);
+        }
+    }
+
+    @Override
+    public String getActiveAttrib(int program, int index, int maxLength, IntBuffer sizeType) {
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer size = stack.callocInt(1);
+            final IntBuffer type = stack.callocInt(1);
+            final String name = GL20C.glGetActiveAttrib(program, index, size, type);
+            if (sizeType != null && sizeType.remaining() >= 2) {
+                sizeType.put(0, size.get(0));
+                sizeType.put(1, type.get(0));
+            }
+            return name;
+        }
+    }
+
+    @Override
+    public int genRenderbuffers() {
+        return GL30C.glGenRenderbuffers();
+    }
+
+    @Override
+    public void deleteRenderbuffers(int renderbuffer) {
+        GL30C.glDeleteRenderbuffers(renderbuffer);
+    }
+
+    @Override
+    public void bindRenderbuffer(int target, int renderbuffer) {
+        GL30C.glBindRenderbuffer(target, renderbuffer);
+    }
+
+    @Override
+    public void renderbufferStorage(int target, int internalformat, int width, int height) {
+        GL30C.glRenderbufferStorage(target, internalformat, width, height);
+    }
+
+    @Override
+    public void renderbufferStorageMultisample(int target, int samples, int internalformat, int width, int height) {
+        GL30C.glRenderbufferStorageMultisample(target, samples, internalformat, width, height);
+    }
+
+    @Override
+    public void framebufferRenderbuffer(int target, int attachment, int renderbuffertarget, int renderbuffer) {
+        GL30C.glFramebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer);
+    }
+
+    @Override
+    public void clearBufferData(int target, int internalformat, int format, int type, ByteBuffer data) {
+        GL43C.glClearBufferData(target, internalformat, format, type, data);
     }
 
 }

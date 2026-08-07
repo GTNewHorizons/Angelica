@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
@@ -89,7 +90,7 @@ class AngelicaTesrMeshCacheTest {
         assertSame(material, replay.calls.get(1).material);
     }
 
-    private void oneBucket(com.gtnewhorizons.angelica.api.tesr.TesrMeshSink sink) {
+    private void oneBucket(TesrMeshSink sink) {
         sink.angelica$bucket(DefaultVertexFormat.POSITION_TEXTURE_NORMAL, TEX_A);
     }
 

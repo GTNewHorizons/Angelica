@@ -27,12 +27,19 @@ public class MixinGuiIngameForge {
         fra.angelica$getBatcher().beginBatch();
     }
 
+    // ordinal 1 = "forgeHudText"; ordinal 0 ends "debug" before beginBatch runs.
     @Inject(
         method = "renderHUDText",
-        at = @At(value = "INVOKE", target = "net/minecraft/profiler/Profiler.endSection()V"))
+        at = @At(value = "INVOKE", target = "net/minecraft/profiler/Profiler.endSection()V", ordinal = 1))
     private void angelica$endF3TextBatching(int width, int height, CallbackInfo ci) {
         FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
+
+        final boolean depthWasEnabled = GLStateManager.getDepthTest().isEnabled();
+        GLStateManager.disableDepthTest();
         fra.angelica$getBatcher().endBatch();
+        if (depthWasEnabled) {
+            GLStateManager.enableDepthTest();
+        }
     }
 
     @Inject(method = "renderHotbar", at = @At("HEAD"), remap = false)

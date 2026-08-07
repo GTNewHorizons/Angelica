@@ -3,7 +3,7 @@ package net.coderbot.iris.compat.dh;
 import com.google.common.primitives.Ints;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
-import com.mitchej123.lwjgl.MemoryStack;
+import org.lwjgl.BufferUtils;
 import com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiGenericObjectShaderProgram;
 import com.seibel.distanthorizons.api.interfaces.render.IDhApiRenderableBoxGroup;
 import com.seibel.distanthorizons.api.methods.events.sharedParameterObjects.DhApiRenderParam;
@@ -17,7 +17,7 @@ import net.coderbot.iris.gl.program.ProgramImages;
 import net.coderbot.iris.gl.program.ProgramSamplers;
 import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.gl.shader.GlShader;
-import net.coderbot.iris.gl.shader.ShaderType;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
@@ -70,6 +70,11 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         id = GLStateManager.glCreateProgram();
 
         GLStateManager.glBindAttribLocation(this.id, 0, "vPosition");
+        GLStateManager.glBindAttribLocation(this.id, 1, "iris_color");
+        GLStateManager.glBindAttribLocation(this.id, 2, "aScale");
+        GLStateManager.glBindAttribLocation(this.id, 3, "aTranslateChunk");
+        GLStateManager.glBindAttribLocation(this.id, 4, "aTranslateSubChunk");
+        GLStateManager.glBindAttribLocation(this.id, 5, "aMaterial");
 
         this.bufferBlendOverrides = bufferBlendOverrides;
 
@@ -187,16 +192,12 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
         return GLStateManager.glGetUniformLocation(this.id, name);
     }
 
+    private final FloatBuffer matrixScratch = BufferUtils.createFloatBuffer(16);
+
     public void setUniform(int index, Matrix4f matrix) {
         if (index == -1 || matrix == null) return;
-
-        try (MemoryStack stack = MemoryStack.stackPush()) {
-            FloatBuffer buffer = stack.callocFloat(16);
-            matrix.get(buffer);
-            buffer.rewind();
-
-            GLStateManager.glUniformMatrix4(index, false, buffer);
-        }
+        matrix.get(matrixScratch);
+        GLStateManager.glUniformMatrix4(index, false, matrixScratch);
     }
 
     // Override ShaderProgram.bind()

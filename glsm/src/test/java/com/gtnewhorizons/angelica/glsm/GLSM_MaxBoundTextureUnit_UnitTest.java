@@ -1,13 +1,12 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
 import static org.junit.jupiter.api.Assertions.*;
 
-@ExtendWith(GLSMExtension.class)
+@GLCompatTest
 public class GLSM_MaxBoundTextureUnit_UnitTest {
 
     @Test

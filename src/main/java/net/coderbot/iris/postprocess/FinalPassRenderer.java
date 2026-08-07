@@ -54,6 +54,8 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 
 public class FinalPassRenderer {
+	private static final Tracy.ZoneId Z_GEN_MIPMAP = Tracy.zoneId("genMipmap", Tracy.COLOR_IRIS);
+
 	private final RenderTargets renderTargets;
 
 	@Nullable
@@ -234,8 +236,10 @@ public class FinalPassRenderer {
 
 			FullScreenQuadRenderer.INSTANCE.begin();
 
+			boolean ranCompute = false;
 			for (ComputeProgram computeProgram : finalPass.computes) {
 				if (computeProgram != null) {
+					ranCompute = true;
                     computeProgram.use();
                     this.customUniforms.push(computeProgram);
 					computeProgram.dispatch(baseWidth, baseHeight);
@@ -243,6 +247,12 @@ public class FinalPassRenderer {
 			}
 
 			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
+
+			if (ranCompute) {
+				for (int i = 0; i < renderTargets.getRenderTargetCount(); i++) {
+					renderTargets.get(i).markBothDirty();
+				}
+			}
 
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
 				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -337,25 +347,17 @@ public class FinalPassRenderer {
 	private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
 		final int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
 
-		// TODO: Only generate the mipmap if a valid mipmap hasn't been generated or if we've written to the buffer
-		// (since the last mipmap was generated)
-		//
-		// NB: We leave mipmapping enabled even if the buffer is written to again, this appears to match the
-		// behavior of ShadersMod/OptiFine, however I'm not sure if it's desired behavior. It's possible that a
-		// program could use mipmapped sampling with a stale mipmap, which probably isn't great. However, the
-		// sampling mode is always reset between frames, so this only persists after the first program to use
-		// mipmapping on this buffer.
-		//
-		// Also note that this only applies to one of the two buffers in a render target buffer pair - making it
-		// unlikely that this issue occurs in practice with most shader packs.
-		if (Tracy.ENABLED) {
-			Tracy.beginZone("genMipmap", Tracy.COLOR_IRIS);
-			Tracy.zoneValue(texture);
-		}
-		try {
-			RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
-		} finally {
-			if (Tracy.ENABLED) Tracy.endZone();
+		if (target.isDirty(readFromAlt)) {
+			if (Tracy.ENABLED) {
+				Tracy.beginZone(Z_GEN_MIPMAP);
+				Tracy.zoneValue(texture);
+			}
+			try {
+				RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
+			target.clearDirty(readFromAlt);
 		}
 
 		int filter = GL11.GL_LINEAR_MIPMAP_LINEAR;

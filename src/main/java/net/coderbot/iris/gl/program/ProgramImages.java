@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.image.ImageBinding;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.image.ImageLimits;
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 import java.util.ArrayList;

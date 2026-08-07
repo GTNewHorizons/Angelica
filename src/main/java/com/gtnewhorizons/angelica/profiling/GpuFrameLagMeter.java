@@ -11,6 +11,7 @@ public final class GpuFrameLagMeter {
     private static final long[] submitNs = new long[RING];
     private static int head;
     private static int tail;
+    private static final long P_GPU_LAG_NS = Tracy.plotHandle("gpuLagNs");
 
     private GpuFrameLagMeter() {}
 
@@ -28,7 +29,7 @@ public final class GpuFrameLagMeter {
                 }
                 break;
             }
-            Tracy.plotInt("gpuLagNs", System.nanoTime() - submitNs[slot]);
+            Tracy.plotInt(P_GPU_LAG_NS, System.nanoTime() - submitNs[slot]);
             rb.deleteSync(syncs[slot]);
             tail++;
         }

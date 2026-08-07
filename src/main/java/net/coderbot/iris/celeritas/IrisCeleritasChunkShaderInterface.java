@@ -35,6 +35,12 @@ import java.util.List;
 
 public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
     @Nullable
+    private static final Tracy.ZoneId Z_IRIS_SETUP_FBO = Tracy.zoneId("iris_setup_fbo", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_UNIFORMS = Tracy.zoneId("iris_setup_uniforms", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_SAMPLERS = Tracy.zoneId("iris_setup_samplers", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_IMAGES = Tracy.zoneId("iris_setup_images", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_CUSTOM = Tracy.zoneId("iris_setup_custom", Tracy.COLOR_IRIS);
+
     private final GlUniformMatrix4f uniformModelViewMatrix;
     @Nullable
     private final GlUniformMatrix4f uniformModelViewMatrixInverse;
@@ -46,6 +52,8 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
     private final GlUniformMatrix3f uniformNormalMatrix;
     @Nullable
     private final GlUniformFloat3v uniformRegionOffset;
+    @Nullable
+    private final GlUniformMatrix4f uniformLightmapTextureMatrix;
 
     // Iris program state
     private final ProgramUniforms irisProgramUniforms;
@@ -78,6 +86,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         this.uniformProjectionMatrixInverse = context.bindUniformIfPresent("iris_ProjectionMatrixInverse", GlUniformMatrix4f::new);
         this.uniformNormalMatrix = context.bindUniformIfPresent("iris_NormalMatrix", GlUniformMatrix3f::new);
         this.uniformRegionOffset = context.bindUniformIfPresent("u_RegionOffset", GlUniformFloat3v::new);
+        this.uniformLightmapTextureMatrix = context.bindUniformIfPresent("iris_LightmapTextureMatrix", GlUniformMatrix4f::new);
 
         this.blendModeOverride = blendModeOverride;
         this.bufferBlendOverrides = bufferBlendOverrides;
@@ -93,11 +102,18 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
 
     @Override
     public void setupState(TerrainRenderPass pass) {
-        if (Tracy.ENABLED) Tracy.beginZone("iris_setup_fbo", Tracy.COLOR_IRIS);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_FBO);
         bindFramebuffer(pass);
 
         if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
             GLStateManager.disableCull();
+        }
+
+        // Explicitly set iris_LightmapTextureMatrix rather than relying on CompatUniformManager.
+        // At high uniform locations in large UBOs, the compat manager's writes may not persist
+        // through the per-program dirtyUniforms swap in non-GL backends.
+        if (uniformLightmapTextureMatrix != null) {
+            uniformLightmapTextureMatrix.set(GLStateManager.getTextures().getTextureUnitMatrix(1));
         }
 
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.ALBEDO_TEXTURE_UNIT);
@@ -117,22 +133,22 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         if (Tracy.ENABLED) Tracy.endZone();
 
         if (irisProgramUniforms != null) {
-            if (Tracy.ENABLED) Tracy.beginZone("iris_setup_uniforms", Tracy.COLOR_IRIS);
+            if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_UNIFORMS);
             irisProgramUniforms.update();
             if (Tracy.ENABLED) Tracy.endZone();
         }
         if (irisProgramSamplers != null) {
-            if (Tracy.ENABLED) Tracy.beginZone("iris_setup_samplers", Tracy.COLOR_IRIS);
+            if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_SAMPLERS);
             irisProgramSamplers.update();
             if (Tracy.ENABLED) Tracy.endZone();
         }
         if (irisProgramImages != null) {
-            if (Tracy.ENABLED) Tracy.beginZone("iris_setup_images", Tracy.COLOR_IRIS);
+            if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_IMAGES);
             irisProgramImages.update();
             if (Tracy.ENABLED) Tracy.endZone();
         }
 
-        if (Tracy.ENABLED) Tracy.beginZone("iris_setup_custom", Tracy.COLOR_IRIS);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_CUSTOM);
         customUniforms.push(this);
         if (Tracy.ENABLED) Tracy.endZone();
     }
@@ -246,7 +262,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         }
     }
 
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private CeleritasTerrainPipeline getCeleritasTerrainPipeline() {
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
         return pipeline != null ? pipeline.getCeleritasTerrainPipeline() : null;

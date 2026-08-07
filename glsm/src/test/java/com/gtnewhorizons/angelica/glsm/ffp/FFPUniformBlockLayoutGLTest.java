@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
-import com.gtnewhorizons.angelica.glsm.GLSMCoreExtension;
+import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL31;
 
@@ -12,7 +11,7 @@ import java.nio.IntBuffer;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
-@ExtendWith(GLSMCoreExtension.class)
+@GLCoreTest
 class FFPUniformBlockLayoutGLTest {
 
     @Test

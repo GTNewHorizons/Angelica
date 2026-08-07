@@ -10,7 +10,7 @@ import net.minecraft.profiler.Profiler;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.framebuffer.ParityFramebuffer;
-import net.coderbot.iris.gl.texture.DepthBufferFormat;
+import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.shaderpack.PackDirectives;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
@@ -43,11 +43,10 @@ public class RenderTargets {
 	private int cachedHeight;
 	@Getter
     private boolean fullClearRequired;
-
-	private int cachedDepthBufferVersion;
-
 	private boolean translucentDepthDirty;
 	private boolean handDepthDirty;
+
+	private int cachedDepthBufferVersion;
 
 	public RenderTargets(int width, int height,  int depthTexture, int depthBufferVersion, DepthBufferFormat depthFormat, Map<Integer, PackRenderTargetDirectives.RenderTargetSettings> renderTargets, PackDirectives packDirectives) {
         targets = new RenderTarget[renderTargets.size()];
@@ -360,9 +359,11 @@ public class RenderTargets {
 		framebuffer.drawBuffers(actualDrawBuffers);
         framebuffer.readBuffer(0);
 
-		final int status = framebuffer.getStatus();
-		if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
-			throw new IllegalStateException(String.format( "Unexpected error while creating framebuffer: glCheckFramebufferStatus=0x%X, size=%dx%d, drawBuffers=%d", status, cachedWidth, cachedHeight, drawBuffers.length));
+		if (GLStateManager.framebufferCompletenessIsMeaningful()) {
+			final int status = framebuffer.getStatus();
+			if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+				throw new IllegalStateException(String.format("Unexpected error while creating framebuffer: glCheckFramebufferStatus=0x%X, size=%dx%d, drawBuffers=%d", status, cachedWidth, cachedHeight, drawBuffers.length));
+			}
 		}
 	}
 

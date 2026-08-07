@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.shader;
 
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,7 +21,6 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 /** GLSL -> SPIR-V via shaderc */
 @Lwjgl3Aware
 public final class SpirvCompiler {
-
     private static final Logger LOGGER = LogManager.getLogger("SpirvCompiler");
 
     private static final ThreadLocal<Long> COMPILER = ThreadLocal.withInitial(() -> {
@@ -31,6 +31,11 @@ public final class SpirvCompiler {
 
     private static final Path FAILURE_DIR = Paths.get("shaderc_failures");
     private static final AtomicInteger FAILURE_COUNTER = new AtomicInteger();
+
+    private static final int CACHE_MAX = 256;
+    private static final Object2ObjectLinkedOpenHashMap<CacheKey, byte[]> CACHE = new Object2ObjectLinkedOpenHashMap<>();
+
+    private record CacheKey(String source, int shaderKind, Options opts) {}
 
     private SpirvCompiler() {}
 
@@ -48,6 +53,19 @@ public final class SpirvCompiler {
     public record Result(@Nullable ByteBuffer spirv, @Nullable String error, @Nullable Path dumpPath) {}
 
     public static Result compile(String source, int shaderKind, String debugName, Options opts) {
+        final String cleanSrc = source.indexOf('\0') >= 0 ? source.replace("\0", "") : source;
+
+        final CacheKey key = new CacheKey(cleanSrc, shaderKind, opts);
+        final byte[] cached;
+        synchronized (CACHE) {
+            cached = CACHE.getAndMoveToFirst(key);
+        }
+        if (cached != null) {
+            final ByteBuffer copy = MemoryUtil.memAlloc(cached.length);
+            copy.put(cached).flip();
+            return new Result(copy, null, null);
+        }
+
         final long compiler = COMPILER.get();
         final long optionsHandle = Shaderc.shaderc_compile_options_initialize();
         if (optionsHandle == 0L) {
@@ -55,8 +73,6 @@ public final class SpirvCompiler {
         }
         try {
             configureOptions(optionsHandle, opts);
-
-            final String cleanSrc = source.indexOf('\0') >= 0 ? source.replace("\0", "") : source;
 
             ByteBuffer srcBuf = null, nameBuf = null, entryBuf = null;
             long result = 0L;
@@ -82,7 +98,45 @@ public final class SpirvCompiler {
                 final ByteBuffer copy = MemoryUtil.memAlloc(spirv.remaining());
                 copy.put(spirv);
                 copy.flip();
+                final byte[] heap = new byte[copy.remaining()];
+                copy.duplicate().get(heap);
+                synchronized (CACHE) {
+                    CACHE.putAndMoveToFirst(key, heap);
+                    while (CACHE.size() > CACHE_MAX) CACHE.removeLast();
+                }
                 return new Result(copy, null, null);
+            } finally {
+                if (result != 0L) Shaderc.shaderc_result_release(result);
+                if (entryBuf != null) memFree(entryBuf);
+                if (nameBuf != null) memFree(nameBuf);
+                if (srcBuf != null) memFree(srcBuf);
+            }
+        } finally {
+            Shaderc.shaderc_compile_options_release(optionsHandle);
+        }
+    }
+
+    public static String preprocess(String source, int shaderKind, String debugName, Options opts) {
+        final String cleanSrc = source.indexOf('\0') >= 0 ? source.replace("\0", "") : source;
+        final long compiler = COMPILER.get();
+        final long optionsHandle = Shaderc.shaderc_compile_options_initialize();
+        if (optionsHandle == 0L) return null;
+        try {
+            configureOptions(optionsHandle, opts);
+            ByteBuffer srcBuf = null, nameBuf = null, entryBuf = null;
+            long result = 0L;
+            try {
+                srcBuf = memUTF8(cleanSrc, false);
+                nameBuf = memUTF8(debugName == null ? "shader" : debugName);
+                entryBuf = memUTF8("main");
+                result = Shaderc.shaderc_compile_into_preprocessed_text(compiler, srcBuf, shaderKind, nameBuf, entryBuf, optionsHandle);
+                if (result == 0L) return null;
+                if (Shaderc.shaderc_result_get_compilation_status(result) != Shaderc.shaderc_compilation_status_success) {
+                    return null;
+                }
+                final ByteBuffer text = Shaderc.shaderc_result_get_bytes(result);
+                if (text == null || text.remaining() == 0) return null;
+                return MemoryUtil.memUTF8(text);
             } finally {
                 if (result != 0L) Shaderc.shaderc_result_release(result);
                 if (entryBuf != null) memFree(entryBuf);
@@ -104,6 +158,10 @@ public final class SpirvCompiler {
         if (o.forcedVersion() != 0) {
             Shaderc.shaderc_compile_options_set_forced_version_profile(h, o.forcedVersion(), o.forcedProfile());
         }
+    }
+
+    public static void clearCache() {
+        synchronized (CACHE) { CACHE.clear(); }
     }
 
     private static @Nullable Path writeFailureDump(String debugName, int shaderKind, String msg, String source) {

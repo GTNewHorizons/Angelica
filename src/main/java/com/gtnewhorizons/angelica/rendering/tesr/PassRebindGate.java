@@ -13,15 +13,15 @@ public final class PassRebindGate {
 
     public static void rebindIfDirty() {
         if (!Iris.enabled) return;
-        if (GLStateManager.programGeneration == lastProgramGen
-            && GLStateManager.drawFramebufferGeneration == lastFbGen) {
+        if (GLStateManager.getProgramGeneration() == lastProgramGen
+            && GLStateManager.getDrawFramebufferGeneration() == lastFbGen) {
             return;
         }
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
         if (pipeline != null) {
             pipeline.rebindCurrentPass();
         }
-        lastProgramGen = GLStateManager.programGeneration;
-        lastFbGen = GLStateManager.drawFramebufferGeneration;
+        lastProgramGen = GLStateManager.getProgramGeneration();
+        lastFbGen = GLStateManager.getDrawFramebufferGeneration();
     }
 }

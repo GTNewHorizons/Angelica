@@ -27,4 +27,6 @@ public interface IrisShaderProvider {
 
     /** Block render layer overrides from shader pack */
     @Nullable Map<Block, BlockRenderLayer> getBlockTypeIds();
+
+    default void preSubmitShadowGraph(int frame, boolean spectator) {}
 }

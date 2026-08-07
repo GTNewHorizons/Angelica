@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.profiling;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.sun.management.ThreadMXBean;
 import lombok.Setter;
@@ -23,7 +25,9 @@ public final class Tracy {
     private static final Logger LOGGER = LogManager.getLogger("Tracy");
 
     public static final boolean ENABLED;
+    public static final boolean FINE_ZONES;
     private static final TracyBackend BACKEND;
+    private static volatile boolean SHUTTING_DOWN;
 
     private static final ConcurrentHashMap<String, Long> CLIENT_SRC_LOCS = new ConcurrentHashMap<>();
     private static final ConcurrentHashMap<String, Long> SERVER_SRC_LOCS = new ConcurrentHashMap<>();
@@ -50,18 +54,31 @@ public final class Tracy {
 
     static {
         TracyBackend backend = null;
-        if (Boolean.getBoolean("angelica.tracy")) {
+        if (SystemProperties.TRACY) {
             backend = loadAndInit();
         }
         BACKEND = backend;
         ENABLED = backend != null;
+        FINE_ZONES = ENABLED && SystemProperties.TRACY_FINE_ZONES;
         if (ENABLED) {
-            Runtime.getRuntime().addShutdownHook(new Thread(BACKEND::shutdown, "Tracy-Shutdown"));
+            Runtime.getRuntime().addShutdownHook(new Thread(Tracy::shutdown, "Tracy-Shutdown"));
             LOGGER.info("Tracy profiling enabled");
         }
     }
 
     private Tracy() {}
+
+    private static void shutdown() {
+        SHUTTING_DOWN = true;
+        final Thread worker = new Thread(BACKEND::shutdown, "Tracy-Shutdown-Worker");
+        worker.setDaemon(true);
+        worker.start();
+        try {
+            worker.join(2000);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+        }
+    }
 
     private static TracyBackend loadAndInit() {
         TracyBackend found = null;
@@ -119,6 +136,10 @@ public final class Tracy {
         if ("root".equals(name)) {
             unwindToRoot(STACK.get());
         }
+        if (!CaptureGate.markersThisFrame) {
+            skip(name);
+            return;
+        }
         final boolean client = Thread.currentThread() == GLStateManager.getMainThread();
         final ConcurrentHashMap<String, Long> map = client ? CLIENT_SRC_LOCS : SERVER_SRC_LOCS;
         Long srcLoc = map.get(name);
@@ -157,7 +178,11 @@ public final class Tracy {
     }
 
     public static void beginZone(String name, int color) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
+        if (!CaptureGate.markersThisFrame) {
+            skip(name);
+            return;
+        }
         Long srcLoc = PLAIN_SRC_LOCS.get(name);
         if (srcLoc == null) {
             srcLoc = PLAIN_SRC_LOCS.computeIfAbsent(name, n -> BACKEND.internSrcLoc(n, color));
@@ -165,9 +190,42 @@ public final class Tracy {
         begin(srcLoc, name);
     }
 
+    public static final class ZoneId {
+        private final long srcLoc;
+        private final String name;
+
+        private ZoneId(long srcLoc, String name) {
+            this.srcLoc = srcLoc;
+            this.name = name;
+        }
+    }
+
+    public static ZoneId zoneId(String name) {
+        return zoneId(name, COLOR_WORKER);
+    }
+
+    public static ZoneId zoneId(String name, int color) {
+        if (!ENABLED) return new ZoneId(0L, name);
+        Long srcLoc = PLAIN_SRC_LOCS.get(name);
+        if (srcLoc == null) {
+            srcLoc = PLAIN_SRC_LOCS.computeIfAbsent(name, n -> BACKEND.internSrcLoc(n, color));
+        }
+        return new ZoneId(srcLoc, name);
+    }
+
+    public static void beginZone(ZoneId zone) {
+        if (!ENABLED || SHUTTING_DOWN) return;
+        begin(zone.srcLoc, zone.name);
+    }
+
+    private static void skip(String name) {
+        STACK.get().push(0L, false, name);
+    }
+
     private static void begin(long srcLoc, String name) {
+        if (SHUTTING_DOWN) return;
         final ZoneStack stack = STACK.get();
-        if (srcLoc == 0 || stack.atCap()) {
+        if (srcLoc == 0 || !CaptureGate.markersThisFrame || stack.atCap()) {
             stack.push(0L, false, name);
             return;
         }
@@ -180,7 +238,7 @@ public final class Tracy {
     }
 
     public static void endZone() {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
         final ZoneStack stack = STACK.get();
         final long ctx = stack.pop();
         if (ctx == ZoneStack.EMPTY) return;
@@ -193,7 +251,7 @@ public final class Tracy {
     }
 
     public static void zoneText(String text) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
         final long ctx = STACK.get().peek();
         if (ctx != ZoneStack.EMPTY && ctx != 0L) {
             BACKEND.zoneText(ctx, text);
@@ -201,7 +259,7 @@ public final class Tracy {
     }
 
     public static void zoneValue(long value) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
         final long ctx = STACK.get().peek();
         if (ctx != ZoneStack.EMPTY && ctx != 0L) {
             BACKEND.zoneValue(ctx, value);
@@ -211,7 +269,7 @@ public final class Tracy {
     private static boolean threadNameRefreshed;
 
     public static void frameMark() {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
         if (!threadNameRefreshed) {
             threadNameRefreshed = true;
             BACKEND.setCurrentThreadName(Thread.currentThread().getName());
@@ -220,7 +278,7 @@ public final class Tracy {
     }
 
     public static void frameMark(String name) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
         Long ptr = FRAME_NAMES.get(name);
         if (ptr == null) {
             ptr = FRAME_NAMES.computeIfAbsent(name, BACKEND::internFrameName);
@@ -233,13 +291,13 @@ public final class Tracy {
     }
 
     public static void plotInt(String name, long value, int format) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN || !CaptureGate.markersThisFrame) return;
         final long ptr = plotName(name, format);
         if (ptr != 0) BACKEND.plotInt(ptr, value);
     }
 
     public static void plot(String name, double value) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN || !CaptureGate.markersThisFrame) return;
         final long ptr = plotName(name, TracyBackend.PLOT_FORMAT_NUMBER);
         if (ptr != 0) BACKEND.plot(ptr, value);
     }
@@ -252,8 +310,27 @@ public final class Tracy {
         return ptr;
     }
 
+    public static long plotHandle(String name, int format) {
+        if (!ENABLED || SHUTTING_DOWN) return 0;
+        return plotName(name, format);
+    }
+
+    public static long plotHandle(String name) {
+        return plotHandle(name, TracyBackend.PLOT_FORMAT_NUMBER);
+    }
+
+    public static void plotInt(long handle, long value) {
+        if (handle == 0 || SHUTTING_DOWN || !CaptureGate.markersThisFrame) return;
+        BACKEND.plotInt(handle, value);
+    }
+
+    public static void plot(long handle, double value) {
+        if (handle == 0 || SHUTTING_DOWN || !CaptureGate.markersThisFrame) return;
+        BACKEND.plot(handle, value);
+    }
+
     public static void message(String text) {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN || !CaptureGate.markersThisFrame) return;
         BACKEND.message(text);
     }
 
@@ -289,25 +366,38 @@ public final class Tracy {
 
     private static final ThreadLocal<long[]> PREV_ALLOC = ThreadLocal.withInitial(() -> new long[1]);
 
-    public static void plotAllocRate(String plotName) {
-        if (!ENABLED || AllocBean.BEAN == null) return;
+    public static void plotAllocRate(long plotHandle) {
+        if (!ENABLED || SHUTTING_DOWN || AllocBean.BEAN == null) return;
+        if (!CaptureGate.markersThisFrame) {
+            PREV_ALLOC.get()[0] = 0;
+            return;
+        }
         final long now = AllocBean.BEAN.getThreadAllocatedBytes(Thread.currentThread().threadId());
         if (now < 0) return;
         final long[] prev = PREV_ALLOC.get();
         if (prev[0] != 0) {
-            plotInt(plotName, now - prev[0], TracyBackend.PLOT_FORMAT_MEMORY);
+            plotInt(plotHandle, now - prev[0]);
         }
         prev[0] = now;
     }
 
     private static List<GarbageCollectorMXBean> gcBeans;
+    private static boolean gcBaselineValid;
     private static long prevGcCount;
     private static long prevGcTimeMs;
+    private static long gcCountHandle;
+    private static long gcTimeHandle;
 
     public static void plotGcStats() {
-        if (!ENABLED) return;
+        if (!ENABLED || SHUTTING_DOWN) return;
+        if (!CaptureGate.markersThisFrame) {
+            gcBaselineValid = false;
+            return;
+        }
         if (gcBeans == null) {
             gcBeans = ManagementFactory.getGarbageCollectorMXBeans();
+            gcCountHandle = plotHandle("gcCount");
+            gcTimeHandle = plotHandle("gcTimeMs");
         }
         long count = 0;
         long timeMs = 0;
@@ -318,11 +408,14 @@ public final class Tracy {
             if (c > 0) count += c;
             if (t > 0) timeMs += t;
         }
-        plotInt("gcCount", count - prevGcCount);
-        plotInt("gcTimeMs", timeMs - prevGcTimeMs);
-        if (count > prevGcCount) {
-            message("GC: +" + (count - prevGcCount) + " collections, +" + (timeMs - prevGcTimeMs) + " ms");
+        if (gcBaselineValid) {
+            plotInt(gcCountHandle, count - prevGcCount);
+            plotInt(gcTimeHandle, timeMs - prevGcTimeMs);
+            if (count > prevGcCount) {
+                message("GC: +" + (count - prevGcCount) + " collections, +" + (timeMs - prevGcTimeMs) + " ms");
+            }
         }
+        gcBaselineValid = true;
         prevGcCount = count;
         prevGcTimeMs = timeMs;
     }

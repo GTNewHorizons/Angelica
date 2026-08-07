@@ -10,7 +10,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntArrayMap;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import java.nio.IntBuffer;
 import net.coderbot.iris.gl.GlResource;
-import net.coderbot.iris.gl.texture.DepthBufferFormat;
+import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;

@@ -1198,5 +1198,11 @@ class GLSM_PushPop_UnitTest {
         verifyState(GL11.GL_VIEWPORT, new int[] { 2, 2, 640, 480 }, "Viewport - untouched round trip");
         verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode - untouched round trip");
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - untouched round trip");
+
+        GLStateManager.glDepthFunc(GL11.GL_LESS);
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.glLineWidth(1.0f);
+        GLStateManager.glViewport(0, 0, 800, 600);
+        GLStateManager.glCullFace(GL11.GL_BACK);
     }
 }
