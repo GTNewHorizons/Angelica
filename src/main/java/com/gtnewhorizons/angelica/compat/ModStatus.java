@@ -24,7 +24,6 @@ public class ModStatus {
     public static boolean isXaerosMinimapLoaded;
     public static boolean isHoloInventoryLoaded;
     public static boolean isBattlegearLoaded;
-    public static boolean isNHBattlegearLoaded;
     public static boolean isBackhandLoaded;
     public static boolean isThaumcraftLoaded;
     public static boolean isThaumicHorizonsLoaded;
