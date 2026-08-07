@@ -46,6 +46,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
+import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -157,9 +158,12 @@ public final class ClientProxy extends CommonProxy {
             BlockRenderListManager.registerReloadListener();
         }
 
-        // Register debug commands in dev environment only
+        // Debug tooling
         if (!AngelicaClientTweaker.isObfEnv()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
+
+            FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);
+            FlybyRunner.INSTANCE.startFromProperties();
         }
     }
 

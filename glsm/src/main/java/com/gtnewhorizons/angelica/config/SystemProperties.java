@@ -35,6 +35,12 @@ public final class SystemProperties {
     public static final String KEY_FAIL_ON_AWARE_UNROUTABLE = "angelica.failOnAwareUnroutableGL";
     public static final String KEY_TRACY = "angelica.tracy";
     public static final String KEY_TRACY_FINE_ZONES = "angelica.tracy.fineZones";
+    public static final String KEY_FLYBY_ROUTE = "angelica.flyby.route";
+    public static final String KEY_FLYBY_WAIT_FOR_TRACY = "angelica.flyby.waitForTracy";
+    public static final String KEY_FLYBY_WARMUP_TICKS = "angelica.flyby.warmupTicks";
+    public static final String KEY_FLYBY_LENGTH = "angelica.flyby.length"; // Blocks for moving routes, ticks for stationary
+    public static final String KEY_FLYBY_SPEED = "angelica.flyby.speed"; // Travel speed in blocks per tick
+    public static final String KEY_FLYBY_EXIT_WHEN_DONE = "angelica.flyby.exitWhenDone";
     public static final String KEY_LWJGL_DEBUG = "org.lwjgl.util.Debug";
 
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean(KEY_LWJGL_DEBUG);
@@ -60,11 +66,16 @@ public final class SystemProperties {
     public static final boolean VERIFY_PER_FRAME_UNIFORM_BLOCK = Boolean.getBoolean(KEY_VERIFY_PER_FRAME_UNIFORM_BLOCK);
     public static final boolean SDL_VERIFY_STATE_SYNC = Boolean.getBoolean(KEY_SDL_VERIFY_STATE_SYNC);
     public static final boolean FORCE_ORPHAN_STREAMING = Boolean.getBoolean(KEY_FORCE_ORPHAN_STREAMING);
+    public static final boolean FLYBY_WAIT_FOR_TRACY = Boolean.getBoolean(KEY_FLYBY_WAIT_FOR_TRACY);
+    public static final boolean FLYBY_EXIT_WHEN_DONE = Boolean.getBoolean(KEY_FLYBY_EXIT_WHEN_DONE);
     public static final int SDL_FRAMES_IN_FLIGHT = 3;
-
+    public static final int FLYBY_WARMUP_TICKS = Integer.getInteger(KEY_FLYBY_WARMUP_TICKS, 400);
+    public static final int FLYBY_LENGTH = Integer.getInteger(KEY_FLYBY_LENGTH, 0);
+    public static final double FLYBY_SPEED = parseDouble(KEY_FLYBY_SPEED);
 
     public static final String GL_PROFILE = System.getProperty(KEY_GL_PROFILE, "");
     public static final String SDL_GPU_DRIVER = System.getProperty(KEY_SDL_GPU_DRIVER, "");
+    public static final String FLYBY_ROUTE = System.getProperty(KEY_FLYBY_ROUTE, "");
 
     public static final boolean DUMP_SHADERS = Boolean.getBoolean(KEY_DUMP_SHADERS) || isDeobf();
 
@@ -78,6 +89,16 @@ public final class SystemProperties {
 
     public static Path shaderDumpDir(String phase) {
         return DUMP_SHADERS ? Paths.get(SHADER_DUMP_ROOT, phase) : null;
+    }
+
+    private static double parseDouble(String key) {
+        final String raw = System.getProperty(key);
+        if (raw == null || raw.isEmpty()) return 0.0D;
+        try {
+            return Double.parseDouble(raw);
+        } catch (NumberFormatException e) {
+            return 0.0D;
+        }
     }
 
     private static boolean isDeobf() {

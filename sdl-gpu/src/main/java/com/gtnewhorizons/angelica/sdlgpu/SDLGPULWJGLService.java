@@ -31,7 +31,28 @@ public final class SDLGPULWJGLService extends LWJGLService {
     }
 
     @Override public boolean isExtensionSupported(GLExtension extension) {
-        return true;
+        return switch (extension) {
+            case ARB_buffer_storage,
+                 ARB_map_buffer_range,
+                 ARB_copy_buffer,
+                 ARB_multi_draw_indirect,
+                 ARB_draw_elements_base_vertex,
+                 ARB_sync,
+                 ARB_uniform_buffer_object,
+                 ARB_vertex_array_object,
+                 ARB_shader_storage_buffer_object,
+                 ARB_instanced_arrays,
+                 KHR_debug
+                 -> true;
+            case ARB_timer_query,
+                 ARB_debug_output,
+                 AMD_debug_output,
+                 ARB_compatibility,
+                 ARB_direct_state_access,
+                 ARB_texture_storage,
+                 ARB_base_instance
+                 -> false;
+        };
     }
 
     @Override public int getPointerSize() { return 8; } // 64-bit
@@ -57,7 +78,7 @@ public final class SDLGPULWJGLService extends LWJGLService {
     @Override public long nglMapBuffer(int target, int access) { return 0; }
     @Override public ByteBuffer glMapBuffer(int target, int access) { return BackendManager.RENDER_BACKEND.mapBuffer(target, access); }
     @Override public void glUnmapBuffer(int target) { BackendManager.RENDER_BACKEND.unmapBuffer(target); }
-    @Override public void glFlushMappedBufferRange(int target, long offset, long length) {}
+    @Override public void glFlushMappedBufferRange(int target, long offset, long length) { BackendManager.RENDER_BACKEND.flushMappedBufferRange(target, offset, length); }
     @Override public void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) { BackendManager.RENDER_BACKEND.copyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size); }
     @Override public void glBindBufferBase(int target, int index, int buffer) { BackendManager.RENDER_BACKEND.bindBufferBase(target, index, buffer); }
 

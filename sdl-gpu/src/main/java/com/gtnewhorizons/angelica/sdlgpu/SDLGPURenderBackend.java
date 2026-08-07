@@ -90,6 +90,7 @@ import org.lwjgl.sdl.SDL_GPUBufferLocation;
 import org.lwjgl.sdl.SDL_GPUTextureLocation;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjgl.system.Pointer;
 import org.lwjglx.opengl.Display;
 
 import me.eigenraven.lwjgl3ify.api.DisplayEvents;
@@ -987,7 +988,19 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public void multiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
-        throw new UnsupportedOperationException("SDLGPURenderBackend.multiDrawElementsBaseVertex not yet implemented");
+        if (drawcount <= 0) return;
+        final ContextState st = s();
+        final long rp = prepareIndexedDrawBind(st, mode, type, "multiDrawElementsBaseVertex");
+        if (rp == 0) return;
+        final int elementSize = FormatMap.indexElementSize(type);
+        final int ebo = st.currentVao.elementBuffer;
+        for (int i = 0; i < drawcount; i++) {
+            final long offset = (long) i * Integer.BYTES;
+            final int count = MemoryUtil.memGetInt(pCount + offset);
+            if (count <= 0) continue;
+            final long indices = MemoryUtil.memGetAddress(pIndices + (long) i * Pointer.POINTER_SIZE);
+            drawDispatch.issueIndexedDraw(st, rp, ebo, type, count, 1, (int) (indices / elementSize), MemoryUtil.memGetInt(pBaseVertex + offset));
+        }
     }
 
     @Override public void multiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {

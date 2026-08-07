@@ -29,6 +29,16 @@ minecraft   {
 
 }
 
+// Ensure flyby args are passed to the client
+tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
+    for ((key, value) in System.getProperties()) {
+        val name = key.toString()
+        if (name.startsWith("angelica.flyby.")) {
+            jvmArgs("-D$name=$value")
+        }
+    }
+}
+
 if (gpuHud) {
     tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
         if (org.gradle.internal.os.OperatingSystem.current().isMacOsX) {
