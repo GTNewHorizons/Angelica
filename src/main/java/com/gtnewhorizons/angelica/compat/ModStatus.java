@@ -24,6 +24,7 @@ public class ModStatus {
     public static boolean isXaerosMinimapLoaded;
     public static boolean isHoloInventoryLoaded;
     public static boolean isBattlegearLoaded;
+    public static boolean isNHBattlegearLoaded;
     public static boolean isBackhandLoaded;
     public static boolean isThaumcraftLoaded;
     public static boolean isThaumicHorizonsLoaded;
@@ -46,7 +47,6 @@ public class ModStatus {
         isChunkAPILoaded = Loader.isModLoaded("chunkapi");
         isXaerosMinimapLoaded = Loader.isModLoaded("XaeroMinimap");
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
-        isBattlegearLoaded = Loader.isModLoaded("battlegear2");
         isThaumcraftLoaded = Loader.isModLoaded("Thaumcraft");
         isThaumicHorizonsLoaded = Loader.isModLoaded("ThaumicHorizons");
         isBaublesLoaded = Loader.isModLoaded("Baubles");
@@ -58,12 +58,16 @@ public class ModStatus {
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBOPLoaded = Loader.isModLoaded("BiomesOPlenty");
 
-        // remove compat with original release of BG2
-        if (isBattlegearLoaded){
-            isBattlegearLoaded = new DefaultArtifactVersion("1.2.0")
-                .compareTo(
-                    LoadControllerHelper.getOwningMod(Battlegear.class).getProcessedVersion()
-                ) <= 0;
+        // Angelica's compat relies on GTNH extensions, so this should only be true for NH Battlegear2, 1.2.0+
+        if (Loader.isModLoaded("battlegear2")) {
+            // Don't ask me why battlegear2 reports as 1.7.10, I don't know
+            final var OG_BG2_VER = new DefaultArtifactVersion("1.7.10");
+            final var NH_BG2_VER = new DefaultArtifactVersion("1.2.0");
+
+            @SuppressWarnings("DataFlowIssue")
+            var battlegearVersion = LoadControllerHelper.getOwningMod(Battlegear.class).getProcessedVersion();
+            // We can be sure the NH version will never be 1.7.10, because that garbage got archived.
+            isBattlegearLoaded = battlegearVersion.compareTo(OG_BG2_VER) != 0 && battlegearVersion.compareTo(NH_BG2_VER) >= 0;
         }
 
         isNEIDMetadataExtended = false;
