@@ -22,7 +22,7 @@ minecraft   {
     extraRunJvmArguments.add("-Dsun.net.client.defaultReadTimeout=5000")
     // TODO: Remove once GTNHGradle includes shaderc/spvc in the default lwjgl3Bindings list
     lwjgl3Bindings.addAll("shaderc", "spvc")
-    lwjgl3Version = "3.4.2-20260602.093430-9"
+    lwjgl3Version = libs.versions.lwjgl3.get()
 //    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
 //    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
     //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
@@ -55,7 +55,7 @@ configurations.all {
     exclude(group = "com.github.GTNewHorizons", module = "Angelica")
     resolutionStrategy.dependencySubstitution {
         substitute(module("com.github.GTNewHorizons:lwjgl3ify"))
-            .using(module("com.github.GTNewHorizons:lwjgl3ify:3.0.25"))
+            .using(module("com.github.GTNewHorizons:lwjgl3ify:${libs.versions.lwjgl3ify.get()}"))
     }
 }
 
@@ -248,4 +248,3 @@ tasks.shadowJar {
     relocate("com.gtnewhorizons.angelica.lwjgl3", "com.gtnewhorizons.angelica.lwjgl3")
     relocate("com.gtnewhorizons.angelica.sdlgpu", "com.gtnewhorizons.angelica.sdlgpu")
 }
-

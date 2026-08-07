@@ -24,7 +24,7 @@ configurations {
     }
 }
 
-val lwjglVersion = "3.4.2-SNAPSHOT"
+val lwjglNatives: String by extra
 
 repositories {
     mavenLocal()
@@ -58,52 +58,30 @@ repositories {
 dependencies {
     api(project(":glsm"))
 
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.25:dev") { isTransitive = false }
-    compileOnly("org.embeddedt.celeritas:celeritas-common:2.5.9-GTNH") { isTransitive = false }
+    compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
+    compileOnly(libs.celeritas.common) { isTransitive = false }
 
     // GL enum constants (compileOnly -- no runtime GL dependency)
-    compileOnly("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
+    compileOnly(libs.lwjgl3.opengl)
 
-    val osName = System.getProperty("os.name").lowercase()
-    val osArch = System.getProperty("os.arch").lowercase()
-    val lwjglNatives = when {
-        osName.contains("linux") && osArch.contains("aarch64") -> "natives-linux-arm64"
-        osName.contains("linux") -> "natives-linux"
-        osName.contains("windows") && osArch.contains("aarch64") -> "natives-windows-arm64"
-        osName.contains("windows") -> "natives-windows"
-        osName.contains("mac") && osArch.contains("aarch64") -> "natives-macos-arm64"
-        osName.contains("mac") -> "natives-macos"
-        else -> "natives-linux"
+    // LWJGL3 core + SDL3 GPU + SPIRV-Cross + shaderc
+    implementation(libs.bundles.lwjgl3.sdlgpu)
+    libs.bundles.lwjgl3.sdlgpu.get().forEach {
+        runtimeOnly(it) { artifact { classifier = lwjglNatives } }
     }
 
-    // LWJGL3 core
-    implementation("org.lwjgl:lwjgl:${lwjglVersion}")
-    runtimeOnly("org.lwjgl:lwjgl:$lwjglVersion:$lwjglNatives")
+    compileOnly(libs.log4j.api)
+    compileOnly(libs.annotations)
 
-    // SDL3 GPU
-    implementation("org.lwjgl:lwjgl-sdl:${lwjglVersion}")
-    runtimeOnly("org.lwjgl:lwjgl-sdl:$lwjglVersion:$lwjglNatives")
-
-    // SPIRV-Cross (shader cross-compilation + reflection)
-    implementation("org.lwjgl:lwjgl-spvc:${lwjglVersion}")
-    runtimeOnly("org.lwjgl:lwjgl-spvc:$lwjglVersion:$lwjglNatives")
-
-    // shaderc (GLSL -> SPIR-V)
-    implementation("org.lwjgl:lwjgl-shaderc:${lwjglVersion}")
-    runtimeOnly("org.lwjgl:lwjgl-shaderc:$lwjglVersion:$lwjglNatives")
-
-    compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
-    compileOnly("org.jetbrains:annotations:26.0.2")
-
-    testImplementation(platform("org.junit:junit-bom:5.14.1"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
     testImplementation(testFixtures(project(":glsm")))
-    testImplementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
+    testImplementation(libs.lwjgl3.opengl)
     // GL.<clinit> loads liblwjgl_opengl.so. Test scope only: a root-level runtimeOnly collides with lwjgl3Bindings.
-    testRuntimeOnly("org.lwjgl:lwjgl-opengl:$lwjglVersion:$lwjglNatives")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.0-beta9")
-    testRuntimeOnly("it.unimi.dsi:fastutil:8.5.18")
+    testRuntimeOnly(libs.lwjgl3.opengl) { artifact { classifier = lwjglNatives } }
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.log4j.core)
+    testRuntimeOnly(libs.fastutil)
 }
 
 tasks.test {

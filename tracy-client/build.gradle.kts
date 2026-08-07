@@ -24,7 +24,8 @@ configurations {
     }
 }
 
-val lwjglVersion = "3.4.2-SNAPSHOT"
+val lwjglNatives: String by extra
+val tracyVersion = libs.versions.tracy.get()
 
 repositories {
     mavenLocal()
@@ -64,36 +65,24 @@ repositories {
 dependencies {
     api(project(":glsm"))
 
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.15:dev") { isTransitive = false }
+    compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
     compileOnly("net.minecraftforge:forge:1.7.10-10.13.4.1614-1.7.10:universal") { isTransitive = false }
 
-    implementation("org.lwjgl:lwjgl:${lwjglVersion}")
+    implementation(libs.lwjgl3)
 
-    compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
-    compileOnly("org.jetbrains:annotations:26.0.2")
+    compileOnly(libs.log4j.api)
+    compileOnly(libs.annotations)
 
-    val osName = System.getProperty("os.name").lowercase()
-    val osArch = System.getProperty("os.arch").lowercase()
-    val lwjglNatives = when {
-        osName.contains("linux") && osArch.contains("aarch64") -> "natives-linux-arm64"
-        osName.contains("linux") -> "natives-linux"
-        osName.contains("windows") && osArch.contains("aarch64") -> "natives-windows-arm64"
-        osName.contains("windows") -> "natives-windows"
-        osName.contains("mac") && osArch.contains("aarch64") -> "natives-macos-arm64"
-        osName.contains("mac") -> "natives-macos"
-        else -> "natives-linux"
-    }
-
-    testImplementation(platform("org.junit:junit-bom:5.11.4"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testRuntimeOnly("org.lwjgl:lwjgl:$lwjglVersion:$lwjglNatives")
-    testImplementation("org.apache.logging.log4j:log4j-api:2.0-beta9")
-    testRuntimeOnly("org.apache.logging.log4j:log4j-core:2.0-beta9")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.lwjgl3) { artifact { classifier = lwjglNatives } }
+    testImplementation(libs.log4j.api)
+    testRuntimeOnly(libs.log4j.core)
 }
 
 val generateTracyTags = tasks.register("generateTracyTags") {
-    val version = project.property("tracyVersion").toString()
+    val version = tracyVersion
     val outDir = layout.buildDirectory.dir("generated/sources/tracyTags")
     inputs.property("tracyVersion", version)
     outputs.dir(outDir)
@@ -104,7 +93,7 @@ val generateTracyTags = tasks.register("generateTracyTags") {
             """
             package com.gtnewhorizons.angelica.tracy;
 
-            // Generated from gradle.properties tracyVersion; do not edit
+            // Generated from the version catalog; do not edit
             public final class TracyTags {
                 private TracyTags() {}
                 public static final String TRACY_VERSION = "$version";
@@ -129,7 +118,7 @@ tasks.named<Jar>("jar") {
 
 val distJar = tasks.register<Jar>("distJar") {
     archiveBaseName.set("angelica-tracy")
-    archiveVersion.set(project.property("tracyVersion").toString())
+    archiveVersion.set(tracyVersion)
     from(sourceSets["main"].output)
     manifest {
         attributes(
@@ -144,7 +133,7 @@ publishing {
         create<MavenPublication>("mavenJava") {
             groupId = "com.gtnewhorizons.angelica"
             artifactId = "angelica-tracy"
-            version = project.property("tracyVersion").toString()
+            version = tracyVersion
             artifact(distJar)
         }
     }

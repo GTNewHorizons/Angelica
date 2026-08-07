@@ -10,19 +10,7 @@ apply(plugin = "xyz.wagyourtail.jvmdowngrader")
 
 version = rootProject.version
 
-val lwjglNatives = run {
-    val osName = System.getProperty("os.name").lowercase()
-    val osArch = System.getProperty("os.arch").lowercase()
-    when {
-        osName.contains("linux") && osArch.contains("aarch64") -> "natives-linux-arm64"
-        osName.contains("linux") -> "natives-linux"
-        osName.contains("windows") && osArch.contains("aarch64") -> "natives-windows-arm64"
-        osName.contains("windows") -> "natives-windows"
-        osName.contains("mac") && osArch.contains("aarch64") -> "natives-macos-arm64"
-        osName.contains("mac") -> "natives-macos"
-        else -> "natives-linux"
-    }
-}
+val lwjglNatives: String by extra
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
@@ -99,62 +87,62 @@ dependencies {
     compileOnly(sourceSets["stubs"].output)
 
     // LWJGL
-    compileOnly("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
-    compileOnly("org.lwjgl.lwjgl:lwjgl_util:${property("lwjglVersion")}")
+    compileOnly(libs.lwjgl2)
+    compileOnly(libs.lwjgl2.util)
 
-    compileOnly("org.ow2.asm:asm-tree:5.0.3")
+    compileOnly(libs.asm.tree.compile)
 
     // Our Deps
-    api("com.github.GTNewHorizons:GTNHLib:${property("gtnhlibVersion")}:dev")
-    api("net.minecraftforge:eventbus:${property("eventbusVersion")}")
+    api(libs.gtnhlib) { artifact { classifier = "dev" } }
+    api(libs.eventbus)
 
-    compileOnly("org.embeddedt.celeritas:celeritas-common:${property("celeritasVersion")}") { isTransitive = false }
-    api("org.taumc:glsl-transformation-lib:${property("glslTransformLibVersion")}") { exclude(module = "antlr4") }
-    api("org.antlr:antlr4-runtime:${property("antlr4RuntimeVersion")}")
-    implementation("org.anarres:jcpp:${property("jcppVersion")}")
+    compileOnly(libs.celeritas.common) { isTransitive = false }
+    api(libs.glsl.transformation.lib) { exclude(module = "antlr4") }
+    api(libs.antlr4.runtime)
+    implementation(libs.jcpp)
 
     // shaderc + SPIRV-Cross for the SpirvShaderTranslator (GLSL -> SPIR-V -> GLSL ES).
     // TODO: Remove
-    compileOnly("org.lwjgl:lwjgl-shaderc:3.4.2-SNAPSHOT")
-    compileOnly("org.lwjgl:lwjgl-spvc:3.4.2-SNAPSHOT")
-    testImplementation("org.lwjgl:lwjgl-shaderc:3.4.2-SNAPSHOT")
-    testImplementation("org.lwjgl:lwjgl-spvc:3.4.2-SNAPSHOT")
+    compileOnly(libs.lwjgl3.shaderc)
+    compileOnly(libs.lwjgl3.spvc)
+    testImplementation(libs.lwjgl3.shaderc)
+    testImplementation(libs.lwjgl3.spvc)
     // Host natives so the JNI wrapper can find libshaderc / libspirv-cross / liblwjgl.
-    testRuntimeOnly("org.lwjgl:lwjgl-shaderc:3.4.2-SNAPSHOT:$lwjglNatives")
-    testRuntimeOnly("org.lwjgl:lwjgl-spvc:3.4.2-SNAPSHOT:$lwjglNatives")
-    testRuntimeOnly("org.lwjgl:lwjgl:3.4.2-SNAPSHOT")
-    testRuntimeOnly("org.lwjgl:lwjgl:3.4.2-SNAPSHOT:$lwjglNatives")
+    testRuntimeOnly(libs.lwjgl3.shaderc) { artifact { classifier = lwjglNatives } }
+    testRuntimeOnly(libs.lwjgl3.spvc) { artifact { classifier = lwjglNatives } }
+    testRuntimeOnly(libs.lwjgl3)
+    testRuntimeOnly(libs.lwjgl3) { artifact { classifier = lwjglNatives } }
     // @Lwjgl3Aware annotation
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.25:dev") { isTransitive = false }
+    compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
 
-    compileOnly("org.projectlombok:lombok:${property("lombokVersion")}") { isTransitive = false }
-    annotationProcessor("org.projectlombok:lombok:${property("lombokVersion")}")
-    compileOnly("org.jetbrains:annotations:${property("jetbrainsAnnotationsVersion")}")
-    compileOnly("org.apache.logging.log4j:log4j-api:${property("log4jVersion")}")
+    compileOnly(libs.lombok) { isTransitive = false }
+    annotationProcessor(libs.lombok)
+    compileOnly(libs.annotations)
+    compileOnly(libs.log4j.api)
 
     // Deps (normally from MC) - compile only, but needed at test runtime
-    compileOnly("com.google.guava:guava:${property("guavaVersion")}")
-    testRuntimeOnly("com.google.guava:guava:${property("guavaVersion")}")
-    testRuntimeOnly("it.unimi.dsi:fastutil:${property("fastutilVersion")}")
-    testRuntimeOnly("org.joml:joml:${property("jomlVersion")}") { isTransitive = false }
+    compileOnly(libs.guava)
+    testRuntimeOnly(libs.guava)
+    testRuntimeOnly(libs.fastutil)
+    testRuntimeOnly(libs.joml) { isTransitive = false }
 
     testFixturesCompileOnly(sourceSets["stubs"].output)
-    testFixturesApi(platform("org.junit:junit-bom:${property("junitBomVersion")}"))
-    testFixturesApi("org.junit.jupiter:junit-jupiter-api")
-    testFixturesApi("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
+    testFixturesApi(platform(libs.junit.bom))
+    testFixturesApi(libs.junit.jupiter.api)
+    testFixturesApi(libs.lwjgl2)
 
     // Test
     testImplementation(sourceSets["stubs"].output)
-    testImplementation(platform("org.junit:junit-bom:${property("junitBomVersion")}"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.ow2.asm:asm-tree:9.7")
-    testImplementation("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testRuntimeOnly("org.apache.logging.log4j:log4j-core:${property("log4jVersion")}")
-    testImplementation("org.embeddedt.celeritas:celeritas-common:${property("celeritasVersion")}") { isTransitive = false }
-    testRuntimeOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:${property("celeritasVersion")}") { isTransitive = false }
-    testRuntimeOnly("xyz.wagyourtail.jvmdowngrader:jvmdowngrader-java-api:${property("jvmDowngraderVersion")}:downgraded-8")
-    testRuntimeOnly("org.apache.commons:commons-lang3:${property("commonsLang3Version")}")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.asm.tree.test)
+    testImplementation(libs.lwjgl2)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.log4j.core)
+    testImplementation(libs.celeritas.common) { isTransitive = false }
+    testRuntimeOnly(libs.celeritas.lwjgl2.service) { isTransitive = false }
+    testRuntimeOnly(libs.jvmdowngrader.java.api) { artifact { classifier = "downgraded-8" } }
+    testRuntimeOnly(libs.commons.lang3)
 }
 
 val depsToDowngrade by configurations.creating {
@@ -163,8 +151,8 @@ val depsToDowngrade by configurations.creating {
 }
 
 dependencies {
-    depsToDowngrade("net.minecraftforge:eventbus:${property("eventbusVersion")}")
-    depsToDowngrade("org.embeddedt.celeritas:celeritas-common:${property("celeritasVersion")}") { isTransitive = false }
+    depsToDowngrade(libs.eventbus)
+    depsToDowngrade(libs.celeritas.common) { isTransitive = false }
 }
 
 tasks.withType<DowngradeFiles>().configureEach {
