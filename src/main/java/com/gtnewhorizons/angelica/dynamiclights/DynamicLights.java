@@ -620,8 +620,7 @@ public class DynamicLights {
                     if (offhand != null) {
                         luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
                     }
-                }
-                else if (ModStatus.isBackhandLoaded){
+                } else if (ModStatus.isBackhandLoaded){
                     final ItemStack offhand = BackhandReflectionCompat.getOffhandItem(player);
                     if (offhand != null) {
                         luminance = Math.max(luminance, getLuminanceFromItemStack(offhand));
