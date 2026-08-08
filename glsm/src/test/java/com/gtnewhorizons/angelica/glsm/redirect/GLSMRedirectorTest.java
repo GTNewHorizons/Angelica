@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.redirect;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.config.SystemProperties.UnmappedGLMode;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.objectweb.asm.ClassWriter;
@@ -46,9 +48,7 @@ class GLSMRedirectorTest {
     void reset() {
         unmappedSeen().clear();
         debugSeen().clear();
-        SystemProperties.FAIL_ON_UNMAPPED_GL = false;
-        SystemProperties.FAIL_ON_AWARE_UNROUTABLE = false;
-        SystemProperties.DISABLE_UNMAPPED_GL_DETECTOR = false;
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.WARN);
     }
 
     private static ClassNode makeClassWithMethodCall(String owner, String name, String desc) {
@@ -200,8 +200,8 @@ class GLSMRedirectorTest {
     }
 
     @Test
-    void failOnUnmappedDoesNotThrowOnDebugPassthrough() {
-        SystemProperties.FAIL_ON_UNMAPPED_GL = true;
+    void failModeDoesNotThrowOnDebugPassthrough() {
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.FAIL);
         final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/GL43C", "glDebugMessageCallback", "(Lorg/lwjgl/opengl/GLDebugMessageCallbackI;J)V");
         new GLSMRedirector().transformClassNode("com.example.TestClass", cn);
         assertTrue(debugSeen().contains("org/lwjgl/opengl/GL43C.glDebugMessageCallback(Lorg/lwjgl/opengl/GLDebugMessageCallbackI;J)V"));
@@ -221,16 +221,16 @@ class GLSMRedirectorTest {
     }
 
     @Test
-    void failOnUnmappedGLThrows() {
-        SystemProperties.FAIL_ON_UNMAPPED_GL = true;
+    void failModeThrowsOnUnmapped() {
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.FAIL);
         final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/ARBSparseTexture", "glTexPageCommitmentARB", "()V");
 
         assertThrows(IllegalStateException.class, () -> new GLSMRedirector().transformClassNode("com.example.TestClass", cn));
     }
 
     @Test
-    void disableUnmappedGLDetectorSuppressesRecording() {
-        SystemProperties.DISABLE_UNMAPPED_GL_DETECTOR = true;
+    void offModeSuppressesRecording() {
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.OFF);
         final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/ARBSparseTexture", "glTexPageCommitmentARB", "()V");
 
         new GLSMRedirector().transformClassNode("com.example.TestClass", cn);
@@ -433,7 +433,7 @@ class GLSMRedirectorTest {
 
     @Test
     void awareUnroutableCallFailsFastWhenRequested() {
-        SystemProperties.FAIL_ON_AWARE_UNROUTABLE = true;
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.STRICT);
         final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/GL32C", "glSomethingExotic", "(" + CALLBACK_I + ")V");
 
         assertThrows(IllegalStateException.class, () -> new GLSMRedirector().transformClassNode("com.example.TestClass", cn, true));
@@ -460,9 +460,8 @@ class GLSMRedirectorTest {
     }
 
     @Test
-    void awareGetCapabilitiesDoesNotFailFastEvenWithBothFlagsSet() {
-        SystemProperties.FAIL_ON_UNMAPPED_GL = true;
-        SystemProperties.FAIL_ON_AWARE_UNROUTABLE = true;
+    void awareGetCapabilitiesDoesNotFailFastEvenInStrictMode() {
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.STRICT);
         final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/GL", "getCapabilities", "()Lorg/lwjgl/opengl/GLCapabilities;");
 
         assertDoesNotThrow(() -> new GLSMRedirector().transformClassNode("com.example.TestClass", cn, true));
@@ -495,7 +494,7 @@ class GLSMRedirectorTest {
 
     @Test
     void awareUnroutableFailFastIsNotOneShot() {
-        SystemProperties.FAIL_ON_AWARE_UNROUTABLE = true;
+        Reflect.setStaticFinal(SystemProperties.class, "UNMAPPED_GL", UnmappedGLMode.class, UnmappedGLMode.STRICT);
         for (int i = 0; i < 2; i++) {
             final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/GL32C", "glSomethingExotic", "(" + CALLBACK_I + ")V");
             final int attempt = i;

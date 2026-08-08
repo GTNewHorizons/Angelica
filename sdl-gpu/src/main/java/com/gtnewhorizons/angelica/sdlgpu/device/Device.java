@@ -28,6 +28,8 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 public final class Device {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
+    public static final int FRAMES_IN_FLIGHT = 3;
+
     private long device;
     private int supportedShaderFormats;
     private String driverName;
@@ -91,7 +93,7 @@ public final class Device {
             throw new RuntimeException("Failed to claim window for SDL GPU device: " + SDLError.SDL_GetError());
         }
 
-        final int n = SystemProperties.SDL_FRAMES_IN_FLIGHT;
+        final int n = FRAMES_IN_FLIGHT;
         if (!SDL_SetGPUAllowedFramesInFlight(device, n)) {
             LOG.warn("SDL_SetGPUAllowedFramesInFlight({}) failed: {}", n, SDLError.SDL_GetError());
         } else {

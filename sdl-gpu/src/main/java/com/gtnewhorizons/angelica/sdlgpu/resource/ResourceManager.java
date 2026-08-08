@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import java.util.function.LongConsumer;
-import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.Hashing;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -504,7 +503,7 @@ public final class ResourceManager {
         final GpuBucket b = gpuBufferPool.get(Hashing.packHiLo(usage, bucket));
         if (b == null || b.handles.isEmpty()) return 0;
         for (int i = 0, n = b.handles.size(); i < n; i++) {
-            if (gpuPoolCurrentFrame - b.frames.getLong(i) >= SystemProperties.SDL_FRAMES_IN_FLIGHT) {
+            if (gpuPoolCurrentFrame - b.frames.getLong(i) >= Device.FRAMES_IN_FLIGHT) {
                 final long handle = b.handles.getLong(i);
                 final int last = n - 1;
                 if (i != last) {
@@ -1292,7 +1291,7 @@ public final class ResourceManager {
             for (int i = 0; i < n; i += 2) {
                 final long handle = batchSegmentPending.getLong(i);
                 final long stamp = batchSegmentPending.getLong(i + 1);
-                if (currentFrame - stamp >= SystemProperties.SDL_FRAMES_IN_FLIGHT) {
+                if (currentFrame - stamp >= Device.FRAMES_IN_FLIGHT) {
                     batchSegmentFree.enqueue(handle);
                 } else {
                     batchSegmentPending.set(w, handle);
@@ -1341,22 +1340,6 @@ public final class ResourceManager {
         }
     }
 
-    public static final int COPY_RING_ENTRIES = 32;
-    public static final long[] COPY_RING = SystemProperties.SDL_COPY_ASSERTIONS ? new long[COPY_RING_ENTRIES * 6] : null;
-    public static int copyRingIndex;
-
-    private static void recordCopy(int callsiteId, int size, long srcAddr, long dstAddr, long dstBaseAddr, long dstCap) {
-        final long[] ring = COPY_RING;
-        if (ring == null) return;
-        final int idx = (copyRingIndex++ & (COPY_RING_ENTRIES - 1)) * 6;
-        ring[idx + 0] = (((long) callsiteId) << 32) | (size & 0xFFFFFFFFL);
-        ring[idx + 1] = System.nanoTime();
-        ring[idx + 2] = srcAddr;
-        ring[idx + 3] = dstAddr;
-        ring[idx + 4] = dstBaseAddr;
-        ring[idx + 5] = dstCap;
-    }
-
     static void copyMappedFromData(ByteBuffer mapped, ByteBuffer data, int size, int callsiteId) {
         if (size < 0 || data.remaining() < size || mapped.remaining() < size || mapped.position() + (long) size > mapped.capacity()) {
             throw new IllegalStateException(
@@ -1369,7 +1352,6 @@ public final class ResourceManager {
         if (data.isDirect() && mapped.isDirect()) {
             final long src = MemoryUtil.memAddress(data);
             final long dst = MemoryUtil.memAddress(mapped);
-            if (COPY_RING != null) recordCopy(callsiteId, size, src, dst, MemoryUtil.memAddress0(mapped), mapped.capacity());
             MemoryUtil.memCopy(src, dst, size);
             mapped.position(mapped.position() + size);
         } else {
@@ -1998,7 +1980,7 @@ public final class ResourceManager {
     }
 
     private static final int DUMMY_VBO_SIZE = 16 * 16;
-    public static final int ATTRIB_RING_BLOCKS = 2048 * SystemProperties.SDL_FRAMES_IN_FLIGHT;
+    public static final int ATTRIB_RING_BLOCKS = 2048 * Device.FRAMES_IN_FLIGHT;
     public static final int ATTRIB_RING_CHUNK_BLOCKS = 64;
     private static final int ATTRIB_RING_CHUNKS = ATTRIB_RING_BLOCKS / ATTRIB_RING_CHUNK_BLOCKS;
     private final AtomicLong attribRingCounter = new AtomicLong();

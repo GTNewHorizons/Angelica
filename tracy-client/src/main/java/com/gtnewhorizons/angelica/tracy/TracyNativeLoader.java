@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.tracy;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -61,7 +62,7 @@ final class TracyNativeLoader {
         }
 
         final String ext = libName.substring(libName.lastIndexOf('.') + 1);
-        final File dir = new File(System.getProperty("angelica.tracy.dir", "angelica" + File.separator + "natives" + File.separator + "tracy"));
+        final File dir = new File(SystemProperties.TRACY_DIR);
         final File target = new File(dir, "libTracyClient-" + TRACY_VERSION + "-" + platform + "." + ext);
         try {
             if (!target.isFile() || target.length() != lib.length || !Arrays.equals(Files.readAllBytes(target.toPath()), lib)) {

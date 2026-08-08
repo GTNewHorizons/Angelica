@@ -38,7 +38,7 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
     }
 
     private void setEnabledWithUnitSwitch(boolean enabled) {
-        final boolean bypass = GLStateManager.shouldBypassCache();
+        final boolean bypass = !GLStateManager.isCachingEnabled();
         if (bypass || enabled != this.enabled) {
             if (!bypass) this.enabled = enabled;
 

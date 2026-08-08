@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.tracy;
 
+import com.gtnewhorizon.gtnhlib.reflect.Fields;
+import com.gtnewhorizon.gtnhlib.reflect.Fields.LookupType;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -41,7 +44,7 @@ class TracyBindingSmokeTest {
 
     private static synchronized TracyClientBackend backend() throws Exception {
         if (backend == null) {
-            System.setProperty("angelica.tracy.dir", extractDir.toAbsolutePath().toString());
+            Fields.ofClass(SystemProperties.class).getField(LookupType.DECLARED, "TRACY_DIR", String.class).setValue(null, extractDir.toAbsolutePath().toString());
             final TracyClientBackend created = new TracyClientBackend();
             final AtomicReference<Boolean> ok = new AtomicReference<>(Boolean.FALSE);
             final Thread init = new Thread(() -> ok.set(created.init()), "Tracy-Init-Test");

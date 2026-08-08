@@ -4,7 +4,7 @@ import com.gtnewhorizon.gtnhlib.core.GTNHLibCore;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.config.CeleritasProperties;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -36,7 +36,7 @@ public class MixinInitGLStateManager {
         mc.gameSettings.fboEnable = true; // Angelica & many other GTNH features require FBO's
         GLStateManager.setDrawableGL(Display.getDrawable());
         if (AngelicaMod.lwjglDebug) {
-            System.setProperty(CeleritasProperties.KEY_ENABLE_GL_DEBUG, "true");
+            System.setProperty(SystemProperties.KEY_CELERITAS_ENABLE_GL_DEBUG, "true");
             GLDebug.reloadDebugState();
         }
         GLStateManager.initialize(GLSMInitConfig.builder()

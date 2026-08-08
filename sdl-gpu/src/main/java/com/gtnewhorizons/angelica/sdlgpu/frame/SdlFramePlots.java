@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.sdlgpu.frame;
 
-import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
+import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
@@ -97,7 +97,7 @@ final class SdlFramePlots {
         final long nowNanos = System.nanoTime();
         if (f.lastEndFrameNanos != 0) Tracy.plotInt(PLOT_PRESENT_TO_PRESENT_US, (nowNanos - f.lastEndFrameNanos) / 1000);
         f.lastEndFrameNanos = nowNanos;
-        Tracy.plotInt(PLOT_FRAMES_IN_FLIGHT, SystemProperties.SDL_FRAMES_IN_FLIGHT);
+        Tracy.plotInt(PLOT_FRAMES_IN_FLIGHT, Device.FRAMES_IN_FLIGHT);
         Tracy.plotInt(PLOT_MIP_GENS, f.mipGensThisFrame);
         Tracy.plotInt(PLOT_BLIT_FALLBACKS, f.blitsThisFrame);
         Tracy.plotInt(PLOT_PRESENT_SKIPS, f.presentSkipsThisFrame);

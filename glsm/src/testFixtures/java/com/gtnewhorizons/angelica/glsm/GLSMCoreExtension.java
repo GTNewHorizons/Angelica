@@ -42,7 +42,6 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
             GLStateManager.initialize(GLSMInitConfig.builder().displaySize(800, 600).build());
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete("test");
-            SystemProperties.BYPASS_GL_CACHE = false;
 
             GLSMExtension.glVendor = GL11.glGetString(GL11.GL_VENDOR);
             GLSMExtension.glRenderer = GL11.glGetString(GL11.GL_RENDERER);

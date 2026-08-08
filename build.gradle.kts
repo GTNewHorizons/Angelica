@@ -12,10 +12,10 @@ val lwjglDebug = false
 val gpuHud = false
 
 minecraft   {
-    extraRunJvmArguments.add("-Dangelica.enableTestBlocks=true")
+    extraRunJvmArguments.add("-Dangelica.debug.testBlocks=true")
     extraRunJvmArguments.add("-Dangelica.tracy=true")
-    extraRunJvmArguments.add("-Dangelica.useSDLGPU=true")
-    extraRunJvmArguments.add("-Dangelica.failOnUnmappedGL=true")
+    extraRunJvmArguments.add("-Dangelica.sdlgpu.enable=true")
+    extraRunJvmArguments.add("-Dangelica.unmappedGL=fail")
     extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=$lwjglDebug")
 
     extraRunJvmArguments.add("-Dsun.net.client.defaultConnectTimeout=5000")
@@ -25,7 +25,7 @@ minecraft   {
     lwjgl3Version = libs.versions.lwjgl3.get()
 //    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
 //    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
-    //extraRunJvmArguments.add("-Dangelica.redirectorLogspam=true")
+    //extraRunJvmArguments.add("-Dangelica.debug.redirectorLogspam=true")
 
 }
 
@@ -77,14 +77,13 @@ tasks.withType<JavaExec>().configureEach {
         if (isMacOs) {
             // SDL3 / Cocoa / Metal must initialize on the JVM main thread.
             jvmArgs("-XstartOnFirstThread")
-            jvmArgs("-Dangelica.sdlgpu.encoderAssertions=true")
+            jvmArgs("-Dangelica.sdlgpu.encoderAssertions=" + if (lwjglDebug) "fatal" else "warn")
             if (lwjglDebug) {
                 environment("METAL_DEVICE_WRAPPER_TYPE", "1")
                 environment("METAL_DEBUG_ERROR_MODE", "0")
                 environment("MTL_SHADER_VALIDATION", "1")
                 environment("MTL_SHADER_VALIDATION_REPORT_TO_STDERR", "1")
                 environment("MTL_DEBUG_LAYER", "1")
-                jvmArgs("-Dangelica.sdlgpu.encoderAssertionsFatal=true")
                 environment("MallocScribble", "1")
                 environment("MallocPreScribble", "1")
                 environment("MallocGuardEdges", "1")

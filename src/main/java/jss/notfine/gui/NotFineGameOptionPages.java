@@ -414,14 +414,6 @@ public class NotFineGameOptionPages {
                 .setBinding((opts, value) -> opts.performance.useNoErrorGLContext = value, opts -> opts.performance.useNoErrorGLContext)
                 .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
                 .build())
-            .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                .setControl(TickBoxControl::new)
-                .setImpact(OptionImpact.EXTREME)
-                .setBinding((opts, value) -> SystemProperties.BYPASS_GL_CACHE = !value, opts -> !SystemProperties.BYPASS_GL_CACHE)
-                .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                .build())
             .build());
 
         return new OptionPage(I18n.format("options.button.other"), ImmutableList.copyOf(groups));

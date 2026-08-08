@@ -703,7 +703,7 @@ public final class PipelineApplier {
         if (Tracy.ENABLED) frameManager.noteUniformBlockFlush(b, size);
     }
 
-    private static final boolean VERIFY_PER_FRAME_BLOCK = SystemProperties.VERIFY_PER_FRAME_UNIFORM_BLOCK;
+    private static final boolean VERIFY_PER_FRAME_BLOCK = SystemProperties.SDL_VERIFY_PER_FRAME_UNIFORM_BLOCK;
     private final HashSet<String> perFrameBlockDriftWarned = new HashSet<>();
 
     private void notePerFrameBlockDrift(ShaderManager.ProgramObject prog, int location) {

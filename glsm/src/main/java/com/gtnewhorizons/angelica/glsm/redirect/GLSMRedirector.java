@@ -34,7 +34,6 @@ import java.util.concurrent.ConcurrentHashMap;
  */
 public class GLSMRedirector {
 
-    private static final boolean ASSERT_MAIN_THREAD = SystemProperties.ASSERT_MAIN_THREAD;
     private static final boolean LOG_SPAM = SystemProperties.REDIRECTOR_LOGSPAM;
     private static final Logger LOGGER = LogManager.getLogger("GLSMRedirector");
 
@@ -62,7 +61,7 @@ public class GLSMRedirector {
     private static final Set<String> DEBUG_SEEN = ConcurrentHashMap.newKeySet();
 
     private static boolean detectionEnabled() {
-        return !SystemProperties.DISABLE_UNMAPPED_GL_DETECTOR;
+        return SystemProperties.UNMAPPED_GL.detects();
     }
 
     private static final String GLSYNC_TYPE = "Lorg/lwjgl/opengl/GLSync;";
@@ -104,7 +103,7 @@ public class GLSMRedirector {
         if (UNMAPPED_SEEN.add("aware " + owner + "." + name + desc)) {
             LOGGER.warn("Aware-unroutable GL call {}.{}{} in {}; needs an awareOwnerRedirects entry (see AwareGLDebugShim)", owner, name, desc, className);
         }
-        if (SystemProperties.FAIL_ON_AWARE_UNROUTABLE) {
+        if (SystemProperties.UNMAPPED_GL.failsAwareUnroutable()) {
             throw new IllegalStateException("Aware-unroutable GL call " + owner + "." + name + desc + " in " + className);
         }
     }
@@ -114,7 +113,7 @@ public class GLSMRedirector {
         if (UNMAPPED_SEEN.add(owner + "." + name + desc)) {
             LOGGER.warn("Unmapped GL call {}.{}{} in {} reached the redirector; on a non-GL backend this will crash at runtime.", owner, name, desc, className);
         }
-        if (SystemProperties.FAIL_ON_UNMAPPED_GL) {
+        if (SystemProperties.UNMAPPED_GL.failsUnmapped()) {
             throw new IllegalStateException("Unmapped GL call " + owner + "." + name + desc + " in " + className);
         }
     }
@@ -166,13 +165,6 @@ public class GLSMRedirector {
 
     // Redirect VAO related calls from NHLib
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
-
-    private static final String MinecraftClient = "net.minecraft.client";
-    private static final String SplashProgress = "cpw.mods.fml.client.SplashProgress";
-    private static final Set<String> ExcludedMinecraftMainThreadChecks = ImmutableSet.of(
-        "startGame", "func_71384_a",
-        "initializeTextures", "func_77474_a"
-    );
 
     private static final Map<String, Map<String, String>> methodRedirects = new HashMap<>(32);
     private static final Map<String, String> glMethodRedirects = new HashMap<>(256);
@@ -834,7 +826,6 @@ public class GLSMRedirector {
             if (isOpenGlHelper && (mn.name.equals("glBlendFunc") || mn.name.equals("func_148821_a"))) {
                 continue;
             }
-            boolean redirectInMethod = false;
             for (AbstractInsnNode node : mn.instructions.toArray()) {
                 if (node instanceof TypeInsnNode tNode) {
                     if (tNode.getOpcode() == Opcodes.NEW || tNode.getOpcode() == Opcodes.CHECKCAST) {
@@ -878,7 +869,6 @@ public class GLSMRedirector {
                             mn.instructions.remove(prevNode);
                         }
                         changed = true;
-                        redirectInMethod = true;
                     } else if (mNode.name.equals("makeCurrent") && isDrawableOwner(mNode.owner)) {
                         mNode.setOpcode(Opcodes.INVOKESTATIC);
                         mNode.owner = GLStateManager;
@@ -929,7 +919,6 @@ public class GLSMRedirector {
                             }
                             mNode.owner = awareOwner;
                             changed = true;
-                            redirectInMethod = true;
                         } else if (glsmName != null) {
                             if (LOG_SPAM) {
                                 final String shortOwner = mNode.owner.substring(mNode.owner.lastIndexOf("/") + 1);
@@ -938,7 +927,6 @@ public class GLSMRedirector {
                             mNode.owner = GLStateManager;
                             mNode.name = glsmName;
                             changed = true;
-                            redirectInMethod = true;
                         } else if (lwjgl3Aware && mNode.owner.startsWith(LWJGL_GL_PACKAGE) && hasLwjglTypedDescriptor(mNode.desc) && !isAwareNonDispatching(mNode.owner, mNode.name)) {
                             reportAwareUnroutable(transformedName, mNode.owner, mNode.name, mNode.desc);
                         } else if (isDebugCall(mNode.owner, mNode.name)) {
@@ -980,12 +968,8 @@ public class GLSMRedirector {
                         }
                         dynNode.bsmArgs[i] = new Handle(handle.getTag(), GLStateManager, glsmName, handle.getDesc());
                         changed = true;
-                        redirectInMethod = true;
                     }
                 }
-            }
-            if (ASSERT_MAIN_THREAD && redirectInMethod && !transformedName.startsWith(SplashProgress) && !(transformedName.startsWith(MinecraftClient) && ExcludedMinecraftMainThreadChecks.contains(mn.name))) {
-                mn.instructions.insert(new MethodInsnNode(Opcodes.INVOKESTATIC, GLStateManager, "assertMainThread", "()V", false));
             }
         }
 

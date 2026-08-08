@@ -594,9 +594,6 @@ public class GLStateManager {
         RENDER_BACKEND.vertexAttrib4f(1, 1.0f, 1.0f, 1.0f, 1.0f);    // COLOR = white
         RENDER_BACKEND.vertexAttrib3f(4, 0.0f, 0.0f, 1.0f);          // NORMAL = +Z
 
-        if (SystemProperties.BYPASS_GL_CACHE) {
-            LOGGER.info("GLStateManager cache bypassed");
-        }
         if (initConfig != null && (initConfig.isLwjglDebug() || CaptureGate.enabledAtStartup())) {
             if (RENDER_BACKEND.supportsDebugOutput()) {
                 GLDebug.initDebugState();
@@ -627,17 +624,6 @@ public class GLStateManager {
         while ((err = RENDER_BACKEND.getError()) != 0) {
             LOGGER.debug("Drained GL error 0x{} during init", Integer.toHexString(err));
         }
-    }
-
-    public static void assertMainThread() {
-        if (Thread.currentThread() != CurrentThread && !runningSplash) {
-            LOGGER.info("Call from not the Current Thread! - " + Thread.currentThread().getName() + " Current thread: " + CurrentThread.getName());
-        }
-    }
-
-    public static boolean shouldBypassCache() {
-        // Bypass cache when not using the main DrawableGL context
-        return SystemProperties.BYPASS_GL_CACHE || !isCachingEnabled();
     }
 
     // LWJGL Overrides
@@ -805,7 +791,7 @@ public class GLStateManager {
 
     public static boolean glIsEnabled(int cap) {
         final GLContextState glCtx = ctx();
-        if (shouldBypassCache()) {
+        if (!isCachingEnabled()) {
             return RENDER_BACKEND.getBoolean(cap);
         }
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
@@ -880,7 +866,7 @@ public class GLStateManager {
 
     public static boolean glGetBoolean(int pname) {
         final GLContextState glCtx = ctx();
-        if (shouldBypassCache()) {
+        if (!isCachingEnabled()) {
             return RENDER_BACKEND.getBoolean(pname);
         }
         // Handle clip planes dynamically (supports up to MAX_CLIP_PLANES)
@@ -958,7 +944,7 @@ public class GLStateManager {
 
     public static void glGetBoolean(int pname, ByteBuffer params) {
         final GLContextState glCtx = ctx();
-        if (shouldBypassCache()) {
+        if (!isCachingEnabled()) {
             RENDER_BACKEND.getBoolean(pname, params);
             return;
         }
@@ -989,7 +975,7 @@ public class GLStateManager {
 
     public static int glGetInteger(int pname) {
         final GLContextState glCtx = ctx();
-        if (shouldBypassCache()) {
+        if (!isCachingEnabled()) {
             return RENDER_BACKEND.getInteger(pname);
         }
 
@@ -1060,7 +1046,7 @@ public class GLStateManager {
     }
 
     public static void glGetInteger(int pname, IntBuffer params) {
-        if (shouldBypassCache()) {
+        if (!isCachingEnabled()) {
             RENDER_BACKEND.getInteger(pname, params);
             return;
         }
@@ -1126,7 +1112,7 @@ public class GLStateManager {
 
     public static void glGetFloat(int pname, FloatBuffer params) {
         final GLContextState glCtx = ctx();
-        if (shouldBypassCache()) {
+        if (!isCachingEnabled()) {
             RENDER_BACKEND.getFloat(pname, params);
             return;
         }
@@ -1225,7 +1211,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        final boolean bypass = SystemProperties.BYPASS_GL_CACHE || !caching;
+        final boolean bypass = !caching;
         if (bypass || red != glCtx.blendState.getBlendColorR() || green != glCtx.blendState.getBlendColorG() || blue != glCtx.blendState.getBlendColorB() || alpha != glCtx.blendState.getBlendColorA()) {
             glCtx.blendState.setBlendColorR(red);
             glCtx.blendState.setBlendColorG(green);
@@ -1316,7 +1302,7 @@ public class GLStateManager {
             }
             return;
         }
-        final boolean bypass = SystemProperties.BYPASS_GL_CACHE || !caching;
+        final boolean bypass = !caching;
         if (bypass
                 || glCtx.blendState.getSrcRgb() != srcFactor
                 || glCtx.blendState.getDstRgb() != dstFactor
@@ -1340,7 +1326,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glBlendEquation");
         }
         final boolean caching = isCachingEnabled();
-        final boolean bypass = SystemProperties.BYPASS_GL_CACHE || !caching;
+        final boolean bypass = !caching;
         if (bypass || glCtx.blendState.getEquationRgb() != mode || glCtx.blendState.getEquationAlpha() != mode) {
             glCtx.blendState.setEquationRgb(mode);
             glCtx.blendState.setEquationAlpha(mode);
@@ -1354,7 +1340,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glBlendEquationSeparate");
         }
         final boolean caching = isCachingEnabled();
-        final boolean bypass = SystemProperties.BYPASS_GL_CACHE || !caching;
+        final boolean bypass = !caching;
         if (bypass || glCtx.blendState.getEquationRgb() != modeRGB || glCtx.blendState.getEquationAlpha() != modeAlpha) {
             glCtx.blendState.setEquationRgb(modeRGB);
             glCtx.blendState.setEquationAlpha(modeAlpha);
@@ -1381,7 +1367,7 @@ public class GLStateManager {
             dstAlpha = GL11.GL_ONE_MINUS_SRC_ALPHA;
         }
         final boolean caching = isCachingEnabled();
-        final boolean bypass = SystemProperties.BYPASS_GL_CACHE || !caching;
+        final boolean bypass = !caching;
         if (bypass || glCtx.blendState.getSrcRgb() != srcRgb || glCtx.blendState.getDstRgb() != dstRgb || glCtx.blendState.getSrcAlpha() != srcAlpha || glCtx.blendState.getDstAlpha() != dstAlpha) {
             glCtx.blendState.setAll(srcRgb, dstRgb, srcAlpha, dstAlpha);
             RENDER_BACKEND.blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
@@ -1461,7 +1447,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || func != glCtx.depthState.getFunc()) {
+        if (!caching || func != glCtx.depthState.getFunc()) {
             glCtx.depthState.setFunc(func);
             RENDER_BACKEND.depthFunc(func);
         }
@@ -1482,7 +1468,7 @@ public class GLStateManager {
             return;
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || mask != glCtx.depthState.isEnabled()) {
+        if (!caching || mask != glCtx.depthState.isEnabled()) {
             glCtx.depthState.setEnabled(mask);
             RENDER_BACKEND.depthMask(mask);
         }
@@ -1594,7 +1580,7 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         // Helper function for glColor*
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || red != glCtx.color.getRed() || green != glCtx.color.getGreen() || blue != glCtx.color.getBlue() || alpha != glCtx.color.getAlpha()) {
+        if (!caching || red != glCtx.color.getRed() || green != glCtx.color.getGreen() || blue != glCtx.color.getBlue() || alpha != glCtx.color.getAlpha()) {
             glCtx.color.setRed(red);
             glCtx.color.setGreen(green);
             glCtx.color.setBlue(blue);
@@ -1636,7 +1622,7 @@ public class GLStateManager {
             return;
         }
         final boolean caching = isCachingEnabled();
-        final boolean bypass = SystemProperties.BYPASS_GL_CACHE || !caching;
+        final boolean bypass = !caching;
         if (bypass || red != glCtx.colorMask.red || green != glCtx.colorMask.green || blue != glCtx.colorMask.blue || alpha != glCtx.colorMask.alpha) {
             glCtx.colorMask.setAll(red, green, blue, alpha);
             RENDER_BACKEND.colorMask(red, green, blue, alpha);
@@ -1654,7 +1640,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || red != glCtx.clearColor.getRed() || green != glCtx.clearColor.getGreen() || blue != glCtx.clearColor.getBlue() || alpha != glCtx.clearColor.getAlpha()) {
+        if (!caching || red != glCtx.clearColor.getRed() || green != glCtx.clearColor.getGreen() || blue != glCtx.clearColor.getBlue() || alpha != glCtx.clearColor.getAlpha()) {
             glCtx.clearColor.setRed(red);
             glCtx.clearColor.setGreen(green);
             glCtx.clearColor.setBlue(blue);
@@ -1756,7 +1742,7 @@ public class GLStateManager {
             return;
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || getActiveTextureUnit() != newTexture) {
+        if (!caching || getActiveTextureUnit() != newTexture) {
             ctx().activeTextureUnit.setValue(newTexture);
             RENDER_BACKEND.activeTexture(texture);
         }
@@ -1788,7 +1774,7 @@ public class GLStateManager {
             return;
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || getActiveTextureUnit() != newTexture) {
+        if (!caching || getActiveTextureUnit() != newTexture) {
             ctx().activeTextureUnit.setValue(newTexture);
             RENDER_BACKEND.activeTexture(texture);
         }
@@ -3162,7 +3148,7 @@ public class GLStateManager {
     public static void fogColor(float red, float green, float blue, float alpha) {
         final GLContextState glCtx = ctx();
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || red != glCtx.fogState.getFogColor().x || green != glCtx.fogState.getFogColor().y || blue != glCtx.fogState.getFogColor().z || alpha != glCtx.fogState.getFogAlpha()) {
+        if (!caching || red != glCtx.fogState.getFogColor().x || green != glCtx.fogState.getFogColor().y || blue != glCtx.fogState.getFogColor().z || alpha != glCtx.fogState.getFogAlpha()) {
             glCtx.fogState.getFogColor().set(red, green, blue);
             glCtx.fogState.setFogAlpha(alpha);
             glCtx.fogState.getFogColorBuffer().clear();
@@ -3187,10 +3173,10 @@ public class GLStateManager {
         if (isCachingEnabled()) {
             boolean changed = false;
             switch (pname) {
-                case GL11.GL_FOG_DENSITY -> { if (shouldBypassCache() || glCtx.fogState.getDensity() != param) { glCtx.fogState.setDensity(param); changed = true; } }
-                case GL11.GL_FOG_START -> { if (shouldBypassCache() || glCtx.fogState.getStart() != param) { glCtx.fogState.setStart(param); changed = true; } }
-                case GL11.GL_FOG_END -> { if (shouldBypassCache() || glCtx.fogState.getEnd() != param) { glCtx.fogState.setEnd(param); changed = true; } }
-                case GL11.GL_FOG_MODE -> { if (shouldBypassCache() || glCtx.fogState.getFogMode() != (int) param) { glCtx.fogState.setFogMode((int) param); changed = true; } }
+                case GL11.GL_FOG_DENSITY -> { if (!isCachingEnabled() || glCtx.fogState.getDensity() != param) { glCtx.fogState.setDensity(param); changed = true; } }
+                case GL11.GL_FOG_START -> { if (!isCachingEnabled() || glCtx.fogState.getStart() != param) { glCtx.fogState.setStart(param); changed = true; } }
+                case GL11.GL_FOG_END -> { if (!isCachingEnabled() || glCtx.fogState.getEnd() != param) { glCtx.fogState.setEnd(param); changed = true; } }
+                case GL11.GL_FOG_MODE -> { if (!isCachingEnabled() || glCtx.fogState.getFogMode() != (int) param) { glCtx.fogState.setFogMode((int) param); changed = true; } }
                 default -> {}
             }
             if (changed) {
@@ -3212,7 +3198,7 @@ public class GLStateManager {
             }
         }
         // Update cached state (FFP shader reads from cache)
-        if (isCachingEnabled() && pname == GL11.GL_FOG_MODE && (shouldBypassCache() || glCtx.fogState.getFogMode() != param)) {
+        if (isCachingEnabled() && pname == GL11.GL_FOG_MODE && (!isCachingEnabled() || glCtx.fogState.getFogMode() != param)) {
             glCtx.fogState.setFogMode(param);
             glCtx.fragmentGeneration++;
             if (GLSMHooks.FOG_STATE_CHANGE.hasListeners()) {
@@ -3236,7 +3222,7 @@ public class GLStateManager {
         }
         final boolean caching = isCachingEnabled();
         final int oldValue = glCtx.shadeModelState.getValue();
-        final boolean needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching || oldValue != mode;
+        final boolean needsUpdate = !caching || oldValue != mode;
 
         if (needsUpdate) {
             glCtx.shadeModelState.setValue(mode);
@@ -4134,35 +4120,35 @@ public class GLStateManager {
         }
         switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> {
-                if (info.getMinFilter() == param && !shouldBypassCache()) return false;
+                if (info.getMinFilter() == param && isCachingEnabled()) return false;
                 info.setMinFilter(param);
             }
             case GL11.GL_TEXTURE_MAG_FILTER -> {
-                if (info.getMagFilter() == param && !shouldBypassCache()) return false;
+                if (info.getMagFilter() == param && isCachingEnabled()) return false;
                 info.setMagFilter(param);
             }
             case GL11.GL_TEXTURE_WRAP_S -> {
-                if (info.getWrapS() == param && !shouldBypassCache()) return false;
+                if (info.getWrapS() == param && isCachingEnabled()) return false;
                 info.setWrapS(param);
             }
             case GL11.GL_TEXTURE_WRAP_T -> {
-                if (info.getWrapT() == param && !shouldBypassCache()) return false;
+                if (info.getWrapT() == param && isCachingEnabled()) return false;
                 info.setWrapT(param);
             }
             case GL12.GL_TEXTURE_BASE_LEVEL -> {
-                if (info.getBaseLevel() == param && !shouldBypassCache()) return false;
+                if (info.getBaseLevel() == param && isCachingEnabled()) return false;
                 info.setBaseLevel(param);
             }
             case GL12.GL_TEXTURE_MAX_LEVEL -> {
-                if (info.getMaxLevel() == param && !shouldBypassCache()) return false;
+                if (info.getMaxLevel() == param && isCachingEnabled()) return false;
                 info.setMaxLevel(param);
             }
             case GL12.GL_TEXTURE_MIN_LOD -> {
-                if (info.getMinLod() == param && !shouldBypassCache()) return false;
+                if (info.getMinLod() == param && isCachingEnabled()) return false;
                 info.setMinLod(param);
             }
             case GL12.GL_TEXTURE_MAX_LOD -> {
-                if (info.getMaxLod() == param && !shouldBypassCache()) return false;
+                if (info.getMaxLod() == param && isCachingEnabled()) return false;
                 info.setMaxLod(param);
             }
         }
@@ -4227,11 +4213,11 @@ public class GLStateManager {
         }
         switch (pname) {
             case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> {
-                if (info.getMaxAnisotropy() == param && !shouldBypassCache()) return false;
+                if (info.getMaxAnisotropy() == param && isCachingEnabled()) return false;
                 info.setMaxAnisotropy(param);
             }
             case GL14.GL_TEXTURE_LOD_BIAS -> {
-                if (info.getLodBias() == param && !shouldBypassCache()) return false;
+                if (info.getLodBias() == param && isCachingEnabled()) return false;
                 info.setLodBias(param);
             }
         }
@@ -4292,14 +4278,14 @@ public class GLStateManager {
     }
 
     public static int glGetTexParameteri(int target, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
+        if (target != GL11.GL_TEXTURE_2D || !isCachingEnabled()) {
             return RENDER_BACKEND.getTexParameteri(target, pname);
         }
         return getTexParameterOrDefault(getBoundTextureInfo(), pname, () -> RENDER_BACKEND.getTexParameteri(target, pname));
     }
 
     public static float glGetTexParameterf(int target, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
+        if (target != GL11.GL_TEXTURE_2D || !isCachingEnabled()) {
             return RENDER_BACKEND.getTexParameterf(target, pname);
         }
         final TextureInfo info = getBoundTextureInfo();
@@ -4327,7 +4313,7 @@ public class GLStateManager {
     }
 
     public static int glGetTexLevelParameteri(int target, int level, int pname) {
-        if (target != GL11.GL_TEXTURE_2D || shouldBypassCache()) {
+        if (target != GL11.GL_TEXTURE_2D || !isCachingEnabled()) {
             return RENDER_BACKEND.getTexLevelParameteri(target, level, pname);
         }
         final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(getBoundTextureForServerState());
@@ -4824,7 +4810,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.colorMaterialFace.getValue() != face || glCtx.colorMaterialParameter.getValue() != mode) {
+        if (!caching || glCtx.colorMaterialFace.getValue() != face || glCtx.colorMaterialParameter.getValue() != mode) {
             glCtx.colorMaterialFace.setValue(face);
             glCtx.colorMaterialParameter.setValue(mode);
             glCtx.lightingGeneration++;
@@ -4868,7 +4854,7 @@ public class GLStateManager {
         }
 
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || program != glCtx.activeProgram) {
+        if (!caching || program != glCtx.activeProgram) {
             if (Tracy.ENABLED) programSwitches++;
             glCtx.programGeneration++;
             final int prev = glCtx.activeProgram;
@@ -4949,7 +4935,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.lineState.getWidth() != width) {
+        if (!caching || glCtx.lineState.getWidth() != width) {
             glCtx.lineState.setWidth(width);
             RENDER_BACKEND.lineWidth(Math.clamp(width, lineWidthMin, lineWidthMax));
         }
@@ -5150,7 +5136,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getCullFaceMode() != mode) {
+        if (!caching || glCtx.polygonState.getCullFaceMode() != mode) {
             glCtx.polygonState.setCullFaceMode(mode);
             RENDER_BACKEND.cullFace(mode);
         }
@@ -5166,7 +5152,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getFrontFace() != mode) {
+        if (!caching || glCtx.polygonState.getFrontFace() != mode) {
             glCtx.polygonState.setFrontFace(mode);
             RENDER_BACKEND.frontFace(mode);
         }
@@ -5212,7 +5198,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.pointState.getSize() != size) {
+        if (!caching || glCtx.pointState.getSize() != size) {
             glCtx.pointState.setSize(size);
             RENDER_BACKEND.pointSize(size);
         }
@@ -5231,13 +5217,13 @@ public class GLStateManager {
         final boolean caching = isCachingEnabled();
         final boolean needsUpdate;
         if (face == GL11.GL_FRONT) {
-            needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getFrontMode() != polygonMode;
+            needsUpdate = !caching || glCtx.polygonState.getFrontMode() != polygonMode;
             if (caching && needsUpdate) glCtx.polygonState.setFrontMode(polygonMode);
         } else if (face == GL11.GL_BACK) {
-            needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getBackMode() != polygonMode;
+            needsUpdate = !caching || glCtx.polygonState.getBackMode() != polygonMode;
             if (caching && needsUpdate) glCtx.polygonState.setBackMode(polygonMode);
         } else { // GL_FRONT_AND_BACK
-            needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getFrontMode() != polygonMode || glCtx.polygonState.getBackMode() != polygonMode;
+            needsUpdate = !caching || glCtx.polygonState.getFrontMode() != polygonMode || glCtx.polygonState.getBackMode() != polygonMode;
             if (caching && needsUpdate) {
                 glCtx.polygonState.setFrontMode(polygonMode);
                 glCtx.polygonState.setBackMode(polygonMode);
@@ -5259,7 +5245,7 @@ public class GLStateManager {
         }
         final boolean caching = isCachingEnabled();
 
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getOffsetFactor() != factor || glCtx.polygonState.getOffsetUnits() != units || glCtx.polygonState.getOffsetClamp() != 0.0f) {
+        if (!caching || glCtx.polygonState.getOffsetFactor() != factor || glCtx.polygonState.getOffsetUnits() != units || glCtx.polygonState.getOffsetClamp() != 0.0f) {
             glCtx.polygonState.setOffsetFactor(factor);
             glCtx.polygonState.setOffsetUnits(units);
             glCtx.polygonState.setOffsetClamp(0.0f);
@@ -5277,7 +5263,7 @@ public class GLStateManager {
         }
         final GLContextState glCtx = ctx();
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.polygonState.getOffsetFactor() != factor || glCtx.polygonState.getOffsetUnits() != units || glCtx.polygonState.getOffsetClamp() != clamp) {
+        if (!caching || glCtx.polygonState.getOffsetFactor() != factor || glCtx.polygonState.getOffsetUnits() != units || glCtx.polygonState.getOffsetClamp() != clamp) {
             glCtx.polygonState.setOffsetFactor(factor);
             glCtx.polygonState.setOffsetUnits(units);
             glCtx.polygonState.setOffsetClamp(clamp);
@@ -5326,7 +5312,7 @@ public class GLStateManager {
         }
         final int clampedMask = mask & glCtx.stencilBitMask;
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.stencilState.getFuncFront() != func || glCtx.stencilState.getRefFront() != ref || glCtx.stencilState.getValueMaskFront() != clampedMask) {
+        if (!caching || glCtx.stencilState.getFuncFront() != func || glCtx.stencilState.getRefFront() != ref || glCtx.stencilState.getValueMaskFront() != clampedMask) {
             glCtx.stencilState.setFunc(func, ref, clampedMask);
             RENDER_BACKEND.stencilFunc(func, ref, clampedMask);
         }
@@ -5343,7 +5329,7 @@ public class GLStateManager {
         }
         final int clampedMask = mask & glCtx.stencilBitMask;
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.stencilState.getWriteMaskFront() != clampedMask) {
+        if (!caching || glCtx.stencilState.getWriteMaskFront() != clampedMask) {
             glCtx.stencilState.setWriteMask(clampedMask);
             RENDER_BACKEND.stencilMask(clampedMask);
         }
@@ -5359,7 +5345,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.stencilState.getFailOpFront() != fail || glCtx.stencilState.getZFailOpFront() != zfail || glCtx.stencilState.getZPassOpFront() != zpass) {
+        if (!caching || glCtx.stencilState.getFailOpFront() != fail || glCtx.stencilState.getZFailOpFront() != zfail || glCtx.stencilState.getZPassOpFront() != zpass) {
             glCtx.stencilState.setOp(fail, zfail, zpass);
             RENDER_BACKEND.stencilOp(fail, zfail, zpass);
         }
@@ -5438,7 +5424,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        if (SystemProperties.BYPASS_GL_CACHE || !caching || glCtx.stencilState.getClearValue() != s) {
+        if (!caching || glCtx.stencilState.getClearValue() != s) {
             glCtx.stencilState.setClearValue(s);
             RENDER_BACKEND.clearStencil(s);
         }
@@ -5487,7 +5473,7 @@ public class GLStateManager {
         }
         final int clampedMask = mask & glCtx.stencilBitMask;
         final boolean caching = isCachingEnabled();
-        boolean needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching;
+        boolean needsUpdate = !caching;
         if (!needsUpdate) {
             if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
                 needsUpdate = glCtx.stencilState.getFuncFront() != func || glCtx.stencilState.getRefFront() != ref || glCtx.stencilState.getValueMaskFront() != clampedMask;
@@ -5522,7 +5508,7 @@ public class GLStateManager {
         }
         final int clampedMask = mask & glCtx.stencilBitMask;
         final boolean caching = isCachingEnabled();
-        boolean needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching;
+        boolean needsUpdate = !caching;
         if (!needsUpdate) {
             if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
                 needsUpdate = glCtx.stencilState.getWriteMaskFront() != clampedMask;
@@ -5552,7 +5538,7 @@ public class GLStateManager {
             }
         }
         final boolean caching = isCachingEnabled();
-        boolean needsUpdate = SystemProperties.BYPASS_GL_CACHE || !caching;
+        boolean needsUpdate = !caching;
         if (!needsUpdate) {
             if (face == GL11.GL_FRONT || face == GL11.GL_FRONT_AND_BACK) {
                 needsUpdate = glCtx.stencilState.getFailOpFront() != sfail || glCtx.stencilState.getZFailOpFront() != dpfail || glCtx.stencilState.getZPassOpFront() != dppass;
@@ -6106,7 +6092,7 @@ public class GLStateManager {
     public static void glUniform4(int location, float[] values) { RENDER_BACKEND.uniform4fv(location, values); }
 
     public static void glGetInteger(int pname, int[] params) {
-        if (shouldBypassCache() || params.length == 0) {
+        if (!isCachingEnabled() || params.length == 0) {
             RENDER_BACKEND.getInteger(pname, params);
             return;
         }
@@ -6801,7 +6787,7 @@ public class GLStateManager {
     }
 
     private static int imageBindingOrBackend(int pname, int index) {
-        final ImageUnitBinding binding = shouldBypassCache() ? null : ctx().imageUnits.get(index);
+        final ImageUnitBinding binding = !isCachingEnabled() ? null : ctx().imageUnits.get(index);
         if (binding == null) return RENDER_BACKEND.getIntegerIndexed(pname, index);
         return switch (pname) {
             case GL42.GL_IMAGE_BINDING_NAME -> binding.getTexture();

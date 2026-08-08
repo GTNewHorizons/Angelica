@@ -1452,9 +1452,6 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (cs.boundFboId == framebuffer) return;
         final int oldFboId = cs.boundFboId;
         final boolean structurallyIdentical = oldFboId != 0 && framebuffer != 0 && fboClearTracker.fbosHaveSameAttachments(cs, oldFboId, framebuffer);
-        if (!structurallyIdentical && SystemProperties.SDL_FBOBIND_ENDS_RENDER_PASS) {
-            frameManager.endRenderPassIfActive();
-        }
         cs.boundFboId = framebuffer;
 
         if (structurallyIdentical) {
@@ -3411,9 +3408,6 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void memoryBarrier(int barriers) {
         // Graphics storage bindings are read-only on SDL_GPU; RW is compute-pass only
-        if (SystemProperties.SDL_MEMBARRIER_ENDS_RENDER_PASS) {
-            frameManager.endRenderPassIfActive();
-        }
         frameManager.endCopyPassIfActive();
     }
 

@@ -82,7 +82,6 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             GLStateManager.initialize(config);
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete("test");
-            SystemProperties.BYPASS_GL_CACHE = false;
             context.getRoot().getStore(GLOBAL).put("GLSMExtension", this);
             glVendor = GL11.glGetString(GL11.GL_VENDOR);
             glRenderer = GL11.glGetString(GL11.GL_RENDERER);

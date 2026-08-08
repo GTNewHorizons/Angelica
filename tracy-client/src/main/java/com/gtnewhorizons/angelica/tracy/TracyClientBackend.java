@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.tracy;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
@@ -63,7 +64,7 @@ public final class TracyClientBackend implements TracyBackend {
                 return false;
             }
 
-            interner = new SrcLocInterner(this::allocSrcLoc, Math.max(16, Integer.getInteger("angelica.tracy.maxSrcLocs", 4096)));
+            interner = new SrcLocInterner(this::allocSrcLoc, SystemProperties.TRACY_MAX_SRC_LOCS);
 
             JNI.invokeV(sym.startupProfiler);
             if (JNI.invokeI(sym.profilerStarted) == 0) {

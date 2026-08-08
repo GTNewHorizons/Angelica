@@ -64,7 +64,7 @@ public class DisplayListManager {
 
     static {
         if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
-            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
+            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.debug.displayLists.compilation=true)");
         }
     }
 

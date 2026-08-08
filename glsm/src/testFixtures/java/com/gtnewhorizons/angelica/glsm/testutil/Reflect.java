@@ -1,5 +1,8 @@
 package com.gtnewhorizons.angelica.glsm.testutil;
 
+import com.gtnewhorizon.gtnhlib.reflect.Fields;
+import com.gtnewhorizon.gtnhlib.reflect.Fields.LookupType;
+
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
@@ -52,6 +55,10 @@ public final class Reflect {
         } catch (IllegalAccessException e) {
             throw new AssertionError(e);
         }
+    }
+
+    public static <F> void setStaticFinal(Class<?> owner, String name, Class<F> type, F value) {
+        Fields.ofClass(owner).getField(LookupType.DECLARED_IN_HIERARCHY, name, type).setValue(null, value);
     }
 
     public static void setDeclared(Class<?> owner, Object target, String name, Object value) {
