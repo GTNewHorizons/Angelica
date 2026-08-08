@@ -20,6 +20,16 @@ public class AngelicaConfig {
     @Config.RequiresWorldRestart
     public static int chunkBuilderThreadCount;
 
+    @Config.Comment("Internal render scale for the world, in percent. Below 100, the world renders at reduced resolution and is upscaled with AMD FidelityFX Super Resolution 1.0; the GUI stays at native resolution. FSR quality presets: 77 = Ultra Quality, 67 = Quality, 59 = Balanced, 50 = Performance.")
+    @Config.DefaultInt(100)
+    @Config.RangeInt(min = 50, max = 100)
+    public static int fsrRenderScale;
+
+    @Config.Comment("FSR sharpening strength, 0-100. Higher is sharper.")
+    @Config.DefaultInt(75)
+    @Config.RangeInt(min = 0, max = 100)
+    public static int fsrSharpness;
+
     @Config.Comment("Enable NotFine Options")
     @Config.DefaultBoolean(false)
     public static boolean enableNotFineOptions;
