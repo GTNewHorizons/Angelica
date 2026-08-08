@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.frustum;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.ClippingHelperExt;
+import com.gtnewhorizons.angelica.rendering.celeritas.MainPassFrustum;
 import net.minecraft.client.renderer.culling.ClippingHelper;
 import net.minecraft.client.renderer.culling.Frustrum;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
@@ -32,10 +33,12 @@ public abstract class MixinFrustrum implements ViewportProvider {
     public Viewport sodium$createViewport() {
         // Shadow frustum subclasses override this via their own ViewportProvider impl.
         // This default handles vanilla Frustrum only, using the per-instance snapshot
-        return new Viewport(
+        final Viewport viewport = new Viewport(
             this.celeritas$snapshot::testAab,
             new Vector3d(this.xPosition, this.yPosition, this.zPosition)
         );
+        MainPassFrustum.record(viewport, this.celeritas$snapshot);
+        return viewport;
     }
 
     @Overwrite
