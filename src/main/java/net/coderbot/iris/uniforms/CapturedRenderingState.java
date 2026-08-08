@@ -60,7 +60,6 @@ public class CapturedRenderingState {
 		if (this.entityIdListener != null) {
 			this.entityIdListener.run();
 		}
-        setCurrentRenderedItem(0);
 	}
 
     public void setCurrentEntityColor(float r, float g, float b, float a) {

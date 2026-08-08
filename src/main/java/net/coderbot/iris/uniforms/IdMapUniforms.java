@@ -71,6 +71,13 @@ public final class IdMapUniforms {
 			lightValue = 0;
 		}
 
+		/**
+		 * Damn you chisel beacon
+		 */
+		private static int clampEmission(int emission) {
+			return Math.max(0, Math.min(15, emission));
+		}
+
 		public void update() {
 			EntityPlayer player = Minecraft.getMinecraft().thePlayer;
 
@@ -98,7 +105,7 @@ public final class IdMapUniforms {
 			intID = itemIdMap.applyAsInt(new NamespacedId(heldItemId.getResourceDomain(), heldItemId.getResourcePath()));
 
 			IrisItemLightProvider lightProvider = (IrisItemLightProvider) heldItem;
-			lightValue = lightProvider.getLightEmission(Minecraft.getMinecraft().thePlayer, heldStack);
+			lightValue = clampEmission(lightProvider.getLightEmission(Minecraft.getMinecraft().thePlayer, heldStack));
 
 			if (applyOldHandLight) {
 				lightProvider = applyOldHandLighting(player, lightProvider);
@@ -119,7 +126,7 @@ public final class IdMapUniforms {
 			}
 
 			IrisItemLightProvider lightProvider = (IrisItemLightProvider) offHandItem;
-			int newEmission = lightProvider.getLightEmission(Minecraft.getMinecraft().thePlayer,  offHandStack);
+			int newEmission = clampEmission(lightProvider.getLightEmission(Minecraft.getMinecraft().thePlayer,  offHandStack));
 
 			if (lightValue < newEmission) {
 				lightValue = newEmission;

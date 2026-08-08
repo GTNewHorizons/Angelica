@@ -285,11 +285,13 @@ public enum Mixins implements IMixins {
         .addClientMixins(
               "shaders.MixinDroppedItemGlintEdges"
             , "shaders.MixinHeldItemGlintEdges"
+            , "shaders.MixinEffectRenderer_Particles"
             , "shaders.MixinEntityPickupFX"
             , "shaders.MixinEntityRenderer"
             , "shaders.MixinGuiIngameForge"
             , "shaders.MixinFramebuffer"
             , "shaders.MixinItem"
+            , "shaders.MixinItemRenderer_ItemId"
             , "shaders.MixinLocale"
             , "shaders.MixinRender"
             , "shaders.MixinRenderBiped"
@@ -612,6 +614,18 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.etfuturum.MixinLayerBetterElytra")
+    ),
+    ET_FUTURUM_BEACON_BEAM(new MixinBuilder("Iris Et Futurum Beacon Beam")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.etfuturum.MixinTileEntityNewBeaconRenderer")
+    ),
+    OPENBLOCKS_TROPHY_ENTITY_GBUFFER(new MixinBuilder("Render OpenBlocks trophies with the entity gbuffer programs")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.OPENBLOCKS)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.openblocks.MixinTileEntityTrophyRenderer")
     ),
     MCPATCHER_FORGE(new MixinBuilder()
         .setPhase(Phase.EARLY)

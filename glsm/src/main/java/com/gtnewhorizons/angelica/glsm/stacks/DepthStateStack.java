@@ -2,13 +2,17 @@ package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
+import lombok.Setter;
 
 public class DepthStateStack extends DepthState implements IStateStack<DepthStateStack> {
 
     protected final DepthState[] stack;
 
     protected int pointer;
+
+    @Setter private VanillaStateLayer<DepthState> vanillaLayer;
 
     public DepthStateStack() {
         stack = new DepthState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
@@ -22,7 +26,10 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
         }
 
-        stack[pointer++].set(this);
+        final DepthState slot = stack[pointer++].set(this);
+        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
+            vanillaLayer.readVanilla(slot);
+        }
         return this;
     }
 
@@ -31,7 +38,14 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
             throw new IllegalStateException("Stack underflow");
         }
 
-        set(stack[--pointer]);
+        final DepthState saved = stack[--pointer];
+        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
+            vanillaLayer.writeVanilla(saved);
+            this.func = saved.getFunc();
+            this.clearValue = saved.getClearValue();
+        } else {
+            set(saved);
+        }
         return this;
     }
 

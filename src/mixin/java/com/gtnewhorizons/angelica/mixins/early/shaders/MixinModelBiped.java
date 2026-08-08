@@ -70,6 +70,9 @@ public abstract class MixinModelBiped {
         final TexturedQuad[] quads = ((AccessorModelBox) (Object) box).angelica$getQuadList();
         final Vector3f v = angelica$vec;
 
+        final float uScale = part.textureWidth > 0.0f ? part.textureWidth / PlayerReflectionCapture.ATLAS_SIZE : 1.0f;
+        final float vScale = part.textureHeight > 0.0f ? part.textureHeight / PlayerReflectionCapture.ATLAS_SIZE : 1.0f;
+
         for (int q = 0; q < 6; q++) {
             final PositionTextureVertex[] corners = quads[q].vertexPositions;
             for (int c = 0; c < 4; c++) {
@@ -81,8 +84,8 @@ public abstract class MixinModelBiped {
                 out[o++] = v.x;
                 out[o++] = v.y;
                 out[o++] = v.z;
-                out[o++] = corner.texturePositionX;
-                out[o++] = corner.texturePositionY * 0.5f;
+                out[o++] = corner.texturePositionX * uScale;
+                out[o++] = corner.texturePositionY * vScale;
             }
         }
         return o;

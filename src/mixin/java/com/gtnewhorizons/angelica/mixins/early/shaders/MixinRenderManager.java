@@ -4,6 +4,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.entity.Render;
@@ -25,16 +26,29 @@ public class MixinRenderManager {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/Render;doRender(Lnet/minecraft/entity/Entity;DDDFF)V")
     )
     private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        int entityId = EntityIdHelper.getEntityId(entity);
-        CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
+        final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+        final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+
+        CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entity));
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
         }
+        final boolean nestedInBlockEntity = GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.BLOCK_ENTITIES;
+        if (nestedInBlockEntity) {
+            GbufferPrograms.setOverridePhase(WorldRenderingPhase.ENTITIES);
+        }
+
         original.call(render, entity, x, y, z, entityYaw, partialTicks);
+
+        if (nestedInBlockEntity) {
+            GbufferPrograms.setOverridePhase(null);
+        }
         if (lightning) {
             GbufferPrograms.teardownSpecialRenderCondition();
         }
-        CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
+        CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(prevItemId);
     }
 }

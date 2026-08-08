@@ -14,6 +14,7 @@ import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.renderer.EntityRenderer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -30,6 +31,7 @@ public interface WorldRenderingPipeline {
 	void setPhase(WorldRenderingPhase phase);
 	void setInputs(InputAvailability availability);
 	void setSpecialCondition(SpecialCondition special);
+	void setDeclaredTranslucency(@Nullable Boolean translucent);
 	RenderTargetStateListener getRenderTargetStateListener();
 
 	int getCurrentNormalTexture();

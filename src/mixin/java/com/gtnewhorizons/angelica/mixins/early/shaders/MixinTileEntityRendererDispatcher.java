@@ -1,9 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.prupe.mcpatcher.ctm.CTMUtils;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -15,6 +18,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(TileEntityRendererDispatcher.class)
 public class MixinTileEntityRendererDispatcher {
+
+    /**
+     * Keep one renderer's blend state out of the next one's program choice.
+     */
+    @WrapMethod(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V")
+    private void iris$isolateBlendState(TileEntity te, double x, double y, double z, float partialTicks,
+                                        Operation<Void> original) {
+        final int saved = GbufferPrograms.pushBlendState();
+        try {
+            original.call(te, x, y, z, partialTicks);
+        } finally {
+            GbufferPrograms.popBlendState(saved);
+        }
+    }
 
     @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("HEAD"))
     private void iris$setBlockEntityId(TileEntity te, double x, double y, double z, float partialTicks, CallbackInfo ci) {

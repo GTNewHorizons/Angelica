@@ -1,10 +1,12 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.event.RenderHandEvent;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.ItemRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import lombok.Getter;
@@ -83,31 +85,52 @@ public class HandRenderer {
                !RenderHandEvent.post();
     }
 
-    public boolean isHandTranslucent(InteractionHand hand) {
-        ItemStack heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
-
+    public boolean isItemTranslucent(ItemStack heldItem) {
         if (heldItem == null) return false;
         final Item item = heldItem.getItem();
 
         if (item instanceof ItemBlock itemBlock) {
+            final Block block = itemBlock.field_150939_a;
+            if (block == null) return false;
+
             final Map<Block, BlockRenderLayer> blockTypeIds = BlockRenderingSettings.INSTANCE.getBlockTypeIds();
-            return blockTypeIds != null && blockTypeIds.get(itemBlock.field_150939_a) == BlockRenderLayer.TRANSLUCENT;
+            final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
+            final BlockRenderLayer layer = override != null ? override : BlockRenderLayer.fromVanillaPass(block.getRenderBlockPass());
+            return layer == BlockRenderLayer.TRANSLUCENT;
         }
 
         return false;
     }
 
+    public boolean isHandTranslucent(InteractionHand hand) {
+        return isItemTranslucent(hand.getItemInHand(Minecraft.getMinecraft().thePlayer));
+    }
+
+    private ItemStack mainHandItem() {
+        return ((ItemRendererAccessor) Minecraft.getMinecraft().entityRenderer.itemRenderer).angelica$getItemToRender();
+    }
+
     public boolean isAnyHandTranslucent() {
-        return isHandTranslucent(InteractionHand.MAIN_HAND) || isHandTranslucent(InteractionHand.OFF_HAND);
+        return isItemTranslucent(mainHandItem())
+            || (ModStatus.isBackhandLoaded && isHandTranslucent(InteractionHand.OFF_HAND));
+    }
+
+    public boolean isAnyHandSolid() {
+        return !(isItemTranslucent(mainHandItem())
+            && (!ModStatus.isBackhandLoaded || isHandTranslucent(InteractionHand.OFF_HAND)));
     }
 
     public void renderSolid(float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
-        if (!canRender(camera, gameRenderer) || !IrisApi.getInstance().isShaderPackInUse()) {
+        if (!IrisApi.getInstance().isShaderPackInUse() || !canRender(camera, gameRenderer) || !isAnyHandSolid()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
 
         ACTIVE = true;
+
+        GLStateManager.disableBlend();
+        GLStateManager.defaultBlendFunc();
+        GbufferPrograms.setCutoutDefaults();
 
         pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
@@ -141,14 +164,17 @@ public class HandRenderer {
         ACTIVE = false;
     }
 
-    // TODO: RenderType
     public void renderTranslucent(float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
-        if (!canRender(camera, gameRenderer) || !isAnyHandTranslucent() || !IrisApi.getInstance().isShaderPackInUse()) {
+        if (!IrisApi.getInstance().isShaderPackInUse() || !canRender(camera, gameRenderer) || !isAnyHandTranslucent()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
 
         ACTIVE = true;
+
+        GLStateManager.enableBlend();
+        GLStateManager.defaultBlendFunc();
+        GbufferPrograms.setCutoutDefaults();
 
         pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
 

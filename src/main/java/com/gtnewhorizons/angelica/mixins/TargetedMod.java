@@ -23,6 +23,7 @@ public enum TargetedMod implements ITargetMod {
     NTM_SPACE("com.hbm.dim.SolarSystem"),
     IC2("ic2.core.coremod.IC2core", "IC2"),
     NATURA(null, "Natura"),
+    OPENBLOCKS(null, "OpenBlocks"),
     SECURITYCRAFT(null, "securitycraft"),
     SUPERNOVA("com.mitchej123.supernova.core.SupernovaCore", "supernova"),
     THAUMCRAFT(null, "Thaumcraft"),

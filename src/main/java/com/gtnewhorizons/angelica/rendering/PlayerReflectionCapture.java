@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
@@ -27,11 +28,15 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 
 /**
  * Skins in 1.7.10 are 64x32 while modern has 64x64 textures. We have to address it here.
+ * Note that mods such as SimpleSkinBackport upconvert to a real 64x64 skin, so the copy size is resolved
+ * from the bound texture.
  */
 public final class PlayerReflectionCapture {
 
     public static final int VERTEX_COUNT = 288;
     public static final int FLOATS_PER_VERTEX = 5; // x, y, z, u, v
+
+    public static final int ATLAS_SIZE = 64;
 
     private static final int RAW_INTS_PER_VERTEX = 8;
 
@@ -54,8 +59,8 @@ public final class PlayerReflectionCapture {
     private static ByteBuffer skinPixels;
     private static int lastCapturedSkin;
     private static int lastUploadedAtlas;
-    private static int skinCopyWidth = 64;
-    private static int skinCopyHeight = 32;
+    private static int skinCopyWidth = ATLAS_SIZE;
+    private static int skinCopyHeight = ATLAS_SIZE;
     private static ByteBuffer repackBuffer;
     private static long repackAddress;
     private static int repackCapacity;
@@ -95,6 +100,19 @@ public final class PlayerReflectionCapture {
         drawnThisCapture = true;
         if (xyzuv == null || xyzuv.length < VERTEX_COUNT * FLOATS_PER_VERTEX) return;
 
+        final int activeSkin = GLStateManager.getBoundTextureForServerState();
+        final boolean haveSkin = activeSkin != 0 && activeSkin != skin64Tex;
+
+        int srcW = 0, srcH = 0;
+        if (haveSkin) {
+            final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(activeSkin);
+            srcW = info.getWidth();
+            srcH = info.getHeight();
+        }
+
+        final boolean packFillsAtlas = ModStatus.isSimpleSkinBackportLoaded
+            && srcW == ATLAS_SIZE && srcH == ATLAS_SIZE;
+
         // Build the Tessellator layout
         if (rawData == null) rawData = new int[VERTEX_COUNT * RAW_INTS_PER_VERTEX];
         final int[] raw = rawData;
@@ -127,33 +145,26 @@ public final class PlayerReflectionCapture {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
         // Bind a 64x64 copy of the skin as `tex`
-        final int activeSkin = GLStateManager.getBoundTextureForServerState();
-        final boolean haveSkin = activeSkin != 0 && activeSkin != skin64Tex;
-        if (haveSkin) {
+        final boolean copySkin = haveSkin && !packFillsAtlas;
+        if (copySkin) {
             ensureSkin64Texture();
 
             final GlImage atlas = GlImage.BY_NAME.get("playerAtlas_img");
             final int atlasId = atlas != null ? atlas.getId() : 0;
             final boolean skinChanged = activeSkin != lastCapturedSkin;
 
-            if (skinChanged) {
-                final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(activeSkin);
-                final int srcW = info.getWidth();
-                final int srcH = info.getHeight();
-                if (srcW > 0 && srcH > 0) {
-                    final int required = srcW * srcH * 4;
-                    if (skinPixels == null || skinPixels.capacity() < required) {
-                        skinPixels = ByteBuffer.allocateDirect(required).order(ByteOrder.nativeOrder());
-                    }
-                    // The 1.7.10 model UVs only address the top 64x32 region.
-                    skinCopyWidth = Math.min(64, srcW);
-                    skinCopyHeight = Math.min(32, srcH);
-
-                    skinPixels.clear();
-                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, activeSkin);
-                    GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
-                    lastCapturedSkin = activeSkin;
+            if (skinChanged && srcW > 0 && srcH > 0) {
+                final int required = srcW * srcH * 4;
+                if (skinPixels == null || skinPixels.capacity() < required) {
+                    skinPixels = ByteBuffer.allocateDirect(required).order(ByteOrder.nativeOrder());
                 }
+                skinCopyWidth = Math.min(ATLAS_SIZE, srcW);
+                skinCopyHeight = Math.min(ATLAS_SIZE, srcH);
+
+                skinPixels.clear();
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, activeSkin);
+                GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
+                lastCapturedSkin = activeSkin;
             }
 
             if (skinPixels != null && (skinChanged || atlasId != lastUploadedAtlas)) {
@@ -182,7 +193,7 @@ public final class PlayerReflectionCapture {
         GLStateManager.glDepthMask(prevDepthWrite);
         GLStateManager.glColorMask(pr, pg, pb, pa);
 
-        if (haveSkin) {
+        if (copySkin) {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, activeSkin);
         }
 

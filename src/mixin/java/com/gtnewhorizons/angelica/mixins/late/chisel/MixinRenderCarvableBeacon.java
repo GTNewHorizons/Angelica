@@ -1,9 +1,11 @@
 package com.gtnewhorizons.angelica.mixins.late.chisel;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.World;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
@@ -20,14 +22,21 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = { "team.chisel.client.render.tile.RenderCarvableBeacon" }, remap = false)
 public class MixinRenderCarvableBeacon {
 
+    @Unique
+    private static boolean angelica$cullWasEnabled;
+
     @Inject(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", at = @At("HEAD"))
     private void angelica$beginBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, CallbackInfo ci) {
+        angelica$cullWasEnabled = GLStateManager.glIsEnabled(GL11.GL_CULL_FACE);
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
     }
 
     @Inject(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", at = @At("RETURN"))
     private void angelica$endBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
+        if (angelica$cullWasEnabled) {
+            GLStateManager.enableCull();
+        }
     }
 
     @Redirect(

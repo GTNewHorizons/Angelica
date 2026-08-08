@@ -56,7 +56,9 @@ public class FontConfig {
     @Config.RangeFloat(min = -2F, max = 2F)
     public static float glyphSpacing;
 
-    @Config.Comment("Controls font antialiasing. 0 = none, 1 = 4x MSAA, 2 = 16x MSAA.")
+    @Config.Comment({
+        "Controls font antialiasing. 0 = none, 1 = 4x MSAA, 2 = 16x MSAA.",
+        "Turning off AA lets shaders pick up the text."})
     @Config.DefaultInt(2)
     @Config.RangeInt(min = 0, max = 2)
     public static int fontAAMode;

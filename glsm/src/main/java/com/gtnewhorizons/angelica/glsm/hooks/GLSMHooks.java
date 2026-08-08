@@ -20,6 +20,8 @@ public final class GLSMHooks {
     public static final EventBus<LightmapCoordsEvent> LIGHTMAP_COORDS = EventBus.create(LightmapCoordsEvent.class);
     public static final EventBus<AlphaStateChangeEvent> ALPHA_STATE_CHANGE = EventBus.create(AlphaStateChangeEvent.class);
     public static final EventBus<ShaderColorChangeEvent> SHADER_COLOR_CHANGE = EventBus.create(ShaderColorChangeEvent.class);
+    public static final EventBus<ForeignDrawEndEvent> FOREIGN_DRAW_END = EventBus.create(ForeignDrawEndEvent.class);
+    public static final EventBus<VanillaBlendChangeEvent> VANILLA_BLEND_CHANGE = EventBus.create(VanillaBlendChangeEvent.class);
 
     // Reusable event instances
     public static final TextureBindEvent textureBindEvent = new TextureBindEvent();
@@ -31,6 +33,8 @@ public final class GLSMHooks {
     public static final LightmapCoordsEvent lightmapCoordsEvent = new LightmapCoordsEvent();
     public static final AlphaStateChangeEvent alphaStateChangeEvent = new AlphaStateChangeEvent();
     public static final ShaderColorChangeEvent shaderColorChangeEvent = new ShaderColorChangeEvent();
+    public static final ForeignDrawEndEvent foreignDrawEndEvent = new ForeignDrawEndEvent();
+    public static final VanillaBlendChangeEvent vanillaBlendChangeEvent = new VanillaBlendChangeEvent();
 
     private GLSMHooks() {}
 }

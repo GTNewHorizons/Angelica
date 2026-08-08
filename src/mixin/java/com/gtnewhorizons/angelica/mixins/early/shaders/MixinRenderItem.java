@@ -1,12 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.entity.item.EntityItem;
-import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,16 +20,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinRenderItem {
 
     /**
-     * Set the item ID before rendering dropped items.
-     * Checks both item.properties and block.properties.
+     * Item ID and cutout draw state for dropped items.
      */
-    @Inject(
-        method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
-        at = @At("HEAD")
-    )
-    private void iris$setItemIdBeforeRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        ItemStack itemStack = entity.getEntityItem();
-        ItemIdManager.setItemId(itemStack);
+    @WrapMethod(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
+    private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
+        final int prevItemId = ItemIdManager.getItemId();
+        final long prevCutout = GbufferPrograms.pushCutoutDefaults();
+
+        ItemIdManager.setItemId(entity.getEntityItem());
+        try {
+            original.call(entity, x, y, z, entityYaw, partialTicks);
+        } finally {
+            ItemIdManager.setItemIdRaw(prevItemId);
+            GbufferPrograms.popCutoutDefaults(prevCutout);
+        }
     }
 
     /**

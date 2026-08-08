@@ -10,6 +10,7 @@ import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.renderer.entity.RenderDragon;
 import net.minecraft.client.renderer.entity.RenderEnderman;
+import net.minecraft.client.renderer.entity.RenderPlayer;
 import net.minecraft.client.renderer.entity.RenderSpider;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.Entity;
@@ -31,6 +32,24 @@ public class MixinRendererLivingEntity {
     )
     private void iris$resetItemIdAfterEquipped(EntityLivingBase entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         ItemIdManager.resetItemId();
+    }
+
+    @WrapOperation(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderModel(Lnet/minecraft/entity/EntityLivingBase;FFFFFF)V")
+    )
+    private void iris$declarePlayerModelTranslucent(RendererLivingEntity instance, EntityLivingBase entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale, Operation<Void> original) {
+        if (!(instance instanceof RenderPlayer)) {
+            original.call(instance, entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+            return;
+        }
+
+        final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(Boolean.TRUE);
+        try {
+            original.call(instance, entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+        } finally {
+            GbufferPrograms.endTranslucencyDeclaration(previous);
+        }
     }
 
     /**

@@ -47,6 +47,7 @@ import net.minecraft.launchwrapper.Launch;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.input.Keyboard;
 
 import java.io.IOException;
@@ -883,6 +884,11 @@ public class Iris {
             pipelineManager = new PipelineManager(Iris::createPipeline);
         }
 
+        return pipelineManager;
+    }
+
+    @Nullable
+    public static PipelineManager getPipelineManagerNullable() {
         return pipelineManager;
     }
 
