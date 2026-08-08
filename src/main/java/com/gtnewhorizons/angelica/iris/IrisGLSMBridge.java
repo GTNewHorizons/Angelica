@@ -39,6 +39,10 @@ public class IrisGLSMBridge {
         StateUpdateNotifiers.colorModulatorNotifier = listener -> colorModulatorListener = listener;
     }
 
+    public static void installImmediateExtendedHandler() {
+        GLSMHooks.immediateExtendedHandler = new ImmediateExtendedAttribs();
+    }
+
     public static void register() {
         IrisSamplers.initRenderer();
         GLSMHooks.blendHandler = new DeferredBlendHandler() {
@@ -153,6 +157,14 @@ public class IrisGLSMBridge {
                 Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
             }
         });
+
+        GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
+            if (Iris.enabled && event.postBind) {
+                ImmediateExtendedAttribs.onProgramBound(event.newProgram);
+            }
+        });
+
+        GLSMHooks.PROGRAM_DELETE.addListener(event -> ImmediateExtendedAttribs.onProgramDeleted(event.program));
 
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;

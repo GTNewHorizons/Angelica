@@ -113,6 +113,9 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
+        if (AngelicaConfig.enableIris) {
+            IrisGLSMBridge.installImmediateExtendedHandler();
+        }
     }
 
     @Override
