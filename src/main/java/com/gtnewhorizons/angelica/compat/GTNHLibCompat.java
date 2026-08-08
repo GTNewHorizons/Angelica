@@ -32,7 +32,7 @@ public class GTNHLibCompat {
 
             @Override
             public boolean handlesAmpCodes() {
-                return AngelicaConfig.enableAmpersandConversion;
+                return AngelicaConfig.enableAmpersandConversion && !ColorCodeUtils.isConversionSuppressed();
             }
         });
     }
