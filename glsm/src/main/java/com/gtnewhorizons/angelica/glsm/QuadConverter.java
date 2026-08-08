@@ -90,13 +90,33 @@ public final class QuadConverter {
         drawSharedQuadEbo(first, vertexCount, primcount, true);
     }
 
+    private static int misalignedDraws;
+
     private static void drawSharedQuadEbo(int first, int vertexCount, int primcount, boolean instanced) {
+        final int quadCount = vertexCount / 4;
+        if ((first & 3) != 0) {
+            misalignedDraws++;
+            if ((misalignedDraws & (misalignedDraws - 1)) == 0) {
+                GLStateManager.LOGGER.warn("QuadConverter: quad draw with unaligned first={} count={} (#{}) -- using scratch indices", first, vertexCount, misalignedDraws);
+            }
+            final ByteBuffer dst = memAlloc(quadCount * 6 * 4);
+            long ptr = memAddress0(dst);
+            for (int i = 0; i < quadCount; i++) {
+                final int base = first + i * 4;
+                memPutInt(ptr, base);
+                memPutInt(ptr + 4, base + 1);
+                memPutInt(ptr + 8, base + 3);
+                memPutInt(ptr + 12, base + 1);
+                memPutInt(ptr + 16, base + 2);
+                memPutInt(ptr + 20, base + 3);
+                ptr += 24;
+            }
+            uploadAndDraw(dst, quadCount * 6, GL11.GL_UNSIGNED_INT, 4, primcount, instanced);
+            return;
+        }
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
             GLStateManager.preDraw();
-            assert first % 4 == 0 : "QuadConverter: first (" + first + ") must be a multiple of 4";
-            assert vertexCount % 4 == 0 : "QuadConverter: vertexCount (" + vertexCount + ") must be a multiple of 4";
-            final int quadCount = vertexCount / 4;
             final int prevEbo = GLStateManager.getBoundEBO();
             ensureCapacity(first / 4 + quadCount);
             RENDER_BACKEND.bindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
@@ -184,7 +204,7 @@ public final class QuadConverter {
         final int quadCount = indexCount / 4;
         final int triIndexCount = quadCount * 6;
 
-        final int bytesPerIndex = VAOManager.Attrib.glTypeSizeBytes(type);
+        final int bytesPerIndex = GLTypes.sizeBytes(type);
 
         final ByteBuffer src = memAlloc(indexCount * bytesPerIndex);
         RENDER_BACKEND.getBufferSubData(GL15.GL_ELEMENT_ARRAY_BUFFER, offset, src);

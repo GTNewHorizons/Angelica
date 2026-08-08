@@ -1,9 +1,9 @@
 package net.coderbot.iris.gl.image;
 
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
-import net.coderbot.iris.gl.texture.PixelFormat;
-import net.coderbot.iris.gl.texture.PixelType;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 
 public record ImageInformation(String name, String samplerName, TextureType target, PixelFormat format,
 							   InternalTextureFormat internalTextureFormat,

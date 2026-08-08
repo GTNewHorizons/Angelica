@@ -3,6 +3,9 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.cardinalstar.cubicchunks.world.ICubicWorld;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
+import com.gtnewhorizons.angelica.mixins.interfaces.RenderListManagerAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -40,6 +43,20 @@ import java.util.concurrent.locks.LockSupport;
 import java.util.function.BooleanSupplier;
 
 public class AngelicaRenderSectionManager extends RenderSectionManager {
+    private static final long P_MESH_REGIONS = Tracy.plotHandle("mesh.regions");
+    private static final long P_MESH_VISIBLE_CHUNKS = Tracy.plotHandle("mesh.visibleChunks");
+    private static final long P_SHADOW_REGIONS = Tracy.plotHandle("shadow.regions");
+    private static final long P_SHADOW_VISIBLE_CHUNKS = Tracy.plotHandle("shadow.visibleChunks");
+    private static final long P_MESH_SCHEDULED_JOBS = Tracy.plotHandle("mesh.scheduledJobs");
+    private static final long P_MESH_BUSY_THREADS = Tracy.plotHandle("mesh.busyThreads");
+    private static final long P_MESH_DEVICE_USED = Tracy.plotHandle("mesh.deviceUsed", TracyBackend.PLOT_FORMAT_MEMORY);
+    private static final long P_MESH_DEVICE_ALLOCATED = Tracy.plotHandle("mesh.deviceAllocated", TracyBackend.PLOT_FORMAT_MEMORY);
+
+    private static final Tracy.ZoneId Z_BIOME_REBUILDS = Tracy.zoneId("biomeRebuilds", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_GRAPH_SEARCH = Tracy.zoneId("graphSearch", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_SECTION_UPLOAD = Tracy.zoneId("sectionUpload", Tracy.COLOR_TERRAIN);
+    private static final Tracy.ZoneId Z_SHADOW_GRAPH_WAIT = Tracy.zoneId("shadowGraphWait", Tracy.COLOR_TERRAIN);
+
     private boolean initialCameraSectionReady = false;
 
     private final WorldClient world;
@@ -91,6 +108,9 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     public void update(Viewport positionedViewport, int frame, boolean spectator) {
+        if (isInShadowPass() && !needsUpdate()) {
+            return;
+        }
         if (!isInShadowPass() && !initialCameraSectionReady) {
             var origin = positionedViewport.getChunkCoord();
             long key = PositionUtil.packSection(origin.x(), origin.y(), origin.z());
@@ -179,24 +199,47 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         if (this.biomeRebuildColumns.isEmpty()) {
             return;
         }
-        final int sectionCountY = this.world.getHeight() >> 4;
-        for (final LongIterator it = this.biomeRebuildColumns.iterator(); it.hasNext(); ) {
-            final long column = it.nextLong();
-            final int cx = PositionUtil.unpackChunkX(column);
-            final int cz = PositionUtil.unpackChunkZ(column);
-            for (int cy = 0; cy < sectionCountY; cy++) {
-                this.sectionCache.invalidate(cx, cy, cz);
-                this.scheduleRebuild(cx, cy, cz, false);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_BIOME_REBUILDS);
+        try {
+            final int sectionCountY = this.world.getHeight() >> 4;
+            for (final LongIterator it = this.biomeRebuildColumns.iterator(); it.hasNext(); ) {
+                final long column = it.nextLong();
+                final int cx = PositionUtil.unpackChunkX(column);
+                final int cz = PositionUtil.unpackChunkZ(column);
+                for (int cy = 0; cy < sectionCountY; cy++) {
+                    this.sectionCache.invalidate(cx, cy, cz);
+                    this.scheduleRebuild(cx, cy, cz, false);
+                }
             }
+            this.biomeRebuildColumns.clear();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
-        this.biomeRebuildColumns.clear();
     }
 
     @Override
     public void updateChunks(boolean updateImmediately) {
+        if (isInShadowPass()) {
+            return;
+        }
         this.sectionCache.cleanup();
         this.flushBiomeRebuilds();
-        super.updateChunks(updateImmediately);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_GRAPH_SEARCH);
+        try {
+            super.updateChunks(updateImmediately);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    @Override
+    public void uploadChunks() {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_SECTION_UPLOAD);
+        try {
+            super.uploadChunks();
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     @Override
@@ -222,6 +265,20 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         if (this.shadowRenderListManager != null) {
             this.shadowRenderListManager.setNeedsUpdate(true);
         }
+    }
+
+    public boolean preSubmitShadowGraphUpdate(Viewport viewport, int frame, boolean spectator) {
+        if (this.shadowRenderListManager == null || !this.shadowRenderListManager.isNeedsUpdate()) return false;
+        if (((RenderListManagerAccessor) this.shadowRenderListManager).angelica$hasOcclusionFutureInFlight()) return false;
+
+        final RenderSectionManagerAccessor self = (RenderSectionManagerAccessor) this;
+        final int targetQueueSize = shouldRespectUpdateTaskQueueSizeLimit() ? (int) Math.min(Integer.MAX_VALUE, (long) getBuilder().getTargetQueueSize() * 10) : Integer.MAX_VALUE;
+        this.shadowRenderListManager.startGraphUpdate(viewport, frame, self.angelica$getRegions().getRegionIdsLength(), self.angelica$getSearchDistance(), shouldUseOcclusionCulling(viewport, spectator), targetQueueSize);
+        return true;
+    }
+
+    public boolean isShadowGraphDirty() {
+        return this.shadowRenderListManager != null && this.shadowRenderListManager.isNeedsUpdate();
     }
 
     @Override
@@ -252,7 +309,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, CameraTransform occlusionCamera, CameraTransform camera) {
         // Shadow pass graph update is async - must wait for it to complete before rendering
         if (IrisShaderProviderHolder.isShadowPass()) {
-            finishAllGraphUpdates();
+            if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_GRAPH_WAIT);
+            try {
+                finishAllGraphUpdates();
+            } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
+            }
         }
         super.renderLayer(matrices, pass, occlusionCamera, camera);
     }
@@ -276,5 +338,28 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
             LockSupport.parkNanos("Wait", 100000L);
         }
+    }
+
+    public void tracyPlots() {
+        int regions = 0;
+        for (var it = this.getRenderLists().iterator(); it.hasNext(); it.next()) {
+            regions++;
+        }
+        Tracy.plotInt(P_MESH_REGIONS, regions);
+        Tracy.plotInt(P_MESH_VISIBLE_CHUNKS, this.getVisibleChunkCount());
+        if (this.shadowRenderListManager != null) {
+            int shadowRegions = 0, shadowSections = 0;
+            for (var it = this.shadowRenderListManager.getRenderLists().iterator(); it.hasNext(); ) {
+                shadowSections += it.next().getSectionsWithGeometryCount();
+                shadowRegions++;
+            }
+            Tracy.plotInt(P_SHADOW_REGIONS, shadowRegions);
+            Tracy.plotInt(P_SHADOW_VISIBLE_CHUNKS, shadowSections);
+        }
+        Tracy.plotInt(P_MESH_SCHEDULED_JOBS, this.getBuilder().getScheduledJobCount());
+        Tracy.plotInt(P_MESH_BUSY_THREADS, this.getBuilder().getBusyThreadCount());
+        final var mem = this.getDeviceMemoryStats();
+        Tracy.plotInt(P_MESH_DEVICE_USED, mem.deviceUsed + mem.indexUsed);
+        Tracy.plotInt(P_MESH_DEVICE_ALLOCATED, mem.deviceAllocated + mem.indexAllocated);
     }
 }

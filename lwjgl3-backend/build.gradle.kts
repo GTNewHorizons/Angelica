@@ -26,7 +26,7 @@ configurations {
     }
 }
 
-val lwjglVersion = "3.4.2-SNAPSHOT"
+val lwjglNatives: String by extra
 
 repositories {
     mavenLocal()
@@ -60,30 +60,18 @@ repositories {
 dependencies {
     api(project(":glsm"))
 
-    compileOnly("com.github.GTNewHorizons:lwjgl3ify:3.0.31:dev") { isTransitive = false }
-    compileOnly("org.embeddedt.celeritas:celeritas-common:2.5.8-GTNH") { isTransitive = false }
-
-    val osName = System.getProperty("os.name").lowercase()
-    val osArch = System.getProperty("os.arch").lowercase()
-    val lwjglNatives = when {
-        osName.contains("linux") && osArch.contains("aarch64") -> "natives-linux-arm64"
-        osName.contains("linux") -> "natives-linux"
-        osName.contains("windows") && osArch.contains("aarch64") -> "natives-windows-arm64"
-        osName.contains("windows") -> "natives-windows"
-        osName.contains("mac") && osArch.contains("aarch64") -> "natives-macos-arm64"
-        osName.contains("mac") -> "natives-macos"
-        else -> "natives-linux"
-    }
+    compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
+    compileOnly(libs.celeritas.common) { isTransitive = false }
 
     // LWJGL3
-    implementation("org.lwjgl:lwjgl:${lwjglVersion}")
-    implementation("org.lwjgl:lwjgl-opengl:${lwjglVersion}")
-    compileOnly("org.lwjgl:lwjgl-sdl:${lwjglVersion}")
-    runtimeOnly("org.lwjgl:lwjgl:$lwjglVersion:$lwjglNatives")
-    runtimeOnly("org.lwjgl:lwjgl-opengl:$lwjglVersion:$lwjglNatives")
+    implementation(libs.lwjgl3)
+    implementation(libs.lwjgl3.opengl)
+    compileOnly(libs.lwjgl3.sdl)
+    runtimeOnly(libs.lwjgl3) { artifact { classifier = lwjglNatives } }
+    runtimeOnly(libs.lwjgl3.opengl) { artifact { classifier = lwjglNatives } }
 
-    compileOnly("org.apache.logging.log4j:log4j-api:2.0-beta9")
-    compileOnly("org.jetbrains:annotations:26.0.2")
+    compileOnly(libs.log4j.api)
+    compileOnly(libs.annotations)
 }
 
 tasks.named<Jar>("jar") {

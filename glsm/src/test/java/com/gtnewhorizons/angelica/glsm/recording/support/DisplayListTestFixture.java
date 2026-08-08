@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCompatTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.commands.BatchedIndexedDrawCmd;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
@@ -99,12 +100,7 @@ public abstract class DisplayListTestFixture {
     }
 
     protected final int uploadEbo(int indexType, int... values) {
-        final int bytesPer = switch (indexType) {
-            case GL11.GL_UNSIGNED_BYTE -> 1;
-            case GL11.GL_UNSIGNED_SHORT -> 2;
-            case GL11.GL_UNSIGNED_INT -> 4;
-            default -> throw new IllegalArgumentException("unsupported indexType 0x" + Integer.toHexString(indexType));
-        };
+        final int bytesPer = GLTypes.sizeBytes(indexType);
         final int ebo = newBuffer();
         final ByteBuffer data = MemoryUtilities.memAlloc(values.length * bytesPer).order(ByteOrder.nativeOrder());
         for (int v : values) {

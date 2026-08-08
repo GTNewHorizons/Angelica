@@ -33,6 +33,7 @@ public abstract class MixinFramebuffer {
         GLStateManager.disableLighting();
         GLStateManager.disableAlphaTest();
         GLStateManager.disableBlend();
+        GLStateManager.disableCull();
         GLStateManager.glColor4f(1.0F, 1.0F, 1.0F, 1.0F);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, framebufferTexture);
         PostProcessingHelper.bindFullscreenVAO();

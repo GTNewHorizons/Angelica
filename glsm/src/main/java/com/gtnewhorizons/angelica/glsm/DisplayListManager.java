@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizon.gtnhlib.client.model.NormalHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.CallbackTessellator;
@@ -10,6 +12,8 @@ import com.gtnewhorizon.gtnhlib.client.renderer.tessellator.VertexTransformCallb
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VBOManager;
 import com.gtnewhorizon.gtnhlib.client.renderer.vbo.VertexBuffer;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
+import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.recording.AccumulatedDraw;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
@@ -52,18 +56,15 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
  */
 @UtilityClass
 public class DisplayListManager {
-    // -Dangelica.debugDisplayLists: disable transform collapsing and draw merging
-    private static final boolean DEBUG_DISPLAY_LISTS;
+    private static final Tracy.ZoneId Z_GL_LIST_COMPILE = Tracy.zoneId("glListCompile", Tracy.COLOR_FFP);
+    private static final Tracy.ZoneId Z_GL_LIST_PLAYBACK = Tracy.zoneId("glListPlayback", Tracy.COLOR_FFP);
 
-    // -Dangelica.logDisplayListCompilation: log compiled display list commands
-    private static final boolean LOG_DISPLAY_LIST_COMPILATION;
+    // Tracy profiling counter
+    public static long listPlaybacks;
 
     static {
-        DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debugDisplayLists");
-
-        LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.logDisplayListCompilation");
-        if (LOG_DISPLAY_LIST_COMPILATION) {
-            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.logDisplayListCompilation=true)");
+        if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
+            GLStateManager.LOGGER.warn("Display list compilation logging ENABLED (-Dangelica.debug.displayLists.compilation=true)");
         }
     }
 
@@ -460,7 +461,7 @@ public class DisplayListManager {
         currentRecorder.writeHint(target, mode);
     }
 
-    public static void recordFog(int pname, java.nio.FloatBuffer params) {
+    public static void recordFog(int pname, FloatBuffer params) {
         drawBarrier();
         currentRecorder.writeFog(pname, params);
     }
@@ -475,7 +476,7 @@ public class DisplayListManager {
         currentRecorder.writeLighti(light, pname, param);
     }
 
-    public static void recordLight(int light, int pname, java.nio.FloatBuffer params) {
+    public static void recordLight(int light, int pname, FloatBuffer params) {
         drawBarrier();
         currentRecorder.writeLight(light, pname, params);
     }
@@ -490,7 +491,7 @@ public class DisplayListManager {
         currentRecorder.writeLightModeli(pname, param);
     }
 
-    public static void recordLightModel(int pname, java.nio.FloatBuffer params) {
+    public static void recordLightModel(int pname, FloatBuffer params) {
         drawBarrier();
         currentRecorder.writeLightModel(pname, params);
     }
@@ -500,7 +501,7 @@ public class DisplayListManager {
         currentRecorder.writeMaterialf(face, pname, val);
     }
 
-    public static void recordMaterial(int face, int pname, java.nio.FloatBuffer params) {
+    public static void recordMaterial(int face, int pname, FloatBuffer params) {
         drawBarrier();
         currentRecorder.writeMaterial(face, pname, params);
     }
@@ -556,7 +557,7 @@ public class DisplayListManager {
         currentRecorder.writeDrawBuffers(count, buf);
     }
 
-    public static void recordDrawBuffers(int count, java.nio.IntBuffer bufs) {
+    public static void recordDrawBuffers(int count, IntBuffer bufs) {
         drawBarrier();
         currentRecorder.writeDrawBuffers(count, bufs);
     }
@@ -623,7 +624,7 @@ public class DisplayListManager {
             pendingTransformOps.add(String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z));
         }
 
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             flushMatrix();
         }
     }
@@ -636,7 +637,7 @@ public class DisplayListManager {
             pendingTransformOps.add(String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z));
         }
 
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             flushMatrix();
         }
     }
@@ -654,7 +655,7 @@ public class DisplayListManager {
             pendingTransformOps.add(String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", Math.toDegrees(rad), x, y, z));
         }
 
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             flushMatrix();
         }
     }
@@ -676,7 +677,7 @@ public class DisplayListManager {
             pendingTransformOps.add("glMultMatrixf(...)");
         }
 
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             flushMatrix();
         }
     }
@@ -694,7 +695,7 @@ public class DisplayListManager {
             pendingTransformOps.add(String.format("glOrtho(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
 
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             flushMatrix();
         }
     }
@@ -709,7 +710,7 @@ public class DisplayListManager {
             pendingTransformOps.add(String.format("glFrustum(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
 
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             flushMatrix();
         }
     }
@@ -780,10 +781,10 @@ public class DisplayListManager {
         currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
         transformCallback = new DisplayListCallback();
-        compilationStackTrace = LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
+        compilationStackTrace = SystemProperties.LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
         // Initialize debug logging fields (only when logging enabled)
-        if (LOG_DISPLAY_LIST_COMPILATION) {
+        if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
             pendingTransformOps = new ArrayList<>();
             multMatrixSources = new ArrayList<>();
             drawRangeSources = new ArrayList<>();
@@ -804,9 +805,11 @@ public class DisplayListManager {
             GLStateManager.warnOnce("endlist-outside", "glEndList called outside of a display list!");
             return;
         }
+        if (Tracy.ENABLED) Tracy.beginZone(Z_GL_LIST_COMPILE);
         try {
             finishCurrentList();
         } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
             // Non-null here means finishCurrentList threw before transferring or releasing
             // ownership of the recorder.
             if (currentRecorder != null) {
@@ -888,7 +891,7 @@ public class DisplayListManager {
         }
 
         // Log compilation details if enabled (before context restoration changes glListId)
-        if (LOG_DISPLAY_LIST_COMPILATION) {
+        if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
             logCompiledDisplayList(glListId, compiled, compilationStackTrace);
         }
     }
@@ -989,7 +992,7 @@ public class DisplayListManager {
             tessellator, copyLast
         );
         accumulatedDraws.add(pendingDraw);
-        if (DEBUG_DISPLAY_LISTS) {
+        if (SystemProperties.DEBUG_DISPLAY_LISTS) {
             drawBarrier();
         }
     }
@@ -1017,27 +1020,36 @@ public class DisplayListManager {
     }
 
     private static void executeDisplayList(int list) {
+        if (Tracy.ENABLED) {
+            listPlaybacks++;
+            Tracy.beginZone(Z_GL_LIST_PLAYBACK);
+        }
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
-            final CompiledDisplayList compiled = displayListCache.get(list);
-            if (compiled != null) {
-                compiled.render(list);
-                return;
-            }
-
-            // Fall back to VBOManager or legacy display list
-            if (list < 0) {
-                // Negative IDs are VBOManager space (entity models, etc.)
-                final VertexBuffer vbo = VBOManager.get(list);
-                if (vbo != null) {
-                    vbo.render();
-                }
-                // Per OpenGL spec: if list is undefined, glCallList has no effect
-            }
-            // An uncached positive-ID list = no-op (per OpenGL spec)
+            executeDisplayListInner(list);
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
+            if (Tracy.ENABLED) Tracy.endZone();
         }
+    }
+
+    private static void executeDisplayListInner(int list) {
+        final CompiledDisplayList compiled = displayListCache.get(list);
+        if (compiled != null) {
+            compiled.render(list);
+            return;
+        }
+
+        // Fall back to VBOManager or legacy display list
+        if (list < 0) {
+            // Negative IDs are VBOManager space (entity models, etc.)
+            final VertexBuffer vbo = VBOManager.get(list);
+            if (vbo != null) {
+                vbo.render();
+            }
+            // Per OpenGL spec: if list is undefined, glCallList has no effect
+        }
+        // An uncached positive-ID list = no-op (per OpenGL spec)
     }
 
     /**

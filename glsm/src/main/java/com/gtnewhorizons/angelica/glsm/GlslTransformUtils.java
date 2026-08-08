@@ -1,10 +1,19 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import org.antlr.v4.runtime.BufferedTokenStream;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
+import org.taumc.glsl.grammar.GLSLLexer;
+import org.taumc.glsl.grammar.GLSLParser;
+import org.taumc.glsl.grammar.GLSLPreParser;
 
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -77,6 +86,77 @@ public class GlslTransformUtils {
         source = source.replace(RENAMED_PREFIX + "sampler", "sampler");
         source = source.replace(RENAMED_PREFIX + "sample", "sample");
         return source;
+    }
+
+    public record QuietParse(GLSLParser.Translation_unitContext full, GLSLPreParser.Translation_unitContext pre) {}
+
+    public static GLSLParser.Translation_unitContext parseFullQuiet(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.setBuildParseTree(true);
+        return parser.translation_unit();
+    }
+
+    public static GLSLPreParser.Translation_unitContext parsePreQuiet(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final GLSLPreParser preParser = new GLSLPreParser(new CommonTokenStream(lexer, GLSLLexer.DIRECTIVES));
+        preParser.removeErrorListeners();
+        preParser.setBuildParseTree(true);
+        return preParser.translation_unit();
+    }
+
+    public static QuietParse parseBothQuiet(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final GLSLPreParser preParser = new GLSLPreParser(new BufferedTokenStream(lexer));
+        preParser.removeErrorListeners();
+        preParser.setBuildParseTree(true);
+        final GLSLPreParser.Translation_unitContext pre = preParser.translation_unit();
+        lexer.reset();
+        final GLSLParser parser = new GLSLParser(new CommonTokenStream(lexer));
+        parser.removeErrorListeners();
+        parser.setBuildParseTree(true);
+        return new QuietParse(parser.translation_unit(), pre);
+    }
+
+    public static Set<String> identifiersInDirectiveText(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final BufferedTokenStream tokens = new BufferedTokenStream(lexer);
+        tokens.fill();
+
+        final Set<String> names = new HashSet<>();
+        for (Token token : tokens.getTokens()) {
+            switch (token.getType()) {
+                case GLSLLexer.PROGRAM_TEXT, GLSLLexer.MACRO_TEXT, GLSLLexer.CONSTANT_EXPRESSION -> collectIdentifiers(token.getText(), names);
+                default -> { }
+            }
+        }
+        return names;
+    }
+
+    private static void collectIdentifiers(String text, Set<String> out) {
+        if (text == null) return;
+        final int len = text.length();
+        int i = 0;
+        while (i < len) {
+            final char c = text.charAt(i);
+            if (c != '_' && !Character.isLetter(c)) {
+                i++;
+                continue;
+            }
+            int end = i + 1;
+            while (end < len) {
+                final char n = text.charAt(end);
+                if (n != '_' && !Character.isLetterOrDigit(n)) break;
+                end++;
+            }
+            out.add(text.substring(i, end));
+            i = end;
+        }
     }
 
     public static String getFormattedShader(ParseTree tree, String header) {

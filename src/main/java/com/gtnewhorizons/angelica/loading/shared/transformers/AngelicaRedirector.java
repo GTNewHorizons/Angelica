@@ -37,4 +37,9 @@ public final class AngelicaRedirector {
     public boolean transformClassNode(String transformedName, ClassNode cn) {
         return core.transformClassNode(transformedName, cn);
     }
+
+    /** @return Was the class changed? */
+    public boolean transformClassNode(String transformedName, ClassNode cn, boolean lwjgl3Aware) {
+        return core.transformClassNode(transformedName, cn, lwjgl3Aware);
+    }
 }

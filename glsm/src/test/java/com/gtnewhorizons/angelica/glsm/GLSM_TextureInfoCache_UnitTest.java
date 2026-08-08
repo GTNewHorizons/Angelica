@@ -10,7 +10,6 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -129,24 +128,22 @@ public class GLSM_TextureInfoCache_UnitTest {
         assertNotNull(info);
 
         // Disable caching (simulate SharedDrawable context)
-        Field splashCompleteField = GLStateManager.class.getDeclaredField("splashComplete");
-        splashCompleteField.setAccessible(true);
-        boolean originalSplash = splashCompleteField.getBoolean(null);
+        boolean originalSplash = SplashWindow.isSplashComplete();
         Thread originalHolder = GLStateManager.getDrawableGLHolder();
 
         try {
-            splashCompleteField.setBoolean(null, false);
+            SplashWindow.setSplashComplete(false);
             GLStateManager.setDrawableGLHolder(null); // Current thread != null, so caching disabled
             assertFalse(GLStateManager.isCachingEnabled());
 
             GLStateManager.glDeleteTextures(texId);
 
-            splashCompleteField.setBoolean(null, true);
+            SplashWindow.setSplashComplete(true);
 
             // Cache entry should be gone - we should get a fresh object
             assertNotSame(info, TextureInfoCache.INSTANCE.getInfo(texId));
         } finally {
-            splashCompleteField.setBoolean(null, originalSplash);
+            SplashWindow.setSplashComplete(originalSplash);
             GLStateManager.setDrawableGLHolder(originalHolder);
             GL11.glBindTexture(GL11.GL_TEXTURE_2D, 0);
         }

@@ -587,18 +587,22 @@ public class DynamicLights {
         return 0;
     }
 
+    public static int getLuminanceFromEntityItem(@NotNull EntityItem item, int stackLuminance) {
+        if (stackLuminance <= 0) return 0;
+        if (item.isBurning()) return 15;
+        // TODO only have certain items not glow in water?
+        if (item.isInsideOfMaterial(Material.water)) return 0;
+        return stackLuminance;
+    }
+
     public static int getLuminanceFromEntity(@NotNull Entity entity) {
+        if (entity instanceof EntityItem item) {
+            return getLuminanceFromEntityItem(item, getLuminanceFromItemStack(item.getEntityItem()));
+        }
 
         if (entity.isBurning()) return 15;
 
-        final boolean inWater = entity.isInsideOfMaterial(Material.water);
-
-        // TODO only have certain items not glow in water?
-        if (inWater) return 0;
-
-        if (entity instanceof EntityItem item) {
-            return getLuminanceFromItemStack(item.getEntityItem());
-        }
+        if (entity.isInsideOfMaterial(Material.water)) return 0;
 
         int luminance = 0;
         if (entity instanceof EntityLivingBase living) {

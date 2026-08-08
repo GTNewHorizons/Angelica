@@ -12,6 +12,7 @@ public class GbufferPrograms {
 	private static boolean entities;
 	private static boolean blockEntities;
 	private static boolean outline;
+	private static boolean entityLoop;
 	private static Runnable phaseChangeListener;
 	
 	static {
@@ -30,6 +31,29 @@ public class GbufferPrograms {
 		setPhase(WorldRenderingPhase.ENTITIES);
 		setBlockEntityDefaults();
 		entities = true;
+	}
+
+	public static void beginEntityLoop() {
+		entityLoop = true;
+		setPhase(WorldRenderingPhase.ENTITIES);
+		setBlockEntityDefaults();
+	}
+
+	public static void endEntityLoop() {
+		entityLoop = false;
+		setPhase(WorldRenderingPhase.NONE);
+	}
+
+	public static boolean isEntityLoopActive() {
+		return entityLoop;
+	}
+
+	public static void onEntityRenderBoundary() {
+		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+
+		if (pipeline != null) {
+			pipeline.onEntityRenderBoundary();
+		}
 	}
 
 	public static void endEntities() {

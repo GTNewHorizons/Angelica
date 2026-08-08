@@ -1,5 +1,7 @@
 package net.coderbot.iris.gl.uniform;
 
+import com.gtnewhorizons.angelica.glsm.shader.UniformType;
+
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import org.joml.Vector2ic;
 import org.joml.Vector3ic;

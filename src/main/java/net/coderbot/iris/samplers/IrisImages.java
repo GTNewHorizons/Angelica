@@ -3,7 +3,7 @@ package net.coderbot.iris.samplers;
 import com.google.common.collect.ImmutableSet;
 import net.coderbot.iris.gl.image.GlImage;
 import net.coderbot.iris.gl.image.ImageHolder;
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.shadows.ShadowRenderTargets;

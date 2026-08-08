@@ -51,6 +51,7 @@ public final class VertexKey {
     private static final int BIT_UNIT_TEXMAT_BASE    = 37;
     private static final int BIT_UNIT23_UV_FROM_UNIT0 = 41;
     private static final int BIT_LINE_STIPPLE        = 42;
+    private static final int BIT_INSTANCED           = 44;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -100,6 +101,7 @@ public final class VertexKey {
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
+    public boolean instancedDraw()       { return bit(BIT_INSTANCED); }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -233,6 +235,10 @@ public final class VertexKey {
             bits |= (1L << BIT_LINE_STIPPLE);
         }
 
+        if (GLStateManager.instancedFfpDrawActive) {
+            bits |= (1L << BIT_INSTANCED);
+        }
+
         return bits;
     }
 
@@ -258,12 +264,12 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b]",
+        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b inst=%b]",
             packed, lightingEnabled(), light0Enabled(), light1Enabled(),
             colorMaterialEnabled(), fogEnabled(),
             unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0,
             unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0,
             hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(),
-            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation());
+            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation(), instancedDraw());
     }
 }
