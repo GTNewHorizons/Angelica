@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import static com.gtnewhorizons.angelica.rendering.StateAwareTessellator.NO_DIRECTIONAL_SHADING;
+
 import com.gtnewhorizons.angelica.api.ExtQuadLightData;
 import com.gtnewhorizons.angelica.api.TintComputer;
 import com.gtnewhorizons.angelica.api.TintRegistry;
@@ -203,7 +205,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 final ModelQuadFacing lightFace = quadView.getLightFace();
                 final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
                 final ModelQuadFacing cullFace = quadView.getCullFace();
-                pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shouldApplyDiffuse, true);
+                final var useDirectionalShading = shouldApplyDiffuse && (quadState & NO_DIRECTIONAL_SHADING) == 0;
+                pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, useDirectionalShading, true);
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
