@@ -46,7 +46,7 @@ public final class SpirvCompiler {
         }
 
         public static Options vulkanForced460Core() {
-            return new Options(Shaderc.shaderc_target_env_vulkan, Shaderc.shaderc_env_version_vulkan_1_0, true, true, true, true, 460, Shaderc.shaderc_profile_core);
+            return new Options(Shaderc.shaderc_target_env_vulkan, Shaderc.shaderc_env_version_vulkan_1_0, true, true, true, false, 460, Shaderc.shaderc_profile_core);
         }
     }
 

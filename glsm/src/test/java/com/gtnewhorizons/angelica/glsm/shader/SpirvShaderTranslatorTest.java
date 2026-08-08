@@ -371,6 +371,30 @@ class SpirvShaderTranslatorTest {
         assertFalse(es.contains("!= 0u"), "no bool use-site should still be comparing against 0u");
     }
 
+    @Test
+    void readonlyImage3D_staysAnImageUnderGLES() {
+        final String src = """
+            #version 420 core
+            layout(r32ui) readonly uniform uimage3D voxel_img;
+            layout(location = 0) out vec4 fragColor;
+            void main() {
+                uint v = imageLoad(voxel_img, ivec3(1, 2, 3)).x;
+                fragColor = vec4(float(v));
+            }
+            """;
+
+        final String es = SpirvShaderTranslator.glslToGlslEs(src, GL20.GL_FRAGMENT_SHADER, "readonly_image.frag");
+        dumpOnFailure("readonly_image.frag", src, es);
+
+        assertNotNull(es);
+        assertTrue(es.startsWith("#version 320 es"));
+        assertTrue(es.contains("uimage3D"), "a read-only image must stay an image on GLES; SDL_GPU's separate-texture rewrite must not leak here\n\n" + es);
+        assertTrue(es.contains("imageLoad"), "the image must still be read with imageLoad\n\n" + es);
+        assertFalse(es.contains("usampler3D"), "rewriting to a sampler would silently unbind it - glBindImageTexture feeds an image unit, not a sampler\n\n" + es);
+        assertFalse(es.contains("texelFetch"), "texelFetch implies the sampler rewrite leaked into the GLES path\n\n" + es);
+        assertFalse(es.contains("GL_EXT_samplerless_texture_functions"), "the samplerless extension is an SDL_GPU concern and is not valid to inject here\n\n" + es);
+    }
+
     private static void assertContainsDecl(String source, String type, String name) {
         final String needle1 = "uniform " + type + " " + name;
         final String needle2 = "uniform highp " + type + " " + name;

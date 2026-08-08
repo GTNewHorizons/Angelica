@@ -91,15 +91,16 @@ public final class CrossCompileUtil {
     }
 
     public static int[] countStorageImagesSplit(long resources, long compiler, MemoryStack stack) {
+        int ro = countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack);
+        int rw = 0;
         final PointerBuffer pList = stack.pointers(0);
         final PointerBuffer pCount = stack.pointers(0);
         if (Spvc.spvc_resources_get_resource_list_for_type(resources, Spvc.SPVC_RESOURCE_TYPE_STORAGE_IMAGE, pList, pCount) != Spvc.SPVC_SUCCESS) {
-            return new int[] { 0, 0 };
+            return new int[] { ro, rw };
         }
         final int count = (int) pCount.get(0);
-        if (count == 0) return new int[] { 0, 0 };
+        if (count == 0) return new int[] { ro, rw };
         final SpvcReflectedResource.Buffer list = SpvcReflectedResource.create(pList.get(0), count);
-        int ro = 0, rw = 0;
         for (int i = 0; i < count; i++) {
             if (Spvc.spvc_compiler_has_decoration(compiler, list.get(i).id(), Spv.SpvDecorationNonWritable)) ro++;
             else rw++;

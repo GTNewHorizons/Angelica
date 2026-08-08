@@ -180,9 +180,9 @@ public final class DxbcCrossCompile {
 
     private static void addStageBindings(long compiler, long resources, StageBindingLayout layout, MemoryStack stack) {
         addBindingsForType(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, layout, stack, ResourceClass.SRV_WITH_SAMPLER, layout.srvSpace);
-        addBindingsForType(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, layout, stack, ResourceClass.SRV_WITH_SAMPLER, layout.srvSpace);
         addBindingsForType(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_SAMPLERS, layout, stack, ResourceClass.SAMPLER_ONLY,     layout.srvSpace);
         addBindingsForType(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, layout, stack, ResourceClass.CBV,              layout.uboSpace);
+        addStorageBindings(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, layout, stack, (c, id, st) -> true);
         addStorageBindings(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_STORAGE_IMAGE,  layout, stack, (c, id, st) -> Spvc.spvc_compiler_has_decoration(c, id, Spv.SpvDecorationNonWritable));
         addStorageBindings(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_STORAGE_BUFFER, layout, stack, CrossCompileUtil::isStorageBufferReadOnly);
     }

@@ -235,9 +235,7 @@ public final class MslCrossCompile {
     private static void addComputeBindings(long compiler, long resources, MemoryStack stack) {
         final int execModel = Spv.SpvExecutionModelGLCompute;
 
-        final int numSampled  = CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,  stack);
-        final int numSeparate = CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack);
-        final int numSamplers = numSampled + numSeparate;
+        final int numSamplers = CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack);
         final int[] roRwTex   = CrossCompileUtil.countStorageImagesSplit(resources, compiler, stack);
         final int[] roRwBuf   = CrossCompileUtil.countStorageBuffersSplit(resources, compiler, stack);
         final int numROTex = roRwTex[0];
@@ -246,7 +244,7 @@ public final class MslCrossCompile {
         final int numUBOs  = CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, stack);
 
         addComputeTextureBindings(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,  execModel, stack, binding -> binding, /*hasSampler*/ true);
-        addComputeTextureBindings(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, execModel, stack, binding -> binding, true);
+        addComputeTextureBindings(compiler, resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, execModel, stack, binding -> binding, false);
 
         final int auxBufStart = numUBOs + numROBuf + numRWBuf;
         addComputeStorageImageBindings(compiler, resources, execModel, stack,

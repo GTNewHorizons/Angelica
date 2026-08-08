@@ -48,7 +48,7 @@ class FragmentStorageTextureSlotTest {
 
     private void assertSlots(int samplerCount) {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(fragmentSource(samplerCount),
-            GL20.GL_FRAGMENT_SHADER, "storage-slot-s" + samplerCount);
+            GL20.GL_FRAGMENT_SHADER, "storage-slot-s" + samplerCount, true);
         final String src = pre != null ? pre.rewrittenSource() : fragmentSource(samplerCount);
         final SpirvCompiler.Result r = SpirvCompiler.compile(src,
             Shaderc.shaderc_fragment_shader, "storage-slot-s" + samplerCount, SpirvCompiler.Options.vulkanForced460Core());

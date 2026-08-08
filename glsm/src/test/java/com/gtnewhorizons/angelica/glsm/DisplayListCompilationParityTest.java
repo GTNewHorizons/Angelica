@@ -97,6 +97,9 @@ class DisplayListCompilationParityTest {
         GLStateManager.disableBlend();
         GLStateManager.disableDepthTest();
         GLStateManager.disableCull();
+        GL11.glDisable(GL11.GL_BLEND);
+        GL11.glDisable(GL11.GL_DEPTH_TEST);
+        GL11.glDisable(GL11.GL_CULL_FACE);
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         GLStateManager.glLoadIdentity();
     }

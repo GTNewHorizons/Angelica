@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 class PrewarmSingleParseEquivalenceTest {
 
     private static String legacy(String source, int glShaderType) {
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, "test");
+        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, "test", true);
         String src = pre != null ? pre.rewrittenSource() : source;
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
             src = ClipZRemap.injectGLToVulkanClipZ(src);

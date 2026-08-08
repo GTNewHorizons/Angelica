@@ -61,7 +61,7 @@ public final class SpirvShaderTranslator {
             return null;
         }
 
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, debugName);
+        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, debugName, false);
         if (pre == null) return null;
 
         final SpirvCompiler.Result cr = SpirvCompiler.compile(pre.rewrittenSource(), shaderKind, debugName, SpirvCompiler.Options.vulkanRelaxed());

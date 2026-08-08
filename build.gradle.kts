@@ -10,6 +10,8 @@ tasks.withType<DowngradeJar>().configureEach { logLevel.set("FATAL") }
 tasks.withType<DowngradeFiles>().configureEach { logLevel.set("FATAL") }
 val lwjglDebug = false
 val gpuHud = false
+val renderdoc = false
+val rgp = false
 
 minecraft   {
     extraRunJvmArguments.add("-Dangelica.debug.testBlocks=true")
@@ -94,13 +96,13 @@ tasks.withType<JavaExec>().configureEach {
     }
 }
 
-// Linux runClient: RenderDoc frame capture (default, F12) OR RADV RGP/SQTT capture (-Prgp). Mutually exclusive
+// Linux runClient: RenderDoc frame capture (F12) OR RADV RGP/SQTT capture. Mutually exclusive; RGP wins
 tasks.withType<JavaExec>().configureEach {
     if (name.startsWith("runClient") && !isMacOs && !osName.contains("windows")) {
         environment("WAYLAND_DISPLAY", "")
         environment("XDG_SESSION_TYPE", "x11")
         val rgpFrame = project.findProperty("rgpFrame") as String?
-        val rgpCapture = project.hasProperty("rgp") || rgpFrame != null
+        val rgpCapture = rgp || project.hasProperty("rgp") || rgpFrame != null
         if (rgpCapture) {
             environment("MESA_VK_TRACE", "rgp")
             if (rgpFrame != null) {
@@ -110,11 +112,13 @@ tasks.withType<JavaExec>().configureEach {
                 environment("MESA_VK_TRACE_TRIGGER", "/tmp/angelica_rgp.trigger")
                 doFirst { logger.lifecycle("RGP: touch /tmp/angelica_rgp.trigger (or press F1) to capture -> /tmp/java_*.rgp") }
             }
-        } else {
-            val renderdoc = file(project.findProperty("renderdocLib") as String? ?: "${System.getProperty("user.home")}/Downloads/renderdoc_1.44/lib/librenderdoc.so")
-            if (renderdoc.isFile) {
-                environment("LD_PRELOAD", renderdoc.absolutePath)
+        } else if (renderdoc || project.hasProperty("renderdoc")) {
+            val renderdocLib = file(project.findProperty("renderdocLib") as String? ?: "${System.getProperty("user.home")}/Downloads/renderdoc_1.44/lib/librenderdoc.so")
+            if (renderdocLib.isFile) {
+                environment("LD_PRELOAD", renderdocLib.absolutePath)
                 doFirst { logger.lifecycle("RENDERDOC: LD_PRELOAD set, press F12 to capture") }
+            } else {
+                doFirst { logger.lifecycle("RENDERDOC: enabled but ${renderdocLib.absolutePath} not found; set -PrenderdocLib=<path>") }
             }
         }
     }

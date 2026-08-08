@@ -18,6 +18,7 @@ import org.lwjgl.opengl.ARBShaderStorageBufferObject;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL42;
 import org.lwjgl.opengl.GL43;
@@ -56,6 +57,7 @@ public class RenderSystem {
     private static volatile boolean isGLES;
     private static volatile int glesVersion;
     private static volatile boolean glesDetected;
+    private static volatile boolean hasClipCullDistance;
 
     // Sampler object state tracking (null if unsupported)
     private static int[] samplers;
@@ -115,6 +117,7 @@ public class RenderSystem {
         supportsMultiDrawIndirect = GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect;
         supportsBufferStorage = !isGLES && (GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_buffer_storage);
         supportsClearTexture = GLStateManager.capabilities.OpenGL44 || GLStateManager.capabilities.GL_ARB_clear_texture;
+        hasClipCullDistance = !isGLES || hasExtension("GL_EXT_clip_cull_distance");
 
         // Cache maximum image units
         if (supportsImageLoadStore) {
@@ -367,6 +370,18 @@ public class RenderSystem {
     public static boolean supportsImageLoadStore() {
         if (RENDER_BACKEND.isSDLGPU()) return true;
         return supportsImageLoadStore;
+    }
+
+    public static boolean hasClipCullDistance() {
+        return hasClipCullDistance;
+    }
+
+    private static boolean hasExtension(String name) {
+        final int count = GLStateManager.glGetInteger(GL30.GL_NUM_EXTENSIONS);
+        for (int i = 0; i < count; i++) {
+            if (name.equals(GLStateManager.glGetStringi(GL11.GL_EXTENSIONS, i))) return true;
+        }
+        return false;
     }
 
     public static boolean isGLES() {

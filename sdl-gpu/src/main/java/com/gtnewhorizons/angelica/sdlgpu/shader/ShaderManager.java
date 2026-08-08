@@ -45,6 +45,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
 
@@ -131,7 +132,7 @@ public final class ShaderManager {
             return;
         }
 
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader);
+        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader, true);
         obj.boolUniforms = pre != null ? pre.boolUniforms() : Set.of();
         String src = pre != null ? pre.rewrittenSource() : raw;
         if (obj.isVertex()) {
@@ -187,7 +188,7 @@ public final class ShaderManager {
             return new PrewarmTransformResult(transformedSource, Set.of());
         }
         final List<Edit> edits = new ArrayList<>();
-        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(root, glShaderType, "prewarm", edits);
+        final GlslVulkanPreprocess.Metadata meta = GlslVulkanPreprocess.collectEdits(transformedSource, root, glShaderType, "prewarm", true, edits);
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
             ClipZRemap.collectEdits(root, edits);
         }
@@ -862,10 +863,10 @@ public final class ShaderManager {
         withSpvc(spirv, null, (compiler, resources, stack) -> {
             int n = 0;
             n = collectResourceIds(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,    idToNewSet, idToNewBinding, resourceSet, n, stack);
-            n = collectResourceIds(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE,   idToNewSet, idToNewBinding, resourceSet, n, stack);
             n = collectGraphicsStorageImages(resources, compiler, idToNewSet, idToNewBinding, resourceSet, n, roStorageTextureGlSlots, rwStorageTextureGlSlots, stack);
             n = collectComputeBindings(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_STORAGE_BUFFER, idToNewSet, idToNewBinding, roSsboGlSlots, resourceSet, n, stack);
             collectResourceIds(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_UNIFORM_BUFFER, idToNewSet, idToNewBinding, uboSet, 0, stack);
+            warnOnSeparateSamplers(resources, stack, isVertex ? "vertex" : "fragment");
             return null;
         });
 
@@ -875,8 +876,22 @@ public final class ShaderManager {
         return new GraphicsBindingMap(roStorageTextureGlSlots.toIntArray(), rwStorageTextureGlSlots.toIntArray(), roSsboGlSlots.toIntArray());
     }
 
+    private static void warnOnSeparateSamplers(long resources, MemoryStack stack, String stage) {
+        if (CrossCompileUtil.countResources(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_SAMPLERS, stack) > 0 && separateSamplerWarned.compareAndSet(false, true)) {
+            LOG.error("{} shader declares a separate sampler; SDL_GPU cannot bind one and its descriptor will be left unremapped", stage);
+        }
+    }
+
+    private static final AtomicBoolean separateSamplerWarned = new AtomicBoolean();
+
     private static int collectGraphicsStorageImages(long resources, long compiler, Int2IntOpenHashMap idToNewSet, Int2IntOpenHashMap idToNewBinding, int targetSet, int nextBinding, IntArrayList roOut, IntArrayList rwOut, MemoryStack stack) {
         final int[] next = { nextBinding };
+        forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, stack, (j, res) -> {
+            final int spvId = res.id();
+            roOut.add(Spvc.spvc_compiler_get_decoration(compiler, spvId, Spv.SpvDecorationBinding));
+            idToNewSet.put(spvId, targetSet);
+            idToNewBinding.put(spvId, next[0]++);
+        });
         forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_STORAGE_IMAGE, stack, (j, res) -> {
             final int spvId = res.id();
             final int oldBinding = Spvc.spvc_compiler_get_decoration(compiler, spvId, Spv.SpvDecorationBinding);
@@ -917,12 +932,14 @@ public final class ShaderManager {
         final ComputeBindingMap err = withSpvc(spirv, ComputeBindingMap.EMPTY, (compiler, resources, stack) -> {
             int s0 = 0, s1 = 0;
             s0 = collectComputeBindings(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,  idToNewSet, idToNewBinding, samplerSlots, 0, s0, stack, samplerNames);
-            s0 = collectComputeBindings(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, idToNewSet, idToNewBinding, samplerSlots, 0, s0, stack, samplerNames);
+            final int[] sepSplit = collectComputeStorageSplit(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, idToNewSet, idToNewBinding, roTex, rwTex, s0, s1, stack, (c, id, st) -> true);
+            s0 = sepSplit[0]; s1 = sepSplit[1];
             final int[] imgSplit = collectComputeStorageSplit(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_STORAGE_IMAGE, idToNewSet, idToNewBinding, roTex, rwTex, s0, s1, stack, (c, id, st) -> Spvc.spvc_compiler_has_decoration(c, id, Spv.SpvDecorationNonWritable));
             s0 = imgSplit[0]; s1 = imgSplit[1];
             final int[] bufSplit = collectComputeStorageSplit(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_STORAGE_BUFFER, idToNewSet, idToNewBinding, StorageSplitOut.slotsOnly(roBufSlots), StorageSplitOut.slotsOnly(rwBufSlots), s0, s1, stack, CrossCompileUtil::isStorageBufferReadOnly);
             s0 = bufSplit[0]; s1 = bufSplit[1];
             collectComputeUbos(resources, compiler, idToNewSet, idToNewBinding, uboSlots, uboDefault, uboSizes, stack);
+            warnOnSeparateSamplers(resources, stack, "compute");
             return null;
         });
         if (err != null) return err;
@@ -1203,9 +1220,9 @@ public final class ShaderManager {
 
     public record StageReflection(
         ResourceCounts counts,
-        List<String> samplerNames,      // SAMPLED_IMAGE + SEPARATE_IMAGE, sorted by binding (post-remap)
+        List<String> samplerNames,      // SAMPLED_IMAGE, sorted by binding (post-remap)
         List<String> extraUniformNames, // SEPARATE_SAMPLERS - registered in nameToLocation only
-        List<String> storageImageNames, // STORAGE_IMAGE (RO + RW), sorted by binding (post-remap)
+        List<String> storageImageNames, // SEPARATE_IMAGE + STORAGE_IMAGE (RO + RW), sorted by binding (post-remap)
         int uboSize,                    // binding-0 UBO total size in bytes; 0 if absent
         List<UboMember> uboMembers,     // members of the binding-0 UBO
         List<VsInput> vsInputs,         // VS only (FS leaves empty); binary offset for in-place patch
@@ -1275,7 +1292,6 @@ public final class ShaderManager {
         final IntArrayList samplerBindings = new IntArrayList();
         final List<String> samplerNamesRaw = new ArrayList<>();
         collectSamplerEntries(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE,  samplerNamesRaw, samplerBindings, stack);
-        collectSamplerEntries(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, samplerNamesRaw, samplerBindings, stack);
         final int sCount = samplerBindings.size();
         final int[] perm = new int[sCount];
         for (int i = 0; i < sCount; i++) perm[i] = i;
@@ -1288,6 +1304,7 @@ public final class ShaderManager {
 
         final IntArrayList storageImageBindings = new IntArrayList();
         final List<String> storageImageNamesRaw = new ArrayList<>();
+        collectSamplerEntries(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_SEPARATE_IMAGE, storageImageNamesRaw, storageImageBindings, stack);
         collectSamplerEntries(resources, compiler, Spvc.SPVC_RESOURCE_TYPE_STORAGE_IMAGE, storageImageNamesRaw, storageImageBindings, stack);
         final int siCount = storageImageBindings.size();
         final int[] siPerm = new int[siCount];

@@ -4,6 +4,7 @@ import org.embeddedt.embeddium.impl.render.chunk.multidraw.DrawCommandSink;
 import org.embeddedt.embeddium.impl.render.chunk.data.SectionRenderDataUnsafe;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
@@ -114,10 +115,12 @@ class IndirectCullDrawParityTest {
         RenderDevice.enterManagedCode();
         commandList = RenderDevice.INSTANCE.createCommandList();
         program = buildProgram();
+        GpuCulling.setMode(GpuCullingMode.COMPUTE);
     }
 
     @AfterAll
     static void tearDownDevice() {
+        GpuCulling.setMode(GpuCullingMode.CPU_ONLY);
         if (program != 0) GLStateManager.glDeleteProgram(program);
         RenderDevice.exitManagedCode();
     }

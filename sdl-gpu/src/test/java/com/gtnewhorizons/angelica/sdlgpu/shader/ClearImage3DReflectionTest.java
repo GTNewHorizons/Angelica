@@ -59,7 +59,7 @@ class ClearImage3DReflectionTest {
 
     @Test
     void looseUniformsReflectAsBindingZeroUboMembers() {
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source(), GL43.GL_COMPUTE_SHADER, SHADER);
+        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source(), GL43.GL_COMPUTE_SHADER, SHADER, true);
         final String src = pre != null ? pre.rewrittenSource() : source();
         final SpirvCompiler.Result r = SpirvCompiler.compile(src, Shaderc.shaderc_compute_shader, SHADER, SpirvCompiler.Options.vulkanForced460Core());
         if (r.spirv() == null) fail(SHADER + " failed to compile: " + r.error() + "\nsource:\n" + src);

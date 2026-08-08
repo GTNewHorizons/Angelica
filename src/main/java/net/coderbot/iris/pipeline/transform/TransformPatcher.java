@@ -2,6 +2,7 @@ package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -115,7 +116,7 @@ public class TransformPatcher {
             }
         }
 
-        if (result != null) {
+        if (result != null && BackendManager.RENDER_BACKEND.isSDLGPU()) {
             final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
             if (processor != null) {
                 for (Map.Entry<PatchShaderType, String> entry : result.entrySet()) {
@@ -184,7 +185,7 @@ public class TransformPatcher {
         }
         Map<PatchShaderType, String> result = ShaderTransformer.transformCompute(compute, new ComputeParameters(Patch.COMPUTE, stage, textureMap));
         final String transformed = result != null ? result.get(PatchShaderType.COMPUTE) : null;
-        if (transformed != null) {
+        if (transformed != null && BackendManager.RENDER_BACKEND.isSDLGPU()) {
             final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
             if (processor != null) {
                 processor.onTransformed(transformed, PatchShaderType.COMPUTE.glShaderType);

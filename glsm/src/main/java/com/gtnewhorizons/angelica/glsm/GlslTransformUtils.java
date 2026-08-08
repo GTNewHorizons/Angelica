@@ -99,6 +99,15 @@ public class GlslTransformUtils {
         return parser.translation_unit();
     }
 
+    public static GLSLPreParser.Translation_unitContext parsePreQuiet(String source) {
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
+        lexer.removeErrorListeners();
+        final GLSLPreParser preParser = new GLSLPreParser(new CommonTokenStream(lexer, GLSLLexer.DIRECTIVES));
+        preParser.removeErrorListeners();
+        preParser.setBuildParseTree(true);
+        return preParser.translation_unit();
+    }
+
     public static QuietParse parseBothQuiet(String source) {
         final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(source));
         lexer.removeErrorListeners();
