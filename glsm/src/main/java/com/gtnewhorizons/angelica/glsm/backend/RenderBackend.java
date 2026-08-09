@@ -5,8 +5,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.opengl.GL20;
 
-import me.eigenraven.lwjgl3ify.api.SwapchainInvalidatingChange;
-
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -20,7 +18,7 @@ import java.util.List;
  */
 public abstract class RenderBackend {
 
-    public void onPostWindowCreate(long window, boolean debug) {}
+    public void onPostWindowCreate(long window) {}
 
     public abstract void init();
     public abstract void shutdown();
@@ -75,7 +73,7 @@ public abstract class RenderBackend {
     public void onFrameEnd() {}
 
     /** Fired by lwjgl3ify Display before a mutation that recreates the swapchain. */
-    public void onPreSwapchainInvalidatingChange(SwapchainInvalidatingChange change) {}
+    public void onPreSwapchainInvalidatingChange(Object change) {}
 
     public boolean handleMakeCurrent(Object drawable) { return false; }
     public boolean handleReleaseContext(Object drawable) { return false; }
@@ -83,6 +81,11 @@ public abstract class RenderBackend {
     public void onRenderThreadReleased(Thread thread) {}
 
     public String getTransferDebugInfo() { return null; }
+
+    public boolean bindVoxelizationRegion(int ssboBinding, int vertexBufferGlId, long openPass, float x, float y, float z) { return false; }
+    public long beginVoxelizationBatch(int ssboBinding) { return 0L; }
+    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {}
+    public void endVoxelizationBatch(long pass) {}
 
     public abstract void enable(int cap);
     public abstract void enablei(int cap, int index);
@@ -389,6 +392,8 @@ public abstract class RenderBackend {
     public void getInteger(int pname, int[] params) { if (params.length > 0) params[0] = getInteger(pname); }
     public abstract float getFloat(int pname);
     public abstract void getFloat(int pname, FloatBuffer params);
+    public double getDouble(int pname) { return getFloat(pname); }
+    public void getDouble(int pname, DoubleBuffer params) { if (params.remaining() > 0) params.put(params.position(), getDouble(pname)); }
     public abstract boolean getBoolean(int pname);
     public abstract void getBoolean(int pname, ByteBuffer params);
     public abstract String getString(int pname);

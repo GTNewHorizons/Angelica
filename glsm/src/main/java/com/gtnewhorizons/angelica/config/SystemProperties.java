@@ -16,7 +16,8 @@ public final class SystemProperties {
     private static final Logger LOGGER = LogManager.getLogger("SystemProperties");
 
     // Backend selection
-    public static final boolean USE_SDL_GPU = Boolean.getBoolean("angelica.sdlgpu.enable");
+    public static final String KEY_USE_SDL_GPU = "angelica.sdlgpu.enable";
+    public static final boolean USE_SDL_GPU = Boolean.getBoolean(KEY_USE_SDL_GPU);
     public static final String GL_PROFILE = System.getProperty("angelica.glProfile", "");
     public static final boolean DISABLE_NVIDIA_WORKAROUND = Boolean.getBoolean("angelica.disableNvidiaWorkaround");
 

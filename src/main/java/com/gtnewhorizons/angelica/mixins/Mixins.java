@@ -91,7 +91,10 @@ public enum Mixins implements IMixins {
     ANGELICA_SDL_GPU_DISPLAY(new MixinBuilder("SDL-GPU-aware Display.create path")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
-        .addClientMixins("sdlgpu.MixinForgeHooksClient_SDLGPUDisplay")
+        .addClientMixins(
+            "sdlgpu.MixinForgeHooksClient_SDLGPUDisplay",
+            "sdlgpu.MixinMinecraft_SDLGPUIcons"
+        )
     ),
 
     ANGELICA_SDL_GPU_SHADOW_VOXEL_PREPASS(new MixinBuilder("Voxelization compute pre-pass before shadow raster (SDL_GPU)")
@@ -168,7 +171,10 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.entity.MixinModelRenderer",
             "angelica.entity.MixinRenderGlobal_EntityBatch",
-            "angelica.entity.MixinTextureManager"
+            "angelica.entity.MixinRenderManager_BatchEligibility",
+            "angelica.entity.MixinRender_BatchEligibility",
+            "angelica.entity.MixinTextureManager",
+            "angelica.tesr.MixinTileEntitySpecialRenderer_BatchEligibility"
         )
     ),
 
@@ -197,9 +203,9 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache")
+    ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache, and observe renderers that mix model parts with their own draws")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch)
+        .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch || AngelicaConfig.enableEntityBatching)
         .addClientMixins(
             "angelica.tesr.MixinTileEntityRendererDispatcher"
         )

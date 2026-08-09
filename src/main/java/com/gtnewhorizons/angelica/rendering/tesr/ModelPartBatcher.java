@@ -49,7 +49,8 @@ public final class ModelPartBatcher {
         TEXTURE("tesr.bail.texture"),
         TEMPLATE("tesr.bail.template"),
         HURT_FLASH("tesr.bail.hurtFlash"),
-        FOREIGN_PROGRAM("tesr.bail.foreignProgram");
+        FOREIGN_PROGRAM("tesr.bail.foreignProgram"),
+        MIXED_RENDERER("tesr.bail.mixedRenderer");
 
         public static final BailReason[] VALUES = values();
         public final String plotName;
@@ -204,6 +205,10 @@ public final class ModelPartBatcher {
             r.bail(BailReason.INACTIVE);
             return false;
         }
+        if (!BatchEligibility.batchingAllowed()) {
+            r.bail(BailReason.MIXED_RENDERER);
+            return false;
+        }
         if (DisplayListManager.isRecording()) {
             r.bail(BailReason.RECORDING);
             return false;
@@ -212,6 +217,7 @@ public final class ModelPartBatcher {
             r.liveFallbacks++;
             return false;
         }
+        BatchEligibility.onPartQueued();
         return true;
     }
 

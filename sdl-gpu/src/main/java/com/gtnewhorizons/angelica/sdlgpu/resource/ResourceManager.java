@@ -189,6 +189,20 @@ public final class ResourceManager {
         return SDL_GPU_TEXTUREUSAGE_SAMPLER | SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
     }
 
+    public String describeGpuState() {
+        final FrameManager.FrameState f = frameManager.busiestFrame();
+        final StringBuilder sb = new StringBuilder(256);
+        sb.append("frame=").append(f.frameNumber)
+          .append(" submitsThisFrame=").append(f.submitsThisFrame)
+          .append(" mipGensThisFrame=").append(f.mipGensThisFrame)
+          .append(" pendingUpload=").append(f.pendingUploadBytes >> 10).append("KiB/").append(f.pendingUploadCommands).append("cmds")
+          .append('\n');
+        sb.append("arena capacity=").append(f.arena.capacity() >> 20).append("MiB used=").append(f.arena.usedBytes() >> 10)
+          .append("KiB copies=").append(f.arena.copyCount())
+          .append(" overflowFlushes=").append(f.arenaOverflowFlushesThisFrame);
+        return sb.toString();
+    }
+
     private long createTextureCore(int glId, int glTarget, int sdlFormat, int glFormat, int width, int height, int depth, int levels, int usage) {
         usage = reconcileUsageAndWarn(glId, usage);
         final int sdlType = mapTextureType(glTarget);
@@ -221,7 +235,7 @@ public final class ResourceManager {
             final long handle = SDL_CreateGPUTexture(device.getDevice(), ci);
             if (props != 0) SDLProperties.SDL_DestroyProperties(props);
             if (handle == 0) {
-                LOG.error("Failed to create texture {}x{} fmt=0x{} sdlFmt=0x{} usage=0x{}: {}", width, height, Integer.toHexString(glFormat), Integer.toHexString(sdlFormat), Integer.toHexString(usage), SDLError.SDL_GetError());
+                device.reportGpuFailure("createTexture " + width + "x" + height + " fmt=0x" + Integer.toHexString(glFormat) + " sdlFmt=0x" + Integer.toHexString(sdlFormat) + " usage=0x" + Integer.toHexString(usage));
                 return 0;
             }
             wLock.lock();
@@ -1311,7 +1325,7 @@ public final class ResourceManager {
 
             final long handle = SDL_CreateGPUTransferBuffer(device.getDevice(), ci);
             if (handle == 0) {
-                LOG.error("Failed to create transfer buffer size={}: {}", size, SDLError.SDL_GetError());
+                device.reportGpuFailure("createTransferBuffer size=" + size);
             } else {
                 synchronized (xferPoolLock) { liveTransferBufferHandles.add(handle); }
             }
@@ -1413,7 +1427,7 @@ public final class ResourceManager {
         f.arenaCommandBuffer = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (f.arenaCommandBuffer == 0) {
             LOG.error("Failed to acquire arena upload command buffer: {}", SDLError.SDL_GetError());
-            f.arenaMapped = null;
+            unmapArena(f);
             return false;
         }
         f.arenaCopyPass = SDL_BeginGPUCopyPass(f.arenaCommandBuffer);
@@ -1421,10 +1435,16 @@ public final class ResourceManager {
             LOG.error("Failed to begin arena copy pass: {}", SDLError.SDL_GetError());
             SDL_SubmitGPUCommandBuffer(f.arenaCommandBuffer);
             f.arenaCommandBuffer = 0;
-            f.arenaMapped = null;
+            unmapArena(f);
             return false;
         }
         return true;
+    }
+
+    private void unmapArena(FrameManager.FrameState f) {
+        if (f.arenaMapped == null) return;
+        SDL_UnmapGPUTransferBuffer(device.getDevice(), f.arenaXfer);
+        f.arenaMapped = null;
     }
 
     public void flushUploadArena() {
@@ -1442,7 +1462,7 @@ public final class ResourceManager {
         }
         if (f.arenaCommandBuffer != 0) {
             if (!SDL_SubmitGPUCommandBuffer(f.arenaCommandBuffer)) {
-                LOG.error("Failed to submit arena upload command buffer: {}", SDLError.SDL_GetError());
+                device.reportGpuFailure("submit arena upload command buffer");
             }
             f.arenaCommandBuffer = 0;
             if (Tracy.ENABLED) f.arenaSubmitsThisFrame++;

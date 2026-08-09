@@ -20,7 +20,7 @@ import java.util.Arrays;
 /** SDL GPU implementation of {@link LWJGLService} for Celeritas */
 public final class SDLGPULWJGLService extends LWJGLService {
     @Override public int getPriority() {
-        if (SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable()) {
+        if (SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable() && SDLGPUGate.isEngaged()) {
             return 200;
         }
         return Integer.MIN_VALUE;

@@ -207,15 +207,13 @@ public final class TextureOps {
             SDL_GenerateMipmapsForGPUTexture(uploadCb, handle);
         }
 
+        if (!SDL_SubmitGPUCommandBuffer(uploadCb)) {
+            device.reportGpuFailure("submit mipmap generation CB");
+        }
+
         if (f.commandBuffer == uploadCb) {
-            if (!SDL_SubmitGPUCommandBuffer(uploadCb)) {
-                LOG.error("drainPendingMipGen: failed to submit frame CB: {}", SDLError.SDL_GetError());
-            }
             f.commandBuffer = 0;
         } else {
-            if (!SDL_SubmitGPUCommandBuffer(uploadCb)) {
-                LOG.error("drainPendingMipGen: failed to submit pending-upload CB: {}", SDLError.SDL_GetError());
-            }
             f.pendingUploadCommandBuffer = 0;
             f.pendingUploadBytes = 0;
             f.pendingUploadCommands = 0;

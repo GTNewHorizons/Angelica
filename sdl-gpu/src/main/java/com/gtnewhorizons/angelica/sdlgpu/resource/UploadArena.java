@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 public final class UploadArena {
     public static final int INITIAL_CAPACITY = 16 * 1024 * 1024;
 
+    public static final int MAX_CAPACITY = 64 * 1024 * 1024;
+
     private static final int ALIGNMENT = 16;
 
     private int capacity = INITIAL_CAPACITY;
@@ -23,8 +25,11 @@ public final class UploadArena {
         return size >= 0 && size <= capacity;
     }
 
-     public void requestGrow(int minSize) {
-        while (growTo < minSize) growTo <<= 1;
+    public void requestGrow(int minSize) {
+        if (minSize <= growTo) return;
+        long next = growTo;
+        while (next < minSize && next < MAX_CAPACITY) next <<= 1;
+        growTo = (int) Math.min(next, MAX_CAPACITY);
     }
 
    public boolean applyGrow() {

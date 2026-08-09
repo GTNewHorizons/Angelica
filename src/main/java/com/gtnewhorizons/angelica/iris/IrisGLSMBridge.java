@@ -7,7 +7,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
-import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import net.coderbot.iris.Iris;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -59,10 +59,10 @@ public class IrisGLSMBridge {
         };
         GLSMHooks.postTransformProcessor = (src, shaderType) -> {
             if (Iris.ShaderTransformExecutor.isOnWorker()) {
-                ShaderManager.prewarmSpirv(src, shaderType.id);
+                SDLGPUGate.prewarmSpirv(src, shaderType.id);
             } else {
                 Iris.ShaderTransformExecutor.submitTracked(() -> {
-                    ShaderManager.prewarmSpirv(src, shaderType.id);
+                    SDLGPUGate.prewarmSpirv(src, shaderType.id);
                 });
             }
         };

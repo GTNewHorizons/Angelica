@@ -11,7 +11,6 @@ import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.joml.Matrix3f;
 import org.joml.Matrix4fc;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;

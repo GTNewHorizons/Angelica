@@ -96,7 +96,6 @@ import org.lwjglx.opengl.Display;
 import me.eigenraven.lwjgl3ify.api.DisplayEvents;
 import com.gtnewhorizons.angelica.sdlgpu.compat.Lwjgl3GLCapabilitiesShim;
 import me.eigenraven.lwjgl3ify.api.GLCapabilitiesOverride;
-import me.eigenraven.lwjgl3ify.api.SwapchainInvalidatingChange;
 
 import static org.lwjgl.sdl.SDLGPU.*;
 
@@ -106,7 +105,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private static final Tracy.ZoneId Z_SDL_INDIRECT_DRAW = Tracy.zoneId("sdlIndirectDraw", Tracy.COLOR_TERRAIN);
 
-    private final Device device = new Device();
+    private final Device device = SDLGPUGate.device();
     private final FrameManager frameManager = new FrameManager(device);
     private final ResourceManager resourceManager = new ResourceManager(device, frameManager);
     private final Image3DClear image3DClear = new Image3DClear();
@@ -213,8 +212,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         persistentSync.onPersistentBufferWrite(glId, offset, size);
     }
 
-    @Override public void onPostWindowCreate(long window, boolean debug) {
-        device.claimWindow(window, debug);
+    @Override public void onPostWindowCreate(long window) {
         buildCachedStrings();
         populateGLCapabilities();
     }
@@ -227,6 +225,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             LOG.info("SDL-GPU debug markers ENABLED (lwjglDebug={}, angelica.debug.markers={}, captureTool={})", lwjglDebugFlag, SystemProperties.DEBUG_MARKERS, CaptureGate.TOOL_ATTACHED);
         }
         frameManager.setResourceManager(resourceManager);
+        device.setLossDiagnostics(resourceManager::describeGpuState);
         frameManager.setBeforeEndCopyPassCallback(() -> resourceManager.flushBatchedUploads(frameManager.getCopyPass()));
         frameManager.setBeforeSubmitCallback(() -> {
             endComputeDispatchBatch();
@@ -234,7 +233,6 @@ public class SDLGPURenderBackend extends RenderBackend {
             drainDeferredPersistentRegions(s());
             debugLabels.popAutoDebugGroup(s());
         });
-        frameManager.setBeforePendingUploadSubmitCallback(textureOps::drainPendingMipGen);
         frameManager.setAfterPresentCallback(() -> {
             frameManager.requestFlushOnAllRegisteredFrames();
             resourceManager.drainPendingFreeShadows();
@@ -434,7 +432,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public boolean isAvailable() {
-        return SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable();
+        return SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable() && SDLGPUGate.isEngaged();
     }
 
     @Override public String getName() {
@@ -630,7 +628,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         resourceManager.recycleGpuBufferPool(frameManager.getFrameNumber());
     }
 
-    @Override public void onPreSwapchainInvalidatingChange(SwapchainInvalidatingChange change) {
+    @Override public void onPreSwapchainInvalidatingChange(Object change) {
         endFrameUploadFlush();
         if (frameManager.isFrameActive()) {
             frameManager.endFrame();
@@ -3521,7 +3519,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private int voxLocStart = -1;
     private int voxLocCount = -1;
 
-    public boolean bindVoxelizationRegion(int ssboBinding, int vertexBufferGlId, long openPass, float x, float y, float z) {
+    @Override public boolean bindVoxelizationRegion(int ssboBinding, int vertexBufferGlId, long openPass, float x, float y, float z) {
         if (ssboBinding < 0 || ssboBinding >= ContextState.MAX_INDEXED_BUFFERS || vertexBufferGlId == 0) return false;
         final ContextState st = s();
         if (st.boundProgram == 0) return false;
@@ -3540,7 +3538,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         return names == null ? new String[0] : names.clone();
     }
 
-    public long beginVoxelizationBatch(int ssboBinding) {
+    @Override public long beginVoxelizationBatch(int ssboBinding) {
         if (ssboBinding < 0 || ssboBinding >= ContextState.MAX_INDEXED_BUFFERS) return 0;
         final ContextState st = s();
         final int program = st.boundProgram;
@@ -3550,11 +3548,11 @@ public class SDLGPURenderBackend extends RenderBackend {
         return voxelizationDispatcher.beginBatch(st);
     }
 
-    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {
+    @Override public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {
         voxelizationDispatcher.dispatchRange(pass, voxLocStart, voxLocCount, vertexOffset, vertexCount, s());
     }
 
-    public void endVoxelizationBatch(long pass) {
+    @Override public void endVoxelizationBatch(long pass) {
         voxelizationDispatcher.endBatch(pass);
     }
 
