@@ -31,11 +31,11 @@ minecraft   {
 
 }
 
-// Ensure flyby args are passed to the client
+// Forward -Dangelica.* from the gradle invocation to the client
 tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
     for ((key, value) in System.getProperties()) {
         val name = key.toString()
-        if (name.startsWith("angelica.flyby.")) {
+        if (name.startsWith("angelica.")) {
             jvmArgs("-D$name=$value")
         }
     }

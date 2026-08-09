@@ -20,7 +20,7 @@ import java.util.List;
  */
 public abstract class RenderBackend {
 
-    public void onPostWindowCreate(long window, boolean debug) {}
+    public void onPostWindowCreate(long window) {}
 
     public abstract void init();
     public abstract void shutdown();

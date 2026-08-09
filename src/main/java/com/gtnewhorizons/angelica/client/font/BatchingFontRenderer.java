@@ -158,7 +158,7 @@ public class BatchingFontRenderer {
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
-    private static final class DeferredTextSegment {
+    private static final class TextSegment {
         final Matrix4f mvp = new Matrix4f();
         BatchingFontRenderer owner;
         int cmdStart;
@@ -172,9 +172,16 @@ public class BatchingFontRenderer {
     private static int deferredIdxPos;
 
     private int deferredCmdWatermark;
-    private static final ObjectArrayList<DeferredTextSegment> deferredSegments = ObjectArrayList.wrap(new DeferredTextSegment[16], 0);
-    private static final ObjectArrayList<DeferredTextSegment> deferredSegmentPool = ObjectArrayList.wrap(new DeferredTextSegment[16], 0);
+    private static final ObjectArrayList<TextSegment> deferredSegments = ObjectArrayList.wrap(new TextSegment[16], 0);
+    private static final ObjectArrayList<TextSegment> deferredSegmentPool = ObjectArrayList.wrap(new TextSegment[16], 0);
     private boolean deferCurrentBatch;
+
+    private final Matrix4f batchProj = new Matrix4f();
+    private final Matrix4f batchModelView = new Matrix4f();
+    private boolean batchMatrixValid;
+    private final ObjectArrayList<TextSegment> batchSegments = ObjectArrayList.wrap(new TextSegment[16], 0);
+    private int batchSealedEnd;
+    private static BatchingFontRenderer arenaOwner;
 
 
     private void allocateBuffers() {
@@ -298,8 +305,9 @@ public class BatchingFontRenderer {
     }
 
     private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture, boolean isUnicode) {
-        // Never coalesce into a command below the watermark - it belongs to a sealed deferred segment.
-        if (batchCommands.size() > deferredCmdWatermark) {
+        arenaOwner = this;
+        // Never coalesce into a command below the watermark - it belongs to a sealed segment.
+        if (batchCommands.size() > batchSealedEnd) {
             final FontDrawCmd lastCmd = batchCommands.get(batchCommands.size() - 1);
             final int prevEndVtx = lastCmd.startVtx + lastCmd.idxCount;
             if (prevEndVtx == startIdx && lastCmd.texture == texture) {
@@ -370,7 +378,53 @@ public class BatchingFontRenderer {
      * allow for easier optimizing of blocks of font rendering code.
      */
     public void beginBatch() {
+        if (arenaOwner != null && arenaOwner != this) {
+            arenaOwner.flushBatch();
+        }
+        if (batchDepth > 0) {
+            if (batchCommands.size() == batchSealedEnd) {
+                captureBatchMatrix();
+            } else if (!batchProj.equals(GLStateManager.getProjectionMatrix(), 0.0f) || !batchModelView.equals(GLStateManager.getModelViewMatrix(), 0.0f)) {
+                sealBatchSegment();
+                captureBatchMatrix();
+            }
+        }
         batchDepth++;
+    }
+
+    private void captureBatchMatrix() {
+        batchProj.set(GLStateManager.getProjectionMatrix());
+        batchModelView.set(GLStateManager.getModelViewMatrix());
+        batchMatrixValid = true;
+    }
+
+    private void resolveMvp(Matrix4f dest) {
+        if (batchMatrixValid) {
+            batchProj.mul(batchModelView, dest);
+        } else {
+            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), dest);
+        }
+    }
+
+    private void sealBatchSegment() {
+        final int end = batchCommands.size();
+        if (end == batchSealedEnd) return;
+        final TextSegment segment = deferredSegmentPool.isEmpty() ? new TextSegment() : deferredSegmentPool.pop();
+        segment.owner = this;
+        segment.cmdStart = batchSealedEnd;
+        segment.cmdEnd = end;
+        resolveMvp(segment.mvp);
+        batchSegments.add(segment);
+        batchSealedEnd = end;
+    }
+
+    private void recycleBatchSegments() {
+        if (batchSegments.isEmpty()) return;
+        for (int i = 0, n = batchSegments.size(); i < n; i++) {
+            batchSegments.get(i).owner = null;
+        }
+        deferredSegmentPool.addAll(batchSegments);
+        batchSegments.clear();
     }
 
     public void endBatch() {
@@ -404,7 +458,8 @@ public class BatchingFontRenderer {
     }
 
     private void deferBatch() {
-        if (batchCommands.size() == deferredCmdWatermark || vertexDataPos == deferredVertexPos) {
+        sealBatchSegment();
+        if (batchSegments.isEmpty()) {
             truncateBatchToWatermark();
             return;
         }
@@ -412,15 +467,13 @@ public class BatchingFontRenderer {
             flushBatch();
             return;
         }
-        final DeferredTextSegment segment = deferredSegmentPool.isEmpty() ? new DeferredTextSegment() : deferredSegmentPool.pop();
-        segment.owner = this;
-        segment.cmdStart = deferredCmdWatermark;
-        segment.cmdEnd = batchCommands.size();
-        GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), segment.mvp);
-        deferredSegments.add(segment);
+        deferredSegments.addAll(batchSegments);
+        batchSegments.clear();
         deferredCmdWatermark = batchCommands.size();
+        batchSealedEnd = deferredCmdWatermark;
         deferredVertexPos = vertexDataPos;
         deferredIdxPos = idxWriterIndex;
+        batchMatrixValid = false;
     }
 
     public static void flushDeferredText() {
@@ -443,7 +496,7 @@ public class BatchingFontRenderer {
         try (MemoryStack stack = stackPush()) {
             final FloatBuffer mvpBuf = stack.mallocFloat(16);
             for (int i = 0, n = deferredSegments.size(); i < n; i++) {
-                final DeferredTextSegment segment = deferredSegments.get(i);
+                final TextSegment segment = deferredSegments.get(i);
                 mvpBuf.clear();
                 segment.mvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(segment.owner.mvpMatrixLocation, false, mvpBuf);
@@ -459,8 +512,11 @@ public class BatchingFontRenderer {
     public static void discardDeferredText() {
         if (deferredSegments.isEmpty()) return;
         for (int i = 0, n = deferredSegments.size(); i < n; i++) {
-            final DeferredTextSegment segment = deferredSegments.get(i);
+            final TextSegment segment = deferredSegments.get(i);
             segment.owner.clearDeferredCommands();
+            segment.owner.recycleBatchSegments();
+            segment.owner.batchSealedEnd = 0;
+            segment.owner.batchMatrixValid = false;
             segment.owner = null;
         }
         deferredSegmentPool.addAll(deferredSegments);
@@ -469,6 +525,7 @@ public class BatchingFontRenderer {
         deferredIdxPos = 0;
         vertexDataPos = 0;
         idxWriterIndex = 0;
+        arenaOwner = null;
     }
 
     private void clearDeferredCommands() {
@@ -477,6 +534,12 @@ public class BatchingFontRenderer {
             batchCommandPool.add(batchCommands.get(i));
         }
         batchCommands.removeElements(0, deferredCmdWatermark);
+        for (int i = 0, n = batchSegments.size(); i < n; i++) {
+            final TextSegment segment = batchSegments.get(i);
+            segment.cmdStart -= deferredCmdWatermark;
+            segment.cmdEnd -= deferredCmdWatermark;
+        }
+        batchSealedEnd = Math.max(0, batchSealedEnd - deferredCmdWatermark);
         deferredCmdWatermark = 0;
     }
 
@@ -495,7 +558,8 @@ public class BatchingFontRenderer {
 
     private void flushBatchInner() {
         final int cmdCount = batchCommands.size();
-        if (vertexDataPos == deferredVertexPos || cmdCount == deferredCmdWatermark) {
+        final int segmentCount = batchSegments.size();
+        if (segmentCount == 0 && (vertexDataPos == deferredVertexPos || cmdCount == deferredCmdWatermark)) {
             truncateBatchToWatermark();
             return;
         }
@@ -504,7 +568,12 @@ public class BatchingFontRenderer {
 
         final int prevProgram = GLStateManager.glGetInteger(GL20.GL_CURRENT_PROGRAM);
 
-        Arrays.sort(batchCommands.elements(), deferredCmdWatermark, cmdCount, FontDrawCmd.DRAW_ORDER_COMPARATOR);
+        final FontDrawCmd[] cmds = batchCommands.elements();
+        for (int i = 0; i < segmentCount; i++) {
+            final TextSegment segment = batchSegments.get(i);
+            Arrays.sort(cmds, segment.cmdStart, segment.cmdEnd, FontDrawCmd.DRAW_ORDER_COMPARATOR);
+        }
+        Arrays.sort(cmds, batchSealedEnd, cmdCount, FontDrawCmd.DRAW_ORDER_COMPARATOR);
 
         final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
@@ -513,16 +582,25 @@ public class BatchingFontRenderer {
         final boolean depthMaskBefore = GLStateManager.getDepthState().isEnabled();
 
         setupFontDrawState();
-        try (MemoryStack stack = stackPush()) {
-            final FloatBuffer mvpBuf = stack.mallocFloat(16);
-            GLStateManager.getProjectionMatrix().mul(GLStateManager.getModelViewMatrix(), scratchMvp);
-            scratchMvp.get(mvpBuf);
-            GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
-        }
-
         flushLastTexture = DUMMY_RESOURCE_LOCATION;
         flushTextureChanged = false;
-        drawCommands(batchCommands.elements(), deferredCmdWatermark, cmdCount, this);
+        try (MemoryStack stack = stackPush()) {
+            final FloatBuffer mvpBuf = stack.mallocFloat(16);
+            for (int i = 0; i < segmentCount; i++) {
+                final TextSegment segment = batchSegments.get(i);
+                mvpBuf.clear();
+                segment.mvp.get(mvpBuf);
+                GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+                drawCommands(cmds, segment.cmdStart, segment.cmdEnd, this);
+            }
+            if (batchSealedEnd < cmdCount) {
+                mvpBuf.clear();
+                resolveMvp(scratchMvp);
+                scratchMvp.get(mvpBuf);
+                GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+                drawCommands(cmds, batchSealedEnd, cmdCount, this);
+            }
+        }
         restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore);
         restoreDepth(depthTestBefore, depthMaskBefore);
 
@@ -622,12 +700,18 @@ public class BatchingFontRenderer {
     }
 
     private void truncateBatchToWatermark() {
+        recycleBatchSegments();
         for (int i = batchCommands.size() - 1; i >= deferredCmdWatermark; i--) {
             batchCommandPool.add(batchCommands.get(i));
         }
         batchCommands.size(deferredCmdWatermark);
+        batchSealedEnd = deferredCmdWatermark;
+        batchMatrixValid = false;
         vertexDataPos = deferredVertexPos;
         idxWriterIndex = deferredIdxPos;
+        if (arenaOwner == this) {
+            arenaOwner = null;
+        }
     }
 
     // === Actual text mesh generation

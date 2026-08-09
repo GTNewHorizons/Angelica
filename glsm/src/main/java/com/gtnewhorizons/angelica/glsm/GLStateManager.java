@@ -528,7 +528,10 @@ public class GLStateManager {
         }
 
         final String glVendor = RENDER_BACKEND.getString(GL11.GL_VENDOR);
-        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
+        if (glVendor == null) {
+            LOGGER.error("Backend {} reported no GL_VENDOR (context: {}); treating the vendor as unknown", RENDER_BACKEND.getName(), RENDER_BACKEND.hasContext());
+        }
+        VENDOR = Vendor.getVendor(glVendor == null ? "" : glVendor.toLowerCase());
 
         final String os = System.getProperty("os.name").toLowerCase();
         windows = os.contains("win");

@@ -106,7 +106,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private static final Tracy.ZoneId Z_SDL_INDIRECT_DRAW = Tracy.zoneId("sdlIndirectDraw", Tracy.COLOR_TERRAIN);
 
-    private final Device device = new Device();
+    private final Device device = SDLGPUGate.device();
     private final FrameManager frameManager = new FrameManager(device);
     private final ResourceManager resourceManager = new ResourceManager(device, frameManager);
     private final Image3DClear image3DClear = new Image3DClear();
@@ -213,8 +213,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         persistentSync.onPersistentBufferWrite(glId, offset, size);
     }
 
-    @Override public void onPostWindowCreate(long window, boolean debug) {
-        device.claimWindow(window, debug);
+    @Override public void onPostWindowCreate(long window) {
         buildCachedStrings();
         populateGLCapabilities();
     }
@@ -434,7 +433,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public boolean isAvailable() {
-        return SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable();
+        return SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable() && SDLGPUGate.isEngaged();
     }
 
     @Override public String getName() {

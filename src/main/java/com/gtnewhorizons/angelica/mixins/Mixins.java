@@ -91,7 +91,10 @@ public enum Mixins implements IMixins {
     ANGELICA_SDL_GPU_DISPLAY(new MixinBuilder("SDL-GPU-aware Display.create path")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
-        .addClientMixins("sdlgpu.MixinForgeHooksClient_SDLGPUDisplay")
+        .addClientMixins(
+            "sdlgpu.MixinForgeHooksClient_SDLGPUDisplay",
+            "sdlgpu.MixinMinecraft_SDLGPUIcons"
+        )
     ),
 
     ANGELICA_SDL_GPU_SHADOW_VOXEL_PREPASS(new MixinBuilder("Voxelization compute pre-pass before shadow raster (SDL_GPU)")

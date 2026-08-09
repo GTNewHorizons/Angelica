@@ -613,6 +613,7 @@ public class DisplayListManager {
             // Get relative transform (changes since glNewList, not absolute matrix state)
             addAccumulatedDraw(tessellator, tessellator.getVertexFormat() != DefaultVertexFormat.POSITION);
         }
+        transformCallback.clearBaked(tessellator);
         tessellator.reset();
     }
 
@@ -1322,6 +1323,16 @@ public class DisplayListManager {
 
         private final Matrix4f transformMatrix = new Matrix4f();
 
+        private DirectTessellator bakedOwner;
+        private int bakedVertices;
+
+        void clearBaked(DirectTessellator tessellator) {
+            if (bakedOwner == tessellator) {
+                bakedOwner = null;
+                bakedVertices = 0;
+            }
+        }
+
         public void scale(float x, float y, float z) {
             transformMatrix.scale(x, y, z);
             markDirty();
@@ -1385,9 +1396,25 @@ public class DisplayListManager {
         }
 
         @Override
+        public boolean onStartDrawing(CallbackTessellator tessellator, int drawMode) {
+            bakedOwner = tessellator;
+            bakedVertices = 0;
+            return super.onStartDrawing(tessellator, drawMode);
+        }
+
+        @Override
         public boolean onDraw(CallbackTessellator tessellator) {
             if (!tessellator.isEmpty()) {
+                if (!isIdentity()) {
+                    final int baked = bakedOwner == tessellator ? bakedVertices : 0;
+                    if (bakedVertices == 0) {
+                        flushMatrix();
+                    } else if (baked != tessellator.vertexCount) {
+                        GLStateManager.warnOnce("dl-mixed-baked-raw", "Display list {}: draw of {} vertices carries {} transformed ones - the rest lose the pending transform", glListId, tessellator.vertexCount, baked);
+                    }
+                }
                 addAccumulatedDraw(tessellator, false);
+                clearBaked(tessellator);
             }
             return true;
         }
@@ -1396,6 +1423,11 @@ public class DisplayListManager {
         public void onVertex(CallbackTessellator tessellator, double x, double y, double z) {
             tessellator.syncVanillaTessellator();
             super.onVertex(tessellator, x, y, z);
+            if (bakedOwner != tessellator) {
+                bakedOwner = tessellator;
+                bakedVertices = 0;
+            }
+            bakedVertices++;
         }
 
         @Override

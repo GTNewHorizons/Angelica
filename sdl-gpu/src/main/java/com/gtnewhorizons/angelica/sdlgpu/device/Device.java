@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugMessageRelay;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -12,6 +11,7 @@ import org.lwjgl.sdl.SDLStdinc;
 import org.lwjgl.sdl.SDL_DisplayMode;
 import org.lwjgl.sdl.SDL_LogOutputFunction;
 import org.lwjgl.sdl.SDLVersion;
+import org.lwjgl.sdl.SDLVulkan;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.system.Platform;
@@ -30,7 +30,10 @@ public final class Device {
 
     public static final int FRAMES_IN_FLIGHT = 3;
 
+    private static final int REQUESTED_SHADER_FORMATS = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_DXBC | SDL_GPU_SHADERFORMAT_DXIL;
+
     private long device;
+    private boolean claimed;
     private int supportedShaderFormats;
     private String driverName;
     private String deviceName;
@@ -44,7 +47,13 @@ public final class Device {
         return userHint.isEmpty() && windows ? "vulkan" : null;
     }
 
-    public void claimWindow(long window, boolean lwjglDebug) {
+    static boolean metalNeedsNewerSdl(String driverName, int sdlVersion) {
+        return "metal".equalsIgnoreCase(driverName) && sdlVersion < SDLVersion.SDL_VERSIONNUM(3, 4, 6);
+    }
+
+    public boolean createDevice() {
+        if (device != 0) return true;
+
         installLogCallback();
 
         final int ver = SDLVersion.SDL_GetVersion();
@@ -56,17 +65,15 @@ public final class Device {
             LOG.info("SDL GPU driver hint set to '{}'", driverHint);
         }
 
-        final int requestedFormats = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_DXBC | SDL_GPU_SHADERFORMAT_DXIL;
-
-        final boolean gpuDebug = lwjglDebug || SystemProperties.SDL_GPU_DEBUG;
+        final boolean gpuDebug = SystemProperties.LWJGL_DEBUG || SystemProperties.SDL_GPU_DEBUG;
         final String forcedDriver = resolveDriverName(driverHint, Platform.get() == Platform.WINDOWS);
-        device = SDL_CreateGPUDevice(requestedFormats, gpuDebug, forcedDriver);
-        if (device == 0 && forcedDriver != null) {
-            LOG.warn("Failed to create a '{}' SDL GPU device ({}); falling back to SDL's default backend. Set -D{} to pin one.", forcedDriver, SDLError.SDL_GetError(), SystemProperties.KEY_SDL_GPU_DRIVER);
-            device = SDL_CreateGPUDevice(requestedFormats, gpuDebug, (CharSequence) null);
+        device = createGPUDevice(gpuDebug, forcedDriver);
+        if (device == 0 && VideoDriverRecovery.shouldRetryOnX11(SDL_GetCurrentVideoDriver(), vulkanLoaderAvailable(), System.getenv("DISPLAY"))) {
+            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, forcedDriver));
         }
         if (device == 0) {
-            throw new RuntimeException("Failed to create SDL GPU device: " + SDLError.SDL_GetError());
+            logDeviceCreationFailure(REQUESTED_SHADER_FORMATS);
+            return false;
         }
 
         driverName = SDL_GetGPUDeviceDriver(device);
@@ -77,12 +84,29 @@ public final class Device {
         driverVersion = SDLProperties.SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "");
         driverInfo = SDLProperties.SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, "");
 
-        LOG.info("SDL GPU device created: gpu={}, driver={} {}, formats=0x{}, debug={}, forcedDriver={}", deviceName, driverName, driverVersion, Integer.toHexString(supportedShaderFormats), gpuDebug, forcedDriver);
+        LOG.info("SDL GPU device created: gpu={}, driver={} {}, video={}, formats=0x{}, debug={}, forcedDriver={}", deviceName, driverName, driverVersion, SDL_GetCurrentVideoDriver(), Integer.toHexString(supportedShaderFormats), gpuDebug, forcedDriver);
 
-        if ("metal".equalsIgnoreCase(driverName) && ver < SDLVersion.SDL_VERSIONNUM(3, 4, 6)) {
-            LOG.fatal("SDL GPU on Metal requires SDL 3.4.6 or newer; exiting");
-            SDLGPUGate.markFatalInit();
-            return;
+        if (metalNeedsNewerSdl(driverName, ver)) {
+            LOG.error("SDL GPU on Metal requires SDL 3.4.6 or newer (have {}.{}.{}); falling back to OpenGL", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver));
+            destroyDevice();
+            return false;
+        }
+
+        return true;
+    }
+
+    private long createGPUDevice(boolean gpuDebug, String forcedDriver) {
+        long dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, forcedDriver);
+        if (dev == 0 && forcedDriver != null) {
+            LOG.warn("Failed to create a '{}' SDL GPU device ({}); falling back to SDL's default backend. Set -D{} to pin one.", forcedDriver, SDLError.SDL_GetError(), SystemProperties.KEY_SDL_GPU_DRIVER);
+            dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, (CharSequence) null);
+        }
+        return dev;
+    }
+
+    public void claimWindow(long window) {
+        if (device == 0) {
+            throw new IllegalStateException("SDL GPU device not created");
         }
 
         if (window == 0) {
@@ -92,6 +116,7 @@ public final class Device {
         if (!SDL_ClaimWindowForGPUDevice(device, window)) {
             throw new RuntimeException("Failed to claim window for SDL GPU device: " + SDLError.SDL_GetError());
         }
+        claimed = true;
 
         final int n = FRAMES_IN_FLIGHT;
         if (!SDL_SetGPUAllowedFramesInFlight(device, n)) {
@@ -102,6 +127,53 @@ public final class Device {
 
         logWindowDiagnostics(window);
         LOG.info("SDL GPU device claimed window successfully");
+    }
+
+    private static boolean vulkanLoaderAvailable() {
+        if (Platform.get() == Platform.MACOSX) return false;
+        if (!SDLVulkan.SDL_Vulkan_LoadLibrary((CharSequence) null)) return false;
+        SDLVulkan.SDL_Vulkan_UnloadLibrary();
+        return true;
+    }
+
+    private static void logDeviceCreationFailure(int requestedFormats) {
+        final StringBuilder drivers = new StringBuilder();
+        final int n = SDL_GetNumGPUDrivers();
+        for (int i = 0; i < n; i++) {
+            if (i > 0) drivers.append(", ");
+            drivers.append(SDL_GetGPUDriver(i));
+        }
+        final String videoDriver = SDL_GetCurrentVideoDriver();
+        LOG.error("SDL GPU device creation failed. platform={}, videoDriver={}, requestedShaderFormats=0x{}, compiledGpuDrivers=[{}]", Platform.get(), videoDriver, Integer.toHexString(requestedFormats), drivers);
+
+        if (Platform.get() != Platform.MACOSX) {
+            if (SDLVulkan.SDL_Vulkan_LoadLibrary((CharSequence) null)) {
+                SDLVulkan.SDL_Vulkan_UnloadLibrary();
+                LOG.error("A Vulkan loader is present, so no GPU met SDL's requirements");
+            } else {
+                LOG.error("No usable Vulkan loader: {}", SDLError.SDL_GetError());
+                if (!"x11".equalsIgnoreCase(videoDriver)) {
+                    LOG.error("Retrying under SDL_VIDEODRIVER=x11 did not help either.");
+                }
+            }
+        }
+        LOG.error("Continuing on OpenGL. Set -D{}=false to skip this probe entirely.", SystemProperties.KEY_USE_SDL_GPU);
+    }
+
+    public void destroyDevice() {
+        if (device == 0) return;
+        if (claimed) {
+            final long window = Display.getWindow();
+            if (window != 0) SDL_ReleaseWindowFromGPUDevice(device, window);
+            claimed = false;
+        }
+        SDL_DestroyGPUDevice(device);
+        device = 0;
+        driverName = null;
+        deviceName = null;
+        driverVersion = null;
+        driverInfo = null;
+        supportedShaderFormats = 0;
     }
 
     private void logWindowDiagnostics(long window) {
@@ -146,12 +218,7 @@ public final class Device {
 
     public void shutdown() {
         if (device != 0) {
-            final long window = Display.getWindow();
-            if (window != 0) {
-                SDL_ReleaseWindowFromGPUDevice(device, window);
-            }
-            SDL_DestroyGPUDevice(device);
-            device = 0;
+            destroyDevice();
             LOG.info("SDL GPU device destroyed");
         }
     }
