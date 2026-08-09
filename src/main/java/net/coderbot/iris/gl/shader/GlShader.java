@@ -5,6 +5,7 @@ package net.coderbot.iris.gl.shader;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.gl.GlResource;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;

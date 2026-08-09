@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.ARBDebugOutput;
 import org.lwjgl.opengl.GL11;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 /**
@@ -14,8 +15,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
  */
 public class DriverCompatabilityCheck {
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
-
-    private static final boolean DISABLE_NVIDIA_WORKAROUND = Boolean.getBoolean("angelica.disableNvidiaWorkaround");
 
     /**
      * Should be called after GL context is created and GLStateManager is initialized.
@@ -30,7 +29,7 @@ public class DriverCompatabilityCheck {
         LOGGER.info("OpenGL Version: {}", version);
 
         if (vendor != null && vendor.contains("NVIDIA")) {
-            if (DISABLE_NVIDIA_WORKAROUND) {
+            if (SystemProperties.DISABLE_NVIDIA_WORKAROUND) {
                 LOGGER.info("NVIDIA workaround disabled via -Dangelica.disableNvidiaWorkaround=true");
             } else {
                 applyNvidiaWorkaround();

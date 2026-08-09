@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -17,6 +19,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Minecraft.class)
@@ -97,6 +100,16 @@ public abstract class MixinMinecraft {
         angelica$lastFrameTime = time;
     }
 
+    @Redirect(method = {"startGame", "toggleFullscreen"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;setVSyncEnabled(Z)V", remap = false))
+    private void angelica$redirectVSync(boolean sync) {
+        GLStateManager.setVSyncEnabled(sync);
+    }
+
+    @Inject(method = "startGame", at = @At("RETURN"))
+    private void angelica$markSplashCompleteOnStartGame(CallbackInfo ci) {
+        GLStateManager.markSplashComplete("startGame");
+    }
+
     @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
     private boolean angelica$noopFPSLimiter(int fps) {
         return false;
@@ -122,8 +135,10 @@ public abstract class MixinMinecraft {
         }
     }
 
-    @Inject(method = "runTick", at = @At("RETURN"))
+    @Inject(method = "runGameLoop", at = @At("RETURN"))
     private void angelica$streamingBufferEndFrame(CallbackInfo ci) {
         TessellatorStreamingDrawer.endFrame();
+        BatchingFontRenderer.endFrame();
+        ShaderManager.endFrame();
     }
 }

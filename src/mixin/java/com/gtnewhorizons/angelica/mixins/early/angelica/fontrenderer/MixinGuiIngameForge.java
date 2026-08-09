@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.fontrenderer;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraftforge.client.GuiIngameForge;
@@ -26,11 +27,36 @@ public class MixinGuiIngameForge {
         fra.angelica$getBatcher().beginBatch();
     }
 
+    // ordinal 1 = "forgeHudText"; ordinal 0 ends "debug" before beginBatch runs.
     @Inject(
         method = "renderHUDText",
-        at = @At(value = "INVOKE", target = "net/minecraft/profiler/Profiler.endSection()V"))
+        at = @At(value = "INVOKE", target = "net/minecraft/profiler/Profiler.endSection()V", ordinal = 1))
     private void angelica$endF3TextBatching(int width, int height, CallbackInfo ci) {
         FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
+
+        final boolean depthWasEnabled = GLStateManager.getDepthTest().isEnabled();
+        GLStateManager.disableDepthTest();
         fra.angelica$getBatcher().endBatch();
+        if (depthWasEnabled) {
+            GLStateManager.enableDepthTest();
+        }
+    }
+
+    @Inject(method = "renderHotbar", at = @At("HEAD"), remap = false)
+    private void angelica$startHotbarTextBatching(int width, int height, float partialTicks, CallbackInfo ci) {
+        final FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
+        fra.angelica$getBatcher().beginBatch();
+    }
+
+    @Inject(method = "renderHotbar", at = @At("RETURN"), remap = false)
+    private void angelica$endHotbarTextBatching(int width, int height, float partialTicks, CallbackInfo ci) {
+        final FontRendererAccessor fra = (FontRendererAccessor) (Object) fontrenderer;
+
+        final boolean depthWasEnabled = GLStateManager.getDepthTest().isEnabled();
+        GLStateManager.disableDepthTest();
+        fra.angelica$getBatcher().endBatch();
+        if (depthWasEnabled) {
+            GLStateManager.enableDepthTest();
+        }
     }
 }

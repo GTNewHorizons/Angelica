@@ -9,7 +9,6 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.SharedDrawable;
 
-import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
@@ -40,16 +39,12 @@ public class GLSM_ServerSideState_UnitTest {
     private volatile boolean shutdownRequested;
     private boolean originalSplashComplete;
 
-    private static void setSplashComplete(boolean value) throws Exception {
-        final Field splashCompleteField = GLStateManager.class.getDeclaredField("splashComplete");
-        splashCompleteField.setAccessible(true);
-        splashCompleteField.setBoolean(null, value);
+    private static void setSplashComplete(boolean value) {
+        SplashWindow.setSplashComplete(value);
     }
 
-    private static boolean getSplashComplete() throws Exception {
-        final Field splashCompleteField = GLStateManager.class.getDeclaredField("splashComplete");
-        splashCompleteField.setAccessible(true);
-        return splashCompleteField.getBoolean(null);
+    private static boolean getSplashComplete() {
+        return SplashWindow.isSplashComplete();
     }
 
     @BeforeEach
@@ -144,7 +139,7 @@ public class GLSM_ServerSideState_UnitTest {
         GLStateManager.setDrawableGL(null);
         setSplashComplete(originalSplashComplete);
         if (originalSplashComplete) {
-            GLStateManager.markSplashComplete();
+            GLStateManager.markSplashComplete("test");
         }
     }
 

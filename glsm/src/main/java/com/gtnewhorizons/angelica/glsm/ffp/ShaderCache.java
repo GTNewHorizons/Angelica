@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import lombok.Setter;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
@@ -25,6 +26,8 @@ import java.util.IdentityHashMap;
  * </pre>
  */
 public class ShaderCache {
+    private static final Tracy.ZoneId Z_FFP_SHADER_GEN = Tracy.zoneId("ffpShaderGen", Tracy.COLOR_FFP);
+
     private static final int SLOT_STRIDE = 6;
     private static final int INITIAL_CAPACITY = 64; // power of 2
     private static final long EMPTY_MARKER = 0L; // slot [1] == 0 means empty (fkLen >= 1 guarantees nonzero)
@@ -98,17 +101,24 @@ public class ShaderCache {
         }
 
         final VertexKey vk = VertexKey.fromPacked(vkPacked);
-        final String vertSrc = getOrGenerateVertex(vk);
-
         final FragmentKey fk = FragmentKey.fromPacked(fkPacked, fkLen);
-        String fragSrc = findFragSource(fkPacked, fkLen);
-        if (fragSrc == null) {
-            fragSrc = FragmentShaderGenerator.generate(fk);
-            uniqueFragCount++;
+        final String vertSrc;
+        String fragSrc;
+        final String geomSrc;
+        final Program program;
+        if (Tracy.ENABLED) Tracy.beginZone(Z_FFP_SHADER_GEN);
+        try {
+            vertSrc = getOrGenerateVertex(vk);
+            fragSrc = findFragSource(fkPacked, fkLen);
+            if (fragSrc == null) {
+                fragSrc = FragmentShaderGenerator.generate(fk);
+                uniqueFragCount++;
+            }
+            geomSrc = vk.wideLineEmulation() ? getOrGenerateGeometry(vk) : null;
+            program = Program.create(vk, fk, vertSrc, fragSrc, geomSrc);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
         }
-
-        final String geomSrc = vk.wideLineEmulation() ? getOrGenerateGeometry(vk) : null;
-        final Program program = Program.create(vk, fk, vertSrc, fragSrc, geomSrc);
 
         final int insertIdx = findEmptySlot(hash);
         final int base = insertIdx * SLOT_STRIDE;

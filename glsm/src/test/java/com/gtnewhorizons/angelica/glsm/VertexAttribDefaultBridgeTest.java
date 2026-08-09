@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import org.lwjgl.opengl.GL11;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL13;
@@ -91,7 +92,7 @@ class VertexAttribDefaultBridgeTest {
         GLStateManager.flushDeferredVertexAttribs(false, false, false, false);
 
         int listId = GLStateManager.glGenLists(1);
-        GLStateManager.glNewList(listId, org.lwjgl.opengl.GL11.GL_COMPILE);
+        GLStateManager.glNewList(listId, GL11.GL_COMPILE);
 
         // Color during COMPILE should NOT reach changeColor (early return)
         GLStateManager.glColor4f(0.9f, 0.8f, 0.7f, 0.6f);

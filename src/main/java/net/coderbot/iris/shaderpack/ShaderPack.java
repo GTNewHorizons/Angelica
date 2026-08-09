@@ -14,6 +14,8 @@ import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
 import net.coderbot.iris.gl.image.ImageInformation;
 import net.coderbot.iris.gl.texture.TextureDefinition;
+import net.coderbot.iris.pipeline.transform.SamplerToStorageImageRewriter;
+import net.coderbot.iris.pipeline.transform.RwImageStoreExtractor;
 import net.coderbot.iris.shaderpack.include.AbsolutePackPath;
 import net.coderbot.iris.shaderpack.include.IncludeGraph;
 import net.coderbot.iris.shaderpack.include.IncludeProcessor;
@@ -229,7 +231,7 @@ public class ShaderPack {
 		}
 		Iris.logger.info("Environment defines: {}", finalEnvironmentDefines.stream()
 			.map(p -> p.getKey() + "=" + p.getValue())
-			.collect(java.util.stream.Collectors.joining(", ")));
+			.collect(Collectors.joining(", ")));
 
 		this.shaderProperties = Optional.ofNullable(readProperties(root, "shaders.properties"))
 				.map(source -> new ShaderProperties(source, shaderPackOptions, finalEnvironmentDefines))
@@ -364,6 +366,9 @@ public class ShaderPack {
         this.customUniforms = shaderProperties.getCustomUniforms();
 		this.customImages = shaderProperties.getCustomImages();
 		this.bufferObjects = shaderProperties.getBufferObjects();
+
+		SamplerToStorageImageRewriter.setActiveCandidates(SamplerToStorageImageRewriter.buildCandidates(this.customImages.values()));
+		RwImageStoreExtractor.setActiveCustomImages(this.customImages);
 	}
 
 	private String getCurrentProfileName() {

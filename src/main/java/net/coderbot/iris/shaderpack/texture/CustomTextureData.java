@@ -1,9 +1,9 @@
 package net.coderbot.iris.shaderpack.texture;
 
 import lombok.Getter;
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
-import net.coderbot.iris.gl.texture.PixelFormat;
-import net.coderbot.iris.gl.texture.PixelType;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelType;
 
 public abstract class CustomTextureData {
 	CustomTextureData() {

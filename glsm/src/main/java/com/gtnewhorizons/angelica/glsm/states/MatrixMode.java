@@ -14,12 +14,7 @@ public class MatrixMode implements ISettableState<MatrixMode> {
             return;
         }
 
-        final boolean bypass = GLStateManager.shouldBypassCache();
-        if (bypass || this.mode != mode) {
-            if (!bypass) {
-                this.mode = mode;
-            }
-        }
+        this.mode = mode;
     }
 
     public int getMatrix() {

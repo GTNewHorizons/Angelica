@@ -4,6 +4,7 @@ import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.ints.IntList;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.features.FeatureFlags;
@@ -37,6 +38,7 @@ import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -52,6 +54,8 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 
 public class FinalPassRenderer {
+	private static final Tracy.ZoneId Z_GEN_MIPMAP = Tracy.zoneId("genMipmap", Tracy.COLOR_IRIS);
+
 	private final RenderTargets renderTargets;
 
 	@Nullable
@@ -69,6 +73,11 @@ public class FinalPassRenderer {
 	@Nullable private final Set<GlImage> customImages;
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
+	private int samplerUsage;
+
+	public int getSamplerUsage() {
+		return samplerUsage;
+	}
 
 	public FinalPassRenderer(ProgramSet pack, RenderTargets renderTargets, TextureAccess noiseTexture,
 							 FrameUpdateNotifier updateNotifier, ImmutableSet<Integer> flippedBuffers,
@@ -104,6 +113,10 @@ public class FinalPassRenderer {
 			return pass;
 		}).orElse(null);
 
+		if (Tracy.ENABLED && finalPass != null) {
+			Tracy.message("passGraph final/" + stageName + " mipmapped=" + finalPass.mipmappedBuffers + " readsAlt=" + finalPass.stageReadsFromAlt);
+		}
+
 		final IntList buffersToBeCleared = pack.getPackDirectives().getRenderTargetDirectives().getBuffersToBeCleared();
 
 		// The name of this method might seem a bit odd here, but we want a framebuffer with color attachments that line
@@ -117,30 +130,29 @@ public class FinalPassRenderer {
 		this.lastColorTextureVersion = ((IRenderTargetExt)main).iris$getColorBufferVersion();
 		this.colorHolder.addColorAttachment(0, lastColorTextureId);
 
-		// TODO: We don't actually fully swap the content, we merely copy it from alt to main
-		// This works for the most part, but it's not perfect. A better approach would be creating secondary
-		// framebuffers for every other frame, but that would be a lot more complex...
-
 		final ImmutableList.Builder<SwapPass> swapPasses = ImmutableList.builder();
+		final boolean parityFlip = renderTargets.getParityState() != null && renderTargets.getParityState().isEnabled();
 
-		flippedBuffers.forEach((i) -> {
-			final int target = i;
+		if (!parityFlip) {
+			flippedBuffers.forEach((i) -> {
+				final int target = i;
 
-			if (buffersToBeCleared.contains(target)) {
-				return;
-			}
+				if (buffersToBeCleared.contains(target)) {
+					return;
+				}
 
-			final SwapPass swap = new SwapPass();
-			final RenderTarget target1 = renderTargets.get(target);
-			swap.target = target;
-			swap.width = target1.getWidth();
-			swap.height = target1.getHeight();
-			// Non-flipped buffers write to ALT, copy ALT→MAIN to preserve data
-			swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
-			swap.targetTexture = renderTargets.get(target).getMainTexture();
+				final SwapPass swap = new SwapPass();
+				final RenderTarget target1 = renderTargets.get(target);
+				swap.target = target;
+				swap.width = target1.getWidth();
+				swap.height = target1.getHeight();
+				// Non-flipped buffers write to ALT, copy ALT→MAIN to preserve data
+				swap.from = renderTargets.createColorFramebuffer(ImmutableSet.of(), new int[] {target});
+				swap.targetTexture = renderTargets.get(target).getMainTexture();
 
-			swapPasses.add(swap);
-		});
+				swapPasses.add(swap);
+			});
+		}
 
 		this.swapPasses = swapPasses.build();
 
@@ -215,6 +227,8 @@ public class FinalPassRenderer {
 			colorHolder.addColorAttachment(0, lastColorTextureId);
 		}
 
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+		profiler.startSection("iris_final_program");
 		if (this.finalPass != null) {
 			// If there is a final pass, we use the shader-based full screen quad rendering pathway instead of just copying the color buffer.
 
@@ -222,8 +236,10 @@ public class FinalPassRenderer {
 
 			FullScreenQuadRenderer.INSTANCE.begin();
 
+			boolean ranCompute = false;
 			for (ComputeProgram computeProgram : finalPass.computes) {
 				if (computeProgram != null) {
+					ranCompute = true;
                     computeProgram.use();
                     this.customUniforms.push(computeProgram);
 					computeProgram.dispatch(baseWidth, baseHeight);
@@ -232,11 +248,18 @@ public class FinalPassRenderer {
 
 			RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
 
+			if (ranCompute) {
+				for (int i = 0; i < renderTargets.getRenderTargetCount(); i++) {
+					renderTargets.get(i).markBothDirty();
+				}
+			}
+
 			if (!finalPass.mipmappedBuffers.isEmpty()) {
 				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
+				final ImmutableSet<Integer> readsFromAlt = renderTargets.parityResolve(finalPass.stageReadsFromAlt);
 				for (int index : finalPass.mipmappedBuffers) {
-					setupMipmapping(renderTargets.get(index), finalPass.stageReadsFromAlt.contains(index));
+					setupMipmapping(renderTargets.get(index), readsFromAlt.contains(index));
 				}
 			}
 
@@ -263,6 +286,7 @@ public class FinalPassRenderer {
 
 			RenderSystem.copyTexSubImage2D(main.framebufferTexture, GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, baseWidth, baseHeight);
 		}
+		profiler.endSection();
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 
@@ -271,6 +295,8 @@ public class FinalPassRenderer {
 			resetRenderTarget(renderTargets.get(i));
 		}
 
+		profiler.startSection("iris_final_swaps");
+		if (Tracy.ENABLED) Tracy.zoneValue(swapPasses.size());
 		for (SwapPass swapPass : swapPasses) {
 			// NB: We need to use bind(), not bindAsReadBuffer()... Previously we used bindAsReadBuffer() here which
 			//     broke TAA on many packs and on many drivers.
@@ -285,6 +311,7 @@ public class FinalPassRenderer {
 			GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, swapPass.targetTexture);
             GLStateManager.glCopyTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, 0, 0, swapPass.width, swapPass.height);
 		}
+		profiler.endSection();
 
 		// Make sure to reset the viewport to how it was before... Otherwise weird issues could occur.
 		// Also bind the "main" framebuffer if it isn't already bound.
@@ -293,7 +320,8 @@ public class FinalPassRenderer {
 		ProgramSamplers.clearActiveSamplers();
 		GLStateManager.glUseProgram(0);
 
-		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {
+		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLStateManager.getMaxBoundTextureUnit());
+		for (int i = 0; i <= maxUnit; i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work properly
 			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
@@ -319,18 +347,18 @@ public class FinalPassRenderer {
 	private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
 		final int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
 
-		// TODO: Only generate the mipmap if a valid mipmap hasn't been generated or if we've written to the buffer
-		// (since the last mipmap was generated)
-		//
-		// NB: We leave mipmapping enabled even if the buffer is written to again, this appears to match the
-		// behavior of ShadersMod/OptiFine, however I'm not sure if it's desired behavior. It's possible that a
-		// program could use mipmapped sampling with a stale mipmap, which probably isn't great. However, the
-		// sampling mode is always reset between frames, so this only persists after the first program to use
-		// mipmapping on this buffer.
-		//
-		// Also note that this only applies to one of the two buffers in a render target buffer pair - making it
-		// unlikely that this issue occurs in practice with most shader packs.
-		RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		if (target.isDirty(readFromAlt)) {
+			if (Tracy.ENABLED) {
+				Tracy.beginZone(Z_GEN_MIPMAP);
+				Tracy.zoneValue(texture);
+			}
+			try {
+				RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
+			target.clearDirty(readFromAlt);
+		}
 
 		int filter = GL11.GL_LINEAR_MIPMAP_LINEAR;
 		if (target.getInternalFormat().getPixelFormat().isInteger()) {
@@ -381,21 +409,21 @@ public class FinalPassRenderer {
 		final ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
 
 		CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
-		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 		// Bind custom images as samplers BEFORE render target images
 		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 		// Bind custom textures (PNG files from shader pack)
 		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-		IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+		IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 		// Bind custom images as image units AFTER render target images
 		IrisImages.addCustomImages(builder, customImages);
 
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-		IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+		samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-			IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+			samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 		}
 
@@ -434,18 +462,18 @@ public class FinalPassRenderer {
                 customUniforms.assignTo(builder);
 
 				CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
-				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 				IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 				IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-				IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+				IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 				IrisImages.addCustomImages(builder, customImages);
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+				samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+					samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 					IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 				}
 

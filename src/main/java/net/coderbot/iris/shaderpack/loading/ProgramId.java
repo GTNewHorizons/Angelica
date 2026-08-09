@@ -2,7 +2,7 @@ package net.coderbot.iris.shaderpack.loading;
 
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import net.coderbot.iris.gl.blending.AlphaTest;
-import net.coderbot.iris.gl.blending.AlphaTestFunction;
+import com.gtnewhorizons.angelica.glsm.states.AlphaTestFunction;
 import net.coderbot.iris.gl.blending.AlphaTestOverride;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
 import org.lwjgl.opengl.GL11;
@@ -32,7 +32,7 @@ public enum ProgramId {
 	DamagedBlock(ProgramGroup.Gbuffers, "damagedblock", Terrain),
 
 	Block(ProgramGroup.Gbuffers, "block", Terrain),
-	BlockTrans(ProgramGroup.Gbuffers, "block_translucent", Block, BlendModeOverride.OFF),
+	BlockTrans(ProgramGroup.Gbuffers, "block_translucent", Block),
 	BeaconBeam(ProgramGroup.Gbuffers, "beaconbeam", Textured),
 	Item(ProgramGroup.Gbuffers, "item", TexturedLit),
 

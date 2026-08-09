@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.loading.shared.transformers;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizon.gtnhlib.asm.ClassConstantPoolParser;
-import net.minecraft.launchwrapper.Launch;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import org.apache.commons.lang3.tuple.Pair;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -16,8 +16,6 @@ import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
-import java.lang.invoke.MethodHandle;
-import java.lang.invoke.MethodHandles;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
@@ -27,7 +25,7 @@ import java.util.concurrent.ConcurrentHashMap;
 
 public final class CeleritasBlockTransform implements Opcodes {
 
-    private static final boolean LOG_SPAM = Boolean.getBoolean("angelica.redirectorLogspam");
+    private static final boolean LOG_SPAM = SystemProperties.REDIRECTOR_LOGSPAM;
     private static final Logger LOGGER = LogManager.getLogger("CeleritasBlockTransformer");
     private static final String BlockClass = "net/minecraft/block/Block";
     private static final String ThreadedBlockData = "com/gtnewhorizons/angelica/client/rendering/ThreadedBlockData";

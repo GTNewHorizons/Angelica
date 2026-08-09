@@ -1,5 +1,7 @@
 package com.prupe.mcpatcher.mal.biome;
 
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
+
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
@@ -196,6 +198,66 @@ abstract public class ColorMapBase {
         @Override
         public IColorMap copy() {
             return new Cached(parent.copy());
+        }
+    }
+
+    public static final class BlockCached implements IColorMap {
+
+        private static final int MAX_ENTRIES = 4096;
+
+        private final IColorMap parent;
+        private final Long2ObjectOpenHashMap<float[]> cache = new Long2ObjectOpenHashMap<>();
+        private IBlockAccess lastBlockAccess;
+
+        public BlockCached(IColorMap parent) {
+            this.parent = parent;
+        }
+
+        @Override
+        public String toString() {
+            return parent.toString();
+        }
+
+        @Override
+        public boolean isHeightDependent() {
+            return parent.isHeightDependent();
+        }
+
+        @Override
+        public int getColorMultiplier() {
+            return parent.getColorMultiplier();
+        }
+
+        @Override
+        public int getColorMultiplier(IBlockAccess blockAccess, int i, int j, int k) {
+            return ColorUtils.float3ToInt(getColorMultiplierF(blockAccess, i, j, k));
+        }
+
+        @Override
+        public float[] getColorMultiplierF(IBlockAccess blockAccess, int i, int j, int k) {
+            if (blockAccess != lastBlockAccess) {
+                cache.clear();
+                lastBlockAccess = blockAccess;
+            }
+            final long key = (((long) i & 0x3FFFFFFL) << 38) | (((long) k & 0x3FFFFFFL) << 12) | ((long) j & 0xFFFL);
+            float[] color = cache.get(key);
+            if (color == null) {
+                final float[] src = parent.getColorMultiplierF(blockAccess, i, j, k);
+                color = new float[] { src[0], src[1], src[2] };
+                if (cache.size() >= MAX_ENTRIES) cache.clear();
+                cache.put(key, color);
+            }
+            return color;
+        }
+
+        @Override
+        public void claimResources(Collection<ResourceLocation> resources) {
+            parent.claimResources(resources);
+        }
+
+        @Override
+        public IColorMap copy() {
+            return new BlockCached(parent.copy());
         }
     }
 

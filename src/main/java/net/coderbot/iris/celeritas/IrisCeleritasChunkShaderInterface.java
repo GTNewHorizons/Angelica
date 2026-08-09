@@ -1,6 +1,7 @@
 package net.coderbot.iris.celeritas;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.blending.BlendModeOverride;
@@ -34,6 +35,12 @@ import java.util.List;
 
 public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
     @Nullable
+    private static final Tracy.ZoneId Z_IRIS_SETUP_FBO = Tracy.zoneId("iris_setup_fbo", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_UNIFORMS = Tracy.zoneId("iris_setup_uniforms", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_SAMPLERS = Tracy.zoneId("iris_setup_samplers", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_IMAGES = Tracy.zoneId("iris_setup_images", Tracy.COLOR_IRIS);
+    private static final Tracy.ZoneId Z_IRIS_SETUP_CUSTOM = Tracy.zoneId("iris_setup_custom", Tracy.COLOR_IRIS);
+
     private final GlUniformMatrix4f uniformModelViewMatrix;
     @Nullable
     private final GlUniformMatrix4f uniformModelViewMatrixInverse;
@@ -45,6 +52,8 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
     private final GlUniformMatrix3f uniformNormalMatrix;
     @Nullable
     private final GlUniformFloat3v uniformRegionOffset;
+    @Nullable
+    private final GlUniformMatrix4f uniformLightmapTextureMatrix;
 
     // Iris program state
     private final ProgramUniforms irisProgramUniforms;
@@ -57,10 +66,18 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
     private final List<BufferBlendOverride> bufferBlendOverrides;
     private final boolean hasOverrides;
 
-    // Stored matrices for inverse and normal matrix computation
-    private final Matrix4f projectionMatrixInverse = new Matrix4f();
-    private final Matrix4f modelViewMatrixInverse = new Matrix4f();
-    private final Matrix3f normalMatrix = new Matrix3f();
+    private final Matrix4f lastProjection = new Matrix4f();
+    private final Matrix4f lastModelView = new Matrix4f();
+    private boolean hasLastProjection;
+    private boolean hasLastModelView;
+
+    private static final Matrix4f sharedProjKey = new Matrix4f();
+    private static final Matrix4f sharedProjInverse = new Matrix4f();
+    private static boolean sharedProjValid;
+    private static final Matrix4f sharedMvKey = new Matrix4f();
+    private static final Matrix4f sharedMvInverse = new Matrix4f();
+    private static final Matrix3f sharedNormal = new Matrix3f();
+    private static boolean sharedMvValid;
 
     public IrisCeleritasChunkShaderInterface(int handle, ShaderBindingContext context, CeleritasTerrainPipeline pipeline, boolean isShadowPass, BlendModeOverride blendModeOverride, List<BufferBlendOverride> bufferBlendOverrides, CustomUniforms customUniforms) {
         this.uniformModelViewMatrix = context.bindUniformIfPresent("iris_ModelViewMatrix", GlUniformMatrix4f::new);
@@ -69,6 +86,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         this.uniformProjectionMatrixInverse = context.bindUniformIfPresent("iris_ProjectionMatrixInverse", GlUniformMatrix4f::new);
         this.uniformNormalMatrix = context.bindUniformIfPresent("iris_NormalMatrix", GlUniformMatrix3f::new);
         this.uniformRegionOffset = context.bindUniformIfPresent("u_RegionOffset", GlUniformFloat3v::new);
+        this.uniformLightmapTextureMatrix = context.bindUniformIfPresent("iris_LightmapTextureMatrix", GlUniformMatrix4f::new);
 
         this.blendModeOverride = blendModeOverride;
         this.bufferBlendOverrides = bufferBlendOverrides;
@@ -84,10 +102,18 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
 
     @Override
     public void setupState(TerrainRenderPass pass) {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_FBO);
         bindFramebuffer(pass);
 
         if (ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
             GLStateManager.disableCull();
+        }
+
+        // Explicitly set iris_LightmapTextureMatrix rather than relying on CompatUniformManager.
+        // At high uniform locations in large UBOs, the compat manager's writes may not persist
+        // through the per-program dirtyUniforms swap in non-GL backends.
+        if (uniformLightmapTextureMatrix != null) {
+            uniformLightmapTextureMatrix.set(GLStateManager.getTextures().getTextureUnitMatrix(1));
         }
 
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + IrisSamplers.ALBEDO_TEXTURE_UNIT);
@@ -104,18 +130,27 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         if (hasOverrides) {
             bufferBlendOverrides.forEach(BufferBlendOverride::apply);
         }
+        if (Tracy.ENABLED) Tracy.endZone();
 
         if (irisProgramUniforms != null) {
+            if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_UNIFORMS);
             irisProgramUniforms.update();
+            if (Tracy.ENABLED) Tracy.endZone();
         }
         if (irisProgramSamplers != null) {
+            if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_SAMPLERS);
             irisProgramSamplers.update();
+            if (Tracy.ENABLED) Tracy.endZone();
         }
         if (irisProgramImages != null) {
+            if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_IMAGES);
             irisProgramImages.update();
+            if (Tracy.ENABLED) Tracy.endZone();
         }
 
+        if (Tracy.ENABLED) Tracy.beginZone(Z_IRIS_SETUP_CUSTOM);
         customUniforms.push(this);
+        if (Tracy.ENABLED) Tracy.endZone();
     }
 
     @Override
@@ -135,34 +170,55 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
 
     @Override
     public void setProjectionMatrix(Matrix4fc matrix) {
+        if (hasLastProjection && lastProjection.equals(matrix, 0.0f)) {
+            return;
+        }
+        hasLastProjection = true;
+        lastProjection.set(matrix);
+
         if (uniformProjectionMatrix != null) {
             uniformProjectionMatrix.set(matrix);
         }
 
         if (uniformProjectionMatrixInverse != null) {
-            projectionMatrixInverse.set(matrix);
-            projectionMatrixInverse.invert();
-            uniformProjectionMatrixInverse.set(projectionMatrixInverse);
+            if (!sharedProjValid || !sharedProjKey.equals(matrix, 0.0f)) {
+                sharedProjValid = true;
+                sharedProjKey.set(matrix);
+                sharedProjInverse.set(matrix);
+                sharedProjInverse.invert();
+            }
+            uniformProjectionMatrixInverse.set(sharedProjInverse);
         }
     }
 
     @Override
     public void setModelViewMatrix(Matrix4fc modelView) {
+        if (hasLastModelView && lastModelView.equals(modelView, 0.0f)) {
+            return;
+        }
+        hasLastModelView = true;
+        lastModelView.set(modelView);
+
         if (uniformModelViewMatrix != null) {
             uniformModelViewMatrix.set(modelView);
         }
 
-        if (uniformModelViewMatrixInverse != null) {
-            modelViewMatrixInverse.set(modelView);
-            modelViewMatrixInverse.invert();
-            uniformModelViewMatrixInverse.set(modelViewMatrixInverse);
-        }
-
-        if (uniformNormalMatrix != null) {
-            normalMatrix.set(modelView);
-            normalMatrix.invert();
-            normalMatrix.transpose();
-            uniformNormalMatrix.set(normalMatrix);
+        if (uniformModelViewMatrixInverse != null || uniformNormalMatrix != null) {
+            if (!sharedMvValid || !sharedMvKey.equals(modelView, 0.0f)) {
+                sharedMvValid = true;
+                sharedMvKey.set(modelView);
+                sharedMvInverse.set(modelView);
+                sharedMvInverse.invert();
+                sharedNormal.set(modelView);
+                sharedNormal.invert();
+                sharedNormal.transpose();
+            }
+            if (uniformModelViewMatrixInverse != null) {
+                uniformModelViewMatrixInverse.set(sharedMvInverse);
+            }
+            if (uniformNormalMatrix != null) {
+                uniformNormalMatrix.set(sharedNormal);
+            }
         }
     }
 
@@ -206,7 +262,7 @@ public class IrisCeleritasChunkShaderInterface implements ChunkShaderInterface {
         }
     }
 
-    @org.jetbrains.annotations.Nullable
+    @Nullable
     private CeleritasTerrainPipeline getCeleritasTerrainPipeline() {
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
         return pipeline != null ? pipeline.getCeleritasTerrainPipeline() : null;

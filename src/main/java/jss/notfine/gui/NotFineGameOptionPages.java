@@ -2,6 +2,7 @@ package jss.notfine.gui;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
@@ -68,7 +69,7 @@ public class NotFineGameOptionPages {
                 .setControl(TickBoxControl::new)
                 .setBinding((opts, value) -> {
                     opts.enableVsync = value;
-                    Display.setVSyncEnabled(opts.enableVsync);
+                    GLStateManager.setVSyncEnabled(opts.enableVsync);
                 }, opts -> opts.enableVsync)
                 .setImpact(OptionImpact.VARIES)
                 .build())
@@ -412,14 +413,6 @@ public class NotFineGameOptionPages {
                 .setImpact(OptionImpact.LOW)
                 .setBinding((opts, value) -> opts.performance.useNoErrorGLContext = value, opts -> opts.performance.useNoErrorGLContext)
                 .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
-                .build())
-            .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                .setControl(TickBoxControl::new)
-                .setImpact(OptionImpact.EXTREME)
-                .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
-                .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
             .build());
 

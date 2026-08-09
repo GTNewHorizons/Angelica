@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.compat.mojang.NativeImage;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -9,7 +10,7 @@ import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.texture.GlTexture;
 import net.coderbot.iris.gl.texture.TextureAccess;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.gl.texture.TextureWrapper;
 import net.coderbot.iris.rendertarget.NativeImageBackedCustomTexture;
 import net.coderbot.iris.rendertarget.NativeImageBackedNoiseTexture;
@@ -33,8 +34,11 @@ import org.lwjgl.opengl.GL11;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.EnumMap;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 
 public class CustomTextureManager {
 	@Getter private final EnumMap<TextureStage, Object2ObjectMap<String, TextureAccess>> customTextureIdMap = new EnumMap<>(TextureStage.class);
@@ -48,10 +52,14 @@ public class CustomTextureManager {
 	private final List<AbstractTexture> ownedTextures = new ArrayList<>();
 	private final List<GlTexture> ownedRawTextures = new ArrayList<>();
 
+	private Map<CustomTextureData.PngData, CompletableFuture<NativeImage>> pngDecodeFutures;
+
 	public CustomTextureManager(PackDirectives packDirectives,
 								EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap,
 								Object2ObjectMap<String, CustomTextureData> irisCustomTextureDataMap,
 								Optional<CustomTextureData> customNoiseTextureData) {
+		this.pngDecodeFutures = submitPngDecodes(customTextureDataMap, irisCustomTextureDataMap, customNoiseTextureData);
+
 		customTextureDataMap.forEach((textureStage, customTextureStageDataMap) -> {
 			final Object2ObjectMap<String, TextureAccess> customTextureIds = new Object2ObjectOpenHashMap<>();
 
@@ -93,9 +101,37 @@ public class CustomTextureManager {
 		});
 	}
 
+	private static Map<CustomTextureData.PngData, CompletableFuture<NativeImage>> submitPngDecodes(
+			EnumMap<TextureStage, Object2ObjectMap<String, CustomTextureData>> customTextureDataMap,
+			Object2ObjectMap<String, CustomTextureData> irisCustomTextureDataMap,
+			Optional<CustomTextureData> customNoiseTextureData) {
+		final Map<CustomTextureData.PngData, CompletableFuture<NativeImage>> futures = new HashMap<>();
+		customTextureDataMap.values().forEach(stage -> stage.values().forEach(td -> tryQueueDecode(td, futures)));
+		irisCustomTextureDataMap.values().forEach(td -> tryQueueDecode(td, futures));
+		customNoiseTextureData.ifPresent(td -> tryQueueDecode(td, futures));
+		return futures;
+	}
+
+	private static void tryQueueDecode(CustomTextureData td, Map<CustomTextureData.PngData, CompletableFuture<NativeImage>> futures) {
+		if (!(td instanceof CustomTextureData.PngData png)) return;
+		if (futures.containsKey(png)) return;
+		futures.put(png, Iris.ShaderTransformExecutor.submitTracked(() -> {
+			try {
+				return NativeImageBackedCustomTexture.decode(png.getContent());
+			} catch (IOException e) {
+				return null;
+			}
+		}));
+	}
+
 	private TextureAccess createCustomTexture(CustomTextureData textureData) throws IOException {
-		if (textureData instanceof CustomTextureData.PngData) {
-			final AbstractTexture texture = new NativeImageBackedCustomTexture((CustomTextureData.PngData) textureData);
+		if (textureData instanceof CustomTextureData.PngData png) {
+			final CompletableFuture<NativeImage> future = pngDecodeFutures != null ? pngDecodeFutures.get(png) : null;
+			final NativeImage decoded = future != null ? future.join() : NativeImageBackedCustomTexture.decode(png.getContent());
+			if (decoded == null) {
+				throw new IOException("Failed to decode PNG (see prior log for cause)");
+			}
+			final AbstractTexture texture = new NativeImageBackedCustomTexture(decoded, png.getFilteringData());
 			ownedTextures.add(texture);
 
 			return new TextureWrapper(texture::getGlTextureId, TextureType.TEXTURE_2D);

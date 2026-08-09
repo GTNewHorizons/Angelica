@@ -39,4 +39,8 @@ public class StencilStateStack extends StencilState implements IStateStack<Stenc
     public boolean isEmpty() {
         return pointer == 0;
     }
+
+    public boolean topChanged() {
+        return pointer > 0 && !sameAs(stack[pointer - 1]);
+    }
 }

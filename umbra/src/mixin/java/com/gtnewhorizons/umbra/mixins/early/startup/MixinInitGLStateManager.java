@@ -21,8 +21,6 @@ public class MixinInitGLStateManager {
         GLStateManager.setDrawableGL(Display.getDrawable());
         GLStateManager.initialize(GLSMInitConfig.builder()
             .displaySize(mc.displayWidth, mc.displayHeight)
-            .framebufferSupported(OpenGlHelper.framebufferSupported)
-            .fboEnabled(mc.gameSettings.fboEnable)
             .directDrawer(TessellatorStreamingDrawer::drawDirect)
             .streamingDrawerDestroy(TessellatorStreamingDrawer::destroy)
             .build());

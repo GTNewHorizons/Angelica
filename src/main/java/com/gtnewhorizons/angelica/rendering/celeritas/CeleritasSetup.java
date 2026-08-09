@@ -11,7 +11,7 @@ public class CeleritasSetup {
     private static boolean initialized = false;
 
     public static void ensureInitialized() {
-        if (!initialized && AngelicaConfig.enableCeleritas) {
+        if (!initialized) {
             GLRenderDevice.VANILLA_STATE_RESETTER = () -> GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             ChunkBiomeDataChangedEvent.BUS.addListener(CeleritasSetup::onChunkBiomeDataChanged);
             AngelicaClientTweaker.LOGGER.debug("Celeritas init");

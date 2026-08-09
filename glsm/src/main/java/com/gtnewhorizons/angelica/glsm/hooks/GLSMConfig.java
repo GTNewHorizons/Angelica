@@ -8,5 +8,7 @@ public final class GLSMConfig {
 
     public static boolean hudCacheOverride;
 
+    public static volatile boolean expandVertexFormats;
+
     private GLSMConfig() {}
 }

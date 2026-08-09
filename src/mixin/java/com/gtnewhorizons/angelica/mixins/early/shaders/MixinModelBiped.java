@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.PlayerReflectionCapture;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.model.ModelBox;
@@ -20,6 +21,8 @@ import java.util.Arrays;
 @Mixin(ModelBiped.class)
 public abstract class MixinModelBiped {
 
+    @Unique private static final Tracy.ZoneId Z_PLAYER_REFLECTION_CAPTURE = Tracy.zoneId("playerReflectionCapture", Tracy.COLOR_IRIS);
+
     @Unique private static final Matrix4f angelica$mat = new Matrix4f();
     @Unique private static final Vector3f angelica$vec = new Vector3f();
 
@@ -34,22 +37,27 @@ public abstract class MixinModelBiped {
         final ModelBiped model = (ModelBiped) (Object) this;
         final float[] data = PlayerReflectionCapture.vertexScratch();
 
-        // Six 48-vertex blocks = body parts, each base box + overlay box
-        int o = 0;
-        o = angelica$emitBox(model.bipedHead,       data, o, scale);
-        o = angelica$emitBox(model.bipedHeadwear,   data, o, scale);
-        o = angelica$emitBox(model.bipedRightArm,   data, o, scale);
-        o = angelica$emitBox(model.bipedRightArm,   data, o, scale);
-        o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale);
-        o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale);
-        o = angelica$emitBox(model.bipedLeftArm,    data, o, scale);
-        o = angelica$emitBox(model.bipedLeftArm,    data, o, scale);
-        o = angelica$emitBox(model.bipedRightLeg,   data, o, scale);
-        o = angelica$emitBox(model.bipedRightLeg,   data, o, scale);
-        o = angelica$emitBox(model.bipedBody,       data, o, scale);
-            angelica$emitBox(model.bipedBody,       data, o, scale);
+        if (Tracy.ENABLED) Tracy.beginZone(Z_PLAYER_REFLECTION_CAPTURE);
+        try {
+            // Six 48-vertex blocks = body parts, each base box + overlay box
+            int o = 0;
+            o = angelica$emitBox(model.bipedHead,       data, o, scale);
+            o = angelica$emitBox(model.bipedHeadwear,   data, o, scale);
+            o = angelica$emitBox(model.bipedRightArm,   data, o, scale);
+            o = angelica$emitBox(model.bipedRightArm,   data, o, scale);
+            o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale);
+            o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale);
+            o = angelica$emitBox(model.bipedLeftArm,    data, o, scale);
+            o = angelica$emitBox(model.bipedLeftArm,    data, o, scale);
+            o = angelica$emitBox(model.bipedRightLeg,   data, o, scale);
+            o = angelica$emitBox(model.bipedRightLeg,   data, o, scale);
+            o = angelica$emitBox(model.bipedBody,       data, o, scale);
+                angelica$emitBox(model.bipedBody,       data, o, scale);
 
-        PlayerReflectionCapture.drawPlayerCapture(data);
+            PlayerReflectionCapture.drawPlayerCapture(data);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
     }
 
     private static int angelica$emitBox(ModelRenderer part, float[] out, int o, float scale) {

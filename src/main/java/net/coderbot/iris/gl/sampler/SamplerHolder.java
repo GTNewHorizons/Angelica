@@ -1,7 +1,7 @@
 package net.coderbot.iris.gl.sampler;
 
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 
 import java.util.function.IntSupplier;
 

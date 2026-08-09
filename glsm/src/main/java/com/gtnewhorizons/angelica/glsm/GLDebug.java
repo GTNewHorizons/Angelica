@@ -6,6 +6,8 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import org.lwjgl.opengl.EXTBlendColor;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -13,6 +15,10 @@ import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL43;
+
+import java.lang.invoke.MethodHandle;
+import java.lang.invoke.MethodHandles;
+import java.lang.invoke.MethodType;
 
 public final class GLDebug {
 
@@ -249,25 +255,6 @@ public final class GLDebug {
             case GL11.GL_LUMINANCE8 -> "LUMINANCE8";
             case GL11.GL_LUMINANCE8_ALPHA8 -> "LUMINANCE8_ALPHA8";
             default -> String.format("0x%X", format);
-        };
-    }
-
-    public static String getDataTypeName(int type) {
-        return switch (type) {
-            case GL11.GL_UNSIGNED_BYTE -> "UNSIGNED_BYTE";
-            case GL11.GL_BYTE -> "BYTE";
-            case GL11.GL_UNSIGNED_SHORT -> "UNSIGNED_SHORT";
-            case GL11.GL_SHORT -> "SHORT";
-            case GL11.GL_UNSIGNED_INT -> "UNSIGNED_INT";
-            case GL11.GL_INT -> "INT";
-            case GL11.GL_FLOAT -> "FLOAT";
-            case GL11.GL_DOUBLE -> "DOUBLE";
-            case GL12.GL_UNSIGNED_BYTE_3_3_2 -> "UNSIGNED_BYTE_3_3_2";
-            case GL12.GL_UNSIGNED_SHORT_4_4_4_4 -> "UNSIGNED_SHORT_4_4_4_4";
-            case GL12.GL_UNSIGNED_SHORT_5_5_5_1 -> "UNSIGNED_SHORT_5_5_5_1";
-            case GL12.GL_UNSIGNED_INT_8_8_8_8 -> "UNSIGNED_INT_8_8_8_8";
-            case GL12.GL_UNSIGNED_INT_10_10_10_2 -> "UNSIGNED_INT_10_10_10_2";
-            default -> String.format("0x%X", type);
         };
     }
 
@@ -559,7 +546,9 @@ public final class GLDebug {
     }
 
     public static void initDebugState() {
-        if (BackendManager.RENDER_BACKEND.supportsDebugOutput()) {
+        final GLSMInitConfig cfg = GLStateManager.getInitConfig();
+        final boolean userRequested = cfg != null && (cfg.isLwjglDebug() || CaptureGate.enabledAtStartup());
+        if (userRequested && BackendManager.RENDER_BACKEND.supportsDebugOutput()) {
             debugState = new KHRDebugState();
         } else {
             debugState = new UnsupportedDebugState();
@@ -579,6 +568,10 @@ public final class GLDebug {
         if (debugState != null && Thread.currentThread() == GLStateManager.getMainThread()) {
             debugState.pushGroup(prefix + value);
         }
+    }
+
+    public static boolean isActive() {
+        return debugState instanceof KHRDebugState && CaptureGate.markersThisFrame && Thread.currentThread() == GLStateManager.getMainThread();
     }
 
     public static void pushGroup(String group) {
@@ -604,6 +597,51 @@ public final class GLDebug {
             return debugState.getObjectLabel(glProgram, program);
         }
         return "";
+    }
+
+    private static final Scope NOOP_SCOPE = () -> {};
+    private static final Scope ACTIVE_SCOPE = GLDebug::popGroup;
+
+    public static Scope scope(String name) {
+        if (isActive()) {
+            debugState.pushGroup(name);
+            return ACTIVE_SCOPE;
+        }
+        return NOOP_SCOPE;
+    }
+
+    @FunctionalInterface
+    public interface Scope extends AutoCloseable {
+        @Override void close();
+    }
+
+    private static MethodHandle khrCallbackInvoke;
+    private static boolean khrCallbackInvokeResolved;
+
+    /// Use reflection because of lwjgl3ify
+    static GLDebugMessageListener adaptDebugCallback(Object callback) {
+        if (callback == null) return null;
+        final MethodHandle invoke = resolveKhrCallbackInvoke(callback.getClass());
+        if (invoke == null) return null;
+        return (source, type, id, severity, length, message, userParam) -> {
+            try {
+                invoke.invoke(callback, source, type, id, severity, length, message, userParam);
+            } catch (Throwable t) {
+                GLStateManager.LOGGER.warn("Debug message callback threw", t);
+            }
+        };
+    }
+
+    private static synchronized MethodHandle resolveKhrCallbackInvoke(Class<?> callbackClass) {
+        if (!khrCallbackInvokeResolved) {
+            khrCallbackInvokeResolved = true;
+            try {
+                khrCallbackInvoke = MethodHandles.publicLookup().findVirtual(callbackClass, "invoke", MethodType.methodType(void.class, int.class, int.class, int.class, int.class, int.class, long.class, long.class));
+            } catch (ReflectiveOperationException e) {
+                GLStateManager.LOGGER.warn("{} has no public invoke(int,int,int,int,int,long,long); debug messages registered through it will not be delivered.", callbackClass.getName());
+            }
+        }
+        return khrCallbackInvoke;
     }
 
 }

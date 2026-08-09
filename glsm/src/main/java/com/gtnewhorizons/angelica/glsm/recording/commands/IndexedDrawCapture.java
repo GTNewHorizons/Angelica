@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.recording.AttribSnapshot;
@@ -60,7 +61,7 @@ public final class IndexedDrawCapture {
             GLStateManager.warnOnce("quads-misaligned", "[IndexedDrawCapture] GL_QUADS with indicesCount={} not a multiple of 4 — skipping", indicesCount);
             return null;
         }
-        final int srcIndexSize = VAOManager.Attrib.glTypeSizeBytes(srcIndexType);
+        final int srcIndexSize = GLTypes.sizeBytes(srcIndexType);
         if (srcIndexSize <= 0) return null;
 
         final int prevEBO = GLStateManager.getBoundEBO();
@@ -95,7 +96,7 @@ public final class IndexedDrawCapture {
             GLStateManager.warnOnce("quads-misaligned", "[IndexedDrawCapture] GL_QUADS with indicesCount={} not a multiple of 4 - skipping", indicesCount);
             return null;
         }
-        final int idxSize = VAOManager.Attrib.glTypeSizeBytes(srcIndexType);
+        final int idxSize = GLTypes.sizeBytes(srcIndexType);
         if (idxSize <= 0) return null;
         if ((long) indicesCount * idxSize > srcByteLength) {
             GLStateManager.warnOnce("client-idx-range", "[IndexedDrawCapture] index count {} ({} bytes) exceeds client buffer {} bytes - skipping", indicesCount, (long) indicesCount * idxSize, srcByteLength);
@@ -120,6 +121,7 @@ public final class IndexedDrawCapture {
             final int vertexCount = maxVtx - minVtx + 1;
 
             snap = AttribSnapshot.snapshot(minVtx, vertexCount);
+            if (snap == null) return null;
 
             int enabledCount = 0;
             for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
