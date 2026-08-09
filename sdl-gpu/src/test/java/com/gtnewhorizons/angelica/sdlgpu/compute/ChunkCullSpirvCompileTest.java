@@ -32,7 +32,7 @@ class ChunkCullSpirvCompileTest {
             final ShaderManager.ComputeBindingMap map = ShaderManager.remapSpirvForComputeSDLGPU(spirv);
             assertEquals(0, map.samplerGlSlots().length, "the frustum cull samples no textures");
             assertEquals(1, map.uboGlSlots().length, "Frustum UBO");
-            assertEquals(0, map.uboGlSlots()[0], "Frustum UBO is at binding 0");
+            assertEquals(1, map.uboGlSlots()[0], "Frustum UBO is at binding 1");
             assertEquals(160, map.uboSizes()[0], "Frustum UBO is 160 bytes");
             assertEquals(3, map.roSsboGlSlots().length + map.rwSsboGlSlots().length, "visible + meta + indirect");
             assertTrue(IntStream.concat(Arrays.stream(map.roSsboGlSlots()), Arrays.stream(map.rwSsboGlSlots())).allMatch(s -> s >= 0 && s < 8), "a storage binding outside 0..7 exceeds the GL 4.3 guaranteed minimum");
