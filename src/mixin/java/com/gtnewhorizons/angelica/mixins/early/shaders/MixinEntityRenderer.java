@@ -40,6 +40,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/ClippingHelperImpl;getInstance()Lnet/minecraft/client/renderer/culling/ClippingHelper;", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V")
     private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        mc.mcProfiler.endStartSection("iris_begin");
         DHCompat.checkFrame();
         Iris.tryLoadShaderpackWhenPossible();
 
@@ -49,7 +50,9 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
         Program.unbind();
 
+        mc.mcProfiler.startSection("iris_prepare_pipeline");
         pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName()));
+        mc.mcProfiler.endSection();
 
         GLStateManager.setShaderColor(1f, 1f, 1f, 1f);
 

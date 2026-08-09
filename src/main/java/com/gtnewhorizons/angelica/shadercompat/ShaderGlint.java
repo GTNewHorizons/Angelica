@@ -16,6 +16,8 @@ import java.awt.image.BufferedImage;
 import java.io.InputStream;
 import java.nio.ByteBuffer;
 
+import static org.joml.Math.clamp;
+
 /**
  * Maybe overcomplicated, but it's required to bridge the gap between the modern glint texture and white texture 1.7.10
  * has. Some shaders are able to render the glint just fine as they seem to have some amount of support for older
@@ -159,8 +161,6 @@ public final class ShaderGlint {
     }
 
     private static int clamp8(float v) {
-        final int i = Math.round(v * 255.0F);
-        if (i < 0) return 0;
-        return Math.min(i, 255);
+        return clamp(0, 255, Math.round(v * 255.0F));
     }
 }

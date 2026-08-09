@@ -29,6 +29,13 @@ public class ViewportState implements ISettableState<ViewportState> {
         params.put(3, height);
     }
 
+    public void get(int[] params) {
+        params[0] = x;
+        params[1] = y;
+        params[2] = width;
+        params[3] = height;
+    }
+
     @Override
     public ViewportState set(ViewportState state) {
         this.x = state.x;

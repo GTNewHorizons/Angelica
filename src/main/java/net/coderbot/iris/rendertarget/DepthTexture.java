@@ -3,7 +3,7 @@ package net.coderbot.iris.rendertarget;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.GlResource;
-import net.coderbot.iris.gl.texture.DepthBufferFormat;
+import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 

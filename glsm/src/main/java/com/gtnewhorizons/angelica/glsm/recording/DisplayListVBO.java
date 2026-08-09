@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IVertexArrayObject;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 
 /**
  * A class that stores multiple vertex formats & their corresponding buffers.
@@ -37,12 +38,14 @@ public final class DisplayListVBO {
         private final int drawMode;
         private final int start;
         private final int count;
+        private final int vertexFlags;
 
-        public SubVBO(IVertexArrayObject vao, int drawMode, int start, int count) {
+        public SubVBO(IVertexArrayObject vao, int drawMode, int start, int count, int vertexFlags) {
             this.vao = vao;
             this.drawMode = drawMode;
             this.start = start;
             this.count = count;
+            this.vertexFlags = vertexFlags;
         }
 
         public int getStart() {
@@ -62,11 +65,12 @@ public final class DisplayListVBO {
         }
 
         public void render() {
-        if (vao == null) return;
-        vao.bind();
-        if (count <= 0) { vao.unbind(); return; }
-        vao.draw(drawMode, start, count);
-        vao.unbind();
+            if (vao == null) return;
+            vao.bind();
+            if (count <= 0) { vao.unbind(); return; }
+            VAOManager.setCurrentVertexFlags(vertexFlags);
+            vao.draw(drawMode, start, count);
+            vao.unbind();
         }
 
 

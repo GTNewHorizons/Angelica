@@ -1,0 +1,92 @@
+name: Build Tracy natives
+
+on:
+  push:
+    tags:
+      - "tracy-v*"
+  workflow_dispatch:
+    inputs:
+      tracy-version:
+        description: Tracy git tag to build
+        required: false
+        default: v0.13.1
+      publish:
+        description: Publish angelica-tracy.jar to the GTNH maven
+        type: boolean
+        required: false
+        default: false
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: ubuntu-22.04
+            platform: linux-x64
+          - os: windows-2025
+            platform: windows-x64
+          - os: macos-15-intel
+            platform: macos-x64
+          - os: macos-15
+            platform: macos-arm64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v5
+      - name: Build libTracyClient
+        shell: bash
+        env:
+          RAW_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tracy-version }}
+          OUT_DIR: dist/tracy-natives
+        run: |
+          export TRACY_VERSION="${RAW_VERSION#tracy-}"
+          bash .github/scripts/build-tracy-natives.sh
+      - uses: actions/upload-artifact@v4
+        with:
+          name: tracy-natives-${{ matrix.platform }}
+          path: dist/tracy-natives/*
+          if-no-files-found: error
+
+  assemble:
+    needs: build
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Check tracy version matches the version catalog
+        shell: bash
+        env:
+          RAW_VERSION: ${{ github.ref_type == 'tag' && github.ref_name || inputs.tracy-version }}
+        run: |
+          ver="${RAW_VERSION#tracy-}"
+          grep -q "^tracy = \"${ver#v}\"$" gradle/libs.versions.toml \
+            || { echo "libs.versions.toml tracy does not match $ver" >&2; exit 1; }
+      - uses: actions/download-artifact@v5
+        with:
+          pattern: tracy-natives-*
+          path: staging
+      - name: Stage natives into tracy-client resources
+        shell: bash
+        run: |
+          for d in staging/tracy-natives-*; do
+            dest="tracy-client/src/main/resources/natives/tracy/${d#staging/tracy-natives-}"
+            mkdir -p "$dest"
+            cp "$d"/* "$dest/"
+          done
+          find tracy-client/src/main/resources/natives -type f
+      - name: Build angelica-tracy.jar
+        run: ./gradlew :tracy-client:distJar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angelica-tracy
+          path: tracy-client/build/libs/angelica-tracy-*.jar
+          if-no-files-found: error
+      - name: Publish to GTNH maven
+        if: github.ref_type == 'tag' || inputs.publish
+        env:
+          MAVEN_USER: ${{ secrets.MAVEN_USER }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+        run: ./gradlew :tracy-client:publish

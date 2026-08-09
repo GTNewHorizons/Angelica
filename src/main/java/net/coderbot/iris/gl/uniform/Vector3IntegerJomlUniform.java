@@ -8,6 +8,7 @@ import org.joml.Vector3ic;
 import java.util.function.Supplier;
 
 public class Vector3IntegerJomlUniform extends Uniform {
+	private final Runnable updateListener = this::updateValue;
     private final Vector3i cachedValue;
     private final Supplier<Vector3ic> value;
 
@@ -27,7 +28,7 @@ public class Vector3IntegerJomlUniform extends Uniform {
         updateValue();
 
         if (notifier != null) {
-            notifier.setListener(this::updateValue);
+            notifier.setListener(updateListener);
         }
     }
 

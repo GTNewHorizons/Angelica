@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.recording.CompiledDisplayList;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
+import net.minecraft.client.renderer.Tessellator;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.IntList;
 import org.joml.Matrix4f;
@@ -835,6 +837,47 @@ class GLSM_DisplayList_TransformCollapsing_Test {
 
             GLStateManager.glPopMatrix();
         }
+    }
+
+    @Test
+    void testRawTessellatorDrawPlaysBackWithTheTransform() {
+        testList = GL11.glGenLists(1);
+        GLStateManager.glNewList(testList, GL11.GL_COMPILE);
+
+        GLStateManager.glScalef(0.5f, 0.5f, 0.5f);
+
+        final Tessellator tess = Tessellator.instance;
+        final float[][] corners = { { 0.0f, 0.0f }, { 1.0f, 0.0f }, { 1.0f, 1.0f }, { 0.0f, 1.0f } };
+        tess.rawBuffer = new int[4 * 8];
+        for (int i = 0; i < 4; i++) {
+            final int base = i * 8;
+            tess.rawBuffer[base] = Float.floatToRawIntBits(corners[i][0]);
+            tess.rawBuffer[base + 1] = Float.floatToRawIntBits(corners[i][1]);
+            tess.rawBuffer[base + 3] = Float.floatToRawIntBits(i == 1 || i == 2 ? 1.0f : 0.0f);
+            tess.rawBuffer[base + 4] = Float.floatToRawIntBits(i >= 2 ? 1.0f : 0.0f);
+        }
+        tess.isDrawing = true;
+        tess.drawMode = GL11.GL_QUADS;
+        tess.hasTexture = true;
+        tess.rawBufferIndex = 4 * 8;
+        tess.vertexCount = 4;
+        TessellatorManager.interceptDraw(tess);
+
+        GLStateManager.glEndList();
+
+        CompiledDisplayList compiled = DisplayListManager.getDisplayList(testList);
+        assertNotNull(compiled);
+
+        GLStateManager.glPushMatrix();
+        GLStateManager.glLoadIdentity();
+        GLStateManager.glCallList(testList);
+
+        FloatBuffer matrixBuf = BufferUtils.createFloatBuffer(16);
+        GLStateManager.glGetFloat(GL11.GL_MODELVIEW_MATRIX, matrixBuf);
+        assertEquals(0.5f, matrixBuf.get(0), 0.0001f, "Scale X after playback");
+        assertEquals(0.5f, matrixBuf.get(5), 0.0001f, "Scale Y after playback");
+
+        GLStateManager.glPopMatrix();
     }
 
     // ==================== Optimizer Push/Pop Reset Tests ====================

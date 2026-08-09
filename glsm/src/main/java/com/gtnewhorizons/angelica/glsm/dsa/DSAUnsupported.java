@@ -91,6 +91,12 @@ public class DSAUnsupported implements DSAAccess {
     }
 
     @Override
+    public float getTexParameterf(int texture, int target, int pname) {
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        return GLStateManager.glGetTexParameterf(target, pname);
+    }
+
+    @Override
     public int getTexLevelParameteri(int texture, int level, int pname) {
         final int previous = GLStateManager.getBoundTextureForServerState();
         RENDER_BACKEND.bindTexture(GL11.GL_TEXTURE_2D, texture);

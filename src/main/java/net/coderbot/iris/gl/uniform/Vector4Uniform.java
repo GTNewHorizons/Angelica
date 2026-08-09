@@ -8,6 +8,7 @@ import org.joml.Vector4fc;
 import java.util.function.Supplier;
 
 public class Vector4Uniform extends Uniform {
+	private final Runnable updateListener = this::updateValue;
 	private final Vector4f cachedValue;
 	private final Supplier<Vector4fc> value;
 
@@ -27,7 +28,7 @@ public class Vector4Uniform extends Uniform {
 		updateValue();
 
 		if (notifier != null) {
-			notifier.setListener(this::updateValue);
+			notifier.setListener(updateListener);
 		}
 	}
 

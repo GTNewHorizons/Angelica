@@ -45,8 +45,12 @@ public final class StreamingUploader {
                     return data.remaining();
                 }
                 final int dataSize = data.remaining();
-                final ByteBuffer mapped = RENDER_BACKEND.mapBufferRange(GL15.GL_ARRAY_BUFFER, 0, dataSize, MAP_WRITE_INVALIDATE_BUFFER);
-                memCopy(memAddress0(data), memAddress0(mapped), dataSize);
+                final long dst = RENDER_BACKEND.mapBufferRangeAddress(GL15.GL_ARRAY_BUFFER, 0, dataSize, MAP_WRITE_INVALIDATE_BUFFER);
+                if (dst == 0L) {
+                    RENDER_BACKEND.bufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                    return data.remaining();
+                }
+                memCopy(memAddress0(data), dst, dataSize);
                 RENDER_BACKEND.unmapBuffer(GL15.GL_ARRAY_BUFFER);
                 return capacity;
             }

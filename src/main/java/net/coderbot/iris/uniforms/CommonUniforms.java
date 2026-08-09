@@ -1,12 +1,12 @@
 package net.coderbot.iris.uniforms;
 
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.mixins.interfaces.EntityRendererAccessor;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
@@ -62,7 +62,7 @@ public final class CommonUniforms {
         IdMapUniforms.addIdMapUniforms(updateNotifier, uniforms, idMap, directives.isOldHandLight());
         MatrixUniforms.addMatrixUniforms(uniforms, directives);
 
-        if (AngelicaConfig.enableHardcodedCustomUniforms) {
+        if (Iris.hardcodedCustomUniforms) {
             HardcodedCustomUniforms.addHardcodedCustomUniforms(uniforms, updateNotifier);
         }
 

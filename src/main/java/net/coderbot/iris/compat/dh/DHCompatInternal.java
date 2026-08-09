@@ -8,7 +8,7 @@ import com.seibel.distanthorizons.api.objects.math.DhApiVec3f;
 import com.seibel.distanthorizons.coreapi.DependencyInjection.OverrideInjector;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
-import net.coderbot.iris.gl.texture.DepthBufferFormat;
+import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.DepthTexture;

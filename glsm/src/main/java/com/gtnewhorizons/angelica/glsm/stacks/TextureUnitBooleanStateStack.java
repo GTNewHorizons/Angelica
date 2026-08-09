@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import org.lwjgl.opengl.GL13;
 
 /**
@@ -37,9 +38,15 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
     }
 
     private void setEnabledWithUnitSwitch(boolean enabled) {
-        final boolean bypass = GLStateManager.shouldBypassCache();
+        final boolean bypass = !GLStateManager.isCachingEnabled();
         if (bypass || enabled != this.enabled) {
             if (!bypass) this.enabled = enabled;
+
+            if (GLSMHooks.TEXTURE_UNIT_STATE.hasListeners()) {
+                GLSMHooks.textureUnitStateEvent.unit = unitIndex;
+                GLSMHooks.textureUnitStateEvent.enabled = enabled;
+                GLSMHooks.TEXTURE_UNIT_STATE.post(GLSMHooks.textureUnitStateEvent);
+            }
 
             if (!ffpStateOnly) {
                 final int currentUnit = GLStateManager.getActiveTextureUnit();

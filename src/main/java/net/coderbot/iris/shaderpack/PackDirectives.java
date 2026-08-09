@@ -11,13 +11,15 @@ import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.buffer.ShaderStorageInfo;
 import net.coderbot.iris.gl.texture.TextureScaleOverride;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 import org.joml.Vector2i;
 
 import java.util.Optional;
 import java.util.Set;
+
+import static org.joml.Math.clamp;
 
 public class PackDirectives {
 	@Getter private int noiseTextureResolution;
@@ -188,17 +190,13 @@ public class PackDirectives {
 		return dhCloudSetting;
 	}
 
-    private static float clamp(float val, float lo, float hi) {
-		return Math.max(lo, Math.min(hi, val));
-	}
-
 	public void acceptDirectivesFrom(DirectiveHolder directives) {
 		renderTargetDirectives.acceptDirectives(directives);
 		shadowDirectives.acceptDirectives(directives);
 
 		directives.acceptConstIntDirective("noiseTextureResolution", noiseTextureResolution -> this.noiseTextureResolution = noiseTextureResolution);
 		directives.acceptConstFloatDirective("sunPathRotation", sunPathRotation -> this.sunPathRotation = sunPathRotation);
-		directives.acceptConstFloatDirective("ambientOcclusionLevel", ambientOcclusionLevel -> this.ambientOcclusionLevel = clamp(ambientOcclusionLevel, 0.0f, 1.0f));
+		directives.acceptConstFloatDirective("ambientOcclusionLevel", ambientOcclusionLevel -> this.ambientOcclusionLevel = clamp(0.0f, 1.0f, ambientOcclusionLevel));
 		directives.acceptConstFloatDirective("wetnessHalflife", wetnessHalfLife -> this.wetnessHalfLife = wetnessHalfLife);
 		directives.acceptConstFloatDirective("drynessHalflife", wetnessHalfLife -> this.wetnessHalfLife = wetnessHalfLife);
 		directives.acceptConstFloatDirective("eyeBrightnessHalflife", eyeBrightnessHalfLife -> this.eyeBrightnessHalfLife = eyeBrightnessHalfLife);

@@ -1,5 +1,7 @@
 package net.coderbot.iris.gl.texture;
 
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.shaderpack.texture.TextureFilteringData;

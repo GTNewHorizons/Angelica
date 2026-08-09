@@ -1,18 +1,19 @@
 package net.coderbot.batchedentityrendering.impl.ordering;
 
-import com.gtnewhorizons.angelica.compat.toremove.RenderLayer;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import it.unimi.dsi.fastutil.objects.ObjectOpenHashSet;
 
-import java.util.LinkedHashSet;
+import java.util.ArrayList;
+import java.util.List;
 
 public class SimpleRenderOrderManager implements RenderOrderManager {
-    private final LinkedHashSet<RenderLayer> renderTypes;
-
-    public SimpleRenderOrderManager() {
-        renderTypes = new LinkedHashSet<>();
-    }
+    private final ObjectOpenHashSet<RenderLayer> seen = new ObjectOpenHashSet<>();
+    private final ArrayList<RenderLayer> ordered = new ArrayList<>();
 
     public void begin(RenderLayer type) {
-        renderTypes.add(type);
+        if (seen.add(type)) {
+            ordered.add(type);
+        }
     }
 
     public void startGroup() {
@@ -30,10 +31,11 @@ public class SimpleRenderOrderManager implements RenderOrderManager {
 
     @Override
     public void reset() {
-        renderTypes.clear();
+        seen.clear();
+        ordered.clear();
     }
 
-    public Iterable<RenderLayer> getRenderOrder() {
-        return renderTypes;
+    public List<RenderLayer> getRenderOrder() {
+        return ordered;
     }
 }

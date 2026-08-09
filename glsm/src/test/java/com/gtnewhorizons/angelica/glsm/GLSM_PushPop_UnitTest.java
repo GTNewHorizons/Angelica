@@ -1179,4 +1179,30 @@ class GLSM_PushPop_UnitTest {
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - Reset");
     }
+
+    @Test
+    void testUntouchedPushPopRoundTripLeavesStateIdentical() {
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+        GLStateManager.glLineWidth(3.0f);
+        GLStateManager.glViewport(2, 2, 640, 480);
+        GLStateManager.glCullFace(GL11.GL_FRONT);
+
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLStateManager.glPopAttrib();
+
+        verifyState(GL11.GL_DEPTH_FUNC, GL11.GL_LEQUAL, "Depth Func - untouched round trip");
+        verifyState(GL11.GL_BLEND_SRC, GL11.GL_SRC_ALPHA, "Blend Source - untouched round trip");
+        verifyState(GL11.GL_BLEND_DST, GL11.GL_ONE_MINUS_SRC_ALPHA, "Blend Destination - untouched round trip");
+        verifyState(GL11.GL_LINE_WIDTH, 3.0f, "Line Width - untouched round trip");
+        verifyState(GL11.GL_VIEWPORT, new int[] { 2, 2, 640, 480 }, "Viewport - untouched round trip");
+        verifyState(GL11.GL_CULL_FACE_MODE, GL11.GL_FRONT, "Cull Face Mode - untouched round trip");
+        verifyState(GL13.GL_ACTIVE_TEXTURE, GL13.GL_TEXTURE0, "Active Texture - untouched round trip");
+
+        GLStateManager.glDepthFunc(GL11.GL_LESS);
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ZERO);
+        GLStateManager.glLineWidth(1.0f);
+        GLStateManager.glViewport(0, 0, 800, 600);
+        GLStateManager.glCullFace(GL11.GL_BACK);
+    }
 }

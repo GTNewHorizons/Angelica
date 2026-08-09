@@ -4,8 +4,13 @@ import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import net.coderbot.iris.Iris;
+import java.util.concurrent.CompletableFuture;
+import java.util.function.Supplier;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
@@ -16,6 +21,8 @@ import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
+import net.coderbot.iris.uniforms.SystemTimeUniforms;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 
 public class IrisGLSMBridge {
 
@@ -28,7 +35,9 @@ public class IrisGLSMBridge {
     private static Runnable fogDensityListener = null;
     private static Runnable colorModulatorListener = null;
 
+    private static final Int2IntOpenHashMap programLastUpdatedFrame = new Int2IntOpenHashMap();
     static {
+        programLastUpdatedFrame.defaultReturnValue(-1);
         StateUpdateNotifiers.alphaFuncNotifier = listener -> alphaFuncListener = listener;
         StateUpdateNotifiers.alphaTestNotifier = listener -> alphaTestListener = listener;
         StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
@@ -40,7 +49,23 @@ public class IrisGLSMBridge {
     }
 
     public static void register() {
+        GLSMConfig.expandVertexFormats = Iris.enabled;
         IrisSamplers.initRenderer();
+        GLSMHooks.shaderWorkSubmitter = new ShaderWorkSubmitter() {
+            @Override
+            public <T> CompletableFuture<T> submit(Supplier<T> work) {
+                return Iris.ShaderTransformExecutor.submitTracked(work);
+            }
+        };
+        GLSMHooks.postTransformProcessor = (src, shaderType) -> {
+            if (Iris.ShaderTransformExecutor.isOnWorker()) {
+                SDLGPUGate.prewarmSpirv(src, shaderType.id);
+            } else {
+                Iris.ShaderTransformExecutor.submitTracked(() -> {
+                    SDLGPUGate.prewarmSpirv(src, shaderType.id);
+                });
+            }
+        };
         GLSMHooks.blendHandler = new DeferredBlendHandler() {
             @Override
             public boolean isBlendLocked() {
@@ -171,6 +196,8 @@ public class IrisGLSMBridge {
 
             if (DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 DepthColorStorage.unlockDepthColor();
+            } else {
+                drp.onModProgramOverride();
             }
         });
 
@@ -181,10 +208,15 @@ public class IrisGLSMBridge {
             if (pipeline instanceof DeferredWorldRenderingPipeline drp) {
                 DeferredWorldRenderingPipeline.Pass activePass = drp.getActivePassProgram();
                 if (activePass != null && activePass.getProgram() != null && activePass.getProgram().getProgramId() == event.newProgram) {
-                    activePass.getProgram().getUniforms().update();
+                    final int frame = SystemTimeUniforms.COUNTER.getAsInt();
+                    if (programLastUpdatedFrame.get(event.newProgram) != frame) {
+                        activePass.getProgram().getUniforms().update();
+                        programLastUpdatedFrame.put(event.newProgram, frame);
+                    }
                 }
             }
         });
 
+        GLSMHooks.PROGRAM_DELETE.addListener(event -> programLastUpdatedFrame.remove(event.program));
     }
 }
