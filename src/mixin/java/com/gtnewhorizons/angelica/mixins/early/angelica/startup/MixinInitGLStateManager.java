@@ -8,11 +8,12 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.render.SelectionBoxRenderer;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPUDisplayBridge;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import org.embeddedt.embeddium.impl.gl.debug.GLDebug;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
@@ -27,7 +28,7 @@ public class MixinInitGLStateManager {
 
     @Inject(method = "initializeTextures", at = @At("HEAD"))
     private static void angelica$installSDLDrawable(CallbackInfo ci) {
-        SDLGPUDisplayBridge.ensureDrawableInstalled();
+        SDLGPUGate.ensureDrawableInstalled();
     }
 
     @Inject(method = "initializeTextures", at = @At("RETURN"))

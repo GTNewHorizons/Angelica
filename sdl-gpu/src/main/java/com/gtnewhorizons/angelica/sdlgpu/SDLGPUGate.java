@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLLog;
@@ -49,8 +50,10 @@ public final class SDLGPUGate {
         return device;
     }
 
+    private static final boolean SDL_GPU_AVAILABLE = SDLGPUGate.class.getClassLoader().getResource("org/lwjgl/sdl/SDLGPU.class") != null;
+
     public static boolean isSDLGPUAvailable() {
-        return SDLGPUGate.class.getClassLoader().getResource("org/lwjgl/sdl/SDLGPU.class") != null;
+        return SDL_GPU_AVAILABLE;
     }
 
     public static boolean isDeviceReady() {
@@ -85,6 +88,21 @@ public final class SDLGPUGate {
         if (!isSDLGPUAvailable()) return false;
         final RenderBackend rb = BackendManager.RENDER_BACKEND;
         return rb instanceof SDLGPURenderBackend;
+    }
+
+    public static void ensureDrawableInstalled() {
+        if (!isActive()) return;
+        SDLGPUDisplayBridge.ensureDrawableInstalled();
+    }
+
+    public static void prewarmSpirv(String transformedSource, int glShaderType) {
+        if (!isActive()) return;
+        ShaderManager.prewarmSpirv(transformedSource, glShaderType);
+    }
+
+    public static void clearShaderPrewarmCache() {
+        if (!isActive()) return;
+        ShaderManager.clearPrewarmCache();
     }
 
     public static Consumer<SwapchainInvalidatingChange> sdlGpuPreSwapchainInvalidatingCallback() {

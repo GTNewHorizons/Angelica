@@ -96,7 +96,6 @@ import org.lwjglx.opengl.Display;
 import me.eigenraven.lwjgl3ify.api.DisplayEvents;
 import com.gtnewhorizons.angelica.sdlgpu.compat.Lwjgl3GLCapabilitiesShim;
 import me.eigenraven.lwjgl3ify.api.GLCapabilitiesOverride;
-import me.eigenraven.lwjgl3ify.api.SwapchainInvalidatingChange;
 
 import static org.lwjgl.sdl.SDLGPU.*;
 
@@ -629,7 +628,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         resourceManager.recycleGpuBufferPool(frameManager.getFrameNumber());
     }
 
-    @Override public void onPreSwapchainInvalidatingChange(SwapchainInvalidatingChange change) {
+    @Override public void onPreSwapchainInvalidatingChange(Object change) {
         endFrameUploadFlush();
         if (frameManager.isFrameActive()) {
             frameManager.endFrame();
@@ -3520,7 +3519,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private int voxLocStart = -1;
     private int voxLocCount = -1;
 
-    public boolean bindVoxelizationRegion(int ssboBinding, int vertexBufferGlId, long openPass, float x, float y, float z) {
+    @Override public boolean bindVoxelizationRegion(int ssboBinding, int vertexBufferGlId, long openPass, float x, float y, float z) {
         if (ssboBinding < 0 || ssboBinding >= ContextState.MAX_INDEXED_BUFFERS || vertexBufferGlId == 0) return false;
         final ContextState st = s();
         if (st.boundProgram == 0) return false;
@@ -3539,7 +3538,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         return names == null ? new String[0] : names.clone();
     }
 
-    public long beginVoxelizationBatch(int ssboBinding) {
+    @Override public long beginVoxelizationBatch(int ssboBinding) {
         if (ssboBinding < 0 || ssboBinding >= ContextState.MAX_INDEXED_BUFFERS) return 0;
         final ContextState st = s();
         final int program = st.boundProgram;
@@ -3549,11 +3548,11 @@ public class SDLGPURenderBackend extends RenderBackend {
         return voxelizationDispatcher.beginBatch(st);
     }
 
-    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {
+    @Override public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {
         voxelizationDispatcher.dispatchRange(pass, voxLocStart, voxLocCount, vertexOffset, vertexCount, s());
     }
 
-    public void endVoxelizationBatch(long pass) {
+    @Override public void endVoxelizationBatch(long pass) {
         voxelizationDispatcher.endBatch(pass);
     }
 
