@@ -61,31 +61,12 @@ public final class FragmentShaderGenerator {
     }
 
     private static void emitUniforms(StringBuilder sb, FragmentKey key) {
-        // Samplers for each enabled unit
         for (int i = 0; i < key.nrEnabledUnits(); i++) {
             if (key.unitEnabled(i)) {
                 sb.append("uniform sampler2D u_Sampler").append(i).append(";\n");
             }
         }
-        if (key.alphaTestEnabled()) {
-            sb.append("uniform float u_AlphaRef;\n");
-        }
-        if (key.lineStipple()) {
-            sb.append("uniform int u_LineStipple;\n");
-        }
-        // Per-unit texEnvColor uniforms
-        for (int i = 0; i < key.nrEnabledUnits(); i++) {
-            if (key.unitEnabled(i) && key.unitNeedsEnvColor(i)) {
-                sb.append("uniform vec4 u_TexEnvColor").append(i).append(";\n");
-            }
-        }
-        if (key.overlayEnabled()) {
-            sb.append("uniform vec4 u_OverlayColor;\n");
-        }
-        if (key.fogMode() != FragmentKey.FOG_NONE) {
-            sb.append("uniform vec4 u_FogParams;\n");
-            sb.append("uniform vec4 u_FogColor;\n");
-        }
+        sb.append(FFPUniformBlock.GLSL_DECL);
         sb.append('\n');
     }
 

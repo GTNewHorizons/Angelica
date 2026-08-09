@@ -1,12 +1,15 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
@@ -14,7 +17,6 @@ import lombok.Getter;
 import org.joml.Vector3f;
 import org.joml.Vector4f;
 
-import java.nio.file.Paths;
 import java.util.Arrays;
 
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
@@ -53,14 +55,21 @@ public final class ShaderManager {
     @Getter private static int normalGeneration;
     @Getter private static int texCoordGeneration;
 
+    private int preDrawCalls;
+    private int lastFramePreDrawCalls;
+
+    public static long variantSwitches;
+
     public static Vector4f getCurrentTexCoord() { return currentTexCoords[0]; }
     public static Vector4f getCurrentTexCoord(int unit) { return currentTexCoords[unit]; }
     @Getter private boolean enabled = false;
 
     private ShaderManager() {
-        if (Boolean.parseBoolean(System.getProperty("angelica.dumpShaders", "false"))) {
-            cache.setDumpDir(Paths.get("ffp_shaders"));
-        }
+        cache.setDumpDir(SystemProperties.shaderDumpDir("ffp"));
+        VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
+            VAOManager.setCurrentVertexFlags(format.getVertexFlags());
+            return false;
+        });
     }
 
     public static ShaderManager getInstance() {
@@ -110,6 +119,7 @@ public final class ShaderManager {
         lastBoundProgramId = -1;
         currentVertexKeyPacked = Long.MIN_VALUE;
         currentFKLen = 0;
+        GLStateManager.forceAttribDefaultsDirty();
     }
 
     public void preDraw() {
@@ -133,7 +143,7 @@ public final class ShaderManager {
 
         if (!active) return;
 
-
+        preDrawCalls++;
         final int fkLen = FragmentKey.packFromState(currentFKScratch);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
         final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
@@ -152,6 +162,7 @@ public final class ShaderManager {
         currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
         final int programId = currentProgram.getProgramId();
         if (programId != lastBoundProgramId) {
+            if (Tracy.ENABLED) variantSwitches++;
             RENDER_BACKEND.useProgram(programId);
             lastBoundProgramId = programId;
         }
@@ -159,8 +170,15 @@ public final class ShaderManager {
 
     private void uploadUniforms() {
         if (currentProgram != null) {
-            uniforms.upload(currentProgram);
+            uniforms.upload();
         }
+    }
+
+    public static void endFrame() {
+        final ShaderManager sm = Holder.INSTANCE;
+        sm.lastFramePreDrawCalls = sm.preDrawCalls;
+        sm.preDrawCalls = 0;
+        sm.uniforms.endFrame();
     }
 
     public static void setCurrentNormal(float x, float y, float z) {
@@ -186,13 +204,31 @@ public final class ShaderManager {
         uniforms.destroy();
         final GLSMInitConfig config = GLStateManager.getInitConfig();
         if (config != null && config.getStreamingDrawerDestroy() != null) config.getStreamingDrawerDestroy().run();
-        com.gtnewhorizons.angelica.glsm.QuadConverter.destroy();
+        QuadConverter.destroy();
         active = false;
         currentProgram = null;
     }
 
     public String getDebugInfo() {
-        return String.format("FFP: %d programs (%d vert, %d frag variants)",
-            cache.getProgramCount(), cache.getVertexVariantCount(), cache.getFragmentVariantCount());
+        return String.format("FFP: %d programs (%d vert, %d frag variants) | UBO: %d/%d draws wrote (mat %d, light %d, frag %d, misc %d)",
+            cache.getProgramCount(), cache.getVertexVariantCount(), cache.getFragmentVariantCount(),
+            uniforms.lastFrameBlockWrites, lastFramePreDrawCalls,
+            uniforms.lastFrameStagedMatrices, uniforms.lastFrameStagedLighting,
+            uniforms.lastFrameStagedFragment, uniforms.lastFrameStagedMisc);
     }
+
+    public int statLastFramePreDrawCalls() { return lastFramePreDrawCalls; }
+    public int statLastFrameBlockWrites() { return uniforms.lastFrameBlockWrites; }
+    public int statLastFrameBlockSkips() { return uniforms.lastFrameBlockSkips; }
+    public int statLastFrameStagedMatrices() { return uniforms.lastFrameStagedMatrices; }
+    public int statLastFrameStagedLighting() { return uniforms.lastFrameStagedLighting; }
+    public int statLastFrameStagedFragment() { return uniforms.lastFrameStagedFragment; }
+    public int statLastFrameStagedColor() { return uniforms.lastFrameStagedColor; }
+    public int statLastFrameStagedNormal() { return uniforms.lastFrameStagedNormal; }
+    public int statLastFrameStagedTexCoord() { return uniforms.lastFrameStagedTexCoord; }
+    public int statLastFrameStagedLightmap() { return uniforms.lastFrameStagedLightmap; }
+    public int statLastFrameStagedTexGen() { return uniforms.lastFrameStagedTexGen; }
+    public int statLastFrameStagedClipPlanes() { return uniforms.lastFrameStagedClipPlanes; }
+    public int statLastFrameStagedMisc() { return uniforms.lastFrameStagedMisc; }
+    public int statProgramCount() { return cache.getProgramCount(); }
 }

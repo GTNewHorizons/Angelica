@@ -74,18 +74,18 @@ public class LightState implements ISettableState<LightState> {
         this.rawPosition = new Vector4f(position);
         this.position = position;
         this.position.mul(GLStateManager.getModelViewMatrix());
-        this.posMvGeneration = GLStateManager.mvGeneration;
+        this.posMvGeneration = GLStateManager.getMvGeneration();
 
         this.rawSpotDirection = new Vector3f(spotDirection);
         this.spotDirection = spotDirection;
         GLStateManager.getModelViewMatrix().get3x3(matrix3f);
         this.spotDirection.mul(matrix3f);
-        this.spotDirLinearGeneration = GLStateManager.mvLinearGeneration;
+        this.spotDirLinearGeneration = GLStateManager.getMvLinearGeneration();
     }
 
     public boolean setAmbient(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
             return true;
         }
@@ -95,7 +95,7 @@ public class LightState implements ISettableState<LightState> {
     public boolean setAmbient(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
             return true;
         }
@@ -104,7 +104,7 @@ public class LightState implements ISettableState<LightState> {
 
     public boolean setDiffuse(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
             return true;
         }
@@ -114,7 +114,7 @@ public class LightState implements ISettableState<LightState> {
     public boolean setDiffuse(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
             return true;
         }
@@ -123,7 +123,7 @@ public class LightState implements ISettableState<LightState> {
 
     public boolean setSpecular(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
             return true;
         }
@@ -133,7 +133,7 @@ public class LightState implements ISettableState<LightState> {
     public boolean setSpecular(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
             return true;
         }
@@ -152,8 +152,8 @@ public class LightState implements ISettableState<LightState> {
     }
 
     private boolean applyPosition(Vector4f raw) {
-        final int mvGen = GLStateManager.mvGeneration;
-        if (GLStateManager.shouldBypassCache() || this.posMvGeneration != mvGen || !this.rawPosition.equals(raw)) {
+        final int mvGen = GLStateManager.getMvGeneration();
+        if (!GLStateManager.isCachingEnabled() || this.posMvGeneration != mvGen || !this.rawPosition.equals(raw)) {
             this.rawPosition.set(raw);
             this.posMvGeneration = mvGen;
             this.position.set(raw);
@@ -175,8 +175,8 @@ public class LightState implements ISettableState<LightState> {
     }
 
     private boolean applySpotDirection(Vector3f raw) {
-        final int mvLinearGen = GLStateManager.mvLinearGeneration;
-        if (GLStateManager.shouldBypassCache() || this.spotDirLinearGeneration != mvLinearGen || !this.rawSpotDirection.equals(raw)) {
+        final int mvLinearGen = GLStateManager.getMvLinearGeneration();
+        if (!GLStateManager.isCachingEnabled() || this.spotDirLinearGeneration != mvLinearGen || !this.rawSpotDirection.equals(raw)) {
             this.rawSpotDirection.set(raw);
             this.spotDirLinearGeneration = mvLinearGen;
             GLStateManager.getModelViewMatrix().get3x3(matrix3f);
@@ -200,7 +200,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     public boolean setSpotExponent(float f) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(f, this.spotExponent) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(f, this.spotExponent) != 0) {
             this.spotExponent = f;
             return true;
         }
@@ -220,7 +220,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     public boolean setSpotCutoff(float f) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(f, this.spotCutoff) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(f, this.spotCutoff) != 0) {
             this.spotCutoff = f;
             this.spotCosCutoff = (float) Math.cos(Math.toRadians(f));
             return true;
@@ -241,7 +241,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     public boolean setConstantAttenuation(float f) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(f, this.constantAttenuation) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(f, this.constantAttenuation) != 0) {
             this.constantAttenuation = f;
             return true;
         }
@@ -261,7 +261,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     public boolean setLinearAttenuation(float f) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(f, this.linearAttenuation) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(f, this.linearAttenuation) != 0) {
             this.linearAttenuation = f;
             return true;
         }
@@ -281,7 +281,7 @@ public class LightState implements ISettableState<LightState> {
     }
 
     public boolean setQuadraticAttenuation(float f) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(f, this.quadraticAttenuation) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(f, this.quadraticAttenuation) != 0) {
             this.quadraticAttenuation = f;
             return true;
         }

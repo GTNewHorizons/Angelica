@@ -277,9 +277,10 @@ public class PanoramaRenderer {
         GLStateManager.glBindVertexArray(0);
         blitProgram.unbind();
 
-        GLStateManager.enableDepthTest();
-        GLStateManager.enableCull();
+        GLStateManager.disableDepthTest();
+        GLStateManager.disableCull();
         GLStateManager.enableBlend();
+        GLStateManager.enableTexture();
     }
 
     private void drawCubeFaces(int panoramaTimer, float partialTicks, ResourceLocation[] panoramaPaths, Minecraft mc) {

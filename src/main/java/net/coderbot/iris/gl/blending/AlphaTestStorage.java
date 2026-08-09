@@ -1,5 +1,7 @@
 package net.coderbot.iris.gl.blending;
 
+import com.gtnewhorizons.angelica.glsm.states.AlphaTestFunction;
+
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;

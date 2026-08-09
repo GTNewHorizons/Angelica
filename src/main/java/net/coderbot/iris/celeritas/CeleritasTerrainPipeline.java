@@ -172,6 +172,7 @@ public class CeleritasTerrainPipeline {
                 target.setSource(PatchShaderType.VERTEX, result.get(PatchShaderType.VERTEX));
                 target.setSource(PatchShaderType.GEOMETRY, result.get(PatchShaderType.GEOMETRY));
                 target.setSource(PatchShaderType.FRAGMENT, result.get(PatchShaderType.FRAGMENT));
+                target.setSource(PatchShaderType.COMPUTE, result.get(PatchShaderType.COMPUTE));
             }
             PatchedShaderPrinter.debugPatchedShaders(sourceName + "_celeritas",
                 result.get(PatchShaderType.VERTEX), result.get(PatchShaderType.GEOMETRY), result.get(PatchShaderType.FRAGMENT));
@@ -213,5 +214,11 @@ public class CeleritasTerrainPipeline {
 
     public ProgramImages initShadowImages(int programId) {
         return createShadowImages.apply(programId);
+    }
+
+    public Optional<String> getShadowVoxelizationComputeSource() {
+        final PassInfo shadow = passInfoMap.get(IrisTerrainPass.SHADOW);
+        if (shadow == null) return Optional.empty();
+        return shadow.sources.get(PatchShaderType.COMPUTE);
     }
 }

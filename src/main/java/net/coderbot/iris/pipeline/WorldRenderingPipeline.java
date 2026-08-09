@@ -8,7 +8,7 @@ import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
 import net.coderbot.iris.celeritas.CeleritasTerrainPipeline;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -22,6 +22,7 @@ import java.util.OptionalInt;
 public interface WorldRenderingPipeline {
 	void beginLevelRendering();
 	void renderShadows(EntityRenderer levelRenderer, Camera camera);
+	default void preSubmitShadowGraph(int frame, boolean spectator) {}
 	void addDebugText(List<String> messages);
 	OptionalInt getForcedShadowRenderDistanceChunksForDisplay();
 
@@ -38,6 +39,11 @@ public interface WorldRenderingPipeline {
 	int getCurrentSpecularTexture();
 
 	void onBindTexture(int id);
+
+	/** Re-bind the program/framebuffer for the currently-active Pass, if any. */
+	void rebindCurrentPass();
+
+	default void onEntityRenderBoundary() {}
 
 	void beginHand();
 

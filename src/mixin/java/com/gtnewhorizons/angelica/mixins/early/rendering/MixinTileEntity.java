@@ -53,6 +53,7 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Unique private Block angelica$cachedBBBlockType = null;
     @Unique private AxisAlignedBB angelica$cachedRenderBB = null;
     @Unique private byte angelica$boundsClassCached = 0;        // 0 = unchecked, otherwise STATIC/INFINITE/DYNAMIC
+    @Unique private byte angelica$passClassCached = 0;          // 0 = unchecked, otherwise PASS0_ONLY/PASS_OVERRIDES
 
     /**
      * @author mitchej123
@@ -85,7 +86,7 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Override
     public AxisAlignedBB angelica$getCachedRenderBoundingBox() {
         if (angelica$cachedRenderBB != null && angelica$cachedBBX == this.xCoord && angelica$cachedBBY == this.yCoord && angelica$cachedBBZ == this.zCoord
-                && angelica$cachedBBMetadata == this.blockMetadata && angelica$cachedBBBlockType == this.blockType)
+                && getBlockType() == angelica$cachedBBBlockType && getBlockMetadata() == angelica$cachedBBMetadata)
         {
             return angelica$cachedRenderBB;
         }
@@ -95,8 +96,8 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
         this.angelica$cachedBBX = this.xCoord;
         this.angelica$cachedBBY = this.yCoord;
         this.angelica$cachedBBZ = this.zCoord;
-        this.angelica$cachedBBMetadata = this.blockMetadata;
-        this.angelica$cachedBBBlockType = this.blockType;
+        this.angelica$cachedBBMetadata = getBlockMetadata();
+        this.angelica$cachedBBBlockType = getBlockType();
 
         if (computed == TileEntity.INFINITE_EXTENT_AABB) {
             this.angelica$cachedRenderBB = computed;
@@ -119,5 +120,13 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
             angelica$boundsClassCached = TileEntityRenderBoundsRegistry.classify((TileEntity) (Object) this);
         }
         return angelica$boundsClassCached;
+    }
+
+    @Override
+    public byte angelica$passClass() {
+        if (angelica$passClassCached == 0) {
+            angelica$passClassCached = TileEntityRenderBoundsRegistry.classifyPass((TileEntity) (Object) this);
+        }
+        return angelica$passClassCached;
     }
 }

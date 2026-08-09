@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -28,9 +29,11 @@ public class MixinRenderManager {
     private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
         final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
         final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        final Class<?> prevRenderable = TesrAttribution.currentRenderable;
 
         CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entity));
         CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
@@ -51,6 +54,7 @@ public class MixinRenderManager {
             }
             CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
             CapturedRenderingState.INSTANCE.setCurrentRenderedItem(prevItemId);
+            TesrAttribution.currentRenderable = prevRenderable;
         }
     }
 }

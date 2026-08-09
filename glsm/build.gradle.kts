@@ -2,12 +2,15 @@ import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
 
 plugins {
     `java-library`
+    `java-test-fixtures`
     `maven-publish`
 }
 
 apply(plugin = "xyz.wagyourtail.jvmdowngrader")
 
 version = rootProject.version
+
+val lwjglNatives: String by extra
 
 java {
     toolchain.languageVersion.set(JavaLanguageVersion.of(21))
@@ -20,7 +23,7 @@ val rfgObfAttr = Attribute.of("com.gtnewhorizons.retrofuturagradle.obfuscation",
 val rfgTransformedAttr = Attribute.of("rfgDeobfuscatorTransformed", Boolean::class.javaObjectType)
 
 configurations {
-    listOf("apiElements", "runtimeElements").forEach { name ->
+    listOf("apiElements", "runtimeElements", "testFixturesApiElements", "testFixturesRuntimeElements").forEach { name ->
         named(name) {
             attributes {
                 attribute(rfgObfAttr, "mcp")
@@ -31,7 +34,7 @@ configurations {
 }
 
 // Compile stubs: MC class signatures needed to resolve GTNHLib's type hierarchy.
-// Not included in the published jar — real MC classes are on the classpath at runtime.
+// Not included in the published jar - real MC classes are on the classpath at runtime.
 sourceSets {
     create("stubs") {
         java.srcDir("src/stubs/java")
@@ -65,6 +68,16 @@ repositories {
         url = uri("https://maven.wagyourtail.xyz/releases")
         content { includeGroup("xyz.wagyourtail.jvmdowngrader") }
     }
+    maven {
+        name = "Sonatype Snapshots"
+        url = uri("https://oss.sonatype.org/content/repositories/snapshots/")
+    }
+    maven {
+        name = "Maven Central Snapshots"
+        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
+    }
+
+    mavenLocal()
     mavenCentral()
     mavenLocal()
 }
@@ -74,42 +87,62 @@ dependencies {
     compileOnly(sourceSets["stubs"].output)
 
     // LWJGL
-    compileOnly("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
-    compileOnly("org.lwjgl.lwjgl:lwjgl_util:${property("lwjglVersion")}")
+    compileOnly(libs.lwjgl2)
+    compileOnly(libs.lwjgl2.util)
 
-    compileOnly("org.ow2.asm:asm-tree:5.0.3")
+    compileOnly(libs.asm.tree.compile)
 
     // Our Deps
-    api("com.github.GTNewHorizons:GTNHLib:${property("gtnhlibVersion")}:dev")
-    api("net.minecraftforge:eventbus:${property("eventbusVersion")}")
+    api(libs.gtnhlib) { artifact { classifier = "dev" } }
+    api(libs.eventbus)
 
-    compileOnly("org.embeddedt.celeritas:celeritas-common:${property("celeritasVersion")}") { isTransitive = false }
-    implementation("org.taumc:glsl-transformation-lib:${property("glslTransformLibVersion")}") { exclude(module = "antlr4") }
-    implementation("org.antlr:antlr4-runtime:${property("antlr4RuntimeVersion")}")
-    implementation("org.anarres:jcpp:${property("jcppVersion")}")
+    compileOnly(libs.celeritas.common) { isTransitive = false }
+    api(libs.glsl.transformation.lib) { exclude(module = "antlr4") }
+    api(libs.antlr4.runtime)
+    implementation(libs.jcpp)
 
-    compileOnly("org.projectlombok:lombok:${property("lombokVersion")}") { isTransitive = false }
-    annotationProcessor("org.projectlombok:lombok:${property("lombokVersion")}")
-    compileOnly("org.jetbrains:annotations:${property("jetbrainsAnnotationsVersion")}")
-    compileOnly("org.apache.logging.log4j:log4j-api:${property("log4jVersion")}")
+    // shaderc + SPIRV-Cross for the SpirvShaderTranslator (GLSL -> SPIR-V -> GLSL ES).
+    // TODO: Remove
+    compileOnly(libs.lwjgl3.shaderc)
+    compileOnly(libs.lwjgl3.spvc)
+    testImplementation(libs.lwjgl3.shaderc)
+    testImplementation(libs.lwjgl3.spvc)
+    // Host natives so the JNI wrapper can find libshaderc / libspirv-cross / liblwjgl.
+    testRuntimeOnly(libs.lwjgl3.shaderc) { artifact { classifier = lwjglNatives } }
+    testRuntimeOnly(libs.lwjgl3.spvc) { artifact { classifier = lwjglNatives } }
+    testRuntimeOnly(libs.lwjgl3)
+    testRuntimeOnly(libs.lwjgl3) { artifact { classifier = lwjglNatives } }
+    // @Lwjgl3Aware annotation
+    compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
+
+    compileOnly(libs.lombok) { isTransitive = false }
+    annotationProcessor(libs.lombok)
+    compileOnly(libs.annotations)
+    compileOnly(libs.log4j.api)
 
     // Deps (normally from MC) - compile only, but needed at test runtime
-    compileOnly("com.google.guava:guava:${property("guavaVersion")}")
-    testRuntimeOnly("com.google.guava:guava:${property("guavaVersion")}")
-    testRuntimeOnly("it.unimi.dsi:fastutil:${property("fastutilVersion")}")
-    testRuntimeOnly("org.joml:joml:${property("jomlVersion")}") { isTransitive = false }
+    compileOnly(libs.guava)
+    testRuntimeOnly(libs.guava)
+    testRuntimeOnly(libs.fastutil)
+    testRuntimeOnly(libs.joml) { isTransitive = false }
+
+    testFixturesCompileOnly(sourceSets["stubs"].output)
+    testFixturesApi(platform(libs.junit.bom))
+    testFixturesApi(libs.junit.jupiter.api)
+    testFixturesApi(libs.lwjgl2)
 
     // Test
     testImplementation(sourceSets["stubs"].output)
-    testImplementation(platform("org.junit:junit-bom:${property("junitBomVersion")}"))
-    testImplementation("org.junit.jupiter:junit-jupiter")
-    testImplementation("org.ow2.asm:asm-tree:9.7")
-    testImplementation("org.lwjgl.lwjgl:lwjgl:${property("lwjglVersion")}")
-    testRuntimeOnly("org.junit.platform:junit-platform-launcher")
-    testRuntimeOnly("org.apache.logging.log4j:log4j-core:${property("log4jVersion")}")
-    testRuntimeOnly("org.embeddedt.celeritas:celeritas-lwjgl2-service:${property("celeritasVersion")}") { isTransitive = false }
-    testRuntimeOnly("xyz.wagyourtail.jvmdowngrader:jvmdowngrader-java-api:${property("jvmDowngraderVersion")}:downgraded-8")
-    testRuntimeOnly("org.apache.commons:commons-lang3:${property("commonsLang3Version")}")
+    testImplementation(platform(libs.junit.bom))
+    testImplementation(libs.junit.jupiter)
+    testImplementation(libs.asm.tree.test)
+    testImplementation(libs.lwjgl2)
+    testRuntimeOnly(libs.junit.platform.launcher)
+    testRuntimeOnly(libs.log4j.core)
+    testImplementation(libs.celeritas.common) { isTransitive = false }
+    testRuntimeOnly(libs.celeritas.lwjgl2.service) { isTransitive = false }
+    testRuntimeOnly(libs.jvmdowngrader.java.api) { artifact { classifier = "downgraded-8" } }
+    testRuntimeOnly(libs.commons.lang3)
 }
 
 val depsToDowngrade by configurations.creating {
@@ -118,8 +151,8 @@ val depsToDowngrade by configurations.creating {
 }
 
 dependencies {
-    depsToDowngrade("net.minecraftforge:eventbus:${property("eventbusVersion")}")
-    depsToDowngrade("org.embeddedt.celeritas:celeritas-common:${property("celeritasVersion")}") { isTransitive = false }
+    depsToDowngrade(libs.eventbus)
+    depsToDowngrade(libs.celeritas.common) { isTransitive = false }
 }
 
 tasks.withType<DowngradeFiles>().configureEach {
@@ -136,7 +169,16 @@ val downgradeDepsForTest by tasks.registering(DowngradeFiles::class) {
 val downgradeMainClasses by tasks.registering(DowngradeFiles::class) {
     inputCollection = sourceSets["main"].output.classesDirs.plus(sourceSets["stubs"].output.classesDirs)
     classpath = sourceSets["main"].compileClasspath
+    (sourceSets["main"].output.classesDirs.files + sourceSets["stubs"].output.classesDirs.files)
+        .forEach { outputs.dir(temporaryDir.resolve(it.name)) }
     dependsOn(tasks.named("classes"), tasks.named("stubsClasses"))
+}
+
+val downgradeTestFixturesClasses by tasks.registering(DowngradeFiles::class) {
+    inputCollection = sourceSets["testFixtures"].output.classesDirs
+    classpath = sourceSets["testFixtures"].compileClasspath
+    sourceSets["testFixtures"].output.classesDirs.files.forEach { outputs.dir(temporaryDir.resolve(it.name)) }
+    dependsOn(tasks.named("testFixturesClasses"))
 }
 
 val downgradeTestClasses by tasks.registering(DowngradeFiles::class) {
@@ -161,7 +203,7 @@ fun Test.configureGlsmJava8() {
         }
     }
 
-    dependsOn(downgradeMainClasses, downgradeTestClasses, downgradeDepsForTest)
+    dependsOn(downgradeMainClasses, downgradeTestClasses, downgradeTestFixturesClasses, downgradeDepsForTest)
 
     val mainClassesDirs = sourceSets["main"].output.classesDirs
         .plus(sourceSets["stubs"].output.classesDirs)
@@ -175,7 +217,9 @@ fun Test.configureGlsmJava8() {
     classpath = downgradedTest
         .plus(downgradedMain)
         .plus(downgradedDeps)
-        .plus(sourceSets["test"].runtimeClasspath.minus(mainClassesDirs).minus(testClassesDirs).minus(depsToDowngrade))
+        .plus(files(downgradeTestFixturesClasses.map { it.outputCollection }))
+        .plus(sourceSets["test"].runtimeClasspath.minus(mainClassesDirs).minus(testClassesDirs)
+            .minus(sourceSets["testFixtures"].output.classesDirs).minus(depsToDowngrade))
 
     val extractNatives = rootProject.tasks.named("extractNatives2")
     dependsOn(extractNatives)
@@ -184,7 +228,10 @@ fun Test.configureGlsmJava8() {
 
 tasks.test {
     useJUnitPlatform {
-        excludeTags = GL_TASK_TAGS.values.toSet()
+        excludeTags = GL_TASK_TAGS.values.toSet() + "lwjgl3"
+    }
+    filter {
+        excludeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
     }
     configureGlsmJava8()
 }
@@ -224,6 +271,41 @@ val verifyTestsRan by tasks.registering {
     verifyTestsRan.configure { dependsOn(verify) }
 }
 tasks.check { dependsOn(verifyTestsRan) }
+
+val spirvTest by tasks.registering(Test::class) {
+    description = "Runs SpirvShaderTranslator* tests against native shaderc + spvc on Java 21."
+    group = "verification"
+    useJUnitPlatform()
+
+    javaLauncher = javaToolchains.launcherFor {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = sourceSets["test"].runtimeClasspath.filter { file ->
+        // Strip the LWJGL2 jars - they collide with LWJGL3's sealed org.lwjgl package.
+        !file.name.startsWith("lwjgl-2.") && !file.name.startsWith("lwjgl_util-") && !file.name.startsWith("lwjgl-platform-")
+    }
+
+    filter {
+        includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
+        includeTestsMatching("com.gtnewhorizons.angelica.glsm.ffp.FFPUniformBlockSpirvLayoutTest")
+    }
+
+    // libshaderc.so / libspirv-cross.so are extracted by extractNatives3.
+    val extractNatives3 = rootProject.tasks.named("extractNatives3")
+    dependsOn(extractNatives3)
+    jvmArgs(
+        "-Djava.library.path=${extractNatives3.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}",
+        "--enable-native-access=ALL-UNNAMED"
+    )
+
+    testLogging {
+        showStandardStreams = true
+    }
+}
+
+tasks.named("check") { dependsOn(spirvTest) }
 
 publishing {
     publications {

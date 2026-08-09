@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.client.rendering;
 
+import java.util.ArrayList;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
@@ -57,7 +58,7 @@ class DeferredDrawBatcherTest {
 
         // Create entries with interleaved keys: A, B, A, B, A
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
-        var entries = new java.util.ArrayList<DeferredBatchTessellator.DrawRange>();
+        var entries = new ArrayList<DeferredBatchTessellator.DrawRange>();
         entries.add(new DeferredBatchTessellator.DrawRange(keyA, 0, 128, 4, GL11.GL_QUADS, flags));
         entries.add(new DeferredBatchTessellator.DrawRange(keyB, 128, 128, 4, GL11.GL_QUADS, flags));
         entries.add(new DeferredBatchTessellator.DrawRange(keyA, 256, 128, 4, GL11.GL_QUADS, flags));
@@ -97,7 +98,7 @@ class DeferredDrawBatcherTest {
         long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true, true, true);
 
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
-        var entries = new java.util.ArrayList<DeferredBatchTessellator.DrawRange>();
+        var entries = new ArrayList<DeferredBatchTessellator.DrawRange>();
         entries.add(new DeferredBatchTessellator.DrawRange(key, 0, 128, 4, GL11.GL_QUADS, flags));
         entries.add(new DeferredBatchTessellator.DrawRange(key, 128, 256, 8, GL11.GL_QUADS, flags));
         entries.add(new DeferredBatchTessellator.DrawRange(key, 384, 128, 4, GL11.GL_QUADS, flags));
@@ -119,7 +120,7 @@ class DeferredDrawBatcherTest {
         long key = DeferredDrawBatcher.packStateKey(1, 0x0302, 0x0001, true, true, true, true);
 
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
-        var entries = new java.util.ArrayList<DeferredBatchTessellator.DrawRange>();
+        var entries = new ArrayList<DeferredBatchTessellator.DrawRange>();
         entries.add(new DeferredBatchTessellator.DrawRange(key, 0, 128, 4, GL11.GL_QUADS, flags));
         entries.add(new DeferredBatchTessellator.DrawRange(key, 128, 128, 4, GL11.GL_TRIANGLES, flags));
         entries.add(new DeferredBatchTessellator.DrawRange(key, 256, 128, 4, GL11.GL_QUADS, flags));
@@ -194,7 +195,7 @@ class DeferredDrawBatcherTest {
         final int flags = VertexFlags.convertToFlags(true, true, false, true);
 
         // Simulate sequential byte offsets as would be produced by interceptDraw
-        var ranges = new java.util.ArrayList<DeferredBatchTessellator.DrawRange>();
+        var ranges = new ArrayList<DeferredBatchTessellator.DrawRange>();
         int offset = 0;
         for (int i = 0; i < 5; i++) {
             int byteLen = (i + 1) * 128; // 128, 256, 384, 512, 640

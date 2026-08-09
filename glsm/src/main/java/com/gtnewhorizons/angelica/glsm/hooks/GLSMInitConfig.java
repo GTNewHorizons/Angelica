@@ -2,19 +2,20 @@ package com.gtnewhorizons.angelica.glsm.hooks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import lombok.Getter;
 
 import java.util.function.Consumer;
 
 public final class GLSMInitConfig {
-    private final boolean lwjglDebug;
-    private final StreamingUploader.UploadStrategy streamingUploadStrategy;
-    private final Consumer<DirectTessellator> directDrawer;
-    private final Runnable streamingDrawerDestroy;
-    private final int displayWidth;
-    private final int displayHeight;
-    private final Runnable postInitCallback;
-    private final boolean enableDSA;
-    private final boolean noErrorChecks;
+    @Getter private final boolean lwjglDebug;
+    @Getter private final StreamingUploader.UploadStrategy streamingUploadStrategy;
+    @Getter private final Consumer<DirectTessellator> directDrawer;
+    @Getter private final Runnable streamingDrawerDestroy;
+    @Getter private final int displayWidth;
+    @Getter private final int displayHeight;
+    @Getter private final Runnable postInitCallback;
+    @Getter private final boolean DSAEnabled;
+    @Getter private final boolean noErrorChecks;
 
     private GLSMInitConfig(Builder builder) {
         this.lwjglDebug = builder.lwjglDebug;
@@ -25,22 +26,12 @@ public final class GLSMInitConfig {
         this.displayWidth = builder.displayWidth;
         this.displayHeight = builder.displayHeight;
         this.postInitCallback = builder.postInitCallback;
-        this.enableDSA = builder.enableDSA;
+        this.DSAEnabled = builder.enableDSA;
     }
 
     public static Builder builder() {
         return new Builder();
     }
-
-    public boolean isLwjglDebug() { return lwjglDebug; }
-    public StreamingUploader.UploadStrategy getStreamingUploadStrategy() { return streamingUploadStrategy; }
-    public Consumer<DirectTessellator> getDirectDrawer() { return directDrawer; }
-    public Runnable getStreamingDrawerDestroy() { return streamingDrawerDestroy; }
-    public int getDisplayWidth() { return displayWidth; }
-    public int getDisplayHeight() { return displayHeight; }
-    public Runnable getPostInitCallback() { return postInitCallback; }
-    public boolean isDSAEnabled() { return enableDSA; }
-    public boolean noErrorChecks() { return noErrorChecks; }
 
     public static final class Builder {
         private boolean lwjglDebug = false;

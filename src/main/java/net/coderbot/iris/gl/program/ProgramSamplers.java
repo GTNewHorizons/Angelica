@@ -11,7 +11,7 @@ import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.sampler.SamplerLimits;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.texture.TextureAccess;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.shaderpack.PackRenderTargetDirectives;
 import org.lwjgl.opengl.GL13;
 
@@ -51,8 +51,8 @@ public class ProgramSamplers {
 		// in the middle of RenderType setup, bad things will happen.
 		int activeTexture = GLStateManager.getActiveTextureUnit();
 
-		for (SamplerBinding samplerBinding : samplerBindings) {
-			samplerBinding.update();
+		for (int i = 0, n = samplerBindings.size(); i < n; i++) {
+			samplerBindings.get(i).update();
 		}
 
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + activeTexture);
@@ -61,8 +61,8 @@ public class ProgramSamplers {
 	public void removeListeners() {
 		active = null;
 
-		for (ValueUpdateNotifier notifier : notifiersToReset) {
-			notifier.setListener(null);
+		for (int i = 0, n = notifiersToReset.size(); i < n; i++) {
+			notifiersToReset.get(i).setListener(null);
 		}
 	}
 
