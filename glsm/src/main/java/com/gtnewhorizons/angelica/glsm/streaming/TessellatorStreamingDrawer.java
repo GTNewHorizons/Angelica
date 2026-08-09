@@ -282,6 +282,7 @@ public class TessellatorStreamingDrawer {
             }
 
             drawWithQuadConversion(drawMode, firstVertex, vertexCount);
+            GLStateManager.glBindVertexArray(0);
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
             Tracy.endZone();

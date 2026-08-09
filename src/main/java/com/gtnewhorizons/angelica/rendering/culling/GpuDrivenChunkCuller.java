@@ -30,7 +30,7 @@ public final class GpuDrivenChunkCuller {
     static final int VISIBLE_SSBO_BINDING = 0;
     static final int META_SSBO_BINDING = 1;
     static final int INDIRECT_SSBO_BINDING = 2;
-    static final int FRUSTUM_UBO_BINDING = 0;
+    static final int FRUSTUM_UBO_BINDING = 1;
 
     private boolean ready;
     private boolean disabled;

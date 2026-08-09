@@ -201,6 +201,7 @@ fun Test.configureAngelicaJava8() {
 tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
+    dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }
 
 val downgradeRootMainClasses = tasks.named<DowngradeFiles>("downgradeMainClasses")
