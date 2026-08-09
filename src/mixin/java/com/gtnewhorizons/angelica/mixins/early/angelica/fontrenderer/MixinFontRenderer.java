@@ -20,9 +20,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
@@ -193,11 +191,6 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Override
     public void angelica$bindTexture(ResourceLocation location) { this.bindTexture(location); }
-
-    @ModifyConstant(method = "getCharWidth", constant = @Constant(intValue = 7))
-    private int angelica$maxCharWidth(int original) {
-        return Integer.MAX_VALUE;
-    }
 
     @Inject(method = "getCharWidth", at = @At("HEAD"), cancellable = true)
     public void getCharWidth(char c, CallbackInfoReturnable<Integer> cir) {

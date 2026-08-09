@@ -9,9 +9,7 @@ import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.entity.AbstractClientPlayer;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelBiped;
-import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.RenderPlayer;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -66,18 +64,5 @@ public class MixinRenderPlayerArmor {
 
         original.call(modelBiped, scale);
         ItemIdManager.resetItemId();
-    }
-
-    /**
-     * Set item ID when rendering held items in third person.
-     */
-    @WrapOperation(
-        method = "renderEquippedItems(Lnet/minecraft/client/entity/AbstractClientPlayer;F)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;I)V")
-    )
-    private void iris$setHeldItemId(ItemRenderer itemRenderer, EntityLivingBase entity, ItemStack itemStack, int renderPass, Operation<Void> original) {
-        ItemIdManager.setItemId(itemStack);
-
-        original.call(itemRenderer, entity, itemStack, renderPass);
     }
 }

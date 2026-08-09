@@ -42,4 +42,8 @@ public class TextureBindingStack extends TextureBinding implements IStateStack<T
     public boolean isEmpty() {
         return pointer == 0;
     }
+
+    public boolean topChanged() {
+        return pointer > 0 && !sameAs(stack[pointer - 1]);
+    }
 }

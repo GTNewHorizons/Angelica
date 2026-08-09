@@ -9,8 +9,7 @@ public class RenderPassAPI {
 
     public static RenderPassAPI instance = new RenderPassAPI();
 
-    private static final String[] NAMES = new String[] { "solid", "cutout_mipped", "cutout", "translucent", "backface",
-        "overlay" };
+    private static final String[] NAMES = new String[] { "solid", "cutout_mipped", "cutout", "translucent", "backface", "overlay" };
 
     public static final int SOLID_RENDER_PASS = 0;
     public static final int CUTOUT_MIPPED_RENDER_PASS = 1;

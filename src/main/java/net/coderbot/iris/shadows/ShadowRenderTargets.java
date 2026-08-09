@@ -1,20 +1,25 @@
 package net.coderbot.iris.shadows;
 
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntList;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
-import net.coderbot.iris.gl.texture.DepthBufferFormat;
+import com.gtnewhorizons.angelica.glsm.texture.DepthBufferFormat;
 import net.coderbot.iris.gl.texture.DepthCopyStrategy;
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelType;
 import net.coderbot.iris.rendertarget.DepthTexture;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.shaderpack.PackShadowDirectives;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL30;
+
+import java.nio.ByteBuffer;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -26,6 +31,7 @@ public class ShadowRenderTargets {
 	private final DepthTexture noTranslucents;
 	private final GlFramebuffer depthSourceFb;
 	private final GlFramebuffer noTranslucentsDestFb;
+	private final DepthCopyStrategy copyStrategy = DepthCopyStrategy.fastest(false);
 	private final boolean[] flipped;
 
 	private final List<GlFramebuffer> ownedFramebuffers;
@@ -33,6 +39,12 @@ public class ShadowRenderTargets {
 
 	private boolean fullClearRequired;
 	private boolean translucentDepthDirty;
+	private DepthTexture terrainDepthCache;
+	private GlFramebuffer terrainDepthCacheFb;
+	private int[] terrainColorCache;
+	private GlFramebuffer[] terrainColorSrcFb;
+	private GlFramebuffer[] terrainColorCacheFb;
+	private boolean terrainSnapshotValid;
 	private final boolean[] hardwareFiltered;
 	private final boolean[] linearFiltered;
 	private final InternalTextureFormat[] formats;
@@ -93,6 +105,7 @@ public class ShadowRenderTargets {
 		}
 
 		fullClearRequired = true;
+		terrainSnapshotValid = false;
 	}
 
 	public void createIfEmpty(int index) {
@@ -128,6 +141,17 @@ public class ShadowRenderTargets {
 
 		mainDepth.destroy();
 		noTranslucents.destroy();
+		if (terrainDepthCache != null) {
+			terrainDepthCache.destroy();
+			terrainDepthCache = null;
+		}
+		if (terrainColorCache != null) {
+			for (int tex : terrainColorCache) {
+				if (tex != 0) GLStateManager.glDeleteTextures(tex);
+			}
+			terrainColorCache = null;
+		}
+		terrainSnapshotValid = false;
 	}
 
 	public int getRenderTargetCount() {
@@ -160,9 +184,65 @@ public class ShadowRenderTargets {
 			RenderSystem.blitFramebuffer(depthSourceFb.getId(), noTranslucentsDestFb.getId(), 0, 0, resolution, resolution,
 				0, 0, resolution, resolution, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
 		} else {
-			DepthCopyStrategy.fastest(false).copy(depthSourceFb, mainDepth.getTextureId(), noTranslucentsDestFb, noTranslucents.getTextureId(),
+			copyStrategy.copy(depthSourceFb, mainDepth.getTextureId(), noTranslucentsDestFb, noTranslucents.getTextureId(),
 				resolution, resolution);
 		}
+	}
+
+	public boolean isTerrainSnapshotValid() {
+		return terrainSnapshotValid;
+	}
+
+	public void captureTerrainSnapshot() {
+		ensureTerrainCaches();
+		RenderSystem.blitFramebuffer(depthSourceFb.getId(), terrainDepthCacheFb.getId(), 0, 0, resolution, resolution, 0, 0, resolution, resolution, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+		for (int i = 0; i < targets.length; i++) {
+			if (targets[i] == null) continue;
+			RenderSystem.blitFramebuffer(terrainColorSrcFb[i].getId(), terrainColorCacheFb[i].getId(), 0, 0, resolution, resolution, 0, 0, resolution, resolution, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+		}
+		terrainSnapshotValid = true;
+	}
+
+	public void restoreTerrainSnapshot() {
+		RenderSystem.blitFramebuffer(terrainDepthCacheFb.getId(), depthSourceFb.getId(), 0, 0, resolution, resolution, 0, 0, resolution, resolution, GL11.GL_DEPTH_BUFFER_BIT, GL11.GL_NEAREST);
+		for (int i = 0; i < targets.length; i++) {
+			if (targets[i] == null || terrainColorCacheFb == null || terrainColorCacheFb[i] == null) continue;
+			RenderSystem.blitFramebuffer(terrainColorCacheFb[i].getId(), terrainColorSrcFb[i].getId(), 0, 0, resolution, resolution, 0, 0, resolution, resolution, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+		}
+	}
+
+	private void ensureTerrainCaches() {
+		if (terrainDepthCache == null) {
+			terrainDepthCache = new DepthTexture(resolution, resolution, DepthBufferFormat.DEPTH);
+			terrainDepthCacheFb = new GlFramebuffer();
+			ownedFramebuffers.add(terrainDepthCacheFb);
+			terrainDepthCacheFb.addDepthAttachment(terrainDepthCache.getTextureId());
+		}
+		if (terrainColorCache == null) {
+			terrainColorCache = new int[targets.length];
+			terrainColorSrcFb = new GlFramebuffer[targets.length];
+			terrainColorCacheFb = new GlFramebuffer[targets.length];
+		}
+		for (int i = 0; i < targets.length; i++) {
+			if (targets[i] == null || terrainColorCache[i] != 0) continue;
+			terrainColorCache[i] = createCacheTexture(formats[i]);
+			terrainColorSrcFb[i] = new GlFramebuffer();
+			ownedFramebuffers.add(terrainColorSrcFb[i]);
+			terrainColorSrcFb[i].addColorAttachment(0, targets[i].getMainTexture());
+			terrainColorCacheFb[i] = new GlFramebuffer();
+			ownedFramebuffers.add(terrainColorCacheFb[i]);
+			terrainColorCacheFb[i].addColorAttachment(0, terrainColorCache[i]);
+		}
+	}
+
+	private int createCacheTexture(InternalTextureFormat format) {
+		final int tex = GLStateManager.glGenTextures();
+		RenderSystem.texImage2D(tex, GL11.GL_TEXTURE_2D, 0, format.getGlFormat(), resolution, resolution, 0, format.getPixelFormat().getGlFormat(), PixelType.UNSIGNED_BYTE.getGlFormat(), (ByteBuffer) null);
+		RenderSystem.texParameteri(tex, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+		RenderSystem.texParameteri(tex, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+		RenderSystem.texParameteri(tex, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+		RenderSystem.texParameteri(tex, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+		return tex;
 	}
 
 	public boolean isFullClearRequired() {
@@ -284,9 +364,11 @@ public class ShadowRenderTargets {
 		framebuffer.drawBuffers(actualDrawBuffers);
 		framebuffer.readBuffer(0);
 
-		final int status = framebuffer.getStatus();
-		if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
-			throw new IllegalStateException(String.format( "Unexpected error while creating shadow framebuffer: glCheckFramebufferStatus=0x%X, resolution=%d, drawBuffers=%d", status, resolution, drawBuffers.length));
+		if (GLStateManager.framebufferCompletenessIsMeaningful()) {
+			final int status = framebuffer.getStatus();
+			if (status != GL30.GL_FRAMEBUFFER_COMPLETE) {
+				throw new IllegalStateException(String.format("Unexpected error while creating shadow framebuffer: glCheckFramebufferStatus=0x%X, resolution=%d, drawBuffers=%d", status, resolution, drawBuffers.length));
+			}
 		}
 
 		return framebuffer;

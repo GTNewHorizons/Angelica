@@ -6,9 +6,9 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import lombok.Getter;
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
-import net.coderbot.iris.gl.texture.PixelFormat;
-import net.coderbot.iris.gl.texture.PixelType;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelType;
 import org.joml.Vector2i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
@@ -30,6 +30,8 @@ public class RenderTarget {
 	private boolean isValid;
 	private final int mainTexture;
 	private final int altTexture;
+	private boolean mainDirty = true;
+	private boolean altDirty = true;
 
 	private static final ByteBuffer NULL_BUFFER = null;
 
@@ -87,6 +89,26 @@ public class RenderTarget {
 		resizeTexture(mainTexture, width, height);
 
 		resizeTexture(altTexture, width, height);
+
+		mainDirty = true;
+		altDirty = true;
+	}
+
+	public void markDirty(boolean isAlt) {
+		if (isAlt) altDirty = true; else mainDirty = true;
+	}
+
+	public void markBothDirty() {
+		mainDirty = true;
+		altDirty = true;
+	}
+
+	public boolean isDirty(boolean isAlt) {
+		return isAlt ? altDirty : mainDirty;
+	}
+
+	public void clearDirty(boolean isAlt) {
+		if (isAlt) altDirty = false; else mainDirty = false;
 	}
 
     public int getMainTexture() {

@@ -7,10 +7,10 @@ import net.coderbot.iris.gl.sampler.GlSampler;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
 import net.coderbot.iris.gl.shader.GlShader;
 import net.coderbot.iris.gl.shader.ProgramCreator;
-import net.coderbot.iris.gl.shader.ShaderType;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import org.jetbrains.annotations.Nullable;
 
 import java.util.function.IntSupplier;

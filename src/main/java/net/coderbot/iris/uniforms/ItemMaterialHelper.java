@@ -23,6 +23,8 @@ public class ItemMaterialHelper {
     private static final Reference2ObjectMap<Item, Int2IntMap> MATERIAL_CACHE = new Reference2ObjectOpenHashMap<>();
     private static final int CACHE_MISS_SENTINEL = Integer.MIN_VALUE;
     private static final Reference2ObjectMap<Item, NamespacedId> ITEM_NAME_CACHE = new Reference2ObjectOpenHashMap<>();
+    private static final Reference2ObjectMap<Block, Int2IntMap> BLOCK_MATERIAL_CACHE = new Reference2ObjectOpenHashMap<>();
+
     /**
      * Get the material ID for an ItemStack.
      * For ItemBlock: checks block.properties first, then item.properties.
@@ -80,6 +82,52 @@ public class ItemMaterialHelper {
     }
 
     /**
+     * Get the material ID for a Block rendered outside of terrain.
+     *
+     * @return The material ID, or -1 if not found
+     */
+    public static int getMaterialId(Block block, int metadata) {
+        if (block == null) {
+            return -1;
+        }
+
+        Int2IntMap metadataCache = BLOCK_MATERIAL_CACHE.get(block);
+        if (metadataCache != null) {
+            int cached = metadataCache.getOrDefault(metadata, CACHE_MISS_SENTINEL);
+            if (cached != CACHE_MISS_SENTINEL) {
+                return cached;
+            }
+        }
+
+        int materialId = lookupBlockMaterialId(block, metadata);
+
+        if (metadataCache == null) {
+            metadataCache = new Int2IntOpenHashMap();
+            metadataCache.defaultReturnValue(CACHE_MISS_SENTINEL);
+            BLOCK_MATERIAL_CACHE.put(block, metadataCache);
+        }
+        metadataCache.put(metadata, materialId);
+
+        return materialId;
+    }
+
+    private static int lookupBlockMaterialId(Block block, int metadata) {
+        Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+        if (blockMetaMatches != null) {
+            Int2IntMap metaMap = blockMetaMatches.get(block);
+            if (metaMap != null) {
+                int id = BlockMaterialMapping.resolveId(metaMap, metadata);
+                if (id != -1) {
+                    return id;
+                }
+            }
+        }
+
+        final Item item = Item.getItemFromBlock(block);
+        return item != null ? lookupItemPropertiesId(item) : -1;
+    }
+
+    /**
      * Perform the actual material ID lookup without caching.
      *
      * For block items (ItemBlock): use block.properties first, then fall back to item.properties.
@@ -107,16 +155,17 @@ public class ItemMaterialHelper {
         }
 
         // Fall back to item.properties
-        Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
-        if (itemIds != null) {
-            String itemIdString = Item.itemRegistry.getNameForObject(item);
-            if (itemIdString != null) {
-                ResourceLocation itemId = new ResourceLocation(itemIdString);
-                return itemIds.applyAsInt(new NamespacedId(itemId.getResourceDomain(), itemId.getResourcePath()));
-            }
+        return lookupItemPropertiesId(item);
+    }
+
+    private static int lookupItemPropertiesId(Item item) {
+        final Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
+        if (itemIds == null) {
+            return -1;
         }
 
-        return -1;
+        final NamespacedId name = getCachedItemName(item);
+        return name == null ? -1 : itemIds.applyAsInt(name);
     }
 
     /**
@@ -126,6 +175,7 @@ public class ItemMaterialHelper {
     public static void clearCache() {
         MATERIAL_CACHE.clear();
         ITEM_NAME_CACHE.clear();
+        BLOCK_MATERIAL_CACHE.clear();
     }
 
     private static NamespacedId getCachedItemName(Item item) {

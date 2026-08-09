@@ -73,6 +73,10 @@ public class DHCompat {
         return dhPresent && hasRenderingEnabled() && lastIncompatible;
     }
 
+    public static boolean isPresent() {
+        return dhPresent;
+    }
+
     public static float getFarPlane() {
         if (!dhPresent) return 0.01f;
         return DHCompatInternal.getFarPlane();

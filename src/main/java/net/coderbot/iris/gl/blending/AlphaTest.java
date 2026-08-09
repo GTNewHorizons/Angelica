@@ -1,5 +1,7 @@
 package net.coderbot.iris.gl.blending;
 
+import com.gtnewhorizons.angelica.glsm.states.AlphaTestFunction;
+
 public class AlphaTest {
 	public static final AlphaTest ALWAYS = new AlphaTest(AlphaTestFunction.ALWAYS, 0.0f);
 

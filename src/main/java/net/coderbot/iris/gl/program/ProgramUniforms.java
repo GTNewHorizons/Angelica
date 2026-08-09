@@ -18,7 +18,7 @@ import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.DynamicLocationalUniformHolder;
 import net.coderbot.iris.gl.uniform.Uniform;
 import net.coderbot.iris.gl.uniform.UniformHolder;
-import net.coderbot.iris.gl.uniform.UniformType;
+import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
@@ -51,8 +51,8 @@ public class ProgramUniforms {
 	}
 
 	private void updateStage(ImmutableList<Uniform> uniforms) {
-		for (Uniform uniform : uniforms) {
-			uniform.update();
+		for (int i = 0, n = uniforms.size(); i < n; i++) {
+			uniforms.get(i).update();
 		}
 	}
 
@@ -107,8 +107,8 @@ public class ProgramUniforms {
 	public void removeListeners() {
 		active = null;
 
-		for (ValueUpdateNotifier notifier : notifiersToReset) {
-			notifier.setListener(null);
+		for (int i = 0, n = notifiersToReset.size(); i < n; i++) {
+			notifiersToReset.get(i).setListener(null);
 		}
 	}
 
@@ -207,7 +207,7 @@ public class ProgramUniforms {
 				final UniformType provided = uniformNames.get(name);
                 final UniformType expected = getExpectedType(type);
 
-				if(AngelicaConfig.enableHardcodedCustomUniforms) {
+				if(Iris.hardcodedCustomUniforms) {
 					// Legacy Checks from hardcoded custom uniforms
 					if (provided == null && !name.startsWith("gl_")) {
 						final String typeName = getTypeName(type);

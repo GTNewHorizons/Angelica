@@ -4,10 +4,8 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.entity.RenderBiped;
 import net.minecraft.entity.EntityLiving;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,18 +36,5 @@ public class MixinRenderBiped {
         ItemIdManager.setItemId(itemStack);
 
         original.call(instance, model);
-    }
-
-    /**
-     * Set item ID when rendering held items on entities (third person).
-     */
-    @WrapOperation(
-        method = "renderEquippedItems(Lnet/minecraft/entity/EntityLiving;F)V",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;I)V")
-    )
-    private void iris$setHeldItemId(ItemRenderer itemRenderer, EntityLivingBase entity, ItemStack itemStack, int renderPass, Operation<Void> original) {
-        ItemIdManager.setItemId(itemStack);
-
-        original.call(itemRenderer, entity, itemStack, renderPass);
     }
 }

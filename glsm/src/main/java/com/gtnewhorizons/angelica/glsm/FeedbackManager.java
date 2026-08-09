@@ -151,7 +151,7 @@ public class FeedbackManager {
         computeMVP();
         final int stride = positionStride();
 
-        final int elementSize = VAOManager.Attrib.glTypeSizeBytes(type);
+        final int elementSize = GLTypes.sizeBytes(type);
         final int indexByteCount = indexCount * elementSize;
         ensureIndexReadbackCapacity(indexByteCount);
         indexReadbackBuf.clear().limit(indexByteCount);

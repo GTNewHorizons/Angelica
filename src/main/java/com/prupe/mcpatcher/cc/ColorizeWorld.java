@@ -101,7 +101,7 @@ public class ColorizeWorld {
             return null;
         } else {
             if (fogBlendRadius > 0) {
-                map = new ColorMapBase.Blended(map, fogBlendRadius);
+                map = new ColorMapBase.Blended(new ColorMapBase.BlockCached(map), fogBlendRadius);
             }
             map = new ColorMapBase.Cached(map);
             map = new ColorMapBase.Smoothed(map, 3000.0f);

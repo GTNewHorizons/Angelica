@@ -29,7 +29,7 @@ public class LightModelState implements ISettableState<LightModelState> {
 
     public boolean setAmbient(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
             return true;
         }
@@ -39,7 +39,7 @@ public class LightModelState implements ISettableState<LightModelState> {
     public boolean setAmbient(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
             return true;
         }
@@ -47,7 +47,7 @@ public class LightModelState implements ISettableState<LightModelState> {
     }
 
     public boolean setColorControl(int val) {
-        if (GLStateManager.shouldBypassCache() || this.colorControl != val) {
+        if (!GLStateManager.isCachingEnabled() || this.colorControl != val) {
             this.colorControl = val;
             return true;
         }
@@ -59,7 +59,7 @@ public class LightModelState implements ISettableState<LightModelState> {
     }
 
     public boolean setLocalViewer(float val) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(this.localViewer, val) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(this.localViewer, val) != 0) {
             this.localViewer = val;
             return true;
         }
@@ -79,7 +79,7 @@ public class LightModelState implements ISettableState<LightModelState> {
     }
 
     public boolean setTwoSide(float val) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(this.twoSide, val) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(this.twoSide, val) != 0) {
             this.twoSide = val;
             return true;
         }

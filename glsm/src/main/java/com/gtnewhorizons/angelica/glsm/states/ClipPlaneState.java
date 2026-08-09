@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.joml.Matrix4f;
 import org.joml.Vector4f;
 
+import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
 
 /**
@@ -30,5 +31,11 @@ public class ClipPlaneState {
     public void putEyePlane(int index, FloatBuffer buf) {
         final float[] p = eyePlanes[index];
         buf.put(p[0]).put(p[1]).put(p[2]).put(p[3]);
+    }
+
+    public void getEyePlane(int index, DoubleBuffer buf) {
+        final float[] p = eyePlanes[index];
+        final int pos = buf.position();
+        buf.put(pos, p[0]).put(pos + 1, p[1]).put(pos + 2, p[2]).put(pos + 3, p[3]);
     }
 }

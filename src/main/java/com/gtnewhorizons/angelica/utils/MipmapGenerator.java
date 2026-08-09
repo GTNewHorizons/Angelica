@@ -4,6 +4,8 @@ import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
 import org.embeddedt.embeddium.api.util.ColorARGB;
 import org.embeddedt.embeddium.impl.texture.MipmapHelper;
 
+import static org.joml.Math.clamp;
+
 /**
  * Mipmap downsampling for atlas sprites, replacing vanilla's {@code TextureUtil.generateMipmapData}.
  */
@@ -185,11 +187,7 @@ public final class MipmapGenerator {
     }
 
     private static float scaledAlpha(int color, float alphaFactor) {
-        return clamp01(ColorARGB.unpackAlpha(color) * alphaFactor);
-    }
-
-    private static float clamp01(float value) {
-        return value < 0.0f ? 0.0f : Math.min(value, 1.0f);
+        return clamp(0.0f, 1.0f, ColorARGB.unpackAlpha(color) * alphaFactor);
     }
 
     static void scaleAlphaToCoverage(int[] image, int width, float desiredCoverage, float alphaRef, int border) {
@@ -221,7 +219,7 @@ public final class MipmapGenerator {
             final int color = image[i];
             final int rawAlpha = ColorARGB.unpackAlpha(color);
             final float bias = rawAlpha > 0 ? ALPHA_BIAS : 0.0f;
-            final int alpha = (int) Math.floor(clamp01(rawAlpha / 255.0f * bestScale + bias) * 255.0f);
+            final int alpha = (int) Math.floor(clamp(0.0f, 1.0f, rawAlpha / 255.0f * bestScale + bias) * 255.0f);
             image[i] = ColorARGB.withAlpha(color, alpha);
         }
     }

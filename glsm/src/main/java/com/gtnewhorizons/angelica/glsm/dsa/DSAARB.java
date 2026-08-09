@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
@@ -76,6 +77,11 @@ public class DSAARB extends DSAUnsupported {
     }
 
     @Override
+    public float getTexParameterf(int texture, int target, int pname) {
+        return RENDER_BACKEND.getTextureParameterf(texture, target, pname);
+    }
+
+    @Override
     public int getTexLevelParameteri(int texture, int level, int pname) {
         return RENDER_BACKEND.getTextureLevelParameteri(texture, level, pname);
     }
@@ -87,19 +93,20 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public void bindTextureToUnit(int unit, int texture) {
-        if(GLStateManager.getBoundTextureForServerState(unit) == texture) return;
-
-        if (texture == 0) {
-            super.bindTextureToUnit(unit, texture);
-        } else {
-            RENDER_BACKEND.bindTextureUnit(unit, texture);
-            GLStateManager.getTextures().getTextureUnitBindings(unit).setBinding(texture);
-        }
+        bindTextureToUnit(0, unit, texture);
     }
 
     @Override
     public void bindTextureToUnit(int target, int unit, int texture) {
-        bindTextureToUnit(unit, texture);
+        if(GLStateManager.getBoundTextureForServerState(unit) == texture) return;
+
+        if (texture == 0) {
+            super.bindTextureToUnit(target != 0 ? target : GL11.GL_TEXTURE_2D, unit, texture);
+        } else {
+            RENDER_BACKEND.bindTextureUnit(unit, texture);
+            GLStateManager.getTextures().getTextureUnitBindings(unit).setBinding(texture, target);
+            GLStateManager.trackMaxBoundTextureUnit(unit);
+        }
     }
 
     @Override

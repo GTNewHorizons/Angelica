@@ -4,9 +4,14 @@ import com.google.common.base.Throwables;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
+import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
@@ -37,6 +42,7 @@ import net.coderbot.iris.shaderpack.option.values.MutableOptionValues;
 import net.coderbot.iris.shaderpack.option.values.OptionValues;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.iris.uniforms.PerFrameUniformBlockHarvester;
 import net.minecraft.block.Block;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -67,9 +73,10 @@ import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
-import java.util.concurrent.ForkJoinPool;
-import java.util.concurrent.ForkJoinWorkerThread;
+import java.util.concurrent.LinkedBlockingQueue;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ThreadFactory;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
@@ -89,6 +96,7 @@ public class Iris {
 
     // Cached at class load - config must be loaded before Iris. Do not change at runtime.
     public static final boolean enabled = AngelicaConfig.enableIris;
+    public static final boolean hardcodedCustomUniforms = AngelicaConfig.enableHardcodedCustomUniforms;
 
     private static Path shaderpacksDirectory;
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;
@@ -151,8 +159,13 @@ public class Iris {
         private static volatile long lastActivityTime;
         private static final AtomicInteger inFlight = new AtomicInteger(0);
         private static boolean idleCheckScheduled;
+        private static final ThreadLocal<Boolean> ON_WORKER = ThreadLocal.withInitial(() -> Boolean.FALSE);
 
         private ShaderTransformExecutor() {}
+
+        public static boolean isOnWorker() {
+            return ON_WORKER.get();
+        }
 
         private static void noteActivity() {
             lastActivityTime = System.nanoTime();
@@ -166,18 +179,21 @@ public class Iris {
                     return executor;
                 }
 
-                executor = new ForkJoinPool(
+                final AtomicInteger threadCounter = new AtomicInteger();
+                final ThreadFactory factory = r -> {
+                    final Thread t = new Thread(r, "Shader-Transform-" + threadCounter.getAndIncrement());
+                    t.setDaemon(true);
+                    return t;
+                };
+                final ThreadPoolExecutor tpe = new ThreadPoolExecutor(
                     THREAD_COUNT,
-                    pool -> {
-                        ForkJoinWorkerThread t = ForkJoinPool.defaultForkJoinWorkerThreadFactory.newThread(pool);
-                        t.setName("Shader-Transform-" + t.getPoolIndex());
-                        t.setDaemon(true);
-                        return t;
-                    },
-                    null,  // UncaughtExceptionHandler
-                    true   // asyncMode - FIFO, better for independent tasks
-                );
-                logger.debug("Created shader transform executor with " + THREAD_COUNT + " threads");
+                    THREAD_COUNT,
+                    0L, TimeUnit.MILLISECONDS,
+                    new LinkedBlockingQueue<>(),
+                    factory);
+                tpe.prestartAllCoreThreads();
+                executor = tpe;
+                logger.debug("Created shader transform executor with " + THREAD_COUNT + " prestarted threads");
 
                 if (scheduler == null || scheduler.isShutdown()) {
                     scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
@@ -205,15 +221,9 @@ public class Iris {
             }
         }
 
-        /**
-         * Ensures the executor exists and begins spinning up worker threads.
-         * Intended for UI entrypoints (eg. shader settings screen open).
-         */
+        /** Idempotent: ensures the pool is created. {@link #get()} prestarts all workers. */
         public static void prepare() {
-            // Submit empty tasks to warm up all worker threads without blocking the UI thread.
-            for (int i = 0; i < THREAD_COUNT; i++) {
-                submitTracked(() -> { });
-            }
+            get();
         }
 
         /**
@@ -238,9 +248,11 @@ public class Iris {
             inFlight.incrementAndGet();
             try {
                 return CompletableFuture.supplyAsync(() -> {
+                    ON_WORKER.set(Boolean.TRUE);
                     try {
                         return supplier.get();
                     } finally {
+                        ON_WORKER.set(Boolean.FALSE);
                         noteActivity();
                         inFlight.decrementAndGet();
                     }
@@ -257,9 +269,11 @@ public class Iris {
             inFlight.incrementAndGet();
             try {
                 return CompletableFuture.runAsync(() -> {
+                    ON_WORKER.set(Boolean.TRUE);
                     try {
                         runnable.run();
                     } finally {
+                        ON_WORKER.set(Boolean.FALSE);
                         noteActivity();
                         inFlight.decrementAndGet();
                     }
@@ -297,6 +311,9 @@ public class Iris {
                     // Clear transformation caches - no longer needed after loading
                     TransformPatcher.clearCache();
                     ShaderTransformer.clearCache();
+                    GlslVulkanPreprocess.clearCache();
+                    if (RenderSystem.isGLES() || BackendManager.RENDER_BACKEND.isSDLGPU()) SpirvCompiler.clearCache();
+                    SDLGPUGate.clearShaderPrewarmCache();
                 } else {
                     // Still active (or in-flight), schedule another check.
                     final long remainingSeconds = Math.max(1, IDLE_TIMEOUT_SECONDS - idleSeconds + 1);
@@ -402,10 +419,7 @@ public class Iris {
             return;
         }
 
-        // Register the Celeritas shader provider for Iris integration (only when Celeritas is enabled)
-        if (AngelicaConfig.enableCeleritas) {
-            IrisShaderProviderHolder.setProvider(new IrisCeleritasShaderProvider());
-        }
+        IrisShaderProviderHolder.setProvider(new IrisCeleritasShaderProvider());
 
         // Warm up the threadpool so shader transformations are faster when we need them
         ShaderTransformExecutor.warmup();
@@ -856,6 +870,7 @@ public class Iris {
     private static WorldRenderingPipeline createPipeline(String dimensionName) {
         if (currentPack == null) {
             // Completely disables shader-based rendering
+            PerFrameUniformBlockHarvester.clear();
             return new FixedFunctionWorldRenderingPipeline();
         }
 
@@ -863,6 +878,8 @@ public class Iris {
 
         try {
             shaderPackLoadId++;
+            ShaderTransformExecutor.prepare();
+            PerFrameUniformBlockHarvester.harvest(programs);
             long startTime = System.nanoTime();
             WorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
             long endTime = System.nanoTime();
@@ -872,6 +889,7 @@ public class Iris {
             logger.error("Failed to create shader rendering pipeline, disabling shaders!", e);
             // TODO: This should be reverted if a dimension change causes shaders to compile again
             fallback = true;
+            PerFrameUniformBlockHarvester.clear();
 
             return new FixedFunctionWorldRenderingPipeline();
         }

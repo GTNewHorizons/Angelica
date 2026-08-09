@@ -1,7 +1,7 @@
 package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
-import net.coderbot.iris.gl.shader.ShaderType;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -135,7 +135,12 @@ public class CommonTransformer {
 				+ "gl_ClipDistance[4] = dot(angelica_ClipPlane[4], _cp_ep); "
 				+ "gl_ClipDistance[5] = dot(angelica_ClipPlane[5], _cp_ep); "
 				+ "gl_ClipDistance[6] = dot(angelica_ClipPlane[6], _cp_ep); "
-				+ "gl_ClipDistance[7] = dot(angelica_ClipPlane[7], _cp_ep); } }"
+				+ "gl_ClipDistance[7] = dot(angelica_ClipPlane[7], _cp_ep); "
+				+ "} else { "
+				+ "gl_ClipDistance[0] = 0.0; gl_ClipDistance[1] = 0.0; "
+				+ "gl_ClipDistance[2] = 0.0; gl_ClipDistance[3] = 0.0; "
+				+ "gl_ClipDistance[4] = 0.0; gl_ClipDistance[5] = 0.0; "
+				+ "gl_ClipDistance[6] = 0.0; gl_ClipDistance[7] = 0.0; } }"
 			);
 		}
 	}

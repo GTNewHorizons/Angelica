@@ -29,6 +29,8 @@ public final class EntityIdHelper {
     private static final Object2IntMap<Class<?>> entityIdCache = new Object2IntOpenHashMap<>();
     private static final Map<Class<?>, NamespacedId> entityNameCache = new IdentityHashMap<>();
     private static Object2IntFunction<NamespacedId> cachedEntityIdMap;
+    private static int cachedCurrentPlayerId = -1;
+    private static int cachedConvertingVillagerId = -1;
 
     private static final Int2LongLinkedOpenHashMap entityNbtCache = new Int2LongLinkedOpenHashMap();
     private static final int NBT_CACHE_INTERVAL_TICKS = 20;
@@ -64,6 +66,8 @@ public final class EntityIdHelper {
             entityNameCache.clear();
             entityNbtCache.clear();
             cachedEntityIdMap = entityIdMap;
+            cachedCurrentPlayerId = entityIdMap.applyAsInt(CURRENT_PLAYER);
+            cachedConvertingVillagerId = entityIdMap.applyAsInt(CONVERTING_VILLAGER);
         }
 
         // Check NBT-conditional match first
@@ -99,7 +103,7 @@ public final class EntityIdHelper {
         final int normalId = getNormalEntityId(entity, entityIdMap);
 
         // Check for special entity type overrides
-        final int specialId = getSpecialEntityId(entity, entityIdMap);
+        final int specialId = getSpecialEntityId(entity);
         if (specialId != -1) {
             return specialId;
         }
@@ -110,20 +114,16 @@ public final class EntityIdHelper {
     /**
      * Check if the entity should use a special hardcoded entity ID.
      */
-    private static int getSpecialEntityId(Entity entity, Object2IntFunction<NamespacedId> entityIdMap) {
+    private static int getSpecialEntityId(Entity entity) {
         // Check if this is the current player (3rd person only)
-        Entity cameraEntity = Minecraft.getMinecraft().renderViewEntity;
-        if (entity == cameraEntity && entity instanceof EntityPlayer) {
-            int currentPlayerId = entityIdMap.applyAsInt(CURRENT_PLAYER);
-            if (currentPlayerId != -1) {
-                return currentPlayerId;
-            }
+        if (cachedCurrentPlayerId != -1 && entity instanceof EntityPlayer && entity == Minecraft.getMinecraft().renderViewEntity) {
+            return cachedCurrentPlayerId;
         }
 
         // Check if this is a converting zombie villager
         if (entity instanceof EntityZombie zombie) {
             if (zombie.isConverting()) {
-                return entityIdMap.applyAsInt(CONVERTING_VILLAGER);
+                return cachedConvertingVillagerId;
             }
         }
 
