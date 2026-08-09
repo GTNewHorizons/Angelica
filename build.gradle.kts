@@ -1,3 +1,4 @@
+import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import xyz.wagyourtail.jvmdg.gradle.flags.DowngradeFlags
 import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
 import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
@@ -251,4 +252,8 @@ tasks.shadowJar {
     relocate("com.gtnewhorizons.angelica.glsm", "com.gtnewhorizons.angelica.glsm")
     relocate("com.gtnewhorizons.angelica.lwjgl3", "com.gtnewhorizons.angelica.lwjgl3")
     relocate("com.gtnewhorizons.angelica.sdlgpu", "com.gtnewhorizons.angelica.sdlgpu")
+}
+
+tasks.withType<TaskPublishCurseForge>().configureEach {
+    uploadArtifacts.forEach { it.addGameVersion("Client") }
 }
