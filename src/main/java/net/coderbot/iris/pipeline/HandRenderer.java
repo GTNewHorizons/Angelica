@@ -128,9 +128,10 @@ public class HandRenderer {
 
         ACTIVE = true;
 
+        final int blendSave = GbufferPrograms.pushBlendState();
+        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
-        GbufferPrograms.setCutoutDefaults();
 
         pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
@@ -149,7 +150,6 @@ public class HandRenderer {
         mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
         mc.entityRenderer.disableLightmap(tickDelta);
 
-        GLStateManager.defaultBlendFunc();
         GLStateManager.glDepthMask(false);
         GLStateManager.glPopMatrix();
 
@@ -158,6 +158,9 @@ public class HandRenderer {
         resetProjectionMatrix();
 
         renderingSolid = false;
+
+        GbufferPrograms.popCutoutDefaults(cutoutSave);
+        GbufferPrograms.popBlendState(blendSave);
 
         pipeline.setPhase(WorldRenderingPhase.NONE);
 
@@ -172,9 +175,10 @@ public class HandRenderer {
 
         ACTIVE = true;
 
+        final int blendSave = GbufferPrograms.pushBlendState();
+        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
         GLStateManager.enableBlend();
         GLStateManager.defaultBlendFunc();
-        GbufferPrograms.setCutoutDefaults();
 
         pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
 
@@ -195,6 +199,9 @@ public class HandRenderer {
         resetProjectionMatrix();
 
         Minecraft.getMinecraft().mcProfiler.endSection();
+
+        GbufferPrograms.popCutoutDefaults(cutoutSave);
+        GbufferPrograms.popBlendState(blendSave);
 
         pipeline.setPhase(WorldRenderingPhase.NONE);
 

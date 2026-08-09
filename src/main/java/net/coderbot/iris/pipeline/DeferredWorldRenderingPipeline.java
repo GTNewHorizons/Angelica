@@ -829,7 +829,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		refreshingPass = true;
 		try {
 			current = null;
-			beginPass(passBeforeModProgram);
+			matchPass();
 		} finally {
 			passBeforeModProgram = null;
 			refreshingPass = false;

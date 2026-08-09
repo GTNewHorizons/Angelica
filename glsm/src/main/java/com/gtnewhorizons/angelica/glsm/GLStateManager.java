@@ -1316,6 +1316,7 @@ public class GLStateManager {
 
     private static final BlendState vanillaBlendBefore = new BlendState();
     private static final BlendState vanillaBlendAfter = new BlendState();
+    private static boolean vanillaBlendEnabledBefore;
 
     private static void postVanillaBlendChange() {
         if (GLSMHooks.VANILLA_BLEND_CHANGE.hasListeners()) {
@@ -1326,13 +1327,15 @@ public class GLStateManager {
     private static boolean snapshotVanillaBlendFunc() {
         if (!GLSMHooks.VANILLA_BLEND_CHANGE.hasListeners()) return false;
         blendState.readEffective(vanillaBlendBefore);
+        vanillaBlendEnabledBefore = blendMode.isEffectivelyEnabled();
         return true;
     }
 
     private static void postVanillaBlendChangeIfMoved(boolean snapshotted) {
         if (!snapshotted) return;
         blendState.readEffective(vanillaBlendAfter);
-        if (vanillaBlendAfter.getSrcRgb() != vanillaBlendBefore.getSrcRgb()
+        if (blendMode.isEffectivelyEnabled() != vanillaBlendEnabledBefore
+            || vanillaBlendAfter.getSrcRgb() != vanillaBlendBefore.getSrcRgb()
             || vanillaBlendAfter.getDstRgb() != vanillaBlendBefore.getDstRgb()
             || vanillaBlendAfter.getSrcAlpha() != vanillaBlendBefore.getSrcAlpha()
             || vanillaBlendAfter.getDstAlpha() != vanillaBlendBefore.getDstAlpha()) {
@@ -3445,6 +3448,9 @@ public class GLStateManager {
         final int mask = attribs.popInt();
         attribDepth--;
 
+        // Snapshot before the stacks pop, so applyRestoredState can tell whether vanilla blend actually moved
+        final boolean blendSnapshotted = (mask & GL11.GL_COLOR_BUFFER_BIT) != 0 && snapshotVanillaBlendFunc();
+
         // First: restore BooleanStateStack states that were actually modified (fast path)
         // These use lazy copy-on-write with global depth tracking
         final List<IStateStack<?>> modified = modifiedAtDepth[attribDepth];
@@ -3461,7 +3467,7 @@ public class GLStateManager {
 
         // Third: apply restored state to the GL driver. BooleanStateStacks already issue GL calls via setEnabled(); non-boolean stacks are pure data
         // containers, so we must explicitly drive GL here.
-        applyRestoredState(mask);
+        applyRestoredState(mask, blendSnapshotted);
     }
 
     private static boolean isDepthColorOverridden() {
@@ -3472,7 +3478,7 @@ public class GLStateManager {
     /**
      * After popping GLSM stacks, apply restored state to the GL driver.
      */
-    private static void applyRestoredState(int mask) {
+    private static void applyRestoredState(int mask, boolean blendSnapshotted) {
         if ((mask & GL11.GL_DEPTH_BUFFER_BIT) != 0) {
             RENDER_BACKEND.depthFunc(depthState.getFunc());
             if (!isDepthColorOverridden()) {
@@ -3497,7 +3503,7 @@ public class GLStateManager {
                 RENDER_BACKEND.drawBuffer(drawBuffer.getValue());
             }
             RENDER_BACKEND.logicOp(logicOpMode.getValue());
-            postVanillaBlendChange();
+            postVanillaBlendChangeIfMoved(blendSnapshotted);
         }
         if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0) {
             RENDER_BACKEND.stencilFuncSeparate(GL11.GL_FRONT, stencilState.getFuncFront(), stencilState.getRefFront(), stencilState.getValueMaskFront());

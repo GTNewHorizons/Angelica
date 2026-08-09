@@ -33,11 +33,11 @@ public class MixinEffectRenderer_Particles {
 
     @WrapMethod(method = "renderParticles")
     private void iris$particlePhase(Entity player, float partialTickTime, Operation<Void> original) {
-        GbufferPrograms.beginParticles();
+        final int depth = GbufferPrograms.beginParticles();
         try {
             original.call(player, partialTickTime);
         } finally {
-            GbufferPrograms.endParticles();
+            GbufferPrograms.endParticles(depth);
         }
     }
 
@@ -73,6 +73,8 @@ public class MixinEffectRenderer_Particles {
             GbufferPrograms.setTranslucencyDeclaration(translucent);
 
             tessellator.startDrawingQuads();
+            // startDrawing() clears hasBrightness, and vanilla already issued setBrightness for this particle
+            tessellator.setBrightness(particle.getBrightnessForRender(partialTicks));
             if (iris$batcherWasActive) {
                 DeferredDrawBatcher.enter();
             }

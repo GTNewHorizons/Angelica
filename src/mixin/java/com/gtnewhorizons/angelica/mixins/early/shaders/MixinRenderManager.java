@@ -40,15 +40,17 @@ public class MixinRenderManager {
             GbufferPrograms.setOverridePhase(WorldRenderingPhase.ENTITIES);
         }
 
-        original.call(render, entity, x, y, z, entityYaw, partialTicks);
-
-        if (nestedInBlockEntity) {
-            GbufferPrograms.setOverridePhase(null);
+        try {
+            original.call(render, entity, x, y, z, entityYaw, partialTicks);
+        } finally {
+            if (nestedInBlockEntity) {
+                GbufferPrograms.setOverridePhase(null);
+            }
+            if (lightning) {
+                GbufferPrograms.teardownSpecialRenderCondition();
+            }
+            CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(prevItemId);
         }
-        if (lightning) {
-            GbufferPrograms.teardownSpecialRenderCondition();
-        }
-        CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(prevItemId);
     }
 }

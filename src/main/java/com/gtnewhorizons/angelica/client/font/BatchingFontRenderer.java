@@ -518,13 +518,21 @@ public class BatchingFontRenderer {
         final Boolean prevTranslucency = GbufferPrograms.beginTranslucencyDeclaration(Boolean.TRUE);
         GbufferPrograms.setBlockEntityDefaults();
 
+        batchCommands.sort(FontDrawCmd.DRAW_ORDER_COMPARATOR);
+
+        final Tessellator tessellator = Tessellator.instance;
         ResourceLocation lastTexture = DUMMY_RESOURCE_LOCATION;
+        boolean drawing = false;
         try {
             final FontDrawCmd[] cmdsData = batchCommands.elements();
             final int cmdsSize = batchCommands.size();
             for (int i = 0; i < cmdsSize; i++) {
                 final FontDrawCmd cmd = cmdsData[i];
                 if (!Objects.equals(lastTexture, cmd.texture)) {
+                    if (drawing) {
+                        tessellator.draw();
+                        drawing = false;
+                    }
                     if (cmd.texture == null) {
                         GLStateManager.disableTexture();
                     } else {
@@ -534,9 +542,17 @@ public class BatchingFontRenderer {
                     }
                     lastTexture = cmd.texture;
                 }
-                emitCommand(cmd);
+                if (!drawing) {
+                    tessellator.startDrawingQuads();
+                    drawing = true;
+                }
+                emitCommand(tessellator, cmd);
             }
         } finally {
+            if (drawing) {
+                tessellator.draw();
+            }
+
             GbufferPrograms.endTranslucencyDeclaration(prevTranslucency);
 
             if (isTextureEnabledBefore) {
@@ -564,12 +580,10 @@ public class BatchingFontRenderer {
         }
     }
 
-    private void emitCommand(FontDrawCmd cmd) {
+    private void emitCommand(Tessellator tessellator, FontDrawCmd cmd) {
         final int firstVertex = cmd.startVtx / 6 * 4;
         final int quadCount = cmd.idxCount / 6;
 
-        final Tessellator tessellator = Tessellator.instance;
-        tessellator.startDrawingQuads();
         for (int q = 0; q < quadCount; q++) {
             final long base = vertexDataAddress + (long) (firstVertex + q * 4) * VERTEX_SIZE;
             emitVertex(tessellator, base);
@@ -577,7 +591,6 @@ public class BatchingFontRenderer {
             emitVertex(tessellator, base + 3L * VERTEX_SIZE);
             emitVertex(tessellator, base + 2L * VERTEX_SIZE);
         }
-        tessellator.draw();
     }
 
     private void emitVertex(Tessellator tessellator, long ptr) {

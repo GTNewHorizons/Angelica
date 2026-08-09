@@ -63,25 +63,36 @@ public class GbufferPrograms {
 		outline = false;
 	}
 
-	public static void beginParticles() {
-		checkReentrancy();
-		setPhase(WorldRenderingPhase.PARTICLES);
-		particlesTranslucency = beginTranslucencyDeclaration(Boolean.FALSE);
-		particles = true;
-	}
-
-	public static void endParticles() {
-		if (!particles) {
-			throw new IllegalStateException("GbufferPrograms in weird state, tried to call endParticles when particles = false");
+	public static int beginParticles() {
+		if (particleDepth == particlePhaseSaves.length) {
+			particlePhaseSaves = Arrays.copyOf(particlePhaseSaves, particleDepth * 2);
+			particleTranslucencySaves = Arrays.copyOf(particleTranslucencySaves, particleDepth * 2);
 		}
 
-		endTranslucencyDeclaration(particlesTranslucency);
-		particlesTranslucency = null;
-		setPhase(WorldRenderingPhase.NONE);
-		particles = false;
+		particlePhaseSaves[particleDepth] = getCurrentPhase();
+		particleTranslucencySaves[particleDepth] = beginTranslucencyDeclaration(Boolean.FALSE);
+
+		setPhase(WorldRenderingPhase.PARTICLES);
+		particles = true;
+
+		return particleDepth++;
 	}
 
-	private static Boolean particlesTranslucency;
+	public static void endParticles(int depth) {
+		particleDepth = depth;
+
+		endTranslucencyDeclaration(particleTranslucencySaves[depth]);
+		particleTranslucencySaves[depth] = null;
+
+		setPhase(particlePhaseSaves[depth]);
+		particlePhaseSaves[depth] = null;
+
+		particles = particleDepth > 0;
+	}
+
+	private static WorldRenderingPhase[] particlePhaseSaves = new WorldRenderingPhase[4];
+	private static Boolean[] particleTranslucencySaves = new Boolean[4];
+	private static int particleDepth;
 
 	public static void beginBlockEntities() {
 		checkReentrancy();
@@ -110,7 +121,7 @@ public class GbufferPrograms {
 	}
 
 	public static long pushCutoutDefaults() {
-		final long saved = packAlphaState();
+		final long saved = packCutoutState();
 		setCutoutDefaults();
 		return saved;
 	}
@@ -122,6 +133,13 @@ public class GbufferPrograms {
 			GLStateManager.disableAlphaTest();
 		}
 		GLStateManager.glAlphaFunc((int) ((saved >>> 32) & 0xFFFF), Float.intBitsToFloat((int) saved));
+
+		if ((saved & LIGHTMAP_ENABLED_BIT) == 0) {
+			final int previousUnit = GLStateManager.getActiveTextureUnitForServerState();
+			GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+			GLStateManager.disableTexture();
+			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + previousUnit);
+		}
 	}
 
 	public static int pushBlendState() {
@@ -159,14 +177,16 @@ public class GbufferPrograms {
 	private static int blendDepth;
 
 	private static final long ALPHA_ENABLED_BIT = 1L << 48;
+	private static final long LIGHTMAP_ENABLED_BIT = 1L << 49;
 	private static final AlphaState alphaScratch = new AlphaState();
 
-	private static long packAlphaState() {
+	private static long packCutoutState() {
 		GLStateManager.getEffectiveAlphaState(alphaScratch);
 
 		return (Float.floatToRawIntBits(alphaScratch.getReference()) & 0xFFFFFFFFL)
 			| ((long) (alphaScratch.getFunction() & 0xFFFF) << 32)
-			| (GLStateManager.isEffectiveAlphaTestEnabled() ? ALPHA_ENABLED_BIT : 0L);
+			| (GLStateManager.isEffectiveAlphaTestEnabled() ? ALPHA_ENABLED_BIT : 0L)
+			| (GLStateManager.getTextures().getTextureUnitStates(1).isEnabled() ? LIGHTMAP_ENABLED_BIT : 0L);
 	}
 
 	public static void setBlockEntityDefaults() {
