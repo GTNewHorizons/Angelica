@@ -8,7 +8,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-@Mixin(ModelRenderer.class)
+@Mixin(value = ModelRenderer.class, priority = 1500)
 public abstract class MixinModelRenderer {
 
     @Redirect(method = {"render", "renderWithRotation"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", remap = false))

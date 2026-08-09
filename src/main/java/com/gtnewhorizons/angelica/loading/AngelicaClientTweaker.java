@@ -201,6 +201,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             narrowTransformerConfig("Ears", AngelicaConfig.transformerCompat.narrowEars);
             narrowTransformerConfig("FiskHeroes", AngelicaConfig.transformerCompat.narrowFiskHeroes);
             narrowTransformerConfig("FoamFix", AngelicaConfig.transformerCompat.narrowFoamFix);
+            narrowTransformerConfig("LegendsMod", AngelicaConfig.transformerCompat.narrowLegendsMod);
 
             tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.IncompatibleModsDisablerTweaker");
             if (AngelicaConfig.enableHudCaching) {
