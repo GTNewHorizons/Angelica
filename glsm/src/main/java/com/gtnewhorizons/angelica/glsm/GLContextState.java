@@ -26,10 +26,13 @@ import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntStack;
 import org.joml.Matrix4fStack;
+import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
+import java.nio.DoubleBuffer;
+import java.nio.FloatBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -152,6 +155,8 @@ class GLContextState {
     public final BooleanStateStack map2Vertex4State = track(new BooleanStateStack(GL11.GL_MAP2_VERTEX_4, false, true));
     public final BooleanStateStack[] clipPlaneStates = new BooleanStateStack[GLStateManager.MAX_CLIP_PLANES];
     public final ClipPlaneState clipPlaneState = new ClipPlaneState();
+    public final FloatBuffer queryScratch = BufferUtils.createFloatBuffer(16);
+    public final DoubleBuffer queryScratchDouble = BufferUtils.createDoubleBuffer(16);
     public final MatrixModeStack matrixMode = new MatrixModeStack();
     public final Matrix4fStack modelViewMatrix = new Matrix4fStack(GLStateManager.MAX_MODELVIEW_STACK_DEPTH);
     public final Matrix4fStack projectionMatrix = new Matrix4fStack(GLStateManager.MAX_PROJECTION_STACK_DEPTH);

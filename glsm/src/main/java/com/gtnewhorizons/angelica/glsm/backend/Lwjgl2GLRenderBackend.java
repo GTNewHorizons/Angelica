@@ -1372,6 +1372,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public double getDouble(int pname) {
+        return GL11.glGetDouble(pname);
+    }
+
+    @Override
+    public void getDouble(int pname, DoubleBuffer params) {
+        GL11.glGetDouble(pname, params);
+    }
+
+    @Override
     public boolean getBoolean(int pname) {
         return GL11.glGetBoolean(pname);
     }

@@ -389,6 +389,8 @@ public abstract class RenderBackend {
     public void getInteger(int pname, int[] params) { if (params.length > 0) params[0] = getInteger(pname); }
     public abstract float getFloat(int pname);
     public abstract void getFloat(int pname, FloatBuffer params);
+    public double getDouble(int pname) { return getFloat(pname); }
+    public void getDouble(int pname, DoubleBuffer params) { if (params.remaining() > 0) params.put(params.position(), getDouble(pname)); }
     public abstract boolean getBoolean(int pname);
     public abstract void getBoolean(int pname, ByteBuffer params);
     public abstract String getString(int pname);

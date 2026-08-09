@@ -1186,12 +1186,11 @@ public class GLStateManager {
         };
     }
 
-    private static final FloatBuffer glGetFloatScratch = BufferUtils.createFloatBuffer(16);
-
     public static void glGetFloat(int pname, float[] params) {
+        final FloatBuffer scratch = ctx().queryScratch;
         final FloatBuffer buf;
-        if (params.length <= glGetFloatScratch.capacity()) {
-            buf = glGetFloatScratch;
+        if (params.length <= scratch.capacity()) {
+            buf = scratch;
             buf.clear();
             buf.limit(params.length);
         } else {
@@ -1200,6 +1199,72 @@ public class GLStateManager {
         glGetFloat(pname, buf);
         buf.position(0);
         buf.get(params);
+    }
+
+    public static double glGetDouble(int pname) {
+        return switch (pname) {
+            case GL11.GL_DEPTH_CLEAR_VALUE -> ctx().depthState.getClearValue();
+            default -> glGetFloat(pname);
+        };
+    }
+
+    public static void glGetDouble(int pname, DoubleBuffer params) {
+        final GLContextState glCtx = ctx();
+        if (!isCachingEnabled()) {
+            RENDER_BACKEND.getDouble(pname, params);
+            return;
+        }
+
+        final int pos = params.position();
+        switch (pname) {
+            case GL11.GL_DEPTH_CLEAR_VALUE -> params.put(pos, glCtx.depthState.getClearValue());
+            case GL11.GL_DEPTH_RANGE -> {
+                params.put(pos, glCtx.viewportState.depthRangeNear);
+                params.put(pos + 1, glCtx.viewportState.depthRangeFar);
+            }
+            case GL11.GL_MODELVIEW_MATRIX, GL11.GL_PROJECTION_MATRIX, GL11.GL_TEXTURE_MATRIX -> widenFromFloat(pname, params, 16);
+            case GL11.GL_COLOR_CLEAR_VALUE, GL11.GL_CURRENT_COLOR, GL11.GL_CURRENT_TEXTURE_COORDS, GL11.GL_FOG_COLOR,
+                GL11.GL_LIGHT_MODEL_AMBIENT, GL14.GL_BLEND_COLOR -> widenFromFloat(pname, params, 4);
+            case GL11.GL_CURRENT_NORMAL -> widenFromFloat(pname, params, 3);
+            default -> {
+                if (!HAS_MULTIPLE_SET.contains(pname)) {
+                    params.put(pos, glGetDouble(pname));
+                } else {
+                    RENDER_BACKEND.getDouble(pname, params);
+                }
+            }
+        }
+    }
+
+    public static void glGetDouble(int pname, double[] params) {
+        final DoubleBuffer scratch = ctx().queryScratchDouble;
+        final DoubleBuffer buf;
+        if (params.length <= scratch.capacity()) {
+            buf = scratch;
+            buf.clear();
+            buf.limit(params.length);
+        } else {
+            buf = BufferUtils.createDoubleBuffer(params.length);
+        }
+        glGetDouble(pname, buf);
+        buf.position(0);
+        buf.get(params);
+    }
+
+    private static void widenFromFloat(int pname, DoubleBuffer params, int count) {
+        final FloatBuffer scratch = ctx().queryScratch;
+        scratch.clear();
+        glGetFloat(pname, scratch);
+        final int pos = params.position();
+        for (int i = 0; i < count; i++) {
+            params.put(pos + i, scratch.get(i));
+        }
+    }
+
+    public static void glGetClipPlane(int plane, DoubleBuffer equation) {
+        final int index = plane - GL11.GL_CLIP_PLANE0;
+        if (index < 0 || index >= MAX_CLIP_PLANES) return;
+        ctx().clipPlaneState.getEyePlane(index, equation);
     }
 
     // GLStateManager Functions
