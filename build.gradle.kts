@@ -1,3 +1,4 @@
+import com.modrinth.minotaur.TaskModrinthUpload
 import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import xyz.wagyourtail.jvmdg.gradle.flags.DowngradeFlags
 import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
@@ -76,7 +77,7 @@ val isMacOs = org.gradle.internal.os.OperatingSystem.current().isMacOsX
 val isMacOsArm64 = isMacOs && System.getProperty("os.arch") == "aarch64"
 
 tasks.withType<JavaExec>().configureEach {
-    if (name.startsWith("runClient")) {
+    if (name.startsWith("runClient") && name != "runClient") {
         if (isMacOs) {
             // SDL3 / Cocoa / Metal must initialize on the JVM main thread.
             jvmArgs("-XstartOnFirstThread")
@@ -228,7 +229,6 @@ val glCoreTest by tasks.registering(Test::class) {
 }
 
 tasks.test { finalizedBy(glCoreTest) }
-tasks.check { dependsOn(glCoreTest) }
 
 tasks.shadowJar {
     dependsOn(embedOnly)
@@ -256,4 +256,8 @@ tasks.shadowJar {
 
 tasks.withType<TaskPublishCurseForge>().configureEach {
     uploadArtifacts.forEach { it.addGameVersion("Client") }
+}
+
+tasks.withType<TaskModrinthUpload>().configureEach {
+    setDependsOn(dependsOn.filterNot { it == "build" } + "assemble")
 }

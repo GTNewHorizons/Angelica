@@ -57,6 +57,7 @@ public final class FrameManager {
         public long activeLayoutHash;
         public long frameNumber;
         public boolean clearedThisFrame;
+        public boolean depthClearedThisFrame;
         public boolean swapchainUsedThisFrame;
         public boolean swapchainAcquiredThisFrame;
         public boolean swapchainUnavailable;
@@ -233,6 +234,7 @@ public final class FrameManager {
         f.currentDepthTarget = 0;
         f.frameNumber++;
         f.clearedThisFrame = false;
+        f.depthClearedThisFrame = false;
         f.swapchainUsedThisFrame = false;
         f.skipPresent = false;
     }
@@ -242,20 +244,46 @@ public final class FrameManager {
         f.emptyFramesThisFrame++;
     }
 
-    public void ensureSwapchainRenderPass(float clearR, float clearG, float clearB, float clearA, boolean clear) {
-        ensureSwapchainRenderPass(frame(), clearR, clearG, clearB, clearA, clear);
+    static boolean swapchainClearNeedsPassBreak(ContextState st, FrameState f) {
+        return (st.pendingSwapchainClear || st.pendingSwapchainDepthClear || st.pendingSwapchainStencilClear) && f.renderPass != 0 && f.currentColorTarget == f.swapchainTexture;
     }
 
-    public void ensureSwapchainRenderPass(FrameState f, float clearR, float clearG, float clearB, float clearA, boolean clear) {
-        if (!ensureSwapchainAcquired(f)) return; // present-skip; don't bind tex=0
+    public boolean ensureSwapchainRenderPass(FrameState f, ContextState st) {
+        final boolean clearColor = st.pendingSwapchainClear;
+        if (swapchainClearNeedsPassBreak(st, f)) {
+            endRenderPassIfActive(f);
+        }
+        final boolean applied = ensureSwapchainRenderPass(f,
+            clearColor ? st.pendingSwapchainR : st.clearR,
+            clearColor ? st.pendingSwapchainG : st.clearG,
+            clearColor ? st.pendingSwapchainB : st.clearB,
+            clearColor ? st.pendingSwapchainA : st.clearA,
+            clearColor,
+            st.pendingSwapchainDepthClear, st.pendingSwapchainDepthClear ? st.pendingSwapchainDepth : st.depthClearValue,
+            st.pendingSwapchainStencilClear, st.pendingSwapchainStencilClear ? st.pendingSwapchainStencil : st.stencilClearValue);
+        if (!applied) return false;
+        st.pendingSwapchainClear = false;
+        st.pendingSwapchainDepthClear = false;
+        st.pendingSwapchainStencilClear = false;
+        return true;
+    }
+
+    private boolean ensureSwapchainRenderPass(FrameState f, float clearR, float clearG, float clearB, float clearA, boolean clear, boolean clearDepth, float depthValue, boolean clearStencil, int stencilValue) {
+        if (!ensureSwapchainAcquired(f)) return false; // present-skip; don't bind tex=0
         if (f.renderPass != 0 && f.currentColorTarget == f.swapchainTexture) {
-            return;
+            return false;
         }
 
         endActiveEncoders(f);
 
         if (!f.clearedThisFrame) {
             clear = true;
+        }
+
+        final long depthTexture = resourceManager != null ? resourceManager.getOrCreateSwapchainDepthStencil(f.swapchainWidth, f.swapchainHeight) : 0L;
+        if (depthTexture != 0 && !f.depthClearedThisFrame) {
+            clearDepth = true;
+            clearStencil = true;
         }
 
         try (var stack = stackPush()) {
@@ -274,19 +302,34 @@ public final class FrameManager {
                 f.clearedThisFrame = true;
             }
 
+            SDL_GPUDepthStencilTargetInfo depthTarget = null;
+            if (depthTexture != 0) {
+                depthTarget = SDL_GPUDepthStencilTargetInfo.calloc(stack);
+                final long dtAddr = depthTarget.address();
+                MemoryAccess.putAddress(dtAddr + SDL_GPUDepthStencilTargetInfo.TEXTURE, depthTexture);
+                MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, clearDepth ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+                MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
+                MemoryAccess.putFloat(dtAddr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, depthValue);
+                MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STENCIL_LOAD_OP, clearStencil ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+                MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STENCIL_STORE_OP, SDL_GPU_STOREOP_STORE);
+                MemoryAccess.putByte(dtAddr + SDL_GPUDepthStencilTargetInfo.CLEAR_STENCIL, (byte) stencilValue);
+                if (clearDepth && clearStencil) f.depthClearedThisFrame = true;
+            }
+
             if (preRenderPassHook != null) preRenderPassHook.run();
             assertNoEncoderActive(f, "SDL_BeginGPURenderPass(swapchain)");
-            f.renderPass = SDL_BeginGPURenderPass(f.commandBuffer, colorTargets, null);
+            f.renderPass = SDL_BeginGPURenderPass(f.commandBuffer, colorTargets, depthTarget);
             if (f.renderPass == 0) {
                 throw new RuntimeException("Failed to begin render pass: " + SDLError.SDL_GetError());
             }
             f.renderPassGeneration++;
             f.swapchainPassesThisFrame++;
             f.currentColorTarget = f.swapchainTexture;
-            f.currentDepthTarget = 0;
+            f.currentDepthTarget = depthTexture;
             f.activeLayoutHash = SWAPCHAIN_LAYOUT_HASH;
             f.swapchainUsedThisFrame = true;
         }
+        return true;
     }
 
 

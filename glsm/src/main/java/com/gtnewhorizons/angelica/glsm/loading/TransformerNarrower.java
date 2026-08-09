@@ -25,7 +25,7 @@ public final class TransformerNarrower {
 
     /**
      * A rule that replaces a broad transformer exclusion with narrower ones.
-     * @param name       Human-readable name for logging (e.g. "DragonAPI")
+     * @param name       Blackboard/config key suffix. (e.g. "DragonAPI").
      * @param broad      The broad exclusion to remove (e.g. "Reika.DragonAPI.ASM")
      * @param narrow     Narrower exclusions to add in its place
      */

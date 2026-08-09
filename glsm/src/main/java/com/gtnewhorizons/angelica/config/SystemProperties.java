@@ -20,6 +20,7 @@ public final class SystemProperties {
     public static final boolean USE_SDL_GPU = Boolean.getBoolean(KEY_USE_SDL_GPU);
     public static final String GL_PROFILE = System.getProperty("angelica.glProfile", "");
     public static final boolean DISABLE_NVIDIA_WORKAROUND = Boolean.getBoolean("angelica.disableNvidiaWorkaround");
+    public static final boolean DISABLE_LTW_WORKAROUND = Boolean.getBoolean("angelica.disableLtwWorkaround");
 
     // Redirector
     public static final UnmappedGLMode UNMAPPED_GL = parseEnum("angelica.unmappedGL", UnmappedGLMode.WARN, UnmappedGLMode.WARN, UnmappedGLMode.class);

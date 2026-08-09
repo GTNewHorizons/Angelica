@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
@@ -58,6 +59,9 @@ public class RenderSystem {
     private static volatile int glesVersion;
     private static volatile boolean glesDetected;
     private static volatile boolean hasClipCullDistance;
+
+    private static volatile boolean isLTW;
+    private static volatile boolean ltwDetected;
 
     // Sampler object state tracking (null if unsupported)
     private static int[] samplers;
@@ -400,6 +404,26 @@ public class RenderSystem {
             glesDetected = true;
         } catch (Throwable ignored) {
             // No GL context on this thread yet (splash); retry on next call.
+        }
+    }
+
+    public static boolean isLTW() {
+        if (!ltwDetected) detectLTW();
+        return isLTW;
+    }
+
+    private static synchronized void detectLTW() {
+        if (ltwDetected) return;
+        if (SystemProperties.DISABLE_LTW_WORKAROUND) {
+            ltwDetected = true;
+            return;
+        }
+        try {
+            final String v = RENDER_BACKEND.getString(GL11.GL_VERSION);
+            if (v == null) return;
+            isLTW = LTWWorkaround.isLtwVersionString(v);
+            ltwDetected = true;
+        } catch (Throwable ignored) {
         }
     }
 

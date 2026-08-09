@@ -552,6 +552,9 @@ public class GLStateManager {
         // GL_STENCIL_BITS was removed in core profile; query via default FBO attachment
         final int stencilBits = RENDER_BACKEND.getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
         glCtx.stencilBitMask = stencilBits >= 32 ? 0xFFFFFFFF : (1 << stencilBits) - 1;
+        if (glCtx.stencilBitMask == 0) {
+            LOGGER.warn("Default framebuffer reports 0 stencil bits on backend {}; all stencil masks clamp to 0", RENDER_BACKEND.getClass().getSimpleName());
+        }
 
         // Initialize stencil masks from computed bit mask
         glCtx.stencilState.setValueMaskFront(glCtx.stencilBitMask);
@@ -1965,6 +1968,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -1983,6 +1987,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2001,6 +2006,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2019,6 +2025,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
