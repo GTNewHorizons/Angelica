@@ -18,6 +18,7 @@ import org.lwjgl.system.Platform;
 import org.lwjglx.opengl.Display;
 
 import java.nio.IntBuffer;
+import java.util.function.Supplier;
 
 import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.sdl.SDLHints.SDL_HINT_GPU_DRIVER;
@@ -41,6 +42,34 @@ public final class Device {
     private String driverInfo;
     private int presentMode = SDL_GPU_PRESENTMODE_VSYNC;
     private SDL_LogOutputFunction logCallback; // prevent GC
+
+    private volatile boolean lost;
+    private volatile Supplier<String> lossDiagnostics = () -> "";
+
+    public boolean isLost() { return lost; }
+
+    public void setLossDiagnostics(Supplier<String> diagnostics) { this.lossDiagnostics = diagnostics; }
+
+    public static boolean isDeviceLossError(String sdlError) {
+        if (sdlError == null) return false;
+        return sdlError.contains("DEVICE_LOST") || sdlError.contains("DEVICE_REMOVED") || sdlError.contains("DEVICE_RESET");
+    }
+
+    public void reportGpuFailure(String operation) {
+        if (lost) return;
+        final String err = SDLError.SDL_GetError();
+        if (!isDeviceLossError(err)) {
+            LOG.error("{}: {}", operation, err);
+            return;
+        }
+        lost = true;
+        LOG.error("GPU DEVICE LOST during {}: {}", operation, err);
+        LOG.error("  gpu={} driver={} {} sdl={}", deviceName, driverName, driverVersion, SDLVersion.SDL_GetVersion());
+        for (final String line : lossDiagnostics.get().split("\n")) {
+            LOG.error("  {}", line);
+        }
+        throw new GpuDeviceLostException(operation, err);
+    }
 
     // Default to vulkan for now until D3D is more tested
     static String resolveDriverName(String userHint, boolean windows) {
@@ -285,6 +314,7 @@ public final class Device {
     private void installLogCallback() {
         if (logCallback != null) return;
         logCallback = SDL_LogOutputFunction.create((userdata, category, priority, message) -> {
+            if (lost) return;
             final String msg = memUTF8(message);
             switch (priority) {
                 case SDLLog.SDL_LOG_PRIORITY_ERROR, SDLLog.SDL_LOG_PRIORITY_CRITICAL -> LOG.error("[SDL] {}", msg);

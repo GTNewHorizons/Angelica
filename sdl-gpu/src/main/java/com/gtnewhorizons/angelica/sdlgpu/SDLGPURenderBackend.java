@@ -226,6 +226,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             LOG.info("SDL-GPU debug markers ENABLED (lwjglDebug={}, angelica.debug.markers={}, captureTool={})", lwjglDebugFlag, SystemProperties.DEBUG_MARKERS, CaptureGate.TOOL_ATTACHED);
         }
         frameManager.setResourceManager(resourceManager);
+        device.setLossDiagnostics(resourceManager::describeGpuState);
         frameManager.setBeforeEndCopyPassCallback(() -> resourceManager.flushBatchedUploads(frameManager.getCopyPass()));
         frameManager.setBeforeSubmitCallback(() -> {
             endComputeDispatchBatch();
@@ -233,7 +234,6 @@ public class SDLGPURenderBackend extends RenderBackend {
             drainDeferredPersistentRegions(s());
             debugLabels.popAutoDebugGroup(s());
         });
-        frameManager.setBeforePendingUploadSubmitCallback(textureOps::drainPendingMipGen);
         frameManager.setAfterPresentCallback(() -> {
             frameManager.requestFlushOnAllRegisteredFrames();
             resourceManager.drainPendingFreeShadows();

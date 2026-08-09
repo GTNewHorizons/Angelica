@@ -165,13 +165,20 @@ public final class FrameManager {
         return tlFrame.get();
     }
 
+    public FrameState busiestFrame() {
+        FrameState best = null;
+        for (final FrameState f : registeredFrames) {
+            if (best == null || f.frameNumber > best.frameNumber) best = f;
+        }
+        return best != null ? best : frame();
+    }
+
     public static final long SWAPCHAIN_LAYOUT_HASH = 0x5CA1AB1E5CA1AB1EL;
 
     public static final long MAX_PENDING_UPLOAD_BYTES = 16L * 1024L * 1024L;
     public static final int MAX_PENDING_UPLOAD_COMMANDS = 256;
 
     private Runnable beforeEndCopyPass;
-    private Runnable beforePendingUploadSubmit;
 
     public FrameManager(Device device) {
         this.device = device;
@@ -409,10 +416,6 @@ public final class FrameManager {
         this.beforeEndCopyPass = callback;
     }
 
-    public void setBeforePendingUploadSubmitCallback(Runnable callback) {
-        this.beforePendingUploadSubmit = callback;
-    }
-
     public void setBeforeSubmitCallback(Runnable callback) {
         this.beforeSubmit = callback;
     }
@@ -468,12 +471,13 @@ public final class FrameManager {
             try {
                 if (f.wantFenceOnNextSubmit) {
                     f.wantFenceOnNextSubmit = false;
+                    if (f.lastAcquiredFence != 0) SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
                     f.lastAcquiredFence = SDL_SubmitGPUCommandBufferAndAcquireFence(f.commandBuffer);
                     if (f.lastAcquiredFence == 0) {
-                        LOG.error("Failed to submit+acquireFence GPU command buffer: {}", SDLError.SDL_GetError());
+                        device.reportGpuFailure("submit+acquireFence GPU command buffer");
                     }
                 } else if (!SDL_SubmitGPUCommandBuffer(f.commandBuffer)) {
-                    LOG.error("Failed to submit GPU command buffer: {}", SDLError.SDL_GetError());
+                    device.reportGpuFailure("submit GPU command buffer");
                 }
             } finally {
                 Tracy.endZone();
@@ -530,12 +534,13 @@ public final class FrameManager {
         try {
             if (f.wantFenceOnNextSubmit) {
                 f.wantFenceOnNextSubmit = false;
+                if (f.lastAcquiredFence != 0) SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
                 f.lastAcquiredFence = SDL_SubmitGPUCommandBufferAndAcquireFence(f.commandBuffer);
                 if (f.lastAcquiredFence == 0) {
-                    LOG.error("Mid-frame submit+acquireFence failed: {}", SDLError.SDL_GetError());
+                    device.reportGpuFailure("mid-frame submit+acquireFence");
                 }
             } else if (!SDL_SubmitGPUCommandBuffer(f.commandBuffer)) {
-                LOG.error("Mid-frame submit failed: {}", SDLError.SDL_GetError());
+                device.reportGpuFailure("mid-frame submit");
             }
         } finally {
             Tracy.endZone();
@@ -616,7 +621,6 @@ public final class FrameManager {
             return;
         }
         endCopyPassIfActive(f);
-        if (beforePendingUploadSubmit != null) beforePendingUploadSubmit.run();
         if (f.pendingUploadCommandBuffer != 0) {
             Tracy.beginZone(Z_SDL_SUBMIT);
             final boolean submitted;
@@ -626,7 +630,7 @@ public final class FrameManager {
                 Tracy.endZone();
             }
             if (!submitted) {
-                LOG.error("Failed to submit pending upload command buffer: {}", SDLError.SDL_GetError());
+                device.reportGpuFailure("submit pending upload command buffer");
             }
             f.submitsThisFrame++;
             f.pendingUploadCommandBuffer = 0;

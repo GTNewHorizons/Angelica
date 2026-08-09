@@ -65,6 +65,26 @@ class UploadArenaTest {
     }
 
     @Test
+    void requestGrowClampsAtMaxCapacityInsteadOfSpinning() {
+        final UploadArena a = new UploadArena();
+        a.requestGrow(Integer.MAX_VALUE);
+        assertTrue(a.applyGrow());
+        assertEquals(UploadArena.MAX_CAPACITY, a.capacity());
+        a.requestGrow(Integer.MAX_VALUE);
+        assertFalse(a.applyGrow());
+        assertEquals(UploadArena.MAX_CAPACITY, a.capacity());
+    }
+
+    @Test
+    void requestGrowIsIdempotentBelowCurrentTarget() {
+        final UploadArena a = new UploadArena();
+        a.requestGrow(UploadArena.INITIAL_CAPACITY * 4);
+        a.requestGrow(1);
+        assertTrue(a.applyGrow());
+        assertEquals(UploadArena.INITIAL_CAPACITY * 4, a.capacity());
+    }
+
+    @Test
     void overflowThenGrowRoundTrip() {
         final UploadArena a = new UploadArena();
         assertEquals(0, a.reserve(a.capacity()));
