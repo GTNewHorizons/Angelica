@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.sdlgpu.shader.UniformStaging;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.Long2FloatOpenHashMap;
+import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -92,6 +93,7 @@ public final class ContextState {
     public float blendColorR, blendColorG, blendColorB, blendColorA;
     public int stencilRef;
     public float depthClearValue = 1.0f;
+    public int stencilClearValue;
     public boolean primitiveRestartEnabled;
     public int primitiveRestartSentinel;
 
@@ -292,13 +294,20 @@ public final class ContextState {
     public int boundReadFboId;
 
     public final LongOpenHashSet clearedTexturesThisFrame = new LongOpenHashSet();
+    public final LongOpenHashSet clearedStencilTexturesThisFrame = new LongOpenHashSet();
 
     public final LongOpenHashSet pendingColorTextures = new LongOpenHashSet();
     public final Long2ObjectOpenHashMap<float[]> pendingColorValues = new Long2ObjectOpenHashMap<>();
     public final LongOpenHashSet pendingDepthTextures = new LongOpenHashSet();
     public final Long2FloatOpenHashMap pendingDepthValues = new Long2FloatOpenHashMap();
+    public final LongOpenHashSet pendingStencilTextures = new LongOpenHashSet();
+    public final Long2IntOpenHashMap pendingStencilValues = new Long2IntOpenHashMap();
     public boolean pendingSwapchainClear;
     public float pendingSwapchainR, pendingSwapchainG, pendingSwapchainB, pendingSwapchainA;
+    public boolean pendingSwapchainDepthClear;
+    public boolean pendingSwapchainStencilClear;
+    public float pendingSwapchainDepth;
+    public int pendingSwapchainStencil;
 
     public final LongArrayList samplerFlushColorHandles = new LongArrayList();
     public final IntArrayList samplerFlushColorGlIds = new IntArrayList();

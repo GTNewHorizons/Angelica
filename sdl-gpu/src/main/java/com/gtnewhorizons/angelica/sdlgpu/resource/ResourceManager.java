@@ -127,6 +127,10 @@ public final class ResourceManager {
 
     private int preferredD24 = SDL_GPU_TEXTUREFORMAT_D24_UNORM;
     private int preferredD24S8 = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+    private volatile int swapchainDepthStencilFormat = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+    private long swapchainDepthStencil;
+    private int swapchainDepthStencilWidth;
+    private int swapchainDepthStencilHeight;
 
     private static final Supplier<ContextState.VAOState> VAO_FACTORY = ContextState.VAOState::new;
     private static final Supplier<TextureSamplerState> TEX_SAMPLER_FACTORY = TextureSamplerState::new;
@@ -154,6 +158,21 @@ public final class ResourceManager {
             preferredD24S8 = SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT;
             LOG.info("D24_UNORM_S8_UINT not supported for depth+sampler, using D32_FLOAT_S8_UINT");
         }
+
+        swapchainDepthStencilFormat = preferredD24S8;
+        if (!SDL_GPUTextureSupportsFormat(dev, swapchainDepthStencilFormat, texType, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)) {
+            final int alt = swapchainDepthStencilFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT ? SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+            if (SDL_GPUTextureSupportsFormat(dev, alt, texType, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)) {
+                swapchainDepthStencilFormat = alt;
+            } else {
+                swapchainDepthStencilFormat = 0;
+                LOG.warn("No depth+stencil format usable as a render target; default framebuffer will have no depth or stencil");
+            }
+        }
+    }
+
+    public int getSwapchainDepthStencilFormat() {
+        return swapchainDepthStencilFormat;
     }
 
     public int genTexture() {
@@ -292,7 +311,7 @@ public final class ResourceManager {
         } finally {
             wLock.unlock();
         }
-        releaseTextureHandle(handle);
+        releaseTextureHandleAfterPendingUploads(handle);
     }
 
     public void releaseTextureHandleForRealloc(int glId) {
@@ -304,7 +323,22 @@ public final class ResourceManager {
         } finally {
             wLock.unlock();
         }
+        releaseTextureHandleAfterPendingUploads(handle);
+    }
+
+    private void releaseTextureHandleAfterPendingUploads(long handle) {
+        if (handle == 0) return;
+        if (shouldDeferTextureRelease()) {
+            releaseTextureDeferred(handle);
+            return;
+        }
         releaseTextureHandle(handle);
+    }
+
+    boolean shouldDeferTextureRelease() {
+        final TransferThread tt = transferThread;
+        if (tt != null && tt.getSubmittedSeq() < lastTextureUploadSeq) return true;
+        return hasBatchedUploads();
     }
 
     public void trackBufferHandle(long handle) {
@@ -317,6 +351,40 @@ public final class ResourceManager {
         if (handle == 0) return;
         wLock.lock();
         try { liveTextureHandles.add(handle); } finally { wLock.unlock(); }
+    }
+
+    private final LongOpenHashSet definedContentTextures = new LongOpenHashSet();
+
+    public boolean isTextureContentDefined(long handle) {
+        if (handle == 0) return false;
+        if (fastRead()) return definedContentTextures.contains(handle);
+        rLock.lock();
+        try { return definedContentTextures.contains(handle); } finally { rLock.unlock(); }
+    }
+
+    public void markTextureContentDefined(long handle) {
+        if (handle == 0) return;
+        wLock.lock();
+        try { definedContentTextures.add(handle); } finally { wLock.unlock(); }
+    }
+
+    void markTextureContentsDefined(LongArrayList handles) {
+        if (handles.isEmpty()) return;
+        wLock.lock();
+        try {
+            for (int i = 0, n = handles.size(); i < n; i++) {
+                final long handle = handles.getLong(i);
+                if (handle != 0) definedContentTextures.add(handle);
+            }
+        } finally {
+            wLock.unlock();
+        }
+    }
+
+    public void markTextureContentUndefined(long handle) {
+        if (handle == 0) return;
+        wLock.lock();
+        try { definedContentTextures.remove(handle); } finally { wLock.unlock(); }
     }
 
     public void releaseBufferHandle(long handle) {
@@ -338,6 +406,8 @@ public final class ResourceManager {
 
     public void releaseTextureHandle(long handle) {
         if (handle == 0) return;
+        dropBatchedUploadsTargeting(handle);
+        markTextureContentUndefined(handle);
         final boolean live;
         wLock.lock();
         try {
@@ -620,6 +690,7 @@ public final class ResourceManager {
 
     private final LongArrayList deferredBufferReleases = new LongArrayList();
     private final LongArrayList deferredTextureReleases = new LongArrayList();
+    private volatile long lastTextureUploadSeq;
 
     public void deleteBuffer(int glId) {
         final ByteBuffer droppedPboStaging;
@@ -1560,12 +1631,16 @@ public final class ResourceManager {
             f.batchMapped = null;
         }
 
+        markTextureContentsDefined(f.pendingTexHandles);
+
         try (var stack = stackPush()) {
             final SDL_GPUTextureTransferInfo src = SDL_GPUTextureTransferInfo.calloc(stack);
             final SDL_GPUTextureRegion dst = SDL_GPUTextureRegion.calloc(stack);
             for (int i = 0; i < n; i++) {
+                final long texture = f.pendingTexHandles.getLong(i);
+                if (texture == 0) continue;
                 src.transfer_buffer(f.batchXfer).offset(f.pendingTexOffsets.getInt(i));
-                dst.texture(f.pendingTexHandles.getLong(i)).mip_level(f.pendingTexLevels.getInt(i))
+                dst.texture(texture).mip_level(f.pendingTexLevels.getInt(i))
                     .x(f.pendingTexX.getInt(i)).y(f.pendingTexY.getInt(i)).z(0)
                     .w(f.pendingTexW.getInt(i)).h(f.pendingTexH.getInt(i)).d(1);
                 SDL_UploadToGPUTexture(copyPass, src, dst, false);
@@ -1584,6 +1659,14 @@ public final class ResourceManager {
         f.pendingTexOffsets.clear();
         f.batchOffset = 0;
         frameManager.recordUploadCommands(totalBytes, n);
+    }
+
+    void dropBatchedUploadsTargeting(long handle) {
+        final LongArrayList handles = frameManager.frame().pendingTexHandles;
+        if (handles.isEmpty()) return;
+        for (int i = 0, n = handles.size(); i < n; i++) {
+            if (handles.getLong(i) == handle) handles.set(i, 0L);
+        }
     }
 
     public boolean hasBatchedUploads() {
@@ -1616,6 +1699,7 @@ public final class ResourceManager {
                 .w(w).h(h).d(d);
             SDL_UploadToGPUTexture(copyPass, src, dst, false);
         }
+        markTextureContentDefined(gpuTexture);
 
         frameManager.recordUploadCommands(size, 1);
         returnTransferBuffer(xfer, size);
@@ -1649,6 +1733,7 @@ public final class ResourceManager {
 
             SDL_UploadToGPUTexture(copyPass, src, dst, false);
         }
+        markTextureContentDefined(gpuTexture);
 
         frameManager.recordUploadCommands(size, 1);
         returnTransferBuffer(xfer, size);
@@ -1670,6 +1755,8 @@ public final class ResourceManager {
         SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
         final long seq = TransferThread.nextSeq();
         st.frameHighestEnqueuedSeq = seq;
+        lastTextureUploadSeq = seq;
+        markTextureContentDefined(texHandle);
         tt.enqueue(TransferThread.TextureRegionUpload.acquire(xfer, texHandle, x, y, w, h, level, size, seq));
         tt.wake();
         return true;
@@ -1999,6 +2086,34 @@ public final class ResourceManager {
         return dummyColorTarget;
     }
 
+    public long getOrCreateSwapchainDepthStencil(int width, int height) {
+        if (swapchainDepthStencilFormat == 0 || width <= 0 || height <= 0) return 0;
+        if (swapchainDepthStencil != 0 && swapchainDepthStencilWidth == width && swapchainDepthStencilHeight == height) {
+            return swapchainDepthStencil;
+        }
+        if (swapchainDepthStencil != 0) {
+            releaseTextureDeferred(swapchainDepthStencil);
+            swapchainDepthStencil = 0;
+        }
+        try (var stack = stackPush()) {
+            final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
+                .type(SDL_GPU_TEXTURETYPE_2D)
+                .format(swapchainDepthStencilFormat)
+                .usage(SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)
+                .width(width).height(height).layer_count_or_depth(1).num_levels(1);
+            swapchainDepthStencil = SDL_CreateGPUTexture(device.getDevice(), ci);
+        }
+        if (swapchainDepthStencil == 0) {
+            swapchainDepthStencilFormat = 0;
+            LOG.warn("Failed to create the default framebuffer depth+stencil target ({}x{}); it will have neither", width, height);
+            return 0;
+        }
+        trackTextureHandle(swapchainDepthStencil);
+        swapchainDepthStencilWidth = width;
+        swapchainDepthStencilHeight = height;
+        return swapchainDepthStencil;
+    }
+
     private static final int DUMMY_VBO_SIZE = 16 * 16;
     public static final int ATTRIB_RING_BLOCKS = 2048 * Device.FRAMES_IN_FLIGHT;
     public static final int ATTRIB_RING_CHUNK_BLOCKS = 64;
@@ -2114,6 +2229,8 @@ public final class ResourceManager {
             case GL14.GL_DEPTH_COMPONENT32, GL30.GL_DEPTH_COMPONENT32F -> SDL_GPU_TEXTUREFORMAT_D32_FLOAT;
             case GL30.GL_DEPTH24_STENCIL8 -> preferredD24S8;
             case GL30.GL_DEPTH32F_STENCIL8 -> SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT;
+            case GL11.GL_STENCIL_INDEX, GL30.GL_STENCIL_INDEX1, GL30.GL_STENCIL_INDEX4,
+                 GL30.GL_STENCIL_INDEX8, GL30.GL_STENCIL_INDEX16 -> preferredD24S8;
             case GL30.GL_R8UI -> SDL_GPU_TEXTUREFORMAT_R8_UINT;
             case GL30.GL_R16UI -> SDL_GPU_TEXTUREFORMAT_R16_UINT;
             case GL30.GL_R32UI -> SDL_GPU_TEXTUREFORMAT_R32_UINT;
@@ -2232,6 +2349,12 @@ public final class ResourceManager {
         if (dummyColorTarget != 0) {
             releaseTextureHandle(dummyColorTarget);
             dummyColorTarget = 0;
+        }
+        if (swapchainDepthStencil != 0) {
+            releaseTextureHandle(swapchainDepthStencil);
+            swapchainDepthStencil = 0;
+            swapchainDepthStencilWidth = 0;
+            swapchainDepthStencilHeight = 0;
         }
         if (fallbackStorageTexture3D != 0) {
             releaseTextureHandle(fallbackStorageTexture3D);
