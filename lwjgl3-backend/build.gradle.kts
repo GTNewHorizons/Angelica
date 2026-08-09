@@ -74,6 +74,11 @@ dependencies {
     compileOnly(libs.annotations)
 }
 
+tasks.named<JavaCompile>("compileJava") {
+    val classesDir = destinationDirectory
+    doLast { injectLwjgl3Aware(classesDir.get().asFile) }
+}
+
 tasks.named<Jar>("jar") {
     manifest {
         attributes(

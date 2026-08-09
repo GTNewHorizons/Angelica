@@ -33,7 +33,7 @@ layout(std430, binding = 2) writeonly buffer IndirectCmds {
     DrawElementsIndirectCommand cmds[];
 } indirect;
 
-layout(std140, binding = 0) uniform Frustum {
+layout(std140, binding = 1) uniform Frustum {
     vec4 planes[6];     // camera-relative planes from `proj * mv` (no translate baked in)
     //   control.x = visibleCount (iteration bound)
     //   control.y = indexPointerMask (0 non-sorted -> firstIndex masked to 0; 0xFFFFFFFF sorted)

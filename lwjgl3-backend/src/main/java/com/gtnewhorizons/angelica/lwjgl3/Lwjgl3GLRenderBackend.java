@@ -1613,9 +1613,9 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void bindImageTexture(int unit, int texture, int level, boolean layered, int layer, int access, int format) {
-        if (GLStateManager.capabilities.OpenGL42 || GLStateManager.capabilities.GL_ARB_shader_image_load_store) {
+        if (caps.OpenGL42 || caps.GL_ARB_shader_image_load_store) {
             GL42C.glBindImageTexture(unit, texture, level, layered, layer, access, format);
-        } else if (GLStateManager.capabilities.GL_EXT_shader_image_load_store) {
+        } else if (caps.GL_EXT_shader_image_load_store) {
             EXTShaderImageLoadStore.glBindImageTextureEXT(unit, texture, level, layered, layer, access, format);
         } else {
             GLStateManager.warnOnce("bindImageTexture", "glBindImageTexture ignored: no image load/store support");
