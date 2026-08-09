@@ -2261,7 +2261,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, ByteBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2286,7 +2286,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, IntBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2311,7 +2311,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, ShortBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2336,7 +2336,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2361,7 +2361,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2404,22 +2404,22 @@ public class GLStateManager {
     }
 
     public static void glMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
-        if (Tracy.ENABLED) drawCalls += drawcount;
+        drawCalls += drawcount;
         RENDER_BACKEND.multiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
 
     public static void glMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
-        if (Tracy.ENABLED) drawCalls += drawcount;
+        drawCalls += drawcount;
         RENDER_BACKEND.multiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
     }
 
     public static void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         RENDER_BACKEND.drawElementsBaseVertex(mode, count, type, indices, basevertex);
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTrianglesInstanced(count, type, indices, primcount);
             return;
@@ -2429,7 +2429,7 @@ public class GLStateManager {
     }
 
     public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTrianglesInstanced(first, count, primcount);
         } else if (mode == GL11.GL_QUAD_STRIP) {
@@ -2479,7 +2479,7 @@ public class GLStateManager {
     }
 
     public static void glDrawArrays(int mode, int first, int count) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
