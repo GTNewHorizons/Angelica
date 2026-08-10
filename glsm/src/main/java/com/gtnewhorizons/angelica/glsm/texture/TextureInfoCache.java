@@ -53,6 +53,7 @@ public class TextureInfoCache {
             info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
             info.width = width;
             info.height = height;
+            info.bumpUploadGeneration();
         }
     }
 
@@ -65,7 +66,27 @@ public class TextureInfoCache {
             info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
             info.width = width;
             info.height = height;
+            info.bumpUploadGeneration();
         }
+    }
+
+    public void onTexStorage2D(int target, int internalformat, int width, int height) {
+        if (!isTrackedTarget(target)) return;
+        final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+        if (info == null) return;
+        info.setTarget(target);
+        info.internalFormat = internalformat;
+        info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
+        info.width = width;
+        info.height = height;
+        info.bumpUploadGeneration();
+    }
+
+    public void onTexSubImage2D(int target, int level) {
+        if (!isTrackedTarget(target) || level != 0) return;
+        final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+        if (info == null) return;
+        info.bumpUploadGeneration();
     }
 
     public static boolean isGenericCompressedInternalFormat(int internalFormat) {

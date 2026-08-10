@@ -37,7 +37,6 @@ public final class FrameManager {
     private static final Tracy.ZoneId Z_SDL_FENCE_WAIT = Tracy.zoneId("sdlFenceWait", Tracy.COLOR_SWAP);
     private static final Tracy.ZoneId Z_SDL_SUBMIT = Tracy.zoneId("sdlSubmit", Tracy.COLOR_SWAP);
     private static final Tracy.ZoneId Z_SDL_ACQUIRE_WAIT = Tracy.zoneId("sdlAcquireWait", Tracy.COLOR_SWAP);
-    private static final Tracy.ZoneId Z_SDL_SWAPCHAIN_WAIT = Tracy.zoneId("sdlSwapchainWait", Tracy.COLOR_SWAP);
 
     private final Device device;
     private ResourceManager resourceManager;
@@ -89,7 +88,6 @@ public final class FrameManager {
         public int emptyFramesThisFrame;
         public int droppedDrawsThisFrame;
         public int computeBatchJoinsThisFrame;
-        public boolean drawableStarved;
         public int clearPassesThisFrame;
         public int swapchainPassesThisFrame;
         public int fboPassesThisFrame;
@@ -181,6 +179,18 @@ public final class FrameManager {
 
     private Runnable beforeEndCopyPass;
 
+    private long statLoopFrames;
+    private long statPresentedFrames;
+    private long statPresentSkips;
+    private long statEmptyFrames;
+    private long statAcquireWaitNanos;
+
+    public long statLoopFrames() { return statLoopFrames; }
+    public long statPresentedFrames() { return statPresentedFrames; }
+    public long statPresentSkips() { return statPresentSkips; }
+    public long statEmptyFrames() { return statEmptyFrames; }
+    public long statAcquireWaitNanos() { return statAcquireWaitNanos; }
+
     public FrameManager(Device device) {
         this.device = device;
     }
@@ -199,7 +209,13 @@ public final class FrameManager {
         }
         if (!threadLogged) {
             threadLogged = true;
-            LOG.info("First beginFrame() on thread={}; must match the SDL window-creating thread", Thread.currentThread().getName());
+            final String renderThread = Thread.currentThread().getName();
+            final String windowThread = device.getWindowThreadName();
+            if (windowThread != null && !windowThread.equals(renderThread)) {
+                LOG.warn("Frames are recorded on '{}' but the SDL window was created on '{}'; SDL requires swapchain acquire/wait on the window-creating thread", renderThread, windowThread);
+            } else {
+                LOG.info("First beginFrame() on thread={}", renderThread);
+            }
         }
 
         flushPendingUploadCommandBuffer(f);
@@ -207,13 +223,6 @@ public final class FrameManager {
             globalSyncAtNextBeginFrame = false;
             Tracy.beginZone(Z_SDL_FENCE_WAIT);
             try { SDL_WaitForGPUIdle(device.getDevice()); }
-            finally { Tracy.endZone(); }
-        }
-
-        if (f.drawableStarved) {
-            f.drawableStarved = false;
-            Tracy.beginZone(Z_SDL_SWAPCHAIN_WAIT);
-            try { SDL_WaitForGPUSwapchain(device.getDevice(), Display.getWindow()); }
             finally { Tracy.endZone(); }
         }
 
@@ -529,9 +538,14 @@ public final class FrameManager {
             f.commandBuffer = 0;
         }
 
-        f.drawableStarved = f.presentSkipsThisFrame > 0;
-
         if (Tracy.ENABLED && resourceManager != null) SdlFramePlots.emit(f, resourceManager);
+
+        statLoopFrames++;
+        if (f.swapchainAcquiredThisFrame) statPresentedFrames++;
+        statPresentSkips += f.presentSkipsThisFrame;
+        statEmptyFrames += f.emptyFramesThisFrame;
+        statAcquireWaitNanos += f.acquireWaitNanosThisFrame;
+
         f.lastPlottedRenderPassGen = f.renderPassGeneration;
         f.computePassesThisFrame = 0;
         f.submitsThisFrame = 0;
@@ -847,7 +861,7 @@ public final class FrameManager {
 
         endActiveEncoders(f);
 
-        final long t0 = Tracy.ENABLED ? System.nanoTime() : 0L;
+        final long t0 = System.nanoTime();
         final long tex;
         final int w;
         final int h;
@@ -858,7 +872,7 @@ public final class FrameManager {
             final IntBuffer pHeight = stack.ints(0);
             Tracy.beginZone(Z_SDL_ACQUIRE_WAIT);
             try {
-                callOk = SDL_AcquireGPUSwapchainTexture(f.commandBuffer, Display.getWindow(), pTexture, pWidth, pHeight);
+                callOk = SDL_WaitAndAcquireGPUSwapchainTexture(f.commandBuffer, Display.getWindow(), pTexture, pWidth, pHeight);
             } finally {
                 Tracy.endZone();
             }
@@ -866,11 +880,11 @@ public final class FrameManager {
             w = pWidth.get(0);
             h = pHeight.get(0);
         } catch (RuntimeException re) {
-            if (Tracy.ENABLED) f.acquireWaitNanosThisFrame += System.nanoTime() - t0;
+            f.acquireWaitNanosThisFrame += System.nanoTime() - t0;
             f.swapchainUnavailable = true;
             throw re;
         }
-        if (Tracy.ENABLED) f.acquireWaitNanosThisFrame += System.nanoTime() - t0;
+        f.acquireWaitNanosThisFrame += System.nanoTime() - t0;
 
         if (!callOk) {
             f.swapchainUnavailable = true;

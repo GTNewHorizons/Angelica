@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -375,8 +376,26 @@ public class SDLGPURenderBackend extends RenderBackend {
         LOG.info("Populated GL capabilities for SDL GPU backend");
     }
 
-    @Override public void setVSyncEnabled(boolean enabled) {
-        device.setVSyncEnabled(enabled);
+    @Override protected void setSwapInterval(boolean vsync) {
+        device.setVSyncMode(VSyncMode.AUTO, vsync);
+    }
+
+    @Override protected VSyncMode applyVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
+        return device.setVSyncMode(preferred, vsyncEnabled);
+    }
+
+    @Override public boolean supportsVSyncMode(VSyncMode mode) {
+        return mode == VSyncMode.AUTO || device.supportsVSyncMode(mode);
+    }
+
+    @Override public int getMinRenderAhead() { return Device.MIN_FRAMES_IN_FLIGHT; }
+
+    @Override public int getMaxRenderAhead() { return Device.MAX_FRAMES_IN_FLIGHT; }
+
+    @Override public void setRenderAheadLimit(int frames) { device.setFramesInFlight(frames); }
+
+    @Override public int getDisplayRefreshRateHz() {
+        return device.getDisplayRefreshRateHz();
     }
 
     @Override public void shutdown() {
@@ -679,6 +698,54 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public String getTransferDebugInfo() {
         return transferThread != null ? transferThread.getDebugInfo() : null;
+    }
+
+    private static final long PRESENT_STATS_WINDOW_NANOS = 1_000_000_000L;
+    private static final long PRESENT_STATS_STALE_NANOS = 2_000_000_000L;
+
+    private long presentStatsNanos;
+    private long presentStatsLoopFrames;
+    private long presentStatsPresentedFrames;
+    private long presentStatsSkips;
+    private long presentStatsEmpty;
+    private long presentStatsAcquireNanos;
+    private String presentDebugLine;
+
+    @Override public String getPresentDebugInfo() {
+        if (shutdown) return null;
+        final long now = System.nanoTime();
+        final long elapsed = now - presentStatsNanos;
+
+        if (presentStatsNanos == 0L || elapsed > PRESENT_STATS_STALE_NANOS) {
+            snapshotPresentStats(now);
+            presentDebugLine = null;
+            return null;
+        }
+        if (elapsed < PRESENT_STATS_WINDOW_NANOS) return presentDebugLine;
+
+        final long loopDelta = frameManager.statLoopFrames() - presentStatsLoopFrames;
+        final long presentedDelta = frameManager.statPresentedFrames() - presentStatsPresentedFrames;
+        final long skipDelta = frameManager.statPresentSkips() - presentStatsSkips;
+        final long emptyDelta = frameManager.statEmptyFrames() - presentStatsEmpty;
+        final long acquireDelta = frameManager.statAcquireWaitNanos() - presentStatsAcquireNanos;
+        final double seconds = elapsed / 1.0e9;
+        presentDebugLine = String.format("Present: %s %dHz | loop %.0f/s shown %.0f/s | skip %.0f/s empty %.0f/s | acq %.2fms | fif %d",
+            getEffectiveVSyncMode(), device.getDisplayRefreshRateHz(),
+            loopDelta / seconds, presentedDelta / seconds,
+            skipDelta / seconds, emptyDelta / seconds,
+            loopDelta == 0 ? 0.0 : acquireDelta / (double) loopDelta / 1.0e6,
+            Device.framesInFlight());
+        snapshotPresentStats(now);
+        return presentDebugLine;
+    }
+
+    private void snapshotPresentStats(long now) {
+        presentStatsNanos = now;
+        presentStatsLoopFrames = frameManager.statLoopFrames();
+        presentStatsPresentedFrames = frameManager.statPresentedFrames();
+        presentStatsSkips = frameManager.statPresentSkips();
+        presentStatsEmpty = frameManager.statEmptyFrames();
+        presentStatsAcquireNanos = frameManager.statAcquireWaitNanos();
     }
 
     @Override public void enable(int cap) { setBoolCap(cap, true); }

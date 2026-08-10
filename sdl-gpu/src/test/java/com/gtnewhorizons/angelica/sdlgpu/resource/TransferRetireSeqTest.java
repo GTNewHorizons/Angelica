@@ -11,9 +11,18 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class TransferRetireSeqTest {
 
-    private static TransferThread thread() {
+    private static TransferThread idleThread() {
         final SdlTestRig rig = SdlTestRig.create();
-        return new TransferThread(rig.device, rig.resourceManager);
+        final TransferThread tt = new TransferThread(rig.device, rig.resourceManager);
+        tt.shutdown();
+        try {
+            tt.getThread().join(5_000L);
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new AssertionError("interrupted while stopping the transfer thread", e);
+        }
+        assertFalse(tt.getThread().isAlive(), "the worker must be stopped first: its loop zeroes openHighestSeq after publishing, so a live worker races this test");
+        return tt;
     }
 
     @Test
@@ -34,21 +43,19 @@ class TransferRetireSeqTest {
 
     @Test
     void aDroppedTextureUploadStillRetiresItsSeq() {
-        final TransferThread tt = thread();
+        final TransferThread tt = idleThread();
         Reflect.invoke(tt, "recordTextureUpload",
             new Class<?>[]{ long.class, long.class, int.class, int.class, int.class, int.class, int.class, long.class, long.class },
             0L, 0xBEEFL, 0, 0, 16, 16, 0, 1024L, 42L);
 
         assertEquals(42L, (long) Reflect.get(tt, "openHighestSeq"), "a dropped upload must still advance the watermark or awaitSubmittedUpTo blocks forever");
-        tt.shutdown();
     }
 
     @Test
     void aDroppedBufferUploadStillRetiresItsSeq() {
-        final TransferThread tt = thread();
+        final TransferThread tt = idleThread();
         Reflect.invoke(tt, "recordBufferUpload", new Class<?>[]{ long.class, long.class, long.class, long.class, long.class, boolean.class }, 0L, 256L, 0xF00L, 0L, 7L, false);
 
         assertEquals(7L, (long) Reflect.get(tt, "openHighestSeq"));
-        tt.shutdown();
     }
 }
