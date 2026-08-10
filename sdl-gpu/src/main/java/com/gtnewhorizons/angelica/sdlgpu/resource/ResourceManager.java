@@ -587,7 +587,7 @@ public final class ResourceManager {
         final GpuBucket b = gpuBufferPool.get(Hashing.packHiLo(usage, bucket));
         if (b == null || b.handles.isEmpty()) return 0;
         for (int i = 0, n = b.handles.size(); i < n; i++) {
-            if (gpuPoolCurrentFrame - b.frames.getLong(i) >= Device.FRAMES_IN_FLIGHT) {
+            if (gpuPoolCurrentFrame - b.frames.getLong(i) >= Device.framesInFlight()) {
                 final long handle = b.handles.getLong(i);
                 final int last = n - 1;
                 if (i != last) {
@@ -1376,7 +1376,7 @@ public final class ResourceManager {
             for (int i = 0; i < n; i += 2) {
                 final long handle = batchSegmentPending.getLong(i);
                 final long stamp = batchSegmentPending.getLong(i + 1);
-                if (currentFrame - stamp >= Device.FRAMES_IN_FLIGHT) {
+                if (currentFrame - stamp >= Device.framesInFlight()) {
                     batchSegmentFree.enqueue(handle);
                 } else {
                     batchSegmentPending.set(w, handle);
@@ -2115,7 +2115,7 @@ public final class ResourceManager {
     }
 
     private static final int DUMMY_VBO_SIZE = 16 * 16;
-    public static final int ATTRIB_RING_BLOCKS = 2048 * Device.FRAMES_IN_FLIGHT;
+    public static final int ATTRIB_RING_BLOCKS = 2048 * Device.MAX_FRAMES_IN_FLIGHT;
     public static final int ATTRIB_RING_CHUNK_BLOCKS = 64;
     private static final int ATTRIB_RING_CHUNKS = ATTRIB_RING_BLOCKS / ATTRIB_RING_CHUNK_BLOCKS;
     private final AtomicLong attribRingCounter = new AtomicLong();
