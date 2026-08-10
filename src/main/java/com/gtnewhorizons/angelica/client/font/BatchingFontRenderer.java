@@ -1012,19 +1012,23 @@ public class BatchingFontRenderer {
                     }
                 }
 
-                if (curRandom) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
-                }
+                // ASCII space, NBSP, NNBSP, decided before obfuscation as vanilla does.
+                final boolean whitespace = chr == ' ' || chr == '\u00A0' || chr == '\u202F';
 
                 FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
+
+                // Obfuscation swaps in a glyph of equal width from the Minecraft font's
+                // width table, so it only applies where that table is what gets drawn.
+                if (curRandom && !whitespace && fontProvider == FontProviderMC.get(this.isSGA)) {
+                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
+                }
 
                 heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
                 visibleCharIndex++;
 
-                // Check ASCII space, NBSP, NNBSP
-                if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
+                if (whitespace) {
                     curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
                     continue;
                 }

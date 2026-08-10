@@ -43,16 +43,30 @@ public final class FontProviderMC implements FontProvider {
         return MCFONT_ASCII_MAP.containsKey(chr);
     }
 
-    public char getRandomReplacement(char chr){
-        int lutIndex = lookupMcFontPosition(chr);
-        if (lutIndex != -1) {
-            int randomReplacementIndex;
-            do {
-                randomReplacementIndex = fontRandom.nextInt(this.charWidth.length);
-            } while (this.charWidth[lutIndex] != this.charWidth[randomReplacementIndex]);
+    /** Tries before obfuscation gives up and leaves the character alone. */
+    private static final int RANDOM_GLYPH_TRIES = 64;
 
-            lutIndex = randomReplacementIndex;
-            return MCFONT_CHARS.charAt(lutIndex);
+    /**
+     * A random glyph of the same width, for {@code §k}. Only slots the reverse lookup
+     * agrees with are eligible: {@link #MCFONT_CHARS} repeats {@code U+0000} and the map
+     * keeps the last, so other slots would measure from a different one. Bounded, since
+     * a resource pack may ship widths where nothing matches.
+     */
+    public char getRandomReplacement(char chr){
+        final int lutIndex = lookupMcFontPosition(chr);
+        if (lutIndex == -1 || this.charWidth == null || lutIndex >= this.charWidth.length) {
+            return chr;
+        }
+        final int targetWidth = this.charWidth[lutIndex];
+        for (int attempt = 0; attempt < RANDOM_GLYPH_TRIES; attempt++) {
+            final int candidate = fontRandom.nextInt(this.charWidth.length);
+            if (this.charWidth[candidate] != targetWidth) {
+                continue;
+            }
+            final char replacement = MCFONT_CHARS.charAt(candidate);
+            if (MCFONT_ASCII_MAP.get(replacement) == candidate) {
+                return replacement;
+            }
         }
         return chr;
     }
