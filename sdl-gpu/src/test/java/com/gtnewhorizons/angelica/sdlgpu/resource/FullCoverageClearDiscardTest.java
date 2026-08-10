@@ -36,6 +36,18 @@ class FullCoverageClearDiscardTest {
     }
 
     @Test
+    void fullTargetColorBlitDefinesTheContents() {
+        final ContextState st = new ContextState();
+        FBOClearTracker.recordPendingColorClear(st, HANDLE, 1f, 0f, 0f, 1f);
+
+        final SdlTestRig rig = SdlTestRig.create();
+        final FBOClearTracker tracker = new FBOClearTracker(rig.frameManager, rig.resourceManager, null);
+        assertTrue(tracker.discardPendingClearIfFullyCovered(st, HANDLE, 0, 0, 0, W, H, meta()));
+
+        assertTrue(rig.resourceManager.isTextureContentDefined(HANDLE), "the overwrite defines the contents, so a later frame must not clear it back");
+    }
+
+    @Test
     void fullTargetDepthBlitDropsThePendingClear() {
         final ContextState st = new ContextState();
         FBOClearTracker.recordPendingDepthClear(st, HANDLE, 1f);

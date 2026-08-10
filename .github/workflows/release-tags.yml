@@ -3,7 +3,7 @@ name: Release tagged build
 
 on:
   push:
-    tags: [ '*' ]
+    tags: [ '*', '!tracy-v*' ]
 
 permissions:
   contents: write

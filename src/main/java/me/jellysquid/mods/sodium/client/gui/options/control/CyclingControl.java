@@ -27,6 +27,17 @@ public class CyclingControl<T extends Enum<T>> implements Control<T> {
         this.names = names;
     }
 
+    public CyclingControl(Option<T> option, Class<T> enumType, T[] allowedValues, String[] names) {
+        final T[] universe = enumType.getEnumConstants();
+
+        Validate.isTrue(universe.length == names.length, "Mismatch between universe length and names array length");
+        Validate.notEmpty(allowedValues, "There must be at least one allowed value");
+
+        this.option = option;
+        this.allowedValues = allowedValues;
+        this.names = names;
+    }
+
     public CyclingControl(Option<T> option, Class<T> enumType, T[] allowedValues) {
         final T[] universe = enumType.getEnumConstants();
 

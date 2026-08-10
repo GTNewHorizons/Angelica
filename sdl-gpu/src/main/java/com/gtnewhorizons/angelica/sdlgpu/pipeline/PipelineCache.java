@@ -86,6 +86,17 @@ public final class PipelineCache {
     public int stencilCompareMask = 0xFF;
     public int stencilWriteMask = 0xFF;
 
+    private static final LongOpenHashSet loggedStencilMaskLost = new LongOpenHashSet();
+
+    private void warnOnceOnStencilMaskLost() {
+        if (!stencilTestEnabled || effectiveStencilTestEnabled()) return;
+        if (stencilFrontCompareOp == SDL_GPU_COMPAREOP_ALWAYS && stencilBackCompareOp == SDL_GPU_COMPAREOP_ALWAYS && stencilFrontPassOp == SDL_GPU_STENCILOP_KEEP && stencilBackPassOp == SDL_GPU_STENCILOP_KEEP)
+            return;
+        if (!loggedStencilMaskLost.add(Hashing.packHiLo(programId, debugFboId))) return;
+        LOG.warn("Stencil mask dropped: bound target has no stencil aspect. fbo={} depthFormat={} program={} frontCmp={} frontPass={} writeMask=0x{}",
+            debugFboId, textureFormatName(depthTargetFormat), programId, stencilFrontCompareOp, stencilFrontPassOp, Integer.toHexString(stencilWriteMask));
+    }
+
     public boolean cullEnabled = false;
     public int cullFaceMode = SDL_GPU_CULLMODE_BACK;
     public int frontFace = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE;
@@ -139,6 +150,14 @@ public final class PipelineCache {
 
     public void setDrawBuffers(int[] drawBuffers) {
         this.drawBuffers = drawBuffers;
+    }
+
+    public boolean setDepthTargetFormat(int sdlFormat) {
+        if (depthTargetFormat == sdlFormat && hasDepthTarget == (sdlFormat != 0)) return false;
+        hasDepthTarget = sdlFormat != 0;
+        depthTargetFormat = sdlFormat;
+        markOutputDirty();
+        return true;
     }
 
     private int attachmentForSlot(int slot) {
@@ -340,7 +359,7 @@ public final class PipelineCache {
     private void warnOnceOnUnconsumedFragOutput(int numColorTargets) {
         if (maxFragOutputLocation < numColorTargets) return;
         if (!loggedUnconsumedFragOutput.add(Hashing.packHiLo(programId, numColorTargets))) return;
-        LOG.warn("[PipelineCache] program {} declares fragment output location {} but framebuffer {} ({} colour attachment(s)) has {} draw buffer(s) {}; writes past location {} are discarded", programId, maxFragOutputLocation, debugFboId, debugFboAttachments, numColorTargets, Arrays.toString(drawBuffers), numColorTargets - 1);
+        LOG.warn("[PipelineCache] program {} declares fragment output location {} but framebuffer {} ({} color attachment(s)) has {} draw buffer(s) {}; writes past location {} are discarded", programId, maxFragOutputLocation, debugFboId, debugFboAttachments, numColorTargets, Arrays.toString(drawBuffers), numColorTargets - 1);
     }
 
     private long createPipeline(PipelineStore store, ContextState cs) {
@@ -360,6 +379,7 @@ public final class PipelineCache {
         try (var stack = stackPush()) {
             final int numColorTargets = colorTargetFormats().length;
             warnOnceOnUnconsumedFragOutput(numColorTargets);
+            warnOnceOnStencilMaskLost();
             final SDL_GPUColorTargetDescription.Buffer colorDesc = SDL_GPUColorTargetDescription.calloc(numColorTargets, stack);
             for (int i = 0; i < numColorTargets; i++) {
                 final var desc = colorDesc.get(i);

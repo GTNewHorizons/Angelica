@@ -35,6 +35,7 @@ public final class FboState {
     public int cachedTargetsCount = -1;
     public int cachedClearOpFlags;
     public boolean cachedDepthClearLast;
+    public boolean cachedStencilClearLast;
     public boolean cachedTargetsValid;
 
     public long getColorTexture() { return colorTextures[0]; }

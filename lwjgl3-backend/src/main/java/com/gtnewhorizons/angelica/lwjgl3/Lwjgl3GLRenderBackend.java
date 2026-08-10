@@ -32,6 +32,7 @@ import org.lwjgl.opengl.EXTPolygonOffsetClamp;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLDebugMessageCallback;
+import org.lwjgl.sdl.SDL_DisplayMode;
 import org.lwjgl.sdl.SDL_DropEvent;
 import org.lwjgl.sdl.SDL_EventFilter;
 import org.lwjgl.sdl.SDLEvents;
@@ -39,6 +40,7 @@ import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjglx.opengl.Display;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -169,7 +171,17 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     public int getMinGLSLVersion() {return 330;}
 
     @Override
-    public void setVSyncEnabled(boolean enabled) {SDLVideo.SDL_GL_SetSwapInterval(enabled ? 1 : 0);}
+    protected void setSwapInterval(boolean vsync) {SDLVideo.SDL_GL_SetSwapInterval(vsync ? 1 : 0);}
+
+    @Override
+    public int getDisplayRefreshRateHz() {
+        final long window = Display.getWindow();
+        final int displayId = window == 0 ? SDLVideo.SDL_GetPrimaryDisplay() : SDLVideo.SDL_GetDisplayForWindow(window);
+        if (displayId == 0) return 0;
+        final SDL_DisplayMode mode = SDLVideo.SDL_GetCurrentDisplayMode(displayId);
+        if (mode == null) return 0;
+        return refreshHzFrom(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
+    }
 
     @Override
     public boolean isAnisotropicSupported() {

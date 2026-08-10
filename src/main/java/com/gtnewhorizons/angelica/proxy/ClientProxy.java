@@ -106,6 +106,10 @@ public final class ClientProxy extends CommonProxy {
         return CONFIG;
     }
 
+    public static void applyVSyncMode(boolean vsyncEnabled) {
+        GLStateManager.setVSyncMode(options().advanced.vsyncMode, vsyncEnabled);
+    }
+
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         ModStatus.preInit();

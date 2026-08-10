@@ -547,11 +547,11 @@ public class ShadowRenderer {
 		profiler.endStartSection("iris_shadow_build_geometry");
 
 		setupEntityShadowState(modelView, cameraX, cameraY, cameraZ);
-		if (playerReflectionCaptureEnabled) {
-			PlayerReflectionCapture.begin(player);
-		}
 		ModelPartBatcher.INSTANCE.begin(ModelPartBatcher.Mode.ENTITIES, true);
 		try {
+			if (playerReflectionCaptureEnabled) {
+				PlayerReflectionCapture.begin(player);
+			}
 			for (Entity entity : renderedEntitiesList) {
 				final long start = Tracy.ENABLED ? System.nanoTime() : 0L;
 				try {
@@ -629,7 +629,7 @@ public class ShadowRenderer {
 	// Saved RenderManager position for shadow pass
     private double savedRenderPosX, savedRenderPosY, savedRenderPosZ;
 
-    /** Flushes shadow-pass batched model parts while GL_POLYGON_OFFSET_FILL is still enabled. */
+    /** Flushes deferred shadow-pass geometry while GL_POLYGON_OFFSET_FILL is still enabled. */
     private static void flushShadowModelParts() {
         if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_MODEL_PARTS);
         final boolean alphaEnabled = GLStateManager.getAlphaTest().isEnabled();
@@ -637,6 +637,7 @@ public class ShadowRenderer {
         final float alphaRef = GLStateManager.getAlphaState().getReference();
         try {
             ModelPartBatcher.INSTANCE.flush();
+            PlayerReflectionCapture.flush();
         } finally {
             if (alphaEnabled) GLStateManager.enableAlphaTest();
             else GLStateManager.disableAlphaTest();
@@ -712,14 +713,11 @@ public class ShadowRenderer {
 			if (playerReflectionCaptureEnabled) {
 				PlayerReflectionCapture.begin(player);
 			}
-			try {
-				RenderManager.instance.renderEntitySimple(player, tickDelta);
-			} finally {
-				PlayerReflectionCapture.end();
-			}
+			RenderManager.instance.renderEntitySimple(player, tickDelta);
 			shadowEntities++;
 		} finally {
 			flushShadowModelParts();
+			PlayerReflectionCapture.end();
 			teardownEntityShadowState();
 		}
 

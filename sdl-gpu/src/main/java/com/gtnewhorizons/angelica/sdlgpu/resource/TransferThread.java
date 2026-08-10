@@ -34,6 +34,7 @@ public final class TransferThread {
     private static final Tracy.ZoneId Z_SDL_UPLOAD = Tracy.zoneId("sdlUpload", Tracy.COLOR_WORKER);
 
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU-Transfer");
+    private boolean warnedNullTextureUpload;
 
     private static final AtomicLong SEQ = new AtomicLong();
 
@@ -214,6 +215,19 @@ public final class TransferThread {
         return flushRequestedSeq > submittedSeq || openBytes >= FLUSH_COALESCE_BYTES || openCount >= FLUSH_COALESCE_COMMANDS;
     }
 
+    static boolean shouldPublishRetired(boolean hasOpenCB, long openHighestSeq, long submittedSeq) {
+        return !hasOpenCB && openHighestSeq > submittedSeq;
+    }
+
+    private void publishSubmittedSeq() {
+        if (openHighestSeq <= submittedSeq) return;
+        synchronized (submittedLock) {
+            submittedSeq = openHighestSeq;
+            submittedLock.notifyAll();
+        }
+        drainDuePendingFrees();
+    }
+
     private void run() {
         LOG.info("Transfer thread started");
         try {
@@ -230,6 +244,9 @@ public final class TransferThread {
 
                 if (shouldFlush(openCB != 0, flushRequestedSeq, submittedSeq, openBytes, openCount)) {
                     flushOpenCB();
+                } else if (shouldPublishRetired(openCB != 0, openHighestSeq, submittedSeq)) {
+                    publishSubmittedSeq();
+                    openHighestSeq = 0;
                 }
 
                 if (Tracy.ENABLED) pendingActiveNanos += System.nanoTime() - workStart;
@@ -315,10 +332,18 @@ public final class TransferThread {
         return true;
     }
 
+    private void retireSeq(long seq) {
+        openHighestSeq = Math.max(openHighestSeq, seq);
+    }
+
     private void recordBufferUpload(long transferBuffer, long size, long dstGpuBuffer, long dstOffset, long seq, boolean cycle) {
-        if (transferBuffer == 0) return;
+        if (transferBuffer == 0) {
+            retireSeq(seq);
+            return;
+        }
         if (!ensureOpenCB()) {
             resourceManager.returnTransferBufferThreadSafe(transferBuffer, size);
+            retireSeq(seq);
             return;
         }
         srcLoc.transfer_buffer(transferBuffer).offset(0);
@@ -333,7 +358,10 @@ public final class TransferThread {
     }
 
     private void recordGpuCopy(long srcHandle, long dstHandle, long readOffset, long writeOffset, long size, long seq) {
-        if (!ensureOpenCB()) return;
+        if (!ensureOpenCB()) {
+            retireSeq(seq);
+            return;
+        }
         srcBufLoc.buffer(srcHandle).offset((int) readOffset);
         dstBufLoc.buffer(dstHandle).offset((int) writeOffset);
         SDL_CopyGPUBufferToBuffer(openCopyPass, srcBufLoc, dstBufLoc, (int) size, false);
@@ -344,9 +372,22 @@ public final class TransferThread {
     }
 
     private void recordTextureUpload(long transferBuffer, long texHandle, int x, int y, int w, int h, int level, long size, long seq) {
-        if (transferBuffer == 0) return;
+        if (transferBuffer == 0) {
+            retireSeq(seq);
+            return;
+        }
+        if (texHandle == 0) {
+            if (!warnedNullTextureUpload) {
+                warnedNullTextureUpload = true;
+                LOG.warn("Deferred texture upload with no destination texture; dropped (level={} {}x{} at {},{})", level, w, h, x, y);
+            }
+            resourceManager.returnTransferBufferThreadSafe(transferBuffer, size);
+            retireSeq(seq);
+            return;
+        }
         if (!ensureOpenCB()) {
             resourceManager.returnTransferBufferThreadSafe(transferBuffer, size);
+            retireSeq(seq);
             return;
         }
         texXferInfo.transfer_buffer(transferBuffer).offset(0);
@@ -368,12 +409,7 @@ public final class TransferThread {
             device.reportGpuFailure("submit transfer command buffer");
         }
 
-        synchronized (submittedLock) {
-            submittedSeq = openHighestSeq;
-            submittedLock.notifyAll();
-        }
-
-        drainDuePendingFrees();
+        publishSubmittedSeq();
 
         for (int i = 0, n = pendingReturnHandles.size(); i < n; i++) {
             resourceManager.returnTransferBufferThreadSafe(pendingReturnHandles.getLong(i), pendingReturnSizes.getLong(i));

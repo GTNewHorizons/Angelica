@@ -62,7 +62,47 @@ public abstract class RenderBackend {
     public abstract void flush();
     public abstract void finish();
 
-    public abstract void setVSyncEnabled(boolean enabled);
+    protected abstract void setSwapInterval(boolean vsync);
+
+    private VSyncMode preferredVSyncMode = VSyncMode.AUTO;
+    private VSyncMode effectiveVSyncMode = VSyncMode.ON;
+
+    public final void setVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
+        preferredVSyncMode = preferred == null ? VSyncMode.AUTO : preferred;
+        effectiveVSyncMode = applyVSyncMode(preferredVSyncMode, vsyncEnabled);
+    }
+
+    protected VSyncMode applyVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
+        final VSyncMode mode = preferred.resolve(vsyncEnabled).swapIntervalEquivalent();
+        setSwapInterval(mode.usesVSyncSwapInterval());
+        return mode;
+    }
+
+    public boolean supportsVSyncMode(VSyncMode mode) { return mode != VSyncMode.MAILBOX; }
+
+    public int getMinRenderAhead() { return 0; }
+
+    public int getMaxRenderAhead() { return 9; }
+
+    public void setRenderAheadLimit(int frames) {}
+
+    public static int clampRenderAhead(int value, int min, int max) {
+        if (value <= 0) return min <= 0 ? 0 : max;
+        return Math.min(Math.max(value, Math.max(min, 1)), max);
+    }
+
+    public final VSyncMode getPreferredVSyncMode() { return preferredVSyncMode; }
+
+    public final VSyncMode getEffectiveVSyncMode() { return effectiveVSyncMode; }
+
+    public int getDisplayRefreshRateHz() { return 0; }
+
+    public static int refreshHzFrom(int numerator, int denominator, float fallbackHz) {
+        if (numerator > 0 && denominator > 0) return (numerator + denominator - 1) / denominator;
+        return fallbackHz > 0.0f ? (int) Math.ceil(fallbackHz) : 0;
+    }
+
+    public String getPresentDebugInfo() { return null; }
 
     public void onFrameBegin() {
         if (GLStateManager.takeStateSeedPending()) {
