@@ -20,6 +20,7 @@ import com.gtnewhorizons.angelica.sdlgpu.resource.FBOClearTracker;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PersistentBufferSync;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PersistentMapping;
+import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.SamplerBinder;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageBufferBinder;
@@ -108,11 +109,8 @@ public final class PipelineApplier {
         }
 
         if (st.boundFboId == 0) {
-            if (st.pendingSwapchainClear) {
-                frameManager.ensureSwapchainRenderPass(f, st.pendingSwapchainR, st.pendingSwapchainG, st.pendingSwapchainB, st.pendingSwapchainA, true);
-                st.pendingSwapchainClear = false;
-            } else {
-                frameManager.ensureSwapchainRenderPass(f, st.clearR, st.clearG, st.clearB, st.clearA, false);
+            if (frameManager.ensureSwapchainRenderPass(f, st)) {
+                st.pipeline.setDepthTargetFormat(resourceManager.getSwapchainDepthStencilFormat());
             }
             return;
         }
@@ -145,47 +143,50 @@ public final class PipelineApplier {
                 tex = dummyTex;
             }
             final boolean pendingClear = tex != dummyTex && st.pendingColorTextures.contains(tex);
-            final boolean firstUse = !pendingClear && tex != dummyTex && !st.clearedTexturesThisFrame.contains(tex);
+            final boolean defined = tex != dummyTex && resourceManager.isTextureContentDefined(tex);
+            final boolean firstUse = !pendingClear && tex != dummyTex && !defined;
             if (pendingClear || firstUse) proposedClearOps |= 1 << i;
             layoutHash = Hashing.fmix64(layoutHash, tex);
             layoutHash = Hashing.fmix64(layoutHash, db);
+            if (pendingClear || firstUse) {
+                final float[] c = pendingClear ? st.pendingColorValues.get(tex) : null;
+                layoutHash = foldClearColor(layoutHash, c != null ? c[0] : st.clearR, c != null ? c[1] : st.clearG, c != null ? c[2] : st.clearB, c != null ? c[3] : st.clearA);
+            }
         }
         final boolean proposedDepthClear;
+        final boolean proposedStencilClear;
+        final boolean depthHasStencil = fbo.depthTexture != 0 && PixelOps.isDepthStencilFormat(fbo.depthFormat);
         if (fbo.depthTexture != 0) {
             final boolean pendingClear = st.pendingDepthTextures.contains(fbo.depthTexture);
             final boolean firstUse = !pendingClear && !st.clearedTexturesThisFrame.contains(fbo.depthTexture);
             proposedDepthClear = pendingClear || firstUse;
+            final boolean pendingStencil = depthHasStencil && st.pendingStencilTextures.contains(fbo.depthTexture);
+            if (depthHasStencil) {
+                final boolean firstStencilUse = !pendingStencil && !st.clearedStencilTexturesThisFrame.contains(fbo.depthTexture);
+                proposedStencilClear = pendingStencil || firstStencilUse;
+            } else {
+                proposedStencilClear = false;
+            }
             layoutHash = Hashing.fmix64(layoutHash, fbo.depthTexture);
+            if (proposedDepthClear) {
+                layoutHash = foldClearDepth(layoutHash, pendingClear ? st.pendingDepthValues.get(fbo.depthTexture) : st.depthClearValue);
+            }
+            if (proposedStencilClear) {
+                layoutHash = foldClearStencil(layoutHash, pendingStencil ? st.pendingStencilValues.get(fbo.depthTexture) : st.stencilClearValue);
+            }
         } else {
             proposedDepthClear = false;
+            proposedStencilClear = false;
         }
-        layoutHash = Hashing.fmix64(layoutHash, Float.floatToRawIntBits(st.clearR));
-        layoutHash = Hashing.fmix64(layoutHash, Float.floatToRawIntBits(st.clearG));
-        layoutHash = Hashing.fmix64(layoutHash, Float.floatToRawIntBits(st.clearB));
-        layoutHash = Hashing.fmix64(layoutHash, Float.floatToRawIntBits(st.clearA));
-        layoutHash = Hashing.fmix64(layoutHash, Float.floatToRawIntBits(st.depthClearValue));
 
         frameManager.endRenderPassIfActive(f);
 
-        final boolean reuse = fbo.cachedTargetsValid && fbo.cachedTargetsLayoutHash == layoutHash && fbo.cachedTargetsCount == totalTargets && fbo.cachedClearOpFlags == proposedClearOps && fbo.cachedDepthClearLast == proposedDepthClear;
+        final boolean reuse = fbo.cachedTargetsValid && fbo.cachedTargetsLayoutHash == layoutHash && fbo.cachedTargetsCount == totalTargets && fbo.cachedClearOpFlags == proposedClearOps && fbo.cachedDepthClearLast == proposedDepthClear && fbo.cachedStencilClearLast == proposedStencilClear;
 
         SDL_GPUColorTargetInfo.Buffer colorTargets = null;
         SDL_GPUDepthStencilTargetInfo depthTarget = null;
 
         if (reuse) {
-            for (int i = 0; i < totalTargets; i++) {
-                final int db = fbo.drawBuffers[i];
-                final long tex = (db >= 0 && db < ContextState.MAX_COLOR_ATTACHMENTS)
-                    ? fbo.colorTextures[db] : 0L;
-                if (tex != 0) {
-                    st.pendingColorTextures.remove(tex);
-                    if ((proposedClearOps & (1 << i)) != 0) st.clearedTexturesThisFrame.add(tex);
-                }
-            }
-            if (fbo.depthTexture != 0) {
-                st.pendingDepthTextures.remove(fbo.depthTexture);
-                if (proposedDepthClear) st.clearedTexturesThisFrame.add(fbo.depthTexture);
-            }
             if (totalTargets > 0) colorTargets = fbo.cachedColorTargets.position(0).limit(totalTargets);
             if (fbo.depthTexture != 0) depthTarget = fbo.cachedDepthTarget;
         } else {
@@ -199,9 +200,8 @@ public final class PipelineApplier {
                     } else {
                         tex = dummyTex;
                     }
-                    final boolean pendingClear = tex != dummyTex && st.pendingColorTextures.remove(tex);
-                    final boolean firstUse = !pendingClear && tex != dummyTex && !st.clearedTexturesThisFrame.contains(tex);
-                    final boolean clearThis = pendingClear || firstUse;
+                    final boolean pendingClear = tex != dummyTex && st.pendingColorTextures.contains(tex);
+                    final boolean clearThis = (proposedClearOps & (1 << i)) != 0;
                     final long ctAddr = colorTargets.address() + (long) i * SDL_GPUColorTargetInfo.SIZEOF;
                     MemoryAccess.putAddress(ctAddr + SDL_GPUColorTargetInfo.TEXTURE, tex);
                     MemoryAccess.putInt(ctAddr + SDL_GPUColorTargetInfo.LOAD_OP, clearThis ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
@@ -220,34 +220,77 @@ public final class PipelineApplier {
                             MemoryAccess.putFloat(ccAddr + SDL_FColor.B, st.clearB);
                             MemoryAccess.putFloat(ccAddr + SDL_FColor.A, st.clearA);
                         }
-                        if (tex != dummyTex) st.clearedTexturesThisFrame.add(tex);
                     }
                 }
             }
             if (fbo.depthTexture != 0) {
-                final boolean pendingClear = st.pendingDepthTextures.remove(fbo.depthTexture);
-                final boolean firstUse = !pendingClear && !st.clearedTexturesThisFrame.contains(fbo.depthTexture);
-                final boolean clearDepth = pendingClear || firstUse;
+                final boolean pendingClear = st.pendingDepthTextures.contains(fbo.depthTexture);
                 depthTarget = fbo.cachedDepthTarget;
                 final long dtAddr = depthTarget.address();
                 MemoryAccess.putAddress(dtAddr + SDL_GPUDepthStencilTargetInfo.TEXTURE, fbo.depthTexture);
-                MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, clearDepth ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+                MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, proposedDepthClear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
                 MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
-                if (clearDepth) {
+                if (proposedDepthClear) {
                     final float dv = pendingClear ? st.pendingDepthValues.get(fbo.depthTexture) : st.depthClearValue;
                     MemoryAccess.putFloat(dtAddr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, dv);
-                    st.clearedTexturesThisFrame.add(fbo.depthTexture);
+                }
+                if (depthHasStencil) {
+                    final boolean pendingStencil = st.pendingStencilTextures.contains(fbo.depthTexture);
+                    MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STENCIL_LOAD_OP, proposedStencilClear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+                    MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STENCIL_STORE_OP, SDL_GPU_STOREOP_STORE);
+                    if (proposedStencilClear) {
+                        final int sv = pendingStencil ? st.pendingStencilValues.get(fbo.depthTexture) : st.stencilClearValue;
+                        MemoryAccess.putByte(dtAddr + SDL_GPUDepthStencilTargetInfo.CLEAR_STENCIL, (byte) sv);
+                    }
+                } else {
+                    MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STENCIL_LOAD_OP, SDL_GPU_LOADOP_LOAD);
+                    MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STENCIL_STORE_OP, SDL_GPU_STOREOP_STORE);
                 }
             }
             fbo.cachedTargetsLayoutHash = layoutHash;
             fbo.cachedTargetsCount = totalTargets;
             fbo.cachedClearOpFlags = proposedClearOps;
             fbo.cachedDepthClearLast = proposedDepthClear;
+            fbo.cachedStencilClearLast = proposedStencilClear;
             fbo.cachedTargetsValid = true;
         }
 
+        consumeClears(resourceManager, st, fbo, dummyTex, proposedClearOps, proposedDepthClear, proposedStencilClear, depthHasStencil);
+
         frameManager.beginRenderPass(colorTargets, depthTarget);
         frameManager.setActiveLayoutHash(fbo.structuralLayoutHash);
+    }
+
+    static void consumeClears(ResourceManager rm, ContextState st, FboState fbo, long dummyTex, int clearOps, boolean depthClear, boolean stencilClear, boolean depthHasStencil) {
+        for (int i = 0, n = fbo.drawBuffers.length; i < n; i++) {
+            final int db = fbo.drawBuffers[i];
+            final long tex = (db >= 0 && db < ContextState.MAX_COLOR_ATTACHMENTS) ? fbo.colorTextures[db] : 0L;
+            if (tex == 0 || tex == dummyTex) continue;
+            st.pendingColorTextures.remove(tex);
+            if ((clearOps & (1 << i)) != 0) rm.markTextureContentDefined(tex);
+        }
+        if (fbo.depthTexture == 0) return;
+        st.pendingDepthTextures.remove(fbo.depthTexture);
+        if (depthClear) st.clearedTexturesThisFrame.add(fbo.depthTexture);
+        if (depthHasStencil) {
+            st.pendingStencilTextures.remove(fbo.depthTexture);
+            if (stencilClear) st.clearedStencilTexturesThisFrame.add(fbo.depthTexture);
+        }
+    }
+
+    static long foldClearColor(long h, float r, float g, float b, float a) {
+        h = Hashing.fmix64(h, Float.floatToRawIntBits(r));
+        h = Hashing.fmix64(h, Float.floatToRawIntBits(g));
+        h = Hashing.fmix64(h, Float.floatToRawIntBits(b));
+        return Hashing.fmix64(h, Float.floatToRawIntBits(a));
+    }
+
+    static long foldClearDepth(long h, float depth) {
+        return Hashing.fmix64(h, Float.floatToRawIntBits(depth));
+    }
+
+    static long foldClearStencil(long h, int stencil) {
+        return Hashing.fmix64(h, stencil);
     }
 
     private static final int RING_BLOCK_BYTES = ContextState.MAX_VERTEX_ATTRIBS * 16;

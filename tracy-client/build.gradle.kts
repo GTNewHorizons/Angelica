@@ -138,7 +138,7 @@ publishing {
         }
     }
     repositories {
-        if (System.getenv("MAVEN_USER") != null) {
+        if (hasProperty("publishTracy") && System.getenv("MAVEN_USER") != null) {
             maven {
                 name = "GTNHMaven"
                 url = uri(rootProject.findProperty("mavenPublishUrl")?.toString() ?: "https://nexus.gtnewhorizons.com/repository/releases/")

@@ -89,4 +89,4 @@ jobs:
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-        run: ./gradlew :tracy-client:publish
+        run: ./gradlew -PpublishTracy=true :tracy-client:publish

@@ -10,6 +10,8 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -552,6 +554,9 @@ public class GLStateManager {
         // GL_STENCIL_BITS was removed in core profile; query via default FBO attachment
         final int stencilBits = RENDER_BACKEND.getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
         glCtx.stencilBitMask = stencilBits >= 32 ? 0xFFFFFFFF : (1 << stencilBits) - 1;
+        if (glCtx.stencilBitMask == 0) {
+            LOGGER.warn("Default framebuffer reports 0 stencil bits on backend {}; all stencil masks clamp to 0", RENDER_BACKEND.getClass().getSimpleName());
+        }
 
         // Initialize stencil masks from computed bit mask
         glCtx.stencilState.setValueMaskFront(glCtx.stencilBitMask);
@@ -1965,6 +1970,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -1983,6 +1989,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2001,6 +2008,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2019,6 +2027,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -4510,7 +4519,10 @@ public class GLStateManager {
         RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
         restorePixelPackBuffer();
     }
-    public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) { RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height); }
+    public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) {
+        RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height);
+        TextureInfoCache.INSTANCE.onTexStorage2D(target, internalFormat, width, height);
+    }
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
 
     public static int glGenSamplers() { return RENDER_BACKEND.genSamplers(); }
@@ -5036,7 +5048,39 @@ public class GLStateManager {
     }
 
     public static void setVSyncEnabled(boolean enabled) {
-        RENDER_BACKEND.setVSyncEnabled(enabled);
+        setVSyncMode(RENDER_BACKEND.getPreferredVSyncMode(), enabled);
+    }
+
+    public static void setVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
+        RENDER_BACKEND.setVSyncMode(preferred, vsyncEnabled);
+    }
+
+    public static VSyncMode getEffectiveVSyncMode() {
+        return RENDER_BACKEND.getEffectiveVSyncMode();
+    }
+
+    public static List<VSyncMode> getSelectableVSyncModes() {
+        return VSyncMode.selectable(RENDER_BACKEND::supportsVSyncMode);
+    }
+
+    public static int getMinRenderAhead() {
+        return RENDER_BACKEND.getMinRenderAhead();
+    }
+
+    public static int getMaxRenderAhead() {
+        return RENDER_BACKEND.getMaxRenderAhead();
+    }
+
+    public static int renderAheadLimit(int configured) {
+        return RenderBackend.clampRenderAhead(configured, RENDER_BACKEND.getMinRenderAhead(), RENDER_BACKEND.getMaxRenderAhead());
+    }
+
+    public static void applyRenderAheadLimit(int configured) {
+        RENDER_BACKEND.setRenderAheadLimit(renderAheadLimit(configured));
+    }
+
+    public static int getDisplayRefreshRateHz() {
+        return RENDER_BACKEND.getDisplayRefreshRateHz();
     }
 
     public static int glGetError() {
@@ -5119,6 +5163,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 
@@ -5134,6 +5179,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 
@@ -5143,6 +5189,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glTexSubImage2D with buffer offset");
         }
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 
@@ -5183,6 +5230,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glCopyTexSubImage2D");
         }
         RENDER_BACKEND.copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 

@@ -27,21 +27,21 @@ public class SodiumControlElementFactory implements ControlElementFactory {
     private static class CyclingControlElement<T extends Enum<T>> extends SodiumControlElement<T> {
         private final T[] allowedValues;
         private final String[] names;
-        private int currentIndex;
 
         public CyclingControlElement(Option<T> option, Dim2i dim, T[] allowedValues, String[] names) {
             super(option, dim);
 
             this.allowedValues = allowedValues;
             this.names = names;
-            this.currentIndex = 0;
+        }
 
-            for (int i = 0; i < allowedValues.length; i++) {
-                if (allowedValues[i] == option.getValue()) {
-                    this.currentIndex = i;
-                    break;
+        private int currentIndex() {
+            for (int i = 0; i < this.allowedValues.length; i++) {
+                if (this.allowedValues[i] == this.option.getValue()) {
+                    return i;
                 }
             }
+            return 0;
         }
 
         @Override
@@ -59,16 +59,14 @@ public class SodiumControlElementFactory implements ControlElementFactory {
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
             if(AngelicaConfig.enableReesesSodiumOptions) {
                 if (this.option.isAvailable() && this.dim.containsCursor(mouseX, mouseY) && (button == 0 || button == 1)) {
-                    this.currentIndex = Math.floorMod(this.currentIndex + (button == 0 ? 1 : -1), this.allowedValues.length);
-                    this.option.setValue(this.allowedValues[this.currentIndex]);
+                    this.option.setValue(this.allowedValues[Math.floorMod(this.currentIndex() + (button == 0 ? 1 : -1), this.allowedValues.length)]);
                     this.playClickSound();
 
                     return true;
                 }
             } else {
                 if (this.option.isAvailable() && button == 0 && this.dim.containsCursor(mouseX, mouseY)) {
-                    this.currentIndex = (this.currentIndex + 1) % this.allowedValues.length;
-                    this.option.setValue(this.allowedValues[this.currentIndex]);
+                    this.option.setValue(this.allowedValues[(this.currentIndex() + 1) % this.allowedValues.length]);
                     this.playClickSound();
 
                     return true;
