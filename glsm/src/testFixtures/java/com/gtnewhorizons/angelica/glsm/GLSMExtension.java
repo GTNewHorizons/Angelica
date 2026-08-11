@@ -1,0 +1,196 @@
+package com.gtnewhorizons.angelica.glsm;
+
+import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
+import org.junit.jupiter.api.extension.AfterEachCallback;
+import org.junit.jupiter.api.extension.BeforeAllCallback;
+import org.junit.jupiter.api.extension.BeforeEachCallback;
+import org.junit.jupiter.api.extension.ConditionEvaluationResult;
+import org.junit.jupiter.api.extension.ExecutionCondition;
+import org.junit.jupiter.api.extension.ExtensionContext;
+import org.lwjgl.LWJGLException;
+import org.lwjgl.opengl.ContextAttribs;
+import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.DisplayMode;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.PixelFormat;
+import sun.misc.Unsafe;
+
+import java.lang.reflect.Field;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.extension.ExtensionContext.Namespace.GLOBAL;
+
+public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, AfterEachCallback, ExecutionCondition, ExtensionContext.Store.CloseableResource {
+
+    // Compat profile is not available on OSX
+    private static final boolean IS_MAC = System.getProperty("os.name", "").toLowerCase().contains("mac");
+    private static final boolean FORCE_RUN = Boolean.getBoolean("angelica.glsm.test.forceRun");
+
+    @Override
+    public ConditionEvaluationResult evaluateExecutionCondition(ExtensionContext context) {
+        if (IS_MAC && !FORCE_RUN) {
+            return ConditionEvaluationResult.disabled("Skipped on macOS: needs GL3+ compat profile");
+        }
+        return ConditionEvaluationResult.enabled("OS supports GL3+ compat profile");
+    }
+
+    private static final Unsafe theUnsafe;
+    static {
+        try {
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            theUnsafe = (Unsafe) f.get(null);
+        } catch (ReflectiveOperationException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    private static boolean started = false;
+    private static Throwable startFailure;
+    private static DisplayMode displayMode;
+    public static String glVendor;
+    public static String glRenderer;
+    public static String glVersion;
+
+    private static final int EXPECTED_MODELVIEW_STACK_DEPTH = 1;
+    private static final int EXPECTED_PROJECTION_STACK_DEPTH = 1;
+
+    @Override
+    public void beforeAll(ExtensionContext context) throws LWJGLException {
+        if (startFailure != null) {
+            throw new IllegalStateException("GLSMExtension context setup failed earlier in this JVM", startFailure);
+        }
+        if (started) return;
+        try {
+            displayMode = new DisplayMode(800, 600);
+            final GLSMInitConfig config = GLSMInitConfig.builder()
+                .displaySize(displayMode.getWidth(), displayMode.getHeight())
+                .build();
+            setMainThread(Thread.currentThread());
+
+            latchRenderSystemOnCoreContext(config);
+
+            Display.setDisplayModeAndFullscreen(displayMode);
+            Display.setResizable(false);
+            Display.setFullscreen(false);
+            Display.create(new PixelFormat().withDepthBits(24).withStencilBits(8));
+
+            GLStateManager.initialize(config);
+            GLStateManager.setRunningSplash(false);
+            GLStateManager.markSplashComplete("test");
+            context.getRoot().getStore(GLOBAL).put("GLSMExtension", this);
+            glVendor = GL11.glGetString(GL11.GL_VENDOR);
+            glRenderer = GL11.glGetString(GL11.GL_RENDERER);
+            glVersion = GL11.glGetString(GL11.GL_VERSION);
+
+            System.out.println("OpenGL Vendor: " + glVendor);
+            System.out.println("OpenGL Renderer: " + glRenderer);
+            System.out.println("OpenGL Version: " + glVersion);
+
+            final int profileMask = GL11.glGetInteger(GL32.GL_CONTEXT_PROFILE_MASK);
+            if ((profileMask & GL32.GL_CONTEXT_COMPATIBILITY_PROFILE_BIT) == 0) {
+                throw new IllegalStateException("Expected a GL compatibility context, got profile mask 0x"
+                    + Integer.toHexString(profileMask) + " (" + glVersion + ")");
+            }
+            started = true;
+        } catch (LWJGLException | RuntimeException | Error e) {
+            startFailure = e;
+            throw e;
+        }
+    }
+
+    private static void latchRenderSystemOnCoreContext(GLSMInitConfig config) throws LWJGLException {
+        Display.setDisplayModeAndFullscreen(displayMode);
+        Display.setResizable(false);
+        Display.setFullscreen(false);
+        Display.create(
+            new PixelFormat().withDepthBits(24).withStencilBits(8),
+            new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true));
+        try {
+            GLStateManager.initialize(config);
+        } finally {
+            Display.destroy();
+        }
+    }
+
+    static void setMainThread(Thread thread) {
+        try {
+            final Field f = GLStateManager.class.getDeclaredField("MainThread");
+            final Object base = theUnsafe.staticFieldBase(f);
+            final long offset = theUnsafe.staticFieldOffset(f);
+            theUnsafe.putObject(base, offset, thread);
+        } catch (NoSuchFieldException e) {
+            throw new RuntimeException("Failed to set MainThread for tests", e);
+        }
+    }
+
+    @Override
+    public void close() {
+        Display.destroy();
+    }
+
+    @Override
+    public void beforeEach(ExtensionContext context) throws Exception {
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+
+        final ShaderManager ffp = ShaderManager.getInstance();
+        if (ffp.isActive()) {
+            ffp.deactivate();
+        }
+        ffp.disable();
+
+        // Force-sync VAO binding. Tests may unbind via raw GL, desynchronizing GLSM's cache.
+        // Invalidate the cache so glBindVertexArray(0) actually issues the GL call.
+        GLStateManager.ctx().boundVAO = -1;
+        GLStateManager.glBindVertexArray(0);
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+        while (GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH) > EXPECTED_MODELVIEW_STACK_DEPTH) {
+            GL11.glPopMatrix();
+        }
+        GL11.glLoadIdentity();
+
+        GL11.glMatrixMode(GL11.GL_PROJECTION);
+        while (GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH) > EXPECTED_PROJECTION_STACK_DEPTH) {
+            GL11.glPopMatrix();
+        }
+        GL11.glLoadIdentity();
+
+        GL11.glMatrixMode(GL11.GL_MODELVIEW);
+
+        while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+    }
+
+    @Override
+    public void afterEach(ExtensionContext context) throws Exception {
+        boolean leakedRecorder = false;
+        for (int i = 0; i < 64 && DisplayListManager.isRecording(); i++) {
+            leakedRecorder = true;
+            DisplayListManager.glEndList();
+        }
+        if (leakedRecorder) {
+            while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
+            fail("Test leaked an open display-list recorder! Missing glEndList.");
+        }
+
+        final int error = GL11.glGetError();
+        assertEquals(GL11.GL_NO_ERROR, error,
+            () -> "GL Error: 0x" + Integer.toHexString(error));
+
+        final int modelviewDepth = GL11.glGetInteger(GL11.GL_MODELVIEW_STACK_DEPTH);
+        final int projectionDepth = GL11.glGetInteger(GL11.GL_PROJECTION_STACK_DEPTH);
+
+        assertEquals(EXPECTED_MODELVIEW_STACK_DEPTH, modelviewDepth,
+            "MODELVIEW stack depth mismatch - unbalanced glPushMatrix/glPopMatrix");
+        assertEquals(EXPECTED_PROJECTION_STACK_DEPTH, projectionDepth,
+            "PROJECTION stack depth mismatch - unbalanced glPushMatrix/glPopMatrix");
+
+        final int matrixMode = GL11.glGetInteger(GL11.GL_MATRIX_MODE);
+        assertEquals(GL11.GL_MODELVIEW, matrixMode,
+            () -> "Matrix mode not reset to MODELVIEW, was: " + GLDebug.getMatrixModeName(matrixMode));
+    }
+}

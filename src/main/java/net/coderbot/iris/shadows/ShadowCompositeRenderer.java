@@ -3,8 +3,10 @@ package net.coderbot.iris.shadows;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gl.buffer.ShaderStorageBufferHolder;
@@ -21,7 +23,10 @@ import net.coderbot.iris.gl.texture.TextureAccess;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
+import net.coderbot.iris.pipeline.transform.PreRasterComputeDispatcher;
+import net.coderbot.iris.pipeline.transform.RwImageStoreExtractor;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import org.lwjgl.opengl.GL20;
 import net.coderbot.iris.postprocess.FullScreenQuadRenderer;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.samplers.IrisImages;
@@ -38,6 +43,7 @@ import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -50,6 +56,8 @@ import java.util.Objects;
 import java.util.Set;
 
 public class ShadowCompositeRenderer {
+
+    private static final Tracy.ZoneId Z_GEN_MIPMAP = Tracy.zoneId("genMipmap", Tracy.COLOR_IRIS);
 
     private final ShadowRenderTargets renderTargets;
 
@@ -64,6 +72,11 @@ public class ShadowCompositeRenderer {
     private final Set<GlImage> irisCustomImages;
     @Nullable
     private final ShaderStorageBufferHolder ssboHolder;
+    private int samplerUsage;
+
+    public int getSamplerUsage() {
+        return samplerUsage;
+    }
 
     public ShadowCompositeRenderer(WorldRenderingPipeline pipeline, PackDirectives packDirectives, ProgramSource[] sources, ComputeSource[][] computes,
             ShadowRenderTargets renderTargets, @Nullable ShaderStorageBufferHolder ssboHolder, TextureAccess noiseTexture, FrameUpdateNotifier updateNotifier,
@@ -101,6 +114,7 @@ public class ShadowCompositeRenderer {
             if (source == null || !source.isValid()) {
                 if (computes[i] != null) {
                     ComputeOnlyPass pass = new ComputeOnlyPass();
+                    pass.name = computeOnlyPassName(computes[i], i);
                     pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, renderTargets);
                     passes.add(pass);
                 }
@@ -108,9 +122,26 @@ public class ShadowCompositeRenderer {
             }
 
             Pass pass = new Pass();
+            pass.name = "iris_" + source.getName();
             ProgramDirectives directives = source.getDirectives();
 
-            pass.program = createProgram(source, flipped, flippedAtLeastOnceSnapshot, renderTargets);
+            final Map<PatchShaderType, String> transformed = TransformPatcher.patchComposite(
+                source.getVertexSource().orElseThrow(NullPointerException::new),
+                source.getGeometrySource().orElse(null),
+                source.getTessControlSource().orElse(null),
+                source.getTessEvalSource().orElse(null),
+                source.getFragmentSource().orElseThrow(NullPointerException::new),
+                TextureStage.SHADOWCOMP,
+                pipeline.getTextureMap());
+            pass.program = createProgramFromTransformed(source, transformed, flipped, flippedAtLeastOnceSnapshot, renderTargets);
+            final String preComputeSrc = transformed.get(PatchShaderType.COMPUTE);
+            if (preComputeSrc != null) {
+                pass.preRasterMode = RwImageStoreExtractor.parseSentinel(preComputeSrc);
+                if (pass.preRasterMode != null) {
+                    pass.preRasterCompute = buildPreRasterCompute(source.getName(), preComputeSrc,
+                        flipped, flippedAtLeastOnceSnapshot, renderTargets);
+                }
+            }
             pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, renderTargets);
             int[] drawBuffers = directives.hasUnknownDrawBuffers() ? new int[] { 0, 1 } : directives.getDrawBuffers();
 
@@ -169,7 +200,15 @@ public class ShadowCompositeRenderer {
         //
         // Also note that this only applies to one of the two buffers in a render target buffer pair - making it
         // unlikely that this issue occurs in practice with most shader packs.
-        RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+        if (Tracy.ENABLED) {
+        	Tracy.beginZone(Z_GEN_MIPMAP);
+        	Tracy.zoneValue(texture);
+        }
+        try {
+        	RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+        } finally {
+        	if (Tracy.ENABLED) Tracy.endZone();
+        }
         RenderSystem.texParameteri(texture, GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, target.getInternalFormat().getPixelFormat().isInteger() ? GL11.GL_NEAREST_MIPMAP_NEAREST : GL11.GL_LINEAR_MIPMAP_LINEAR);
     }
 
@@ -195,7 +234,11 @@ public class ShadowCompositeRenderer {
 
         FullScreenQuadRenderer.INSTANCE.begin();
 
+        final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+
         for (Pass renderPass : passes) {
+            profiler.startSection(renderPass.name);
+            GLDebug.pushGroup(renderPass.name);
             boolean ranCompute = false;
             for (ComputeProgram computeProgram : renderPass.computes) {
                 if (computeProgram != null) {
@@ -215,6 +258,8 @@ public class ShadowCompositeRenderer {
             Program.unbind();
 
             if (renderPass instanceof ComputeOnlyPass) {
+                GLDebug.popGroup();
+                profiler.endSection();
                 continue;
             }
 
@@ -232,12 +277,18 @@ public class ShadowCompositeRenderer {
             int beginHeight = (int) (renderTargets.getResolution() * renderPass.viewportScale.viewportY());
             GLStateManager.glViewport(beginWidth, beginHeight, (int) scaledWidth, (int) scaledHeight);
 
+            if (renderPass.preRasterCompute != null && renderPass.preRasterMode != null) {
+                dispatchPreRasterCompute(renderPass, (int) scaledWidth, (int) scaledHeight);
+            }
+
             renderPass.framebuffer.bind();
             renderPass.program.use();
 
             this.customUniforms.push(renderPass.program);
 
             FullScreenQuadRenderer.INSTANCE.renderQuad();
+            GLDebug.popGroup();
+            profiler.endSection();
         }
 
         FullScreenQuadRenderer.INSTANCE.end();
@@ -256,17 +307,9 @@ public class ShadowCompositeRenderer {
     }
 
     // TODO: Don't just copy this from DeferredWorldRenderingPipeline
-    private Program createProgram(ProgramSource source, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
+    private Program createProgramFromTransformed(ProgramSource source, Map<PatchShaderType, String> transformed,
+            ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
             ShadowRenderTargets targets) {
-        // TODO: Properly handle empty shaders
-        Map<PatchShaderType, String> transformed = TransformPatcher.patchComposite(
-                source.getVertexSource().orElseThrow(NullPointerException::new),
-                source.getGeometrySource().orElse(null),
-                source.getTessControlSource().orElse(null),
-                source.getTessEvalSource().orElse(null),
-                source.getFragmentSource().orElseThrow(NullPointerException::new),
-                TextureStage.SHADOWCOMP,
-                pipeline.getTextureMap());
         String vertex = transformed.get(PatchShaderType.VERTEX);
         String geometry = transformed.get(PatchShaderType.GEOMETRY);
         String tessControl = transformed.get(PatchShaderType.TESS_CONTROL);
@@ -295,7 +338,7 @@ public class ShadowCompositeRenderer {
         IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
         IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-        IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+        samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
         IrisImages.addShadowColorImages(builder, targets, flipped);
         IrisImages.addCustomImages(builder, irisCustomImages);
         IrisSamplers.addCustomImages(customTextureSamplerInterceptor, irisCustomImages);
@@ -303,6 +346,36 @@ public class ShadowCompositeRenderer {
         this.customUniforms.mapholderToPass(builder, build);
 
         return build;
+    }
+
+    private ComputeProgram buildPreRasterCompute(String name, String computeSource, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot, ShadowRenderTargets targets) {
+        PatchedShaderPrinter.debugPatchedShaders(name + "_pre_compute", null, null, null, computeSource);
+        final ProgramBuilder builder;
+        try {
+            builder = ProgramBuilder.beginCompute(name + "_pre", computeSource, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
+        } catch (RuntimeException e) {
+            throw new RuntimeException("Pre-raster compute compilation failed for shadow composite " + name, e);
+        }
+        final ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor =
+            ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
+
+        CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
+        this.customUniforms.assignTo(builder);
+
+        IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
+        IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
+        IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+        IrisImages.addShadowColorImages(builder, targets, flipped);
+        IrisImages.addCustomImages(builder, irisCustomImages);
+        IrisSamplers.addCustomImages(customTextureSamplerInterceptor, irisCustomImages);
+
+        final ComputeProgram cp = builder.buildCompute();
+        this.customUniforms.mapholderToPass(builder, cp);
+        return cp;
+    }
+
+    private void dispatchPreRasterCompute(Pass pass, int width, int height) {
+        pass.preRasterTargetSizeLoc = PreRasterComputeDispatcher.dispatch(pass.preRasterCompute, pass.preRasterMode, pass.preRasterTargetSizeLoc, width, height, this.customUniforms);
     }
 
     private ComputeProgram[] createComputes(ComputeSource[] sources, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot,
@@ -340,7 +413,7 @@ public class ShadowCompositeRenderer {
                 IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
                 IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-                IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+                samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, targets, flipped, pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
                 IrisImages.addShadowColorImages(builder, targets, flipped);
 
                 IrisImages.addCustomImages(builder, irisCustomImages);
@@ -365,8 +438,18 @@ public class ShadowCompositeRenderer {
         }
     }
 
+    private static String computeOnlyPassName(ComputeSource[] computes, int index) {
+        for (ComputeSource compute : computes) {
+            if (compute != null) {
+                return "iris_" + compute.getName();
+            }
+        }
+        return "iris_shadowcomp_compute" + index;
+    }
+
     private static class Pass {
 
+        String name;
         Program program;
         GlFramebuffer framebuffer;
         ImmutableSet<Integer> flippedAtLeastOnce;
@@ -374,6 +457,9 @@ public class ShadowCompositeRenderer {
         ImmutableSet<Integer> mipmappedBuffers;
         ViewportData viewportScale;
         ComputeProgram[] computes;
+        @Nullable ComputeProgram preRasterCompute;
+        @Nullable RwImageStoreExtractor.RwExtractMode preRasterMode;
+        int preRasterTargetSizeLoc = -2;
 
         protected void destroy() {
             this.program.destroy();
@@ -381,6 +467,10 @@ public class ShadowCompositeRenderer {
                 if (compute != null) {
                     compute.destroy();
                 }
+            }
+            if (this.preRasterCompute != null) {
+                this.preRasterCompute.destroy();
+                this.preRasterCompute = null;
             }
         }
     }

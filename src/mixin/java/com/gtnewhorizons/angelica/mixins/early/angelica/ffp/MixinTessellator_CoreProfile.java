@@ -17,7 +17,6 @@ public class MixinTessellator_CoreProfile {
 
     @Inject(method = "draw", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;isDrawing:Z", opcode = Opcodes.GETFIELD), cancellable = true)
     private void angelica$coreProfileDraw(CallbackInfoReturnable<Integer> cir) {
-        // Injecting after HEAD because GTNHLib's shouldInterceptDraw() takes priority
         cir.setReturnValue(TessellatorStreamingDrawer.draw((Tessellator) (Object) this));
     }
 }

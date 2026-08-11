@@ -3,6 +3,7 @@ package net.coderbot.iris.pipeline;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.minecraft.client.Minecraft;
+import net.minecraft.profiler.Profiler;
 import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
 
@@ -10,13 +11,15 @@ import java.util.Objects;
 import java.util.function.IntSupplier;
 
 public class ClearPass {
+	private final String name;
 	private final Vector4f color;
 	private final IntSupplier viewportX;
 	private final IntSupplier viewportY;
 	private final GlFramebuffer framebuffer;
 	private final int clearFlags;
 
-	public ClearPass(Vector4f color, IntSupplier viewportX, IntSupplier viewportY, GlFramebuffer framebuffer, int clearFlags) {
+	public ClearPass(String name, Vector4f color, IntSupplier viewportX, IntSupplier viewportY, GlFramebuffer framebuffer, int clearFlags) {
+		this.name = name;
 		this.color = color;
 		this.viewportX = viewportX;
 		this.viewportY = viewportY;
@@ -25,6 +28,8 @@ public class ClearPass {
 	}
 
 	public void execute(Vector4f defaultClearColor) {
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+		profiler.startSection(name);
 		GLStateManager.glViewport(0, 0, viewportX.getAsInt(), viewportY.getAsInt());
 		framebuffer.bind();
 
@@ -36,9 +41,7 @@ public class ClearPass {
 
 		GLStateManager.glClearColor(color.x, color.y, color.z, color.w);
         GLStateManager.glClear(clearFlags);
-        if (Minecraft.isRunningOnMac) {
-            GLStateManager.glGetError();
-        }
+		profiler.endSection();
 	}
 
 	public GlFramebuffer getFramebuffer() {

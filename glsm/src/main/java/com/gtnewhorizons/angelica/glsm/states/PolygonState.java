@@ -14,6 +14,7 @@ public class PolygonState implements ISettableState<PolygonState> {
     private int backMode = GL11.GL_FILL;
     private float offsetFactor = 0.0f;
     private float offsetUnits = 0.0f;
+    private float offsetClamp = 0.0f;
     private int cullFaceMode = GL11.GL_BACK;
     private int frontFace = GL11.GL_CCW;
 
@@ -23,6 +24,7 @@ public class PolygonState implements ISettableState<PolygonState> {
         this.backMode = state.backMode;
         this.offsetFactor = state.offsetFactor;
         this.offsetUnits = state.offsetUnits;
+        this.offsetClamp = state.offsetClamp;
         this.cullFaceMode = state.cullFaceMode;
         this.frontFace = state.frontFace;
         return this;
@@ -36,6 +38,7 @@ public class PolygonState implements ISettableState<PolygonState> {
             && backMode == polygonState.backMode
             && Float.compare(offsetFactor, polygonState.offsetFactor) == 0
             && Float.compare(offsetUnits, polygonState.offsetUnits) == 0
+            && Float.compare(offsetClamp, polygonState.offsetClamp) == 0
             && cullFaceMode == polygonState.cullFaceMode
             && frontFace == polygonState.frontFace;
     }

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
 import java.lang.management.ManagementFactory;
@@ -41,9 +42,11 @@ import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
+import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
 import com.gtnewhorizons.angelica.debug.F3Direction;
+import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -103,6 +106,10 @@ public final class ClientProxy extends CommonProxy {
         return CONFIG;
     }
 
+    public static void applyVSyncMode(boolean vsyncEnabled) {
+        GLStateManager.setVSyncMode(options().advanced.vsyncMode, vsyncEnabled);
+    }
+
     @Override
     public void preInit(FMLPreInitializationEvent event) {
         ModStatus.preInit();
@@ -111,6 +118,7 @@ public final class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
         MinecraftForge.EVENT_BUS.register(new EmissiveTextureAutoloader());
+        MinecraftForge.EVENT_BUS.register(new AngelicaTesrMeshCache.ReloadListener());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
     }
@@ -122,12 +130,8 @@ public final class ClientProxy extends CommonProxy {
         if (AngelicaConfig.enableHudCaching) {
             HUDCaching.init();
         }
-        if (AngelicaConfig.enableCeleritas) {
-            CeleritasSetup.ensureInitialized();
-            MinecraftForge.EVENT_BUS.register(CeleritasDebugScreenHandler.INSTANCE);
-        } else {
-            LOGGER.info("Celeritas is disabled, skipping initialization from init()");
-        }
+        CeleritasSetup.ensureInitialized();
+        MinecraftForge.EVENT_BUS.register(CeleritasDebugScreenHandler.INSTANCE);
         if (AngelicaConfig.enableIris) {
             IrisGLSMBridge.register();
             MinecraftForge.EVENT_BUS.register(IrisDebugScreenHandler.INSTANCE);
@@ -149,6 +153,7 @@ public final class ClientProxy extends CommonProxy {
         if (AngelicaConfig.enableZoom) {
             Zoom.init();
         }
+        AngelicaConfig.applyGpuCullingMode();
         if (AngelicaConfig.enableDynamicLights) {
             EntityLightConfig.init(new java.io.File(mc.mcDataDir, "config"));
         }
@@ -157,9 +162,12 @@ public final class ClientProxy extends CommonProxy {
             BlockRenderListManager.registerReloadListener();
         }
 
-        // Register debug commands in dev environment only
+        // Debug tooling
         if (!AngelicaClientTweaker.isObfEnv()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
+
+            FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);
+            FlybyRunner.INSTANCE.startFromProperties();
         }
     }
 
@@ -167,7 +175,7 @@ public final class ClientProxy extends CommonProxy {
     public void postInit(FMLPostInitializationEvent event) {
         super.postInit(event);
 
-        if (ModStatus.isLotrLoaded && AngelicaConfig.enableCeleritas && CompatConfig.fixLotr) {
+        if (ModStatus.isLotrLoaded && CompatConfig.fixLotr) {
             try {
                 final Class<?> lotrRendering = Class.forName("lotr.common.coremod.LOTRReplacedMethods$BlockRendering");
                 ReflectionHelper.setPrivateValue(lotrRendering, null, new ConcurrentHashMap<>(), "naturalBlockClassTable");
@@ -190,23 +198,22 @@ public final class ClientProxy extends CommonProxy {
             LOGGER.info("World loaded - Enabling GLSM Cache");
         }
 
-        if (AngelicaConfig.enableCeleritas) {
-            ChunkTaskRegistry.reset();
-            ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
-            ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
+        ChunkTaskRegistry.reset();
+        ChunkTaskRegistry.registerProvider(DefaultChunkTaskProvider.INSTANCE);
+        ChunkTaskRegistry.registerProvider(ThreadedChunkTaskProvider.INSTANCE);
 
-            // Register all blocks. Because blockids are unique to a world, this must be done each load
-            GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
-                AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
-            });
-        }
+        // Register all blocks. Because blockids are unique to a world, this must be done each load
+        GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
+            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
+            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
+        });
     }
 
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         if (!event.world.isRemote) return;
         DynamicLights.get().removeAllLightSources();
+        GpuCulling.onWorldUnload();
     }
 
     float lastIntegratedTickTime;

@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 
-import java.lang.reflect.Field;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -111,14 +110,12 @@ class ImmediateModeThreadIsolationTest {
     void drawLockGatesOnSplashComplete() throws Exception {
         assertFalse(GLStateManager.acquireDrawLock(), "post-splash acquire must be a no-op");
 
-        final Field f = GLStateManager.class.getDeclaredField("splashComplete");
-        f.setAccessible(true);
-        f.set(null, false);
+        SplashWindow.setSplashComplete(false);
         try {
             assertTrue(GLStateManager.acquireDrawLock(), "during splash the lock must engage");
             GLStateManager.releaseDrawLock();
         } finally {
-            f.set(null, true);
+            SplashWindow.setSplashComplete(true);
         }
     }
 }

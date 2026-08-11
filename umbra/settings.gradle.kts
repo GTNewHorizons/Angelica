@@ -16,7 +16,15 @@ pluginManagement {
 }
 
 plugins {
-    id("com.gtnewhorizons.gtnhsettingsconvention") version ("2.0.24")
+    id("com.gtnewhorizons.gtnhsettingsconvention") version ("2.0.27")
+}
+
+apply(from = file("../gradle/lwjgl-natives.settings.gradle.kts"))
+
+dependencyResolutionManagement {
+    versionCatalogs {
+        create("libs") { from(files("../gradle/libs.versions.toml")) }
+    }
 }
 
 include("glsm")

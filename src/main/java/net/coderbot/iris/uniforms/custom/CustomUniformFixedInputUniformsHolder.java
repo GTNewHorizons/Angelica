@@ -6,7 +6,7 @@ import kroppeb.stareval.function.Type;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.uniform.FloatSupplier;
 import net.coderbot.iris.gl.uniform.UniformHolder;
-import net.coderbot.iris.gl.uniform.UniformType;
+import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.custom.cached.BooleanCachedUniform;
 import net.coderbot.iris.uniforms.custom.cached.CachedUniform;

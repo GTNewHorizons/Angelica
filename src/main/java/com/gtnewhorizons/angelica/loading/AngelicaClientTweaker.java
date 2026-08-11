@@ -8,10 +8,12 @@ import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
 import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
 import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
 import com.gtnewhorizons.angelica.lwjgl3.MissingDependencySdl;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import com.gtnewhorizons.angelica.mixins.Mixins;
 import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
@@ -79,12 +81,20 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             ctx.updateLoggers();
 
             // Debug features
-            AngelicaConfig.enableTestBlocks = Boolean.getBoolean("angelica.enableTestBlocks");
+            AngelicaConfig.enableTestBlocks = SystemProperties.ENABLE_TEST_BLOCKS;
 
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }
         verifyDependencies();
+
+        if (SystemProperties.USE_SDL_GPU) {
+            if (SDLGPUGate.isSDLGPUAvailable()) {
+                LOGGER.info("SDL GPU window mode enabled");
+            } else {
+                LOGGER.warn("angelica.sdlgpu.enable=true but SDL GPU dependencies not available, falling back to GL");
+            }
+        }
 
         // Register a scoped redirector early so classes prematurely loaded by other coremods during discovery/injectData
         // (e.g. Mycelium using HookLoader.class.getName()) still get GL calls redirected to GLSM. Only targets specific mod
@@ -108,7 +118,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             for (String exclusion : EcosystemNarrowRules.LWJGL3IFY_EXCLUSIONS_SHARED) {
                 handle.exclusions().add(exclusion);
             }
-            handle.exclusions().add("com.gtnewhorizons.angelica.vulkan");
+            handle.exclusions().add("com.gtnewhorizons.angelica.sdlgpu");
         }
     }
 
@@ -191,6 +201,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             narrowTransformerConfig("Ears", AngelicaConfig.transformerCompat.narrowEars);
             narrowTransformerConfig("FiskHeroes", AngelicaConfig.transformerCompat.narrowFiskHeroes);
             narrowTransformerConfig("FoamFix", AngelicaConfig.transformerCompat.narrowFoamFix);
+            narrowTransformerConfig("LegendsMod", AngelicaConfig.transformerCompat.narrowLegendsMod);
 
             tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.IncompatibleModsDisablerTweaker");
             if (AngelicaConfig.enableHudCaching) {
@@ -204,9 +215,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
                 final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
                 if (!rfbLoaded) {
                     tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.AngelicaLateTweaker");
-                    if (AngelicaConfig.enableCeleritas) {
-                        tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.CeleritasLateTweaker");
-                    }
+                    tweaks.add("com.gtnewhorizons.angelica.loading.fml.tweakers.CeleritasLateTweaker");
                 }
             }
         }

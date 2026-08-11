@@ -13,28 +13,12 @@ public abstract class NormalHelper {
 	 * The extra value is for use by shaders.
 	 */
 	public static int packNormal(float x, float y, float z, float w) {
-		x = Math.clamp(x, -1, 1);
-		y = Math.clamp(y, -1, 1);
-		z = Math.clamp(z, -1, 1);
-		w = Math.clamp(w, -1, 1);
+		x = Math.clamp(-1f, 1f, x);
+		y = Math.clamp(-1f, 1f, y);
+		z = Math.clamp(-1f, 1f, z);
+		w = Math.clamp(-1f, 1f, w);
 
 		return ((int) (x * 127) & 0xFF) | (((int) (y * 127) & 0xFF) << 8) | (((int) (z * 127) & 0xFF) << 16) | (((int) (w * 127) & 0xFF) << 24);
-	}
-
-	/**
-	 * Version of {@link #packNormal(float, float, float, float)} that accepts a vector type.
-	 */
-	public static int packNormal(Vector3f normal, float w) {
-		return packNormal(normal.x, normal.y, normal.z, w);
-	}
-
-	/**
-	 * Retrieves values packed by {@link #packNormal(float, float, float, float)}.
-	 *
-	 * <p>Components are x, y, z, w - zero based.
-	 */
-	public static float getPackedNormalComponent(int packedNormal, int component) {
-		return ((byte) (packedNormal >> (8 * component))) / 127f;
 	}
 
 	/**

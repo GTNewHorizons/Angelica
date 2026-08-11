@@ -1,6 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
-import net.coderbot.iris.gl.shader.ShaderType;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.taumc.glsl.Transformer;
 
@@ -70,12 +70,12 @@ public class DHGenericTransformer {
         addIfNotExists(transformer, "uCameraPosSubChunk", "uniform vec3 uCameraPosSubChunk;");
         addIfNotExists(transformer, "uSkyLight", "uniform int uSkyLight;");
         addIfNotExists(transformer, "uBlockLight", "uniform int uBlockLight;");
-        addIfNotExists(transformer, "iris_color", "in vec4 iris_color;");
-        addIfNotExists(transformer, "aScale", "in vec3 aScale;");
-        addIfNotExists(transformer, "aTranslateChunk", "in ivec3 aTranslateChunk;");
-        addIfNotExists(transformer, "aTranslateSubChunk", "in vec3 aTranslateSubChunk;");
-        addIfNotExists(transformer, "aMaterial", "in int aMaterial;");
-        addIfNotExists(transformer, "vPosition", "in vec3 vPosition;");
+        addIfNotExists(transformer, "iris_color", DH_GENERIC_LOC_COLOR, "in vec4 iris_color;");
+        addIfNotExists(transformer, "aScale", DH_GENERIC_LOC_SCALE, "in vec3 aScale;");
+        addIfNotExists(transformer, "aTranslateChunk", DH_GENERIC_LOC_TRANSLATE_CHUNK, "in ivec3 aTranslateChunk;");
+        addIfNotExists(transformer, "aTranslateSubChunk", DH_GENERIC_LOC_TRANSLATE_SUB_CHUNK, "in vec3 aTranslateSubChunk;");
+        addIfNotExists(transformer, "aMaterial", DH_GENERIC_LOC_MATERIAL, "in int aMaterial;");
+        addIfNotExists(transformer, "vPosition", DH_GENERIC_LOC_POSITION, "in vec3 vPosition;");
 
         transformer.injectFunction("const vec3 irisNormals[6] = vec3[](vec3(0,0,-1), vec3(0,0,1), vec3(-1,0,0), vec3(1,0,0), vec3(0,-1,0), vec3(0,1,0));");
         transformer.injectFunction(
@@ -100,10 +100,21 @@ public class DHGenericTransformer {
         transformer.prependMain("_vert_init();");
     }
 
+    public static final int DH_GENERIC_LOC_POSITION = 0;
+    public static final int DH_GENERIC_LOC_COLOR = 1;
+    public static final int DH_GENERIC_LOC_SCALE = 2;
+    public static final int DH_GENERIC_LOC_TRANSLATE_CHUNK = 3;
+    public static final int DH_GENERIC_LOC_TRANSLATE_SUB_CHUNK = 4;
+    public static final int DH_GENERIC_LOC_MATERIAL = 5;
+
     private static void addIfNotExists(Transformer transformer, String name, String code) {
         if (!transformer.hasVariable(name)) {
             transformer.injectVariable(code);
         }
+    }
+
+    private static void addIfNotExists(Transformer transformer, String name, int location, String code) {
+        addIfNotExists(transformer, name, "layout (location = " + location + ") " + code);
     }
 
     private static void replaceGlMultiTexCoordBounded(Transformer transformer, int from, int to) {

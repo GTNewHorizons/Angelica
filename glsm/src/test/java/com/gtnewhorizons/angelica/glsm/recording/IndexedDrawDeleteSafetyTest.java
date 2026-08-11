@@ -101,7 +101,7 @@ class IndexedDrawDeleteSafetyTest extends DisplayListTestFixture {
     }
 
     @Test
-    void activeProgram_clearedOnDelete() {
+    void activeProgram_retainedAfterDelete_perGlSpec() {
         final int prog = linkMinimalProgram();
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
 
@@ -110,9 +110,10 @@ class IndexedDrawDeleteSafetyTest extends DisplayListTestFixture {
 
         GLStateManager.glDeleteProgram(prog);
 
-        assertEquals(0, GLStateManager.getActiveProgram(), "activeProgram not cleared when the active program was deleted");
+        assertEquals(prog, GLStateManager.getActiveProgram(), "activeProgram must remain set after delete (GL spec: deletion deferred until unbind)");
 
         GLStateManager.glUseProgram(0);
+        assertEquals(0, GLStateManager.getActiveProgram(), "activeProgram clears once the deleted program is unbound");
         while (GL11.glGetError() != GL11.GL_NO_ERROR) {}
     }
 

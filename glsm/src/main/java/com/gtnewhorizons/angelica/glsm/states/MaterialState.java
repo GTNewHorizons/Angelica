@@ -39,7 +39,7 @@ public class MaterialState implements ISettableState<MaterialState> {
 
     public boolean setAmbient(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
             return true;
         }
@@ -49,7 +49,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     public boolean setAmbient(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.ambient.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.ambient.equals(vector4f)) {
             this.ambient.set(vector4f);
             return true;
         }
@@ -58,7 +58,7 @@ public class MaterialState implements ISettableState<MaterialState> {
 
     public boolean setDiffuse(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
             return true;
         }
@@ -68,7 +68,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     public boolean setDiffuse(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.diffuse.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.diffuse.equals(vector4f)) {
             this.diffuse.set(vector4f);
             return true;
         }
@@ -77,7 +77,7 @@ public class MaterialState implements ISettableState<MaterialState> {
 
     public boolean setSpecular(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
             return true;
         }
@@ -87,7 +87,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     public boolean setSpecular(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.specular.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.specular.equals(vector4f)) {
             this.specular.set(vector4f);
             return true;
         }
@@ -96,7 +96,7 @@ public class MaterialState implements ISettableState<MaterialState> {
 
     public boolean setEmission(FloatBuffer newBuffer) {
         vector4f.set(newBuffer);
-        if (GLStateManager.shouldBypassCache() || !this.emission.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.emission.equals(vector4f)) {
             this.emission.set(vector4f);
             return true;
         }
@@ -106,7 +106,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     public boolean setEmission(IntBuffer newBuffer) {
         vector4i.set(newBuffer);
         vector4f.set(i2f(vector4i.x), i2f(vector4i.y), i2f(vector4i.z), i2f(vector4i.w));
-        if (GLStateManager.shouldBypassCache() || !this.emission.equals(vector4f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.emission.equals(vector4f)) {
             this.emission.set(vector4f);
             return true;
         }
@@ -114,7 +114,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     }
 
     public boolean setShininess(float val) {
-        if (GLStateManager.shouldBypassCache() || Float.compare(this.shininess, val) != 0) {
+        if (!GLStateManager.isCachingEnabled() || Float.compare(this.shininess, val) != 0) {
             this.shininess = val;
             return true;
         }
@@ -141,7 +141,7 @@ public class MaterialState implements ISettableState<MaterialState> {
             vector3f.set(newBuffer);
         }
 
-        if (GLStateManager.shouldBypassCache() || !this.colorIndexes.equals(vector3f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.colorIndexes.equals(vector3f)) {
             this.colorIndexes.set(vector3f);
             return true;
         }
@@ -151,7 +151,7 @@ public class MaterialState implements ISettableState<MaterialState> {
     public boolean setColorIndexes(IntBuffer newBuffer) {
         vector3i.set(newBuffer.get(0), newBuffer.get(2), newBuffer.get(1));
         vector3f.set((float) vector3i.x, (float) vector3i.y, (float) vector3i.z);
-        if (GLStateManager.shouldBypassCache() || !this.colorIndexes.equals(vector3f)) {
+        if (!GLStateManager.isCachingEnabled() || !this.colorIndexes.equals(vector3f)) {
             this.colorIndexes.set(vector3f);
             return true;
         }

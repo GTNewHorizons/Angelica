@@ -193,7 +193,7 @@ public class GLSM_VAO_UnitTest {
 
     private static void glBindVertexArray(int array) {
         if (array == 0) array = GLStateManager.getDefaultVAO();
-        GLStateManager.boundVAO = array;
+        GLStateManager.ctx().boundVAO = array;
         VAOManager.onBindVertexArrayPre(array);
         UniversalVAO.bindVertexArray(array);
     }

@@ -5,6 +5,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
@@ -44,25 +45,48 @@ public class TextureInfoCache {
     }
 
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable Buffer pixels) {
-        if (target == GL11.GL_TEXTURE_2D && level == 0) {
+        if (isTrackedTarget(target) && level == 0) {
             final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
             if (info == null) return;
+            info.setTarget(target);
             info.internalFormat = internalformat;
             info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
             info.width = width;
             info.height = height;
+            info.bumpUploadGeneration();
         }
     }
 
     public void onTexImage2D(int target, int level, int internalformat, int width, int height, int border, int format, int type, long pixels_buffer_offset) {
-        if (target == GL11.GL_TEXTURE_2D && level == 0) {
+        if (isTrackedTarget(target) && level == 0) {
             final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
             if (info == null) return;
+            info.setTarget(target);
             info.internalFormat = internalformat;
             info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
             info.width = width;
             info.height = height;
+            info.bumpUploadGeneration();
         }
+    }
+
+    public void onTexStorage2D(int target, int internalformat, int width, int height) {
+        if (!isTrackedTarget(target)) return;
+        final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+        if (info == null) return;
+        info.setTarget(target);
+        info.internalFormat = internalformat;
+        info.resolvedInternalFormat = isGenericCompressedInternalFormat(internalformat) ? -1 : internalformat;
+        info.width = width;
+        info.height = height;
+        info.bumpUploadGeneration();
+    }
+
+    public void onTexSubImage2D(int target, int level) {
+        if (!isTrackedTarget(target) || level != 0) return;
+        final TextureInfo info = getInfo(GLStateManager.getBoundTextureForServerState());
+        if (info == null) return;
+        info.bumpUploadGeneration();
     }
 
     public static boolean isGenericCompressedInternalFormat(int internalFormat) {
@@ -75,6 +99,15 @@ public class TextureInfoCache {
                  GL21.GL_COMPRESSED_SRGB_ALPHA -> true;
             default -> false;
         };
+    }
+
+    private static boolean isTrackedTarget(int target) {
+        return target == GL11.GL_TEXTURE_2D
+            || target == GL11.GL_TEXTURE_1D
+            || target == GL12.GL_TEXTURE_3D
+            || target == GL13.GL_TEXTURE_CUBE_MAP
+            || target == GL30.GL_TEXTURE_2D_ARRAY
+            || target == GL30.GL_TEXTURE_1D_ARRAY;
     }
 
     public void onDeleteTexture(int id) {

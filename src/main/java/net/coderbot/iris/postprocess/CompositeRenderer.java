@@ -3,10 +3,13 @@ package net.coderbot.iris.postprocess;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.collect.ImmutableSet;
+import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import lombok.Getter;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gl.framebuffer.GlFramebuffer;
 import net.coderbot.iris.gl.framebuffer.ViewportData;
@@ -22,7 +25,10 @@ import net.coderbot.iris.gl.texture.TextureAccess;
 import net.coderbot.iris.pipeline.PatchedShaderPrinter;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
+import net.coderbot.iris.pipeline.transform.PreRasterComputeDispatcher;
+import net.coderbot.iris.pipeline.transform.RwImageStoreExtractor;
 import net.coderbot.iris.pipeline.transform.TransformPatcher;
+import org.lwjgl.opengl.GL20;
 import net.coderbot.iris.rendertarget.RenderTarget;
 import net.coderbot.iris.rendertarget.RenderTargets;
 import net.coderbot.iris.samplers.IrisImages;
@@ -39,6 +45,7 @@ import net.coderbot.iris.uniforms.custom.CustomUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import net.minecraft.client.shader.Framebuffer;
+import net.minecraft.profiler.Profiler;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -54,6 +61,8 @@ import java.util.concurrent.CompletionException;
 import java.util.function.Supplier;
 
 public class CompositeRenderer {
+	private static final Tracy.ZoneId Z_GEN_MIPMAP = Tracy.zoneId("genMipmap", Tracy.COLOR_IRIS);
+
 	private final RenderTargets renderTargets;
 
 	private final ImmutableList<Pass> passes;
@@ -66,8 +75,8 @@ public class CompositeRenderer {
 	@Nullable private final Object2ObjectMap<String, TextureAccess> irisCustomTextures;
 	@Nullable private final WorldRenderingPipeline pipeline;
 	private final TextureStage textureStage;
-	@Getter
-    private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
+	@Getter private final ImmutableSet<Integer> flippedAtLeastOnceFinal;
+	@Getter private int samplerUsage;
 
 	public CompositeRenderer(PackDirectives packDirectives, ProgramSource[] sources, ComputeSource[][] computes, RenderTargets renderTargets,
 							 TextureAccess noiseTexture, FrameUpdateNotifier updateNotifier,
@@ -112,6 +121,7 @@ public class CompositeRenderer {
 			if (source == null || !source.isValid()) {
 				if (computes[i] != null) {
 					final ComputeOnlyPass pass = new ComputeOnlyPass();
+					pass.name = computeOnlyPassName(computes[i], stageName, i);
 					pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
 					passes.add(pass);
 				}
@@ -119,14 +129,34 @@ public class CompositeRenderer {
 			}
 
 			final Pass pass = new Pass();
+			pass.name = "iris_" + source.getName();
 			final ProgramDirectives directives = source.getDirectives();
 
+			final long _passStart = System.nanoTime();
 			Map<PatchShaderType, String> transformed = getTransformed(source, transformFutures, i, stageName);
+			final long _afterTx = System.nanoTime();
 			pass.program = createProgramFromTransformed(source, transformed, flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
+			final long _afterProg = System.nanoTime();
+			final String preComputeSrc = transformed.get(PatchShaderType.COMPUTE);
+			if (preComputeSrc != null) {
+				pass.preRasterMode = RwImageStoreExtractor.parseSentinel(preComputeSrc);
+				if (pass.preRasterMode != null) {
+					pass.preRasterCompute = buildPreRasterCompute(source.getName(), preComputeSrc, flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
+				}
+			}
 			pass.computes = createComputes(computes[i], flipped, flippedAtLeastOnceSnapshot, context.shadowTargetsSupplier());
+			final long _afterComp = System.nanoTime();
 			final int[] drawBuffers = directives.getDrawBuffers();
 
 			final GlFramebuffer framebuffer = renderTargets.createColorFramebuffer(flipped, drawBuffers);
+			final long _afterFb = System.nanoTime();
+			Iris.logger.info("[Load #{}] {}[{}] tx={}ms prog={}ms compute={}ms fb={}ms total={}ms",
+				Iris.getShaderPackLoadId(), stageName, i,
+				String.format("%.1f", (_afterTx - _passStart) / 1_000_000.0),
+				String.format("%.1f", (_afterProg - _afterTx) / 1_000_000.0),
+				String.format("%.1f", (_afterComp - _afterProg) / 1_000_000.0),
+				String.format("%.1f", (_afterFb - _afterComp) / 1_000_000.0),
+				String.format("%.1f", (_afterFb - _passStart) / 1_000_000.0));
 
 			int passWidth = 0, passHeight = 0;
 			// Flip the buffers that this shader wrote to, and set pass width and height
@@ -169,6 +199,12 @@ public class CompositeRenderer {
 
 		this.passes = passes.build();
 		this.flippedAtLeastOnceFinal = flippedAtLeastOnce.build();
+
+		if (Tracy.ENABLED) {
+			for (Pass pass : this.passes) {
+				Tracy.message("passGraph " + stageName + "/" + pass.name + " draw=" + java.util.Arrays.toString(pass.drawBuffers) + " mipmapped=" + pass.mipmappedBuffers + " readsAlt=" + pass.stageReadsFromAlt);
+			}
+		}
 
 		OpenGlHelper.func_153171_g/*glBindFramebuffer*/(GL30.GL_READ_FRAMEBUFFER, 0);
 	}
@@ -213,23 +249,39 @@ public class CompositeRenderer {
 		}
 	}
 
+	private static String computeOnlyPassName(ComputeSource[] computes, String stageName, int index) {
+		for (ComputeSource compute : computes) {
+			if (compute != null) {
+				return "iris_" + compute.getName();
+			}
+		}
+		return "iris_" + stageName + "_compute" + index;
+	}
+
 	private static class Pass {
+		String name;
 		int[] drawBuffers;
 		int viewWidth;
 		int viewHeight;
 		Program program;
 		ComputeProgram[] computes;
+		@Nullable ComputeProgram preRasterCompute;
+		@Nullable RwImageStoreExtractor.RwExtractMode preRasterMode;
+		int preRasterTargetSizeLoc = -2;
 		GlFramebuffer framebuffer;
 		ImmutableSet<Integer> stageReadsFromAlt;
 		ImmutableSet<Integer> mipmappedBuffers;
 		ViewportData viewportScale;
-
 		protected void destroy() {
 			this.program.destroy();
 			for (ComputeProgram compute : this.computes) {
 				if (compute != null) {
 					compute.destroy();
 				}
+			}
+			if (this.preRasterCompute != null) {
+				this.preRasterCompute.destroy();
+				this.preRasterCompute = null;
 			}
 		}
 	}
@@ -251,49 +303,72 @@ public class CompositeRenderer {
 
 		FullScreenQuadRenderer.INSTANCE.begin();
 
+		final Profiler profiler = Minecraft.getMinecraft().mcProfiler;
+
 		for (Pass renderPass : passes) {
-			boolean ranCompute = false;
-			for (ComputeProgram computeProgram : renderPass.computes) {
-				if (computeProgram != null) {
-					ranCompute = true;
-                    final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
-                    computeProgram.use();
-                    this.customUniforms.push(computeProgram);
-					computeProgram.dispatch(main.framebufferWidth, main.framebufferHeight);
+			profiler.startSection(renderPass.name);
+			GLDebug.pushGroup(renderPass.name);
+			try {
+				boolean ranCompute = false;
+				for (ComputeProgram computeProgram : renderPass.computes) {
+					if (computeProgram != null) {
+						ranCompute = true;
+	                    final Framebuffer main = Minecraft.getMinecraft().getFramebuffer();
+	                    computeProgram.use();
+	                    this.customUniforms.push(computeProgram);
+						computeProgram.dispatch(main.framebufferWidth, main.framebufferHeight);
+					}
 				}
-			}
 
-			if (ranCompute) {
-				RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
-			}
-
-			Program.unbind();
-
-			if (renderPass instanceof ComputeOnlyPass) {
-				continue;
-			}
-
-			if (!renderPass.mipmappedBuffers.isEmpty()) {
-				GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-
-				for (int index : renderPass.mipmappedBuffers) {
-					setupMipmapping(CompositeRenderer.this.renderTargets.get(index), renderPass.stageReadsFromAlt.contains(index));
+				if (ranCompute) {
+					RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
+					for (int i = 0; i < renderTargets.getRenderTargetCount(); i++) {
+						renderTargets.get(i).markBothDirty();
+					}
 				}
+
+				Program.unbind();
+
+				if (renderPass instanceof ComputeOnlyPass) {
+					continue;
+				}
+
+				final ImmutableSet<Integer> readsFromAlt = renderTargets.parityResolve(renderPass.stageReadsFromAlt);
+
+				if (!renderPass.mipmappedBuffers.isEmpty()) {
+					GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+					for (int index : renderPass.mipmappedBuffers) {
+						setupMipmapping(CompositeRenderer.this.renderTargets.get(index), readsFromAlt.contains(index));
+					}
+				}
+
+				final float scaledWidth = renderPass.viewWidth * renderPass.viewportScale.scale();
+				final float scaledHeight = renderPass.viewHeight * renderPass.viewportScale.scale();
+				final float viewportX = renderPass.viewWidth * renderPass.viewportScale.viewportX();
+				final float viewportY = renderPass.viewHeight * renderPass.viewportScale.viewportY();
+				GLStateManager.glViewport((int) viewportX, (int) viewportY, (int) scaledWidth, (int) scaledHeight);
+
+				if (renderPass.preRasterCompute != null && renderPass.preRasterMode != null) {
+					dispatchPreRasterCompute(renderPass);
+				}
+
+				renderPass.framebuffer.bind();
+				renderPass.program.use();
+
+	            this.customUniforms.push(renderPass.program);
+				FullScreenQuadRenderer.uploadCompositeMatrices();
+
+				FullScreenQuadRenderer.INSTANCE.renderQuad();
+
+				for (int buffer : renderPass.drawBuffers) {
+					final boolean writeIsAlt = !readsFromAlt.contains(buffer);
+					CompositeRenderer.this.renderTargets.get(buffer).markDirty(writeIsAlt);
+				}
+			} finally {
+				GLDebug.popGroup();
+				profiler.endSection();
 			}
-
-			final float scaledWidth = renderPass.viewWidth * renderPass.viewportScale.scale();
-			final float scaledHeight = renderPass.viewHeight * renderPass.viewportScale.scale();
-			final float viewportX = renderPass.viewWidth * renderPass.viewportScale.viewportX();
-			final float viewportY = renderPass.viewHeight * renderPass.viewportScale.viewportY();
-			GLStateManager.glViewport((int) viewportX, (int) viewportY, (int) scaledWidth, (int) scaledHeight);
-
-			renderPass.framebuffer.bind();
-			renderPass.program.use();
-
-            this.customUniforms.push(renderPass.program);
-			FullScreenQuadRenderer.uploadCompositeMatrices();
-
-			FullScreenQuadRenderer.INSTANCE.renderQuad();
 		}
 
 		FullScreenQuadRenderer.end();
@@ -306,7 +381,8 @@ public class CompositeRenderer {
 		GLStateManager.glUseProgram(0);
 
 		// NB: Unbinding all of these textures is necessary for proper shaderpack reloading.
-		for (int i = 0; i < SamplerLimits.get().getMaxTextureUnits(); i++) {
+		final int maxUnit = Math.min(SamplerLimits.get().getMaxTextureUnits() - 1, GLStateManager.getMaxBoundTextureUnit());
+		for (int i = 0; i <= maxUnit; i++) {
 			// Unbind all textures that we may have used.
 			// NB: This is necessary for shader pack reloading to work propely
 			GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + i);
@@ -316,21 +392,26 @@ public class CompositeRenderer {
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
 	}
 
+	private void dispatchPreRasterCompute(Pass pass) {
+		pass.preRasterTargetSizeLoc = PreRasterComputeDispatcher.dispatch(pass.preRasterCompute, pass.preRasterMode, pass.preRasterTargetSizeLoc, pass.viewWidth, pass.viewHeight, this.customUniforms);
+	}
+
 	private static void setupMipmapping(RenderTarget target, boolean readFromAlt) {
 		int texture = readFromAlt ? target.getAltTexture() : target.getMainTexture();
 
-		// TODO: Only generate the mipmap if a valid mipmap hasn't been generated or if we've written to the buffer
-		// (since the last mipmap was generated)
-		//
-		// NB: We leave mipmapping enabled even if the buffer is written to again, this appears to match the
-		// behavior of ShadersMod/OptiFine, however I'm not sure if it's desired behavior. It's possible that a
-		// program could use mipmapped sampling with a stale mipmap, which probably isn't great. However, the
-		// sampling mode is always reset between frames, so this only persists after the first program to use
-		// mipmapping on this buffer.
-		//
-		// Also note that this only applies to one of the two buffers in a render target buffer pair - making it
-		// unlikely that this issue occurs in practice with most shader packs.
-		RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+		// Only regen when the sampled side has been written since the last regen.
+		if (target.isDirty(readFromAlt)) {
+			if (Tracy.ENABLED) {
+				Tracy.beginZone(Z_GEN_MIPMAP);
+				Tracy.zoneValue(texture);
+			}
+			try {
+				RenderSystem.generateMipmaps(texture, GL11.GL_TEXTURE_2D);
+			} finally {
+				if (Tracy.ENABLED) Tracy.endZone();
+			}
+			target.clearDirty(readFromAlt);
+		}
 
 		int filter = GL11.GL_LINEAR_MIPMAP_LINEAR;
 		if (target.getInternalFormat().getPixelFormat().isInteger()) {
@@ -354,6 +435,7 @@ public class CompositeRenderer {
 		Objects.requireNonNull(flipped);
 		ProgramBuilder builder;
 
+		final long _cpStart = System.nanoTime();
 		try {
 			builder = ProgramBuilder.begin(source.getName(), vertex, geometry, tessControl, tessEval, fragment,
 				IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
@@ -361,11 +443,59 @@ public class CompositeRenderer {
 			// TODO: Better error handling
 			throw new RuntimeException("Shader compilation failed!", e);
 		}
+		final long _afterBegin = System.nanoTime();
 
         CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
         this.customUniforms.assignTo(builder);
 
 		ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
+
+		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
+		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
+		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
+
+		IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
+		IrisImages.addCustomImages(builder, customImages);
+
+		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
+		samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+
+		if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
+			samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
+		}
+
+		// TODO: Don't duplicate this with FinalPassRenderer
+		centerDepthSampler.setUsage(builder.addDynamicSampler(centerDepthSampler::getCenterDepthTexture, "iris_centerDepthSmooth"));
+		final long _afterSamplers = System.nanoTime();
+
+		Program build = builder.build();
+		final long _afterBuild = System.nanoTime();
+
+	    this.customUniforms.mapholderToPass(builder, build);
+		final long _afterMapholder = System.nanoTime();
+		Iris.logger.info("[Load #{}]   createProg name={} begin={}ms samplers={}ms build={}ms mapholder={}ms",
+			Iris.getShaderPackLoadId(), source.getName(),
+			String.format("%.1f", (_afterBegin - _cpStart) / 1_000_000.0),
+			String.format("%.1f", (_afterSamplers - _afterBegin) / 1_000_000.0),
+			String.format("%.1f", (_afterBuild - _afterSamplers) / 1_000_000.0),
+			String.format("%.1f", (_afterMapholder - _afterBuild) / 1_000_000.0));
+
+        return build;
+    }
+
+	private ComputeProgram buildPreRasterCompute(String name, String computeSource, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot, Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
+		PatchedShaderPrinter.debugPatchedShaders(name + "_pre_compute", null, null, null, computeSource);
+		final ProgramBuilder builder;
+		try {
+			builder = ProgramBuilder.beginCompute(name + "_pre", computeSource, IrisSamplers.COMPOSITE_RESERVED_TEXTURE_UNITS);
+		} catch (RuntimeException e) {
+			throw new RuntimeException("Pre-raster compute compilation failed for " + name, e);
+		}
+		final ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureIds, flippedAtLeastOnceSnapshot);
+
+		CommonUniforms.addDynamicUniforms(builder, FogMode.OFF);
+		this.customUniforms.assignTo(builder);
 
 		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
 		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
@@ -382,15 +512,10 @@ public class CompositeRenderer {
 			IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 		}
 
-		// TODO: Don't duplicate this with FinalPassRenderer
-		centerDepthSampler.setUsage(builder.addDynamicSampler(centerDepthSampler::getCenterDepthTexture, "iris_centerDepthSmooth"));
-
-		Program build = builder.build();
-
-	    this.customUniforms.mapholderToPass(builder, build);
-
-        return build;
-    }
+		final ComputeProgram cp = builder.buildCompute();
+		this.customUniforms.mapholderToPass(builder, cp);
+		return cp;
+	}
 
 	private ComputeProgram[] createComputes(ComputeSource[] compute, ImmutableSet<Integer> flipped, ImmutableSet<Integer> flippedAtLeastOnceSnapshot, Supplier<ShadowRenderTargets> shadowTargetsSupplier) {
 		ComputeProgram[] programs = new ComputeProgram[compute.length];
@@ -418,18 +543,18 @@ public class CompositeRenderer {
 
                 this.customUniforms.assignTo(builder);
 
-				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> flipped, renderTargets, true, pipeline);
+				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, () -> renderTargets.parityResolve(flipped), renderTargets, true, pipeline);
 				IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 				IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, irisCustomTextures);
 
-				IrisImages.addRenderTargetImages(builder, () -> flipped, renderTargets);
+				IrisImages.addRenderTargetImages(builder, () -> renderTargets.parityResolve(flipped), renderTargets);
 				IrisImages.addCustomImages(builder, customImages);
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, noiseTexture);
-				IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
+				samplerUsage |= IrisSamplers.addCompositeSamplers(customTextureSamplerInterceptor, renderTargets);
 
 				if (IrisSamplers.hasShadowSamplers(customTextureSamplerInterceptor)) {
-					IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
+					samplerUsage |= IrisSamplers.addShadowSamplers(customTextureSamplerInterceptor, shadowTargetsSupplier.get(), null, pipeline != null && pipeline.hasFeature(FeatureFlags.SEPARATE_HARDWARE_SAMPLERS));
 					IrisImages.addShadowColorImages(builder, shadowTargetsSupplier.get(), null);
 				}
 

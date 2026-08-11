@@ -22,6 +22,15 @@ public class BooleanState implements ISettableState<BooleanState> {
         this.ffpStateOnly = ffpStateOnly;
     }
 
+    public void applyToBackend() {
+        if (ffpStateOnly) return;
+        if (enabled) {
+            RENDER_BACKEND.enable(glCap);
+        } else {
+            RENDER_BACKEND.disable(glCap);
+        }
+    }
+
     public void setUnknownState() {
         stateUnknown = true;
     }
@@ -35,12 +44,10 @@ public class BooleanState implements ISettableState<BooleanState> {
     }
 
     public void setEnabled(boolean enabled) {
-        final boolean bypass = GLStateManager.shouldBypassCache();
+        final boolean bypass = !GLStateManager.isCachingEnabled();
         if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
             stateUnknown = false;
-            if (!bypass) {
-                this.enabled = enabled;
-            }
+            this.enabled = enabled;
             if (!ffpStateOnly) {
                 if (enabled) {
                     RENDER_BACKEND.enable(this.glCap);

@@ -203,6 +203,7 @@ public final class ImmediateModeRecorder {
      */
     public static DirectTessellator processDrawArraysFromAttribs(int mode, int first, int count) {
         final AttribSnapshot snap = AttribSnapshot.snapshot(first, count);
+        if (snap == null) return null;
         try {
             prepareReaders(snap);
             if (positionReaderIndex < 0) return null;
@@ -305,38 +306,6 @@ public final class ImmediateModeRecorder {
 
     private static float readComponent(AttribReader r, int base, int component) {
         return VAOManager.Attrib.readComponent(r.type, r.normalized, r.data, base, component);
-    }
-
-    public static float readComponent(int type, boolean normalized, ByteBuffer buf, int base, int component) {
-        return switch (type) {
-            case GL11.GL_FLOAT -> buf.getFloat(base + component * 4);
-            case GL11.GL_DOUBLE -> (float) buf.getDouble(base + component * 8);
-            case GL11.GL_INT -> {
-                final int v = buf.getInt(base + component * 4);
-                yield normalized ? v / (float) Integer.MAX_VALUE : (float) v;
-            }
-            case GL11.GL_UNSIGNED_INT -> {
-                final int v = buf.getInt(base + component * 4);
-                yield normalized ? (v & 0xFFFFFFFFL) / (float) 0xFFFFFFFFL : (float) (v & 0xFFFFFFFFL);
-            }
-            case GL11.GL_SHORT -> {
-                final short v = buf.getShort(base + component * 2);
-                yield normalized ? v / (float) Short.MAX_VALUE : (float) v;
-            }
-            case GL11.GL_UNSIGNED_SHORT -> {
-                final int v = buf.getShort(base + component * 2) & 0xFFFF;
-                yield normalized ? v / (float) 0xFFFF : (float) v;
-            }
-            case GL11.GL_BYTE -> {
-                final byte v = buf.get(base + component);
-                yield normalized ? v / 127.0f : (float) v;
-            }
-            case GL11.GL_UNSIGNED_BYTE -> {
-                final int v = buf.get(base + component) & 0xFF;
-                yield normalized ? v / 255.0f : (float) v;
-            }
-            default -> 0.0f;
-        };
     }
 
 }

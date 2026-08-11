@@ -12,6 +12,7 @@ public class BlockRenderListManager {
     private static final BlockMeta key = new BlockMeta();
 
     private static final Object2IntOpenHashMap<BlockMeta> displayListMap = new Object2IntOpenHashMap<>();
+    private static final int[] itemFrameDisplayLists = new int[8];
 
 
     private static final int ISBRH_CUTOFF = 40;
@@ -36,6 +37,10 @@ public class BlockRenderListManager {
         return displayListMap.getInt(key);
     }
 
+    public static int getItemFrameDisplayList(int variant) {
+        return itemFrameDisplayLists[variant];
+    }
+
     public static int startCompiling() {
         final int list = GLStateManager.glGenLists(1);
         GLStateManager.glNewList(list, GL11.GL_COMPILE);
@@ -43,9 +48,18 @@ public class BlockRenderListManager {
     }
 
     public static void endCompiling(int list, Block block, int meta) {
+        finishCompiling();
+        displayListMap.put(new BlockMeta(block, meta), list);
+    }
+
+    public static void endItemFrameCompiling(int list, int variant) {
+        finishCompiling();
+        itemFrameDisplayLists[variant] = list;
+    }
+
+    private static void finishCompiling() {
         DisplayListManager.discardMatrixTransforms();
         GLStateManager.glEndList();
-        displayListMap.put(new BlockMeta(block, meta), list);
     }
 
     public static void registerReloadListener(){
@@ -56,6 +70,12 @@ public class BlockRenderListManager {
                 GLStateManager.glDeleteLists(list, 1);
             }
             displayListMap.clear();
+            for (int i = 0; i < itemFrameDisplayLists.length; i++) {
+                if (itemFrameDisplayLists[i] != 0) {
+                    GLStateManager.glDeleteLists(itemFrameDisplayLists[i], 1);
+                    itemFrameDisplayLists[i] = 0;
+                }
+            }
         });
     }
 
