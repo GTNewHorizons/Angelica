@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
@@ -37,12 +38,6 @@ public abstract class MixinMinecraft {
     private static int max_texture_size;
 
     @Unique
-    private static long angelica$lastFrameTime = 0;
-
-    @Unique
-    private static long angelica$fpsLimitOverhead = 0;
-
-    @Unique
     private final RenderAheadManager celeritas$renderAheadManager = new RenderAheadManager();
 
     /**
@@ -66,48 +61,23 @@ public abstract class MixinMinecraft {
         GLStateManager.glEnable(GL11.GL_LIGHTING);
     }
 
-    @Inject(
-        method = "func_147120_f",
-        at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;update()V", remap = false)
-    )
+    @Inject(method = "func_147120_f", at = @At("RETURN"))
     private void angelica$limitFPS(CallbackInfo ci) {
         if (AngelicaMod.proxy == null) return;
 
-        if (isFramerateLimitBelowMax() && !gameSettings.enableVsync) {
-            final long time = System.nanoTime();
-            final long lastWorkTime = time - angelica$lastFrameTime;
-            final long targetNanos = (long) (1.0 / getLimitFramerate() * 1_000_000_000L);
-
-            // Account for overhead, so the average FPS remains stable.
-            final long sleepNanos = targetNanos - lastWorkTime - angelica$fpsLimitOverhead;
-            if (sleepNanos > 0) {
-                try {
-                    Thread.sleep(sleepNanos / 1_000_000, (int) sleepNanos % 1_000_000);
-                } catch (InterruptedException e) {
-                    throw new RuntimeException(e);
-                }
-            }
-
-            // Record overhead, capping it to prevent outsized spikes from affecting framerates for too long.
-            // In testing, spikes were followed by 1-frame dips, which I think is acceptable.
-            long overhead = System.nanoTime() - time - sleepNanos;
-            if (overhead < 0 || overhead > targetNanos / 2) overhead = 0;
-            angelica$fpsLimitOverhead = overhead;
-        }
-
-        final long time = System.nanoTime();
-        AngelicaMod.proxy.putFrametime(time - angelica$lastFrameTime);
-        angelica$lastFrameTime = time;
+        final int capHz = isFramerateLimitBelowMax() ? getLimitFramerate() : 0;
+        AngelicaMod.proxy.putFrametime(FramePacer.pace(FramePacer.updateCeiling(capHz)));
     }
 
     @Redirect(method = {"startGame", "toggleFullscreen"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;setVSyncEnabled(Z)V", remap = false))
     private void angelica$redirectVSync(boolean sync) {
-        GLStateManager.setVSyncEnabled(sync);
+        ClientProxy.applyVSyncMode(sync);
     }
 
     @Inject(method = "startGame", at = @At("RETURN"))
     private void angelica$markSplashCompleteOnStartGame(CallbackInfo ci) {
         GLStateManager.markSplashComplete("startGame");
+        GLStateManager.applyRenderAheadLimit(ClientProxy.options().performance.cpuRenderAheadLimit);
     }
 
     @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
@@ -122,7 +92,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("HEAD"))
     private void celeritas$renderAheadStartFrame(CallbackInfo ci) {
-        final int limit = ClientProxy.options().performance.cpuRenderAheadLimit;
+        final int limit = GLStateManager.renderAheadLimit(ClientProxy.options().performance.cpuRenderAheadLimit);
         if (limit > 0) {
             celeritas$renderAheadManager.startFrame(limit);
         }
@@ -130,7 +100,7 @@ public abstract class MixinMinecraft {
 
     @Inject(method = "runTick", at = @At("RETURN"))
     private void celeritas$renderAheadEndFrame(CallbackInfo ci) {
-        if (ClientProxy.options().performance.cpuRenderAheadLimit > 0) {
+        if (GLStateManager.renderAheadLimit(ClientProxy.options().performance.cpuRenderAheadLimit) > 0) {
             celeritas$renderAheadManager.endFrame();
         }
     }

@@ -36,6 +36,12 @@ public class TextureInfo {
 
     @Getter @Setter protected boolean generateMipmap = false;
 
+    @Getter protected int uploadGeneration;
+
+    void bumpUploadGeneration() {
+        uploadGeneration++;
+    }
+
     protected TextureInfo(int id) {
         this.id = id;
     }

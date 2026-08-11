@@ -7,19 +7,20 @@ import net.minecraft.client.Minecraft;
 public class CyclingControlElement<T extends Enum<T>> extends NotFineControlElement<T> {
     private final T[] allowedValues;
     private final String[] names;
-    private int currentIndex = 0;
 
     public CyclingControlElement(Option<T> option, Dim2i dim, T[] allowedValues, String[] names) {
         super(option, dim);
         this.allowedValues = allowedValues;
         this.names = names;
+    }
 
+    private int currentIndex() {
         for(int i = 0; i < allowedValues.length; ++i) {
             if(allowedValues[i] == option.getValue()) {
-                currentIndex = i;
-                break;
+                return i;
             }
         }
+        return 0;
     }
 
     @Override
@@ -31,8 +32,7 @@ public class CyclingControlElement<T extends Enum<T>> extends NotFineControlElem
     @Override
     public boolean mousePressed(Minecraft mc, int mouseX, int mouseY) {
         if(super.mousePressed(mc, mouseX, mouseY)) {
-            currentIndex = (currentIndex + 1) % allowedValues.length;
-            option.setValue(allowedValues[currentIndex]);
+            option.setValue(allowedValues[(currentIndex() + 1) % allowedValues.length]);
             onOptionValueChanged();
             return true;
         } else {

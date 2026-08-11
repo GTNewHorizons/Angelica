@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugMessageRelay;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -29,7 +31,13 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 public final class Device {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
-    public static final int FRAMES_IN_FLIGHT = 3;
+    public static final int MIN_FRAMES_IN_FLIGHT = 1;
+    public static final int DEFAULT_FRAMES_IN_FLIGHT = 2;
+    public static final int MAX_FRAMES_IN_FLIGHT = 3;
+
+    private static volatile int framesInFlight = DEFAULT_FRAMES_IN_FLIGHT;
+
+    public static int framesInFlight() { return framesInFlight; }
 
     private static final int REQUESTED_SHADER_FORMATS = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_DXBC | SDL_GPU_SHADERFORMAT_DXIL;
 
@@ -40,7 +48,8 @@ public final class Device {
     private String deviceName;
     private String driverVersion;
     private String driverInfo;
-    private int presentMode = SDL_GPU_PRESENTMODE_VSYNC;
+    private VSyncMode vsyncMode = VSyncMode.ON;
+    private volatile String windowThreadName;
     private SDL_LogOutputFunction logCallback; // prevent GC
 
     private volatile boolean lost;
@@ -146,13 +155,7 @@ public final class Device {
             throw new RuntimeException("Failed to claim window for SDL GPU device: " + SDLError.SDL_GetError());
         }
         claimed = true;
-
-        final int n = FRAMES_IN_FLIGHT;
-        if (!SDL_SetGPUAllowedFramesInFlight(device, n)) {
-            LOG.warn("SDL_SetGPUAllowedFramesInFlight({}) failed: {}", n, SDLError.SDL_GetError());
-        } else {
-            LOG.info("SDL frames-in-flight set to {}", n);
-        }
+        windowThreadName = Thread.currentThread().getName();
 
         logWindowDiagnostics(window);
         LOG.info("SDL GPU device claimed window successfully");
@@ -260,6 +263,10 @@ public final class Device {
         return driverName;
     }
 
+    public String getWindowThreadName() {
+        return windowThreadName;
+    }
+
     public String getDeviceName() {
         return deviceName;
     }
@@ -288,22 +295,56 @@ public final class Device {
         return (supportedShaderFormats & SDL_GPU_SHADERFORMAT_DXBC) != 0;
     }
 
-    public void setVSyncEnabled(boolean enabled) {
-        final long window = Display.getWindow();
-        final int mode;
-        if (enabled) {
-            mode = SDL_GPU_PRESENTMODE_VSYNC;
-        } else if (SDL_WindowSupportsGPUPresentMode(device, window, SDL_GPU_PRESENTMODE_MAILBOX)) {
-            mode = SDL_GPU_PRESENTMODE_MAILBOX;
-        } else {
-            mode = SDL_GPU_PRESENTMODE_IMMEDIATE;
-        }
-        if (!SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, mode)) {
-            LOG.warn("Failed to set present mode {}: {} (keeping prior mode {})", mode, SDLError.SDL_GetError(), presentMode);
+    public void setFramesInFlight(int frames) {
+        final int n = Math.min(Math.max(frames, MIN_FRAMES_IN_FLIGHT), MAX_FRAMES_IN_FLIGHT);
+        if (n == framesInFlight || device == 0 || !claimed) return;
+        if (!SDL_SetGPUAllowedFramesInFlight(device, n)) {
+            LOG.warn("SDL_SetGPUAllowedFramesInFlight({}) failed: {}; keeping {}", n, SDLError.SDL_GetError(), framesInFlight);
             return;
         }
-        presentMode = mode;
-        LOG.info("SDL present mode set to {}", mode);
+        framesInFlight = n;
+        LOG.info("SDL frames-in-flight set to {}", n);
+    }
+
+    public VSyncMode setVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
+        final long window = Display.getWindow();
+        final VSyncMode requested = preferred.resolve(vsyncEnabled);
+        for (VSyncMode candidate : requested.fallbackOrder()) {
+            final int sdlMode = toSdl(candidate);
+            if (!SDL_WindowSupportsGPUPresentMode(device, window, sdlMode)) continue;
+            if (!SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, sdlMode)) {
+                LOG.warn("Failed to set present mode {}: {}", candidate, SDLError.SDL_GetError());
+                continue;
+            }
+            vsyncMode = candidate;
+            LOG.info("SDL present mode {} (requested {}, preference {}, vsync={}), refresh {}Hz, supported: vsync={} mailbox={} immediate={}",
+                candidate, requested, preferred, vsyncEnabled, getDisplayRefreshRateHz(),
+                supportsVSyncMode(VSyncMode.ON), supportsVSyncMode(VSyncMode.MAILBOX), supportsVSyncMode(VSyncMode.OFF));
+            return candidate;
+        }
+        LOG.warn("No usable present mode for request {}; keeping {}", requested, vsyncMode);
+        return vsyncMode;
+    }
+
+    public boolean supportsVSyncMode(VSyncMode mode) {
+        return device != 0 && claimed && SDL_WindowSupportsGPUPresentMode(device, Display.getWindow(), toSdl(mode));
+    }
+
+    private static int toSdl(VSyncMode mode) {
+        return switch (mode) {
+            case OFF -> SDL_GPU_PRESENTMODE_IMMEDIATE;
+            case MAILBOX -> SDL_GPU_PRESENTMODE_MAILBOX;
+            default -> SDL_GPU_PRESENTMODE_VSYNC;
+        };
+    }
+
+    public int getDisplayRefreshRateHz() {
+        final long window = Display.getWindow();
+        final int displayId = window == 0 ? SDL_GetPrimaryDisplay() : SDL_GetDisplayForWindow(window);
+        if (displayId == 0) return 0;
+        final SDL_DisplayMode mode = SDL_GetCurrentDisplayMode(displayId);
+        if (mode == null) return 0;
+        return RenderBackend.refreshHzFrom(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
     }
 
     public int getSwapchainTextureFormat() {

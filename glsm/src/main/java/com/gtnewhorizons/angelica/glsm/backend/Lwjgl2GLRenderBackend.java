@@ -10,6 +10,7 @@ import org.lwjgl.opengl.ARBDebugOutputCallback;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.ARBTimerQuery;
 import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.EXTDirectStateAccess;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GLContext;
@@ -114,7 +115,15 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     public int getMinGLSLVersion() {return 330;}
 
     @Override
-    public void setVSyncEnabled(boolean enabled) {Display.setVSyncEnabled(enabled);}
+    protected void setSwapInterval(boolean vsync) {Display.setVSyncEnabled(vsync);}
+
+    @Override
+    public int getDisplayRefreshRateHz() {
+        final DisplayMode mode = Display.getDisplayMode();
+        if (mode != null && mode.getFrequency() > 0) return mode.getFrequency();
+        final DisplayMode desktop = Display.getDesktopDisplayMode();
+        return desktop == null ? 0 : desktop.getFrequency();
+    }
 
     @Override
     public boolean isAnisotropicSupported() {

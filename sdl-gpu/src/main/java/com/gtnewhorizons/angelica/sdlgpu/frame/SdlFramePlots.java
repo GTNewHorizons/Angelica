@@ -97,7 +97,7 @@ final class SdlFramePlots {
         final long nowNanos = System.nanoTime();
         if (f.lastEndFrameNanos != 0) Tracy.plotInt(PLOT_PRESENT_TO_PRESENT_US, (nowNanos - f.lastEndFrameNanos) / 1000);
         f.lastEndFrameNanos = nowNanos;
-        Tracy.plotInt(PLOT_FRAMES_IN_FLIGHT, Device.FRAMES_IN_FLIGHT);
+        Tracy.plotInt(PLOT_FRAMES_IN_FLIGHT, Device.framesInFlight());
         Tracy.plotInt(PLOT_MIP_GENS, f.mipGensThisFrame);
         Tracy.plotInt(PLOT_BLIT_FALLBACKS, f.blitsThisFrame);
         Tracy.plotInt(PLOT_PRESENT_SKIPS, f.presentSkipsThisFrame);

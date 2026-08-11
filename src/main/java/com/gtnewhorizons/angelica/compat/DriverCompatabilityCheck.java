@@ -7,6 +7,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.LTWWorkaround;
 
 /**
  * Checks for known problematic driver configurations and applies workarounds. Adapted from Embeddium/Sodium's LateDriverScanner.
@@ -27,6 +28,14 @@ public class DriverCompatabilityCheck {
         LOGGER.info("OpenGL Vendor: {}", vendor);
         LOGGER.info("OpenGL Renderer: {}", renderer);
         LOGGER.info("OpenGL Version: {}", version);
+
+        if (LTWWorkaround.isLtwVersionString(version)) {
+            if (SystemProperties.DISABLE_LTW_WORKAROUND) {
+                LOGGER.info("OpenLTW workaround disabled via -Dangelica.disableLtwWorkaround=true");
+            } else {
+                LOGGER.info("OpenLTW wrapper detected; enabling BGRA texture swizzle workaround");
+            }
+        }
 
         if (vendor != null && vendor.contains("NVIDIA")) {
             if (SystemProperties.DISABLE_NVIDIA_WORKAROUND) {

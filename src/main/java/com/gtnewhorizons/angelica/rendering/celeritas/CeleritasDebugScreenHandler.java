@@ -78,6 +78,10 @@ public class CeleritasDebugScreenHandler {
         if (transferInfo != null) {
             lines.add(transferInfo);
         }
+        final String presentInfo = RENDER_BACKEND.getPresentDebugInfo();
+        if (presentInfo != null) {
+            lines.add(presentInfo);
+        }
         if (SystemProperties.DEBUG_F3_DETAIL) {
             lines.addAll(TesrBatchRenderer.INSTANCE.getDebugDetailStrings());
             lines.add(ModelPartBatcher.INSTANCE.getDebugString());
