@@ -291,6 +291,11 @@ public class BatchingFontRenderer {
         BatchingFontRenderer owner;
         int cmdStart;
         int cmdEnd;
+        // Carried per segment rather than read off one owner at flush time: deferred
+        // segments come from several renderers, and only some of them draw world text
+        final Matrix4f lightmapMatrix = new Matrix4f();
+        boolean hasLightmap;
+        int lightmapTexture;
     }
 
     // 16-bit EBO index range
@@ -547,6 +552,11 @@ public class BatchingFontRenderer {
         segment.cmdStart = batchSealedEnd;
         segment.cmdEnd = end;
         resolveMvp(segment.mvp);
+        segment.hasLightmap = batchHasLightmap;
+        segment.lightmapTexture = lightmapTextureId;
+        if (batchHasLightmap) {
+            segment.lightmapMatrix.set(GLStateManager.getTextures().getTextureUnitMatrix(LIGHTMAP_TEX_UNIT));
+        }
         batchSegments.add(segment);
         batchSealedEnd = end;
     }
@@ -633,6 +643,7 @@ public class BatchingFontRenderer {
                 mvpBuf.clear();
                 segment.mvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(segment.owner.mvpMatrixLocation, false, mvpBuf);
+                applySegmentLightmap(segment, mvpBuf);
                 drawCommands(segment.owner.batchCommands.elements(), segment.cmdStart, segment.cmdEnd, segment.owner);
             }
         }
@@ -650,6 +661,7 @@ public class BatchingFontRenderer {
             segment.owner.recycleBatchSegments();
             segment.owner.batchSealedEnd = 0;
             segment.owner.batchMatrixValid = false;
+            segment.owner.batchHasLightmap = false;
             segment.owner = null;
         }
         deferredSegmentPool.addAll(deferredSegments);
@@ -724,6 +736,7 @@ public class BatchingFontRenderer {
                 mvpBuf.clear();
                 segment.mvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+                applySegmentLightmap(segment, mvpBuf);
                 drawCommands(cmds, segment.cmdStart, segment.cmdEnd, this);
             }
             if (batchSealedEnd < cmdCount) {
@@ -731,6 +744,7 @@ public class BatchingFontRenderer {
                 resolveMvp(scratchMvp);
                 scratchMvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+                applyLiveLightmap(mvpBuf);
                 drawCommands(cmds, batchSealedEnd, cmdCount, this);
             }
         }
@@ -762,26 +776,8 @@ public class BatchingFontRenderer {
             GLStateManager.glUniform1i(lightmapSamplerLocation, LIGHTMAP_TEX_UNIT);
             lightmapSamplerSet = true;
         }
-
-        // The MVP is uploaded per segment in the flush now, since a batch can span several matrices.
-        // Only world text samples the lightmap, so GUI and HUD batches skip the upload and the bind
-        if (batchHasLightmap) {
-            try (MemoryStack stack = stackPush()) {
-                // EntityRenderer#enableLightmap scales/translates this; raw coords need it to hit the texel
-                final FloatBuffer matBuf = stack.mallocFloat(16);
-                GLStateManager.getTextures().getTextureUnitMatrix(LIGHTMAP_TEX_UNIT).get(matBuf);
-                GLStateManager.glUniformMatrix4(lightmapMatrixLocation, false, matBuf);
-            }
-
-            // Bind it ourselves rather than assume unit 1 still holds the lightmap. Skipped when it
-            // already does, since the glActiveTexture calls alternate units and miss the GLSM cache.
-            if (lightmapTextureId != 0 && GLStateManager.getTextures()
-                .getTextureUnitBindings(LIGHTMAP_TEX_UNIT).getBinding() != lightmapTextureId) {
-                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + LIGHTMAP_TEX_UNIT);
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTextureId);
-                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-            }
-        }
+        // The MVP and the lightmap are uploaded per segment in the flush, since a batch can
+        // span several matrices and deferred segments can come from several renderers.
 
         if (fontVAO == 0) {
             fontVAO = GLStateManager.glGenVertexArrays();
@@ -814,6 +810,41 @@ public class BatchingFontRenderer {
 
     private static ResourceLocation flushLastTexture;
     private static boolean flushTextureChanged;
+
+    /** The unsealed tail draws under whatever lightmap state the batch currently holds. */
+    private void applyLiveLightmap(FloatBuffer matBuf) {
+        if (!batchHasLightmap) return;
+
+        matBuf.clear();
+        GLStateManager.getTextures().getTextureUnitMatrix(LIGHTMAP_TEX_UNIT).get(matBuf);
+        GLStateManager.glUniformMatrix4(lightmapMatrixLocation, false, matBuf);
+
+        if (lightmapTextureId != 0 && GLStateManager.getTextures()
+            .getTextureUnitBindings(LIGHTMAP_TEX_UNIT).getBinding() != lightmapTextureId) {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + LIGHTMAP_TEX_UNIT);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, lightmapTextureId);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        }
+    }
+
+    /** Uploads the lightmap matrix and binds the lightmap this segment was sealed with. */
+    private static void applySegmentLightmap(TextSegment segment, FloatBuffer matBuf) {
+        if (!segment.hasLightmap) return;
+
+        // EntityRenderer#enableLightmap scales/translates this; raw coords need it to hit the texel
+        matBuf.clear();
+        segment.lightmapMatrix.get(matBuf);
+        GLStateManager.glUniformMatrix4(segment.owner.lightmapMatrixLocation, false, matBuf);
+
+        // Bind it ourselves rather than assume unit 1 still holds the lightmap. Skipped when it
+        // already does, since the glActiveTexture calls alternate units and miss the GLSM cache.
+        if (segment.lightmapTexture != 0 && GLStateManager.getTextures()
+            .getTextureUnitBindings(LIGHTMAP_TEX_UNIT).getBinding() != segment.lightmapTexture) {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + LIGHTMAP_TEX_UNIT);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, segment.lightmapTexture);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        }
+    }
 
     private static void drawCommands(FontDrawCmd[] cmdsData, int from, int to, BatchingFontRenderer owner) {
         for (int i = from; i < to; i++) {
