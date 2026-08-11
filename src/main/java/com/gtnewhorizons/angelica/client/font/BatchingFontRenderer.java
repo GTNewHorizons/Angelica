@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
+import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
@@ -903,6 +904,15 @@ public class BatchingFontRenderer {
                             curRainbow = false;
                             curGradient = false;
                             curCustomEffects = 0L;
+                            // Styles normally carry through a hex colour; a text mod that owns
+                            // this grammar can say otherwise, and the widths follow the same call.
+                            if (FontRendering.hexColorResetsStyles()) {
+                                curRandom = false;
+                                curBold = false;
+                                curStrikethrough = false;
+                                curUnderline = false;
+                                curItalic = false;
+                            }
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
                             charIdx += SECTION_X_PAYLOAD;
