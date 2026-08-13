@@ -106,7 +106,7 @@ public class GLSM_ServerSideState_UnitTest {
                 backgroundError = e;
             } finally {
                 try {
-                    sharedDrawable.releaseContext();
+                    GLStateManager.releaseContext(sharedDrawable);
                 } catch (LWJGLException e) {
                     // Ignore on cleanup
                 }
@@ -339,6 +339,41 @@ public class GLSM_ServerSideState_UnitTest {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
             GLStateManager.glDeleteTextures(texId1);
             GLStateManager.glDeleteTextures(texId2);
+        }
+    }
+
+    @Test
+    void testDepthStateDoesNotBleedFromSharedDrawable() throws InterruptedException {
+        final boolean originalDepthTest = GLStateManager.getDepthTest().isEnabled();
+        final int originalDepthFunc = GLStateManager.getDepthState().getFunc();
+        final boolean originalDepthMask = GLStateManager.getDepthState().isEnabled();
+
+        try {
+            GLStateManager.enableDepthTest();
+            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+            GLStateManager.glDepthMask(true);
+
+            executeOnSharedDrawable(() -> {
+                GLStateManager.disableDepthTest();
+                GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
+                GLStateManager.glDepthMask(false);
+
+                assertFalse(GLStateManager.getDepthTest().isEnabled());
+                assertEquals(GL11.GL_ALWAYS, GLStateManager.getDepthState().getFunc());
+                assertFalse(GLStateManager.getDepthState().isEnabled());
+            });
+
+            assertTrue(GLStateManager.getDepthTest().isEnabled(), "SharedDrawable depth test leaked into the main cache");
+            assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc(), "SharedDrawable depth func leaked into the main cache");
+            assertTrue(GLStateManager.getDepthState().isEnabled(), "SharedDrawable depth mask leaked into the main cache");
+        } finally {
+            if (originalDepthTest) {
+                GLStateManager.enableDepthTest();
+            } else {
+                GLStateManager.disableDepthTest();
+            }
+            GLStateManager.glDepthFunc(originalDepthFunc);
+            GLStateManager.glDepthMask(originalDepthMask);
         }
     }
 

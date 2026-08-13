@@ -169,6 +169,9 @@ public class GLStateManager {
     }
 
     static GLContextState enterWorkerContext() {
+        final GLContextState existing = tlWorkerContext.get();
+        if (existing != null) return existing;
+
         final GLContextState st = new GLContextState();
         tlWorkerContext.set(st);
         synchronized (GLStateManager.class) {
@@ -3338,11 +3341,6 @@ public class GLStateManager {
         }
         CurrentThread = Thread.currentThread();
 
-        if (!splashComplete && CurrentThread != MainThread && !autoVaoBound.get()) {
-            autoVaoBound.set(Boolean.TRUE);
-            glBindVertexArray(glGenVertexArrays());
-        }
-
         if (splashComplete) return;
 
         if (drawableGL == null) {
@@ -3359,13 +3357,21 @@ public class GLStateManager {
         }
 
         if (drawableGL != null && drawable == drawableGL) {
+            exitWorkerContext();
             // Switching TO DrawableGL - enable caching for this thread
             drawableGLHolder = CurrentThread;
-        } else if (drawableGLHolder == CurrentThread) {
-            // This thread held DrawableGL but is switching AWAY - disable caching
-            drawableGLHolder = null;
+        } else {
+            enterWorkerContext();
+            if (drawableGLHolder == CurrentThread) {
+                // This thread held DrawableGL but is switching AWAY - disable caching
+                drawableGLHolder = null;
+            }
         }
-        // else: Thread switching to non-DrawableGL, wasn't holder - no change needed
+
+        if (CurrentThread != MainThread && !autoVaoBound.get()) {
+            autoVaoBound.set(Boolean.TRUE);
+            glBindVertexArray(glGenVertexArrays());
+        }
     }
 
     public static void releaseContext(Drawable drawable) throws LWJGLException {
@@ -3373,6 +3379,7 @@ public class GLStateManager {
         if (!handled) {
             drawable.releaseContext();
         }
+        exitWorkerContext();
         if (drawableGLHolder == Thread.currentThread()) {
             drawableGLHolder = null;
         }
