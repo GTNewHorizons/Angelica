@@ -11,7 +11,6 @@ import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
-import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -3383,14 +3382,11 @@ public class GLStateManager {
     }
 
     public static boolean isCurrent() {
-        if (BackendManager.RENDER_BACKEND == null) {
-            return Thread.currentThread() == MainThread;
-        }
-        return BackendManager.RENDER_BACKEND.isCurrent();
+        return RENDER_BACKEND.isCurrent();
     }
 
     public static void swapBuffers() throws LWJGLException {
-        if (BackendManager.RENDER_BACKEND != null && BackendManager.RENDER_BACKEND.handleSwapBuffers()) {
+        if (RENDER_BACKEND.handleSwapBuffers()) {
             return;
         }
         Display.swapBuffers();
@@ -3406,7 +3402,14 @@ public class GLStateManager {
             if (processMessages) Display.processMessages();
             return;
         }
+        if (!RENDER_BACKEND.wantsDisplayUpdateGateTiming()) {
+            Display.update(processMessages);
+            return;
+        }
+        final long start = System.nanoTime();
         Display.update(processMessages);
+        final long end = System.nanoTime();
+        RENDER_BACKEND.recordFrameGate(end - start, end);
     }
 
     /**
@@ -5048,39 +5051,55 @@ public class GLStateManager {
     }
 
     public static void setVSyncEnabled(boolean enabled) {
-        setVSyncMode(RENDER_BACKEND.getPreferredVSyncMode(), enabled);
+        RENDER_BACKEND.setVSyncEnabled(enabled);
     }
 
-    public static void setVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
-        RENDER_BACKEND.setVSyncMode(preferred, vsyncEnabled);
+    public static void setVSyncMode(VSyncMode mode) {
+        RENDER_BACKEND.setVSyncMode(mode);
+    }
+
+    public static void setVSyncPreference(VSyncMode mode) {
+        RENDER_BACKEND.setVSyncPreference(mode);
+    }
+
+    public static boolean supportsVSyncMode(VSyncMode mode) {
+        return RENDER_BACKEND.supportsVSyncMode(mode);
+    }
+
+    public static VSyncMode preferredTearFreeMode() {
+        return RENDER_BACKEND.preferredTearFreeMode();
+    }
+
+    public static String getRenderBackendName() {
+        return RENDER_BACKEND.getName();
     }
 
     public static VSyncMode getEffectiveVSyncMode() {
         return RENDER_BACKEND.getEffectiveVSyncMode();
     }
 
-    public static List<VSyncMode> getSelectableVSyncModes() {
-        return VSyncMode.selectable(RENDER_BACKEND::supportsVSyncMode);
-    }
-
-    public static int getMinRenderAhead() {
-        return RENDER_BACKEND.getMinRenderAhead();
-    }
-
-    public static int getMaxRenderAhead() {
-        return RENDER_BACKEND.getMaxRenderAhead();
-    }
-
-    public static int renderAheadLimit(int configured) {
-        return RenderBackend.clampRenderAhead(configured, RENDER_BACKEND.getMinRenderAhead(), RENDER_BACKEND.getMaxRenderAhead());
-    }
-
-    public static void applyRenderAheadLimit(int configured) {
-        RENDER_BACKEND.setRenderAheadLimit(renderAheadLimit(configured));
-    }
-
     public static int getDisplayRefreshRateHz() {
         return RENDER_BACKEND.getDisplayRefreshRateHz();
+    }
+
+    public static boolean gateAnchorsNextFrameStart() {
+        return RENDER_BACKEND.gateAnchorsNextFrameStart();
+    }
+
+    public static long lastFrameGateNanos() {
+        return RENDER_BACKEND.lastFrameGateNanos();
+    }
+
+    public static long lastFrameGateEndNanos() {
+        return RENDER_BACKEND.lastFrameGateEndNanos();
+    }
+
+    public static boolean hasSwapchainBackpressure() {
+        return RENDER_BACKEND.hasSwapchainBackpressure();
+    }
+
+    public static void pumpDisplayMessages() {
+        Display.processMessages();
     }
 
     public static int glGetError() {

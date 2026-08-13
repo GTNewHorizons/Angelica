@@ -162,6 +162,7 @@ public class GLSMRedirector {
     private static final String EXTGpuShader4 = "org/lwjgl/opengl/EXTGpuShader4";
     private static final String EXTGPUShader4 = "org/lwjgl/opengl/EXTGPUShader4";
     private static final String ARBTimerQuery = "org/lwjgl/opengl/ARBTimerQuery";
+    private static final String EXTTimerQuery = "org/lwjgl/opengl/EXTTimerQuery";
 
     // Redirect VAO related calls from NHLib
     private static final String UniversalVAO = "com/gtnewhorizon/gtnhlib/client/opengl/UniversalVAO";
@@ -631,6 +632,10 @@ public class GLSMRedirector {
         methodRedirects.put(ARBTimerQuery, RedirectMap.newMap()
             .add("glQueryCounter")
             .add("glGetQueryObjectui64")
+        );
+        methodRedirects.put(EXTTimerQuery, RedirectMap.newMap()
+            .add("glGetQueryObjectuEXT", "glGetQueryObjectui64")
+            .add("glGetQueryObjectui64EXT", "glGetQueryObjectui64")
         );
 
         glDescRedirects.put("org/lwjgl/opengl/GL32C glFenceSync(II)J", "glFenceSync");

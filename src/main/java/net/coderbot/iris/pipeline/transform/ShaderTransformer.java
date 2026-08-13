@@ -13,9 +13,14 @@ import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.Parameters;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
+import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.tree.ParseTree;
+import org.antlr.v4.runtime.tree.TerminalNode;
 import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 import org.taumc.glsl.grammar.GLSLLexer;
+import org.taumc.glsl.grammar.GLSLParser;
 
 import java.util.Arrays;
 import java.util.EnumMap;
@@ -108,58 +113,71 @@ public class ShaderTransformer {
         return NegotiationResult.error("Shader requires GLSL " + effectiveVersion + " but hardware max is " + maxGlsl);
     }
 
-    private static Pattern hoistPattern;
-    /** By capturing group: a prefix match's text is not the keyword, so it cannot be looked up by name. */
-    private static int[] hoistGroupVersions;
+    private static VersionRequirement[] enabledRequirements;
     private static int maxSupportedHoistVersion;
 
     public static void init() {
-        final StringBuilder patternBuilder = new StringBuilder();
-        final int[] groupVersions = new int[VERSION_REQUIREMENTS.length + 1];
-        int groupCount = 0;
+        enabledRequirements = Arrays.stream(VERSION_REQUIREMENTS)
+            .filter(req -> req.supported.getAsBoolean())
+            .toArray(VersionRequirement[]::new);
         int maxVersion = 0;
-
-        for (VersionRequirement req : VERSION_REQUIREMENTS) {
-            if (req.supported.getAsBoolean()) {
-                if (!patternBuilder.isEmpty()) patternBuilder.append('|');
-
-                patternBuilder.append("(\\b").append(Pattern.quote(req.keyword)) .append(req.prefix ? "\\w*" : "\\b").append(')');
-                groupVersions[++groupCount] = req.minVersion;
-                maxVersion = Math.max(maxVersion, req.minVersion);
-            }
-        }
-
-        if (!patternBuilder.isEmpty()) {
-            hoistPattern = Pattern.compile(patternBuilder.toString());
-            hoistGroupVersions = Arrays.copyOf(groupVersions, groupCount + 1);
+        for (VersionRequirement req : enabledRequirements) {
+            maxVersion = Math.max(maxVersion, req.minVersion);
         }
         maxSupportedHoistVersion = maxVersion;
 
-        Iris.logger.info("Shader version hoisting: {} feature(s) GLSL {}", groupCount, maxVersion > 0 ? maxVersion : "N/A");
+        Iris.logger.info("Shader version hoisting: {} feature(s) GLSL {}", enabledRequirements.length, maxVersion > 0 ? maxVersion : "N/A");
     }
 
     private static int getRequiredVersion(String shaderSource, int declaredVersion) {
-        if (hoistPattern == null || declaredVersion >= maxSupportedHoistVersion) {
+        if (enabledRequirements == null || enabledRequirements.length == 0 || declaredVersion >= maxSupportedHoistVersion) {
             return declaredVersion;
         }
 
-        final Matcher m = hoistPattern.matcher(shaderSource);
+        final GLSLLexer lexer = new GLSLLexer(CharStreams.fromString(shaderSource));
         int required = declaredVersion;
-        while (m.find()) {
-            for (int group = 1; group < hoistGroupVersions.length; group++) {
-                if (m.start(group) < 0) continue;
-                if (hoistGroupVersions[group] > required) required = hoistGroupVersions[group];
-                break;
-            }
+        for (Token t = lexer.nextToken(); t.getType() != Token.EOF; t = lexer.nextToken()) {
+            final int channel = t.getChannel();
+            if (channel == GLSLLexer.COMMENTS || channel == Token.HIDDEN_CHANNEL) continue;
+            if (t.getStopIndex() - t.getStartIndex() < 3) continue;
+            required = matchRequirement(t.getText(), required);
             if (required >= maxSupportedHoistVersion) break;
+        }
+        return required;
+    }
+
+    private static int getRequiredVersion(GLSLParser.Translation_unitContext tree, String headerTail, int declaredVersion) {
+        if (enabledRequirements == null || enabledRequirements.length == 0 || declaredVersion >= maxSupportedHoistVersion) {
+            return declaredVersion;
+        }
+        int required = headerTail.isEmpty() ? declaredVersion : getRequiredVersion(headerTail, declaredVersion);
+        if (required >= maxSupportedHoistVersion) return required;
+        return scanTree(tree, required);
+    }
+
+    private static int scanTree(ParseTree tree, int required) {
+        if (tree instanceof TerminalNode terminal) {
+            final String text = terminal.getSymbol().getText();
+            return (text == null || text.length() < 4) ? required : matchRequirement(text, required);
+        }
+        for (int i = 0; i < tree.getChildCount() && required < maxSupportedHoistVersion; i++) {
+            required = scanTree(tree.getChild(i), required);
+        }
+        return required;
+    }
+
+    private static int matchRequirement(String text, int required) {
+        for (VersionRequirement req : enabledRequirements) {
+            if (req.minVersion <= required) break;
+            if (req.prefix ? text.startsWith(req.keyword) : text.equals(req.keyword)) return req.minVersion;
         }
         return required;
     }
 
     private record StageHeader(int version, String extensions) {}
 
-    private static String finalizeStage(int version, String headerTail, String body, PatchShaderType stage) {
-        final int required = getRequiredVersion(headerTail + body, version);
+    private static String finalizeStage(int version, String headerTail, String body, GLSLParser.Translation_unitContext tree, PatchShaderType stage) {
+        final int required = getRequiredVersion(tree, headerTail, version);
         if (required > version) {
             final NegotiationResult negotiation = negotiateVersion(required, stage);
             if (negotiation.isError()) {
@@ -206,7 +224,13 @@ public class ShaderTransformer {
         }
     }
 
+    record StageArtifact(GLSLParser.Translation_unitContext tree, int headerLen) {}
+
     public static <P extends Parameters> Map<PatchShaderType, String> transform(String vertex, String geometry, String tessControl, String tessEval, String fragment, P parameters) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, parameters, null);
+    }
+
+    public static <P extends Parameters> Map<PatchShaderType, String> transform(String vertex, String geometry, String tessControl, String tessEval, String fragment, P parameters, EnumMap<PatchShaderType, StageArtifact> artifactsOut) {
         if (vertex == null && geometry == null && tessControl == null && tessEval == null && fragment == null) {
             return null;
         } else {
@@ -227,13 +251,14 @@ public class ShaderTransformer {
                 result = shaderTransformationCache.getAndMoveToLast(key);
             }
             if(result == null || !useCache) {
-                result = transformInternal(inputs, patchType, parameters);
+                result = transformInternal(inputs, patchType, parameters, artifactsOut);
                 // Clear this, we don't want whatever random type was last transformed being considered for the key
                 parameters.type = null;
                 synchronized (shaderTransformationCache) {
                     // Double-check in case another thread added it while we were transforming
                     Map<PatchShaderType, String> existing = shaderTransformationCache.getAndMoveToLast(key);
                     if (existing != null) {
+                        if (artifactsOut != null) artifactsOut.clear();
                         return existing;
                     }
                     if(shaderTransformationCache.size() >= CACHE_SIZE) {
@@ -248,6 +273,10 @@ public class ShaderTransformer {
     }
 
     public static <P extends Parameters> Map<PatchShaderType, String> transformCompute(String compute, P parameters) {
+        return transformCompute(compute, parameters, null);
+    }
+
+    public static <P extends Parameters> Map<PatchShaderType, String> transformCompute(String compute, P parameters, EnumMap<PatchShaderType, StageArtifact> artifactsOut) {
         if (compute == null) {
             return null;
         } else {
@@ -264,13 +293,14 @@ public class ShaderTransformer {
                 result = shaderTransformationCache.getAndMoveToLast(key);
             }
             if (result == null || !useCache) {
-                result = transformComputeInternal(compute, patchType, parameters);
+                result = transformComputeInternal(compute, patchType, parameters, artifactsOut);
                 // Clear this, we don't want whatever random type was last transformed being considered for the key
                 parameters.type = null;
                 synchronized (shaderTransformationCache) {
                     // Double-check in case another thread added it while we were transforming
                     final Map<PatchShaderType, String> existing = shaderTransformationCache.getAndMoveToLast(key);
                     if (existing != null) {
+                        if (artifactsOut != null) artifactsOut.clear();
                         return existing;
                     }
                     if (shaderTransformationCache.size() >= CACHE_SIZE) {
@@ -284,7 +314,7 @@ public class ShaderTransformer {
         }
     }
 
-    private static <P extends Parameters> Map<PatchShaderType, String> transformComputeInternal(String compute, Patch patchType, P parameters) {
+    private static <P extends Parameters> Map<PatchShaderType, String> transformComputeInternal(String compute, Patch patchType, P parameters, EnumMap<PatchShaderType, StageArtifact> artifactsOut) {
         final EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
 
         final Stopwatch watch = Stopwatch.createStarted();
@@ -348,19 +378,28 @@ public class ShaderTransformer {
 
         final String headerTail = extensions.isEmpty() ? "" : "\n" + extensions;
         final StringBuilder formattedShaderBuilder = new StringBuilder();
+        final GLSLParser.Translation_unitContext[] treeHolder = new GLSLParser.Translation_unitContext[1];
 
-        transformer.mutateTree(tree -> formattedShaderBuilder.append(GlslTransformUtils.getFormattedShader(tree, "")));
+        transformer.mutateTree(tree -> {
+            GlslTransformUtils.restoreReservedWordsInTree(tree);
+            treeHolder[0] = tree;
+            formattedShaderBuilder.append(GlslTransformUtils.getFormattedShaderRebased(tree, ""));
+        });
 
-        final String formattedShader = GlslTransformUtils.restoreReservedWords(finalizeStage(versionInt, headerTail, formattedShaderBuilder.toString(), PatchShaderType.COMPUTE));
+        final String printedBody = formattedShaderBuilder.toString();
+        final String formattedShader = finalizeStage(versionInt, headerTail, printedBody, treeHolder[0], PatchShaderType.COMPUTE);
 
         result.put(PatchShaderType.COMPUTE, formattedShader);
+        if (artifactsOut != null) {
+            artifactsOut.put(PatchShaderType.COMPUTE, new StageArtifact(treeHolder[0], formattedShader.length() - printedBody.length()));
+        }
 
         watch.stop();
         Iris.logger.info("[Load #{}] Transformed compute shader for {} in {}", Iris.getShaderPackLoadId(), patchType.name(), watch);
         return result;
     }
 
-    private static <P extends Parameters> Map<PatchShaderType, String> transformInternal(EnumMap<PatchShaderType, String> inputs, Patch patchType, P parameters) {
+    private static <P extends Parameters> Map<PatchShaderType, String> transformInternal(EnumMap<PatchShaderType, String> inputs, Patch patchType, P parameters, EnumMap<PatchShaderType, StageArtifact> artifactsOut) {
          final EnumMap<PatchShaderType, String> result = new EnumMap<>(PatchShaderType.class);
          final EnumMap<PatchShaderType, Transformer> types = new EnumMap<>(PatchShaderType.class);
          final EnumMap<PatchShaderType, StageHeader> prepatched = new EnumMap<>(PatchShaderType.class);
@@ -446,12 +485,21 @@ public class ShaderTransformer {
             }
 
             final StringBuilder formattedShaderBuilder = new StringBuilder();
+            final GLSLParser.Translation_unitContext[] treeHolder = new GLSLParser.Translation_unitContext[1];
 
-            transformer.mutateTree(tree -> formattedShaderBuilder.append(GlslTransformUtils.getFormattedShader(tree, "")));
+            transformer.mutateTree(tree -> {
+                GlslTransformUtils.restoreReservedWordsInTree(tree);
+                treeHolder[0] = tree;
+                formattedShaderBuilder.append(GlslTransformUtils.getFormattedShaderRebased(tree, ""));
+            });
 
-            final String formattedShader = GlslTransformUtils.restoreReservedWords( finalizeStage(stageHeader.version(), headerTail, formattedShaderBuilder.toString(), shaderType));
+            final String printedBody = formattedShaderBuilder.toString();
+            final String formattedShader = finalizeStage(stageHeader.version(), headerTail, printedBody, treeHolder[0], shaderType);
 
             result.put(shaderType, formattedShader);
+            if (artifactsOut != null && !(patchType == Patch.CELERITAS_TERRAIN && shaderType == PatchShaderType.VERTEX)) {
+                artifactsOut.put(shaderType, new StageArtifact(treeHolder[0], formattedShader.length() - printedBody.length()));
+            }
         }
         maybeExtractRwImageStores(result, patchType);
         watch.stop();

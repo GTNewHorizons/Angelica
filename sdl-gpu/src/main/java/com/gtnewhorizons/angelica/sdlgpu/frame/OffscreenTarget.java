@@ -1,7 +1,6 @@
-package com.gtnewhorizons.angelica.sdlgpu.splash;
+package com.gtnewhorizons.angelica.sdlgpu.frame;
 
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
-import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.lwjgl.opengl.GL11;
@@ -9,13 +8,14 @@ import org.lwjgl.opengl.GL11;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREUSAGE_COLOR_TARGET;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_TEXTUREUSAGE_SAMPLER;
 
-public final class SplashOffscreenTarget {
+public final class OffscreenTarget {
 
     private int fboGlId;
     private int colorTexGlId;
     private long colorTexHandle;
     private int width;
     private int height;
+    private boolean hasContent;
 
     public void create(Device device, ResourceManager rm, int width, int height, int swapchainSdlFormat) {
         this.width = width;
@@ -37,10 +37,20 @@ public final class SplashOffscreenTarget {
         fbo.cachedFormatsDirty = true;
     }
 
+    public void ensureSize(Device device, ResourceManager rm, int width, int height) {
+        if (width <= 0 || height <= 0) return;
+        if (colorTexHandle != 0 && width == this.width && height == this.height) return;
+        destroy(rm);
+        create(device, rm, width, height, device.getSwapchainTextureFormat());
+    }
+
     public int fboId() { return fboGlId; }
     public long colorTexture() { return colorTexHandle; }
     public int width() { return width; }
     public int height() { return height; }
+    public boolean isReady() { return colorTexHandle != 0; }
+    public boolean hasContent() { return hasContent; }
+    public void markContent() { hasContent = true; }
 
     public boolean isFor(ContextState st) {
         return fboGlId != 0 && st.boundFboId == fboGlId;
@@ -56,5 +66,6 @@ public final class SplashOffscreenTarget {
             colorTexGlId = 0;
             colorTexHandle = 0;
         }
+        hasContent = false;
     }
 }

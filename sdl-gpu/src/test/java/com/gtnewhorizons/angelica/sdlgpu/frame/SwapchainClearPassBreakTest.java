@@ -8,13 +8,10 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SwapchainClearPassBreakTest {
 
-    private static final long SWAPCHAIN = 0x5A1CL;
-
-    private static FrameManager.FrameState activeSwapchainPass() {
+    private static FrameManager.FrameState activeFbo0Pass() {
         final FrameManager.FrameState f = new FrameManager.FrameState();
-        f.swapchainTexture = SWAPCHAIN;
         f.renderPass = 0xBEEFL;
-        f.currentColorTarget = SWAPCHAIN;
+        f.activeLayoutHash = FrameManager.FBO0_LAYOUT_HASH;
         return f;
     }
 
@@ -22,23 +19,23 @@ class SwapchainClearPassBreakTest {
     void aPendingColorClearBreaksTheActivePass() {
         final ContextState st = new ContextState();
         st.pendingSwapchainClear = true;
-        assertTrue(swapchainClearNeedsPassBreak(st, activeSwapchainPass()), "otherwise the clear is deferred to the next pass and wipes what this one drew");
+        assertTrue(swapchainClearNeedsPassBreak(st, activeFbo0Pass()), "otherwise the clear is deferred to the next pass and wipes what this one drew");
     }
 
     @Test
     void aPendingDepthOrStencilClearBreaksTheActivePass() {
         final ContextState depth = new ContextState();
         depth.pendingSwapchainDepthClear = true;
-        assertTrue(swapchainClearNeedsPassBreak(depth, activeSwapchainPass()));
+        assertTrue(swapchainClearNeedsPassBreak(depth, activeFbo0Pass()));
 
         final ContextState stencil = new ContextState();
         stencil.pendingSwapchainStencilClear = true;
-        assertTrue(swapchainClearNeedsPassBreak(stencil, activeSwapchainPass()));
+        assertTrue(swapchainClearNeedsPassBreak(stencil, activeFbo0Pass()));
     }
 
     @Test
     void nothingPendingLeavesThePassAlone() {
-        assertFalse(swapchainClearNeedsPassBreak(new ContextState(), activeSwapchainPass()));
+        assertFalse(swapchainClearNeedsPassBreak(new ContextState(), activeFbo0Pass()));
     }
 
     @Test
@@ -46,18 +43,18 @@ class SwapchainClearPassBreakTest {
         final ContextState st = new ContextState();
         st.pendingSwapchainClear = true;
 
-        final FrameManager.FrameState f = activeSwapchainPass();
+        final FrameManager.FrameState f = activeFbo0Pass();
         f.renderPass = 0;
         assertFalse(swapchainClearNeedsPassBreak(st, f));
     }
 
     @Test
-    void aPassBoundToAnFboIsNotTheSwapchainPass() {
+    void aPassBoundToAnFboIsNotTheFbo0Pass() {
         final ContextState st = new ContextState();
         st.pendingSwapchainClear = true;
 
-        final FrameManager.FrameState f = activeSwapchainPass();
-        f.currentColorTarget = 0xF80L;
+        final FrameManager.FrameState f = activeFbo0Pass();
+        f.activeLayoutHash = 0xF80L;
         assertFalse(swapchainClearNeedsPassBreak(st, f));
     }
 }

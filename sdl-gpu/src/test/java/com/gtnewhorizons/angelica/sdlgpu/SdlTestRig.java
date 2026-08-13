@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.sdlgpu;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.lwjgl.sdl.SDLError;
@@ -55,6 +57,10 @@ public final class SdlTestRig {
 
     public static FrameManager frameManager() {
         return create().frameManager;
+    }
+
+    public static ContextState contextState() {
+        return Reflect.invokeStatic(SDLGPURenderBackend.class, "s", new Class<?>[0]);
     }
 
     private static long realSdlDevice;

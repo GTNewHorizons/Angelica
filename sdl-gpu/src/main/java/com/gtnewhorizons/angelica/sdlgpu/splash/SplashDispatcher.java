@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.sdlgpu.splash;
 
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
+import com.gtnewhorizons.angelica.sdlgpu.frame.OffscreenTarget;
 
 public final class SplashDispatcher {
 
@@ -32,7 +33,7 @@ public final class SplashDispatcher {
         return (long) w << 32 | (h & 0xffffffffL);
     }
 
-    public static void tryDispatch(SDLGPURenderBackend backend, SplashOffscreenTarget target) {
+    public static void tryDispatch(SDLGPURenderBackend backend, OffscreenTarget target) {
         if (!frameReady || target == null) return;
         final long now = System.nanoTime();
         if (now - lastBlitNanos < MIN_INTERVAL_NS) return;

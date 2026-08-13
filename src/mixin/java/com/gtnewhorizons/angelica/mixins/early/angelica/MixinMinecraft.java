@@ -61,23 +61,42 @@ public abstract class MixinMinecraft {
         GLStateManager.glEnable(GL11.GL_LIGHTING);
     }
 
-    @Inject(method = "func_147120_f", at = @At("RETURN"))
+    @Unique
+    private final Runnable angelica$renderAheadWait = () -> {
+        final int limit = ClientProxy.options().performance.cpuRenderAheadLimit;
+        if (limit > 0 && !GLStateManager.hasSwapchainBackpressure()) {
+            celeritas$renderAheadManager.startFrame(limit);
+        }
+    };
+
+    @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;updateCameraAndRender(F)V"))
+    private void angelica$freshenMouseInput(CallbackInfo ci) {
+        GLStateManager.pumpDisplayMessages();
+    }
+
+    @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V"))
+    private void celeritas$renderAheadFence(CallbackInfo ci) {
+        if (ClientProxy.options().performance.cpuRenderAheadLimit > 0 && !GLStateManager.hasSwapchainBackpressure()) {
+            celeritas$renderAheadManager.endFrame();
+        }
+    }
+
+    @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Ljava/lang/Thread;yield()V", remap = false))
     private void angelica$limitFPS(CallbackInfo ci) {
         if (AngelicaMod.proxy == null) return;
 
         final int capHz = isFramerateLimitBelowMax() ? getLimitFramerate() : 0;
-        AngelicaMod.proxy.putFrametime(FramePacer.pace(FramePacer.updateCeiling(capHz)));
+        AngelicaMod.proxy.putFrametime(FramePacer.endFrame(capHz, angelica$renderAheadWait));
     }
 
     @Redirect(method = {"startGame", "toggleFullscreen"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;setVSyncEnabled(Z)V", remap = false))
     private void angelica$redirectVSync(boolean sync) {
-        ClientProxy.applyVSyncMode(sync);
+        GLStateManager.setVSyncEnabled(sync);
     }
 
     @Inject(method = "startGame", at = @At("RETURN"))
     private void angelica$markSplashCompleteOnStartGame(CallbackInfo ci) {
         GLStateManager.markSplashComplete("startGame");
-        GLStateManager.applyRenderAheadLimit(ClientProxy.options().performance.cpuRenderAheadLimit);
     }
 
     @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;sync(I)V", remap = false))
@@ -88,21 +107,6 @@ public abstract class MixinMinecraft {
     @Inject(method = "runTick", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/gui/GuiScreen;isShiftKeyDown()Z", shift = At.Shift.AFTER))
     private void angelica$setShowFpsGraph(CallbackInfo ci) {
         ((IGameSettingsExt) gameSettings).angelica$setShowFpsGraph(Keyboard.isKeyDown(Keyboard.KEY_LMENU) || Keyboard.isKeyDown(Keyboard.KEY_RMENU));
-    }
-
-    @Inject(method = "runTick", at = @At("HEAD"))
-    private void celeritas$renderAheadStartFrame(CallbackInfo ci) {
-        final int limit = GLStateManager.renderAheadLimit(ClientProxy.options().performance.cpuRenderAheadLimit);
-        if (limit > 0) {
-            celeritas$renderAheadManager.startFrame(limit);
-        }
-    }
-
-    @Inject(method = "runTick", at = @At("RETURN"))
-    private void celeritas$renderAheadEndFrame(CallbackInfo ci) {
-        if (GLStateManager.renderAheadLimit(ClientProxy.options().performance.cpuRenderAheadLimit) > 0) {
-            celeritas$renderAheadManager.endFrame();
-        }
     }
 
     @Inject(method = "runGameLoop", at = @At("RETURN"))

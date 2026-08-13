@@ -48,13 +48,6 @@ class UniformNegativeLocationTest {
         st.releaseUniformStaging(prog);
     }
 
-    @SuppressWarnings("unchecked")
-    private static ContextState threadState() throws Exception {
-        final Field f = SDLGPURenderBackend.class.getDeclaredField("tlState");
-        f.setAccessible(true);
-        return ((ThreadLocal<ContextState>) f.get(null)).get();
-    }
-
     private static void clearApplier(SDLGPURenderBackend backend) throws Exception {
         final Field f = SDLGPURenderBackend.class.getDeclaredField("pipelineApplier");
         f.setAccessible(true);
@@ -66,7 +59,7 @@ class UniformNegativeLocationTest {
     void scalarAndVectorEntryPointsNeverReachTheApplier() throws Exception {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
         clearApplier(backend);
-        threadState().boundProgramObj = null;
+        SdlTestRig.contextState().boundProgramObj = null;
 
         final IntBuffer iv = MemoryUtil.memAllocInt(4);
         try {
