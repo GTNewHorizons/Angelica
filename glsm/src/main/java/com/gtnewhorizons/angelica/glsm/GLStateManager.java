@@ -313,7 +313,7 @@ public class GLStateManager {
     private static volatile boolean splashComplete = false;
     @Getter @Setter private static Thread drawableGLHolder = MainThread;
     // Reference to DrawableGL (main display context) - works with both FML and BLS splash
-    @Setter private static Drawable drawableGL = null;
+    @Setter private static volatile Drawable drawableGL = null;
 
     private static final ReentrantLock DRAW_LOCK = new ReentrantLock();
 
@@ -3341,10 +3341,9 @@ public class GLStateManager {
         }
         CurrentThread = Thread.currentThread();
 
-        if (splashComplete) return;
-
         if (drawableGL == null) {
-            // Lazy-capture DrawableGL reference (Display.getDrawable()) on first opportunity
+            // Lazy-capture DrawableGL reference (Display.getDrawable()) on first opportunity.
+            // markSplashComplete clears it, so this re-runs after the splash too.
             try {
                 if (drawable == Display.getDrawable()) {
                     drawableGL = drawable;
@@ -3356,19 +3355,27 @@ public class GLStateManager {
             }
         }
 
-        if (drawableGL != null && drawable == drawableGL) {
+        final boolean isDrawableGL = drawableGL != null && drawable == drawableGL;
+        if (isDrawableGL) {
             exitWorkerContext();
-            // Switching TO DrawableGL - enable caching for this thread
-            drawableGLHolder = CurrentThread;
         } else {
             enterWorkerContext();
-            if (drawableGLHolder == CurrentThread) {
+        }
+
+        if (!splashComplete) {
+            if (isDrawableGL) {
+                // Switching TO DrawableGL - enable caching for this thread
+                drawableGLHolder = CurrentThread;
+            } else if (drawableGLHolder == CurrentThread) {
                 // This thread held DrawableGL but is switching AWAY - disable caching
                 drawableGLHolder = null;
             }
         }
 
-        if (CurrentThread != MainThread && !autoVaoBound.get()) {
+        // Worker contexts have no VAO of their own; core profile rejects draws without one.
+        // DrawableGL already carries defaultVAO once initialize() has run, but during the splash
+        // it may not have, so keep binding there too.
+        if (CurrentThread != MainThread && !autoVaoBound.get() && (!isDrawableGL || !splashComplete)) {
             autoVaoBound.set(Boolean.TRUE);
             glBindVertexArray(glGenVertexArrays());
         }
@@ -6111,9 +6118,9 @@ public class GLStateManager {
         }
         final boolean locked = acquireDrawLock();
         try {
+            VAOManager.onBindVertexArrayPre(array);
             if (glCtx.boundVAO != array) {
                 glCtx.boundVAO = array;
-                VAOManager.onBindVertexArrayPre(array);
                 RENDER_BACKEND.bindVertexArray(array);
             }
         } finally {

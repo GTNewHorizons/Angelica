@@ -19,6 +19,9 @@ public final class VAOManager {
     static final Int2ObjectOpenHashMap<VAOData> eboOwners = new Int2ObjectOpenHashMap<>();
 
     private static VAOData current = null;
+    // Which VAO name `current` reflects. Per-context boundVAO caching can skip a bind that is a
+    // no-op for that context but still a switch for this global tracker, so it needs its own id.
+    private static int currentVaoId = -1;
     private static int currentVertexFlags = 0;
     private static Attrib[] currentAttribs = null;
     public static int boundEBO = 0;
@@ -29,6 +32,7 @@ public final class VAOManager {
     public static void init(int defaultVAO) {
         final VAOData data = new VAOData();
         current = data;
+        currentVaoId = defaultVAO;
         currentAttribs = data.attribs;
         vaoMap.put(defaultVAO, data);
     }
@@ -38,6 +42,9 @@ public final class VAOManager {
     }
 
     public static void onBindVertexArrayPre(int vaoId) {
+        if (vaoId == currentVaoId) return;
+        currentVaoId = vaoId;
+
         // Save old VAO data
         if (current != null) {
             current.vertexFlags = currentVertexFlags;
@@ -66,7 +73,10 @@ public final class VAOManager {
         final VAOData data = vaoMap.remove(vaoId);
         if (data == null) return;
         removeEboOwner(data.ebo, data);
-        if (data == current) current = null;
+        if (data == current) {
+            current = null;
+            currentVaoId = -1;
+        }
     }
 
     public static void onDeleteBuffer(int buffer) {
