@@ -31,11 +31,6 @@ public final class PerFrameBlockInjector {
     private PerFrameBlockInjector() {}
 
     public static String inject(String source, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        final PerFrameUniformBlock[] blocks = new PerFrameUniformBlock[ShaderManager.BLOCK_COUNT];
-        blocks[ShaderManager.BLOCK_PER_FRAME] = normalize(perFrame);
-        blocks[ShaderManager.BLOCK_PER_PASS] = normalize(perPass);
-        if (blocks[0] == null && blocks[1] == null) return source;
-
         final GLSLParser.Translation_unitContext root;
         try {
             root = GlslTransformUtils.parseFullQuiet(source);
@@ -43,8 +38,19 @@ public final class PerFrameBlockInjector {
             return source;
         }
 
+        final List<Edit> edits = new ArrayList<>();
+        collectEdits(root, perFrame, perPass, edits);
+        return edits.isEmpty() ? source : applyEdits(source, edits);
+    }
+
+    public static void collectEdits(GLSLParser.Translation_unitContext root, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass, List<Edit> out) {
+        final PerFrameUniformBlock[] blocks = new PerFrameUniformBlock[ShaderManager.BLOCK_COUNT];
+        blocks[ShaderManager.BLOCK_PER_FRAME] = normalize(perFrame);
+        blocks[ShaderManager.BLOCK_PER_PASS] = normalize(perPass);
+        if (blocks[0] == null && blocks[1] == null) return;
+
         final int insertAt = firstDeclarationStart(root);
-        if (insertAt < 0) return source;
+        if (insertAt < 0) return;
 
         final Map<String, String> memberTypes = new LinkedHashMap<>();
         final Object2IntOpenHashMap<String> memberBlock = new Object2IntOpenHashMap<>();
@@ -71,18 +77,16 @@ public final class PerFrameBlockInjector {
                 if (referenced.contains(m.name())) { injected[b] = true; anyInjected = true; break; }
             }
         }
-        if (!anyInjected) return source;
+        if (!anyInjected) return;
 
-        final List<Edit> edits = new ArrayList<>(stripEdits.size() + 2);
         final StringBuilder blockDecls = new StringBuilder(128);
         for (int b = 0; b < blocks.length; b++) {
             if (injected[b]) appendBlockText(blockDecls, b, blocks[b].members(), shadowed);
         }
-        edits.add(new Edit(insertAt, insertAt - 1, blockDecls.toString()));
+        out.add(new Edit(insertAt, insertAt - 1, blockDecls.toString()));
         for (int i = 0; i < stripEdits.size(); i++) {
-            if (injected[stripBlocks.getInt(i)]) edits.add(stripEdits.get(i));
+            if (injected[stripBlocks.getInt(i)]) out.add(stripEdits.get(i));
         }
-        return applyEdits(source, edits);
     }
 
     private static PerFrameUniformBlock normalize(PerFrameUniformBlock block) {

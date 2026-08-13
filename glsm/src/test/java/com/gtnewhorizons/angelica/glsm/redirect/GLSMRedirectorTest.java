@@ -331,6 +331,9 @@ class GLSMRedirectorTest {
     void phase2NameKeyedGapsRedirect() {
         assertRedirected("org/lwjgl/opengl/GL33C", "glQueryCounter", "(II)V", "glQueryCounter");
         assertRedirected("org/lwjgl/opengl/GL33C", "glGetQueryObjectui64", "(II)J", "glGetQueryObjectui64");
+        assertRedirected("org/lwjgl/opengl/ARBTimerQuery", "glGetQueryObjectui64", "(II)J", "glGetQueryObjectui64");
+        assertRedirected("org/lwjgl/opengl/EXTTimerQuery", "glGetQueryObjectuEXT", "(II)J", "glGetQueryObjectui64");
+        assertRedirected("org/lwjgl/opengl/EXTTimerQuery", "glGetQueryObjectui64EXT", "(II)J", "glGetQueryObjectui64");
         assertRedirected("org/lwjgl/opengl/GL30C", "glBindFragDataLocation", "(IILjava/lang/CharSequence;)V", "glBindFragDataLocation");
         assertRedirected("org/lwjgl/opengl/GL11C", "glGetIntegerv", "(I[I)V", "glGetInteger");
         assertRedirected("org/lwjgl/opengl/GL20C", "glUniform4fv", "(I[F)V", "glUniform4");

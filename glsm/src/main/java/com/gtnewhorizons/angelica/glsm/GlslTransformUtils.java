@@ -2,8 +2,10 @@ package com.gtnewhorizons.angelica.glsm;
 
 import org.antlr.v4.runtime.BufferedTokenStream;
 import org.antlr.v4.runtime.CharStreams;
+import org.antlr.v4.runtime.CommonToken;
 import org.antlr.v4.runtime.CommonTokenStream;
 import org.antlr.v4.runtime.Token;
+import org.antlr.v4.runtime.WritableToken;
 import org.antlr.v4.runtime.tree.ParseTree;
 import org.antlr.v4.runtime.tree.TerminalNode;
 import org.taumc.glsl.grammar.GLSLLexer;
@@ -88,6 +90,23 @@ public class GlslTransformUtils {
         return source;
     }
 
+    public static void restoreReservedWordsInTree(ParseTree tree) {
+        if (tree instanceof TerminalNode terminal) {
+            final Token token = terminal.getSymbol();
+            final String text = token.getText();
+            if (text != null && text.startsWith(RENAMED_PREFIX) && token instanceof WritableToken writable) {
+                final String rest = text.substring(RENAMED_PREFIX.length());
+                if (rest.startsWith("texture") || rest.startsWith("sample")) {
+                    writable.setText(rest);
+                }
+            }
+            return;
+        }
+        for (int i = 0; i < tree.getChildCount(); i++) {
+            restoreReservedWordsInTree(tree.getChild(i));
+        }
+    }
+
     public record QuietParse(GLSLParser.Translation_unitContext full, GLSLPreParser.Translation_unitContext pre) {}
 
     public static GLSLParser.Translation_unitContext parseFullQuiet(String source) {
@@ -162,21 +181,32 @@ public class GlslTransformUtils {
     public static String getFormattedShader(ParseTree tree, String header) {
         final StringBuilder sb = new StringBuilder(header + "\n");
         final String[] tabHolder = {""};
-        getFormattedShader(tree, sb, tabHolder);
+        getFormattedShader(tree, sb, tabHolder, false);
         return sb.toString();
     }
 
-    private static void getFormattedShader(ParseTree tree, StringBuilder stringBuilder, String[] tabHolder) {
-        if (tree instanceof TerminalNode) {
+    public static String getFormattedShaderRebased(ParseTree tree, String header) {
+        final StringBuilder sb = new StringBuilder(header + "\n");
+        final String[] tabHolder = {""};
+        getFormattedShader(tree, sb, tabHolder, true);
+        return sb.toString();
+    }
+
+    private static void getFormattedShader(ParseTree tree, StringBuilder stringBuilder, String[] tabHolder, boolean rebaseOffsets) {
+        if (tree instanceof TerminalNode terminal) {
             final String text = tree.getText();
             if (text.equals("<EOF>")) {
                 return;
             }
             if (text.equals("#")) {
                 stringBuilder.append("\n#");
+                rebaseAt(terminal, stringBuilder.length() - 1, text, rebaseOffsets);
                 return;
             }
             stringBuilder.append(text);
+            if (!text.equals("}")) {
+                rebaseAt(terminal, stringBuilder.length() - text.length(), text, rebaseOffsets);
+            }
             if (text.equals("{")) {
                 stringBuilder.append(" \n\t");
                 tabHolder[0] = "\t";
@@ -186,6 +216,7 @@ public class GlslTransformUtils {
                 if (stringBuilder.length() >= 2) {
                     stringBuilder.deleteCharAt(stringBuilder.length() - 2);
                 }
+                rebaseAt(terminal, stringBuilder.length() - 1, text, rebaseOffsets);
                 tabHolder[0] = "";
                 stringBuilder.append(" \n");
             } else {
@@ -193,8 +224,17 @@ public class GlslTransformUtils {
             }
         } else {
             for (int i = 0; i < tree.getChildCount(); ++i) {
-                getFormattedShader(tree.getChild(i), stringBuilder, tabHolder);
+                getFormattedShader(tree.getChild(i), stringBuilder, tabHolder, rebaseOffsets);
             }
+        }
+    }
+
+    private static void rebaseAt(TerminalNode terminal, int startIndex, String text, boolean rebaseOffsets) {
+        if (!rebaseOffsets) return;
+        if (terminal.getSymbol() instanceof CommonToken common) {
+            common.setText(text);
+            common.setStartIndex(startIndex);
+            common.setStopIndex(startIndex + text.length() - 1);
         }
     }
 }

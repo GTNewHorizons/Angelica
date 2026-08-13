@@ -40,5 +40,6 @@ addon.late.local.gradle
 addon.late.local.gradle.kts
 local/
 tracy-client/src/main/resources/natives/
+tracy-client/angelica/
 dist/tracy-natives/
 *.tracy

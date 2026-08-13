@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLLog;
+import org.taumc.glsl.grammar.GLSLParser;
 import org.lwjgl.sdl.SDLProperties;
 import org.lwjgl.system.Platform;
 import org.lwjglx.Sys;
@@ -100,6 +101,11 @@ public final class SDLGPUGate {
         ShaderManager.prewarmSpirv(transformedSource, glShaderType);
     }
 
+    public static void prewarmSpirv(String transformedSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType) {
+        if (!isActive()) return;
+        ShaderManager.prewarmSpirv(transformedSource, bodyTree, headerLen, glShaderType);
+    }
+
     public static void clearShaderPrewarmCache() {
         if (!isActive()) return;
         ShaderManager.clearPrewarmCache();
@@ -152,6 +158,9 @@ public final class SDLGPUGate {
     }
 
     public static void fallBackToGL() {
+        if (SDLGPULWJGLService.isOfferedAsAvailable()) {
+            throw new IllegalStateException("Celeritas already selected the SDL GPU LWJGL service; falling back to OpenGL would leave it bound to a dead backend");
+        }
         disarmed = true;
         engaged = false;
         deviceReady = false;

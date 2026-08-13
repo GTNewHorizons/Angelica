@@ -109,7 +109,7 @@ public final class PipelineApplier {
         }
 
         if (st.boundFboId == 0) {
-            if (frameManager.ensureSwapchainRenderPass(f, st)) {
+            if (frameManager.ensureFbo0RenderPass(f, st)) {
                 st.pipeline.setDepthTargetFormat(resourceManager.getSwapchainDepthStencilFormat());
             }
             return;

@@ -18,6 +18,8 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FenceTracker;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
+import com.gtnewhorizons.angelica.sdlgpu.frame.Presenter;
+import com.gtnewhorizons.retrofuturabootstrap.MainStartOnFirstThread;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.DrawDispatch;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
@@ -41,9 +43,10 @@ import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageBufferBinder;
 import com.gtnewhorizons.angelica.sdlgpu.sampler.StorageTextureBinder;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.splash.SplashDispatcher;
-import com.gtnewhorizons.angelica.sdlgpu.splash.SplashOffscreenTarget;
+import com.gtnewhorizons.angelica.sdlgpu.frame.OffscreenTarget;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugLabels;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugMessageRelay;
+import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
@@ -80,8 +83,8 @@ import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 import org.lwjgl.sdl.SDLGPU;
@@ -108,6 +111,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private final Device device = SDLGPUGate.device();
     private final FrameManager frameManager = new FrameManager(device);
+    private Presenter presenter;
     private final ResourceManager resourceManager = new ResourceManager(device, frameManager);
     private final Image3DClear image3DClear = new Image3DClear();
     private final ShaderManager shaderManager = new ShaderManager(device);
@@ -151,33 +155,30 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private volatile boolean shutdown;
 
-    private SplashOffscreenTarget splashTarget;
+    private OffscreenTarget splashTarget;
 
-    private static final CopyOnWriteArrayList<ContextState> registeredStates = new CopyOnWriteArrayList<>();
-    private static final ThreadLocal<ContextState> tlState = ThreadLocal.withInitial(() -> {
+    private static final ThreadRegistry<ContextState> registeredStates = new ThreadRegistry<>(new ContextState[0]);
+    private static final ThreadLocal<ContextState> tlState = new ThreadLocal<>();
+
+    private static ContextState s() {
+        final ContextState sole = registeredStates.sole();
+        if (sole != null && sole.owner == Thread.currentThread()) return sole;
+        final ContextState st = tlState.get();
+        return st != null ? st : registerState();
+    }
+
+    private static ContextState registerState() {
         final ContextState st = new ContextState();
         for (int i = 0; i < ContextState.MAX_VERTEX_ATTRIBS; i++) st.attribDefaults[i * 4 + 3] = 1.0f;
         st.attribDefaults[4] = 1.0f; st.attribDefaults[5] = 1.0f;
         st.attribDefaults[6] = 1.0f;
+        tlState.set(st);
         registeredStates.add(st);
-        refreshSoleState();
         return st;
-    });
-
-    private static volatile ContextState soleState;
-
-    private static void refreshSoleState() {
-        soleState = registeredStates.size() == 1 ? registeredStates.get(0) : null;
-    }
-
-    private static ContextState s() {
-        final ContextState st = soleState;
-        if (st != null && st.owner == Thread.currentThread()) return st;
-        return tlState.get();
     }
 
     private void markAllPipelineInputDirty() {
-        for (ContextState st : registeredStates) st.pipeline.markInputDirty();
+        for (ContextState st : registeredStates.snapshot()) st.pipeline.markInputDirty();
     }
 
     public static final int CTR_SLOT_WRITES = 0;
@@ -189,7 +190,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     public static void takeContextCounters(int[] out) {
         Arrays.fill(out, 0);
-        for (ContextState st : registeredStates) {
+        for (ContextState st : registeredStates.snapshot()) {
             out[CTR_SLOT_WRITES] += st.slotWrites;
             out[CTR_SLOT_WRITES_ELIDED] += st.slotWritesElided;
             out[CTR_SSBO_BINDS] += st.ssboBinds;
@@ -204,7 +205,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private void releaseUniformStagingAllThreads(ShaderManager.ProgramObject prog) {
-        for (ContextState st : registeredStates) st.releaseUniformStaging(prog);
+        for (ContextState st : registeredStates.snapshot()) st.releaseUniformStaging(prog);
     }
 
 
@@ -290,13 +291,19 @@ public class SDLGPURenderBackend extends RenderBackend {
         resourceManager.setBufferLivenessListener(this::markAllPipelineInputDirty);
         shaderManager.setUniformReleaseListener(this::releaseUniformStagingAllThreads);
         fenceTracker.setUnresolvedFenceFlush(this::midFrameFenceFlush);
+        frameManager.setMainThread(GLStateManager.getMainThread());
+        if (!SystemProperties.DISABLE_SDL_PRESENTER_THREAD) {
+            presenter = new Presenter(frameManager, MainStartOnFirstThread.instance());
+            frameManager.setPresenter(presenter);
+            LOG.info("SDL presenter thread enabled: presents run on '{}'", device.getWindowThread() != null ? device.getWindowThread().getName() : "window thread");
+        }
 
         final int splashW = Math.max(1, Display.getWidth());
         final int splashH = Math.max(1, Display.getHeight());
         final int[] maxDesktop = device.getMaxDesktopSizePixels();
         final int splashTexW = Math.max(splashW, maxDesktop[0]);
         final int splashTexH = Math.max(splashH, maxDesktop[1]);
-        splashTarget = new SplashOffscreenTarget();
+        splashTarget = new OffscreenTarget();
         splashTarget.create(device, resourceManager, splashTexW, splashTexH, device.getSwapchainTextureFormat());
         SplashDispatcher.seedDrawnSize(splashW, splashH);
         LOG.info("Splash offscreen target {}x{} (window {}x{}, max desktop {}x{})", splashTexW, splashTexH, splashW, splashH, maxDesktop[0], maxDesktop[1]);
@@ -376,31 +383,50 @@ public class SDLGPURenderBackend extends RenderBackend {
         LOG.info("Populated GL capabilities for SDL GPU backend");
     }
 
-    @Override protected void setSwapInterval(boolean vsync) {
-        device.setVSyncMode(VSyncMode.AUTO, vsync);
-    }
+    private final AtomicReference<VSyncMode> pendingVSync = new AtomicReference<>();
 
-    @Override protected VSyncMode applyVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
-        return device.setVSyncMode(preferred, vsyncEnabled);
+    @Override protected VSyncMode applyVSyncMode(VSyncMode preferred) {
+        pendingVSync.set(preferred);
+        return device.chooseVSyncMode(preferred);
     }
 
     @Override public boolean supportsVSyncMode(VSyncMode mode) {
-        return mode == VSyncMode.AUTO || device.supportsVSyncMode(mode);
+        return device.supportsVSyncMode(mode);
     }
 
-    @Override public int getMinRenderAhead() { return Device.MIN_FRAMES_IN_FLIGHT; }
+    private void applyPendingVSync() {
+        final VSyncMode preferred = pendingVSync.getAndSet(null);
+        if (preferred != null) {
+            if (presenter != null) presenter.drain();
+            publishVSyncMode(device.applyVSync(preferred));
+        }
+    }
 
-    @Override public int getMaxRenderAhead() { return Device.MAX_FRAMES_IN_FLIGHT; }
-
-    @Override public void setRenderAheadLimit(int frames) { device.setFramesInFlight(frames); }
-
-    @Override public int getDisplayRefreshRateHz() {
+    @Override protected int queryDisplayRefreshRateHz() {
         return device.getDisplayRefreshRateHz();
     }
+
+    @Override public boolean gateAnchorsNextFrameStart() { return true; }
+
+    @Override public boolean wantsDisplayUpdateGateTiming() { return false; }
+
+    @Override public long lastFrameGateNanos() {
+        if (presenter != null && presenter.isEngaged()) return frameManager.windowFrame().lastFrameGateNanos;
+        return frameManager.lastFrameGateNanos();
+    }
+
+    @Override public long lastFrameGateEndNanos() {
+        if (presenter != null && presenter.isEngaged()) return frameManager.windowFrame().lastFrameGateEndNanos;
+        return frameManager.lastFrameGateEndNanos();
+    }
+
+    @Override public boolean hasSwapchainBackpressure() { return true; }
 
     @Override public void shutdown() {
         if (shutdown) return;
         shutdown = true;
+        if (presenter != null) presenter.drain();
+        frameManager.destroyFinalTarget();
         if (splashTarget != null) {
             splashTarget.destroy(resourceManager);
             splashTarget = null;
@@ -423,7 +449,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         fenceTracker.dispose();
         frameManager.releaseAllRegisteredFrames();
         resourceManager.shutdownTexSamplerStates();
-        for (ContextState st : registeredStates) {
+        for (ContextState st : registeredStates.snapshot()) {
             if (st.fanIndexBuffer != 0) {
                 resourceManager.releaseBufferHandle(st.fanIndexBuffer);
                 st.fanIndexBuffer = 0;
@@ -441,7 +467,6 @@ public class SDLGPURenderBackend extends RenderBackend {
             clearMappedState(st);
         }
         registeredStates.clear();
-        soleState = null;
 
         drawDispatch.clearWarnedState();
         pipelineStore.shutdown();
@@ -480,13 +505,16 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public void onRenderThreadReleased(Thread t) {
+        if (shutdown || t == GLStateManager.getMainThread()) return;
         if (frameManager.isFrameActive()) {
             frameManager.endFrame();
         }
         frameManager.releaseThreadState();
-        registeredStates.remove(tlState.get());
-        tlState.remove();
-        refreshSoleState();
+        final ContextState st = tlState.get();
+        if (st != null) {
+            tlState.remove();
+            registeredStates.remove(st);
+        }
     }
 
     @Override public boolean handleMakeCurrent(Object drawable) {
@@ -500,12 +528,11 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public boolean handleReleaseContext(Object drawable) {
-        if (isSDLManagedDrawable(drawable)) {
-            Lwjgl3GLCapabilitiesShim.clearOnCurrentThread();
-            onRenderThreadReleased(Thread.currentThread());
-            return true;
-        }
-        return false;
+        if (!isSDLManagedDrawable(drawable)) return false;
+        if (Thread.currentThread() == GLStateManager.getMainThread()) return true;
+        Lwjgl3GLCapabilitiesShim.clearOnCurrentThread();
+        onRenderThreadReleased(Thread.currentThread());
+        return true;
     }
 
     private static boolean isSDLManagedDrawable(Object drawable) {
@@ -528,33 +555,19 @@ public class SDLGPURenderBackend extends RenderBackend {
         return true;
     }
 
-    public void dispatchSplashBlit(SplashOffscreenTarget target) {
+    public void dispatchSplashBlit(OffscreenTarget target) {
         if (shutdown || target == null) return;
-        onFrameBegin();
-        final FrameManager.FrameState f = frameManager.frame();
-        if (!frameManager.ensureSwapchainAcquired(f)) {
-            onFrameEnd();
-            return;
-        }
-        frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
         final long drawnSize = SplashDispatcher.getDrawnSize();
         final int srcW = Math.max(1, Math.min((int) (drawnSize >> 32), target.width()));
         final int srcH = Math.max(1, Math.min((int) drawnSize, target.height()));
-        try (var stack = MemoryStack.stackPush()) {
-            final var info = SDL_GPUBlitInfo.calloc(stack);
-            info.source(s -> s.texture(target.colorTexture()).x(0).y(0).w(srcW).h(srcH));
-            info.destination(d -> d.texture(f.swapchainTexture).x(0).y(0).w(f.swapchainWidth).h(f.swapchainHeight));
-            info.filter(SDL_GPU_FILTER_LINEAR);
-            info.flip_mode(SDLSurface.SDL_FLIP_VERTICAL);
-            SDL_BlitGPUTexture(f.commandBuffer, info);
-        }
-        f.swapchainUsedThisFrame = true;
-        onFrameEnd();
+        final FrameState f = frameManager.frame();
+        frameManager.presentBlit(f, target.colorTexture(), srcW, srcH, SDLSurface.SDL_FLIP_VERTICAL);
+        f.presentedThisFrame = false;
     }
 
     @Override public void onFrameBegin() {
         if (shutdown) return;
+        if (GLStateManager.isSplashComplete()) applyPendingVSync();
         frameManager.beginFrame();
         beginFrameInit();
     }
@@ -636,22 +649,24 @@ public class SDLGPURenderBackend extends RenderBackend {
         endFrameUploadFlushNoWait();
 
         final FrameState f = frameManager.frame();
-        if (f.frameActive && !f.swapchainUsedThisFrame) {
+        if (f.frameActive && !f.fbo0UsedThisFrame) {
             if (!emptyFrameWarned) {
                 emptyFrameWarned = true;
-                LOG.info("Frame {} ended without drawing to the swapchain; skipping present (further occurrences counted in sdl.emptyFrames)", f.frameNumber);
+                LOG.info("Frame {} ended without drawing to FBO 0; presenting the previous contents (further occurrences counted in sdl.emptyFrames)", f.frameNumber);
             }
             frameManager.markFrameEmpty(f);
         }
 
         awaitUploadFlush();
         frameManager.endFrame();
+        frameManager.presentFinalTarget();
         fenceTracker.resolvePendingFences();
         resourceManager.flushDeferredReleases();
         resourceManager.recycleGpuBufferPool(frameManager.getFrameNumber());
     }
 
     @Override public void onPreSwapchainInvalidatingChange(Object change) {
+        if (presenter != null) presenter.drain();
         endFrameUploadFlush();
         if (frameManager.isFrameActive()) {
             frameManager.endFrame();
@@ -698,54 +713,6 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public String getTransferDebugInfo() {
         return transferThread != null ? transferThread.getDebugInfo() : null;
-    }
-
-    private static final long PRESENT_STATS_WINDOW_NANOS = 1_000_000_000L;
-    private static final long PRESENT_STATS_STALE_NANOS = 2_000_000_000L;
-
-    private long presentStatsNanos;
-    private long presentStatsLoopFrames;
-    private long presentStatsPresentedFrames;
-    private long presentStatsSkips;
-    private long presentStatsEmpty;
-    private long presentStatsAcquireNanos;
-    private String presentDebugLine;
-
-    @Override public String getPresentDebugInfo() {
-        if (shutdown) return null;
-        final long now = System.nanoTime();
-        final long elapsed = now - presentStatsNanos;
-
-        if (presentStatsNanos == 0L || elapsed > PRESENT_STATS_STALE_NANOS) {
-            snapshotPresentStats(now);
-            presentDebugLine = null;
-            return null;
-        }
-        if (elapsed < PRESENT_STATS_WINDOW_NANOS) return presentDebugLine;
-
-        final long loopDelta = frameManager.statLoopFrames() - presentStatsLoopFrames;
-        final long presentedDelta = frameManager.statPresentedFrames() - presentStatsPresentedFrames;
-        final long skipDelta = frameManager.statPresentSkips() - presentStatsSkips;
-        final long emptyDelta = frameManager.statEmptyFrames() - presentStatsEmpty;
-        final long acquireDelta = frameManager.statAcquireWaitNanos() - presentStatsAcquireNanos;
-        final double seconds = elapsed / 1.0e9;
-        presentDebugLine = String.format("Present: %s %dHz | loop %.0f/s shown %.0f/s | skip %.0f/s empty %.0f/s | acq %.2fms | fif %d",
-            getEffectiveVSyncMode(), device.getDisplayRefreshRateHz(),
-            loopDelta / seconds, presentedDelta / seconds,
-            skipDelta / seconds, emptyDelta / seconds,
-            loopDelta == 0 ? 0.0 : acquireDelta / (double) loopDelta / 1.0e6,
-            Device.framesInFlight());
-        snapshotPresentStats(now);
-        return presentDebugLine;
-    }
-
-    private void snapshotPresentStats(long now) {
-        presentStatsNanos = now;
-        presentStatsLoopFrames = frameManager.statLoopFrames();
-        presentStatsPresentedFrames = frameManager.statPresentedFrames();
-        presentStatsSkips = frameManager.statPresentSkips();
-        presentStatsEmpty = frameManager.statEmptyFrames();
-        presentStatsAcquireNanos = frameManager.statAcquireWaitNanos();
     }
 
     @Override public void enable(int cap) { setBoolCap(cap, true); }
@@ -952,7 +919,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
         final ContextState st = cs;
 
-        // Swapchain path: just record pending state; ensureSwapchainRenderPass consumes it lazily.
+        // FBO0 path: just record pending state; ensureFbo0RenderPass consumes it lazily.
         if (st.boundFboId == 0) {
             if (wantColor) {
                 st.pendingSwapchainClear = true;
@@ -1710,7 +1677,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final long texHandle;
         final int srcSdlFormat;
         if (cs.boundReadFboId == 0) {
-            texHandle = frameManager.getSwapchainTexture();
+            texHandle = frameManager.getFbo0Texture();
             srcSdlFormat = frameManager.getSwapchainFormat();
         } else {
             final FboState fbo = resourceManager.getFbo(cs.boundReadFboId);
