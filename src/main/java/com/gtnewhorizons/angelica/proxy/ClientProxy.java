@@ -134,6 +134,9 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new AngelicaTesrMeshCache.ReloadListener());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
+        if (AngelicaConfig.enableIris) {
+            Iris.warmupShaderTransforms();
+        }
     }
 
     @Override

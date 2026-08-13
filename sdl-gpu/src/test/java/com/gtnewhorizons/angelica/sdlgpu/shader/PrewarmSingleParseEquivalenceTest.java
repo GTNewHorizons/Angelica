@@ -1,14 +1,27 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
+import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
+import com.gtnewhorizons.angelica.glsm.shader.UniformType;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL43;
 
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class PrewarmSingleParseEquivalenceTest {
+
+    @AfterEach
+    void clearBlocks() {
+        GLSMHooks.perFrameUniformBlock = null;
+        GLSMHooks.perPassUniformBlock = null;
+    }
 
     private static String legacy(String source, int glShaderType) {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, "test", true);
@@ -17,6 +30,9 @@ class PrewarmSingleParseEquivalenceTest {
             src = ClipZRemap.injectGLToVulkanClipZ(src);
         }
         src = SamplerStripper.stripUnused(src);
+        if (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER) {
+            src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+        }
         return src;
     }
 
@@ -26,6 +42,14 @@ class PrewarmSingleParseEquivalenceTest {
         GlslVulkanPreprocess.clearCache();
         final String parseOnceOut = ShaderManager.applyPrewarmTransforms(source, glShaderType);
         assertEquals(legacyOut, parseOnceOut, "single-parse vs chained pipeline diverged for " + label);
+    }
+
+    private static void assertEquivalentIgnoringWhitespace(String label, String source, int glShaderType) {
+        GlslVulkanPreprocess.clearCache();
+        final String legacyOut = legacy(source, glShaderType);
+        GlslVulkanPreprocess.clearCache();
+        final String parseOnceOut = ShaderManager.applyPrewarmTransforms(source, glShaderType);
+        assertEquals(legacyOut.replaceAll("\\s+", " "), parseOnceOut.replaceAll("\\s+", " "), "single-parse vs chained pipeline diverged beyond whitespace for " + label);
     }
 
     @Test
@@ -134,5 +158,88 @@ class PrewarmSingleParseEquivalenceTest {
     void unparseable_fallsBackToInputUnchanged() {
         final String src = "this is not valid GLSL @@@@\n";
         assertEquivalent("unparseable", src, GL20.GL_FRAGMENT_SHADER);
+    }
+
+    private static final PerFrameUniformBlock PER_FRAME = new PerFrameUniformBlock(List.of(
+        new Member("cameraPosition", UniformType.VEC3),
+        new Member("frameTimeCounter", UniformType.FLOAT)));
+
+    private static final PerFrameUniformBlock PER_PASS = new PerFrameUniformBlock(List.of(
+        new Member("alphaTestRef", UniformType.FLOAT)));
+
+    @Test
+    void perFrameBlock_replaceableUniformStrippedAndInjected() {
+        GLSMHooks.perFrameUniformBlock = PER_FRAME;
+        GLSMHooks.perPassUniformBlock = PER_PASS;
+        final String src = "#version 460 core\n"
+            + "uniform float frameTimeCounter;\n"
+            + "uniform float alphaTestRef;\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() {\n"
+            + "    if (fragColor.a < alphaTestRef) discard;\n"
+            + "    fragColor = vec4(frameTimeCounter);\n"
+            + "}\n";
+        assertEquivalent("pfb-replaceable", src, GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
+    void perFrameBlock_firstDeclIsUnlocatedVsInput() {
+        GLSMHooks.perFrameUniformBlock = PER_FRAME;
+        final String src = "#version 460 core\n"
+            + "in vec3 a_Position;\n"
+            + "layout(location = 5) in vec2 a_TexCoord;\n"
+            + "uniform vec3 cameraPosition;\n"
+            + "void main() {\n"
+            + "    gl_Position = vec4(a_Position - cameraPosition, 1.0);\n"
+            + "}\n";
+        assertEquivalent("pfb-unlocated-first-in", src, GL20.GL_VERTEX_SHADER);
+    }
+
+    @Test
+    void perFrameBlock_memberUniformWithInitializer() {
+        GLSMHooks.perPassUniformBlock = PER_PASS;
+        final String src = "#version 460 core\n"
+            + "uniform float alphaTestRef = 0.1;\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() {\n"
+            + "    if (fragColor.a < alphaTestRef) discard;\n"
+            + "}\n";
+        assertEquivalent("pfb-initializer", src, GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
+    void perFrameBlock_firstDeclIsStrippedSampler() {
+        GLSMHooks.perFrameUniformBlock = PER_FRAME;
+        final String src = "#version 460 core\n"
+            + "uniform sampler2D u_Unused;\n"
+            + "uniform float frameTimeCounter;\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() {\n"
+            + "    fragColor = vec4(frameTimeCounter);\n"
+            + "}\n";
+        assertEquivalentIgnoringWhitespace("pfb-stripped-first-sampler", src, GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
+    void perFrameBlock_shadowedMemberKeepsLocalDeclaration() {
+        GLSMHooks.perFrameUniformBlock = PER_FRAME;
+        final String src = "#version 460 core\n"
+            + "uniform vec4 frameTimeCounter;\n"
+            + "uniform vec3 cameraPosition;\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() {\n"
+            + "    fragColor = frameTimeCounter + vec4(cameraPosition, 0.0);\n"
+            + "}\n";
+        assertEquivalent("pfb-shadowed", src, GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
+    void perFrameBlock_noReferencesLeavesSourceUntouched() {
+        GLSMHooks.perFrameUniformBlock = PER_FRAME;
+        GLSMHooks.perPassUniformBlock = PER_PASS;
+        final String src = "#version 460 core\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() { fragColor = vec4(1.0); }\n";
+        assertEquivalent("pfb-unreferenced", src, GL20.GL_FRAGMENT_SHADER);
     }
 }

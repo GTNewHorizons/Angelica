@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLLog;
+import org.taumc.glsl.grammar.GLSLParser;
 import org.lwjgl.sdl.SDLProperties;
 import org.lwjgl.system.Platform;
 import org.lwjglx.Sys;
@@ -98,6 +99,11 @@ public final class SDLGPUGate {
     public static void prewarmSpirv(String transformedSource, int glShaderType) {
         if (!isActive()) return;
         ShaderManager.prewarmSpirv(transformedSource, glShaderType);
+    }
+
+    public static void prewarmSpirv(String transformedSource, GLSLParser.Translation_unitContext bodyTree, int headerLen, int glShaderType) {
+        if (!isActive()) return;
+        ShaderManager.prewarmSpirv(transformedSource, bodyTree, headerLen, glShaderType);
     }
 
     public static void clearShaderPrewarmCache() {
