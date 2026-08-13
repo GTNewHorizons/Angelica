@@ -9,7 +9,7 @@ asmCompile = "5.0.3"
 lwjgl3 = "3.4.2-20260602.093430-9"
 lwjgl3ify = "3.0.31"
 
-celeritas = "2.5.9-GTNH"
+celeritas = "2.5.10-GTNH"
 gtnhlib = "0.11.36"
 eventbus = "7.0-beta.15"
 glslTransformLib = "0.2.0-33.g3ec381e"

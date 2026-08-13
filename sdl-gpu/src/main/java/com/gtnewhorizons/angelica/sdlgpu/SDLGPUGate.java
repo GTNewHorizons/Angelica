@@ -152,6 +152,9 @@ public final class SDLGPUGate {
     }
 
     public static void fallBackToGL() {
+        if (SDLGPULWJGLService.isOfferedAsAvailable()) {
+            throw new IllegalStateException("Celeritas already selected the SDL GPU LWJGL service; falling back to OpenGL would leave it bound to a dead backend");
+        }
         disarmed = true;
         engaged = false;
         deviceReady = false;
