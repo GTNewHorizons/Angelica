@@ -40,6 +40,8 @@ final class SdlFramePlots {
     private static final long PLOT_PRESENT_TO_PRESENT_US = Tracy.plotHandle("sdl.presentToPresentUs");
     private static final long PLOT_FRAMES_IN_FLIGHT = Tracy.plotHandle("sdl.framesInFlight");
     private static final long PLOT_MIP_GENS = Tracy.plotHandle("sdl.mipGens");
+    private static final long PLOT_MIP_GEN_SUBMITS = Tracy.plotHandle("sdl.mipGenSubmits");
+    private static final long PLOT_UPLOAD_FLUSH_SUBMITS = Tracy.plotHandle("sdl.uploadFlushSubmits");
     private static final long PLOT_BLIT_FALLBACKS = Tracy.plotHandle("sdl.blitFallbacks");
     private static final long PLOT_PRESENT_SKIPS = Tracy.plotHandle("sdl.presentSkips");
     private static final long PLOT_EMPTY_FRAMES = Tracy.plotHandle("sdl.emptyFrames");
@@ -54,6 +56,8 @@ final class SdlFramePlots {
     private static final long PLOT_BUFFER_POOL_HITS = Tracy.plotHandle("sdl.bufferPoolHits");
     private static final long PLOT_PIPELINE_KEY_RECOMPUTES = Tracy.plotHandle("sdl.pipelineKeyRecomputes");
     private static final long PLOT_PIPELINE_FAST_PATH_HITS = Tracy.plotHandle("sdl.pipelineFastPathHits");
+    private static final long PLOT_MID_FRAME_SUBMITS = Tracy.plotHandle("sdl.midFrameSubmits");
+    private static final long PLOT_GATE_US = Tracy.plotHandle("sdl.gateUs");
 
     private static final int[] contextCounters = new int[SDLGPURenderBackend.CTR_COUNT];
 
@@ -99,9 +103,13 @@ final class SdlFramePlots {
         f.lastEndFrameNanos = nowNanos;
         Tracy.plotInt(PLOT_FRAMES_IN_FLIGHT, Device.framesInFlight());
         Tracy.plotInt(PLOT_MIP_GENS, f.mipGensThisFrame);
+        Tracy.plotInt(PLOT_MIP_GEN_SUBMITS, f.mipGenSubmitsThisFrame);
+        Tracy.plotInt(PLOT_UPLOAD_FLUSH_SUBMITS, f.uploadFlushSubmitsThisFrame);
         Tracy.plotInt(PLOT_BLIT_FALLBACKS, f.blitsThisFrame);
         Tracy.plotInt(PLOT_PRESENT_SKIPS, f.presentSkipsThisFrame);
         Tracy.plotInt(PLOT_EMPTY_FRAMES, f.emptyFramesThisFrame);
         Tracy.plotInt(PLOT_DROPPED_DRAWS, f.droppedDrawsThisFrame);
+        Tracy.plotInt(PLOT_MID_FRAME_SUBMITS, f.midFrameSubmitsThisFrame);
+        Tracy.plotInt(PLOT_GATE_US, f.lastFrameGateNanos / 1000);
     }
 }

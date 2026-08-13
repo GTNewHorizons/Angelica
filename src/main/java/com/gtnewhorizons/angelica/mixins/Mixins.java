@@ -70,6 +70,12 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    STARMINER_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.STARMINER)
+        .addClientMixins("client.starminer.MixinTransformClientHelper")
+    ),
+
     ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.entityOverlayFixes)

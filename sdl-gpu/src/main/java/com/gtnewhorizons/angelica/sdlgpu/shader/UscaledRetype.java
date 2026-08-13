@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
+import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.antlr.v4.runtime.Token;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -18,11 +19,29 @@ public final class UscaledRetype {
 
     public record Attrib(String name, int location, int declVecSize, int boundVecSize, boolean signed) {}
 
+    private record RetypeKey(String source, List<Attrib> attribs) {}
+
+    private static final int CACHE_MAX = 64;
+    private static final Object2ObjectLinkedOpenHashMap<RetypeKey, String> CACHE = new Object2ObjectLinkedOpenHashMap<>();
+
     private UscaledRetype() {}
 
     public static String retype(String source, List<Attrib> attribs) {
         if (attribs.isEmpty()) return source;
 
+        final RetypeKey key = new RetypeKey(source, List.copyOf(attribs));
+        synchronized (CACHE) {
+            if (CACHE.containsKey(key)) return CACHE.getAndMoveToFirst(key);
+        }
+        final String result = retypeUncached(source, attribs);
+        synchronized (CACHE) {
+            CACHE.putAndMoveToFirst(key, result);
+            while (CACHE.size() > CACHE_MAX) CACHE.removeLast();
+        }
+        return result;
+    }
+
+    private static String retypeUncached(String source, List<Attrib> attribs) {
         final GLSLParser.Translation_unitContext root;
         try {
             root = GlslTransformUtils.parseFullQuiet(source);

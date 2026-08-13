@@ -64,7 +64,7 @@ public final class FboState {
             h = Hashing.fmix64(h, db);
         }
         h = Hashing.fmix64(h, depthTexture);
-        if (h == 0L || h == FrameManager.SWAPCHAIN_LAYOUT_HASH) h = 0xD1CE5EEDL;
+        if (h == 0L || h == FrameManager.FBO0_LAYOUT_HASH) h = 0xD1CE5EEDL;
         structuralLayoutHash = h;
     }
 

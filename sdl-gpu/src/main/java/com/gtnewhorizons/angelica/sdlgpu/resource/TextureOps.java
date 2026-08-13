@@ -101,19 +101,11 @@ public final class TextureOps {
 
     public void readbackTexture(long texHandle, int x, int y, int w, int h, int level, ByteBuffer output) {
         if (texHandle == 0 || output == null) return;
-        frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.submitMidFrame();
 
-        if (texHandle == frameManager.getSwapchainTexture()) {
-            final long cb = frameManager.getCommandBuffer();
-            if (cb == 0) return;
-            resourceManager.downloadFromTexture(cb, texHandle, x, y, w, h, level, output);
-            frameManager.reacquireCommandBuffer();
-        } else {
-            final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
-            if (cb == 0) return;
-            resourceManager.downloadFromTexture(cb, texHandle, x, y, w, h, level, output);
-        }
+        final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
+        if (cb == 0) return;
+        resourceManager.downloadFromTexture(cb, texHandle, x, y, w, h, level, output);
     }
 
     public void copyTexSubImageImpl(ContextState st, int destGlId, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
@@ -210,6 +202,7 @@ public final class TextureOps {
         if (!SDL_SubmitGPUCommandBuffer(uploadCb)) {
             device.reportGpuFailure("submit mipmap generation CB");
         }
+        frameManager.noteMipGenSubmit();
 
         if (f.commandBuffer == uploadCb) {
             f.commandBuffer = 0;

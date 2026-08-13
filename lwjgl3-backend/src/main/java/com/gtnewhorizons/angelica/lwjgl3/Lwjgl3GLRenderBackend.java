@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.GLESCaps;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.DebugMessageHandler;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -171,10 +172,14 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     public int getMinGLSLVersion() {return 330;}
 
     @Override
-    protected void setSwapInterval(boolean vsync) {SDLVideo.SDL_GL_SetSwapInterval(vsync ? 1 : 0);}
+    protected VSyncMode applyVSyncMode(VSyncMode preferred) {
+        final boolean enabled = preferred.tearFree();
+        SDLVideo.SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+        return enabled ? VSyncMode.ON : VSyncMode.OFF;
+    }
 
     @Override
-    public int getDisplayRefreshRateHz() {
+    protected int queryDisplayRefreshRateHz() {
         final long window = Display.getWindow();
         final int displayId = window == 0 ? SDLVideo.SDL_GetPrimaryDisplay() : SDLVideo.SDL_GetDisplayForWindow(window);
         if (displayId == 0) return 0;

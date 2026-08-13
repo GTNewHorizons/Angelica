@@ -12,6 +12,7 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
+import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import cpw.mods.fml.common.eventhandler.EventPriority;
@@ -77,10 +78,6 @@ public class CeleritasDebugScreenHandler {
         final String transferInfo = RENDER_BACKEND.getTransferDebugInfo();
         if (transferInfo != null) {
             lines.add(transferInfo);
-        }
-        final String presentInfo = RENDER_BACKEND.getPresentDebugInfo();
-        if (presentInfo != null) {
-            lines.add(presentInfo);
         }
         if (SystemProperties.DEBUG_F3_DETAIL) {
             lines.addAll(TesrBatchRenderer.INSTANCE.getDebugDetailStrings());

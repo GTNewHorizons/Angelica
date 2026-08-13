@@ -21,6 +21,7 @@ import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
+import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
@@ -112,6 +113,34 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     public AngelicaRenderSectionManager getRenderSectionManager() {
         return this.renderSectionManager;
+    }
+
+    private long asyncEwmaNanos;
+    private long uploadEwmaNanos;
+
+    private static long blendEwma(long ewmaNanos, long tookNanos) {
+        return ewmaNanos == 0L ? tookNanos : (ewmaNanos * 3 + tookNanos) / 4;
+    }
+
+    public void runFrameIdleWork(long deadlineNanos) {
+        final AngelicaRenderSectionManager rsm = this.renderSectionManager;
+        if (rsm == null || this.world == null) return;
+        RenderDevice.enterManagedCode();
+        try {
+            long start = System.nanoTime();
+            if (start + asyncEwmaNanos > deadlineNanos) return;
+            rsm.runAsyncTasks();
+            long now = System.nanoTime();
+            asyncEwmaNanos = blendEwma(asyncEwmaNanos, now - start);
+
+            start = now;
+            if (start + uploadEwmaNanos > deadlineNanos) return;
+            rsm.uploadChunks();
+            now = System.nanoTime();
+            uploadEwmaNanos = blendEwma(uploadEwmaNanos, now - start);
+        } finally {
+            RenderDevice.exitManagedCode();
+        }
     }
 
     @Override

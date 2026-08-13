@@ -115,10 +115,14 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     public int getMinGLSLVersion() {return 330;}
 
     @Override
-    protected void setSwapInterval(boolean vsync) {Display.setVSyncEnabled(vsync);}
+    protected VSyncMode applyVSyncMode(VSyncMode preferred) {
+        final boolean enabled = preferred.tearFree();
+        Display.setVSyncEnabled(enabled);
+        return enabled ? VSyncMode.ON : VSyncMode.OFF;
+    }
 
     @Override
-    public int getDisplayRefreshRateHz() {
+    protected int queryDisplayRefreshRateHz() {
         final DisplayMode mode = Display.getDisplayMode();
         if (mode != null && mode.getFrequency() > 0) return mode.getFrequency();
         final DisplayMode desktop = Display.getDesktopDisplayMode();

@@ -195,6 +195,7 @@ public class SodiumGameOptions {
     }
 
     public static class AdvancedSettings {
+        public VSyncMode vsyncMode;
         public boolean useVertexArrayObjects = true;
         public boolean useChunkMultidraw = true;
         public MultiDrawMode multiDrawMode = MultiDrawMode.DIRECT;
@@ -204,7 +205,6 @@ public class SodiumGameOptions {
         public boolean ignoreDriverBlacklist = false;
         public StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.MAP_BUFFER_RANGE;
         public boolean enableDeferredBatching = true;
-        public VSyncMode vsyncMode = VSyncMode.AUTO;
     }
 
     public static class PerformanceSettings {
