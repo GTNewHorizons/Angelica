@@ -64,14 +64,10 @@ public enum Mixins implements IMixins {
             , "angelica.ffp.MixinTessellator_CoreProfile"
             , "angelica.glsm.MixinSplashProgressCaching"
             , "angelica.gui.MixinGuiOptions"
+            , "angelica.optimizations.MixinRendererLivingEntity"
             , "angelica.rendering.MixinRenderGlobal_SelectionBox"
             , "angelica.gui.MixinGuiIngameForge_ModernF3"
         )
-    ),
-
-    ANGELICA_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
-        .setPhase(Phase.EARLY)
-        .addClientMixins("angelica.optimizations.MixinRendererLivingEntity")
     ),
 
     STARMINER_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
