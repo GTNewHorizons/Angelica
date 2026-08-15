@@ -1,29 +1,23 @@
 package com.gtnewhorizons.angelica.sdlgpu.sampler;
 
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
+import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
-import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 
 class SamplerBindGenerationTest {
 
-    @SuppressWarnings("unchecked")
-    private static ContextState state() throws Exception {
-        final Field f = SDLGPURenderBackend.class.getDeclaredField("tlState");
-        f.setAccessible(true);
-        return ((ThreadLocal<ContextState>) f.get(null)).get();
-    }
 
     @Test
-    void switchingActiveUnitDoesNotBumpTheGeneration() throws Exception {
+    void switchingActiveUnitDoesNotBumpTheGeneration() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
-        final ContextState st = state();
+        final ContextState st = SdlTestRig.contextState();
 
         backend.activeTexture(GL13.GL_TEXTURE0);
         final int before = st.samplerBindGen;
@@ -37,9 +31,9 @@ class SamplerBindGenerationTest {
     }
 
     @Test
-    void aRealBindChangeBumpsTheGeneration() throws Exception {
+    void aRealBindChangeBumpsTheGeneration() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
-        final ContextState st = state();
+        final ContextState st = SdlTestRig.contextState();
 
         backend.activeTexture(GL13.GL_TEXTURE0);
         backend.bindTexture(GL11.GL_TEXTURE_2D, 0);
@@ -50,9 +44,9 @@ class SamplerBindGenerationTest {
     }
 
     @Test
-    void rebindingTheSameTextureDoesNotBumpTheGeneration() throws Exception {
+    void rebindingTheSameTextureDoesNotBumpTheGeneration() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
-        final ContextState st = state();
+        final ContextState st = SdlTestRig.contextState();
 
         backend.activeTexture(GL13.GL_TEXTURE0);
         backend.bindTexture(GL11.GL_TEXTURE_2D, 99);
@@ -63,9 +57,9 @@ class SamplerBindGenerationTest {
     }
 
     @Test
-    void bindingsAreHeldPerUnitSoTheActiveUnitIsNotSamplerState() throws Exception {
+    void bindingsAreHeldPerUnitSoTheActiveUnitIsNotSamplerState() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
-        final ContextState st = state();
+        final ContextState st = SdlTestRig.contextState();
 
         backend.activeTexture(GL13.GL_TEXTURE2);
         backend.bindTexture(GL11.GL_TEXTURE_2D, 55);

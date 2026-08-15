@@ -6,7 +6,7 @@ import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import org.joml.Matrix4f;
 
 public class BuiltinReplacementUniforms {
-	private static final Matrix4f lightmapTextureMatrix;
+	public static final Matrix4f lightmapTextureMatrix;
 
 	static {
         // This mimics the transformations done in LightTexture to the GL_TEXTURE matrix.

@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
-import net.minecraft.tileentity.TileEntity;
 
 public class RenderThreadContext {
 
@@ -15,10 +15,13 @@ public class RenderThreadContext {
         currentWorldSlice.remove();
     }
 
-    public static TileEntity getSnapshotTE(int x, int y, int z) {
-        final WorldSlice slice = currentWorldSlice.get();
-        if (slice == null) return null;
-        return slice.getTileEntity(x, y, z);
+    public static WorldSlice get() {
+        return currentWorldSlice.get();
+    }
+
+    public static WorldSlice workerSlice() {
+        if (TessellatorManager.isOnMainThread()) return null;
+        return currentWorldSlice.get();
     }
 
     public static boolean hasWorldSlice() {

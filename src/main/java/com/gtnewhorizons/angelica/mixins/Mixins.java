@@ -70,6 +70,12 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    STARMINER_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.STARMINER)
+        .addClientMixins("client.starminer.MixinTransformClientHelper")
+    ),
+
     ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.entityOverlayFixes)
@@ -377,6 +383,10 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockLiquid"
             , "celeritas.threading.MixinForgeHooksClient"
             , "celeritas.terrain.MixinChunk"
+            , "celeritas.terrain.MixinWorldClient_WorkerAccess"
+            , "celeritas.terrain.MixinWorld_WorkerMutationGuard"
+            , "celeritas.terrain.MixinTileEntity_AwaitingDescriptor"
+            , "celeritas.terrain.MixinNetHandlerPlayClient_DescriptorRepair"
             , "celeritas.terrain.MixinRenderRegion"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
             , "celeritas.terrain.MixinDefaultChunkRenderer"

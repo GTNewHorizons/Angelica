@@ -20,6 +20,7 @@ import org.lwjgl.system.Platform;
 import org.lwjglx.opengl.Display;
 
 import java.nio.IntBuffer;
+import java.util.List;
 import java.util.function.Supplier;
 
 import static org.lwjgl.sdl.SDLGPU.*;
@@ -31,13 +32,11 @@ import static org.lwjgl.system.MemoryUtil.memUTF8;
 public final class Device {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
 
-    public static final int MIN_FRAMES_IN_FLIGHT = 1;
-    public static final int DEFAULT_FRAMES_IN_FLIGHT = 2;
     public static final int MAX_FRAMES_IN_FLIGHT = 3;
 
-    private static volatile int framesInFlight = DEFAULT_FRAMES_IN_FLIGHT;
+    private static final int FRAMES_IN_FLIGHT = Math.min(Math.max(SystemProperties.SDL_FRAMES_IN_FLIGHT, 1), MAX_FRAMES_IN_FLIGHT);
 
-    public static int framesInFlight() { return framesInFlight; }
+    public static int framesInFlight() { return FRAMES_IN_FLIGHT; }
 
     private static final int REQUESTED_SHADER_FORMATS = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_DXBC | SDL_GPU_SHADERFORMAT_DXIL;
 
@@ -49,7 +48,7 @@ public final class Device {
     private String driverVersion;
     private String driverInfo;
     private VSyncMode vsyncMode = VSyncMode.ON;
-    private volatile String windowThreadName;
+    private volatile Thread windowThread;
     private SDL_LogOutputFunction logCallback; // prevent GC
 
     private volatile boolean lost;
@@ -155,7 +154,13 @@ public final class Device {
             throw new RuntimeException("Failed to claim window for SDL GPU device: " + SDLError.SDL_GetError());
         }
         claimed = true;
-        windowThreadName = Thread.currentThread().getName();
+        windowThread = Thread.currentThread();
+
+        if (!SDL_SetGPUAllowedFramesInFlight(device, FRAMES_IN_FLIGHT)) {
+            LOG.warn("SDL_SetGPUAllowedFramesInFlight({}) failed: {}", FRAMES_IN_FLIGHT, SDLError.SDL_GetError());
+        } else {
+            LOG.info("SDL frames-in-flight set to {}", FRAMES_IN_FLIGHT);
+        }
 
         logWindowDiagnostics(window);
         LOG.info("SDL GPU device claimed window successfully");
@@ -263,8 +268,8 @@ public final class Device {
         return driverName;
     }
 
-    public String getWindowThreadName() {
-        return windowThreadName;
+    public Thread getWindowThread() {
+        return windowThread;
     }
 
     public String getDeviceName() {
@@ -295,39 +300,72 @@ public final class Device {
         return (supportedShaderFormats & SDL_GPU_SHADERFORMAT_DXBC) != 0;
     }
 
-    public void setFramesInFlight(int frames) {
-        final int n = Math.min(Math.max(frames, MIN_FRAMES_IN_FLIGHT), MAX_FRAMES_IN_FLIGHT);
-        if (n == framesInFlight || device == 0 || !claimed) return;
-        if (!SDL_SetGPUAllowedFramesInFlight(device, n)) {
-            LOG.warn("SDL_SetGPUAllowedFramesInFlight({}) failed: {}; keeping {}", n, SDLError.SDL_GetError(), framesInFlight);
-            return;
-        }
-        framesInFlight = n;
-        LOG.info("SDL frames-in-flight set to {}", n);
+    private static final List<VSyncMode> ON_ORDER = List.of(VSyncMode.ON);
+    private static final List<VSyncMode> OFF_ORDER = List.of(VSyncMode.OFF, VSyncMode.ON);
+    private static final List<VSyncMode> MAILBOX_ORDER = List.of(VSyncMode.MAILBOX, VSyncMode.ON);
+
+    private static List<VSyncMode> presentModeOrder(VSyncMode preferred) {
+        return switch (preferred) {
+            case MAILBOX -> MAILBOX_ORDER;
+            case OFF -> OFF_ORDER;
+            default -> ON_ORDER;
+        };
     }
 
-    public VSyncMode setVSyncMode(VSyncMode preferred, boolean vsyncEnabled) {
+    public VSyncMode chooseVSyncMode(VSyncMode preferred) {
+        for (VSyncMode candidate : presentModeOrder(preferred)) {
+            if (supportsVSyncMode(candidate)) return candidate;
+        }
+        return vsyncMode;
+    }
+
+    public VSyncMode applyVSync(VSyncMode preferred) {
+        if (device == 0 || !claimed) return vsyncMode;
         final long window = Display.getWindow();
-        final VSyncMode requested = preferred.resolve(vsyncEnabled);
-        for (VSyncMode candidate : requested.fallbackOrder()) {
+        final List<VSyncMode> order = presentModeOrder(preferred);
+        for (VSyncMode candidate : order) {
             final int sdlMode = toSdl(candidate);
             if (!SDL_WindowSupportsGPUPresentMode(device, window, sdlMode)) continue;
             if (!SDL_SetGPUSwapchainParameters(device, window, SDL_GPU_SWAPCHAINCOMPOSITION_SDR, sdlMode)) {
                 LOG.warn("Failed to set present mode {}: {}", candidate, SDLError.SDL_GetError());
                 continue;
             }
+            if (candidate != order.get(0)) {
+                LOG.warn("Present mode {} is not supported by this window; using {} instead", order.get(0), candidate);
+            }
             vsyncMode = candidate;
-            LOG.info("SDL present mode {} (requested {}, preference {}, vsync={}), refresh {}Hz, supported: vsync={} mailbox={} immediate={}",
-                candidate, requested, preferred, vsyncEnabled, getDisplayRefreshRateHz(),
-                supportsVSyncMode(VSyncMode.ON), supportsVSyncMode(VSyncMode.MAILBOX), supportsVSyncMode(VSyncMode.OFF));
+            LOG.info("SDL present mode {} (preferred={}), refresh {}Hz, {}, video={}, framesInFlight={}, supported: vsync={} immediate={} mailbox={}",
+                candidate, preferred, getDisplayRefreshRateHz(),
+                (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0 ? "fullscreen" : "windowed",
+                SDL_GetCurrentVideoDriver(), FRAMES_IN_FLIGHT,
+                supportsVSyncMode(VSyncMode.ON), supportsVSyncMode(VSyncMode.OFF), supportsVSyncMode(VSyncMode.MAILBOX));
             return candidate;
         }
-        LOG.warn("No usable present mode for request {}; keeping {}", requested, vsyncMode);
+        LOG.warn("No usable present mode for preference {}; keeping {}", preferred, vsyncMode);
         return vsyncMode;
     }
 
     public boolean supportsVSyncMode(VSyncMode mode) {
         return device != 0 && claimed && SDL_WindowSupportsGPUPresentMode(device, Display.getWindow(), toSdl(mode));
+    }
+
+    public long getClaimedWindow() {
+        return device != 0 && claimed ? Display.getWindow() : 0L;
+    }
+
+    public boolean wasWindowResized() {
+        return getClaimedWindow() != 0L && Display.wasResized();
+    }
+
+    public long getWindowSizeInPixels() {
+        final long window = getClaimedWindow();
+        if (window == 0) return 0L;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer w = stack.mallocInt(1);
+            final IntBuffer h = stack.mallocInt(1);
+            SDL_GetWindowSizeInPixels(window, w, h);
+            return ((long) w.get(0) << 32) | (h.get(0) & 0xFFFFFFFFL);
+        }
     }
 
     private static int toSdl(VSyncMode mode) {

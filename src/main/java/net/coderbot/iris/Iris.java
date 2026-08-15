@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
@@ -530,6 +531,20 @@ public class Iris {
             logger.warn("Falling back to normal rendering without shaders because the shaderpack could not be loaded");
             setShadersDisabled();
             fallback = true;
+        }
+    }
+
+    public static void warmupShaderTransforms() {
+        if (currentPack == null) return;
+        try {
+            if (BackendManager.RENDER_BACKEND.isSDLGPU()) {
+                IrisGLSMBridge.installPostTransformHook();
+            }
+            final ProgramSet programs = currentPack.getProgramSet(lastDimensionName != null ? lastDimensionName : "Overworld");
+            PerFrameUniformBlockHarvester.harvest(programs);
+            DeferredWorldRenderingPipeline.warmupTransforms(programs);
+        } catch (Throwable t) {
+            logger.warn("Early shader transform warmup failed; transforms will run at pipeline creation", t);
         }
     }
 

@@ -119,6 +119,7 @@ import java.util.Optional;
 import java.util.OptionalInt;
 import java.util.Set;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.IntFunction;
 import java.util.function.Supplier;
 
@@ -236,6 +237,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		final long _t0 = System.nanoTime();
 		long _tLast = _t0;
 
+		final int entryTextureUnit = GLStateManager.getActiveTextureUnit();
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+		customTextureManager = new CustomTextureManager(programs.getPackDirectives(), programs.getPack().getCustomTextureDataMap(), programs.getPack().getIrisCustomTextureDataMap(), programs.getPack().getCustomNoiseTexture());
+		GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + entryTextureUnit);
+
 		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> prepareTransformFutures =
 			submitCompositeTransforms(programs.getPrepare(), TextureStage.PREPARE, programs.getPackDirectives().getTextureMap());
 		final Map<Integer, CompletableFuture<Map<PatchShaderType, String>>> deferredTransformFutures =
@@ -339,8 +345,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		// Don't clobber anything in texture unit 0. It probably won't cause issues, but we're just being cautious here.
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
-
-		customTextureManager = new CustomTextureManager(programs.getPackDirectives(), programs.getPack().getCustomTextureDataMap(), programs.getPack().getIrisCustomTextureDataMap(), programs.getPack().getCustomNoiseTexture());
 
 		whitePixel = new NativeImageBackedSingleColorTexture(255, 255, 255, 255);
 
@@ -488,7 +492,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		this.instancedAttributeTransforms = new HashMap<>();
 		for (Map.Entry<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> entry : instancedTransformFutures.entrySet()) {
 			try {
-				this.instancedAttributeTransforms.put(entry.getKey(), entry.getValue().join());
+				final Map<PatchShaderType, String> transformed = entry.getValue().join();
+				if (transformed == null) continue;
+				this.instancedAttributeTransforms.put(entry.getKey(), transformed);
 			} catch (Exception e) {
 				Iris.logger.warn("Instanced transform failed for {}; disabling TESR instancing", entry.getKey().getLeft(), e);
 				supportsTesrInstancing = false;
@@ -2174,20 +2180,26 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			submitAttributeTransforms(ProgramFallbackResolver resolver, ProgramId[] ids, boolean instanced) {
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>();
 		final Set<String> processedSourceNames = new HashSet<>();
+		final Map<String, Boolean> mvBuiltinsMemo = new ConcurrentHashMap<>();
 		for (ProgramId id : ids) {
 			if (id.getGroup() == ProgramGroup.Dh) continue;
 			final ProgramSource source = resolver.resolveNullable(id);
 			if (source == null || !processedSourceNames.add(source.getName())) {
 				continue;
 			}
-			if (instanced && referencesMvBuiltinsOutsideVertex(source)) {
-				Iris.logger.info("TESR instancing: {} references MV builtins outside the vertex stage, keeping CPU path", source.getName());
-				continue;
-			}
 			final String vertexSource = source.getVertexSource().orElse(null);
 			final boolean scrollGlint = GlintScrollInjector.shouldInject(id, source);
 			for (InputAvailability avail : INPUT_AVAILABILITIES) {
 				futures.put(Pair.of(source.getName(), avail), Iris.ShaderTransformExecutor.submitTracked(() -> {
+					if (instanced && mvBuiltinsMemo.computeIfAbsent(source.getName(), k -> {
+						final boolean references = referencesMvBuiltinsOutsideVertex(source);
+						if (references) {
+							Iris.logger.info("TESR instancing: {} references MV builtins outside the vertex stage, keeping CPU path", k);
+						}
+						return references;
+					})) {
+						return null;
+					}
 					final String geometry = source.getGeometrySource().orElse(null);
 					final String tessControl = source.getTessControlSource().orElse(null);
 					final String tessEval = source.getTessEvalSource().orElse(null);
@@ -2261,6 +2273,40 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		}
 		return Optional.empty();
+	}
+
+	public static void warmupTransforms(ProgramSet programs) {
+		final Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> tm = programs.getPackDirectives().getTextureMap();
+		submitCompositeTransforms(programs.getPrepare(), TextureStage.PREPARE, tm);
+		submitCompositeTransforms(programs.getDeferred(), TextureStage.DEFERRED, tm);
+		submitCompositeTransforms(programs.getComposite(), TextureStage.COMPOSITE_AND_FINAL, tm);
+		programs.getCompositeFinal().filter(ProgramSource::isValid)
+			.ifPresent(source -> submitCompositeTransform(source, TextureStage.COMPOSITE_AND_FINAL, tm));
+
+		final ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
+		submitAttributeTransforms(resolver, ProgramId.values(), false);
+		submitAttributeTransforms(resolver, INSTANCED_PROGRAM_IDS, true);
+
+		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
+		final Optional<ProgramSource> translucentSource = first(programs.getGbuffersWater(), terrainSource);
+		final Optional<ProgramSource> shadowSource = programs.getShadow();
+		final Optional<ProgramSource> shadowTranslucentSource = first(programs.getShadowWater(), shadowSource);
+		terrainSource.ifPresent(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform);
+		translucentSource.ifPresent(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform);
+		shadowSource.ifPresent(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform);
+		shadowTranslucentSource.ifPresent(DeferredWorldRenderingPipeline::submitCeleritasTerrainTransform);
+
+		submitSetupComputeTransforms(programs.getSetup(), tm);
+
+		final ComputeSource[] shadowCompute = programs.getShadowCompute();
+		if (shadowCompute != null) {
+			for (final ComputeSource source : shadowCompute) {
+				if (source == null || !source.getSource().isPresent()) continue;
+				final String name = source.getName();
+				final String src = source.getSource().get();
+				Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchCompute(name, src, TextureStage.GBUFFERS_AND_SHADOW, tm));
+			}
+		}
 	}
 
 }

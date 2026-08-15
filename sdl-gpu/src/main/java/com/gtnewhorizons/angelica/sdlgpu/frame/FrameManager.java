@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
+import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import com.gtnewhorizons.angelica.sdlgpu.resource.UploadArena;
@@ -16,16 +17,19 @@ import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_FColor;
+import org.lwjgl.sdl.SDL_GPUBlitInfo;
+import org.lwjgl.sdl.SDL_GPUBlitRegion;
 import org.lwjgl.sdl.SDL_GPUColorTargetInfo;
 import org.lwjgl.sdl.SDL_GPUDepthStencilTargetInfo;
-import org.lwjglx.opengl.Display;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
-import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicLong;
 
 import static org.lwjgl.sdl.SDLGPU.*;
+import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_NONE;
 import static org.lwjgl.system.MemoryStack.*;
 
 /**
@@ -47,9 +51,6 @@ public final class FrameManager {
         public long renderPass;
         public long copyPass;
         public boolean computePassOpen;
-        public long swapchainTexture;
-        public int swapchainWidth;
-        public int swapchainHeight;
         public boolean frameActive;
         public long currentColorTarget;
         public long currentDepthTarget;
@@ -57,10 +58,10 @@ public final class FrameManager {
         public long frameNumber;
         public boolean clearedThisFrame;
         public boolean depthClearedThisFrame;
-        public boolean swapchainUsedThisFrame;
-        public boolean swapchainAcquiredThisFrame;
+        public boolean fbo0UsedThisFrame;
+        public boolean presentedThisFrame;
         public boolean swapchainUnavailable;
-        public boolean skipPresent;
+        public boolean windowThreadChecked;
         public long renderPassGeneration;
 
         public boolean wantFenceOnNextSubmit;
@@ -82,7 +83,12 @@ public final class FrameManager {
         public int batchBreakSamplerThisFrame;
         public int stateAppliesThisFrame;
         public long acquireWaitNanosThisFrame;
+        public volatile long lastFrameGateNanos;
+        public volatile long lastFrameGateEndNanos;
+        public int midFrameSubmitsThisFrame;
         public int mipGensThisFrame;
+        public int mipGenSubmitsThisFrame;
+        public int uploadFlushSubmitsThisFrame;
         public int blitsThisFrame;
         public int presentSkipsThisFrame;
         public int emptyFramesThisFrame;
@@ -143,53 +149,52 @@ public final class FrameManager {
 
     private volatile boolean globalSyncAtNextBeginFrame;
 
-    private final CopyOnWriteArrayList<FrameState> registeredFrames = new CopyOnWriteArrayList<>();
+    private final ThreadRegistry<FrameState> registeredFrames = new ThreadRegistry<>(new FrameState[0]);
 
-     private volatile FrameState soleFrame;
-
-    private final ThreadLocal<FrameState> tlFrame = ThreadLocal.withInitial(() -> {
-        final FrameState f = new FrameState();
-        registeredFrames.add(f);
-        refreshSoleFrame();
-        return f;
-    });
-
-    private void refreshSoleFrame() {
-        soleFrame = registeredFrames.size() == 1 ? registeredFrames.get(0) : null;
-    }
+    private final ThreadLocal<FrameState> tlFrame = new ThreadLocal<>();
 
     public FrameState frame() {
-        final FrameState f = soleFrame;
-        if (f != null && f.owner == Thread.currentThread()) return f;
-        return tlFrame.get();
+        final FrameState sole = registeredFrames.sole();
+        if (sole != null && sole.owner == Thread.currentThread()) return sole;
+        final FrameState f = tlFrame.get();
+        return f != null ? f : registerFrame();
+    }
+
+    private FrameState registerFrame() {
+        final FrameState f = new FrameState();
+        tlFrame.set(f);
+        registeredFrames.add(f);
+        return f;
+    }
+
+    public int registeredFrameCount() {
+        return registeredFrames.size();
     }
 
     public FrameState busiestFrame() {
+        final FrameState[] frames = registeredFrames.snapshot();
         FrameState best = null;
-        for (final FrameState f : registeredFrames) {
+        for (final FrameState f : frames) {
             if (best == null || f.frameNumber > best.frameNumber) best = f;
         }
         return best != null ? best : frame();
     }
 
-    public static final long SWAPCHAIN_LAYOUT_HASH = 0x5CA1AB1E5CA1AB1EL;
+    public static final long FBO0_LAYOUT_HASH = 0x5CA1AB1E5CA1AB1EL;
+
+    private final OffscreenTarget finalTarget = new OffscreenTarget();
+
+    public OffscreenTarget finalTarget() { return finalTarget; }
+
+    public void destroyFinalTarget() {
+        if (resourceManager != null) finalTarget.destroy(resourceManager);
+    }
 
     public static final long MAX_PENDING_UPLOAD_BYTES = 16L * 1024L * 1024L;
     public static final int MAX_PENDING_UPLOAD_COMMANDS = 256;
 
     private Runnable beforeEndCopyPass;
 
-    private long statLoopFrames;
-    private long statPresentedFrames;
-    private long statPresentSkips;
-    private long statEmptyFrames;
-    private long statAcquireWaitNanos;
-
-    public long statLoopFrames() { return statLoopFrames; }
-    public long statPresentedFrames() { return statPresentedFrames; }
-    public long statPresentSkips() { return statPresentSkips; }
-    public long statEmptyFrames() { return statEmptyFrames; }
-    public long statAcquireWaitNanos() { return statAcquireWaitNanos; }
 
     public FrameManager(Device device) {
         this.device = device;
@@ -199,23 +204,11 @@ public final class FrameManager {
         this.resourceManager = resourceManager;
     }
 
-    private static volatile boolean threadLogged;
-
     public void beginFrame() {
         final FrameState f = frame();
         if (f.frameActive) {
             LOG.warn("beginFrame() called while frame already active on thread {}", Thread.currentThread().getName());
             return;
-        }
-        if (!threadLogged) {
-            threadLogged = true;
-            final String renderThread = Thread.currentThread().getName();
-            final String windowThread = device.getWindowThreadName();
-            if (windowThread != null && !windowThread.equals(renderThread)) {
-                LOG.warn("Frames are recorded on '{}' but the SDL window was created on '{}'; SDL requires swapchain acquire/wait on the window-creating thread", renderThread, windowThread);
-            } else {
-                LOG.info("First beginFrame() on thread={}", renderThread);
-            }
         }
 
         flushPendingUploadCommandBuffer(f);
@@ -231,11 +224,10 @@ public final class FrameManager {
             throw new RuntimeException("Failed to acquire GPU command buffer: " + SDLError.SDL_GetError());
         }
 
-        f.swapchainTexture = 0;
-        f.swapchainWidth = 0;
-        f.swapchainHeight = 0;
-        f.swapchainAcquiredThisFrame = false;
         f.swapchainUnavailable = false;
+        f.presentedThisFrame = false;
+
+        maintainFinalTarget();
 
         f.frameActive = true;
         f.renderPass = 0;
@@ -244,25 +236,53 @@ public final class FrameManager {
         f.frameNumber++;
         f.clearedThisFrame = false;
         f.depthClearedThisFrame = false;
-        f.swapchainUsedThisFrame = false;
-        f.skipPresent = false;
+        f.fbo0UsedThisFrame = false;
+    }
+
+    private static final long FINAL_TARGET_SIZE_POLL_NANOS = 1_000_000_000L;
+
+    private long finalTargetPollNanos;
+    private volatile Thread mainThread;
+
+    public void setMainThread(Thread thread) {
+        this.mainThread = thread;
+    }
+
+    // Resizing releases a texture an in-flight present may still reference, so drain before ensureSize.
+    private void maintainFinalTarget() {
+        if (resourceManager == null) return;
+        final Thread owner = mainThread;
+        if (owner != null && Thread.currentThread() != owner) return;
+
+        final long now = System.nanoTime();
+        final boolean poll = finalTargetPollNanos == 0L || now - finalTargetPollNanos >= FINAL_TARGET_SIZE_POLL_NANOS;
+        if (!poll && !device.wasWindowResized() && finalTarget.isReady()) return;
+        if (poll) finalTargetPollNanos = now;
+
+        final long size = device.getWindowSizeInPixels();
+        if (size == 0L) return;
+        final int width = (int) (size >> 32);
+        final int height = (int) size;
+        if (finalTarget.isReady() && width == finalTarget.width() && height == finalTarget.height()) return;
+
+        if (presenter != null) presenter.drain();
+        finalTarget.ensureSize(device, resourceManager, width, height);
     }
 
     public void markFrameEmpty(FrameState f) {
-        f.skipPresent = true;
         f.emptyFramesThisFrame++;
     }
 
     static boolean swapchainClearNeedsPassBreak(ContextState st, FrameState f) {
-        return (st.pendingSwapchainClear || st.pendingSwapchainDepthClear || st.pendingSwapchainStencilClear) && f.renderPass != 0 && f.currentColorTarget == f.swapchainTexture;
+        return (st.pendingSwapchainClear || st.pendingSwapchainDepthClear || st.pendingSwapchainStencilClear) && f.renderPass != 0 && f.activeLayoutHash == FBO0_LAYOUT_HASH;
     }
 
-    public boolean ensureSwapchainRenderPass(FrameState f, ContextState st) {
+    public boolean ensureFbo0RenderPass(FrameState f, ContextState st) {
         final boolean clearColor = st.pendingSwapchainClear;
         if (swapchainClearNeedsPassBreak(st, f)) {
             endRenderPassIfActive(f);
         }
-        final boolean applied = ensureSwapchainRenderPass(f,
+        final boolean applied = ensureFbo0RenderPass(f,
             clearColor ? st.pendingSwapchainR : st.clearR,
             clearColor ? st.pendingSwapchainG : st.clearG,
             clearColor ? st.pendingSwapchainB : st.clearB,
@@ -277,9 +297,9 @@ public final class FrameManager {
         return true;
     }
 
-    private boolean ensureSwapchainRenderPass(FrameState f, float clearR, float clearG, float clearB, float clearA, boolean clear, boolean clearDepth, float depthValue, boolean clearStencil, int stencilValue) {
-        if (!ensureSwapchainAcquired(f)) return false; // present-skip; don't bind tex=0
-        if (f.renderPass != 0 && f.currentColorTarget == f.swapchainTexture) {
+    private boolean ensureFbo0RenderPass(FrameState f, float clearR, float clearG, float clearB, float clearA, boolean clear, boolean clearDepth, float depthValue, boolean clearStencil, int stencilValue) {
+        if (!finalTarget.isReady() || f.commandBuffer == 0) return false;
+        if (f.renderPass != 0 && f.activeLayoutHash == FBO0_LAYOUT_HASH) {
             return false;
         }
 
@@ -289,7 +309,7 @@ public final class FrameManager {
             clear = true;
         }
 
-        final long depthTexture = resourceManager != null ? resourceManager.getOrCreateSwapchainDepthStencil(f.swapchainWidth, f.swapchainHeight) : 0L;
+        final long depthTexture = resourceManager != null ? resourceManager.getOrCreateSwapchainDepthStencil(finalTarget.width(), finalTarget.height()) : 0L;
         if (depthTexture != 0 && !f.depthClearedThisFrame) {
             clearDepth = true;
             clearStencil = true;
@@ -298,7 +318,7 @@ public final class FrameManager {
         try (var stack = stackPush()) {
             final SDL_GPUColorTargetInfo.Buffer colorTargets = SDL_GPUColorTargetInfo.calloc(1, stack);
             final long ctAddr = colorTargets.get(0).address();
-            MemoryAccess.putAddress(ctAddr + SDL_GPUColorTargetInfo.TEXTURE, f.swapchainTexture);
+            MemoryAccess.putAddress(ctAddr + SDL_GPUColorTargetInfo.TEXTURE, finalTarget.colorTexture());
             MemoryAccess.putInt(ctAddr + SDL_GPUColorTargetInfo.LOAD_OP, clear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
             MemoryAccess.putInt(ctAddr + SDL_GPUColorTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
 
@@ -333,10 +353,11 @@ public final class FrameManager {
             }
             f.renderPassGeneration++;
             f.swapchainPassesThisFrame++;
-            f.currentColorTarget = f.swapchainTexture;
+            f.currentColorTarget = finalTarget.colorTexture();
             f.currentDepthTarget = depthTexture;
-            f.activeLayoutHash = SWAPCHAIN_LAYOUT_HASH;
-            f.swapchainUsedThisFrame = true;
+            f.activeLayoutHash = FBO0_LAYOUT_HASH;
+            f.fbo0UsedThisFrame = true;
+            finalTarget.markContent();
         }
         return true;
     }
@@ -387,6 +408,8 @@ public final class FrameManager {
     }
 
     public void noteMipGen() { frame().mipGensThisFrame++; }
+
+    public void noteMipGenSubmit() { frame().mipGenSubmitsThisFrame++; }
 
     public void noteBlit() { frame().blitsThisFrame++; }
 
@@ -477,17 +500,14 @@ public final class FrameManager {
     }
 
     public void requestFlushOnAllRegisteredFrames() {
-        final int n = registeredFrames.size();
-        for (int i = 0; i < n; i++) {
-            registeredFrames.get(i).flushRequested = true;
+        for (final FrameState f : registeredFrames.snapshot()) {
+            f.flushRequested = true;
         }
     }
 
     public void requestSyncFlushOnAllRegisteredFrames() {
         globalSyncAtNextBeginFrame = true;
-        final int n = registeredFrames.size();
-        for (int i = 0; i < n; i++) {
-            final FrameState f = registeredFrames.get(i);
+        for (final FrameState f : registeredFrames.snapshot()) {
             f.flushRequested = true;
             f.syncOnNextFlush = true;
         }
@@ -514,10 +534,6 @@ public final class FrameManager {
         endCopyPassIfActive(f);
         endRenderPassIfActive(f);
 
-        if (!f.swapchainAcquiredThisFrame && !f.swapchainUnavailable && !f.skipPresent && f.commandBuffer != 0) {
-            ensureSwapchainAcquired(f);
-        }
-
         if (f.commandBuffer != 0) {
             Tracy.beginZone(Z_SDL_SUBMIT);
             try {
@@ -538,13 +554,13 @@ public final class FrameManager {
             f.commandBuffer = 0;
         }
 
-        if (Tracy.ENABLED && resourceManager != null) SdlFramePlots.emit(f, resourceManager);
+        drainWindowPresentCounters(f);
 
-        statLoopFrames++;
-        if (f.swapchainAcquiredThisFrame) statPresentedFrames++;
-        statPresentSkips += f.presentSkipsThisFrame;
-        statEmptyFrames += f.emptyFramesThisFrame;
-        statAcquireWaitNanos += f.acquireWaitNanosThisFrame;
+        if (Tracy.ENABLED && resourceManager != null) {
+            SdlFramePlots.emit(f, resourceManager);
+        }
+
+        f.midFrameSubmitsThisFrame = 0;
 
         f.lastPlottedRenderPassGen = f.renderPassGeneration;
         f.computePassesThisFrame = 0;
@@ -563,6 +579,8 @@ public final class FrameManager {
         f.stateAppliesThisFrame = 0;
         f.acquireWaitNanosThisFrame = 0;
         f.mipGensThisFrame = 0;
+        f.mipGenSubmitsThisFrame = 0;
+        f.uploadFlushSubmitsThisFrame = 0;
         f.blitsThisFrame = 0;
         f.clearPassesThisFrame = 0;
         f.swapchainPassesThisFrame = 0;
@@ -577,9 +595,6 @@ public final class FrameManager {
         f.computeBatchJoinsThisFrame = 0;
 
         f.frameActive = false;
-        f.swapchainTexture = 0;
-
-        if (afterPresent != null) afterPresent.run();
     }
 
     public void submitMidFrame() {
@@ -603,6 +618,7 @@ public final class FrameManager {
             Tracy.endZone();
         }
         f.submitsThisFrame++;
+        f.midFrameSubmitsThisFrame++;
         f.commandBuffer = 0;
         if (f.frameActive) {
             reacquireCommandBuffer();
@@ -614,6 +630,7 @@ public final class FrameManager {
         if (f.frameActive) {
             endFrame();
         }
+        presentFinalTarget();
         beginFrame();
     }
 
@@ -690,6 +707,7 @@ public final class FrameManager {
                 device.reportGpuFailure("submit pending upload command buffer");
             }
             f.submitsThisFrame++;
+            f.uploadFlushSubmitsThisFrame++;
             f.pendingUploadCommandBuffer = 0;
             f.pendingUploadBytes = 0;
             f.pendingUploadCommands = 0;
@@ -724,22 +742,16 @@ public final class FrameManager {
 
     public long getActiveLayoutHash(FrameState f) { return f.activeLayoutHash; }
 
-    public long getSwapchainTexture() {
-        final FrameState f = frame();
-        ensureSwapchainAcquired(f);
-        return f.swapchainTexture;
+    public long getFbo0Texture() {
+        return finalTarget.colorTexture();
     }
 
-    public int getSwapchainWidth() {
-        final FrameState f = frame();
-        ensureSwapchainAcquired(f);
-        return f.swapchainWidth;
+    public int getFbo0Width() {
+        return finalTarget.width();
     }
 
-    public int getSwapchainHeight() {
-        final FrameState f = frame();
-        ensureSwapchainAcquired(f);
-        return f.swapchainHeight;
+    public int getFbo0Height() {
+        return finalTarget.height();
     }
 
     public int getSwapchainFormat() {
@@ -774,8 +786,8 @@ public final class FrameManager {
         return frame().frameNumber;
     }
 
-    public boolean isSwapchainUsedThisFrame() {
-        return frame().swapchainUsedThisFrame;
+    public boolean isFbo0UsedThisFrame() {
+        return frame().fbo0UsedThisFrame;
     }
 
     public void reacquireCommandBuffer() {
@@ -788,24 +800,18 @@ public final class FrameManager {
         f.currentDepthTarget = 0;
 
         if (f.frameActive) {
-            final boolean wasAcquired = f.swapchainAcquiredThisFrame;
-            f.swapchainAcquiredThisFrame = false;
-            f.swapchainTexture = 0;
-            if (wasAcquired && !ensureSwapchainAcquired(f)) {
-                LOG.warn("Failed to re-acquire swapchain after readback: {}", SDLError.SDL_GetError());
-            }
             f.clearedThisFrame = false;
         }
     }
 
     public void releaseThreadState() {
-        final FrameState f = frame();
+        final FrameState f = tlFrame.get();
+        if (f == null) return;
         if (resourceManager != null) resourceManager.flushUploadArena(f);
         flushPendingUploadCommandBuffer(f);
         releaseFrameStateResources(f);
-        registeredFrames.remove(f);
         tlFrame.remove();
-        refreshSoleFrame();
+        registeredFrames.remove(f);
     }
 
     private void releaseFrameStateResources(FrameState f) {
@@ -843,23 +849,98 @@ public final class FrameManager {
     }
 
     public void releaseAllRegisteredFrames() {
-        for (FrameState f : registeredFrames) {
+        for (final FrameState f : registeredFrames.snapshot()) {
             releaseFrameStateResources(f);
         }
         registeredFrames.clear();
-        soleFrame = null;
     }
 
-    public boolean ensureSwapchainAcquired() {
-        return ensureSwapchainAcquired(frame());
+    public long lastFrameGateNanos() {
+        return frame().lastFrameGateNanos;
     }
 
-    public boolean ensureSwapchainAcquired(FrameState f) {
-        if (f.swapchainAcquiredThisFrame) return true;
-        if (f.swapchainUnavailable) return false;
-        if (!f.frameActive || f.commandBuffer == 0) return false;
+    public long lastFrameGateEndNanos() {
+        return frame().lastFrameGateEndNanos;
+    }
 
-        endActiveEncoders(f);
+    private Presenter presenter;
+
+    public void setPresenter(Presenter presenter) {
+        this.presenter = presenter;
+    }
+
+    private final FrameState windowFrame = new FrameState();
+
+    public FrameState windowFrame() {
+        return windowFrame;
+    }
+
+    public void presentFinalTarget() {
+        if (!finalTarget.hasContent()) return;
+        final long texture = finalTarget.colorTexture();
+        final int width = finalTarget.width();
+        final int height = finalTarget.height();
+        final Presenter p = presenter;
+        if (p != null && p.isEngaged()) {
+            final FrameState f = frame();
+            if (f.presentedThisFrame) return;
+            f.presentedThisFrame = true;
+            p.requestPresent(texture, width, height);
+        } else {
+            presentBlit(frame(), texture, width, height, SDL_FLIP_NONE);
+        }
+    }
+
+    private final AtomicLong windowAcquireWaitNanos = new AtomicLong();
+    private final AtomicInteger windowPresentSkips = new AtomicInteger();
+
+    private void drainWindowPresentCounters(FrameState f) {
+        if (f == windowFrame) return;
+        final long acquire = windowAcquireWaitNanos.getAndSet(0L);
+        if (acquire != 0L) {
+            f.acquireWaitNanosThisFrame += acquire;
+            f.lastFrameGateNanos = windowFrame.lastFrameGateNanos;
+            f.lastFrameGateEndNanos = windowFrame.lastFrameGateEndNanos;
+        }
+        f.presentSkipsThisFrame += windowPresentSkips.getAndSet(0);
+    }
+
+    private void noteAcquireWait(FrameState f, long waitNanos) {
+        if (f == windowFrame) windowAcquireWaitNanos.addAndGet(waitNanos);
+        else f.acquireWaitNanosThisFrame += waitNanos;
+    }
+
+    private void notePresentSkip(FrameState f) {
+        if (f == windowFrame) windowPresentSkips.incrementAndGet();
+        else f.presentSkipsThisFrame++;
+    }
+
+    public void presentOnWindowThread(long srcTexture, int srcW, int srcH) {
+        presentBlit(windowFrame, srcTexture, srcW, srcH, SDL_FLIP_NONE);
+        windowFrame.presentedThisFrame = false;
+        windowFrame.swapchainUnavailable = false;
+    }
+
+    public boolean presentBlit(FrameState f, long srcTexture, int srcW, int srcH, int flipMode) {
+        if (srcTexture == 0 || srcW <= 0 || srcH <= 0) return false;
+        if (f.presentedThisFrame || f.swapchainUnavailable) return false;
+
+        if (!f.windowThreadChecked) {
+            f.windowThreadChecked = true;
+            final Thread self = Thread.currentThread();
+            final Thread windowThread = device.getWindowThread();
+            if (windowThread != null && windowThread != self) {
+                LOG.warn("Swapchain acquired on '{}' but the SDL window was created on '{}'; SDL requires acquire on the window-creating thread", self.getName(), windowThread.getName());
+            } else {
+                LOG.info("First swapchain acquire on thread={}", self.getName());
+            }
+        }
+
+        final long window = device.getClaimedWindow();
+        if (window == 0) return false;
+
+        final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
+        if (cb == 0) return false;
 
         final long t0 = System.nanoTime();
         final long tex;
@@ -872,7 +953,7 @@ public final class FrameManager {
             final IntBuffer pHeight = stack.ints(0);
             Tracy.beginZone(Z_SDL_ACQUIRE_WAIT);
             try {
-                callOk = SDL_WaitAndAcquireGPUSwapchainTexture(f.commandBuffer, Display.getWindow(), pTexture, pWidth, pHeight);
+                callOk = SDL_WaitAndAcquireGPUSwapchainTexture(cb, window, pTexture, pWidth, pHeight);
             } finally {
                 Tracy.endZone();
             }
@@ -880,25 +961,43 @@ public final class FrameManager {
             w = pWidth.get(0);
             h = pHeight.get(0);
         } catch (RuntimeException re) {
-            f.acquireWaitNanosThisFrame += System.nanoTime() - t0;
+            SDL_CancelGPUCommandBuffer(cb);
             f.swapchainUnavailable = true;
             throw re;
         }
-        f.acquireWaitNanosThisFrame += System.nanoTime() - t0;
+        final long tEnd = System.nanoTime();
+        f.lastFrameGateNanos = tEnd - t0;
+        f.lastFrameGateEndNanos = tEnd;
+        noteAcquireWait(f, tEnd - t0);
 
-        if (!callOk) {
+        if (!callOk || tex == 0) {
+            SDL_CancelGPUCommandBuffer(cb);
             f.swapchainUnavailable = true;
+            notePresentSkip(f);
             return false;
         }
-        if (tex == 0) {
-            f.swapchainUnavailable = true;
-            f.presentSkipsThisFrame++;
+
+        try (MemoryStack stack = stackPush()) {
+            final long info = stack.ncalloc(SDL_GPUBlitInfo.ALIGNOF, 1, SDL_GPUBlitInfo.SIZEOF);
+            writeBlitRegion(info + SDL_GPUBlitInfo.SOURCE, srcTexture, srcW, srcH);
+            writeBlitRegion(info + SDL_GPUBlitInfo.DESTINATION, tex, w, h);
+            MemoryAccess.putInt(info + SDL_GPUBlitInfo.FILTER, SDL_GPU_FILTER_LINEAR);
+            MemoryAccess.putInt(info + SDL_GPUBlitInfo.FLIP_MODE, flipMode);
+            nSDL_BlitGPUTexture(cb, info);
+        }
+
+        if (!SDL_SubmitGPUCommandBuffer(cb)) {
+            device.reportGpuFailure("submit present blit");
             return false;
         }
-        f.swapchainTexture = tex;
-        f.swapchainWidth = w;
-        f.swapchainHeight = h;
-        f.swapchainAcquiredThisFrame = true;
+        f.presentedThisFrame = true;
+        if (afterPresent != null) afterPresent.run();
         return true;
+    }
+
+    private static void writeBlitRegion(long region, long texture, int w, int h) {
+        MemoryAccess.putAddress(region + SDL_GPUBlitRegion.TEXTURE, texture);
+        MemoryAccess.putInt(region + SDL_GPUBlitRegion.W, w);
+        MemoryAccess.putInt(region + SDL_GPUBlitRegion.H, h);
     }
 }

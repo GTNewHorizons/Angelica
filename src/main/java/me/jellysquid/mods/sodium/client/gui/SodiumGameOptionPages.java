@@ -55,6 +55,9 @@ public class SodiumGameOptionPages {
     private static final MinecraftOptionsStorage vanillaOpts = new MinecraftOptionsStorage();
     private static final AngelicaOptionsStorage angelicaOpts = new AngelicaOptionsStorage();
 
+    private static final int MIN_RENDER_AHEAD = 0;
+    private static final int MAX_RENDER_AHEAD = 9;
+
     public static OptionPage general() {
         final List<OptionGroup> groups = new ArrayList<>();
         final OptionGroup.Builder firstGroupBuilder = OptionGroup.createBuilder();
@@ -508,12 +511,9 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(int.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.cpu_render_ahead_limit.name"))
                         .setTooltip(I18n.format("sodium.options.cpu_render_ahead_limit.tooltip"))
-                        .setControl(o -> new SliderControl(o, GLStateManager.getMinRenderAhead(), GLStateManager.getMaxRenderAhead(), 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
+                        .setControl(o -> new SliderControl(o, MIN_RENDER_AHEAD, MAX_RENDER_AHEAD, 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
                         .setImpact(OptionImpact.MEDIUM)
-                        .setBinding((opts, value) -> {
-                            opts.performance.cpuRenderAheadLimit = value;
-                            GLStateManager.applyRenderAheadLimit(value);
-                        }, opts -> GLStateManager.renderAheadLimit(opts.performance.cpuRenderAheadLimit))
+                        .setBinding((opts, value) -> opts.performance.cpuRenderAheadLimit = value, opts -> opts.performance.cpuRenderAheadLimit)
                         .setEnabled(GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL32)
                         .build())
 

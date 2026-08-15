@@ -59,6 +59,7 @@ dependencies {
     api(project(":glsm"))
 
     compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
+    compileOnly(libs.retrofuturabootstrap) { isTransitive = false }
     compileOnly(libs.celeritas.common) { isTransitive = false }
 
     // GL enum constants (compileOnly -- no runtime GL dependency)
@@ -76,6 +77,7 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(testFixtures(project(":glsm")))
+    testImplementation(libs.celeritas.common) { isTransitive = false }
     testImplementation(libs.lwjgl3.opengl)
     // GL.<clinit> loads liblwjgl_opengl.so. Test scope only: a root-level runtimeOnly collides with lwjgl3Bindings.
     testRuntimeOnly(libs.lwjgl3.opengl) { artifact { classifier = lwjglNatives } }

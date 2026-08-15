@@ -232,8 +232,12 @@ public class Uniforms {
     private void stageNormalMatrix() {
         GLStateManager.getModelViewMatrix().normal(normalMatrix);
         putMat3(FFPUniformBlock.NORMAL_MATRIX, normalMatrix);
-        final float scale = 1.0f / normalMatrix.getColumn(0, tempVec3).length();
-        putFloat(FFPUniformBlock.NORMAL_SCALE, scale);
+        putFloat(FFPUniformBlock.NORMAL_SCALE, rescaleFactor(normalMatrix, tempVec3));
+    }
+
+    static float rescaleFactor(Matrix3f normalMatrix, Vector3f scratch) {
+        final float f = normalMatrix.getColumn(2, scratch).lengthSquared();
+        return f > 1.0e-12f ? 1.0f / (float) Math.sqrt(f) : 1.0f;
     }
 
     private void stageTextureMatrices() {
