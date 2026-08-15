@@ -741,6 +741,12 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.openblocks.MixinTileEntityTrophyRenderer")
     ),
+    DRAGONAPI_PARTICLE_SPLIT(new MixinBuilder("Split DragonAPI's replacement particle renderer between the particle gbuffer programs")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.dragonapi.MixinThrottleableEffectRenderer")
+    ),
     MCPATCHER_FORGE(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures)

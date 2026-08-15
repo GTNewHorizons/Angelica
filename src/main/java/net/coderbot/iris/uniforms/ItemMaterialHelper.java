@@ -27,14 +27,13 @@ public class ItemMaterialHelper {
 
     /**
      * Get the material ID for an ItemStack.
-     * For ItemBlock: block.properties only, 0 if unmapped.
-     * For other items: item.properties only, -1 if unmapped.
+     * 0 if unmapped.
      *
      * @param itemStack The item stack to get material ID for
      */
     public static int getMaterialId(ItemStack itemStack) {
         if (itemStack == null || itemStack.getItem() == null) {
-            return -1;
+            return 0;
         }
 
         // Check item NBT conditions first
@@ -55,7 +54,7 @@ public class ItemMaterialHelper {
 
     public static int getMaterialId(Item item, int metadata) {
         if (item == null) {
-            return -1;
+            return 0;
         }
 
         // Check cache first
@@ -144,11 +143,11 @@ public class ItemMaterialHelper {
     private static int lookupItemPropertiesId(Item item) {
         final Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
         if (itemIds == null) {
-            return -1;
+            return 0;
         }
 
         final NamespacedId name = getCachedItemName(item);
-        return name == null ? -1 : itemIds.applyAsInt(name);
+        return name == null ? 0 : itemIds.applyAsInt(name);
     }
 
     /**

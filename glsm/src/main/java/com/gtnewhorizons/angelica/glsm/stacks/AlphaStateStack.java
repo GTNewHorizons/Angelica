@@ -26,10 +26,7 @@ public class AlphaStateStack extends AlphaState implements IStateStack<AlphaStat
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
         }
 
-        final AlphaState slot = stack[pointer++].set(this);
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.readVanilla(slot);
-        }
+        VanillaStateLayer.capture(vanillaLayer, stack[pointer++].set(this));
         return this;
     }
 
@@ -39,9 +36,7 @@ public class AlphaStateStack extends AlphaState implements IStateStack<AlphaStat
         }
 
         final AlphaState saved = stack[--pointer];
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.writeVanilla(saved);
-        } else {
+        if (!VanillaStateLayer.restore(vanillaLayer, saved)) {
             set(saved);
         }
         return this;
@@ -49,9 +44,7 @@ public class AlphaStateStack extends AlphaState implements IStateStack<AlphaStat
 
     public AlphaState readEffective(AlphaState out) {
         out.set(this);
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.readVanilla(out);
-        }
+        VanillaStateLayer.capture(vanillaLayer, out);
         return out;
     }
 

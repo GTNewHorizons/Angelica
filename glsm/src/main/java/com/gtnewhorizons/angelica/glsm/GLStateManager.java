@@ -1263,10 +1263,6 @@ public class GLStateManager {
         if (wasEnabled && !blend.isEffectivelyEnabled()) postVanillaBlendChange();
     }
 
-    private static final BlendState vanillaBlendBefore = new BlendState();
-    private static final BlendState vanillaBlendAfter = new BlendState();
-    private static boolean vanillaBlendEnabledBefore;
-
     private static void postVanillaBlendChange() {
         if (GLSMHooks.VANILLA_BLEND_CHANGE.hasListeners()) {
             GLSMHooks.VANILLA_BLEND_CHANGE.post(GLSMHooks.vanillaBlendChangeEvent);
@@ -1276,20 +1272,21 @@ public class GLStateManager {
     private static boolean snapshotVanillaBlendFunc() {
         if (!GLSMHooks.VANILLA_BLEND_CHANGE.hasListeners()) return false;
         final GLContextState glCtx = ctx();
-        glCtx.blendState.readEffective(vanillaBlendBefore);
-        vanillaBlendEnabledBefore = glCtx.blendMode.isEffectivelyEnabled();
+        glCtx.blendState.readEffective(glCtx.vanillaBlendBefore);
+        glCtx.vanillaBlendEnabledBefore = glCtx.blendMode.isEffectivelyEnabled();
         return true;
     }
 
     private static void postVanillaBlendChangeIfMoved(boolean snapshotted) {
         if (!snapshotted) return;
         final GLContextState glCtx = ctx();
-        glCtx.blendState.readEffective(vanillaBlendAfter);
-        if (glCtx.blendMode.isEffectivelyEnabled() != vanillaBlendEnabledBefore
-            || vanillaBlendAfter.getSrcRgb() != vanillaBlendBefore.getSrcRgb()
-            || vanillaBlendAfter.getDstRgb() != vanillaBlendBefore.getDstRgb()
-            || vanillaBlendAfter.getSrcAlpha() != vanillaBlendBefore.getSrcAlpha()
-            || vanillaBlendAfter.getDstAlpha() != vanillaBlendBefore.getDstAlpha()) {
+        final BlendState before = glCtx.vanillaBlendBefore;
+        final BlendState after = glCtx.blendState.readEffective(glCtx.vanillaBlendAfter);
+        if (glCtx.blendMode.isEffectivelyEnabled() != glCtx.vanillaBlendEnabledBefore
+            || after.getSrcRgb() != before.getSrcRgb()
+            || after.getDstRgb() != before.getDstRgb()
+            || after.getSrcAlpha() != before.getSrcAlpha()
+            || after.getDstAlpha() != before.getDstAlpha()) {
             postVanillaBlendChange();
         }
     }
@@ -1300,6 +1297,10 @@ public class GLStateManager {
 
     public static BlendState getEffectiveBlendState(BlendState out) {
         return ctx().blendState.readEffective(out);
+    }
+
+    public static boolean isEffectiveDepthMaskEnabled() {
+        return ctx().depthState.isEffectiveMaskEnabled();
     }
 
     public static boolean isEffectiveAlphaTestEnabled() {
@@ -3527,8 +3528,8 @@ public class GLStateManager {
         final int mask = glCtx.attribs.popInt();
         glCtx.attribDepth--;
 
-        // Snapshot before the stacks pop, so applyRestoredState can tell whether vanilla blend actually moved
-        final boolean blendSnapshotted = (mask & GL11.GL_COLOR_BUFFER_BIT) != 0 && snapshotVanillaBlendFunc();
+        // Snapshot before the stacks pop, so applyRestoredState can tell whether vanilla blend actually moved.
+        final boolean blendSnapshotted = (mask & (GL11.GL_COLOR_BUFFER_BIT | GL11.GL_ENABLE_BIT)) != 0 && snapshotVanillaBlendFunc();
 
         // First: restore BooleanStateStack states that were actually modified (fast path)
         // These use lazy copy-on-write with global depth tracking
@@ -3673,7 +3674,6 @@ public class GLStateManager {
             if (glCtx.restoreLogicOpChanged) {
                 RENDER_BACKEND.logicOp(glCtx.logicOpMode.getValue());
             }
-            postVanillaBlendChangeIfMoved(blendSnapshotted);
         }
         if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0 && glCtx.restoreStencilChanged) {
             RENDER_BACKEND.stencilFuncSeparate(GL11.GL_FRONT, glCtx.stencilState.getFuncFront(), glCtx.stencilState.getRefFront(), glCtx.stencilState.getValueMaskFront());
@@ -3746,6 +3746,8 @@ public class GLStateManager {
                 glCtx.dirtyTexCoordAttrib = true;
             }
         }
+
+        postVanillaBlendChangeIfMoved(blendSnapshotted);
     }
 
     public static void glClear(int mask) {
@@ -4931,17 +4933,17 @@ public class GLStateManager {
         final ShaderManager ffp = ShaderManager.getInstance();
         if (program == 0 && ffp.isEnabled()) {
             final int prev = glCtx.activeProgram;
-            final boolean caching = isCachingEnabled();
-            if (prev != 0) glCtx.programGeneration++;
+            final boolean changed = prev != 0;
+            if (changed) glCtx.programGeneration++;
             glCtx.activeProgram = 0; // Track that FFP was requested
-            if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
+            if (changed && GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = 0;
                 GLSMHooks.programChangeEvent.postBind = false;
                 GLSMHooks.PROGRAM_CHANGE.post(GLSMHooks.programChangeEvent);
             }
             ffp.activate();
-            if (GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
+            if (changed && GLSMHooks.PROGRAM_CHANGE.hasListeners()) {
                 GLSMHooks.programChangeEvent.previousProgram = prev;
                 GLSMHooks.programChangeEvent.newProgram = 0;
                 GLSMHooks.programChangeEvent.postBind = true;

@@ -26,10 +26,7 @@ public class ColorMaskStack extends ColorMask implements IStateStack<ColorMaskSt
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
         }
 
-        final ColorMask slot = stack[pointer++].set(this);
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.readVanilla(slot);
-        }
+        VanillaStateLayer.capture(vanillaLayer, stack[pointer++].set(this));
         return this;
     }
 
@@ -39,9 +36,7 @@ public class ColorMaskStack extends ColorMask implements IStateStack<ColorMaskSt
         }
 
         final ColorMask saved = stack[--pointer];
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.writeVanilla(saved);
-        } else {
+        if (!VanillaStateLayer.restore(vanillaLayer, saved)) {
             set(saved);
         }
         return this;

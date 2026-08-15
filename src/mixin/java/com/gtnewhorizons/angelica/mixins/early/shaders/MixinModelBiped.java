@@ -37,22 +37,25 @@ public abstract class MixinModelBiped {
         final ModelBiped model = (ModelBiped) (Object) this;
         final float[] data = PlayerReflectionCapture.vertexScratch();
 
+        final float uScale = PlayerReflectionCapture.atlasUScale();
+        final float vScale = PlayerReflectionCapture.atlasVScale();
+
         if (Tracy.ENABLED) Tracy.beginZone(Z_PLAYER_REFLECTION_CAPTURE);
         try {
             // Six 48-vertex blocks = body parts, each base box + overlay box
             int o = 0;
-            o = angelica$emitBox(model.bipedHead,       data, o, scale);
-            o = angelica$emitBox(model.bipedHeadwear,   data, o, scale);
-            o = angelica$emitBox(model.bipedRightArm,   data, o, scale);
-            o = angelica$emitBox(model.bipedRightArm,   data, o, scale);
-            o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale);
-            o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale);
-            o = angelica$emitBox(model.bipedLeftArm,    data, o, scale);
-            o = angelica$emitBox(model.bipedLeftArm,    data, o, scale);
-            o = angelica$emitBox(model.bipedRightLeg,   data, o, scale);
-            o = angelica$emitBox(model.bipedRightLeg,   data, o, scale);
-            o = angelica$emitBox(model.bipedBody,       data, o, scale);
-                angelica$emitBox(model.bipedBody,       data, o, scale);
+            o = angelica$emitBox(model.bipedHead,       data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedHeadwear,   data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedRightArm,   data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedRightArm,   data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedLeftLeg,    data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedLeftArm,    data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedLeftArm,    data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedRightLeg,   data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedRightLeg,   data, o, scale, uScale, vScale);
+            o = angelica$emitBox(model.bipedBody,       data, o, scale, uScale, vScale);
+                angelica$emitBox(model.bipedBody,       data, o, scale, uScale, vScale);
 
             PlayerReflectionCapture.drawPlayerCapture(data);
         } finally {
@@ -60,7 +63,7 @@ public abstract class MixinModelBiped {
         }
     }
 
-    private static int angelica$emitBox(ModelRenderer part, float[] out, int o, float scale) {
+    private static int angelica$emitBox(ModelRenderer part, float[] out, int o, float scale, float uScale, float vScale) {
         if (part == null || part.cubeList == null || part.cubeList.isEmpty()) {
             final int end = o + 24 * PlayerReflectionCapture.FLOATS_PER_VERTEX;
             Arrays.fill(out, o, end, 0.0f);
@@ -77,9 +80,6 @@ public abstract class MixinModelBiped {
         final ModelBox box = part.cubeList.getFirst();
         final TexturedQuad[] quads = ((AccessorModelBox) (Object) box).angelica$getQuadList();
         final Vector3f v = angelica$vec;
-
-        final float uScale = part.textureWidth > 0.0f ? part.textureWidth / PlayerReflectionCapture.ATLAS_SIZE : 1.0f;
-        final float vScale = part.textureHeight > 0.0f ? part.textureHeight / PlayerReflectionCapture.ATLAS_SIZE : 1.0f;
 
         for (int q = 0; q < 6; q++) {
             final PositionTextureVertex[] corners = quads[q].vertexPositions;

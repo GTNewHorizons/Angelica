@@ -10,8 +10,6 @@ import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix3f;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.joml.Matrix3f;
 import org.joml.Matrix4fc;
-import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -916,14 +914,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	 */
 	public void onModProgramOverride() {
 		if (current != null) {
-			passBeforeModProgram = current;
+			modProgramOverrode = true;
+			programBeforeModOverride = getActivePassProgramId();
 		}
 		current = null;
 		currentCondition = null;
 	}
 
-	public void restorePassAfterModProgram() {
-		if (refreshingPass || drivingProgram || passBeforeModProgram == null) {
+	public void restorePassAfterModProgram(int newProgram) {
+		if (refreshingPass || drivingProgram || !modProgramOverrode) {
+			return;
+		}
+		if (newProgram != 0 && newProgram != programBeforeModOverride) {
 			return;
 		}
 		refreshingPass = true;
@@ -931,13 +933,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			current = null;
 			matchPass();
 		} finally {
-			passBeforeModProgram = null;
+			modProgramOverrode = false;
+			programBeforeModOverride = -1;
 			refreshingPass = false;
 		}
 	}
 
 	private boolean refreshingPass;
-	private Pass passBeforeModProgram;
+	private boolean modProgramOverrode;
+	private int programBeforeModOverride = -1;
 
 	public void onVanillaBlendChanged() {
 		if (matchingBlend || drivingProgram || refreshingPass) {
@@ -1691,6 +1695,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	@Nullable
 	public ComputeProgram getShadowVoxelizationCompute() { return shadowVoxelizationCompute; }
 
+	@Nullable
+	public ShadowRenderer getShadowRenderer() { return shadowRenderer; }
+
 	private GlUniformMatrix4f voxelizationModelView;
 	private GlUniformMatrix3f voxelizationNormalMatrix;
 	private final Matrix3f voxelizationNormalScratch = new Matrix3f();
@@ -1834,6 +1841,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void beginHand() {
 		isRenderingFullScreenPass = true;
 		beginPass(null);
+		currentCondition = null;
 		profiler.startSection("iris_center_depth");
 		centerDepthSampler.sampleCenterDepth();
 		profiler.endSection();

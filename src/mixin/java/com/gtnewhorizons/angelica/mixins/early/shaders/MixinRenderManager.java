@@ -5,7 +5,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
-import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.entity.Render;
@@ -31,29 +30,22 @@ public class MixinRenderManager {
         final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
         final Class<?> prevRenderable = TesrAttribution.currentRenderable;
 
-        CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entity));
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(EntityIdHelper.getEntityId(entity), 0);
         TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
         }
-        final boolean nestedInBlockEntity = GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.BLOCK_ENTITIES;
-        if (nestedInBlockEntity) {
-            GbufferPrograms.setOverridePhase(WorldRenderingPhase.ENTITIES);
-        }
+        final boolean nestedInBlockEntity = GbufferPrograms.beginNestedEntityPhase();
 
         try {
             original.call(render, entity, x, y, z, entityYaw, partialTicks);
         } finally {
-            if (nestedInBlockEntity) {
-                GbufferPrograms.setOverridePhase(null);
-            }
+            GbufferPrograms.endNestedEntityPhase(nestedInBlockEntity);
             if (lightning) {
                 GbufferPrograms.teardownSpecialRenderCondition();
             }
-            CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(prevItemId);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
             TesrAttribution.currentRenderable = prevRenderable;
         }
     }

@@ -22,21 +22,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = { "team.chisel.client.render.tile.RenderCarvableBeacon" }, remap = false)
 public class MixinRenderCarvableBeacon {
 
-    @Unique
-    private static boolean angelica$cullWasEnabled;
-
     @Inject(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", at = @At("HEAD"))
     private void angelica$beginBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, CallbackInfo ci) {
-        angelica$cullWasEnabled = GLStateManager.glIsEnabled(GL11.GL_CULL_FACE);
+        // Chisel's beam leaves GL_CULL_FACE disabled behind it
+        GLStateManager.pushState(GL11.GL_ENABLE_BIT);
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
     }
 
     @Inject(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", at = @At("RETURN"))
     private void angelica$endBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
-        if (angelica$cullWasEnabled) {
-            GLStateManager.enableCull();
-        }
+        GLStateManager.popState();
     }
 
     @Redirect(

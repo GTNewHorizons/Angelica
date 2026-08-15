@@ -14,6 +14,8 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
 
     @Setter private VanillaStateLayer<DepthState> vanillaLayer;
 
+    private final DepthState effective = new DepthState();
+
     public DepthStateStack() {
         stack = new DepthState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
         for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
@@ -26,10 +28,7 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
         }
 
-        final DepthState slot = stack[pointer++].set(this);
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.readVanilla(slot);
-        }
+        VanillaStateLayer.capture(vanillaLayer, stack[pointer++].set(this));
         return this;
     }
 
@@ -39,14 +38,18 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
         }
 
         final DepthState saved = stack[--pointer];
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.writeVanilla(saved);
-            this.func = saved.getFunc();
-            this.clearValue = saved.getClearValue();
+        if (VanillaStateLayer.restore(vanillaLayer, saved)) {
+            setExceptMask(saved);
         } else {
             set(saved);
         }
         return this;
+    }
+
+    public boolean isEffectiveMaskEnabled() {
+        if (!VanillaStateLayer.isHeld(vanillaLayer)) return isEnabled();
+        vanillaLayer.readVanilla(effective);
+        return effective.isEnabled();
     }
 
     public boolean isEmpty() {

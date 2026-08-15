@@ -92,6 +92,27 @@ public final class PlayerReflectionCapture {
         return active && !drawnThisCapture;
     }
 
+    public static float atlasUScale() {
+        return atlasScale(true);
+    }
+
+    public static float atlasVScale() {
+        return atlasScale(false);
+    }
+
+    private static float atlasScale(boolean horizontal) {
+        final int skin = GLStateManager.getBoundTextureForServerState();
+        if (skin == 0 || skin == skin64Tex) return 1.0f;
+
+        final TextureInfo info = TextureInfoCache.INSTANCE.getInfo(skin);
+        final int dim = horizontal ? info.getWidth() : info.getHeight();
+        return dim > 0 ? atlasCopyDim(dim) / (float) ATLAS_SIZE : 1.0f;
+    }
+
+    private static int atlasCopyDim(int sourceDim) {
+        return Math.min(ATLAS_SIZE, sourceDim);
+    }
+
     /**
      * Emit the 288-vertex player batch VBO.
      */
@@ -146,8 +167,10 @@ public final class PlayerReflectionCapture {
 
         // Bind a 64x64 copy of the skin as `tex`
         final boolean copySkin = haveSkin && !packFillsAtlas;
-        if (copySkin) {
-            ensureSkin64Texture();
+        if (haveSkin) {
+            if (copySkin) {
+                ensureSkin64Texture();
+            }
 
             final GlImage atlas = GlImage.BY_NAME.get("playerAtlas_img");
             final int atlasId = atlas != null ? atlas.getId() : 0;
@@ -158,8 +181,8 @@ public final class PlayerReflectionCapture {
                 if (skinPixels == null || skinPixels.capacity() < required) {
                     skinPixels = ByteBuffer.allocateDirect(required).order(ByteOrder.nativeOrder());
                 }
-                skinCopyWidth = Math.min(ATLAS_SIZE, srcW);
-                skinCopyHeight = Math.min(ATLAS_SIZE, srcH);
+                skinCopyWidth = atlasCopyDim(srcW);
+                skinCopyHeight = atlasCopyDim(srcH);
 
                 skinPixels.clear();
                 GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, activeSkin);
@@ -168,9 +191,11 @@ public final class PlayerReflectionCapture {
             }
 
             if (skinPixels != null && (skinChanged || atlasId != lastUploadedAtlas)) {
-                skinPixels.rewind();
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
-                GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, skinCopyWidth, skinCopyHeight, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
+                if (copySkin) {
+                    skinPixels.rewind();
+                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
+                    GLStateManager.glTexSubImage2D(GL11.GL_TEXTURE_2D, 0, 0, 0, skinCopyWidth, skinCopyHeight, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, skinPixels);
+                }
 
                 if (atlas != null) {
                     skinPixels.rewind();
@@ -180,7 +205,7 @@ public final class PlayerReflectionCapture {
                 lastUploadedAtlas = atlasId;
             }
 
-            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, copySkin ? skin64Tex : activeSkin);
         }
 
         final ColorMask prevColor = GLStateManager.getColorMask();

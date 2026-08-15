@@ -69,7 +69,17 @@ public class GbufferPrograms {
 		}
 
 		entities = false;
-		setPhase(particles ? WorldRenderingPhase.PARTICLES : WorldRenderingPhase.NONE);
+		endPhase();
+	}
+
+	private static void endPhase() {
+		if (particles) {
+			setPhase(WorldRenderingPhase.PARTICLES);
+		} else if (entityLoop) {
+			setPhase(WorldRenderingPhase.ENTITIES);
+		} else {
+			setPhase(WorldRenderingPhase.NONE);
+		}
 	}
 
 	public static void beginOutline() {
@@ -83,8 +93,8 @@ public class GbufferPrograms {
 			throw new IllegalStateException("GbufferPrograms in weird state, tried to call endOutline when outline = false");
 		}
 
-		setPhase(WorldRenderingPhase.NONE);
 		outline = false;
+		endPhase();
 	}
 
 	public static int beginParticles() {
@@ -130,8 +140,8 @@ public class GbufferPrograms {
 			throw new IllegalStateException("GbufferPrograms in weird state, tried to call endBlockEntities when blockEntities = false");
 		}
 
-		setPhase(WorldRenderingPhase.NONE);
 		blockEntities = false;
+		endPhase();
 	}
 
 	public static void setCutoutDefaults() {
@@ -186,19 +196,27 @@ public class GbufferPrograms {
 	public static void popBlendState(int depth) {
 		blendDepth = depth;
 
-		if (blendEnabledSaves[depth]) {
-			GLStateManager.enableBlend();
-		} else {
-			GLStateManager.disableBlend();
+		final boolean enabled = blendEnabledSaves[depth];
+		if (enabled != GLStateManager.isEffectiveBlendEnabled()) {
+			if (enabled) {
+				GLStateManager.enableBlend();
+			} else {
+				GLStateManager.disableBlend();
+			}
 		}
 
 		final BlendState saved = blendSaves[depth];
-		GLStateManager.tryBlendFuncSeparate(saved.getSrcRgb(), saved.getDstRgb(), saved.getSrcAlpha(), saved.getDstAlpha());
+		GLStateManager.getEffectiveBlendState(blendScratch);
+		if (blendScratch.getSrcRgb() != saved.getSrcRgb() || blendScratch.getDstRgb() != saved.getDstRgb()
+			|| blendScratch.getSrcAlpha() != saved.getSrcAlpha() || blendScratch.getDstAlpha() != saved.getDstAlpha()) {
+			GLStateManager.tryBlendFuncSeparate(saved.getSrcRgb(), saved.getDstRgb(), saved.getSrcAlpha(), saved.getDstAlpha());
+		}
 	}
 
 	private static BlendState[] blendSaves = new BlendState[4];
 	private static boolean[] blendEnabledSaves = new boolean[4];
 	private static int blendDepth;
+	private static final BlendState blendScratch = new BlendState();
 
 	private static final long ALPHA_ENABLED_BIT = 1L << 48;
 	private static final long LIGHTMAP_ENABLED_BIT = 1L << 49;
@@ -238,6 +256,20 @@ public class GbufferPrograms {
 		}
 	}
 
+	public static boolean beginNestedEntityPhase() {
+		if (getCurrentPhase() != WorldRenderingPhase.BLOCK_ENTITIES) {
+			return false;
+		}
+		setOverridePhase(WorldRenderingPhase.ENTITIES);
+		return true;
+	}
+
+	public static void endNestedEntityPhase(boolean pushed) {
+		if (pushed) {
+			setOverridePhase(null);
+		}
+	}
+
 	public static void setOverridePhase(WorldRenderingPhase phase) {
 		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
@@ -273,11 +305,23 @@ public class GbufferPrograms {
 		}
 	}
 
+	private static SpecialCondition currentSpecial;
+
+	public static SpecialCondition getSpecialCondition() {
+		return currentSpecial;
+	}
+
+	public static Boolean getDeclaredTranslucency() {
+		return declaredTranslucent;
+	}
+
 	public static void setupSpecialRenderCondition(SpecialCondition override) {
+		currentSpecial = override;
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(override));
 	}
 
 	public static void teardownSpecialRenderCondition() {
+		currentSpecial = null;
 		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(null));
 	}
 

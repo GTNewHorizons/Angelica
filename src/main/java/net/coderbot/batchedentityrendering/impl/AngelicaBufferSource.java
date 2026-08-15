@@ -160,7 +160,7 @@ public class AngelicaBufferSource implements Groupable {
     private void clearCurrentId() {
         if (!anyIdSet) return;
         if (idKind == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(-1, 0);
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(0f, 0f, 0f, 0f);
         } else {
             CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
@@ -272,7 +272,7 @@ public class AngelicaBufferSource implements Groupable {
     public void applyIdAndRebind(int id) {
         anyIdSet = true;
         if (idKind == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(id);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
             rebindPass();
         } else {
             setBlockEntityAndRebind(id);
@@ -282,7 +282,7 @@ public class AngelicaBufferSource implements Groupable {
     public void applyIdNoRebind(int id) {
         anyIdSet = true;
         if (idKind == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(id);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
         } else {
             CapturedRenderingState.INSTANCE.setCurrentBlockEntity(id);
         }

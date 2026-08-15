@@ -42,6 +42,8 @@ public class IrisGLSMBridge {
 
     private static boolean blendDeferred = false;
 
+    private static boolean programRestoreDeferred = false;
+
     private static final Int2IntOpenHashMap programLastUpdatedFrame = new Int2IntOpenHashMap();
 
     private static void refreshBlendCondition() {
@@ -271,6 +273,13 @@ public class IrisGLSMBridge {
                 blendDeferred = false;
                 refreshBlendCondition();
             }
+            if (programRestoreDeferred) {
+                programRestoreDeferred = false;
+                final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+                if (pipeline instanceof DeferredWorldRenderingPipeline drp && drp.shouldOverrideShaders()) {
+                    drp.restorePassAfterModProgram(GLStateManager.getActiveProgram());
+                }
+            }
         });
 
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
@@ -295,13 +304,18 @@ public class IrisGLSMBridge {
 
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
-            if (!event.postBind || event.newProgram != 0) return;
+            if (!event.postBind) return;
 
             final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (!(pipeline instanceof DeferredWorldRenderingPipeline drp)) return;
             if (!drp.shouldOverrideShaders()) return;
 
-            drp.restorePassAfterModProgram();
+            if (GLStateManager.isForeignDraw()) {
+                programRestoreDeferred = true;
+                return;
+            }
+
+            drp.restorePassAfterModProgram(event.newProgram);
         });
 
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {

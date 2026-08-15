@@ -26,10 +26,7 @@ public class BlendStateStack extends BlendState implements IStateStack<BlendStat
             throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
         }
 
-        final BlendState slot = stack[pointer++].set(this);
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.readVanilla(slot);
-        }
+        VanillaStateLayer.capture(vanillaLayer, stack[pointer++].set(this));
         return this;
     }
 
@@ -39,14 +36,8 @@ public class BlendStateStack extends BlendState implements IStateStack<BlendStat
         }
 
         final BlendState saved = stack[--pointer];
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.writeVanilla(saved);
-            this.equationRgb = saved.getEquationRgb();
-            this.equationAlpha = saved.getEquationAlpha();
-            this.blendColorR = saved.getBlendColorR();
-            this.blendColorG = saved.getBlendColorG();
-            this.blendColorB = saved.getBlendColorB();
-            this.blendColorA = saved.getBlendColorA();
+        if (VanillaStateLayer.restore(vanillaLayer, saved)) {
+            setExceptFunc(saved);
         } else {
             set(saved);
         }
@@ -55,9 +46,7 @@ public class BlendStateStack extends BlendState implements IStateStack<BlendStat
 
     public BlendState readEffective(BlendState out) {
         out.set(this);
-        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
-            vanillaLayer.readVanilla(out);
-        }
+        VanillaStateLayer.capture(vanillaLayer, out);
         return out;
     }
 

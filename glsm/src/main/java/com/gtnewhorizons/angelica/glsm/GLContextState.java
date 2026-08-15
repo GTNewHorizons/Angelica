@@ -18,6 +18,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
@@ -176,6 +177,9 @@ class GLContextState {
     public int clientAttribStackPointer = 0;
     public final boolean[] restoreUnitChanged = new boolean[GLStateManager.MAX_TEXTURE_UNITS];
     public boolean restoreDepthChanged, restoreBlendChanged, restoreColorMaskChanged, restoreClearColorChanged, restoreDrawBufferChanged, restoreLogicOpChanged, restoreStencilChanged, restoreViewportChanged, restoreLineChanged, restorePointChanged, restorePolygonChanged, restoreActiveUnitChanged;
+    public final BlendState vanillaBlendBefore = new BlendState();
+    public final BlendState vanillaBlendAfter = new BlendState();
+    public boolean vanillaBlendEnabledBefore;
     public int drawFramebuffer = 0;
     public int readFramebuffer = 0;
     public int texGenGeneration;

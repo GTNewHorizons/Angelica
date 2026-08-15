@@ -54,12 +54,20 @@ public class CapturedRenderingState {
 		}
 	}
 
-    public void setCurrentEntity(int entity) {
+    private void setCurrentEntity(int entity) {
 		this.currentRenderedEntity = entity;
 
 		if (this.entityIdListener != null) {
 			this.entityIdListener.run();
 		}
+	}
+
+	/**
+	 * I should have done this a while ago, better solution to not forget these exist in tandem.
+	 */
+	public void setCurrentEntityAndItem(int entity, int item) {
+		setCurrentEntity(entity);
+		setCurrentRenderedItem(item);
 	}
 
     public void setCurrentEntityColor(float r, float g, float b, float a) {

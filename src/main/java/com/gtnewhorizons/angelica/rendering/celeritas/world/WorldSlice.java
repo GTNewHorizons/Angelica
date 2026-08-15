@@ -275,6 +275,17 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         return skyBrightness << 20 | blockBrightness << 4;
     }
 
+    public int getRawSkyLight(int x, int y, int z) {
+        final int minHeight = ModStatus.isCubicChunksLoaded ? CubicChunksAPI.getMinHeight(this.world) : 0;
+        final int maxHeight = ModStatus.isCubicChunksLoaded ? CubicChunksAPI.getMaxHeight(this.world) : 256;
+
+        if (y < minHeight || y >= maxHeight || x < -30_000_000 || z < -30_000_000 || x >= 30_000_000 || z >= 30_000_000) {
+            return 15;
+        }
+
+        return this.getLightLevel(EnumSkyBlock.Sky, x, y, z);
+    }
+
     private int getSkyBlockTypeBrightness(EnumSkyBlock skyBlock, int x, int y, int z) {
         if (this.getBlock(x, y, z).getUseNeighborBrightness()) {
             int yp = this.getLightLevel(skyBlock, x, y + 1, z);

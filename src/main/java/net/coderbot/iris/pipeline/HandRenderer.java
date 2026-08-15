@@ -130,6 +130,8 @@ public class HandRenderer {
 
         final int blendSave = GbufferPrograms.pushBlendState();
         final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
+        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
+
         GLStateManager.disableBlend();
         GLStateManager.defaultBlendFunc();
 
@@ -139,32 +141,32 @@ public class HandRenderer {
         GLStateManager.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
 
         mc.mcProfiler.startSection("iris_hand");
+        try {
+            setupGlState(gameRenderer, camera, tickDelta);
 
-        setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setBlockEntityDefaults();
 
-        GbufferPrograms.setBlockEntityDefaults();
+            renderingSolid = true;
 
-        renderingSolid = true;
+            mc.entityRenderer.enableLightmap(tickDelta);
+            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+            mc.entityRenderer.disableLightmap(tickDelta);
+        } finally {
+            renderingSolid = false;
 
-        mc.entityRenderer.enableLightmap(tickDelta);
-        mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-        mc.entityRenderer.disableLightmap(tickDelta);
+            mc.mcProfiler.endSection();
 
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glPopMatrix();
+            GLStateManager.glPopMatrix();
+            resetProjectionMatrix();
 
-        mc.mcProfiler.endSection();
+            GLStateManager.glDepthMask(depthMaskBefore);
+            GbufferPrograms.popCutoutDefaults(cutoutSave);
+            GbufferPrograms.popBlendState(blendSave);
 
-        resetProjectionMatrix();
+            pipeline.setPhase(WorldRenderingPhase.NONE);
 
-        renderingSolid = false;
-
-        GbufferPrograms.popCutoutDefaults(cutoutSave);
-        GbufferPrograms.popBlendState(blendSave);
-
-        pipeline.setPhase(WorldRenderingPhase.NONE);
-
-        ACTIVE = false;
+            ACTIVE = false;
+        }
     }
 
     public void renderTranslucent(float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
@@ -177,35 +179,39 @@ public class HandRenderer {
 
         final int blendSave = GbufferPrograms.pushBlendState();
         final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
+        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
+
         GLStateManager.enableBlend();
         GLStateManager.defaultBlendFunc();
 
         pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
 
         GLStateManager.glPushMatrix();
+        GLStateManager.glDepthMask(false);
 
         mc.mcProfiler.startSection("iris_hand_translucent");
+        try {
+            setupGlState(gameRenderer, camera, tickDelta);
 
-        setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setBlockEntityDefaults();
 
-        GbufferPrograms.setBlockEntityDefaults();
+            mc.entityRenderer.enableLightmap(tickDelta);
+            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+            mc.entityRenderer.disableLightmap(tickDelta);
+        } finally {
+            mc.mcProfiler.endSection();
 
-        mc.entityRenderer.enableLightmap(tickDelta);
-        mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-        mc.entityRenderer.disableLightmap(tickDelta);
+            GLStateManager.glPopMatrix();
+            resetProjectionMatrix();
 
-        GLStateManager.glPopMatrix();
+            GLStateManager.glDepthMask(depthMaskBefore);
+            GbufferPrograms.popCutoutDefaults(cutoutSave);
+            GbufferPrograms.popBlendState(blendSave);
 
-        resetProjectionMatrix();
+            pipeline.setPhase(WorldRenderingPhase.NONE);
 
-        Minecraft.getMinecraft().mcProfiler.endSection();
-
-        GbufferPrograms.popCutoutDefaults(cutoutSave);
-        GbufferPrograms.popBlendState(blendSave);
-
-        pipeline.setPhase(WorldRenderingPhase.NONE);
-
-        ACTIVE = false;
+            ACTIVE = false;
+        }
     }
 
     private void resetProjectionMatrix() {

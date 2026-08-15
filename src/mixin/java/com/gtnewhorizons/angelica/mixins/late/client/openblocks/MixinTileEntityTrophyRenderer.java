@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.mixins.late.client.openblocks;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.layer.GbufferPrograms;
-import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.entity.Render;
@@ -25,22 +24,15 @@ public class MixinTileEntityTrophyRenderer {
         final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
         final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
 
-        CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entity));
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(0);
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(EntityIdHelper.getEntityId(entity), 0);
 
-        final boolean nestedInBlockEntity = GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.BLOCK_ENTITIES;
-        if (nestedInBlockEntity) {
-            GbufferPrograms.setOverridePhase(WorldRenderingPhase.ENTITIES);
-        }
+        final boolean nestedInBlockEntity = GbufferPrograms.beginNestedEntityPhase();
 
         try {
             original.call(render, entity, x, y, z, entityYaw, partialTicks);
         } finally {
-            if (nestedInBlockEntity) {
-                GbufferPrograms.setOverridePhase(null);
-            }
-            CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(prevItemId);
+            GbufferPrograms.endNestedEntityPhase(nestedInBlockEntity);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
         }
     }
 }

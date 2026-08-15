@@ -15,6 +15,7 @@ import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -68,7 +69,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         return TRANSLUCENT;
     }
 
-    private static MultiPhaseParameters.Builder tesrMaterialPhases(ResourceLocation texture, TesrMaterial material) {
+    private static MultiPhaseParameters.Builder tesrMaterialPhases(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
         final MultiPhaseParameters.Builder b = MultiPhaseParameters.builder();
         if (texture != null) {
             b.texture(new RenderPhase.Texture(texture, false, false));
@@ -98,6 +99,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             case GLINT -> b.transparency(GLINT_TRANSPARENCY);
             case OPAQUE -> {}
         }
+        boolean shaderPhaseTaken = true;
         switch (material.special()) {
             case GLINT -> b.shader(SPECIAL_GLINT);
             case BEACON_BEAM -> b.shader(SPECIAL_BEACON_BEAM);
@@ -105,9 +107,15 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
                 final TesrShader shader = material.shader();
                 if (shader != null) {
                     b.shader(new RenderPhase.Shader("angelica_tesr_shader_" + shader.name(), shader.bind(), shader.release()));
+                } else {
+                    shaderPhaseTaken = false;
                 }
             }
         }
+        if (!shaderPhaseTaken && pass != PassOverride.NONE) {
+            b.shader(new RenderPhase.Shader("angelica_tesr_pass" + pass.nameSuffix(), pass::apply, pass::clear));
+        }
+        b.layering(polygonOffset(offsetFactor, offsetUnits));
         return b;
     }
 
@@ -119,19 +127,24 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         GbufferPrograms::teardownSpecialRenderCondition);
 
     public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material) {
-        final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material).shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP);
+        return tesr(texture, material, PassOverride.NONE, 0.0f, 0.0f);
+    }
+
+    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
+        final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material, pass, offsetFactor, offsetUnits).shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP);
         if (material.transparency() == TesrMaterial.Transparency.TRANSLUCENT) {
             b.target(TRANSLUCENT_TARGET);
         }
         final boolean sortsTranslucent = material.transparency() != TesrMaterial.Transparency.OPAQUE;
-        return of("angelica_tesr_" + material.transparency().name().toLowerCase(Locale.ROOT),
+        return of("angelica_tesr_" + material.transparency().name().toLowerCase(Locale.ROOT) + pass.nameSuffix()
+                + (offsetFactor == 0.0f && offsetUnits == 0.0f ? "" : "_offset" + offsetFactor + "_" + offsetUnits),
             BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, sortsTranslucent, b.build(false));
     }
 
     public static RenderLayer tesrNoPass(ResourceLocation texture, TesrMaterial material) {
         return of("angelica_tesr_nopass_" + material.transparency().name().toLowerCase(Locale.ROOT),
             BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, false,
-            tesrMaterialPhases(texture, material).build(false));
+            tesrMaterialPhases(texture, material, PassOverride.NONE, 0.0f, 0.0f).build(false));
     }
 
     public static RenderLayer getOutline(ResourceLocation texture, RenderPhase.Cull cull) {
@@ -333,6 +346,10 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
             public Builder transparency(RenderPhase.Transparency transparency) {
                 this.transparency = transparency;
                 return this;
+            }
+
+            public void layering(Layering layering) {
+                this.layering = layering;
             }
 
             public Builder shadeModel(RenderPhase.ShadeModel shadeModel) {

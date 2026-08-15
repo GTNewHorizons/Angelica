@@ -17,6 +17,7 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaRenderSectionManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
+import lombok.Setter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
@@ -106,7 +107,8 @@ public class ShadowRenderer {
 	private final ShadowCullState packCullingState;
 	private final ShadowCompositeRenderer compositeRenderer;
 	private boolean packHasVoxelization;
-	private boolean playerReflectionCaptureEnabled = true;
+	@Setter
+    private boolean playerReflectionCaptureEnabled = true;
 	private final boolean shouldRenderTerrain;
 	private final boolean shouldRenderTranslucent;
 	private final boolean shouldRenderEntities;
@@ -148,10 +150,19 @@ public class ShadowRenderer {
 	private boolean preSubmitActive;
 	private float preSubmittedShadowAngle = Float.NaN;
 
+	private float shadowAngleDelta() {
+		final Vector4f light = celestialUniforms.getShadowLightPositionInWorldSpace();
+		final float x = light.x(), y = light.y(), z = light.z();
+		final float length = (float) Math.sqrt(x * x + y * y + z * z);
+		return ShadowGraphGate.deltaForElevation(length > 0.0f ? y / length : 1.0f,
+			ShadowGraphGate.degreesToRotation(AngelicaConfig.shadowGraphAngleDelta),
+			AngelicaConfig.shadowGraphHorizonScale);
+	}
+
 	public void preSubmitGraphUpdate(int frame, boolean spectator) {
 		final AngelicaRenderSectionManager rsm = CeleritasWorldRenderer.getInstance().getRenderSectionManager();
 		final float currentShadowAngle = getShadowAngle();
-		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle)) {
+		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle, shadowAngleDelta())) {
 			rsm.markShadowGraphDirty();
 			lastGraphShadowAngle = currentShadowAngle;
 		}
@@ -235,13 +246,21 @@ public class ShadowRenderer {
 
 	public void setUsesImages(boolean usesImages) {
 		this.packHasVoxelization = packHasVoxelization || usesImages;
+		this.shadowWritesImages = usesImages;
 	}
 
-	public void setPlayerReflectionCaptureEnabled(boolean enabled) {
-		this.playerReflectionCaptureEnabled = enabled;
+	private boolean shadowWritesImages;
+
+	public boolean shadowTerrainAlwaysRelays() {
+		return !shouldRenderTerrain || voxelizationActive() || shadowWritesImages;
 	}
 
-	public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
+	public static boolean shadowGraphGateIsNotBypassed() {
+		return !(Iris.getPipelineManager().getPipelineNullable() instanceof DeferredWorldRenderingPipeline deferred)
+            || deferred.getShadowRenderer() == null || !deferred.getShadowRenderer().shadowTerrainAlwaysRelays();
+	}
+
+    public static MatrixStack createShadowModelView(float sunPathRotation, float intervalSize) {
 		// Use entity position for shadow matrix
 		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
 
@@ -835,7 +854,7 @@ public class ShadowRenderer {
 		globalTileEntities.clear();
 
 		final float currentShadowAngle = getShadowAngle();
-		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle)) {
+		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle, shadowAngleDelta())) {
 			CeleritasWorldRenderer.getInstance().getRenderSectionManager().markShadowGraphDirty();
 			lastGraphShadowAngle = currentShadowAngle;
 		}
@@ -845,8 +864,7 @@ public class ShadowRenderer {
 		final boolean consumePreSubmit = preSubmitActive;
 		preSubmitActive = false;
 
-		final boolean relayTerrain = !deferActive
-			|| voxelizationActive()
+		final boolean relayTerrain = shadowTerrainAlwaysRelays()
 			|| !targets.isTerrainSnapshotValid()
 			|| consumePreSubmit
 			|| CeleritasWorldRenderer.getInstance().getRenderSectionManager().isShadowGraphDirty()
