@@ -306,7 +306,10 @@ public final class ModelPartBatcher {
         final float offsetFactor = offset ? polygon.getOffsetFactor() : 0.0f;
         final float offsetUnits = offset ? polygon.getOffsetUnits() : 0.0f;
         final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits);
-        final int entityId = mode == Mode.ENTITIES ? Math.max(0, CapturedRenderingState.INSTANCE.getCurrentRenderedEntity()) : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
+        // Entities nested inside a TESR (mob spawner, OpenBlocks trophy) run in the block entity pass but carry an entity id
+        final int entityId = mode == Mode.ENTITIES || pass.isEntityPhase()
+            ? Math.max(0, CapturedRenderingState.INSTANCE.getCurrentRenderedEntity())
+            : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
         final Color4 color = GLStateManager.getColor();
         final int colorABGR = ColorABGR.pack(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
         final int packedLight = GLSMConfig.packedLastBrightness();

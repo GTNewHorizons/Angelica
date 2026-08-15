@@ -1,5 +1,6 @@
 package net.coderbot.iris.layer;
 
+import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -271,6 +272,8 @@ public class GbufferPrograms {
 	}
 
 	public static void setOverridePhase(WorldRenderingPhase phase) {
+		overridePhase = phase;
+
 		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
 		if (pipeline != null) {
@@ -278,7 +281,10 @@ public class GbufferPrograms {
 		}
 	}
 
-	public static Boolean beginTranslucencyDeclaration(Boolean translucent) {
+    @Getter
+    private static WorldRenderingPhase overridePhase;
+
+    public static Boolean beginTranslucencyDeclaration(Boolean translucent) {
 		final Boolean previous = declaredTranslucent;
 		declaredTranslucent = translucent;
 		applyTranslucencyDeclaration();

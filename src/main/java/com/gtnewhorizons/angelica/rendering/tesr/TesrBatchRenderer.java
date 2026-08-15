@@ -142,9 +142,12 @@ public final class TesrBatchRenderer {
         if (activePass >= 0) {
             final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
             final PolygonState polygon = GLStateManager.getPolygonState();
-            final RenderLayer layer = layerFor(texture, material, PassOverride.capture(),
+            final PassOverride pass = PassOverride.capture();
+            final RenderLayer layer = layerFor(texture, material, pass,
                 offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f);
-            final int blockEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
+            final int blockEntityId = pass.isEntityPhase()
+                ? Math.max(0, CapturedRenderingState.INSTANCE.getCurrentRenderedEntity())
+                : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
             retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, blockEntityId, captureTextureMatrix(), false);
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
