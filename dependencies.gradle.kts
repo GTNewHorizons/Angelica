@@ -202,6 +202,7 @@ afterEvaluate {
 
         glsmTestFixtures(testFixtures(project(":glsm")) as ModuleDependency) { isTransitive = false }
         testCompileOnly(testFixtures(project(":glsm")))
+        testImplementation("mega:fluidlogged-mc1.7.10:0.1.2")
 
         testRuntimeOnly(libs.fastutil)
         testRuntimeOnly(libs.joml)
