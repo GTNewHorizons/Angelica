@@ -158,9 +158,8 @@ public final class TesrBatchRenderer {
         boolean depthEqual;
         TesrMaterial.SpecialRender special;
         TesrShader shader;
-        boolean noPass;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader, boolean noPass) {
+        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader) {
             this.texture = texture;
             this.transparency = transparency;
             this.noCull = noCull;
@@ -171,12 +170,11 @@ public final class TesrBatchRenderer {
             this.depthEqual = depthEqual;
             this.special = special;
             this.shader = shader;
-            this.noPass = noPass;
             return this;
         }
 
         LayerKey copy() {
-            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader, noPass);
+            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader);
         }
 
         @Override
@@ -186,7 +184,7 @@ public final class TesrBatchRenderer {
                 && noCull == other.noCull && unlit == other.unlit && noDepthWrite == other.noDepthWrite
                 && depthOnly == other.depthOnly
                 && Float.floatToIntBits(cutoutAlpha) == Float.floatToIntBits(other.cutoutAlpha)
-                && depthEqual == other.depthEqual && special == other.special && shader == other.shader && noPass == other.noPass;
+                && depthEqual == other.depthEqual && special == other.special && shader == other.shader;
         }
 
         @Override
@@ -201,7 +199,6 @@ public final class TesrBatchRenderer {
             h = h * 31 + (depthEqual ? 1 : 0);
             h = h * 31 + Objects.hashCode(special);
             h = h * 31 + System.identityHashCode(shader);
-            h = h * 31 + (noPass ? 1 : 0);
             return h;
         }
     }
@@ -211,37 +208,23 @@ public final class TesrBatchRenderer {
     private ResourceLocation lastLayerTexture;
     private TesrMaterial lastLayerMaterial;
     private RenderLayer lastLayer;
-    private ResourceLocation lastImmediateTexture;
-    private TesrMaterial lastImmediateMaterial;
-    private RenderLayer lastImmediateLayer;
 
     private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material) {
         if (texture == lastLayerTexture && material == lastLayerMaterial) {
             return lastLayer;
         }
-        final RenderLayer layer = layerLookup(texture, material, false);
+        final RenderLayer layer = layerLookup(texture, material);
         lastLayerTexture = texture;
         lastLayerMaterial = material;
         lastLayer = layer;
         return layer;
     }
 
-    private RenderLayer noPassLayerFor(ResourceLocation texture, TesrMaterial material) {
-        if (texture == lastImmediateTexture && material == lastImmediateMaterial) {
-            return lastImmediateLayer;
-        }
-        final RenderLayer layer = layerLookup(texture, material, true);
-        lastImmediateTexture = texture;
-        lastImmediateMaterial = material;
-        lastImmediateLayer = layer;
-        return layer;
-    }
-
-    private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material, boolean noPass) {
-        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader(), noPass);
+    private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material) {
+        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader());
         RenderLayer layer = layers.get(key);
         if (layer == null) {
-            layer = noPass ? RenderLayer.tesrNoPass(texture, material) : RenderLayer.tesr(texture, material);
+            layer = RenderLayer.tesr(texture, material);
             layers.put(key.copy(), layer);
         }
         return layer;
@@ -469,7 +452,7 @@ public final class TesrBatchRenderer {
         final long end = VertexTransform.writeInstance(addr, format, template, identity, scratchVec, colorABGR, packedLight, null);
         immediateScratch.position((int) (end - addr));
         immediateScratch.flip();
-        final RenderLayer layer = noPassLayerFor(texture, material);
+        final RenderLayer layer = layerFor(texture, material);
         GLStateManager.glPushAttrib(AngelicaBufferSource.SAVED_STATE_BITS);
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         layer.startDrawing();
