@@ -338,6 +338,7 @@ public final class TesrBatchRenderer {
         try {
             final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
             final boolean savedDepthMask = GLStateManager.getDepthState().isEnabled();
+            final boolean savedDepthTest = GLStateManager.getDepthTest().isEnabled();
             final boolean savedBlend = GLStateManager.getBlendMode().isEnabled();
             final int savedSrcRgb = GLStateManager.getBlendState().getSrcRgb();
             final int savedDstRgb = GLStateManager.getBlendState().getDstRgb();
@@ -365,6 +366,7 @@ public final class TesrBatchRenderer {
                 if (wrap) GbufferPrograms.endBlockEntities();
                 entityRenderer.disableLightmap(0);
                 GLStateManager.glDepthMask(savedDepthMask);
+                if (savedDepthTest) GLStateManager.enableDepthTest(); else GLStateManager.disableDepthTest();
                 if (savedBlend) GLStateManager.enableBlend(); else GLStateManager.disableBlend();
                 GLStateManager.tryBlendFuncSeparate(savedSrcRgb, savedDstRgb, savedSrcAlpha, savedDstAlpha);
                 if (savedAlphaTest) GLStateManager.enableAlphaTest(); else GLStateManager.disableAlphaTest();
