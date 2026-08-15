@@ -76,12 +76,6 @@ public class FontConfig {
     @Config.RangeFloat(min = 0F, max = 2F)
     public static float fontShadowOffsetUC;
 
-    @Config.Comment({"Shade text the way vanilla's font renderer did, by the world lightmap for text drawn in the " +
-        "world (signs, nametags) and by fixed function lighting where it is active. Disable to render text at " +
-        "full brightness."})
-    @Config.DefaultBoolean(true)
-    public static boolean enableTextLighting;
-
     @Config.Comment({"Mods can provide Angelica with a mapping of special characters to either get replaced with " +
         "different characters or rendered using the default Unicode font. Setting this to false disables the " +
         "replacement, which is useful in cases where custom fonts have direct support for these special characters. ",

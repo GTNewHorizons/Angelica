@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.ffp.VertexKey;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
@@ -3057,8 +3058,14 @@ public class GLStateManager {
                 return;
             }
         }
+        if (light >= VertexKey.FFP_LIGHT_COUNT && (warnedFfpLightMask & (1 << light)) == 0 && ShaderManager.getInstance().isEnabled()) {
+            warnedFfpLightMask |= (1 << light);
+            LOGGER.warn("GL_LIGHT{} enabled, but FFP shader emulation implements only GL_LIGHT0..{}", light, VertexKey.FFP_LIGHT_COUNT - 1, new Throwable("call site"));
+        }
         ctx().lightStates[light].enable();
     }
+
+    private static int warnedFfpLightMask = 0;
 
     public static void enableColorMaterial() {
         final RecordMode mode = DisplayListManager.getRecordMode();
