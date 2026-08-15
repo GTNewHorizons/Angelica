@@ -23,6 +23,20 @@ public class MixinRenderManager {
 
     @WrapOperation(
         method = "func_147939_a",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/Render;doRenderShadowAndFire(Lnet/minecraft/entity/Entity;DDDFF)V")
+    )
+    private void iris$wrapShadowAndFire(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
+        final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(null);
+
+        try {
+            original.call(render, entity, x, y, z, entityYaw, partialTicks);
+        } finally {
+            GbufferPrograms.endTranslucencyDeclaration(previous);
+        }
+    }
+
+    @WrapOperation(
+        method = "func_147939_a",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/Render;doRender(Lnet/minecraft/entity/Entity;DDDFF)V")
     )
     private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
