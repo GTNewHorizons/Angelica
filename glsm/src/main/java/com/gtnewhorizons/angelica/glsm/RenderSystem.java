@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAARB;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAAccess;
@@ -8,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.mitchej123.lwjgl.LWJGLServiceProvider;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;
@@ -59,6 +61,9 @@ public class RenderSystem {
     private static volatile boolean glesDetected;
     private static volatile boolean hasClipCullDistance;
 
+    private static volatile boolean isLTW;
+    private static volatile boolean ltwDetected;
+
     // Sampler object state tracking (null if unsupported)
     private static int[] samplers;
 
@@ -106,6 +111,13 @@ public class RenderSystem {
         }
 
         BackendManager.init();
+
+        try {
+            // Force init on client thread
+            GLStateManager.LOGGER.info("Celeritas LWJGL service: {}", LWJGLServiceProvider.LWJGL.getClass().getName());
+        } catch (Throwable t) {
+            GLStateManager.LOGGER.debug("Could not resolve the celeritas LWJGL service: {}", t.toString());
+        }
 
         supportsCompute = supportsCompute();
         supportsTesselation = GLStateManager.capabilities.GL_ARB_tessellation_shader || GLStateManager.capabilities.OpenGL40;
@@ -400,6 +412,26 @@ public class RenderSystem {
             glesDetected = true;
         } catch (Throwable ignored) {
             // No GL context on this thread yet (splash); retry on next call.
+        }
+    }
+
+    public static boolean isLTW() {
+        if (!ltwDetected) detectLTW();
+        return isLTW;
+    }
+
+    private static synchronized void detectLTW() {
+        if (ltwDetected) return;
+        if (SystemProperties.DISABLE_LTW_WORKAROUND) {
+            ltwDetected = true;
+            return;
+        }
+        try {
+            final String v = RENDER_BACKEND.getString(GL11.GL_VERSION);
+            if (v == null) return;
+            isLTW = LTWWorkaround.isLtwVersionString(v);
+            ltwDetected = true;
+        } catch (Throwable ignored) {
         }
     }
 

@@ -4,12 +4,15 @@ import com.google.common.base.Throwables;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
-import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.InputEvent;
@@ -310,9 +313,9 @@ public class Iris {
                     // Clear transformation caches - no longer needed after loading
                     TransformPatcher.clearCache();
                     ShaderTransformer.clearCache();
-                    SpirvCompiler.clearCache();
                     GlslVulkanPreprocess.clearCache();
-                    ShaderManager.clearPrewarmCache();
+                    if (RenderSystem.isGLES() || BackendManager.RENDER_BACKEND.isSDLGPU()) SpirvCompiler.clearCache();
+                    SDLGPUGate.clearShaderPrewarmCache();
                 } else {
                     // Still active (or in-flight), schedule another check.
                     final long remainingSeconds = Math.max(1, IDLE_TIMEOUT_SECONDS - idleSeconds + 1);
@@ -529,6 +532,20 @@ public class Iris {
             logger.warn("Falling back to normal rendering without shaders because the shaderpack could not be loaded");
             setShadersDisabled();
             fallback = true;
+        }
+    }
+
+    public static void warmupShaderTransforms() {
+        if (currentPack == null) return;
+        try {
+            if (BackendManager.RENDER_BACKEND.isSDLGPU()) {
+                IrisGLSMBridge.installPostTransformHook();
+            }
+            final ProgramSet programs = currentPack.getProgramSet(lastDimensionName != null ? lastDimensionName : "Overworld");
+            PerFrameUniformBlockHarvester.harvest(programs);
+            DeferredWorldRenderingPipeline.warmupTransforms(programs);
+        } catch (Throwable t) {
+            logger.warn("Early shader transform warmup failed; transforms will run at pipeline creation", t);
         }
     }
 

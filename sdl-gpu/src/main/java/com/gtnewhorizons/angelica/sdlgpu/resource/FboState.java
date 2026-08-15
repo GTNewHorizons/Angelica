@@ -35,6 +35,7 @@ public final class FboState {
     public int cachedTargetsCount = -1;
     public int cachedClearOpFlags;
     public boolean cachedDepthClearLast;
+    public boolean cachedStencilClearLast;
     public boolean cachedTargetsValid;
 
     public long getColorTexture() { return colorTextures[0]; }
@@ -63,7 +64,7 @@ public final class FboState {
             h = Hashing.fmix64(h, db);
         }
         h = Hashing.fmix64(h, depthTexture);
-        if (h == 0L || h == FrameManager.SWAPCHAIN_LAYOUT_HASH) h = 0xD1CE5EEDL;
+        if (h == 0L || h == FrameManager.FBO0_LAYOUT_HASH) h = 0xD1CE5EEDL;
         structuralLayoutHash = h;
     }
 

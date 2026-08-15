@@ -84,11 +84,11 @@ class Lwjgl3AwareBoundaryTest {
         for (JavaMethod method : renderBackend.getMethods()) {
             final List<JavaClass> types = new ArrayList<>(method.getRawParameterTypes());
             types.add(method.getRawReturnType());
-            if (types.stream().anyMatch(Lwjgl3AwareBoundaryTest::isLwjgl3Type)) {
+            if (types.stream().anyMatch(Lwjgl3AwareBoundaryTest::isRemapUnsafeType)) {
                 violations.add(method.getFullName());
             }
         }
-        assertTrue(violations.isEmpty(), "RenderBackend methods with an org.lwjgl type in their signature:\n" + String.join("\n", violations));
+        assertTrue(violations.isEmpty(), "RenderBackend methods with an org.lwjgl/org.lwjglx/lwjgl3ify type in their signature:\n" + String.join("\n", violations));
     }
 
     private static boolean isAware(JavaClass c) {
@@ -101,6 +101,11 @@ class Lwjgl3AwareBoundaryTest {
 
     private static boolean isLwjgl3Type(JavaClass type) {
         return type.getName().startsWith("org.lwjgl.");
+    }
+
+    private static boolean isRemapUnsafeType(JavaClass type) {
+        final String name = type.getName();
+        return isLwjgl3Type(type) || name.startsWith("org.lwjglx.") || name.startsWith("me.eigenraven.lwjgl3ify.");
     }
 
     private static boolean mentionsLwjgl3Type(AccessTarget target) {

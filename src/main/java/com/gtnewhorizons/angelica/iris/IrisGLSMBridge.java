@@ -6,11 +6,14 @@ import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
+import org.taumc.glsl.grammar.GLSLParser;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import net.coderbot.iris.Iris;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
@@ -64,6 +67,27 @@ public class IrisGLSMBridge {
         StateUpdateNotifiers.colorModulatorNotifier = listener -> colorModulatorListener = listener;
     }
 
+    public static void installPostTransformHook() {
+        if (GLSMHooks.postTransformProcessor != null) return;
+        GLSMHooks.postTransformProcessor = new ShaderTransformPostProcessor() {
+            @Override
+            public void onTransformed(String src, ShaderType shaderType) {
+                onTransformed(src, null, 0, shaderType);
+            }
+
+            @Override
+            public void onTransformed(String src, GLSLParser.Translation_unitContext bodyTree, int headerLen, ShaderType shaderType) {
+                if (Iris.ShaderTransformExecutor.isOnWorker()) {
+                    SDLGPUGate.prewarmSpirv(src, bodyTree, headerLen, shaderType.id);
+                } else {
+                    Iris.ShaderTransformExecutor.submitTracked(() -> {
+                        SDLGPUGate.prewarmSpirv(src, bodyTree, headerLen, shaderType.id);
+                    });
+                }
+            }
+        };
+    }
+
     private static VanillaBooleanLayer gated(VanillaBooleanLayer layer) {
         return new VanillaBooleanLayer() {
             @Override
@@ -111,15 +135,7 @@ public class IrisGLSMBridge {
                 return Iris.ShaderTransformExecutor.submitTracked(work);
             }
         };
-        GLSMHooks.postTransformProcessor = (src, shaderType) -> {
-            if (Iris.ShaderTransformExecutor.isOnWorker()) {
-                ShaderManager.prewarmSpirv(src, shaderType.id);
-            } else {
-                Iris.ShaderTransformExecutor.submitTracked(() -> {
-                    ShaderManager.prewarmSpirv(src, shaderType.id);
-                });
-            }
-        };
+        installPostTransformHook();
         GLSMHooks.blendHandler = new DeferredBlendHandler() {
             @Override
             public boolean isBlendLocked() {

@@ -10,6 +10,7 @@ import org.lwjgl.opengl.ARBDebugOutputCallback;
 import org.lwjgl.opengl.ARBDirectStateAccess;
 import org.lwjgl.opengl.ARBTimerQuery;
 import org.lwjgl.opengl.ContextCapabilities;
+import org.lwjgl.opengl.DisplayMode;
 import org.lwjgl.opengl.EXTDirectStateAccess;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GLContext;
@@ -114,7 +115,19 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     public int getMinGLSLVersion() {return 330;}
 
     @Override
-    public void setVSyncEnabled(boolean enabled) {Display.setVSyncEnabled(enabled);}
+    protected VSyncMode applyVSyncMode(VSyncMode preferred) {
+        final boolean enabled = preferred.tearFree();
+        Display.setVSyncEnabled(enabled);
+        return enabled ? VSyncMode.ON : VSyncMode.OFF;
+    }
+
+    @Override
+    protected int queryDisplayRefreshRateHz() {
+        final DisplayMode mode = Display.getDisplayMode();
+        if (mode != null && mode.getFrequency() > 0) return mode.getFrequency();
+        final DisplayMode desktop = Display.getDesktopDisplayMode();
+        return desktop == null ? 0 : desktop.getFrequency();
+    }
 
     @Override
     public boolean isAnisotropicSupported() {
@@ -1369,6 +1382,16 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public void getFloat(int pname, FloatBuffer params) {
         GL11.glGetFloat(pname, params);
+    }
+
+    @Override
+    public double getDouble(int pname) {
+        return GL11.glGetDouble(pname);
+    }
+
+    @Override
+    public void getDouble(int pname, DoubleBuffer params) {
+        GL11.glGetDouble(pname, params);
     }
 
     @Override

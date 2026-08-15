@@ -16,9 +16,11 @@ public final class SystemProperties {
     private static final Logger LOGGER = LogManager.getLogger("SystemProperties");
 
     // Backend selection
-    public static final boolean USE_SDL_GPU = Boolean.getBoolean("angelica.sdlgpu.enable");
+    public static final String KEY_USE_SDL_GPU = "angelica.sdlgpu.enable";
+    public static final boolean USE_SDL_GPU = Boolean.getBoolean(KEY_USE_SDL_GPU);
     public static final String GL_PROFILE = System.getProperty("angelica.glProfile", "");
     public static final boolean DISABLE_NVIDIA_WORKAROUND = Boolean.getBoolean("angelica.disableNvidiaWorkaround");
+    public static final boolean DISABLE_LTW_WORKAROUND = Boolean.getBoolean("angelica.disableLtwWorkaround");
 
     // Redirector
     public static final UnmappedGLMode UNMAPPED_GL = parseEnum("angelica.unmappedGL", UnmappedGLMode.WARN, UnmappedGLMode.WARN, UnmappedGLMode.class);
@@ -33,6 +35,8 @@ public final class SystemProperties {
     public static final boolean SDL_ENCODER_ASSERTIONS_FATAL = ENCODER_ASSERTIONS == SdlAssertionMode.FATAL;
     public static final boolean SDL_VERIFY_STATE_SYNC = Boolean.getBoolean("angelica.sdlgpu.verifyStateSync");
     public static final boolean SDL_VERIFY_PER_FRAME_UNIFORM_BLOCK = Boolean.getBoolean("angelica.sdlgpu.verifyPerFrameUniformBlock");
+    public static final int SDL_FRAMES_IN_FLIGHT = Integer.getInteger("angelica.sdlgpu.framesInFlight", 2);
+    public static final boolean DISABLE_SDL_PRESENTER_THREAD = Boolean.getBoolean("angelica.sdlgpu.disablePresenterThread");
 
     // Tracy
     public static final boolean TRACY = Boolean.getBoolean("angelica.tracy");

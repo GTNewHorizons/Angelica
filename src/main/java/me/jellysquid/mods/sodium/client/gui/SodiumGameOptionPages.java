@@ -53,6 +53,9 @@ public class SodiumGameOptionPages {
     private static final MinecraftOptionsStorage vanillaOpts = new MinecraftOptionsStorage();
     private static final AngelicaOptionsStorage angelicaOpts = new AngelicaOptionsStorage();
 
+    private static final int MIN_RENDER_AHEAD = 0;
+    private static final int MAX_RENDER_AHEAD = 9;
+
     public static OptionPage general() {
         final List<OptionGroup> groups = new ArrayList<>();
         final OptionGroup.Builder firstGroupBuilder = OptionGroup.createBuilder();
@@ -103,6 +106,7 @@ public class SodiumGameOptionPages {
         groups.add(firstGroupBuilder.build());
 
         int maxGuiScale = Math.max(3, Math.min(Minecraft.getMinecraft().displayWidth / 320, Minecraft.getMinecraft().displayHeight / 240));
+        final FrameRateOptions frameRate = FrameRateOptions.create(vanillaOpts, sodiumOpts);
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(I18n.format("options.guiScale"))
@@ -136,22 +140,8 @@ public class SodiumGameOptionPages {
                             }
                         }, (opts) -> opts.fullScreen)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
-                        .setName(I18n.format("options.vsync"))
-                        .setTooltip(I18n.format("sodium.options.v_sync.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> {
-                            opts.enableVsync = value;
-                            GLStateManager.setVSyncEnabled(opts.enableVsync);
-                        }, opts -> opts.enableVsync)
-                        .setImpact(OptionImpact.VARIES)
-                        .build())
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(I18n.format("options.framerateLimit"))
-                        .setTooltip(I18n.format("sodium.options.fps_limit.tooltip"))
-                        .setControl(option -> new SliderControl(option, 5, 260, 5, ControlValueFormatter.fpsLimit()))
-                        .setBinding((opts, value) -> opts.limitFramerate = value, opts -> opts.limitFramerate)
-                        .build())
+                .add(frameRate.vsync())
+                .add(frameRate.maxFramerate())
                 .build());
 
         groups.add(OptionGroup.createBuilder()
@@ -519,7 +509,7 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(int.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.cpu_render_ahead_limit.name"))
                         .setTooltip(I18n.format("sodium.options.cpu_render_ahead_limit.tooltip"))
-                        .setControl(o -> new SliderControl(o, 0, 9, 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
+                        .setControl(o -> new SliderControl(o, MIN_RENDER_AHEAD, MAX_RENDER_AHEAD, 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
                         .setImpact(OptionImpact.MEDIUM)
                         .setBinding((opts, value) -> opts.performance.cpuRenderAheadLimit = value, opts -> opts.performance.cpuRenderAheadLimit)
                         .setEnabled(GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL32)

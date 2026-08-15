@@ -1,7 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.voxelization;
 
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
-import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import net.coderbot.iris.pipeline.transform.RwImageStoreExtractor;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexFormat;
 import org.embeddedt.embeddium.impl.gl.buffer.GlBuffer;
@@ -26,8 +26,8 @@ public final class SdlShadowVoxelizationSink implements ShadowVoxelizer.Sink {
     private float pendingY;
     private float pendingZ;
 
-    private static SDLGPURenderBackend sdl() {
-        return (SDLGPURenderBackend) BackendManager.RENDER_BACKEND;
+    private static RenderBackend sdl() {
+        return BackendManager.RENDER_BACKEND;
     }
 
     @Override

@@ -1,3 +1,5 @@
+import com.modrinth.minotaur.TaskModrinthUpload
+import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import xyz.wagyourtail.jvmdg.gradle.flags.DowngradeFlags
 import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
 import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
@@ -31,11 +33,11 @@ minecraft   {
 
 }
 
-// Ensure flyby args are passed to the client
+// Forward -Dangelica.* from the gradle invocation to the client
 tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
     for ((key, value) in System.getProperties()) {
         val name = key.toString()
-        if (name.startsWith("angelica.flyby.")) {
+        if (name.startsWith("angelica.")) {
             jvmArgs("-D$name=$value")
         }
     }
@@ -75,7 +77,7 @@ val isMacOs = org.gradle.internal.os.OperatingSystem.current().isMacOsX
 val isMacOsArm64 = isMacOs && System.getProperty("os.arch") == "aarch64"
 
 tasks.withType<JavaExec>().configureEach {
-    if (name.startsWith("runClient")) {
+    if (name.startsWith("runClient") && name != "runClient") {
         if (isMacOs) {
             // SDL3 / Cocoa / Metal must initialize on the JVM main thread.
             jvmArgs("-XstartOnFirstThread")
@@ -227,7 +229,6 @@ val glCoreTest by tasks.registering(Test::class) {
 }
 
 tasks.test { finalizedBy(glCoreTest) }
-tasks.check { dependsOn(glCoreTest) }
 
 tasks.shadowJar {
     dependsOn(embedOnly)
@@ -251,4 +252,12 @@ tasks.shadowJar {
     relocate("com.gtnewhorizons.angelica.glsm", "com.gtnewhorizons.angelica.glsm")
     relocate("com.gtnewhorizons.angelica.lwjgl3", "com.gtnewhorizons.angelica.lwjgl3")
     relocate("com.gtnewhorizons.angelica.sdlgpu", "com.gtnewhorizons.angelica.sdlgpu")
+}
+
+tasks.withType<TaskPublishCurseForge>().configureEach {
+    uploadArtifacts.forEach { it.addGameVersion("Client") }
+}
+
+tasks.withType<TaskModrinthUpload>().configureEach {
+    setDependsOn(dependsOn.filterNot { it == "build" } + "assemble")
 }

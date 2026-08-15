@@ -34,6 +34,85 @@ public final class PixelOps {
         return sdlFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT || sdlFormat == SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT;
     }
 
+    public static int depthBits(int sdlFormat) {
+        return switch (sdlFormat) {
+            case SDL_GPU_TEXTUREFORMAT_D16_UNORM -> 16;
+            case SDL_GPU_TEXTUREFORMAT_D24_UNORM, SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT -> 24;
+            case SDL_GPU_TEXTUREFORMAT_D32_FLOAT, SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT -> 32;
+            default -> 0;
+        };
+    }
+
+    public static int stencilBits(int sdlFormat) {
+        return isDepthStencilFormat(sdlFormat) ? 8 : 0;
+    }
+
+    public static int colorChannelBits(int sdlFormat, int channel) {
+        if (channel < 0 || channel > 3) return 0;
+        return switch (sdlFormat) {
+            case SDL_GPU_TEXTUREFORMAT_A8_UNORM -> channel == 3 ? 8 : 0;
+            case SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM -> channel == 3 ? 2 : 10;
+            case SDL_GPU_TEXTUREFORMAT_R11G11B10_UFLOAT -> switch (channel) {
+                case 0, 1 -> 11;
+                case 2 -> 10;
+                default -> 0;
+            };
+            case SDL_GPU_TEXTUREFORMAT_B5G6R5_UNORM -> switch (channel) {
+                case 0, 2 -> 5;
+                case 1 -> 6;
+                default -> 0;
+            };
+            case SDL_GPU_TEXTUREFORMAT_B5G5R5A1_UNORM -> channel == 3 ? 1 : 5;
+            case SDL_GPU_TEXTUREFORMAT_B4G4R4A4_UNORM -> 4;
+            default -> channel < sdlFormatColorComponents(sdlFormat) ? uniformChannelBits(sdlFormat) : 0;
+        };
+    }
+
+    private static int uniformChannelBits(int sdlFormat) {
+        return switch (sdlFormat) {
+            case SDL_GPU_TEXTUREFORMAT_R8_UNORM, SDL_GPU_TEXTUREFORMAT_R8_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R8_UINT, SDL_GPU_TEXTUREFORMAT_R8_INT,
+                 SDL_GPU_TEXTUREFORMAT_R8G8_UNORM, SDL_GPU_TEXTUREFORMAT_R8G8_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R8G8_UINT, SDL_GPU_TEXTUREFORMAT_R8G8_INT,
+                 SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM_SRGB, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R8G8B8A8_INT, SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,
+                 SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM_SRGB -> 8;
+            case SDL_GPU_TEXTUREFORMAT_R16_UNORM, SDL_GPU_TEXTUREFORMAT_R16_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R16_FLOAT, SDL_GPU_TEXTUREFORMAT_R16_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R16_INT, SDL_GPU_TEXTUREFORMAT_R16G16_UNORM,
+                 SDL_GPU_TEXTUREFORMAT_R16G16_SNORM, SDL_GPU_TEXTUREFORMAT_R16G16_FLOAT,
+                 SDL_GPU_TEXTUREFORMAT_R16G16_UINT, SDL_GPU_TEXTUREFORMAT_R16G16_INT,
+                 SDL_GPU_TEXTUREFORMAT_R16G16B16A16_UNORM, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT -> 16;
+            case SDL_GPU_TEXTUREFORMAT_R32_FLOAT, SDL_GPU_TEXTUREFORMAT_R32_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R32_INT, SDL_GPU_TEXTUREFORMAT_R32G32_FLOAT,
+                 SDL_GPU_TEXTUREFORMAT_R32G32_UINT, SDL_GPU_TEXTUREFORMAT_R32G32_INT,
+                 SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT, SDL_GPU_TEXTUREFORMAT_R32G32B32A32_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R32G32B32A32_INT -> 32;
+            default -> 0;
+        };
+    }
+
+    private static int sdlFormatColorComponents(int sdlFormat) {
+        return switch (sdlFormat) {
+            case SDL_GPU_TEXTUREFORMAT_R8_UNORM, SDL_GPU_TEXTUREFORMAT_R8_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R8_UINT, SDL_GPU_TEXTUREFORMAT_R8_INT,
+                 SDL_GPU_TEXTUREFORMAT_R16_UNORM, SDL_GPU_TEXTUREFORMAT_R16_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R16_FLOAT, SDL_GPU_TEXTUREFORMAT_R16_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R16_INT, SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
+                 SDL_GPU_TEXTUREFORMAT_R32_UINT, SDL_GPU_TEXTUREFORMAT_R32_INT -> 1;
+            case SDL_GPU_TEXTUREFORMAT_R8G8_UNORM, SDL_GPU_TEXTUREFORMAT_R8G8_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R8G8_UINT, SDL_GPU_TEXTUREFORMAT_R8G8_INT,
+                 SDL_GPU_TEXTUREFORMAT_R16G16_UNORM, SDL_GPU_TEXTUREFORMAT_R16G16_SNORM,
+                 SDL_GPU_TEXTUREFORMAT_R16G16_FLOAT, SDL_GPU_TEXTUREFORMAT_R16G16_UINT,
+                 SDL_GPU_TEXTUREFORMAT_R16G16_INT, SDL_GPU_TEXTUREFORMAT_R32G32_FLOAT,
+                 SDL_GPU_TEXTUREFORMAT_R32G32_UINT, SDL_GPU_TEXTUREFORMAT_R32G32_INT -> 2;
+            default -> 4;
+        };
+    }
+
     public static int glPixelSize(int format, int type) {
         final int packed = GLTypes.packedTexelBytes(type);
         if (packed != 0) return packed;

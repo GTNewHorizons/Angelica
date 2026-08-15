@@ -19,11 +19,17 @@ import java.util.Arrays;
 
 /** SDL GPU implementation of {@link LWJGLService} for Celeritas */
 public final class SDLGPULWJGLService extends LWJGLService {
+
+    private static volatile boolean offeredAsAvailable;
+
+    public static boolean isOfferedAsAvailable() { return offeredAsAvailable; }
+
     @Override public int getPriority() {
-        if (SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable()) {
-            return 200;
+        if (!SystemProperties.USE_SDL_GPU || !SDLGPUGate.isSDLGPUAvailable() || !SDLGPUGate.isEngaged()) {
+            return PRIORITY_UNAVAILABLE;
         }
-        return Integer.MIN_VALUE;
+        offeredAsAvailable = true;
+        return 200;
     }
 
     @Override public boolean isOpenGLVersionSupported(int major, int minor) {
@@ -148,22 +154,30 @@ public final class SDLGPULWJGLService extends LWJGLService {
     }
     @Override public void glDeleteSync(long sync) { BackendManager.RENDER_BACKEND.deleteSync(sync); }
 
-    private long[] queryTimestamps = new long[64];
+    private long[] queryElapsed = new long[64];
+    private int activeQueryId = -1;
+    private long activeQueryStart;
 
     private void ensureQueryCapacity(int id) {
-        if (id >= queryTimestamps.length) {
-            queryTimestamps = Arrays.copyOf(queryTimestamps, Math.max(id + 1, queryTimestamps.length * 2));
+        if (id >= queryElapsed.length) {
+            queryElapsed = Arrays.copyOf(queryElapsed, Math.max(id + 1, queryElapsed.length * 2));
         }
     }
 
     @Override public int glGenQueries() { return BackendManager.RENDER_BACKEND.genQueries(); }
     @Override public void glDeleteQueries(int query) { }
-    @Override public void glQueryCounter(int id, int target) {
+    @Override public void glBeginQuery(int target, int id) {
         ensureQueryCapacity(id);
-        queryTimestamps[id] = System.nanoTime();
+        activeQueryId = id;
+        activeQueryStart = System.nanoTime();
+    }
+    @Override public void glEndQuery(int target) {
+        if (activeQueryId < 0) return;
+        queryElapsed[activeQueryId] = System.nanoTime() - activeQueryStart;
+        activeQueryId = -1;
     }
     @Override public long glGetQueryObjectui64(int id, int pname) {
-        if (id >= 0 && id < queryTimestamps.length) return queryTimestamps[id];
+        if (id >= 0 && id < queryElapsed.length) return queryElapsed[id];
         return 0;
     }
 

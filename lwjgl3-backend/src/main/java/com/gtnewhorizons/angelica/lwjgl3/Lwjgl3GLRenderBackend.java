@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.GLESCaps;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.DebugMessageHandler;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -32,6 +33,7 @@ import org.lwjgl.opengl.EXTPolygonOffsetClamp;
 import org.lwjgl.opengl.EXTShaderImageLoadStore;
 import org.lwjgl.opengl.GLCapabilities;
 import org.lwjgl.opengl.GLDebugMessageCallback;
+import org.lwjgl.sdl.SDL_DisplayMode;
 import org.lwjgl.sdl.SDL_DropEvent;
 import org.lwjgl.sdl.SDL_EventFilter;
 import org.lwjgl.sdl.SDLEvents;
@@ -39,6 +41,7 @@ import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
+import org.lwjglx.opengl.Display;
 
 import java.nio.Buffer;
 import java.nio.ByteBuffer;
@@ -169,7 +172,21 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     public int getMinGLSLVersion() {return 330;}
 
     @Override
-    public void setVSyncEnabled(boolean enabled) {SDLVideo.SDL_GL_SetSwapInterval(enabled ? 1 : 0);}
+    protected VSyncMode applyVSyncMode(VSyncMode preferred) {
+        final boolean enabled = preferred.tearFree();
+        SDLVideo.SDL_GL_SetSwapInterval(enabled ? 1 : 0);
+        return enabled ? VSyncMode.ON : VSyncMode.OFF;
+    }
+
+    @Override
+    protected int queryDisplayRefreshRateHz() {
+        final long window = Display.getWindow();
+        final int displayId = window == 0 ? SDLVideo.SDL_GetPrimaryDisplay() : SDLVideo.SDL_GetDisplayForWindow(window);
+        if (displayId == 0) return 0;
+        final SDL_DisplayMode mode = SDLVideo.SDL_GetCurrentDisplayMode(displayId);
+        if (mode == null) return 0;
+        return refreshHzFrom(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
+    }
 
     @Override
     public boolean isAnisotropicSupported() {
@@ -1502,6 +1519,16 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void getFloat(int pname, FloatBuffer params) {
         GL11C.glGetFloatv(pname, params);
+    }
+
+    @Override
+    public double getDouble(int pname) {
+        return GL11C.glGetDouble(pname);
+    }
+
+    @Override
+    public void getDouble(int pname, DoubleBuffer params) {
+        GL11C.glGetDoublev(pname, params);
     }
 
     @Override

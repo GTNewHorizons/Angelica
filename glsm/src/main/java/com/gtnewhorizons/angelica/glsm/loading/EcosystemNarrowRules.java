@@ -21,11 +21,11 @@ public final class EcosystemNarrowRules {
             "Reika.DragonAPI.ASM.StructureLootHooks"
         )),
 
-        new NarrowRule("Xaeros_common", "xaero.common.core", List.of(
+        new NarrowRule("Xaeros", "xaero.common.core", List.of(
             "xaero.common.core.transformer"
         )),
 
-        new NarrowRule("Xaeros_map", "xaero.map.core", List.of(
+        new NarrowRule("Xaeros", "xaero.map.core", List.of(
             "xaero.map.core.transformer"
         )),
 
@@ -78,6 +78,13 @@ public final class EcosystemNarrowRules {
             "alfheim.common.core.asm.hook.fixes.CorporeaInputFix",
             "alfheim.common.core.asm.hook.fixes.GodAttributesHooks",
             "alfheim.common.core.asm.hook.fixes.RecipeAncientWillsFix"
+        )),
+
+        new NarrowRule("LegendsMod", "com.tihyo.legends.management.asm", List.of(
+            "com.tihyo.legends.management.asm.LegendsLoadingPlugin",
+            "com.tihyo.legends.management.asm.AbstractTransformer",
+            "com.tihyo.legends.management.asm.ASMHelper",
+            "com.tihyo.legends.management.asm.Transformer"
         ))
     );
 

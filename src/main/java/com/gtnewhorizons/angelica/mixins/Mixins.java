@@ -70,6 +70,12 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    STARMINER_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.STARMINER)
+        .addClientMixins("client.starminer.MixinTransformClientHelper")
+    ),
+
     ANGELICA_ENTITY_OVERLAYS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.entityOverlayFixes)
@@ -91,7 +97,10 @@ public enum Mixins implements IMixins {
     ANGELICA_SDL_GPU_DISPLAY(new MixinBuilder("SDL-GPU-aware Display.create path")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
-        .addClientMixins("sdlgpu.MixinForgeHooksClient_SDLGPUDisplay")
+        .addClientMixins(
+            "sdlgpu.MixinForgeHooksClient_SDLGPUDisplay",
+            "sdlgpu.MixinMinecraft_SDLGPUIcons"
+        )
     ),
 
     ANGELICA_SDL_GPU_SHADOW_VOXEL_PREPASS(new MixinBuilder("Voxelization compute pre-pass before shadow raster (SDL_GPU)")
@@ -168,7 +177,10 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.entity.MixinModelRenderer",
             "angelica.entity.MixinRenderGlobal_EntityBatch",
-            "angelica.entity.MixinTextureManager"
+            "angelica.entity.MixinRenderManager_BatchEligibility",
+            "angelica.entity.MixinRender_BatchEligibility",
+            "angelica.entity.MixinTextureManager",
+            "angelica.tesr.MixinTileEntitySpecialRenderer_BatchEligibility"
         )
     ),
 
@@ -197,9 +209,9 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache")
+    ANGELICA_TESR_PROVIDER_DISPATCH(new MixinBuilder("Route TesrMeshProvider renderers through the batched mesh cache, and observe renderers that mix model parts with their own draws")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch)
+        .setApplyIf(() -> AngelicaConfig.enableTESRProviderDispatch || AngelicaConfig.enableEntityBatching)
         .addClientMixins(
             "angelica.tesr.MixinTileEntityRendererDispatcher"
         )
@@ -371,6 +383,10 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockLiquid"
             , "celeritas.threading.MixinForgeHooksClient"
             , "celeritas.terrain.MixinChunk"
+            , "celeritas.terrain.MixinWorldClient_WorkerAccess"
+            , "celeritas.terrain.MixinWorld_WorkerMutationGuard"
+            , "celeritas.terrain.MixinTileEntity_AwaitingDescriptor"
+            , "celeritas.terrain.MixinNetHandlerPlayClient_DescriptorRepair"
             , "celeritas.terrain.MixinRenderRegion"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
             , "celeritas.terrain.MixinDefaultChunkRenderer"

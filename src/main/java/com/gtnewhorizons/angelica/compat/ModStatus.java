@@ -33,7 +33,6 @@ public class ModStatus {
     public static boolean isCubicChunksLoaded;
     public static boolean isBOPLoaded;
     public static boolean isEtFuturumLoaded;
-    public static boolean isSimpleSkinBackportLoaded;
 
     public static void preInit() {
         if (Loader.isModLoaded("backhand")) {
@@ -54,7 +53,6 @@ public class ModStatus {
         isFluidLoggedLoaded = Loader.isModLoaded("fluidlogged");
         isCubicChunksLoaded = Loader.isModLoaded("cubicchunks");
         isEtFuturumLoaded = Loader.isModLoaded("etfuturum");
-        isSimpleSkinBackportLoaded = Loader.isModLoaded("simpleskinbackport");
 
         isHoloInventoryLoaded = Loader.isModLoaded("holoinventory");
         isBOPLoaded = Loader.isModLoaded("BiomesOPlenty");

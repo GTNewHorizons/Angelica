@@ -6,13 +6,13 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
-import java.util.List;
+import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 class ContextCounterAggregationTest {
 
-    private List<ContextState> registered;
+    private ThreadRegistry<ContextState> registered;
     private ContextState a;
     private ContextState b;
 

@@ -5,8 +5,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.opengl.GL20;
 
-import me.eigenraven.lwjgl3ify.api.SwapchainInvalidatingChange;
-
 import java.nio.ByteBuffer;
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -14,13 +12,14 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.function.Predicate;
 
 /**
  * Abstract rendering backend.
  */
 public abstract class RenderBackend {
 
-    public void onPostWindowCreate(long window, boolean debug) {}
+    public void onPostWindowCreate(long window) {}
 
     public abstract void init();
     public abstract void shutdown();
@@ -64,7 +63,77 @@ public abstract class RenderBackend {
     public abstract void flush();
     public abstract void finish();
 
-    public abstract void setVSyncEnabled(boolean enabled);
+    private VSyncMode effectiveVSyncMode = VSyncMode.ON;
+    private VSyncMode preferredTearFreeMode;
+
+    public final void setVSyncEnabled(boolean enabled) {
+        setVSyncMode(enabled ? preferredTearFreeMode() : VSyncMode.OFF);
+    }
+
+    public final void setVSyncMode(VSyncMode preferred) {
+        setVSyncPreference(preferred);
+        publishVSyncMode(applyVSyncMode(preferred));
+    }
+
+    public final void setVSyncPreference(VSyncMode preferred) {
+        if (preferred.tearFree()) preferredTearFreeMode = preferred;
+    }
+
+    public final VSyncMode preferredTearFreeMode() {
+        return resolveTearFreeMode(preferredTearFreeMode, this::supportsVSyncMode);
+    }
+
+    static VSyncMode resolveTearFreeMode(VSyncMode preferred, Predicate<VSyncMode> supported) {
+        if (preferred != null && preferred.tearFree() && supported.test(preferred)) return preferred;
+        return supported.test(VSyncMode.MAILBOX) ? VSyncMode.MAILBOX : VSyncMode.ON;
+    }
+
+    protected abstract VSyncMode applyVSyncMode(VSyncMode preferred);
+
+    public boolean supportsVSyncMode(VSyncMode mode) { return mode != VSyncMode.MAILBOX; }
+
+    protected final void publishVSyncMode(VSyncMode mode) { effectiveVSyncMode = mode; }
+
+    public final VSyncMode getEffectiveVSyncMode() { return effectiveVSyncMode; }
+
+    private static final long REFRESH_POLL_NANOS = 1_000_000_000L;
+
+    private long refreshPollNanos;
+    private int cachedRefreshHz;
+
+    public final int getDisplayRefreshRateHz() {
+        final long now = System.nanoTime();
+        if (refreshPollNanos == 0L || now - refreshPollNanos >= REFRESH_POLL_NANOS) {
+            refreshPollNanos = now;
+            cachedRefreshHz = queryDisplayRefreshRateHz();
+        }
+        return cachedRefreshHz;
+    }
+
+    protected int queryDisplayRefreshRateHz() { return 0; }
+
+    public static int refreshHzFrom(int numerator, int denominator, float fallbackHz) {
+        if (numerator > 0 && denominator > 0) return (numerator + denominator - 1) / denominator;
+        return fallbackHz > 0.0f ? (int) Math.ceil(fallbackHz) : 0;
+    }
+
+    public boolean hasSwapchainBackpressure() { return false; }
+
+    private long frameGateNanos;
+    private long frameGateEndNanos;
+
+    public boolean gateAnchorsNextFrameStart() { return false; }
+
+    public boolean wantsDisplayUpdateGateTiming() { return true; }
+
+    public void recordFrameGate(long durationNanos, long endNanos) {
+        frameGateNanos = durationNanos;
+        frameGateEndNanos = endNanos;
+    }
+
+    public long lastFrameGateNanos() { return frameGateNanos; }
+
+    public long lastFrameGateEndNanos() { return frameGateEndNanos; }
 
     public void onFrameBegin() {
         if (GLStateManager.takeStateSeedPending()) {
@@ -75,7 +144,7 @@ public abstract class RenderBackend {
     public void onFrameEnd() {}
 
     /** Fired by lwjgl3ify Display before a mutation that recreates the swapchain. */
-    public void onPreSwapchainInvalidatingChange(SwapchainInvalidatingChange change) {}
+    public void onPreSwapchainInvalidatingChange(Object change) {}
 
     public boolean handleMakeCurrent(Object drawable) { return false; }
     public boolean handleReleaseContext(Object drawable) { return false; }
@@ -83,6 +152,11 @@ public abstract class RenderBackend {
     public void onRenderThreadReleased(Thread thread) {}
 
     public String getTransferDebugInfo() { return null; }
+
+    public boolean bindVoxelizationRegion(int ssboBinding, int vertexBufferGlId, long openPass, float x, float y, float z) { return false; }
+    public long beginVoxelizationBatch(int ssboBinding) { return 0L; }
+    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {}
+    public void endVoxelizationBatch(long pass) {}
 
     public abstract void enable(int cap);
     public abstract void enablei(int cap, int index);
@@ -389,6 +463,8 @@ public abstract class RenderBackend {
     public void getInteger(int pname, int[] params) { if (params.length > 0) params[0] = getInteger(pname); }
     public abstract float getFloat(int pname);
     public abstract void getFloat(int pname, FloatBuffer params);
+    public double getDouble(int pname) { return getFloat(pname); }
+    public void getDouble(int pname, DoubleBuffer params) { if (params.remaining() > 0) params.put(params.position(), getDouble(pname)); }
     public abstract boolean getBoolean(int pname);
     public abstract void getBoolean(int pname, ByteBuffer params);
     public abstract String getString(int pname);

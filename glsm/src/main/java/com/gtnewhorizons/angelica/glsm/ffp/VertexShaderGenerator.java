@@ -182,11 +182,10 @@ public final class VertexShaderGenerator {
         }
 
         // Per-light accumulation
-        if (key.light0Enabled()) {
-            emitLightContribution(sb, key, 0);
-        }
-        if (key.light1Enabled()) {
-            emitLightContribution(sb, key, 1);
+        for (int i = 0; i < VertexKey.FFP_LIGHT_COUNT; i++) {
+            if (key.lightEnabled(i)) {
+                emitLightContribution(sb, key, i);
+            }
         }
 
         sb.append("  v_Color = vec4(clamp(color0, 0.0, 1.0), outAlpha);\n");
@@ -198,7 +197,7 @@ public final class VertexShaderGenerator {
 
     private static void emitLightContribution(StringBuilder sb, VertexKey key, int lightIndex) {
         final String li = String.valueOf(lightIndex);
-        final boolean directional = (lightIndex == 0) ? key.light0Directional() : key.light1Directional();
+        final boolean directional = key.lightDirectional(lightIndex);
         final String posUniform = "u_Light" + li + "Position";
 
         sb.append("  { // Light ").append(li).append('\n');

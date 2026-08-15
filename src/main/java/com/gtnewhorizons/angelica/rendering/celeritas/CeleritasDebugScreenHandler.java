@@ -12,6 +12,7 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
+import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import cpw.mods.fml.common.eventhandler.EventPriority;

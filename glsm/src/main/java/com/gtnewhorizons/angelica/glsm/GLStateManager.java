@@ -10,9 +10,11 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.ffp.VertexKey;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
@@ -530,7 +532,10 @@ public class GLStateManager {
         }
 
         final String glVendor = RENDER_BACKEND.getString(GL11.GL_VENDOR);
-        VENDOR = Vendor.getVendor(glVendor.toLowerCase());
+        if (glVendor == null) {
+            LOGGER.error("Backend {} reported no GL_VENDOR (context: {}); treating the vendor as unknown", RENDER_BACKEND.getName(), RENDER_BACKEND.hasContext());
+        }
+        VENDOR = Vendor.getVendor(glVendor == null ? "" : glVendor.toLowerCase());
 
         final String os = System.getProperty("os.name").toLowerCase();
         windows = os.contains("win");
@@ -551,6 +556,9 @@ public class GLStateManager {
         // GL_STENCIL_BITS was removed in core profile; query via default FBO attachment
         final int stencilBits = RENDER_BACKEND.getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
         glCtx.stencilBitMask = stencilBits >= 32 ? 0xFFFFFFFF : (1 << stencilBits) - 1;
+        if (glCtx.stencilBitMask == 0) {
+            LOGGER.warn("Default framebuffer reports 0 stencil bits on backend {}; all stencil masks clamp to 0", RENDER_BACKEND.getClass().getSimpleName());
+        }
 
         // Initialize stencil masks from computed bit mask
         glCtx.stencilState.setValueMaskFront(glCtx.stencilBitMask);
@@ -1185,12 +1193,11 @@ public class GLStateManager {
         };
     }
 
-    private static final FloatBuffer glGetFloatScratch = BufferUtils.createFloatBuffer(16);
-
     public static void glGetFloat(int pname, float[] params) {
+        final FloatBuffer scratch = ctx().queryScratch;
         final FloatBuffer buf;
-        if (params.length <= glGetFloatScratch.capacity()) {
-            buf = glGetFloatScratch;
+        if (params.length <= scratch.capacity()) {
+            buf = scratch;
             buf.clear();
             buf.limit(params.length);
         } else {
@@ -1199,6 +1206,72 @@ public class GLStateManager {
         glGetFloat(pname, buf);
         buf.position(0);
         buf.get(params);
+    }
+
+    public static double glGetDouble(int pname) {
+        return switch (pname) {
+            case GL11.GL_DEPTH_CLEAR_VALUE -> ctx().depthState.getClearValue();
+            default -> glGetFloat(pname);
+        };
+    }
+
+    public static void glGetDouble(int pname, DoubleBuffer params) {
+        final GLContextState glCtx = ctx();
+        if (!isCachingEnabled()) {
+            RENDER_BACKEND.getDouble(pname, params);
+            return;
+        }
+
+        final int pos = params.position();
+        switch (pname) {
+            case GL11.GL_DEPTH_CLEAR_VALUE -> params.put(pos, glCtx.depthState.getClearValue());
+            case GL11.GL_DEPTH_RANGE -> {
+                params.put(pos, glCtx.viewportState.depthRangeNear);
+                params.put(pos + 1, glCtx.viewportState.depthRangeFar);
+            }
+            case GL11.GL_MODELVIEW_MATRIX, GL11.GL_PROJECTION_MATRIX, GL11.GL_TEXTURE_MATRIX -> widenFromFloat(pname, params, 16);
+            case GL11.GL_COLOR_CLEAR_VALUE, GL11.GL_CURRENT_COLOR, GL11.GL_CURRENT_TEXTURE_COORDS, GL11.GL_FOG_COLOR,
+                GL11.GL_LIGHT_MODEL_AMBIENT, GL14.GL_BLEND_COLOR -> widenFromFloat(pname, params, 4);
+            case GL11.GL_CURRENT_NORMAL -> widenFromFloat(pname, params, 3);
+            default -> {
+                if (!HAS_MULTIPLE_SET.contains(pname)) {
+                    params.put(pos, glGetDouble(pname));
+                } else {
+                    RENDER_BACKEND.getDouble(pname, params);
+                }
+            }
+        }
+    }
+
+    public static void glGetDouble(int pname, double[] params) {
+        final DoubleBuffer scratch = ctx().queryScratchDouble;
+        final DoubleBuffer buf;
+        if (params.length <= scratch.capacity()) {
+            buf = scratch;
+            buf.clear();
+            buf.limit(params.length);
+        } else {
+            buf = BufferUtils.createDoubleBuffer(params.length);
+        }
+        glGetDouble(pname, buf);
+        buf.position(0);
+        buf.get(params);
+    }
+
+    private static void widenFromFloat(int pname, DoubleBuffer params, int count) {
+        final FloatBuffer scratch = ctx().queryScratch;
+        scratch.clear();
+        glGetFloat(pname, scratch);
+        final int pos = params.position();
+        for (int i = 0; i < count; i++) {
+            params.put(pos + i, scratch.get(i));
+        }
+    }
+
+    public static void glGetClipPlane(int plane, DoubleBuffer equation) {
+        final int index = plane - GL11.GL_CLIP_PLANE0;
+        if (index < 0 || index >= MAX_CLIP_PLANES) return;
+        ctx().clipPlaneState.getEyePlane(index, equation);
     }
 
     // GLStateManager Functions
@@ -1980,6 +2053,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -1998,6 +2072,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2016,6 +2091,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2034,6 +2110,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texImage2D(target, level, internalformat, width, height, border, format, type, pixels);
         restorePixelUnpackBuffer();
+        if (mode == RecordMode.NONE && RenderSystem.isLTW()) LTWWorkaround.onTexImage2D(target, level, format, pixels != null);
         maybeGenerateMipmap(target, level);
     }
 
@@ -2341,7 +2418,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, ByteBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2366,7 +2443,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, IntBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2391,7 +2468,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, ShortBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2416,7 +2493,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, int count, int type, ByteBuffer indices) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2441,7 +2518,7 @@ public class GLStateManager {
     }
 
     public static void glDrawElements(int mode, int indices_count, int type, long indices_buffer_offset) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -2484,22 +2561,22 @@ public class GLStateManager {
     }
 
     public static void glMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
-        if (Tracy.ENABLED) drawCalls += drawcount;
+        drawCalls += drawcount;
         RENDER_BACKEND.multiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
     }
 
     public static void glMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) {
-        if (Tracy.ENABLED) drawCalls += drawcount;
+        drawCalls += drawcount;
         RENDER_BACKEND.multiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
     }
 
     public static void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         RENDER_BACKEND.drawElementsBaseVertex(mode, count, type, indices, basevertex);
     }
 
     public static void glDrawElementsInstanced(int mode, int count, int type, long indices, int primcount) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadElementsAsTrianglesInstanced(count, type, indices, primcount);
             return;
@@ -2509,7 +2586,7 @@ public class GLStateManager {
     }
 
     public static void glDrawArraysInstanced(int mode, int first, int count, int primcount) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         if (mode == GL11.GL_QUADS) {
             QuadConverter.drawQuadsAsTrianglesInstanced(first, count, primcount);
         } else if (mode == GL11.GL_QUAD_STRIP) {
@@ -2559,7 +2636,7 @@ public class GLStateManager {
     }
 
     public static void glDrawArrays(int mode, int first, int count) {
-        if (Tracy.ENABLED) drawCalls++;
+        drawCalls++;
         CommandRecorder savedRecorder = null;
         final RecordMode recordMode = DisplayListManager.getRecordMode();
         if (recordMode != RecordMode.NONE) {
@@ -3064,8 +3141,14 @@ public class GLStateManager {
                 return;
             }
         }
+        if (light >= VertexKey.FFP_LIGHT_COUNT && (warnedFfpLightMask & (1 << light)) == 0 && ShaderManager.getInstance().isEnabled()) {
+            warnedFfpLightMask |= (1 << light);
+            LOGGER.warn("GL_LIGHT{} enabled, but FFP shader emulation implements only GL_LIGHT0..{}", light, VertexKey.FFP_LIGHT_COUNT - 1, new Throwable("call site"));
+        }
         ctx().lightStates[light].enable();
     }
+
+    private static int warnedFfpLightMask = 0;
 
     public static void enableColorMaterial() {
         final RecordMode mode = DisplayListManager.getRecordMode();
@@ -3389,14 +3472,11 @@ public class GLStateManager {
     }
 
     public static boolean isCurrent() {
-        if (BackendManager.RENDER_BACKEND == null) {
-            return Thread.currentThread() == MainThread;
-        }
-        return BackendManager.RENDER_BACKEND.isCurrent();
+        return RENDER_BACKEND.isCurrent();
     }
 
     public static void swapBuffers() throws LWJGLException {
-        if (BackendManager.RENDER_BACKEND != null && BackendManager.RENDER_BACKEND.handleSwapBuffers()) {
+        if (RENDER_BACKEND.handleSwapBuffers()) {
             return;
         }
         Display.swapBuffers();
@@ -3412,7 +3492,14 @@ public class GLStateManager {
             if (processMessages) Display.processMessages();
             return;
         }
+        if (!RENDER_BACKEND.wantsDisplayUpdateGateTiming()) {
+            Display.update(processMessages);
+            return;
+        }
+        final long start = System.nanoTime();
         Display.update(processMessages);
+        final long end = System.nanoTime();
+        RENDER_BACKEND.recordFrameGate(end - start, end);
     }
 
     /**
@@ -4540,7 +4627,10 @@ public class GLStateManager {
         RENDER_BACKEND.readPixels(x, y, width, height, format, type, pixels);
         restorePixelPackBuffer();
     }
-    public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) { RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height); }
+    public static void glTexStorage2D(int target, int levels, int internalFormat, int width, int height) {
+        RENDER_BACKEND.texStorage2D(target, levels, internalFormat, width, height);
+        TextureInfoCache.INSTANCE.onTexStorage2D(target, internalFormat, width, height);
+    }
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
 
     public static int glGenSamplers() { return RENDER_BACKEND.genSamplers(); }
@@ -5075,6 +5165,54 @@ public class GLStateManager {
         RENDER_BACKEND.setVSyncEnabled(enabled);
     }
 
+    public static void setVSyncMode(VSyncMode mode) {
+        RENDER_BACKEND.setVSyncMode(mode);
+    }
+
+    public static void setVSyncPreference(VSyncMode mode) {
+        RENDER_BACKEND.setVSyncPreference(mode);
+    }
+
+    public static boolean supportsVSyncMode(VSyncMode mode) {
+        return RENDER_BACKEND.supportsVSyncMode(mode);
+    }
+
+    public static VSyncMode preferredTearFreeMode() {
+        return RENDER_BACKEND.preferredTearFreeMode();
+    }
+
+    public static String getRenderBackendName() {
+        return RENDER_BACKEND.getName();
+    }
+
+    public static VSyncMode getEffectiveVSyncMode() {
+        return RENDER_BACKEND.getEffectiveVSyncMode();
+    }
+
+    public static int getDisplayRefreshRateHz() {
+        return RENDER_BACKEND.getDisplayRefreshRateHz();
+    }
+
+    public static boolean gateAnchorsNextFrameStart() {
+        return RENDER_BACKEND.gateAnchorsNextFrameStart();
+    }
+
+    public static long lastFrameGateNanos() {
+        return RENDER_BACKEND.lastFrameGateNanos();
+    }
+
+    public static long lastFrameGateEndNanos() {
+        return RENDER_BACKEND.lastFrameGateEndNanos();
+    }
+
+    public static boolean hasSwapchainBackpressure() {
+        return RENDER_BACKEND.hasSwapchainBackpressure();
+    }
+
+    public static void pumpDisplayMessages() {
+        Display.processMessages();
+    }
+
     public static int glGetError() {
         if (!RENDER_BACKEND.hasContext()) return 0;
         if (initConfig.isNoErrorChecks()) return 0;
@@ -5155,6 +5293,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 
@@ -5170,6 +5309,7 @@ public class GLStateManager {
         suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels);
         restorePixelUnpackBuffer();
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 
@@ -5179,6 +5319,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glTexSubImage2D with buffer offset");
         }
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 
@@ -5219,6 +5360,7 @@ public class GLStateManager {
             throw DisplayListManager.unsupportedInList("glCopyTexSubImage2D");
         }
         RENDER_BACKEND.copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+        TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
     }
 

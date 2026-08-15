@@ -2,6 +2,7 @@ package net.coderbot.iris.pipeline.transform;
 
 import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.util.EnumMap;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
@@ -92,8 +93,9 @@ public class TransformPatcher {
         }
 
         // if there is no cache result, transform the shaders
+        final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
         if (result == null) {
-            result = ShaderTransformer.transform(vertex, geometry, tessControl, tessEval, fragment, parameters);
+            result = ShaderTransformer.transform(vertex, geometry, tessControl, tessEval, fragment, parameters, artifacts);
             if (useCache) {
                 synchronized (cache) {
                     // Double-check in case another thread added it while we were transforming
@@ -122,7 +124,12 @@ public class TransformPatcher {
                 for (Map.Entry<PatchShaderType, String> entry : result.entrySet()) {
                     final String src = entry.getValue();
                     if (src == null) continue;
-                    processor.onTransformed(src, entry.getKey().glShaderType);
+                    final ShaderTransformer.StageArtifact art = artifacts.get(entry.getKey());
+                    if (art != null) {
+                        processor.onTransformed(src, art.tree(), art.headerLen(), entry.getKey().glShaderType);
+                    } else {
+                        processor.onTransformed(src, entry.getKey().glShaderType);
+                    }
                 }
             }
         }
@@ -183,12 +190,18 @@ public class TransformPatcher {
         if (compute == null) {
             return null;
         }
-        Map<PatchShaderType, String> result = ShaderTransformer.transformCompute(compute, new ComputeParameters(Patch.COMPUTE, stage, textureMap));
+        final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
+        Map<PatchShaderType, String> result = ShaderTransformer.transformCompute(compute, new ComputeParameters(Patch.COMPUTE, stage, textureMap), artifacts);
         final String transformed = result != null ? result.get(PatchShaderType.COMPUTE) : null;
         if (transformed != null && BackendManager.RENDER_BACKEND.isSDLGPU()) {
             final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
             if (processor != null) {
-                processor.onTransformed(transformed, PatchShaderType.COMPUTE.glShaderType);
+                final ShaderTransformer.StageArtifact art = artifacts.get(PatchShaderType.COMPUTE);
+                if (art != null) {
+                    processor.onTransformed(transformed, art.tree(), art.headerLen(), PatchShaderType.COMPUTE.glShaderType);
+                } else {
+                    processor.onTransformed(transformed, PatchShaderType.COMPUTE.glShaderType);
+                }
             }
         }
         return transformed;

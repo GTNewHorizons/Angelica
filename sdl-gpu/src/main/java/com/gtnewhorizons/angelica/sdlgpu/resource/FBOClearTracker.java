@@ -49,8 +49,19 @@ public final class FBOClearTracker {
         st.clearedTexturesThisFrame.remove(tex);
     }
 
+    public static void recordPendingStencilClear(ContextState st, long tex, int value) {
+        st.pendingStencilValues.put(tex, value);
+        if (st.pendingStencilTextures.add(tex)) {
+            st.pendingMutationGen++;
+        }
+        st.clearedStencilTexturesThisFrame.remove(tex);
+    }
+
     public static boolean fboHasPendingClear(ContextState st, FboState fbo) {
-        if (fbo.depthTexture != 0 && st.pendingDepthTextures.contains(fbo.depthTexture)) return true;
+        if (fbo.depthTexture != 0
+            && (st.pendingDepthTextures.contains(fbo.depthTexture) || st.pendingStencilTextures.contains(fbo.depthTexture))) {
+            return true;
+        }
         if (st.pendingColorTextures.isEmpty()) return false;
         for (int db : fbo.drawBuffers) {
             if (db < 0 || db >= ContextState.MAX_COLOR_ATTACHMENTS) continue;
@@ -67,7 +78,7 @@ public final class FBOClearTracker {
     }
 
     public void flushPendingClearsForBoundSamplers(ContextState st) {
-        if (st.pendingColorTextures.isEmpty() && st.pendingDepthTextures.isEmpty()) return;
+        if (st.pendingColorTextures.isEmpty() && st.pendingDepthTextures.isEmpty() && st.pendingStencilTextures.isEmpty()) return;
 
         if (st.lastFlushedSamplerBindGen == st.samplerBindGen && st.lastFlushedProgram == st.boundProgram && st.lastFlushedPendingMutationGen == st.pendingMutationGen) {
             return;
@@ -115,7 +126,7 @@ public final class FBOClearTracker {
             if (st.pendingColorTextures.remove(handle)) {
                 colorHandles.add(handle);
                 colorGlIds.add(glTexId);
-            } else if (st.pendingDepthTextures.remove(handle)) {
+            } else if (st.pendingDepthTextures.contains(handle) || st.pendingStencilTextures.contains(handle)) {
                 depthHandles.add(handle);
                 depthGlIds.add(glTexId);
             }
@@ -169,6 +180,7 @@ public final class FBOClearTracker {
                     MemoryAccess.putFloat(ccAddr + SDL_FColor.B, color[2]);
                     MemoryAccess.putFloat(ccAddr + SDL_FColor.A, color[3]);
                     st.clearedTexturesThisFrame.add(handle);
+                    resourceManager.markTextureContentDefined(handle);
                     consumed[idx] = true;
                 }
                 frameManager.noteClearPass();
@@ -180,19 +192,38 @@ public final class FBOClearTracker {
         final int dn = depthHandles.size();
         for (int i = 0; i < dn; i++) {
             final long handle = depthHandles.getLong(i);
-            final float val = st.pendingDepthValues.get(handle);
-            try (var stack = MemoryStack.stackPush()) {
-                final SDL_GPUDepthStencilTargetInfo dt = SDL_GPUDepthStencilTargetInfo.calloc(stack);
-                final long addr = dt.address();
-                MemoryAccess.putAddress(addr + SDL_GPUDepthStencilTargetInfo.TEXTURE, handle);
-                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, SDL_GPU_LOADOP_CLEAR);
-                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
-                MemoryAccess.putFloat(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, val);
-                frameManager.noteClearPass();
-                frameManager.beginRenderPass(null, dt);
-                frameManager.endRenderPassIfActive();
-                st.clearedTexturesThisFrame.add(handle);
+            emitDepthStencilClearPass(st, handle, st.pendingDepthTextures.remove(handle), st.pendingStencilTextures.remove(handle), false);
+        }
+    }
+
+    private void emitDepthStencilClearPass(ContextState st, long handle, boolean clearDepth, boolean clearStencil, boolean materialized) {
+        if (!clearDepth && !clearStencil) return;
+        try (var stack = MemoryStack.stackPush()) {
+            final SDL_GPUDepthStencilTargetInfo dt = SDL_GPUDepthStencilTargetInfo.calloc(stack);
+            final long addr = dt.address();
+            MemoryAccess.putAddress(addr + SDL_GPUDepthStencilTargetInfo.TEXTURE, handle);
+            MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, clearDepth ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+            MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
+            if (clearDepth) {
+                MemoryAccess.putFloat(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, st.pendingDepthValues.get(handle));
             }
+            if (clearStencil) {
+                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STENCIL_LOAD_OP, SDL_GPU_LOADOP_CLEAR);
+                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STENCIL_STORE_OP, SDL_GPU_STOREOP_STORE);
+                MemoryAccess.putByte(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_STENCIL, (byte) st.pendingStencilValues.get(handle));
+            }
+            frameManager.noteClearPass();
+            if (materialized) frameManager.noteMaterializedClearPass();
+            frameManager.beginRenderPass(null, dt);
+            frameManager.endRenderPassIfActive();
+        }
+        if (clearDepth) {
+            st.pendingDepthValues.remove(handle);
+            st.clearedTexturesThisFrame.add(handle);
+        }
+        if (clearStencil) {
+            st.pendingStencilValues.remove(handle);
+            st.clearedStencilTexturesThisFrame.add(handle);
         }
     }
 
@@ -206,28 +237,18 @@ public final class FBOClearTracker {
         if (depth) st.pendingDepthValues.remove(handle);
         else st.pendingColorValues.remove(handle);
         st.clearedTexturesThisFrame.add(handle);
+        resourceManager.markTextureContentDefined(handle);
         st.pendingMutationGen++;
         return true;
     }
 
     public void materializePendingClearForTexture(ContextState st, long handle) {
         if (handle == 0) return;
-        if (st.pendingDepthTextures.remove(handle)) {
-            final float val = st.pendingDepthValues.remove(handle);
+        final boolean depthPending = st.pendingDepthTextures.remove(handle);
+        final boolean stencilPending = st.pendingStencilTextures.remove(handle);
+        if (depthPending || stencilPending) {
             frameManager.endRenderPassIfActive();
-            try (var stack = MemoryStack.stackPush()) {
-                final SDL_GPUDepthStencilTargetInfo dt = SDL_GPUDepthStencilTargetInfo.calloc(stack);
-                final long addr = dt.address();
-                MemoryAccess.putAddress(addr + SDL_GPUDepthStencilTargetInfo.TEXTURE, handle);
-                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, SDL_GPU_LOADOP_CLEAR);
-                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
-                MemoryAccess.putFloat(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, val);
-                frameManager.noteClearPass();
-                frameManager.noteMaterializedClearPass();
-                frameManager.beginRenderPass(null, dt);
-                frameManager.endRenderPassIfActive();
-                st.clearedTexturesThisFrame.add(handle);
-            }
+            emitDepthStencilClearPass(st, handle, depthPending, stencilPending, true);
             st.pendingMutationGen++;
             return;
         }
@@ -250,6 +271,7 @@ public final class FBOClearTracker {
                 frameManager.beginRenderPass(targets, null);
                 frameManager.endRenderPassIfActive();
                 st.clearedTexturesThisFrame.add(handle);
+                resourceManager.markTextureContentDefined(handle);
             }
             st.pendingMutationGen++;
         }
@@ -262,7 +284,10 @@ public final class FBOClearTracker {
         st.pendingColorValues.remove(handle);
         st.pendingDepthTextures.remove(handle);
         st.pendingDepthValues.remove(handle);
+        st.pendingStencilTextures.remove(handle);
+        st.pendingStencilValues.remove(handle);
         st.clearedTexturesThisFrame.remove(handle);
+        st.clearedStencilTexturesThisFrame.remove(handle);
     }
 
     public boolean fbosHaveSameAttachments(ContextState st, int a, int b) {

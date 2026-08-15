@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.sdlgpu;
 
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
-import cpw.mods.fml.common.FMLCommonHandler;
 import net.minecraftforge.client.ForgeHooksClient;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -26,20 +24,22 @@ public abstract class MixinForgeHooksClient_SDLGPUDisplay {
 
     @Inject(method = "createDisplay", at = @At("HEAD"), cancellable = true)
     private static void angelicaSdl$createDisplay(CallbackInfo ci) throws LWJGLException {
+        if (!SDLGPUGate.isDeviceReady()) {
+            LOGGER.warn("No usable SDL GPU device; creating an OpenGL window instead");
+            return;
+        }
+
         ImageIO.setUseCache(false);
         stencilBits = 8;
-
         final PixelFormat format = new PixelFormat().withDepthBits(24).withStencilBits(stencilBits);
-        try {
-            SDLGPUGate.createSDLGPUDisplay(format, null, AngelicaMod.lwjglDebug);
-            if (SDLGPUGate.isFatalInit()) {
-                FMLCommonHandler.instance().exitJava(1, false);
-            }
+
+        if (SDLGPUGate.createSDLGPUDisplay(format, null)) {
             LOGGER.info("Created SDL GPU window");
             ci.cancel();
-        } catch (RuntimeException e) {
-            LOGGER.error("FATAL: Failed to create SDL GPU window: {}", e.getMessage());
-            throw new LWJGLException("Failed to create SDL GPU window", e);
+            return;
         }
+
+        LOGGER.warn("SDL GPU could not take the window; falling back to OpenGL");
+        SDLGPUGate.fallBackToGL();
     }
 }
