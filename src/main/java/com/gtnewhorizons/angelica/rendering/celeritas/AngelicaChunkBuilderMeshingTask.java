@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
@@ -111,6 +112,8 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
         final BlockPos blockPos = new BlockPos(minX, minY, minZ);
         final IBlockAccess region = getBlockAccess();
+        final WorldSlice reportingSlice = region instanceof WorldSlice slice ? slice : null;
+        if (reportingSlice != null) reportingSlice.setRenderingBlock(null);
         final SmoothBiomeColorCache biomeColorCache = getBiomeColorCache();
 
         onEnterExecute();
@@ -154,6 +157,8 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                         if (block == Blocks.air) {
                             continue;
                         }
+
+                        if (reportingSlice != null) reportingSlice.setRenderingBlock(block);
 
                         final int meta = region.getBlockMetadata(x, y, z);
 
