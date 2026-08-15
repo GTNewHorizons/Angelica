@@ -6,6 +6,8 @@ layout(location = 2) in vec4 a_Color;
 layout(location = 3) in vec4 a_TexBounds;
 
 uniform mat4 u_MVPMatrix;
+uniform vec3 u_Lightmap;
+uniform sampler2D lightmap;
 
 out vec4 tB;
 out vec4 color;
@@ -15,5 +17,10 @@ void main() {
     gl_Position = u_MVPMatrix * vec4(a_Position, 0.0, 1.0);
     texCoord = a_TexCoord0;
     color = a_Color;
+
+    if (u_Lightmap.z > 0.5) {
+        color.rgb *= textureLod(lightmap, u_Lightmap.xy, 0.0).rgb;
+    }
+
     tB = a_TexBounds;
 }
