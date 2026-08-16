@@ -47,7 +47,7 @@ final class TracyNativeLoader {
             case MACOS -> "libTracyClient.dylib";
             case LINUX -> "libTracyClient.so";
         };
-        final String resource = "/natives/tracy/" + platform + "/" + libName;
+        final String resource = "/natives/tracy/" + TRACY_VERSION + "/" + platform + "/" + libName;
 
         final byte[] lib;
         try (InputStream in = TracyNativeLoader.class.getResourceAsStream(resource)) {

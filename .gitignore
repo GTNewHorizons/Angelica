@@ -43,3 +43,5 @@ tracy-client/src/main/resources/natives/
 tracy-client/angelica/
 dist/tracy-natives/
 *.tracy
+
+tracy-client/angelica/
