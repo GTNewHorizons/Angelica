@@ -44,6 +44,18 @@ public final class Tracy {
     public static final int COLOR_IRIS = 0x9E862E; // gold
     public static final int COLOR_FFP = 0x7A4E9E; // purple
 
+    public static final int SECTION_WORLD = 1;
+    public static final int SECTION_SHADERS = 2;
+    public static final int SECTION_BENCHMARK = 3;
+    public static final int SECTION_UI = 4;
+
+    private static final SectionRegistry SECTIONS = new SectionRegistry(new SectionRegistry.Emitter() {
+        @Override public long enter(int category, String text) { return BACKEND.sectionEnter(category, text); }
+        @Override public void leave(long nativeId) { BACKEND.sectionLeave(nativeId); }
+        @Override public void setup(int category, String name) { BACKEND.sectionSetup(category, name); }
+        @Override public boolean isConnected() { return BACKEND.isConnected(); }
+    });
+
     private static final ThreadLocal<ZoneStack> STACK = new ThreadLocal<>() {
         @Override
         protected ZoneStack initialValue() {
@@ -62,6 +74,10 @@ public final class Tracy {
         FINE_ZONES = ENABLED && SystemProperties.TRACY_FINE_ZONES;
         if (ENABLED) {
             Runtime.getRuntime().addShutdownHook(new Thread(Tracy::shutdown, "Tracy-Shutdown"));
+            SECTIONS.registerCategory(SECTION_WORLD, "World");
+            SECTIONS.registerCategory(SECTION_SHADERS, "Shaders");
+            SECTIONS.registerCategory(SECTION_BENCHMARK, "Benchmark");
+            SECTIONS.registerCategory(SECTION_UI, "UI");
             LOGGER.info("Tracy profiling enabled");
         }
     }
@@ -168,7 +184,7 @@ public final class Tracy {
             final String name = stack.poppedName();
             if (name != null && WARNED_LEAKS.add(name)) {
                 LOGGER.warn("Tracy: unbalanced profiler section '{}' left open (leaked by its caller); closed at next root", name);
-                BACKEND.message("unbalanced profiler section '" + name + "' closed at root");
+                BACKEND.message("unbalanced profiler section '" + name + "' closed at root", TracyBackend.SEVERITY_WARNING);
             }
         }
     }
@@ -274,6 +290,7 @@ public final class Tracy {
             threadNameRefreshed = true;
             BACKEND.setCurrentThreadName(Thread.currentThread().getName());
         }
+        SECTIONS.poll();
         BACKEND.frameMark();
     }
 
@@ -330,8 +347,22 @@ public final class Tracy {
     }
 
     public static void message(String text) {
+        message(text, TracyBackend.SEVERITY_INFO);
+    }
+
+    public static void message(String text, int severity) {
         if (!ENABLED || SHUTTING_DOWN || !CaptureGate.markersThisFrame) return;
-        BACKEND.message(text);
+        BACKEND.message(text, severity);
+    }
+
+    public static long sectionEnter(int category, String text) {
+        if (!ENABLED || SHUTTING_DOWN) return 0L;
+        return SECTIONS.enter(category, text);
+    }
+
+    public static void sectionLeave(long token) {
+        if (token == 0L || !ENABLED || SHUTTING_DOWN) return;
+        SECTIONS.leave(token);
     }
 
     public static boolean isConnected() {

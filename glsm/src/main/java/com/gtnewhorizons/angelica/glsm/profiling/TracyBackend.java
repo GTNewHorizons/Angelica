@@ -5,6 +5,13 @@ public interface TracyBackend {
     int PLOT_FORMAT_MEMORY = 1;
     int PLOT_FORMAT_PERCENTAGE = 2;
 
+    int SEVERITY_TRACE = 0;
+    int SEVERITY_DEBUG = 1;
+    int SEVERITY_INFO = 2;
+    int SEVERITY_WARNING = 3;
+    int SEVERITY_ERROR = 4;
+    int SEVERITY_FATAL = 5;
+
     boolean init();
 
     long internSrcLoc(String name, int color);
@@ -24,7 +31,14 @@ public interface TracyBackend {
 
     void plotInt(long namePtr, long value);
     void plot(long namePtr, double value);
-    void message(String text);
+
+    void message(String text, int severity);
+    default void message(String text) { message(text, SEVERITY_INFO); }
+
+    long sectionEnter(int category, String text);
+    void sectionLeave(long id);
+    void sectionSetup(int category, String name);
+
     void setCurrentThreadName(String name);
     boolean isConnected();
     void shutdown();

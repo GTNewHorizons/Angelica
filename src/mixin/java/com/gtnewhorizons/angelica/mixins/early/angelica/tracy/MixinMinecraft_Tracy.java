@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.GpuFrameLagMeter;
 import com.gtnewhorizons.angelica.profiling.TracyFramePlots;
+import com.gtnewhorizons.angelica.profiling.TracyUiSections;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -20,6 +21,7 @@ public class MixinMinecraft_Tracy {
         TracyFramePlots.onFrame((Minecraft) (Object) this);
         GpuFrameLagMeter.onFrame();
         Tracy.frameMark();
+        TracyUiSections.poll(((Minecraft) (Object) this).currentScreen);
         Tracy.gpuCollect();
     }
 

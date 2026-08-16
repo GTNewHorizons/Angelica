@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
@@ -19,6 +20,7 @@ public class PipelineManager {
 	private final Map<String, WorldRenderingPipeline> pipelinesPerDimension = new HashMap<>();
 	private WorldRenderingPipeline pipeline = new FixedFunctionWorldRenderingPipeline();
 	private String lastPreparedDimension = null;
+	private long shaderSection;
     @Getter
 	private int versionCounterForSodiumShaderReload = 0;
 
@@ -41,6 +43,9 @@ public class PipelineManager {
 			Iris.logger.info("Creating pipeline for dimension '{}'", currentDimension);
 			pipeline = pipelineFactory.apply(currentDimension);
 			pipelinesPerDimension.put(currentDimension, pipeline);
+			if (Tracy.ENABLED) {
+				shaderSection = Tracy.sectionEnter(Tracy.SECTION_SHADERS, "shaders " + Iris.getCurrentPackName() + " / " + currentDimension);
+			}
 		} else {
 			pipeline = pipelinesPerDimension.get(currentDimension);
 		}
@@ -70,6 +75,8 @@ public class PipelineManager {
 	 * @see <a href="https://github.com/IrisShaders/Iris/issues/1330">this GitHub issue</a>
 	 */
 	public void destroyPipeline() {
+		Tracy.sectionLeave(shaderSection);
+		shaderSection = 0L;
 		pipelinesPerDimension.forEach((dimensionName, pipeline) -> {
 			Iris.logger.info("Destroying pipeline for dimension '{}'", dimensionName);
 			resetTextureState();
