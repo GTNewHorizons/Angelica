@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
+import com.gtnewhorizons.angelica.glsm.profiling.ZoneStack;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,12 +19,12 @@ import org.lwjgl.system.libffi.FFIType;
 import org.lwjgl.system.libffi.LibFFI;
 
 import java.nio.ByteBuffer;
-import java.nio.DoubleBuffer;
-import java.nio.LongBuffer;
+import java.util.concurrent.ConcurrentLinkedQueue;
 
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.NULL;
 import static org.lwjgl.system.MemoryUtil.memAddress;
+import static org.lwjgl.system.MemoryUtil.memGetInt;
 import static org.lwjgl.system.MemoryUtil.memPutAddress;
 import static org.lwjgl.system.MemoryUtil.memPutByte;
 import static org.lwjgl.system.MemoryUtil.memPutInt;
@@ -33,12 +34,16 @@ import static org.lwjgl.system.MemoryUtil.nmemAllocChecked;
 public final class TracyClientBackend implements TracyBackend {
     private static final Logger LOGGER = LogManager.getLogger("Tracy");
     private static final int MAX_TEXT = 8192;
+    private static final int ACTIVE_OFFSET = 4;
 
     private SharedLibrary lib;
     private TracyLibrary sym;
     private SrcLocInterner interner;
     private long emptyString;
-    private FFICIF plotCif;
+    private int ctxSize;
+    int zoneCtxSize() {
+        return ctxSize;
+    }
 
     @Override
     public boolean init() {
@@ -52,17 +57,14 @@ public final class TracyClientBackend implements TracyBackend {
             sym = TracyLibrary.resolve(lib);
             if (sym == null) return false;
 
-            emptyString = nmemAllocChecked(1);
-            memPutByte(emptyString, (byte) 0);
-
-            final PointerBuffer plotArgTypes = MemoryUtil.memAllocPointer(2);
-            plotArgTypes.put(0, LibFFI.ffi_type_pointer.address()).put(1, LibFFI.ffi_type_double.address());
-            plotCif = FFICIF.malloc();
-            final int status = LibFFI.ffi_prep_cif(plotCif, LibFFI.FFI_DEFAULT_ABI, LibFFI.ffi_type_void, plotArgTypes);
-            if (status != LibFFI.FFI_OK) {
-                LOGGER.warn("Tracy: ffi_prep_cif failed: {}", status);
+            ctxSize = (int) JNI.invokeJ(sym.zoneCtxSize);
+            if (ctxSize <= 0 || Integer.bitCount(ctxSize) != 1) {
+                LOGGER.warn("Tracy: zone context size {} is not a power of two; slot addressing would be wrong", ctxSize);
                 return false;
             }
+
+            emptyString = nmemAllocChecked(1);
+            memPutByte(emptyString, (byte) 0);
 
             interner = new SrcLocInterner(this::allocSrcLoc, SystemProperties.TRACY_MAX_SRC_LOCS);
 
@@ -101,26 +103,64 @@ public final class TracyClientBackend implements TracyBackend {
         return interner.dynamicSrcLoc();
     }
 
+    private static final ConcurrentLinkedQueue<SlotArena> ARENAS = new ConcurrentLinkedQueue<>();
+
+    private static final class SlotArena {
+        private final long base;
+        private final int strideShift;
+        private int depth;
+
+        SlotArena(int stride) {
+            this.strideShift = Integer.numberOfTrailingZeros(stride);
+            this.base = nmemAllocChecked((long) stride * ZoneStack.MAX_DEPTH);
+        }
+
+        long top() {
+            return depth == ZoneStack.MAX_DEPTH ? NULL : base + ((long) depth << strideShift);
+        }
+
+        void unwindTo(long slot) {
+            final long index = (slot - base) >> strideShift;
+            if (index >= 0 && index < ZoneStack.MAX_DEPTH) depth = (int) index;
+        }
+    }
+
+    private final ThreadLocal<SlotArena> slots = ThreadLocal.withInitial(() -> {
+        final SlotArena arena = new SlotArena(ctxSize);
+        ARENAS.add(arena);
+        return arena;
+    });
+
     @Override
     public long beginZone(long srcLoc) {
-        return JNI.invokePJ(srcLoc, 1, sym.zoneBegin);
+        final SlotArena arena = slots.get();
+        final long slot = arena.top();
+        if (slot == NULL) return 0L;
+        JNI.invokePPV(srcLoc, 1, slot, sym.zoneBegin);
+        if (memGetInt(slot + ACTIVE_OFFSET) == 0) return 0L;
+        arena.depth++;
+        return slot;
     }
 
     @Override
     public void endZone(long ctx) {
-        JNI.invokeJV(ctx, sym.zoneEnd);
+        if (ctx == 0L) return;
+        slots.get().unwindTo(ctx);
+        JNI.invokePV(ctx, sym.zoneEnd);
     }
 
     @Override
     public void zoneText(long ctx, String text) {
+        if (ctx == 0L) return;
         try (MemoryStack stack = stackPush()) {
             final ByteBuffer utf8 = stack.UTF8(truncate(text), false);
-            JNI.invokeJPPV(ctx, memAddress(utf8), utf8.remaining(), sym.zoneText);
+            JNI.invokePPPV(ctx, memAddress(utf8), utf8.remaining(), sym.zoneText);
         }
     }
 
     @Override
     public void zoneValue(long ctx, long value) {
+        if (ctx == 0L) return;
         JNI.invokePJV(ctx, value, sym.zoneValue);
     }
 
@@ -153,19 +193,33 @@ public final class TracyClientBackend implements TracyBackend {
 
     @Override
     public void plot(long namePtr, double value) {
+        JNI.invokePJV(namePtr, Double.doubleToRawLongBits(value), sym.plot);
+    }
+
+    @Override
+    public void message(String text, int severity) {
         try (MemoryStack stack = stackPush()) {
-            final LongBuffer arg0 = stack.longs(namePtr);
-            final DoubleBuffer arg1 = stack.doubles(value);
-            final PointerBuffer args = stack.pointers(memAddress(arg0), memAddress(arg1));
-            LibFFI.ffi_call(plotCif, sym.plot, null, args);
+            final ByteBuffer utf8 = stack.UTF8(truncate(text), false);
+            JNI.invokePPV(severity, 0, 0, (long) utf8.remaining(), memAddress(utf8), sym.message);
         }
     }
 
     @Override
-    public void message(String text) {
+    public long sectionEnter(int category, String text) {
         try (MemoryStack stack = stackPush()) {
-            final ByteBuffer utf8 = stack.UTF8(truncate(text), false);
-            JNI.invokePPV(memAddress(utf8), (long) utf8.remaining(), 0, sym.message);
+            return Integer.toUnsignedLong(JNI.invokePI(category, memAddress(stack.UTF8(truncate(text), true)), sym.sectionEnter));
+        }
+    }
+
+    @Override
+    public void sectionLeave(long id) {
+        JNI.invokeV((int) id, sym.sectionLeave);
+    }
+
+    @Override
+    public void sectionSetup(int category, String name) {
+        try (MemoryStack stack = stackPush()) {
+            JNI.invokePV(category, memAddress(stack.UTF8(truncate(name), true)), sym.sectionSetup);
         }
     }
 
@@ -191,15 +245,15 @@ public final class TracyClientBackend implements TracyBackend {
     @Override
     public void shutdown() {
         JNI.invokeV(sym.shutdownProfiler);
+        for (SlotArena arena = ARENAS.poll(); arena != null; arena = ARENAS.poll()) {
+            MemoryUtil.nmemFree(arena.base);
+        }
     }
 
     private static String truncate(String text) {
         return text.length() > MAX_TEXT ? text.substring(0, MAX_TEXT) : text;
     }
 
-    /*
-     * GPU zones: port of TracyOpenGL.hpp GpuCtx (v0.13.1).
-     */
     private static final int GPU_QUERY_COUNT = 16 * 1024;
     private static final byte GPU_CONTEXT_ID = 0;
     private static final byte GPU_CONTEXT_TYPE_OPENGL = 1;

@@ -55,6 +55,7 @@ import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
@@ -216,9 +217,15 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
+    private long worldSection;
+
     @SubscribeEvent
     public void worldLoad(WorldEvent.Load event) {
         if (!event.world.isRemote) return;
+        if (Tracy.ENABLED) {
+            Tracy.sectionLeave(this.worldSection);
+            this.worldSection = Tracy.sectionEnter(Tracy.SECTION_WORLD, "world " + event.world.provider.getDimensionName() + " (dim " + event.world.provider.dimensionId + ")");
+        }
         if (GLStateManager.isRunningSplash()) {
             GLStateManager.setRunningSplash(false);
             LOGGER.info("World loaded - Enabling GLSM Cache");
@@ -238,6 +245,8 @@ public final class ClientProxy extends CommonProxy {
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         if (!event.world.isRemote) return;
+        Tracy.sectionLeave(this.worldSection);
+        this.worldSection = 0L;
         DynamicLights.get().removeAllLightSources();
         GpuCulling.onWorldUnload();
     }

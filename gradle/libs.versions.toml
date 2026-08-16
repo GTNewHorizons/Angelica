@@ -15,7 +15,7 @@ eventbus = "7.0-beta.15"
 glslTransformLib = "0.2.0-33.g3ec381e"
 antlr4Runtime = "4.13.2"
 jcpp = "1.4.14"
-tracy = "0.13.1"
+tracy = "0.14.0"
 retroFuturaBootstrap = "1.1.0"
 
 lombok = "1.18.46"
