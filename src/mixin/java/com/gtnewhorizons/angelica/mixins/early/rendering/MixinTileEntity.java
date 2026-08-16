@@ -53,7 +53,6 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Unique private Block angelica$cachedBBBlockType = null;
     @Unique private AxisAlignedBB angelica$cachedRenderBB = null;
     @Unique private byte angelica$boundsClassCached = 0;        // 0 = unchecked, otherwise STATIC/INFINITE/DYNAMIC
-    @Unique private byte angelica$passClassCached = 0;          // 0 = unchecked, otherwise PASS0_ONLY/PASS_OVERRIDES
 
     /**
      * @author mitchej123
@@ -122,11 +121,4 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
         return angelica$boundsClassCached;
     }
 
-    @Override
-    public byte angelica$passClass() {
-        if (angelica$passClassCached == 0) {
-            angelica$passClassCached = TileEntityRenderBoundsRegistry.classifyPass((TileEntity) (Object) this);
-        }
-        return angelica$passClassCached;
-    }
 }

@@ -45,6 +45,7 @@ import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
+import com.gtnewhorizons.angelica.mixins.interfaces.OverridesShouldRenderInPass;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
@@ -405,7 +406,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             try {
                 for (int i = 0; i < frameTEs.size(); i++) {
                     final TileEntity te = frameTEs.get(i);
-                    if (((ITileEntityBoundingBoxCache) te).angelica$passClass() == TileEntityRenderBoundsRegistry.PASS0_ONLY) {
+                    if (!(te instanceof OverridesShouldRenderInPass)) {
                         dispatchTE(te, partialTicks);
                         count++;
                         continue;
