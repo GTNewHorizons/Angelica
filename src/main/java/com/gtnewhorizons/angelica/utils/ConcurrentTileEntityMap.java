@@ -202,7 +202,8 @@ public class ConcurrentTileEntityMap extends HashMap<ChunkPosition, TileEntity> 
         if (!isRenderWorkerThread()) return delegate.containsKey(key);
         lock.readLock().lock();
         try {
-            return delegate.containsKey(key);
+            final TileEntity te = delegate.get(key);
+            return te != null && !te.isInvalid();
         } finally {
             lock.readLock().unlock();
         }

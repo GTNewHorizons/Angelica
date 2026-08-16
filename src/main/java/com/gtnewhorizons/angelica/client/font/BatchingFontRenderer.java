@@ -5,19 +5,14 @@ import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
 import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
-import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
-
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.ffp.FFPVertexLighting;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
@@ -30,20 +25,31 @@ import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
+import org.joml.Vector3f;
+import org.joml.Vector4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL20;
 
-
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
-
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.Objects;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack.stackPush;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.*;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutByte;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutShort;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memRealloc;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_CHAR;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
+import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -68,6 +74,8 @@ public class BatchingFontRenderer {
     private final int AAStrength;
     private final int alphaTestRefLocation;
     private final int mvpMatrixLocation;
+    private final int lightmapLocation;
+    private final int lightmapSamplerLocation;
     private final int fontShaderId;
 
     final boolean isSGA;
@@ -112,6 +120,8 @@ public class BatchingFontRenderer {
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
         alphaTestRefLocation = GLStateManager.glGetUniformLocation(fontShaderId, "alphaTestRef");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
+        lightmapLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_Lightmap");
+        lightmapSamplerLocation = GLStateManager.glGetUniformLocation(fontShaderId, "lightmap");
         if (ebo == null) {
             ebo = new IndexBuffer();
             vbo = GLStateManager.glGenBuffers();
@@ -129,6 +139,9 @@ public class BatchingFontRenderer {
     // [v, v, t, t, c, c, c, c, tb, tb, tb, tb]
     // v, t and tb are floats, c is bytes; 36 bytes total
     private static final int VERTEX_SIZE = 36;
+
+    /** {@code OpenGlHelper.lightmapTexUnit} */
+    private static final int LIGHTMAP_TEX_UNIT = 1;
     private static int rawCapacity = INITIAL_BATCH_SIZE * VERTEX_SIZE;
     private static ByteBuffer vertexData = memAlloc(rawCapacity);
     private static long vertexDataAddress = memAddress0(vertexData);
@@ -139,6 +152,7 @@ public class BatchingFontRenderer {
     private static int fontVAO = 0;
     private static int vbo;
     private static IndexBuffer ebo;
+    private static int lightmapSamplerProgram;
 
     private static final int RING_CAPACITY = 2 * 1024 * 1024;
     private static PersistentStreamingBuffer streamRing;
@@ -159,11 +173,58 @@ public class BatchingFontRenderer {
     private int blendSrcRGB = GL11.GL_SRC_ALPHA;
     private int blendDstRGB = GL11.GL_ONE_MINUS_SRC_ALPHA;
 
+    private float lightmapU = 0.0f;
+    private float lightmapV = 0.0f;
+    private boolean lightmapActive = false;
+    private int lightmapTextureId = 0;
+
+    private final Vector3f lightingFactor = new Vector3f(1.0f, 1.0f, 1.0f);
+    private boolean lightingFactorActive = false;
+
+    private static final Vector4f scratchLightmapUv = new Vector4f();
+
+    private int applyLighting(int argb) {
+        if (!lightingFactorActive) return argb;
+        final int red = Math.max(0, Math.min(255, (int) (((argb >> 16) & 0xFF) * lightingFactor.x + 0.5f)));
+        final int green = Math.max(0, Math.min(255, (int) (((argb >> 8) & 0xFF) * lightingFactor.y + 0.5f)));
+        final int blue = Math.max(0, Math.min(255, (int) ((argb & 0xFF) * lightingFactor.z + 0.5f)));
+        return (argb & 0xFF000000) | (red << 16) | (green << 8) | blue;
+    }
+
+    private void captureLightmapState() {
+        final int unitBinding = GLStateManager.getTextures().getTextureUnitBindings(LIGHTMAP_TEX_UNIT).getBinding();
+
+        final boolean active = GLStateManager.getProjectionMatrix().m33() == 0.0f && unitBinding != 0;
+
+        float u = 0.0f;
+        float v = 0.0f;
+        int texture = 0;
+        if (active) {
+            scratchLightmapUv.set(GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f).mul(GLStateManager.getTextures().getTextureUnitMatrix(LIGHTMAP_TEX_UNIT));
+            u = scratchLightmapUv.x;
+            v = scratchLightmapUv.y;
+            texture = unitBinding;
+        }
+
+        if (active == lightmapActive && u == lightmapU && v == lightmapV && texture == lightmapTextureId) {
+            return;
+        }
+        sealBatchSegment();
+        lightmapActive = active;
+        lightmapU = u;
+        lightmapV = v;
+        lightmapTextureId = texture;
+    }
+
     private static final class TextSegment {
         final Matrix4f mvp = new Matrix4f();
         BatchingFontRenderer owner;
         int cmdStart;
         int cmdEnd;
+        float lightmapU;
+        float lightmapV;
+        boolean lightmapActive;
+        int lightmapTexture;
     }
 
     // 16-bit EBO index range
@@ -183,7 +244,6 @@ public class BatchingFontRenderer {
     private final ObjectArrayList<TextSegment> batchSegments = ObjectArrayList.wrap(new TextSegment[16], 0);
     private int batchSealedEnd;
     private static BatchingFontRenderer arenaOwner;
-
 
     private void allocateBuffers() {
         populateEBO(rawCapacity / VERTEX_SIZE);
@@ -256,6 +316,7 @@ public class BatchingFontRenderer {
 
     private void pushVtx(float x, float y, int rgba, float u, float v, float uMin, float uMax, float vMin, float vMax) {
         final long ptr = vertexDataAddress + vertexDataPos;
+        rgba = applyLighting(rgba);
 
         // v, v
         memPutFloat(ptr, x);
@@ -437,6 +498,10 @@ public class BatchingFontRenderer {
         segment.cmdStart = batchSealedEnd;
         segment.cmdEnd = end;
         resolveMvp(segment.mvp);
+        segment.lightmapActive = lightmapActive;
+        segment.lightmapU = lightmapU;
+        segment.lightmapV = lightmapV;
+        segment.lightmapTexture = lightmapTextureId;
         batchSegments.add(segment);
         batchSealedEnd = end;
     }
@@ -508,6 +573,7 @@ public class BatchingFontRenderer {
         final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
         final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        final int lightmapBindingBefore = boundLightmapTexture();
 
         final boolean depthTestBefore = GLStateManager.getDepthTest().isEnabled();
         final boolean depthMaskBefore = GLStateManager.getDepthState().isEnabled();
@@ -516,6 +582,7 @@ public class BatchingFontRenderer {
         GLStateManager.glDepthMask(false);
         flushLastTexture = DUMMY_RESOURCE_LOCATION;
         flushTextureChanged = false;
+        resetFlushLightmap();
         try (MemoryStack stack = stackPush()) {
             final FloatBuffer mvpBuf = stack.mallocFloat(16);
             for (int i = 0, n = deferredSegments.size(); i < n; i++) {
@@ -523,10 +590,12 @@ public class BatchingFontRenderer {
                 mvpBuf.clear();
                 segment.mvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(segment.owner.mvpMatrixLocation, false, mvpBuf);
+                uploadLightmap(segment.owner.lightmapLocation, segment.lightmapActive, segment.lightmapU,
+                    segment.lightmapV, segment.lightmapTexture);
                 drawCommands(segment.owner.batchCommands.elements(), segment.cmdStart, segment.cmdEnd, segment.owner);
             }
         }
-        restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore);
+        restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore, lightmapBindingBefore);
         restoreDepth(depthTestBefore, depthMaskBefore);
 
         discardDeferredText();
@@ -540,6 +609,7 @@ public class BatchingFontRenderer {
             segment.owner.recycleBatchSegments();
             segment.owner.batchSealedEnd = 0;
             segment.owner.batchMatrixValid = false;
+            segment.owner.resetLightmapState();
             segment.owner = null;
         }
         deferredSegmentPool.addAll(deferredSegments);
@@ -601,12 +671,14 @@ public class BatchingFontRenderer {
         final boolean isTextureEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_TEXTURE_2D);
         final boolean isBlendEnabledBefore = GLStateManager.glIsEnabled(GL11.GL_BLEND);
         final int boundTextureBefore = GLStateManager.glGetInteger(GL11.GL_TEXTURE_BINDING_2D);
+        final int lightmapBindingBefore = boundLightmapTexture();
         final boolean depthTestBefore = GLStateManager.getDepthTest().isEnabled();
         final boolean depthMaskBefore = GLStateManager.getDepthState().isEnabled();
 
         setupFontDrawState();
         flushLastTexture = DUMMY_RESOURCE_LOCATION;
         flushTextureChanged = false;
+        resetFlushLightmap();
         try (MemoryStack stack = stackPush()) {
             final FloatBuffer mvpBuf = stack.mallocFloat(16);
             for (int i = 0; i < segmentCount; i++) {
@@ -614,6 +686,7 @@ public class BatchingFontRenderer {
                 mvpBuf.clear();
                 segment.mvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+                uploadLightmap(lightmapLocation, segment.lightmapActive, segment.lightmapU, segment.lightmapV, segment.lightmapTexture);
                 drawCommands(cmds, segment.cmdStart, segment.cmdEnd, this);
             }
             if (batchSealedEnd < cmdCount) {
@@ -621,10 +694,11 @@ public class BatchingFontRenderer {
                 resolveMvp(scratchMvp);
                 scratchMvp.get(mvpBuf);
                 GLStateManager.glUniformMatrix4(mvpMatrixLocation, false, mvpBuf);
+                uploadLightmap(lightmapLocation, lightmapActive, lightmapU, lightmapV, lightmapTextureId);
                 drawCommands(cmds, batchSealedEnd, cmdCount, this);
             }
         }
-        restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore);
+        restoreFontDrawState(prevProgram, isTextureEnabledBefore, isBlendEnabledBefore, boundTextureBefore, lightmapBindingBefore);
         restoreDepth(depthTestBefore, depthMaskBefore);
 
         truncateBatchToWatermark();
@@ -647,6 +721,10 @@ public class BatchingFontRenderer {
             GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
         }
         GLStateManager.glUniform1f(alphaTestRefLocation, GLStateManager.getAlphaState().getReference());
+        if (lightmapSamplerProgram != fontShaderId) {
+            GLStateManager.glUniform1i(lightmapSamplerLocation, LIGHTMAP_TEX_UNIT);
+            lightmapSamplerProgram = fontShaderId;
+        }
 
         if (fontVAO == 0) {
             fontVAO = GLStateManager.glGenVertexArrays();
@@ -677,6 +755,38 @@ public class BatchingFontRenderer {
     private static ResourceLocation flushLastTexture;
     private static boolean flushTextureChanged;
 
+    private static float flushLastLightmapU;
+    private static float flushLastLightmapV;
+    private static boolean flushLastLightmapActive;
+
+    private static void resetFlushLightmap() {
+        flushLastLightmapU = Float.NaN;
+        flushLastLightmapV = Float.NaN;
+        flushLastLightmapActive = false;
+    }
+
+    private static int boundLightmapTexture() {
+        return GLStateManager.getTextures().getTextureUnitBindings(LIGHTMAP_TEX_UNIT).getBinding();
+    }
+
+    private static void bindLightmapTexture(int texture) {
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0 + LIGHTMAP_TEX_UNIT);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+    }
+
+    private static void uploadLightmap(int uniformLocation, boolean active, float u, float v, int texture) {
+        if (u != flushLastLightmapU || v != flushLastLightmapV || active != flushLastLightmapActive) {
+            GLStateManager.glUniform3f(uniformLocation, u, v, active ? 1.0f : 0.0f);
+            flushLastLightmapU = u;
+            flushLastLightmapV = v;
+            flushLastLightmapActive = active;
+        }
+        if (active && texture != 0 && boundLightmapTexture() != texture) {
+            bindLightmapTexture(texture);
+        }
+    }
+
     private static void drawCommands(FontDrawCmd[] cmdsData, int from, int to, BatchingFontRenderer owner) {
         for (int i = from; i < to; i++) {
             final FontDrawCmd cmd = cmdsData[i];
@@ -696,7 +806,7 @@ public class BatchingFontRenderer {
         }
     }
 
-    private static void restoreFontDrawState(int prevProgram, boolean textureEnabledBefore, boolean blendEnabledBefore, int boundTextureBefore) {
+    private static void restoreFontDrawState(int prevProgram, boolean textureEnabledBefore, boolean blendEnabledBefore, int boundTextureBefore, int lightmapBindingBefore) {
         GLStateManager.glUseProgram(prevProgram);
 
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -710,6 +820,9 @@ public class BatchingFontRenderer {
         }
         if (flushTextureChanged) {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, boundTextureBefore);
+        }
+        if (boundLightmapTexture() != lightmapBindingBefore) {
+            bindLightmapTexture(lightmapBindingBefore);
         }
     }
 
@@ -732,9 +845,17 @@ public class BatchingFontRenderer {
         batchMatrixValid = false;
         vertexDataPos = deferredVertexPos;
         idxWriterIndex = deferredIdxPos;
+        resetLightmapState();
         if (arenaOwner == this) {
             arenaOwner = null;
         }
+    }
+
+    private void resetLightmapState() {
+        lightmapActive = false;
+        lightmapU = 0.0f;
+        lightmapV = 0.0f;
+        lightmapTextureId = 0;
     }
 
     // === Actual text mesh generation
@@ -831,6 +952,8 @@ public class BatchingFontRenderer {
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
         this.beginBatch();
+        this.captureLightmapState();
+        this.lightingFactorActive = FFPVertexLighting.modulatesVertexColor(this.lightingFactor);
         float curX = anchorX;
         try {
             final int totalStringLength = string.length();

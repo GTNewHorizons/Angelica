@@ -11,6 +11,7 @@ import static org.lwjgl.system.MemoryUtil.NULL;
 final class TracyLibrary {
     private static final Logger LOGGER = LogManager.getLogger("Tracy");
 
+    final long zoneCtxSize;
     final long startupProfiler;
     final long shutdownProfiler;
     final long profilerStarted;
@@ -26,6 +27,9 @@ final class TracyLibrary {
     final long message;
     final long messageAppinfo;
     final long setThreadName;
+    final long sectionEnter;
+    final long sectionLeave;
+    final long sectionSetup;
     final long gpuZoneBegin;
     final long gpuZoneEnd;
     final long gpuTime;
@@ -43,21 +47,25 @@ final class TracyLibrary {
     }
 
     private TracyLibrary(SharedLibrary lib) {
+        zoneCtxSize = req(lib, "ang_zone_ctx_size");
         startupProfiler = req(lib, "___tracy_startup_profiler");
         shutdownProfiler = req(lib, "___tracy_shutdown_profiler");
         profilerStarted = req(lib, "___tracy_profiler_started");
         connected = req(lib, "___tracy_connected");
-        zoneBegin = req(lib, "___tracy_emit_zone_begin");
-        zoneEnd = req(lib, "___tracy_emit_zone_end");
-        zoneText = req(lib, "___tracy_emit_zone_text");
-        zoneValue = req(lib, "___tracy_emit_zone_value");
+        zoneBegin = req(lib, "ang_zone_begin");
+        zoneEnd = req(lib, "ang_zone_end");
+        zoneText = req(lib, "ang_zone_text");
+        zoneValue = req(lib, "ang_zone_value");
         frameMark = req(lib, "___tracy_emit_frame_mark");
-        plot = req(lib, "___tracy_emit_plot");
+        plot = req(lib, "ang_plot");
         plotInt = req(lib, "___tracy_emit_plot_int");
         plotConfig = req(lib, "___tracy_emit_plot_config");
-        message = req(lib, "___tracy_emit_message");
+        message = req(lib, "___tracy_emit_logString");
         messageAppinfo = req(lib, "___tracy_emit_message_appinfo");
         setThreadName = req(lib, "___tracy_set_thread_name");
+        sectionEnter = req(lib, "ang_section_enter");
+        sectionLeave = req(lib, "ang_section_leave");
+        sectionSetup = req(lib, "ang_section_setup");
         gpuZoneBegin = req(lib, "___tracy_emit_gpu_zone_begin");
         gpuZoneEnd = req(lib, "___tracy_emit_gpu_zone_end");
         gpuTime = req(lib, "___tracy_emit_gpu_time");

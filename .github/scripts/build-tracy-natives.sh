@@ -2,7 +2,8 @@
 # Builds the libTracyClient shared library for the tracy-client module.
 set -euo pipefail
 
-TRACY_VERSION="${TRACY_VERSION:-v0.13.1}"
+TRACY_VERSION="${TRACY_VERSION:-v0.14.0}"
+TRACY_VERSION_BARE="${TRACY_VERSION#v}"
 OUT_DIR="${OUT_DIR:-dist/tracy-natives}"
 TRACY_REPO="https://github.com/wolfpld/tracy"
 
@@ -16,7 +17,7 @@ case "$(uname -m)" in
     arm64|aarch64) PLAT_ARCH="arm64" ;;
     *) PLAT_ARCH="x64" ;;
 esac
-RES_DIR="${RES_DIR:-$REPO_ROOT/tracy-client/src/main/resources/natives/tracy/$PLAT_OS-$PLAT_ARCH}"
+RES_DIR="${RES_DIR:-$REPO_ROOT/tracy-client/src/main/resources/natives/tracy/$TRACY_VERSION_BARE/$PLAT_OS-$PLAT_ARCH}"
 
 WORK_DIR="$(mktemp -d)"
 trap 'rm -rf "$WORK_DIR"' EXIT
@@ -33,7 +34,8 @@ fi
 BUILD_DIR="$WORK_DIR/build"
 export MACOSX_DEPLOYMENT_TARGET="${MACOSX_DEPLOYMENT_TARGET:-11.0}"
 
-cmake -S "$SRC_DIR" -B "$BUILD_DIR" \
+cmake -S "$REPO_ROOT/tracy-client/src/main/native" -B "$BUILD_DIR" \
+    -DTRACY_SRC_DIR="$SRC_DIR" \
     -DCMAKE_BUILD_TYPE=Release \
     -DBUILD_SHARED_LIBS=ON \
     -DTRACY_STATIC=OFF \
