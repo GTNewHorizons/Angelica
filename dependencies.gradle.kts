@@ -52,8 +52,8 @@ configurations.configureEach {
 }
 
 DependencyHandlerScope.of(dependencies).apply {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.166:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.166:dev")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.187:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.187:dev")
 
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:biomes-o-plenty-220318:2499612"))
 

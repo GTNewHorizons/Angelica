@@ -34,7 +34,7 @@ class TracyBindingSmokeTest {
     static boolean nativePresent() {
         for (String platform : new String[] {"windows-x64", "linux-x64", "macos-x64", "macos-arm64"}) {
             for (String lib : new String[] {"TracyClient.dll", "libTracyClient.so", "libTracyClient.dylib"}) {
-                if (TracyBindingSmokeTest.class.getResource("/natives/tracy/" + platform + "/" + lib) != null) {
+                if (TracyBindingSmokeTest.class.getResource("/natives/tracy/" + TracyTags.TRACY_VERSION + "/" + platform + "/" + lib) != null) {
                     return true;
                 }
             }
@@ -58,7 +58,25 @@ class TracyBindingSmokeTest {
     }
 
     @Test
+    @Order(0)
+    void nativeIsBuiltWithOnDemand() throws Exception {
+        assertEquals(16, backend().zoneCtxSize(), "ctx size is 16 only with TRACY_ON_DEMAND");
+    }
+
+    @Test
     @Order(1)
+    void zeroHandlesAreInertWhileDisconnected() throws Exception {
+        final TracyClientBackend b = backend();
+        assertEquals(0L, b.beginZone(b.internSrcLoc("disconnected", 0)), "zone must be inactive with no profiler attached");
+        b.endZone(0L);
+        b.zoneText(0L, "text");
+        b.zoneValue(0L, 1L);
+        assertEquals(0L, b.sectionEnter(1, "disconnected section"));
+        b.sectionLeave(0L);
+    }
+
+    @Test
+    @Order(2)
     void internAndSingleZone() throws Exception {
         final TracyClientBackend b = backend();
         final long srcLoc = b.internSrcLoc("smoke", 0);
@@ -72,7 +90,7 @@ class TracyBindingSmokeTest {
     }
 
     @Test
-    @Order(2)
+    @Order(3)
     void hammerZonesAcrossThreads() throws Exception {
         final TracyClientBackend b = backend();
         final int threads = 4;
@@ -108,7 +126,7 @@ class TracyBindingSmokeTest {
     }
 
     @Test
-    @Order(3)
+    @Order(4)
     void plotsMessagesAndFrameMarks() throws Exception {
         final TracyClientBackend b = backend();
         final long plotName = b.internPlotName("smokePlot", 0);
@@ -126,7 +144,7 @@ class TracyBindingSmokeTest {
     }
 
     @Test
-    @Order(4)
+    @Order(5)
     void dynamicSrcLocOverflowPath() throws Exception {
         final TracyClientBackend b = backend();
         final long dynamic = b.dynamicSrcLoc();
@@ -137,7 +155,7 @@ class TracyBindingSmokeTest {
     }
 
     @Test
-    @Order(5)
+    @Order(6)
     void gpuEmitStructMarshalling() throws Exception {
         final TracyClientBackend b = backend();
         final long srcLoc = b.internSrcLoc("gpu-smoke", 0);
@@ -152,7 +170,7 @@ class TracyBindingSmokeTest {
     }
 
     @Test
-    @Order(6)
+    @Order(7)
     void shutdownFlushes() throws Exception {
         backend().shutdown();
     }
