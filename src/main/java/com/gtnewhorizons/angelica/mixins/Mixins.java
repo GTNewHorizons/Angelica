@@ -387,6 +387,7 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinWorld_WorkerMutationGuard"
             , "celeritas.terrain.MixinTileEntity_AwaitingDescriptor"
             , "celeritas.terrain.MixinNetHandlerPlayClient_DescriptorRepair"
+            , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
             , "celeritas.terrain.MixinDefaultChunkRenderer"

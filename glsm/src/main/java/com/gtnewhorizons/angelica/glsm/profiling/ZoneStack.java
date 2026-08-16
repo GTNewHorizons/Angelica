@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.glsm.profiling;
 
 public final class ZoneStack {
     public static final long EMPTY = -1L;
-    static final int MAX_DEPTH = 512;
+    public static final int MAX_DEPTH = 512;
 
     private long[] stack = new long[64];
     private boolean[] gpu = new boolean[64];
