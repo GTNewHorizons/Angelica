@@ -8,6 +8,7 @@ import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Splits the particle batch between {@code gbuffers_particles} and {@code gbuffers_particles_translucent}.
@@ -15,13 +16,13 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(EffectRenderer.class)
 public class MixinEffectRenderer_Particles {
 
-    @WrapOperation(
+    @Redirect(
         method = "renderParticles",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V")
     )
-    private void iris$beginRun(Tessellator tessellator, Operation<Void> original) {
+    private void iris$beginRun(Tessellator tessellator) {
         ParticleRunSplitter.beginRun();
-        original.call(tessellator);
+        tessellator.startDrawingQuads();
     }
 
     @WrapOperation(

@@ -12,6 +12,7 @@ import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 /**
  * Mixin to handle entity ID and item ID for entities rendered through renderEntityWithPosYaw and renderEntityStatic.
@@ -21,15 +22,15 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(RenderManager.class)
 public class MixinRenderManager {
 
-    @WrapOperation(
+    @Redirect(
         method = "func_147939_a",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/Render;doRenderShadowAndFire(Lnet/minecraft/entity/Entity;DDDFF)V")
     )
-    private void iris$wrapShadowAndFire(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
+    private void iris$wrapShadowAndFire(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks) {
         final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(null);
 
         try {
-            original.call(render, entity, x, y, z, entityYaw, partialTicks);
+            render.doRenderShadowAndFire(entity, x, y, z, entityYaw, partialTicks);
         } finally {
             GbufferPrograms.endTranslucencyDeclaration(previous);
         }

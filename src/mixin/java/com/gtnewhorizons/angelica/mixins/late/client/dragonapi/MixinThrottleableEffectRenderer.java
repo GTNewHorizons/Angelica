@@ -8,18 +8,19 @@ import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Redirect;
 
 @Pseudo
 @Mixin(targets = { "Reika/DragonAPI/Extras/ThrottleableEffectRenderer" }, remap = false)
 public class MixinThrottleableEffectRenderer {
 
-    @WrapOperation(
+    @Redirect(
         method = "doRenderParticles",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;startDrawingQuads()V", remap = true)
     )
-    private void angelica$beginRun(Tessellator tessellator, Operation<Void> original) {
+    private void angelica$beginRun(Tessellator tessellator) {
         ParticleRunSplitter.beginRun();
-        original.call(tessellator);
+        tessellator.startDrawingQuads();
     }
 
     @WrapOperation(

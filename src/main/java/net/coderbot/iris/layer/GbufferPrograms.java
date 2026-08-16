@@ -214,6 +214,12 @@ public class GbufferPrograms {
 		}
 	}
 
+	public static void popBlendStateTop() {
+		if (blendDepth > 0) {
+			popBlendState(blendDepth - 1);
+		}
+	}
+
 	private static BlendState[] blendSaves = new BlendState[4];
 	private static boolean[] blendEnabledSaves = new boolean[4];
 	private static int blendDepth;

@@ -16,13 +16,22 @@ import net.minecraft.client.renderer.entity.RendererLivingEntity;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.Slice;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RendererLivingEntity.class)
-public class MixinRendererLivingEntity {
+public abstract class MixinRendererLivingEntity {
+
+    @Shadow
+    protected abstract void renderModel(EntityLivingBase entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale);
+
+    @Shadow
+    protected abstract int getColorMultiplier(EntityLivingBase entity, float brightness, float partialTicks);
+
     /**
      * Reset ID before damage overlay renders, otherwise you get random shiny zombies
      */
@@ -34,19 +43,19 @@ public class MixinRendererLivingEntity {
         ItemIdManager.resetItemId();
     }
 
-    @WrapOperation(
+    @Redirect(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderModel(Lnet/minecraft/entity/EntityLivingBase;FFFFFF)V")
     )
-    private void iris$declarePlayerModelTranslucent(RendererLivingEntity instance, EntityLivingBase entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale, Operation<Void> original) {
+    private void iris$declarePlayerModelTranslucent(RendererLivingEntity instance, EntityLivingBase entity, float limbSwing, float limbSwingAmount, float ageInTicks, float netHeadYaw, float headPitch, float scale) {
         if (!(instance instanceof RenderPlayer)) {
-            original.call(instance, entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+            renderModel(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
             return;
         }
 
         final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(Boolean.TRUE);
         try {
-            original.call(instance, entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
+            renderModel(entity, limbSwing, limbSwingAmount, ageInTicks, netHeadYaw, headPitch, scale);
         } finally {
             GbufferPrograms.endTranslucencyDeclaration(previous);
         }
@@ -55,12 +64,12 @@ public class MixinRendererLivingEntity {
     /**
      * Capture entity color for shader access.
      */
-    @WrapOperation(
+    @Redirect(
         method = "doRender",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;getColorMultiplier(Lnet/minecraft/entity/EntityLivingBase;FF)I")
     )
-    private int iris$setEntityColor(RendererLivingEntity instance, EntityLivingBase elb, float f0, float f1, Operation<Integer> original) {
-        final int j = original.call(instance, elb, f0, f1);
+    private int iris$setEntityColor(RendererLivingEntity instance, EntityLivingBase elb, float f0, float f1) {
+        final int j = getColorMultiplier(elb, f0, f1);
         final float a = (j >> 24 & 255) / 255.0F;
         final float r = (j >> 16 & 255) / 255.0F;
         final float g = (j >> 8 & 255) / 255.0F;
