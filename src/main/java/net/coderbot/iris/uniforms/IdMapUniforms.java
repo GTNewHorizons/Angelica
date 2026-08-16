@@ -16,6 +16,7 @@ import net.minecraft.util.ResourceLocation;
 import org.jetbrains.annotations.NotNull;
 
 import static net.coderbot.iris.gl.uniform.UniformUpdateFrequency.PER_FRAME;
+import static org.joml.Math.clamp;
 
 public final class IdMapUniforms {
 
@@ -75,7 +76,7 @@ public final class IdMapUniforms {
 		 * Damn you chisel beacon
 		 */
 		private static int clampEmission(int emission) {
-			return Math.max(0, Math.min(15, emission));
+			return clamp(0, 15, emission);
 		}
 
 		public void update() {
