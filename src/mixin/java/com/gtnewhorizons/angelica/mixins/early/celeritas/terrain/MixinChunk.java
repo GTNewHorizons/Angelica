@@ -23,10 +23,10 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import com.gtnewhorizon.gtnhlib.hash.Fnv1a64;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.event.ChunkBiomeDataChangedEvent;
-import com.gtnewhorizons.angelica.mixins.interfaces.IAwaitingDescriptorTE;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import com.gtnewhorizons.angelica.utils.AwaitingDescriptor;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
 
 @Mixin(Chunk.class)
@@ -138,7 +138,7 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
                                     te.xCoord = (this.xPosition << 4) + x;
                                     te.yCoord = worldY;
                                     te.zCoord = (this.zPosition << 4) + z;
-                                    ((IAwaitingDescriptorTE) te).angelica$setAwaitingDescriptor(true);
+                                    AwaitingDescriptor.begin(te);
                                     this.addTileEntity(te);
                                 }
                             }

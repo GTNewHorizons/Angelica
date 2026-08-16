@@ -8,7 +8,8 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
-import com.gtnewhorizons.angelica.mixins.interfaces.IAwaitingDescriptorTE;
+import com.gtnewhorizons.angelica.mixins.interfaces.AwaitingDescriptorTE;
+import com.gtnewhorizons.angelica.utils.AwaitingDescriptor;
 
 @Mixin(NetHandlerPlayClient.class)
 public class MixinNetHandlerPlayClient_DescriptorRepair {
@@ -17,8 +18,8 @@ public class MixinNetHandlerPlayClient_DescriptorRepair {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getTileEntity(III)Lnet/minecraft/tileentity/TileEntity;"))
     private TileEntity angelica$remeshOnFirstDescriptor(WorldClient world, int x, int y, int z) {
         final TileEntity te = world.getTileEntity(x, y, z);
-        if (te instanceof IAwaitingDescriptorTE awaiting && awaiting.angelica$isAwaitingDescriptor()) {
-            awaiting.angelica$setAwaitingDescriptor(false);
+        if (te instanceof AwaitingDescriptorTE awaiting && awaiting.angelica$isAwaitingDescriptor()) {
+            AwaitingDescriptor.end(awaiting);
             world.markBlockForUpdate(x, y, z);
         }
         return te;
