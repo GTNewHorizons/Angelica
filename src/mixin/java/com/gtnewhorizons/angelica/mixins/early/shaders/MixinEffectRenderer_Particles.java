@@ -1,8 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.rendering.ParticleRunSplitter;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.Tessellator;
@@ -25,13 +23,13 @@ public class MixinEffectRenderer_Particles {
         tessellator.startDrawingQuads();
     }
 
-    @WrapOperation(
+    @Redirect(
         method = "renderParticles",
-        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V")
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;getBrightnessForRender(F)I"),
+        require = 1
     )
-    private void iris$splitRun(EntityFX particle, Tessellator tessellator, float partialTicks, float rotX, float rotXZ,
-                               float rotZ, float rotYZ, float rotXY, Operation<Void> original) {
-        ParticleRunSplitter.splitIfNeeded(particle, tessellator, partialTicks);
-        original.call(particle, tessellator, partialTicks, rotX, rotXZ, rotZ, rotYZ, rotXY);
+    private int iris$splitRun(EntityFX particle, float partialTicks) {
+        ParticleRunSplitter.splitIfNeeded(particle, Tessellator.instance, partialTicks);
+        return particle.getBrightnessForRender(partialTicks);
     }
 }
