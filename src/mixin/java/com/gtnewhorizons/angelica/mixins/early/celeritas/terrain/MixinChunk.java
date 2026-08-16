@@ -25,6 +25,8 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.event.ChunkBiomeDataChangedEvent;
 import com.gtnewhorizons.angelica.mixins.interfaces.IChunkTileEntityMapHolder;
 import com.gtnewhorizons.angelica.rendering.RenderThreadContext;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import com.gtnewhorizons.angelica.utils.AwaitingDescriptor;
 import com.gtnewhorizons.angelica.utils.ConcurrentTileEntityMap;
 
 @Mixin(Chunk.class)
@@ -60,22 +62,29 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
 
     @Redirect(method = "getTileEntityUnsafe", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"), remap = false)
     private Object angelica$redirectGetTEUnsafe(Map<ChunkPosition, TileEntity> map, Object key) {
-        if (RenderThreadContext.hasWorldSlice()) {
+        return angelica$snapshotFirst(map, key);
+    }
+
+    @Redirect(method = "func_150806_e", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
+    private Object angelica$redirectGetTEFunc(Map<ChunkPosition, TileEntity> map, Object key) {
+        return angelica$snapshotFirst(map, key);
+    }
+
+    @Unique
+    private Object angelica$snapshotFirst(Map<ChunkPosition, TileEntity> map, Object key) {
+        final WorldSlice slice = RenderThreadContext.get();
+        if (slice != null) {
             final ChunkPosition pos = (ChunkPosition) key;
-            final TileEntity te = RenderThreadContext.getSnapshotTE((this.xPosition << 4) + pos.chunkPosX, pos.chunkPosY, (this.zPosition << 4) + pos.chunkPosZ);
+            final TileEntity te = slice.getTileEntity((this.xPosition << 4) + pos.chunkPosX, pos.chunkPosY, (this.zPosition << 4) + pos.chunkPosZ);
             if (te != null) return te;
         }
         return map.get(key);
     }
 
-    @Redirect(method = "func_150806_e", at = @At(value = "INVOKE", target = "Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
-    private Object angelica$redirectGetTEFunc(Map<ChunkPosition, TileEntity> map, Object key) {
-        if (RenderThreadContext.hasWorldSlice()) {
-            final ChunkPosition pos = (ChunkPosition) key;
-            final TileEntity te = RenderThreadContext.getSnapshotTE((this.xPosition << 4) + pos.chunkPosX, pos.chunkPosY, (this.zPosition << 4) + pos.chunkPosZ);
-            if (te != null) return te;
-        }
-        return map.get(key);
+    @Redirect(method = "func_150806_e", at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;hasTileEntity(I)Z"), remap = false)
+    private boolean angelica$noWorkerTileEntityCreation(Block block, int meta) {
+        if (RenderThreadContext.hasWorldSlice()) return false;
+        return block.hasTileEntity(meta);
     }
 
     @Redirect(method = "func_150806_e", at = @At(value = "INVOKE", target = "Ljava/util/Map;remove(Ljava/lang/Object;)Ljava/lang/Object;"))
@@ -129,6 +138,7 @@ public abstract class MixinChunk implements IChunkTileEntityMapHolder {
                                     te.xCoord = (this.xPosition << 4) + x;
                                     te.yCoord = worldY;
                                     te.zCoord = (this.zPosition << 4) + z;
+                                    AwaitingDescriptor.begin(te);
                                     this.addTileEntity(te);
                                 }
                             }

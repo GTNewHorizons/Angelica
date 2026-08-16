@@ -7,7 +7,6 @@ import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL42;
 
-import java.lang.reflect.Field;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -15,17 +14,11 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ImageUnitBindingStateTest {
 
-    @SuppressWarnings("unchecked")
-    private static ContextState state() throws Exception {
-        final Field f = SDLGPURenderBackend.class.getDeclaredField("tlState");
-        f.setAccessible(true);
-        return ((ThreadLocal<ContextState>) f.get(null)).get();
-    }
 
     @Test
-    void bindImageTextureRecordsTheFullTuple() throws Exception {
+    void bindImageTextureRecordsTheFullTuple() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
-        final ContextState st = state();
+        final ContextState st = SdlTestRig.contextState();
 
         backend.bindImageTexture(2, 77, 3, true, 5, GL15.GL_READ_WRITE, GL30.GL_R32UI);
 
@@ -38,7 +31,7 @@ class ImageUnitBindingStateTest {
     }
 
     @Test
-    void getIntegerIndexedAnswersImageBindingsFromState() throws Exception {
+    void getIntegerIndexedAnswersImageBindingsFromState() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
 
         backend.bindImageTexture(1, 42, 2, false, 4, GL15.GL_READ_ONLY, GL30.GL_RGBA32UI);
@@ -52,9 +45,9 @@ class ImageUnitBindingStateTest {
     }
 
     @Test
-    void outOfRangeUnitIsIgnored() throws Exception {
+    void outOfRangeUnitIsIgnored() {
         final SDLGPURenderBackend backend = new SDLGPURenderBackend();
-        final ContextState st = state();
+        final ContextState st = SdlTestRig.contextState();
 
         backend.bindImageTexture(0, 11, 0, true, 0, GL15.GL_READ_ONLY, GL30.GL_R32UI);
         backend.bindImageTexture(ContextState.MAX_IMAGE_UNITS, 99, 0, true, 0, GL15.GL_READ_ONLY, GL30.GL_R32UI);

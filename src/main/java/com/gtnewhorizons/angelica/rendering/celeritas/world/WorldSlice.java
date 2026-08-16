@@ -104,6 +104,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     // The chunk origin of this slice
     private ChunkSectionPos origin;
     private StructureBoundingBox volume;
+    private Block renderingBlock;
 
     private final SmoothBiomeColorCache biomeColorCache;
 
@@ -528,6 +529,18 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     public static int getLocalSectionIndex(int x, int y, int z) {
         return y << TABLE_BITS << TABLE_BITS | z << TABLE_BITS | x;
+    }
+
+    public boolean containsBlock(int x, int y, int z) {
+        return blockBoxContains(this.volume, x, y, z);
+    }
+
+    public void setRenderingBlock(Block block) {
+        this.renderingBlock = block;
+    }
+
+    public Block getRenderingBlock() {
+        return this.renderingBlock;
     }
 
     private static boolean blockBoxContains(StructureBoundingBox box, int x, int y, int z) {

@@ -100,7 +100,7 @@ public final class GlslVulkanPreprocess {
         return out;
     }
 
-    public record Metadata(Set<String> boolUniforms, Set<String> explicitVsInputs) {}
+    public record Metadata(Set<String> boolUniforms, Set<String> explicitVsInputs, boolean needsSamplerless) {}
 
     public static Metadata collectEdits(String source, GLSLParser.Translation_unitContext root, int glShaderType, String debugName, boolean separateReadOnlyImages, List<Edit> edits) {
         final boolean isVertex = glShaderType == GL20.GL_VERTEX_SHADER;
@@ -216,7 +216,7 @@ public final class GlslVulkanPreprocess {
             }
         }, root);
 
-        if (needsSamplerless[0]) {
+        if (needsSamplerless[0] && source != null) {
             final int at = versionDirectiveEnd(source);
             if (at >= 0) edits.add(new Edit(at, at - 1, "\n" + SAMPLERLESS_EXTENSION));
         }
@@ -234,7 +234,7 @@ public final class GlslVulkanPreprocess {
             }
         }
 
-        return new Metadata(bools, explicitInputs);
+        return new Metadata(bools, explicitInputs, needsSamplerless[0]);
     }
 
     public static void clearCache() {

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.proxy;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
+import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
 import java.util.concurrent.ConcurrentHashMap;
@@ -36,6 +37,7 @@ import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
+import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
@@ -52,6 +54,8 @@ import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
@@ -59,8 +63,10 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
@@ -83,6 +89,7 @@ import jss.notfine.gui.GuiCustomMenu;
 import jss.notfine.gui.NotFineGameOptionPages;
 import jss.notfine.gui.options.named.FOVMode;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
+import me.jellysquid.mods.sodium.client.gui.FrameRateOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.coderbot.iris.Iris;
@@ -106,8 +113,15 @@ public final class ClientProxy extends CommonProxy {
         return CONFIG;
     }
 
-    public static void applyVSyncMode(boolean vsyncEnabled) {
-        GLStateManager.setVSyncMode(options().advanced.vsyncMode, vsyncEnabled);
+    public static void toggleVSync(boolean enabled) {
+        final SodiumGameOptions opts = options();
+        opts.advanced.vsyncMode = enabled ? GLStateManager.preferredTearFreeMode() : VSyncMode.OFF;
+        try {
+            opts.writeChanges();
+        } catch (IOException e) {
+            AngelicaMod.LOGGER.warn("Could not persist the vsync mode", e);
+        }
+        GLStateManager.setVSyncMode(opts.advanced.vsyncMode);
     }
 
     @Override
@@ -121,6 +135,9 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new AngelicaTesrMeshCache.ReloadListener());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
+        if (AngelicaConfig.enableIris) {
+            Iris.warmupShaderTransforms();
+        }
     }
 
     @Override
@@ -131,6 +148,16 @@ public final class ClientProxy extends CommonProxy {
             HUDCaching.init();
         }
         CeleritasSetup.ensureInitialized();
+        final SodiumGameOptions opts = options();
+        if (opts.advanced.vsyncMode == null) {
+            opts.advanced.vsyncMode = FrameRateOptions.defaultMode();
+        }
+        Minecraft.getMinecraft().gameSettings.enableVsync = opts.advanced.vsyncMode.tearFree();
+        GLStateManager.setVSyncPreference(opts.advanced.vsyncMode);
+        FramePacer.setIdleWork(deadlineNanos -> {
+            final CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstanceOrNull();
+            if (renderer != null) renderer.runFrameIdleWork(deadlineNanos);
+        });
         MinecraftForge.EVENT_BUS.register(CeleritasDebugScreenHandler.INSTANCE);
         if (AngelicaConfig.enableIris) {
             IrisGLSMBridge.register();
@@ -190,9 +217,15 @@ public final class ClientProxy extends CommonProxy {
         }
     }
 
+    private long worldSection;
+
     @SubscribeEvent
     public void worldLoad(WorldEvent.Load event) {
         if (!event.world.isRemote) return;
+        if (Tracy.ENABLED) {
+            Tracy.sectionLeave(this.worldSection);
+            this.worldSection = Tracy.sectionEnter(Tracy.SECTION_WORLD, "world " + event.world.provider.getDimensionName() + " (dim " + event.world.provider.dimensionId + ")");
+        }
         if (GLStateManager.isRunningSplash()) {
             GLStateManager.setRunningSplash(false);
             LOGGER.info("World loaded - Enabling GLSM Cache");
@@ -212,6 +245,8 @@ public final class ClientProxy extends CommonProxy {
     @SubscribeEvent
     public void onWorldUnload(WorldEvent.Unload event) {
         if (!event.world.isRemote) return;
+        Tracy.sectionLeave(this.worldSection);
+        this.worldSection = 0L;
         DynamicLights.get().removeAllLightSources();
         GpuCulling.onWorldUnload();
     }
