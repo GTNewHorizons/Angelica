@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
+import com.gtnewhorizons.angelica.mixins.interfaces.OverridesGetDistanceFrom;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
@@ -192,7 +193,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                     renderData.culledBlockEntities.add(tileEntity);
                                     AngelicaBuiltRenderSectionData.packSectionLocalBounds(culledBounds, aabb, minX, minY, minZ);
                                     double teDistSq;
-                                    if (TileEntityRenderBoundsRegistry.overridesGetDistanceFrom(tileEntity.getClass())) {
+                                    if (tileEntity instanceof OverridesGetDistanceFrom) {
                                         teDistSq = Double.POSITIVE_INFINITY;
                                     } else {
                                         try {

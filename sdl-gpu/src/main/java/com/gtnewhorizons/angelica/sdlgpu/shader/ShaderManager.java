@@ -681,7 +681,7 @@ public final class ShaderManager {
                 return null;
             }
             LOG.info("Vertex attribute conversion: program {} converted {}", program, attribs);
-            if (SystemProperties.DUMP_SHADERS) dumpVariantSource(program, src);
+            if (SystemProperties.dumpShaders()) dumpVariantSource(program, src);
             return v;
         } finally {
             memFree(r.spirv());
