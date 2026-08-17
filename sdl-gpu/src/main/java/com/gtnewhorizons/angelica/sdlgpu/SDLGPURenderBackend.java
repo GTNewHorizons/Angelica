@@ -88,7 +88,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.BiConsumer;
 
 import org.lwjgl.sdl.SDLGPU;
-import org.lwjgl.sdl.SDLSurface;
 import org.lwjgl.sdl.SDL_GPUBlitInfo;
 import org.lwjgl.sdl.SDL_GPUBufferLocation;
 import org.lwjgl.sdl.SDL_GPUTextureLocation;
@@ -111,7 +110,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private final Device device = SDLGPUGate.device();
     private final FrameManager frameManager = new FrameManager(device);
-    private Presenter presenter;
+    private volatile Presenter presenter;
     private final ResourceManager resourceManager = new ResourceManager(device, frameManager);
     private final Image3DClear image3DClear = new Image3DClear();
     private final ShaderManager shaderManager = new ShaderManager(device);
@@ -155,7 +154,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private volatile boolean shutdown;
 
-    private OffscreenTarget splashTarget;
+    private volatile OffscreenTarget splashTarget;
+    private volatile boolean splashTeardownPending;
 
     private static final ThreadRegistry<ContextState> registeredStates = new ThreadRegistry<>(new ContextState[0]);
     private static final ThreadLocal<ContextState> tlState = new ThreadLocal<>();
@@ -241,16 +241,12 @@ public class SDLGPURenderBackend extends RenderBackend {
         });
         GLSMHooks.LOADING_CHECKPOINT
             .addListener(event -> {
-                if (Thread.currentThread() == GLStateManager.getMainThread()) {
-                    if (!GLStateManager.isSplashComplete()) {
-                        SplashDispatcher.tryDispatch(this, splashTarget);
-                    } else if (splashTarget != null) {
-                        SplashDispatcher.signalFrameReady();
-                        SplashDispatcher.tryDispatch(this, splashTarget);
-                        splashTarget.destroy(resourceManager);
-                        splashTarget = null;
-                        SplashDispatcher.reset();
+                if (!GLStateManager.isSplashComplete()) {
+                    if (Thread.currentThread() == GLStateManager.getMainThread()) {
+                        SplashDispatcher.tryDispatch(this, splashTarget, false);
                     }
+                } else if (splashTarget != null) {
+                    splashTeardownPending = true;
                 }
                 if (event.requiresSync) {
                     frameManager.requestSyncFlushOnAllRegisteredFrames();
@@ -411,12 +407,12 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public boolean wantsDisplayUpdateGateTiming() { return false; }
 
     @Override public long lastFrameGateNanos() {
-        if (presenter != null && presenter.isEngaged()) return frameManager.windowFrame().lastFrameGateNanos;
+        if (presenter != null) return frameManager.windowFrame().lastFrameGateNanos;
         return frameManager.lastFrameGateNanos();
     }
 
     @Override public long lastFrameGateEndNanos() {
-        if (presenter != null && presenter.isEngaged()) return frameManager.windowFrame().lastFrameGateEndNanos;
+        if (presenter != null) return frameManager.windowFrame().lastFrameGateEndNanos;
         return frameManager.lastFrameGateEndNanos();
     }
 
@@ -520,8 +516,9 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public boolean handleMakeCurrent(Object drawable) {
         if (!isSDLManagedDrawable(drawable)) return false;
         Lwjgl3GLCapabilitiesShim.installOnCurrentThread(advertisedCapabilities());
-        if (splashTarget != null && Thread.currentThread() != GLStateManager.getMainThread()) {
-            s().boundFboId = splashTarget.fboId();
+        final OffscreenTarget splash = splashTarget;
+        if (splash != null && Thread.currentThread() != GLStateManager.getMainThread()) {
+            s().boundFboId = splash.fboId();
             frameManager.frame().swapchainUnavailable = true;
         }
         return true;
@@ -542,7 +539,8 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public boolean handleSwapBuffers() {
-        if (splashTarget != null && splashTarget.isFor(s()) && Thread.currentThread() != GLStateManager.getMainThread()) {
+        final OffscreenTarget splash = splashTarget;
+        if (splash != null && splash.isFor(s()) && Thread.currentThread() != GLStateManager.getMainThread()) {
             endFrameUploadFlush();
             frameManager.endFrame();
             SplashDispatcher.signalFrameReady((int) s().viewportW, (int) s().viewportH);
@@ -560,13 +558,24 @@ public class SDLGPURenderBackend extends RenderBackend {
         final long drawnSize = SplashDispatcher.getDrawnSize();
         final int srcW = Math.max(1, Math.min((int) (drawnSize >> 32), target.width()));
         final int srcH = Math.max(1, Math.min((int) drawnSize, target.height()));
-        final FrameState f = frameManager.frame();
-        frameManager.presentBlit(f, target.colorTexture(), srcW, srcH, SDLSurface.SDL_FLIP_VERTICAL);
-        f.presentedThisFrame = false;
+        frameManager.presentSplash(target.colorTexture(), srcW, srcH);
+    }
+
+    private void finishSplash() {
+        splashTeardownPending = false;
+        final OffscreenTarget target = splashTarget;
+        if (target == null) return;
+        SplashDispatcher.signalFrameReady();
+        SplashDispatcher.tryDispatch(this, target, true);
+        if (presenter != null) presenter.drain();
+        splashTarget = null;
+        target.destroy(resourceManager);
+        SplashDispatcher.reset();
     }
 
     @Override public void onFrameBegin() {
         if (shutdown) return;
+        if (splashTeardownPending) finishSplash();
         if (GLStateManager.isSplashComplete()) applyPendingVSync();
         frameManager.beginFrame();
         beginFrameInit();

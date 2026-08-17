@@ -81,12 +81,13 @@ public abstract class MixinMinecraft {
         }
     }
 
-    @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Ljava/lang/Thread;yield()V", remap = false))
-    private void angelica$limitFPS(CallbackInfo ci) {
-        if (AngelicaMod.proxy == null) return;
+    @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Ljava/lang/Thread;yield()V", remap = false))
+    private boolean angelica$limitFPS() {
+        if (AngelicaMod.proxy == null) return true;
 
         final int capHz = isFramerateLimitBelowMax() ? getLimitFramerate() : 0;
         AngelicaMod.proxy.putFrametime(FramePacer.endFrame(capHz, angelica$renderAheadWait));
+        return !FramePacer.pacedLastFrame();
     }
 
     @Redirect(method = {"startGame", "toggleFullscreen"}, at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/Display;setVSyncEnabled(Z)V", remap = false))
