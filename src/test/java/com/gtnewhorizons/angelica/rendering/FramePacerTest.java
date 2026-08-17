@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -100,6 +101,14 @@ class FramePacerTest {
     }
 
     @Test
+    void aPeriodChangeKeepsThePhaseInsteadOfRestartingIt() {
+        final long previousDeadline = 1_000_000_000L;
+        final long newTarget = 1_000_000_000L / 76;
+        final long now = previousDeadline + 200_000L;
+        assertEquals(previousDeadline + newTarget, FramePacer.nextDeadline(previousDeadline, now, newTarget));
+    }
+
+    @Test
     void fallingMoreThanTwoPeriodsBehindResynchronises() {
         final long target = 16_666_666L;
         final long deadline = 1_000_000_000L;
@@ -130,5 +139,14 @@ class FramePacerTest {
     void indicatorIsAbsentWhenNothingLimits() {
         assertNull(FramePacer.debugIndicator(VSyncMode.OFF, 144, 0, false));
         assertNull(FramePacer.debugIndicator(VSyncMode.OFF, 0, 0, false));
+    }
+
+    @Test
+    void endingTheStatsPutsThemBackToSleep() {
+        FramePacer.beginStats();
+        assertTrue(FramePacer.statsActive());
+
+        FramePacer.endStats();
+        assertFalse(FramePacer.statsActive(), "a cancelled run must not leave the bookkeeping running forever");
     }
 }

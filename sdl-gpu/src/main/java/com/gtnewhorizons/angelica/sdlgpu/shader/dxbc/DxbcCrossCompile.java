@@ -80,7 +80,7 @@ public final class DxbcCrossCompile {
             return new Output(copy, cached.entrypoint);
         }
 
-        final int dumpId = SystemProperties.DUMP_SHADERS ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
+        final int dumpId = SystemProperties.dumpShaders() ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
         if (dumpId >= 0) CrossCompileUtil.dumpSpirv(spirv, dumpId, glShaderType);
 
         final String hlsl = compileToHlsl(spirv, glShaderType);
