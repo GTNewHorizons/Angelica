@@ -10,6 +10,7 @@ import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_NONE;
 
 @Timeout(10)
 class PresenterTest {
@@ -43,10 +44,10 @@ class PresenterTest {
         final DeferredExecutor executor = new DeferredExecutor();
         final Presenter p = presenter(executor);
 
-        p.requestPresent(1L, 10, 10);
+        p.requestPresent(1L, 10, 10, SDL_FLIP_NONE);
         assertEquals(1, executor.tasks.size());
 
-        final Thread second = new Thread(() -> p.requestPresent(2L, 10, 10));
+        final Thread second = new Thread(() -> p.requestPresent(2L, 10, 10, SDL_FLIP_NONE));
         second.start();
         awaitWaiting(second);
         assertEquals(1, executor.tasks.size(), "second present must not enqueue while the first is in flight");
@@ -61,7 +62,7 @@ class PresenterTest {
         final DeferredExecutor executor = new DeferredExecutor();
         final Presenter p = presenter(executor);
 
-        p.requestPresent(1L, 10, 10);
+        p.requestPresent(1L, 10, 10, SDL_FLIP_NONE);
 
         final Thread drainer = new Thread(p::drain);
         drainer.start();
@@ -74,8 +75,8 @@ class PresenterTest {
     @Test
     void anInlineExecutorReleasesTheSlotImmediately() {
         final Presenter p = new Presenter(new FrameManager(new Device()), Runnable::run);
-        p.requestPresent(1L, 10, 10);
-        p.requestPresent(2L, 10, 10);
+        p.requestPresent(1L, 10, 10, SDL_FLIP_NONE);
+        p.requestPresent(2L, 10, 10, SDL_FLIP_NONE);
         p.drain();
     }
 
@@ -87,12 +88,26 @@ class PresenterTest {
         fm.frame();
         final int before = fm.registeredFrameCount();
 
-        p.requestPresent(1L, 10, 10);
+        p.requestPresent(1L, 10, 10, SDL_FLIP_NONE);
 
         final Thread windowThread = new Thread(executor::runNext, "window-thread");
         windowThread.start();
         windowThread.join();
 
         assertEquals(before, fm.registeredFrameCount(), "the window thread must stay out of the frame registry");
+    }
+
+    @Test
+    void theSplashPresentGoesThroughTheWindowThreadToo() {
+        final DeferredExecutor executor = new DeferredExecutor();
+        final FrameManager fm = new FrameManager(new Device());
+        fm.setPresenter(new Presenter(fm, executor));
+        fm.frame();
+        final int before = fm.registeredFrameCount();
+
+        fm.presentSplash(1L, 10, 10);
+
+        assertEquals(1, executor.tasks.size(), "the splash blit must be enqueued on the window thread");
+        assertEquals(before, fm.registeredFrameCount(), "the splash present must not touch the calling thread's frame");
     }
 }

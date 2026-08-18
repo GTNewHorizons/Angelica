@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.frame;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-
 import java.util.concurrent.Executor;
 import java.util.concurrent.Semaphore;
 
@@ -16,17 +14,13 @@ public final class Presenter {
         this.windowThreadExecutor = windowThreadExecutor;
     }
 
-    public boolean isEngaged() {
-        return windowThreadExecutor != null && GLStateManager.isSplashComplete();
-    }
-
-    public void requestPresent(long srcTexture, int srcW, int srcH) {
+    public void requestPresent(long srcTexture, int srcW, int srcH, int flipMode) {
         pending.acquireUninterruptibly();
         boolean submitted = false;
         try {
             windowThreadExecutor.execute(() -> {
                 try {
-                    frameManager.presentOnWindowThread(srcTexture, srcW, srcH);
+                    frameManager.presentOnWindowThread(srcTexture, srcW, srcH, flipMode);
                 } finally {
                     pending.release();
                 }

@@ -30,6 +30,7 @@ import java.util.concurrent.atomic.AtomicLong;
 
 import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_NONE;
+import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_VERTICAL;
 import static org.lwjgl.system.MemoryStack.*;
 
 /**
@@ -61,7 +62,6 @@ public final class FrameManager {
         public boolean fbo0UsedThisFrame;
         public boolean presentedThisFrame;
         public boolean swapchainUnavailable;
-        public boolean windowThreadChecked;
         public long renderPassGeneration;
 
         public boolean wantFenceOnNextSubmit;
@@ -464,6 +464,20 @@ public final class FrameManager {
         }
     }
 
+    private volatile boolean acquireThreadReported;
+
+    private void checkAcquireOnWindowThread() {
+        if (acquireThreadReported) return;
+        final Thread self = Thread.currentThread();
+        final Thread window = device.getWindowThread();
+        if (window == null || window == self) return;
+        acquireThreadReported = true;
+
+        final String message = "Swapchain acquired on '" + self.getName() + "', window created on '" + window.getName() + "'";
+        if (SystemProperties.isDeobf() && !SystemProperties.DISABLE_SDL_PRESENTER_THREAD) throw new IllegalStateException(message);
+        LOG.warn(message);
+    }
+
     public long ensureCopyPass() {
         final FrameState f = frame();
         if (f.copyPass != 0) {
@@ -863,7 +877,7 @@ public final class FrameManager {
         return frame().lastFrameGateEndNanos;
     }
 
-    private Presenter presenter;
+    private volatile Presenter presenter;
 
     public void setPresenter(Presenter presenter) {
         this.presenter = presenter;
@@ -877,18 +891,24 @@ public final class FrameManager {
 
     public void presentFinalTarget() {
         if (!finalTarget.hasContent()) return;
-        final long texture = finalTarget.colorTexture();
-        final int width = finalTarget.width();
-        final int height = finalTarget.height();
+        present(finalTarget.colorTexture(), finalTarget.width(), finalTarget.height(), SDL_FLIP_NONE, false);
+    }
+
+    public void presentSplash(long srcTexture, int srcW, int srcH) {
+        present(srcTexture, srcW, srcH, SDL_FLIP_VERTICAL, true);
+    }
+
+    private void present(long srcTexture, int srcW, int srcH, int flipMode, boolean splash) {
+        final FrameState f = frame();
+        if (f.presentedThisFrame) return;
         final Presenter p = presenter;
-        if (p != null && p.isEngaged()) {
-            final FrameState f = frame();
-            if (f.presentedThisFrame) return;
+        if (p != null) {
             f.presentedThisFrame = true;
-            p.requestPresent(texture, width, height);
+            p.requestPresent(srcTexture, srcW, srcH, flipMode);
         } else {
-            presentBlit(frame(), texture, width, height, SDL_FLIP_NONE);
+            presentBlit(f, srcTexture, srcW, srcH, flipMode);
         }
+        if (splash) f.presentedThisFrame = false;
     }
 
     private final AtomicLong windowAcquireWaitNanos = new AtomicLong();
@@ -915,8 +935,8 @@ public final class FrameManager {
         else f.presentSkipsThisFrame++;
     }
 
-    public void presentOnWindowThread(long srcTexture, int srcW, int srcH) {
-        presentBlit(windowFrame, srcTexture, srcW, srcH, SDL_FLIP_NONE);
+    public void presentOnWindowThread(long srcTexture, int srcW, int srcH, int flipMode) {
+        presentBlit(windowFrame, srcTexture, srcW, srcH, flipMode);
         windowFrame.presentedThisFrame = false;
         windowFrame.swapchainUnavailable = false;
     }
@@ -925,16 +945,7 @@ public final class FrameManager {
         if (srcTexture == 0 || srcW <= 0 || srcH <= 0) return false;
         if (f.presentedThisFrame || f.swapchainUnavailable) return false;
 
-        if (!f.windowThreadChecked) {
-            f.windowThreadChecked = true;
-            final Thread self = Thread.currentThread();
-            final Thread windowThread = device.getWindowThread();
-            if (windowThread != null && windowThread != self) {
-                LOG.warn("Swapchain acquired on '{}' but the SDL window was created on '{}'; SDL requires acquire on the window-creating thread", self.getName(), windowThread.getName());
-            } else {
-                LOG.info("First swapchain acquire on thread={}", self.getName());
-            }
-        }
+        checkAcquireOnWindowThread();
 
         final long window = device.getClaimedWindow();
         if (window == 0) return false;

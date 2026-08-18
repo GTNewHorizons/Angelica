@@ -87,7 +87,7 @@ public final class MslCrossCompile {
             return new Output(copy, cached.entrypoint);
         }
 
-        final int dumpId = SystemProperties.DUMP_SHADERS ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
+        final int dumpId = SystemProperties.dumpShaders() ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
         if (dumpId >= 0) CrossCompileUtil.dumpSpirv(spirv, dumpId, glShaderType);
 
         try (MemoryStack stack = stackPush()) {

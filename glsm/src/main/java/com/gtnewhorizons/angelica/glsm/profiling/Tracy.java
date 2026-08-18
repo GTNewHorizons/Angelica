@@ -111,6 +111,7 @@ public final class Tracy {
             LOGGER.warn("Tracy requested (-Dangelica.tracy=true) but no TracyBackend service present");
             return null;
         }
+        if (!implementsCurrentAbi(found)) return null;
         final TracyBackend backend = found;
         final CountDownLatch done = new CountDownLatch(1);
         final AtomicReference<Boolean> result = new AtomicReference<>();
@@ -136,10 +137,28 @@ public final class Tracy {
         return backend;
     }
 
+    private static final String ABI_SENTINEL = "sectionEnter";
+
+    private static boolean implementsCurrentAbi(TracyBackend backend) {
+        try {
+            backend.getClass().getMethod(ABI_SENTINEL, int.class, String.class);
+            return true;
+        } catch (NoSuchMethodException e) {
+            LOGGER.warn("Tracy backend {} was built against an older TracyBackend interface; profiling disabled", backend.getClass().getName());
+            return false;
+        }
+    }
+
     private record InitRunner(TracyBackend backend, CountDownLatch done, AtomicReference<Boolean> result) implements Runnable {
         @Override
         public void run() {
-            final boolean ok = backend.init();
+            boolean ok;
+            try {
+                ok = backend.init();
+            } catch (LinkageError e) {
+                LOGGER.warn("Tracy backend {} failed to link; profiling disabled: {}", backend.getClass().getName(), e);
+                ok = false;
+            }
             if (!result.compareAndSet(null, ok) && ok) {
                 backend.shutdown();
             }

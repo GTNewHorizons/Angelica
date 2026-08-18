@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.debug.flyby;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.rendering.FramePacer;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
@@ -279,6 +280,7 @@ public final class FlybyRunner {
         this.frameCount = 0;
         this.lastFrameNs = 0L;
         this.runStartNs = System.nanoTime();
+        FramePacer.beginStats();
         if (Tracy.ENABLED) {
             Tracy.message("flyby start route=" + this.route.id() + " length=" + this.runLength + this.route.lengthUnit() + " speed=" + this.route.speedOr(this.speed) + "b/t ticks=" + this.runTicks + " sdlgpu=" + SystemProperties.USE_SDL_GPU);
         }
@@ -384,6 +386,7 @@ public final class FlybyRunner {
 
         final String summary = this.summarise(elapsedNs, player);
         LOGGER.info(summary);
+        LOGGER.info(FramePacer.endStats());
         if (mc.thePlayer != null) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + summary));
         }
@@ -438,6 +441,13 @@ public final class FlybyRunner {
         if (this.isActive()) {
             LOGGER.info("Flyby cancelled");
             this.state = State.DONE;
+            Tracy.sectionLeave(this.warmupSection);
+            this.warmupSection = 0L;
+            Tracy.sectionLeave(this.legSection);
+            this.legSection = 0L;
+            Tracy.sectionLeave(this.runSection);
+            this.runSection = 0L;
+            FramePacer.endStats();
         }
     }
 

@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 
 import java.util.concurrent.locks.LockSupport;
 
@@ -25,16 +26,21 @@ public final class FramePacer {
     private static final Tracy.ZoneId Z_PACER_IDLE = Tracy.zoneId("pacerIdleWork", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_PACER_SLEEP = Tracy.zoneId("pacerSleep", Tracy.COLOR_SWAP);
     private static final long P_FRAME_GATE_US = Tracy.plotHandle("frameGateUs");
+    private static final long P_SLACK_US = Tracy.plotHandle("pacer.slackUs");
+    private static final long P_SPIN_US = Tracy.plotHandle("pacer.spinUs");
+    private static final long P_CEILING_HZ = Tracy.plotHandle("pacer.ceilingHz");
+    private static final long P_GATE_ACTIVE = Tracy.plotHandle("pacer.gateActive");
 
     private static long deadline;
     private static long lastFrameTime;
 
     private static boolean warnedUncapped;
+    private static boolean pacedLastFrame;
+    private static boolean statsActive;
 
     private static VSyncMode lastVSyncMode = VSyncMode.ON;
     private static int lastCapHz;
     private static int lastRefreshHz;
-    private static int lastCeilingHz;
 
     private static IdleWork idleWork;
     private static PacerSleeper sleeper = newSleeper();
@@ -47,7 +53,6 @@ public final class FramePacer {
     private static int loggedRefreshHz;
     private static int loggedCapHz;
 
-    private static boolean gateBlocking;
     private static long lastSeenGateEnd;
 
     private FramePacer() {}
@@ -58,6 +63,35 @@ public final class FramePacer {
 
     public static void setIdleWork(IdleWork work) {
         idleWork = work;
+    }
+
+    public static boolean pacedLastFrame() {
+        return pacedLastFrame;
+    }
+
+    public static void beginStats() {
+        sleeper.resetStats();
+        statsActive = true;
+    }
+
+    public static String endStats() {
+        statsActive = false;
+        final String summary = sleeper.summary(configLine());
+        Tracy.message(summary);
+        return summary;
+    }
+
+    static boolean statsActive() {
+        return statsActive;
+    }
+
+    static String configLine(VSyncMode mode, int refreshHz, int capHz, int ceilingHz) {
+        return "cfg=[" + mode + " refresh=" + refreshHz + "Hz cap=" + capHz + " ceiling=" + ceilingHz + "Hz]";
+    }
+
+    private static String configLine() {
+        return configLine(lastVSyncMode, lastRefreshHz, lastCapHz,
+            pacingCeilingHz(lastVSyncMode, lastCapHz, lastRefreshHz, gateActive()));
     }
 
     public static int plausibleRefreshHz(int hz) {
@@ -155,17 +189,15 @@ public final class FramePacer {
     }
 
     public static long pace(int ceilingHz, Runnable renderAheadWait) {
-        if (ceilingHz != lastCeilingHz) {
-            lastCeilingHz = ceilingHz;
-            deadline = 0L;
-        }
-
         long now = System.nanoTime();
         long phaseEnd;
 
         final long targetNanos = ceilingHz > 0 ? 1_000_000_000L / ceilingHz : 0L;
         final long thresholdNanos = gateBlockThresholdNanos(targetNanos);
         long frameGateNanos = 0L;
+
+        pacedLastFrame = ceilingHz > 0;
+        Tracy.plotInt(P_CEILING_HZ, ceilingHz);
 
         if (ceilingHz > 0) {
             frameGateNanos = GLStateManager.lastFrameGateNanos();
@@ -192,14 +224,21 @@ public final class FramePacer {
                 now = phaseEnd;
             }
 
-            if (now < deadline) {
-                final long preSleep = now;
+            final long slackNanos = deadline - now;
+            Tracy.plotInt(P_SLACK_US, slackNanos / 1000);
+
+            final boolean slept = now < deadline;
+            if (slept) {
                 Tracy.beginZone(Z_PACER_SLEEP);
                 try {
                     now = sleeper.sleepUntil(deadline, now);
                 } finally {
                     Tracy.endZone();
                 }
+            }
+            if (Tracy.ENABLED || statsActive) {
+                sleeper.noteFrame(slackNanos, slept ? now - deadline : 0L, slept);
+                Tracy.plotInt(P_SPIN_US, sleeper.lastSpinNanos / 1000);
             }
         } else {
             deadline = 0L;
@@ -215,15 +254,18 @@ public final class FramePacer {
         final long waitNanos = phaseEnd - now;
         now = phaseEnd;
         if (ceilingHz > 0 && waitNanos > thresholdNanos) deadline = now;
-        gateBlocking = observeGate(ceilingHz > 0 ? Math.max(frameGateNanos, waitNanos) : 0L, thresholdNanos);
+        final boolean gateBlocking = observeGate(ceilingHz > 0 ? Math.max(frameGateNanos, waitNanos) : 0L, thresholdNanos);
+        Tracy.plotInt(P_GATE_ACTIVE, gateBlocking ? 1 : 0);
 
         GLStateManager.pumpDisplayMessages();
 
         if (pacingStatusChanged(gateBlocking, lastVSyncMode, lastRefreshHz, lastCapHz)) {
             final boolean blocking = settledBlocking;
             final String line = pacingLine(lastVSyncMode, lastRefreshHz, lastCapHz, blocking);
-            if (vsyncNotHonoured(lastVSyncMode, blocking)) AngelicaMod.LOGGER.warn(line);
+            final boolean notHonoured = vsyncNotHonoured(lastVSyncMode, blocking);
+            if (notHonoured) AngelicaMod.LOGGER.warn(line);
             else AngelicaMod.LOGGER.info(line);
+            Tracy.message(line, notHonoured ? TracyBackend.SEVERITY_WARNING : TracyBackend.SEVERITY_INFO);
         }
 
         final long period = lastFrameTime == 0L ? 0L : now - lastFrameTime;
