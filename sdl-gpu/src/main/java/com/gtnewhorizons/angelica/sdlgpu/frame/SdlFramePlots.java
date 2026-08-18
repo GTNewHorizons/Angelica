@@ -57,7 +57,6 @@ final class SdlFramePlots {
     private static final long PLOT_PIPELINE_KEY_RECOMPUTES = Tracy.plotHandle("sdl.pipelineKeyRecomputes");
     private static final long PLOT_PIPELINE_FAST_PATH_HITS = Tracy.plotHandle("sdl.pipelineFastPathHits");
     private static final long PLOT_MID_FRAME_SUBMITS = Tracy.plotHandle("sdl.midFrameSubmits");
-    private static final long PLOT_GATE_US = Tracy.plotHandle("sdl.gateUs");
 
     private static final int[] contextCounters = new int[SDLGPURenderBackend.CTR_COUNT];
 
@@ -110,6 +109,5 @@ final class SdlFramePlots {
         Tracy.plotInt(PLOT_EMPTY_FRAMES, f.emptyFramesThisFrame);
         Tracy.plotInt(PLOT_DROPPED_DRAWS, f.droppedDrawsThisFrame);
         Tracy.plotInt(PLOT_MID_FRAME_SUBMITS, f.midFrameSubmitsThisFrame);
-        Tracy.plotInt(PLOT_GATE_US, f.lastFrameGateNanos / 1000);
     }
 }
