@@ -73,6 +73,9 @@ public final class SelectionBoxRenderer {
     public static void draw(AxisAlignedBB aabb, int color) {
         if (program == null || vao == null) return;
 
+        GLStateManager.enableDepthTest();
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+
         final float minX = (float) aabb.minX, minY = (float) aabb.minY, minZ = (float) aabb.minZ;
         final float extX = (float) (aabb.maxX - aabb.minX);
         final float extY = (float) (aabb.maxY - aabb.minY);

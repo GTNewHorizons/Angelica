@@ -2,7 +2,9 @@ package com.gtnewhorizons.angelica.glsm.stacks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
+import lombok.Setter;
 
 /**
  * A stack for boolean GL state with lazy copy-on-write optimization.
@@ -14,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.states.BooleanState;
 public class BooleanStateStack extends BooleanState implements IStateStack<BooleanStateStack> {
 
     protected final boolean[] stack;
+    @Setter private VanillaBooleanLayer vanillaLayer;
 
     /**
      * The depth at which state has been saved. Compared against GLStateManager.getAttribDepth()
@@ -56,7 +59,7 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
         if (savedDepth >= stack.length) {
             throw new IllegalStateException("Stack overflow size " + (savedDepth + 1) + " reached");
         }
-        stack[savedDepth++] = enabled;
+        stack[savedDepth++] = vanillaValue();
         return this;
     }
 
@@ -65,10 +68,24 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
         if (savedDepth == 0) {
             throw new IllegalStateException("Stack underflow");
         }
-        final boolean oldValue = stack[--savedDepth];
-        // Call setEnabledDirect to avoid triggering beforeModify during restore
-        setEnabledDirect(oldValue);
+        restore(stack[--savedDepth]);
         return this;
+    }
+
+    public boolean isEffectivelyEnabled() {
+        return (vanillaLayer != null && vanillaLayer.isOverrideHeld()) ? vanillaLayer.getVanilla() : enabled;
+    }
+
+    private boolean vanillaValue() {
+        return isEffectivelyEnabled();
+    }
+
+    private void restore(boolean value) {
+        if (vanillaLayer != null && vanillaLayer.isOverrideHeld()) {
+            vanillaLayer.setVanilla(value);
+        } else {
+            setEnabledDirect(value);
+        }
     }
 
     @Override
@@ -92,8 +109,7 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
     public BooleanStateStack popDepth() {
         // We're only called if we were modified, so savedDepth should match
         if (savedDepth > 0) {
-            final boolean oldValue = stack[--savedDepth];
-            setEnabledDirect(oldValue);
+            restore(stack[--savedDepth]);
         }
         return this;
     }
@@ -106,7 +122,7 @@ public class BooleanStateStack extends BooleanState implements IStateStack<Boole
     public void beforeModify() {
         final int globalDepth = GLStateManager.getAttribDepth();
         if (savedDepth < globalDepth) {
-            stack[savedDepth++] = enabled;
+            stack[savedDepth++] = vanillaValue();
             GLStateManager.registerModifiedState(this);
         }
     }

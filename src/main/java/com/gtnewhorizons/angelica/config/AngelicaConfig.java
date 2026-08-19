@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.config;
 
 import com.gtnewhorizon.gtnhlib.config.Config;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
+import net.coderbot.iris.shadows.ShadowGraphGate;
 
 @Config(modid = "angelica", filename = "angelica-modules")
 public class AngelicaConfig {
@@ -346,6 +347,20 @@ public class AngelicaConfig {
     @Config.Comment({"Skip tile entities whose block already renders in the terrain mesh (getRenderType() != -1) from the shadow pass"})
     @Config.DefaultBoolean(true)
     public static boolean shadowSkipInMeshTileEntities;
+
+    @Config.Comment({
+        "How much a celestial body can move before the shadow map can update.",
+        "",
+        "Note this option is disabled when a shader pack utilizes voxelization features."
+    })
+    @Config.DefaultFloat(ShadowGraphGate.DEFAULT_ANGLE_DELTA_DEGREES)
+    @Config.RangeFloat(min = 0f, max = 0.1f)
+    public static float shadowGraphAngleDelta;
+
+    @Config.Comment("Adjusts the rate the shadow map rebuilds when when a celestial body is near the horizon. Rate is sinusoidal")
+    @Config.DefaultFloat(ShadowGraphGate.DEFAULT_HORIZON_SCALE)
+    @Config.RangeFloat(min = 0f, max = 1.0f)
+    public static float shadowGraphHorizonScale;
 
     @Config.Comment("ASM transformer exclusion narrowing for mod compatibility. Disable per-mod if narrowing causes class loading issues.")
     public static TransformerCompat transformerCompat = new TransformerCompat();

@@ -6,6 +6,14 @@ public final class GLSMConfig {
     public static float lastBrightnessX;
     public static float lastBrightnessY;
 
+    public static int packBrightness(float x, float y) {
+        return ((int) y << 16) | ((int) x & 0xFFFF);
+    }
+
+    public static int packedLastBrightness() {
+        return packBrightness(lastBrightnessX, lastBrightnessY);
+    }
+
     public static boolean hudCacheOverride;
 
     public static volatile boolean expandVertexFormats;

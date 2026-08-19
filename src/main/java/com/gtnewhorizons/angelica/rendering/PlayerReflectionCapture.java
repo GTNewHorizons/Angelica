@@ -71,6 +71,7 @@ public final class PlayerReflectionCapture {
     private static final Matrix4f pendingModelView = new Matrix4f();
     private static int pendingSkin;
     private static int pendingEntityId;
+    private static int pendingItemId;
 
     private static int vbo;
     private static int vao;
@@ -134,6 +135,7 @@ public final class PlayerReflectionCapture {
         pendingModelView.set(GLStateManager.getModelViewMatrix());
         pendingSkin = GLStateManager.getBoundTextureForServerState(0);
         pendingEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+        pendingItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
         pending = true;
     }
 
@@ -328,9 +330,10 @@ public final class PlayerReflectionCapture {
         final boolean prevDepthWrite = GLStateManager.getDepthState().isEnabled();
 
         final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+        final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
         savedModelView.set(GLStateManager.getModelViewMatrix());
 
-        CapturedRenderingState.INSTANCE.setCurrentEntity(pendingEntityId);
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(pendingEntityId, pendingItemId);
         GLStateManager.setModelViewMatrix(pendingModelView);
         if (maskable) {
             GLStateManager.glColorMask(false, false, false, false);
@@ -344,7 +347,7 @@ public final class PlayerReflectionCapture {
                 GLStateManager.glColorMask(pr, pg, pb, pa);
             }
             GLStateManager.setModelViewMatrix(savedModelView);
-            CapturedRenderingState.INSTANCE.setCurrentEntity(prevEntityId);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
 
             GLStateManager.glBindVertexArray(0);
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, prevTexture);

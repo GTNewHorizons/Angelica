@@ -27,7 +27,9 @@ public enum ProgramId {
 
 	Terrain(ProgramGroup.Gbuffers, "terrain", TexturedLit),
 	TerrainSolid(ProgramGroup.Gbuffers, "terrain_solid", Terrain),
-	TerrainCutoutMip(ProgramGroup.Gbuffers, "terrain_cutout_mip", Terrain),
+	// terrain_cutout_mip program was removed in modern versions of Minecraft. As the goal is to be a faithful backport of Iris
+    // we likely should just group cutout and cutout mipped into the same program.
+    // CUTOUT_MIPPED essentially became CUTOUT and now everything uses mipmaps in modern. We don't as of writing.
 	TerrainCutout(ProgramGroup.Gbuffers, "terrain_cutout", Terrain),
 	DamagedBlock(ProgramGroup.Gbuffers, "damagedblock", Terrain),
 
@@ -40,6 +42,8 @@ public enum ProgramId {
 	EntitiesTrans(ProgramGroup.Gbuffers, "entities_translucent", Entities),
 	EntitiesGlowing(ProgramGroup.Gbuffers, "entities_glowing", Entities),
 	Lightning(ProgramGroup.Gbuffers, "lightning", Entities),
+	Particles(ProgramGroup.Gbuffers, "particles", TexturedLit),
+	ParticlesTrans(ProgramGroup.Gbuffers, "particles_translucent", Particles),
 	ArmorGlint(ProgramGroup.Gbuffers, "armor_glint", Textured),
 	SpiderEyes(ProgramGroup.Gbuffers, "spidereyes", Textured,
 		new BlendModeOverride(new BlendState(GL11.GL_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE)),
