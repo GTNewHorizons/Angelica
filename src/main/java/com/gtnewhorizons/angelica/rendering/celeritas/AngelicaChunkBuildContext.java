@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import static com.gtnewhorizons.angelica.rendering.StateAwareTessellator.NO_DIRECTIONAL_SHADING;
+
 import com.gtnewhorizons.angelica.api.ExtQuadLightData;
 import com.gtnewhorizons.angelica.api.TintComputer;
 import com.gtnewhorizons.angelica.api.TintRegistry;
@@ -209,7 +211,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             // specified its own lightmaps for visual purposes (e.g. fullbright)
             if (useAoCalculation && (quadState & StateAwareTessellator.RENDERED_WITH_VANILLA_AO) != 0) {
                 calculateQuadLight(trueNormal, blockX, blockY, blockZ, worldX, worldY, worldZ, isFluid,
-                    blockAllowsSmoothLighting, shouldApplyDiffuse);
+                    blockAllowsSmoothLighting, shouldApplyDiffuse && (quadState & NO_DIRECTIONAL_SHADING) == 0);
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
