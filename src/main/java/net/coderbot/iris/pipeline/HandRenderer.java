@@ -1,10 +1,12 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.event.RenderHandEvent;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.ItemRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import lombok.Getter;
@@ -83,31 +85,55 @@ public class HandRenderer {
                !RenderHandEvent.post();
     }
 
-    public boolean isHandTranslucent(InteractionHand hand) {
-        ItemStack heldItem = hand.getItemInHand(Minecraft.getMinecraft().thePlayer);
-
+    public boolean isItemTranslucent(ItemStack heldItem) {
         if (heldItem == null) return false;
         final Item item = heldItem.getItem();
 
         if (item instanceof ItemBlock itemBlock) {
+            final Block block = itemBlock.field_150939_a;
+            if (block == null) return false;
+
             final Map<Block, BlockRenderLayer> blockTypeIds = BlockRenderingSettings.INSTANCE.getBlockTypeIds();
-            return blockTypeIds != null && blockTypeIds.get(itemBlock.field_150939_a) == BlockRenderLayer.TRANSLUCENT;
+            final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
+            final BlockRenderLayer layer = override != null ? override : BlockRenderLayer.fromVanillaPass(block.getRenderBlockPass());
+            return layer == BlockRenderLayer.TRANSLUCENT;
         }
 
         return false;
     }
 
+    public boolean isHandTranslucent(InteractionHand hand) {
+        return isItemTranslucent(hand.getItemInHand(Minecraft.getMinecraft().thePlayer));
+    }
+
+    private ItemStack mainHandItem() {
+        return ((ItemRendererAccessor) Minecraft.getMinecraft().entityRenderer.itemRenderer).angelica$getItemToRender();
+    }
+
     public boolean isAnyHandTranslucent() {
-        return isHandTranslucent(InteractionHand.MAIN_HAND) || isHandTranslucent(InteractionHand.OFF_HAND);
+        return isItemTranslucent(mainHandItem())
+            || (ModStatus.isBackhandLoaded && isHandTranslucent(InteractionHand.OFF_HAND));
+    }
+
+    public boolean isAnyHandSolid() {
+        return !(isItemTranslucent(mainHandItem())
+            && (!ModStatus.isBackhandLoaded || isHandTranslucent(InteractionHand.OFF_HAND)));
     }
 
     public void renderSolid(float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
-        if (!canRender(camera, gameRenderer) || !IrisApi.getInstance().isShaderPackInUse()) {
+        if (!IrisApi.getInstance().isShaderPackInUse() || !canRender(camera, gameRenderer) || !isAnyHandSolid()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
 
         ACTIVE = true;
+
+        final int blendSave = GbufferPrograms.pushBlendState();
+        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
+        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
+
+        GLStateManager.disableBlend();
+        GLStateManager.defaultBlendFunc();
 
         pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
@@ -115,64 +141,77 @@ public class HandRenderer {
         GLStateManager.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
 
         mc.mcProfiler.startSection("iris_hand");
+        try {
+            setupGlState(gameRenderer, camera, tickDelta);
 
-        setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setBlockEntityDefaults();
 
-        GbufferPrograms.setBlockEntityDefaults();
+            renderingSolid = true;
 
-        renderingSolid = true;
+            mc.entityRenderer.enableLightmap(tickDelta);
+            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+            mc.entityRenderer.disableLightmap(tickDelta);
+        } finally {
+            renderingSolid = false;
 
-        mc.entityRenderer.enableLightmap(tickDelta);
-        mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-        mc.entityRenderer.disableLightmap(tickDelta);
+            mc.mcProfiler.endSection();
 
-        GLStateManager.defaultBlendFunc();
-        GLStateManager.glDepthMask(false);
-        GLStateManager.glPopMatrix();
+            GLStateManager.glPopMatrix();
+            resetProjectionMatrix();
 
-        mc.mcProfiler.endSection();
+            GLStateManager.glDepthMask(depthMaskBefore);
+            GbufferPrograms.popCutoutDefaults(cutoutSave);
+            GbufferPrograms.popBlendState(blendSave);
 
-        resetProjectionMatrix();
+            pipeline.setPhase(WorldRenderingPhase.NONE);
 
-        renderingSolid = false;
-
-        pipeline.setPhase(WorldRenderingPhase.NONE);
-
-        ACTIVE = false;
+            ACTIVE = false;
+        }
     }
 
-    // TODO: RenderType
     public void renderTranslucent(float tickDelta, Camera camera, RenderGlobal gameRenderer, WorldRenderingPipeline pipeline) {
-        if (!canRender(camera, gameRenderer) || !isAnyHandTranslucent() || !IrisApi.getInstance().isShaderPackInUse()) {
+        if (!IrisApi.getInstance().isShaderPackInUse() || !canRender(camera, gameRenderer) || !isAnyHandTranslucent()) {
             return;
         }
         Minecraft mc = Minecraft.getMinecraft();
 
         ACTIVE = true;
 
+        final int blendSave = GbufferPrograms.pushBlendState();
+        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
+        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
+
+        GLStateManager.enableBlend();
+        GLStateManager.defaultBlendFunc();
+
         pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
 
         GLStateManager.glPushMatrix();
+        GLStateManager.glDepthMask(false);
 
         mc.mcProfiler.startSection("iris_hand_translucent");
+        try {
+            setupGlState(gameRenderer, camera, tickDelta);
 
-        setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setBlockEntityDefaults();
 
-        GbufferPrograms.setBlockEntityDefaults();
+            mc.entityRenderer.enableLightmap(tickDelta);
+            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+            mc.entityRenderer.disableLightmap(tickDelta);
+        } finally {
+            mc.mcProfiler.endSection();
 
-        mc.entityRenderer.enableLightmap(tickDelta);
-        mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-        mc.entityRenderer.disableLightmap(tickDelta);
+            GLStateManager.glPopMatrix();
+            resetProjectionMatrix();
 
-        GLStateManager.glPopMatrix();
+            GLStateManager.glDepthMask(depthMaskBefore);
+            GbufferPrograms.popCutoutDefaults(cutoutSave);
+            GbufferPrograms.popBlendState(blendSave);
 
-        resetProjectionMatrix();
+            pipeline.setPhase(WorldRenderingPhase.NONE);
 
-        Minecraft.getMinecraft().mcProfiler.endSection();
-
-        pipeline.setPhase(WorldRenderingPhase.NONE);
-
-        ACTIVE = false;
+            ACTIVE = false;
+        }
     }
 
     private void resetProjectionMatrix() {

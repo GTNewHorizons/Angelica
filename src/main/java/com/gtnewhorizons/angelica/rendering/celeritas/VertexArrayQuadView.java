@@ -13,18 +13,24 @@ public class VertexArrayQuadView implements ModelQuadView {
     private int blockX, blockY, blockZ;
     private ModelQuadFacing lightFace;
     private int flags;
+    private int extraFlags;
 
     public VertexArrayQuadView(ChunkVertexEncoder.Vertex[] vertices) {
         this.vertices = vertices;
     }
 
     public void setup(int trueNormal, int blockX, int blockY, int blockZ) {
+        setup(trueNormal, blockX, blockY, blockZ, 0, null);
+    }
+
+    public void setup(int trueNormal, int blockX, int blockY, int blockZ, int extraFlags, ModelQuadFacing forcedLightFace) {
         this.trueNormal = trueNormal;
         this.blockX = blockX;
         this.blockY = blockY;
         this.blockZ = blockZ;
-        this.lightFace = null; // Reset cached lightFace
+        this.lightFace = forcedLightFace;
         this.flags = 0;
+        this.extraFlags = extraFlags;
     }
 
     @Override
@@ -65,7 +71,7 @@ public class VertexArrayQuadView implements ModelQuadView {
     @Override
     public int getFlags() {
         if (flags == 0) {
-            flags = ModelQuadFlags.getQuadFlags(this, getLightFace());
+            flags = ModelQuadFlags.getQuadFlags(this, getLightFace(), extraFlags);
         }
         return flags;
     }

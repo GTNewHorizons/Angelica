@@ -27,15 +27,13 @@ public class ItemMaterialHelper {
 
     /**
      * Get the material ID for an ItemStack.
-     * For ItemBlock: checks block.properties first, then item.properties.
-     * For other items: checks item.properties only.
+     * 0 if unmapped.
      *
      * @param itemStack The item stack to get material ID for
-     * @return The material ID, or -1 if not found
      */
     public static int getMaterialId(ItemStack itemStack) {
         if (itemStack == null || itemStack.getItem() == null) {
-            return -1;
+            return 0;
         }
 
         // Check item NBT conditions first
@@ -56,7 +54,7 @@ public class ItemMaterialHelper {
 
     public static int getMaterialId(Item item, int metadata) {
         if (item == null) {
-            return -1;
+            return 0;
         }
 
         // Check cache first
@@ -84,11 +82,11 @@ public class ItemMaterialHelper {
     /**
      * Get the material ID for a Block rendered outside of terrain.
      *
-     * @return The material ID, or -1 if not found
+     * @return The material ID, or 0 if not found
      */
     public static int getMaterialId(Block block, int metadata) {
         if (block == null) {
-            return -1;
+            return 0;
         }
 
         Int2IntMap metadataCache = BLOCK_MATERIAL_CACHE.get(block);
@@ -112,60 +110,44 @@ public class ItemMaterialHelper {
     }
 
     private static int lookupBlockMaterialId(Block block, int metadata) {
-        Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-        if (blockMetaMatches != null) {
-            Int2IntMap metaMap = blockMetaMatches.get(block);
-            if (metaMap != null) {
-                int id = BlockMaterialMapping.resolveId(metaMap, metadata);
-                if (id != -1) {
-                    return id;
-                }
-            }
-        }
-
-        final Item item = Item.getItemFromBlock(block);
-        return item != null ? lookupItemPropertiesId(item) : -1;
+        return lookupBlockPropertiesId(block, metadata);
     }
 
     /**
      * Perform the actual material ID lookup without caching.
-     *
-     * For block items (ItemBlock): use block.properties first, then fall back to item.properties.
-     * For non-block items: use item.properties only.
-     *
-     * This matches modern Iris behavior where block items use block IDs and non-block items use item IDs.
      */
     private static int lookupMaterialId(Item item, int metadata) {
-        // For ItemBlock: check block.properties first
         if (item instanceof ItemBlock itemBlock) {
             final Block block = itemBlock.field_150939_a; // The block this item places
-
-            if (block != null) {
-                Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
-                if (blockMetaMatches != null) {
-                    Int2IntMap metaMap = blockMetaMatches.get(block);
-                    if (metaMap != null) {
-                        int id = BlockMaterialMapping.resolveId(metaMap, itemBlock.getMetadata(metadata));
-                        if (id != -1) {
-                            return id;
-                        }
-                    }
-                }
-            }
+            return block == null ? 0 : lookupBlockPropertiesId(block, itemBlock.getMetadata(metadata));
         }
 
-        // Fall back to item.properties
         return lookupItemPropertiesId(item);
+    }
+
+    private static int lookupBlockPropertiesId(Block block, int metadata) {
+        final Reference2ObjectMap<Block, Int2IntMap> blockMetaMatches = BlockRenderingSettings.INSTANCE.getBlockMetaMatches();
+        if (blockMetaMatches == null) {
+            return 0;
+        }
+
+        final Int2IntMap metaMap = blockMetaMatches.get(block);
+        if (metaMap == null) {
+            return 0;
+        }
+
+        final int id = BlockMaterialMapping.resolveId(metaMap, metadata);
+        return id == -1 ? 0 : id;
     }
 
     private static int lookupItemPropertiesId(Item item) {
         final Object2IntFunction<NamespacedId> itemIds = BlockRenderingSettings.INSTANCE.getItemIds();
         if (itemIds == null) {
-            return -1;
+            return 0;
         }
 
         final NamespacedId name = getCachedItemName(item);
-        return name == null ? -1 : itemIds.applyAsInt(name);
+        return name == null ? 0 : itemIds.applyAsInt(name);
     }
 
     /**

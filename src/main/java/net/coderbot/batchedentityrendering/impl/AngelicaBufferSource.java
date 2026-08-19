@@ -6,6 +6,8 @@ import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.coderbot.batchedentityrendering.impl.ordering.SimpleRenderOrderManager;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
+import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import org.lwjgl.opengl.GL11;
@@ -159,13 +161,15 @@ public class AngelicaBufferSource implements Groupable {
 
     private void clearCurrentId() {
         if (!anyIdSet) return;
-        if (idKind == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
-            CapturedRenderingState.INSTANCE.setCurrentEntityColor(0f, 0f, 0f, 0f);
-        } else {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-        }
+        // A pass can set either kind: nested entities inside a TESR write the entity id during a block entity pass
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(-1, 0);
+        CapturedRenderingState.INSTANCE.setCurrentEntityColor(0f, 0f, 0f, 0f);
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
         anyIdSet = false;
+    }
+
+    private GroupIdKind effectiveIdKind() {
+        return GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.ENTITIES ? GroupIdKind.ENTITY : idKind;
     }
 
     private void drawLayer(RenderLayer layer, LayerDrawHook hook) {
@@ -184,7 +188,7 @@ public class AngelicaBufferSource implements Groupable {
             GLStateManager.glPushMatrix();
             GLStateManager.glLoadIdentity();
             SegmentedBufferBuilder.LayerBuffer bound = null;
-            final boolean entityKind = idKind == GroupIdKind.ENTITY;
+            final boolean entityKind = effectiveIdKind() == GroupIdKind.ENTITY;
             int currentId = Integer.MIN_VALUE;
             int currentColor = 0;
             boolean colorSet = false;
@@ -271,8 +275,8 @@ public class AngelicaBufferSource implements Groupable {
 
     public void applyIdAndRebind(int id) {
         anyIdSet = true;
-        if (idKind == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(id);
+        if (effectiveIdKind() == GroupIdKind.ENTITY) {
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
             rebindPass();
         } else {
             setBlockEntityAndRebind(id);
@@ -281,8 +285,8 @@ public class AngelicaBufferSource implements Groupable {
 
     public void applyIdNoRebind(int id) {
         anyIdSet = true;
-        if (idKind == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(id);
+        if (effectiveIdKind() == GroupIdKind.ENTITY) {
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
         } else {
             CapturedRenderingState.INSTANCE.setCurrentBlockEntity(id);
         }
