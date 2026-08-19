@@ -50,6 +50,8 @@ public class MixinTessellator implements StateAwareTessellator {
         this.vertexStates.clear();
         this.shaderOverrideBlockIds.clear();
         this.currentShaderOverrideBlockId = -1;
+        this.appliedAo = false;
+        this.angelica$noDirectionalShading = false;
     }
 
     @Override
