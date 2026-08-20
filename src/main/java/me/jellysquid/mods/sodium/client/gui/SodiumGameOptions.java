@@ -5,8 +5,8 @@ import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonSyntaxException;
 import com.gtnewhorizons.angelica.AngelicaMod;
-import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
@@ -72,9 +72,6 @@ public class SodiumGameOptions {
     }
 
     public static boolean needsForcedSpritePadding() {
-        if (!AngelicaConfig.enableCeleritas) {
-            return false;
-        }
         final TextureFilterMode mode = filteringPossible()
             ? resolveFilterMode(ClientProxy.options().quality.textureFilterMode)
             : TextureFilterMode.NONE;
@@ -148,14 +145,14 @@ public class SodiumGameOptions {
             config.quality.textureFilterMode = TextureFilterMode.RGSS;
         }
 
-        // Clamp render-ahead to 0 if GL 3.2 fences aren't available
-        if (GLStateManager.capabilities == null || !GLStateManager.capabilities.OpenGL32) {
-            config.performance.cpuRenderAheadLimit = 0;
-        }
-
-        // Downgrade INDIRECT if hardware doesn't support it
-        if (config.advanced.multiDrawMode == MultiDrawMode.INDIRECT && (GLStateManager.capabilities == null || (!GLStateManager.capabilities.OpenGL43 && !GLStateManager.capabilities.GL_ARB_multi_draw_indirect))) {
-            config.advanced.multiDrawMode = MultiDrawMode.DIRECT;
+        if (GLStateManager.capabilities != null) {
+            if (!GLStateManager.capabilities.OpenGL32) {
+                config.performance.cpuRenderAheadLimit = 0;
+            }
+            if (config.advanced.multiDrawMode == MultiDrawMode.INDIRECT
+                && !GLStateManager.capabilities.OpenGL43 && !GLStateManager.capabilities.GL_ARB_multi_draw_indirect) {
+                config.advanced.multiDrawMode = MultiDrawMode.DIRECT;
+            }
         }
 
         try {
@@ -198,6 +195,7 @@ public class SodiumGameOptions {
     }
 
     public static class AdvancedSettings {
+        public VSyncMode vsyncMode;
         public boolean useVertexArrayObjects = true;
         public boolean useChunkMultidraw = true;
         public MultiDrawMode multiDrawMode = MultiDrawMode.DIRECT;
@@ -218,6 +216,7 @@ public class SodiumGameOptions {
 
         public boolean animateOnlyVisibleTextures = true;
         public boolean useEntityCulling = true;
+        public boolean sectionGatedTesrCulling = true;
         public boolean useFogOcclusion = true;
         public boolean useBlockFaceCulling = true;
         public boolean useCompactVertexFormat = true;

@@ -25,13 +25,13 @@ public class MixinRenderEntityFlame {
     private void iris$setFlame(Entity entity, double x, double y, double z, float partialTicks, CallbackInfo ci) {
         Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
         if (entityIdMap != null) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(entityIdMap.applyAsInt(flameId));
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(entityIdMap.applyAsInt(flameId), 0);
         }
     }
 
     @Inject(method = "renderEntityOnFire", at = @At("RETURN"))
     private void iris$resetFlame(Entity entity, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentEntity(0);
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(0, 0);
     }
 
 }

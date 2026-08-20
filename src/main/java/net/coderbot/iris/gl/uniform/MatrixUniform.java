@@ -10,13 +10,13 @@ import java.util.function.Supplier;
 
 public class MatrixUniform extends Uniform {
 	private final FloatBuffer buffer = BufferUtils.createFloatBuffer(16);
-	private Matrix4f cachedValue;
+	private final Matrix4f cachedValue = new Matrix4f();
+	private boolean hasValue;
 	private final Supplier<Matrix4fc> value;
 
 	MatrixUniform(int location, Supplier<Matrix4fc> value) {
 		super(location);
 
-		this.cachedValue = null;
 		this.value = value;
 	}
 
@@ -26,8 +26,9 @@ public class MatrixUniform extends Uniform {
         if( newValue == null ){
             throw new RuntimeException("MatrixUniform value is null");
         }
-        if (!newValue.equals(cachedValue)) {
-            cachedValue = new Matrix4f(newValue);
+        if (!hasValue || !newValue.equals(cachedValue)) {
+            hasValue = true;
+            cachedValue.set(newValue);
 
             cachedValue.get(buffer);
             buffer.rewind();

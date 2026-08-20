@@ -39,8 +39,10 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.Arrays;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
@@ -84,6 +86,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
 
     private boolean guiHidden = false;
     private boolean dirty = false;
+
+    private final Map<String, Boolean> packOptionAvailability = new HashMap<>();
 
     public ShaderPackScreen(GuiScreen parent) {
         this.title = I18n.format("options.iris.shaderPackSelection.title");
@@ -250,19 +254,7 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
                 I18n.format("options.iris.openShaderPackFolder"), button -> this.openShaderPackFolder()));
 
             this.screenSwitchButton = new IrisButton(topCenter + 78, this.height - 51, 152, 20,
-                I18n.format("options.iris.shaderPackList"), button -> {
-                    this.optionMenuOpen = !this.optionMenuOpen;
-
-                    // UX: Apply changes before switching screens to avoid unintuitive behavior
-                    //
-                    // Not doing this leads to unintuitive behavior, since selecting a pack in the
-                    // list (but not applying) would open the settings for the previous pack, rather
-                    // than opening the settings for the selected (but not applied) pack.
-                    this.applyChanges();
-
-                    initGui();
-                }
-            );
+                I18n.format("options.iris.shaderPackList"), button -> this.toggleOptionMenu());
             this.buttonList.add(this.screenSwitchButton);
 
             refreshScreenSwitchButton();
@@ -298,6 +290,17 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         this.hoveredElementCommentTimer = 0;
     }
 
+
+    @Override
+    public void updateScreen() {
+        super.updateScreen();
+
+        if (this.notificationDialogTimer > 0) {
+            this.notificationDialogTimer--;
+        } else if (this.notificationDialog != null) {
+            this.notificationDialog = null;
+        }
+    }
 
     /**
      * Called when the mouse is clicked.
@@ -346,9 +349,51 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
         }
     }
 
+    /**
+     * Switches between the pack list and the pack settings, applying the pending pack first.
+     * <p>
+     * UX: Apply changes before switching screens to avoid unintuitive behavior. Not doing this leads to
+     * unintuitive behavior, since selecting a pack in the list (but not applying) would open the settings
+     * for the previous pack, rather than opening the settings for the selected (but not applied) pack.
+     */
+    private void toggleOptionMenu() {
+        final boolean opening = !this.optionMenuOpen;
+        this.optionMenuOpen = opening;
+
+        this.applyChanges();
+
+        // The pack is only parsed by applyChanges, so this is the first point where an option-less
+        // pack can be recognized. Stay on the list instead of opening an empty settings screen.
+        if (opening && !currentPackHasOptions()) {
+            this.optionMenuOpen = false;
+            displayNotification(I18n.format("options.iris.shaderPackOptions.noOptions", Iris.getCurrentPackName()));
+        }
+
+        initGui();
+    }
+
+    private boolean canOpenOptionMenu() {
+        if (!this.shaderPackList.getTopButtonRow().shadersEnabled) {
+            return false;
+        }
+
+        final ShaderPackEntry highlighted = this.shaderPackList.getSelected();
+        final String name = highlighted != null ? highlighted.getPackName() : Iris.getCurrentPackName();
+
+        return name == null || this.packOptionAvailability.getOrDefault(name, Boolean.TRUE);
+    }
+
+    private boolean currentPackHasOptions() {
+        return Iris.getCurrentPack().map(p -> p.getMenuContainer().hasMenuElements()).orElse(false);
+    }
+
     public void refreshForChangedPack() {
         if (Iris.getCurrentPack().isPresent()) {
             final ShaderPack currentPack = Iris.getCurrentPack().get();
+
+            if (Iris.getCurrentPackName() != null) {
+                this.packOptionAvailability.put(Iris.getCurrentPackName(), currentPack.getMenuContainer().hasMenuElements());
+            }
 
             this.navigation = new NavigationController();
 
@@ -364,11 +409,10 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
     }
 
     public void refreshScreenSwitchButton() {
-        if (this.screenSwitchButton != null) {
+        if (this.screenSwitchButton != null && this.shaderPackList != null) {
             this.screenSwitchButton.displayString = optionMenuOpen ? I18n.format("options.iris.shaderPackList") : I18n.format("options.iris.shaderPackSettings");
-            // Disable the settings switch when shaders are off or the selected pack exposes no options
-            this.screenSwitchButton.enabled = optionMenuOpen || (shaderPackList.getTopButtonRow().shadersEnabled
-                && Iris.getCurrentPack().map(p -> !p.getMenuContainer().mainScreen.elements.isEmpty()).orElse(true));
+            // Disable the settings switch when shaders are off or the highlighted pack exposes no options
+            this.screenSwitchButton.enabled = optionMenuOpen || canOpenOptionMenu();
         }
     }
 
@@ -435,12 +479,8 @@ public class ShaderPackScreen extends GuiScreen implements HudHideable {
             return;
         }
         if (keyCode == Keyboard.KEY_TAB) {
-            final boolean canOpenOptions = shaderPackList.getTopButtonRow().shadersEnabled
-                && Iris.getCurrentPack().map(p -> !p.getMenuContainer().mainScreen.elements.isEmpty()).orElse(false);
-            if (this.optionMenuOpen || canOpenOptions) {
-                this.optionMenuOpen = !this.optionMenuOpen;
-                this.applyChanges();
-                this.initGui();
+            if (this.optionMenuOpen || canOpenOptionMenu()) {
+                toggleOptionMenu();
             }
             return;
         }

@@ -5,12 +5,16 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import net.minecraft.client.renderer.Tessellator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -20,6 +24,7 @@ import org.lwjgl.opengl.GL15;
 import java.nio.ByteBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static org.joml.Math.clamp;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCopy;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
@@ -32,6 +37,8 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
  * Maintains two VAO sets (persistent + orphan) per vertex format (up to 16 combinations).
  */
 public class TessellatorStreamingDrawer {
+
+    private static final Tracy.ZoneId Z_SDL_STREAM_DRAW = Tracy.zoneId("sdlStreamDraw", Tracy.COLOR_FFP);
 
     private static final Logger LOGGER = LogManager.getLogger("TessellatorStreamingDrawer");
 
@@ -55,6 +62,14 @@ public class TessellatorStreamingDrawer {
 
     private static boolean initialized = false;
 
+    // Tracy profiling counters
+    public static long streamedBytes;
+    public static long streamDraws;
+    public static long orphanFallbacks;
+    public static long streamContiguous;
+    private static int lastStreamEndVertex = -1;
+    private static int lastStreamDrawMode = -1;
+
     static {
         // Initial repack buffer: 64KB
         repackCapacity = 0x10000;
@@ -66,15 +81,7 @@ public class TessellatorStreamingDrawer {
         if (initialized) return;
         initialized = true;
 
-        if (RenderSystem.supportsBufferStorage() && !Boolean.getBoolean("angelica.forceOrphanStreaming")) {
-            try {
-                persistentBuffer = new PersistentStreamingBuffer();
-                LOGGER.info("Persistent streaming buffer created ({}MB)", PersistentStreamingBuffer.DEFAULT_CAPACITY / (1024 * 1024));
-            } catch (Exception e) {
-                LOGGER.warn("Failed to create persistent streaming buffer, using orphan fallback", e);
-                persistentBuffer = null;
-            }
-        }
+        persistentBuffer = PersistentStreamingBuffer.createOrNull(PersistentStreamingBuffer.DEFAULT_CAPACITY);
     }
 
     /**
@@ -96,7 +103,57 @@ public class TessellatorStreamingDrawer {
 
         // Determine the optimal vertex format from the tessellator's flags
         final int flags = VertexFlags.convertToFlags(tess.hasTexture, tess.hasColor, tess.hasNormals, tess.hasBrightness);
-        final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[flags];
+
+        final int effectiveFlags;
+        if (GLSMConfig.expandVertexFormats) {
+            effectiveFlags = VertexFlags.COLOR_BIT | VertexFlags.TEXTURE_BIT | VertexFlags.NORMAL_BIT | VertexFlags.BRIGHTNESS_BIT;
+            if (effectiveFlags != flags) {
+                final int[] rawBuffer = tess.rawBuffer;
+                final int defaultColor;
+                if (!tess.hasColor) {
+                    final var c = GLStateManager.getColor();
+                    defaultColor = ((int)(clamp(0f, 1f, c.getAlpha()) * 255) << 24) | ((int)(clamp(0f, 1f, c.getBlue()) * 255) << 16)
+                        | ((int)(clamp(0f, 1f, c.getGreen()) * 255) << 8) | (int)(clamp(0f, 1f, c.getRed()) * 255);
+                } else {
+                    defaultColor = 0;
+                }
+
+                final int defaultBrightness;
+                if (!tess.hasBrightness) {
+                    defaultBrightness = GLSMConfig.packedLastBrightness();
+                } else {
+                    defaultBrightness = 0;
+                }
+
+                final int defaultNormal;
+                if (!tess.hasNormals) {
+                    final var n = ShaderManager.getCurrentNormal();
+                    defaultNormal = ((int)(clamp(-1f, 1f, n.z) * 127) << 16) | (((int)(clamp(-1f, 1f, n.y) * 127) & 0xFF) << 8) | ((int)(clamp(-1f, 1f, n.x) * 127) & 0xFF);
+                } else {
+                    defaultNormal = 0;
+                }
+
+                final int defaultTexU, defaultTexV;
+                if (!tess.hasTexture) {
+                    final var tc = ShaderManager.getCurrentTexCoord();
+                    defaultTexU = Float.floatToRawIntBits(tc.x);
+                    defaultTexV = Float.floatToRawIntBits(tc.y);
+                } else {
+                    defaultTexU = 0; defaultTexV = 0;
+                }
+
+                for (int i = 0; i < vertexCount; i++) {
+                    final int base = i * 8;
+                    if (!tess.hasTexture)    { rawBuffer[base + 3] = defaultTexU; rawBuffer[base + 4] = defaultTexV; }
+                    if (!tess.hasColor)      { rawBuffer[base + 5] = defaultColor; }
+                    if (!tess.hasNormals)    { rawBuffer[base + 6] = defaultNormal; }
+                    if (!tess.hasBrightness) { rawBuffer[base + 7] = defaultBrightness; }
+                }
+            }
+        } else {
+            effectiveFlags = flags;
+        }
+        final VertexFormat format = DefaultVertexFormat.ALL_FORMATS[effectiveFlags];
         final int vertexSize = format.getVertexSize();
 
         final int requiredBytes = vertexCount * vertexSize;
@@ -117,14 +174,15 @@ public class TessellatorStreamingDrawer {
                 final int combinedBytes = vertexCount * combinedStride;
                 ensureExtScratch(combinedBytes);
                 interleaveBase(repackAddress, extScratchAddress, vertexCount, vertexSize, combinedStride);
-                final int normalIndex = tess.hasNormals ? ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX : -1;
+                // format expansion backfills a normal into rawBuffer, so trust effectiveFlags rather than tess.hasNormals
+                final int normalIndex = (effectiveFlags & VertexFlags.NORMAL_BIT) != 0 ? ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX : -1;
                 extHandler.build(tess.rawBuffer, vertexCount, extPrim, normalIndex, extScratchAddress + vertexSize, combinedStride);
                 extScratch.position(0);
                 extScratch.limit(combinedBytes);
-                uploadAndDrawExtended(extScratch, flags, format, combinedStride, tess.drawMode, vertexCount);
+                uploadAndDrawExtended(extScratch, effectiveFlags, format, combinedStride, tess.drawMode, vertexCount);
                 shrinkExtScratchIfOversized(combinedBytes);
             } else {
-                uploadAndDraw(repackBuffer, flags, format, vertexSize, tess.drawMode, vertexCount);
+                uploadAndDraw(repackBuffer, effectiveFlags, format, vertexSize, tess.drawMode, vertexCount);
             }
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
@@ -224,9 +282,9 @@ public class TessellatorStreamingDrawer {
         }
 
         if (persistentBuffer != null) {
-            cachedDebugInfo = String.format("Stream: Persistent %s (%s free) + %d orphan (%s)",
+            cachedDebugInfo = String.format("Stream: Persistent %s (%s free, %d forced) + %d orphan (%s)",
                 formatBytes(persistentBuffer.getCapacity()), formatBytes(persistentBuffer.getRemaining()),
-                orphanCount, formatBytes(orphanBytes));
+                persistentBuffer.getForcedReclaims(), orphanCount, formatBytes(orphanBytes));
         } else {
             cachedDebugInfo = String.format("Stream: Orphan (%d bufs, %s)", orphanCount, formatBytes(orphanBytes));
         }
@@ -250,29 +308,48 @@ public class TessellatorStreamingDrawer {
      * Tries the persistent ring buffer first, falls back to orphan buffer on overflow.
      */
     private static void uploadAndDraw(ByteBuffer packed, int flags, VertexFormat format, int vertexSize, int drawMode, int vertexCount) {
+        Tracy.beginZone(Z_SDL_STREAM_DRAW);
         final boolean locked = GLStateManager.acquireDrawLock();
         try {
             ensureVAO(flags, format);
 
+            if (Tracy.ENABLED) {
+                streamedBytes += packed.remaining();
+                streamDraws++;
+            }
+
             int firstVertex = -1;
 
             if (persistentBuffer != null) {
-                firstVertex = persistentBuffer.upload(packed, vertexSize);
+                firstVertex = persistentBuffer.upload(packed, vertexSize, drawMode == GL11.GL_QUADS ? 4 : 1);
             }
 
-            if (firstVertex >= 0) {
+            final boolean fromRing = firstVertex >= 0;
+            if (fromRing) {
                 GLStateManager.glBindVertexArray(persistentVAOs[flags]);
             } else {
+                if (Tracy.ENABLED && persistentBuffer != null) orphanFallbacks++;
                 GLStateManager.glBindVertexArray(orphanVAOs[flags]);
                 orphanBuffers[flags].upload(packed);
                 firstVertex = 0;
+            }
+
+            if (Tracy.ENABLED) {
+                if (fromRing && firstVertex == lastStreamEndVertex && drawMode == lastStreamDrawMode) streamContiguous++;
+                lastStreamEndVertex = fromRing ? firstVertex + vertexCount : -1;
+                lastStreamDrawMode = drawMode;
             }
 
             drawWithQuadConversion(drawMode, firstVertex, vertexCount);
             GLStateManager.glBindVertexArray(0);
         } finally {
             if (locked) GLStateManager.releaseDrawLock();
+            Tracy.endZone();
         }
+    }
+
+    public static long ringWraps() {
+        return persistentBuffer == null ? 0L : persistentBuffer.getWraps();
     }
 
     private static void drawWithQuadConversion(int drawMode, int firstVertex, int vertexCount) {
@@ -401,7 +478,6 @@ public class TessellatorStreamingDrawer {
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, orphanBuffers[flags].getBufferId());
             format.setupBufferState(0L);
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glBindVertexArray(0);
         }
 
         if (persistentBuffer != null && persistentVAOs[flags] == 0) {
@@ -410,7 +486,6 @@ public class TessellatorStreamingDrawer {
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, persistentBuffer.getBufferId());
             format.setupBufferState(0L);
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            GLStateManager.glBindVertexArray(0);
         }
     }
 

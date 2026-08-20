@@ -85,7 +85,7 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
     @Override
     public AxisAlignedBB angelica$getCachedRenderBoundingBox() {
         if (angelica$cachedRenderBB != null && angelica$cachedBBX == this.xCoord && angelica$cachedBBY == this.yCoord && angelica$cachedBBZ == this.zCoord
-                && angelica$cachedBBMetadata == this.blockMetadata && angelica$cachedBBBlockType == this.blockType)
+                && getBlockType() == angelica$cachedBBBlockType && getBlockMetadata() == angelica$cachedBBMetadata)
         {
             return angelica$cachedRenderBB;
         }
@@ -95,8 +95,8 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
         this.angelica$cachedBBX = this.xCoord;
         this.angelica$cachedBBY = this.yCoord;
         this.angelica$cachedBBZ = this.zCoord;
-        this.angelica$cachedBBMetadata = this.blockMetadata;
-        this.angelica$cachedBBBlockType = this.blockType;
+        this.angelica$cachedBBMetadata = getBlockMetadata();
+        this.angelica$cachedBBBlockType = getBlockType();
 
         if (computed == TileEntity.INFINITE_EXTENT_AABB) {
             this.angelica$cachedRenderBB = computed;
@@ -120,4 +120,5 @@ public abstract class MixinTileEntity implements ITileEntityBoundingBoxCache {
         }
         return angelica$boundsClassCached;
     }
+
 }

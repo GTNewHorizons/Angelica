@@ -1,13 +1,17 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import org.joml.Matrix4f;
+import org.joml.Vector4f;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
+import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 /**
@@ -202,5 +206,113 @@ public class GLSM_GLU_UnitTest {
         assertMatrixEquals(new Matrix4f(), getProjectionMatrix(), "gluPickMatrix zero deltaX is no-op");
 
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
+    }
+
+    @Test
+    void gluErrorString_glErrors() {
+        assertEquals("No error", GLStateManager.gluErrorString(GL11.GL_NO_ERROR));
+        assertEquals("Invalid enum", GLStateManager.gluErrorString(GL11.GL_INVALID_ENUM));
+        assertEquals("Invalid value", GLStateManager.gluErrorString(GL11.GL_INVALID_VALUE));
+        assertEquals("Invalid operation", GLStateManager.gluErrorString(GL11.GL_INVALID_OPERATION));
+        assertEquals("Out of memory", GLStateManager.gluErrorString(GL11.GL_OUT_OF_MEMORY));
+    }
+
+    @Test
+    void gluErrorString_gluErrors() {
+        assertEquals("Invalid enum (glu)", GLStateManager.gluErrorString(100900));
+        assertEquals("Invalid value (glu)", GLStateManager.gluErrorString(100901));
+        assertEquals("Out of memory (glu)", GLStateManager.gluErrorString(100902));
+    }
+
+    @Test
+    void gluErrorString_unknownCode() {
+        assertEquals("Unknown error: 99999", GLStateManager.gluErrorString(99999));
+    }
+
+    @Test
+    void gluUnProject_identity() {
+        FloatBuffer model = BufferUtils.createFloatBuffer(16);
+        FloatBuffer proj = BufferUtils.createFloatBuffer(16);
+        new Matrix4f().get(model);
+        new Matrix4f().get(proj);
+
+        IntBuffer viewport = BufferUtils.createIntBuffer(4);
+        viewport.put(0, 0).put(1, 0).put(2, 800).put(3, 600);
+
+        FloatBuffer result = BufferUtils.createFloatBuffer(3);
+        boolean ok = GLStateManager.gluUnProject(400.0f, 300.0f, 0.5f, model, proj, viewport, result);
+        assertTrue(ok, "gluUnProject should succeed");
+        assertEquals(0.0f, result.get(0), 0.001f, "X");
+        assertEquals(0.0f, result.get(1), 0.001f, "Y");
+        assertEquals(0.0f, result.get(2), 0.001f, "Z");
+    }
+
+    @Test
+    void gluUnProject_withPerspective() {
+        Matrix4f proj = new Matrix4f().perspective((float) Math.toRadians(60.0f), 800.0f / 600.0f, 0.1f, 100.0f);
+        Matrix4f model = new Matrix4f().lookAt(0, 0, 5, 0, 0, 0, 0, 1, 0);
+
+        Vector4f worldPt = new Vector4f(0, 0, 0, 1);
+        Matrix4f mvp = new Matrix4f(proj).mul(model);
+        mvp.transform(worldPt);
+        float ndcX = worldPt.x / worldPt.w;
+        float ndcY = worldPt.y / worldPt.w;
+        float ndcZ = worldPt.z / worldPt.w;
+        float winX = (ndcX * 0.5f + 0.5f) * 800.0f;
+        float winY = (ndcY * 0.5f + 0.5f) * 600.0f;
+        float winZ = ndcZ * 0.5f + 0.5f;
+
+        FloatBuffer modelBuf = BufferUtils.createFloatBuffer(16);
+        FloatBuffer projBuf = BufferUtils.createFloatBuffer(16);
+        model.get(modelBuf);
+        proj.get(projBuf);
+
+        IntBuffer viewport = BufferUtils.createIntBuffer(4);
+        viewport.put(0, 0).put(1, 0).put(2, 800).put(3, 600);
+
+        FloatBuffer result = BufferUtils.createFloatBuffer(3);
+        boolean ok = GLStateManager.gluUnProject(winX, winY, winZ, modelBuf, projBuf, viewport, result);
+        assertTrue(ok, "gluUnProject should succeed");
+        assertEquals(0.0f, result.get(0), 0.01f, "X should unproject back to 0");
+        assertEquals(0.0f, result.get(1), 0.01f, "Y should unproject back to 0");
+        assertEquals(0.0f, result.get(2), 0.01f, "Z should unproject back to 0");
+    }
+
+    @Test
+    void gluUnProject_singularMatrix() {
+        FloatBuffer model = BufferUtils.createFloatBuffer(16);
+        FloatBuffer proj = BufferUtils.createFloatBuffer(16);
+        for (int i = 0; i < 16; i++) {
+            model.put(i, 0.0f);
+            proj.put(i, 0.0f);
+        }
+
+        IntBuffer viewport = BufferUtils.createIntBuffer(4);
+        viewport.put(0, 0).put(1, 0).put(2, 800).put(3, 600);
+
+        FloatBuffer result = BufferUtils.createFloatBuffer(3);
+        assertFalse(GLStateManager.gluUnProject(400, 300, 0.5f, model, proj, viewport, result));
+    }
+
+
+    @Test
+    void gluBuild2DMipmaps_invalidSize() {
+        assertEquals(100901, GLStateManager.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 0, 10, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(1)));
+        assertEquals(100901, GLStateManager.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 10, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, BufferUtils.createByteBuffer(1)));
+    }
+
+    @Test
+    void gluBuild2DMipmaps_uploadsTexture() {
+        int texId = GL11.glGenTextures();
+        GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId);
+
+        ByteBuffer pixels = BufferUtils.createByteBuffer(4 * 4 * 4);
+        for (int i = 0; i < 4 * 4 * 4; i++) pixels.put((byte) 0xFF);
+        pixels.flip();
+
+        int result = GLStateManager.gluBuild2DMipmaps(GL11.GL_TEXTURE_2D, GL11.GL_RGBA, 4, 4, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, pixels);
+        assertEquals(0, result, "gluBuild2DMipmaps should return 0 on success");
+
+        GL11.glDeleteTextures(texId);
     }
 }

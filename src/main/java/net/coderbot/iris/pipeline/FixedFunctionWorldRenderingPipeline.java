@@ -11,7 +11,7 @@ import net.coderbot.iris.features.FeatureFlags;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gbuffer_overrides.state.RenderTargetStateListener;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -19,6 +19,7 @@ import net.coderbot.iris.uniforms.FrameUpdateNotifier;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.shader.Framebuffer;
+import org.jetbrains.annotations.Nullable;
 
 import java.util.List;
 import java.util.OptionalInt;
@@ -84,6 +85,11 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	}
 
 	@Override
+	public void setDeclaredTranslucency(@Nullable Boolean translucent) {
+
+	}
+
+	@Override
 	public RenderTargetStateListener getRenderTargetStateListener() {
 		return RenderTargetStateListener.NOP;
 	}
@@ -101,6 +107,11 @@ public class FixedFunctionWorldRenderingPipeline implements WorldRenderingPipeli
 	@Override
 	public void onBindTexture(int id) {
 
+	}
+
+	@Override
+	public void rebindCurrentPass() {
+		// no-op: fixed-function pipeline doesn't manage Pass state
 	}
 
 	@Override

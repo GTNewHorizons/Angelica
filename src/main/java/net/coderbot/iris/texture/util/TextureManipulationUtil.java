@@ -2,7 +2,6 @@ package net.coderbot.iris.texture.util;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.OpenGlHelper;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL30;
@@ -46,9 +45,6 @@ public class TextureManipulationUtil {
                     textureId,
                     level);
                 GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
-                if (Minecraft.isRunningOnMac) {
-                    GLStateManager.glGetError();
-                }
 
                 GLStateManager.glFramebufferTexture2D(
                     GL30.GL_FRAMEBUFFER,

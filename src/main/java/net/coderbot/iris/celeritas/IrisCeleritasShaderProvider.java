@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVertexType;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shadows.ShadowRenderingState;
 import net.minecraft.block.Block;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
@@ -63,6 +64,12 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
     @Nullable
     public Map<Block, BlockRenderLayer> getBlockTypeIds() {
         return BlockRenderingSettings.INSTANCE.getBlockTypeIds();
+    }
+
+    @Override
+    public void preSubmitShadowGraph(int frame, boolean spectator) {
+        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        if (pipeline != null) pipeline.preSubmitShadowGraph(frame, spectator);
     }
 
     public void deleteShaders() {

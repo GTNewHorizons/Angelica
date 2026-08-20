@@ -20,37 +20,36 @@ public final class VertexKey {
 
     public static final int MAX_UNITS = 4;
 
+    public static final int FFP_LIGHT_COUNT = 2;
+
     private final long packed;
 
     private static final int BIT_LIGHTING            = 0;
-    private static final int BIT_LIGHT0              = 1;
-    private static final int BIT_LIGHT1              = 2;
-    private static final int BIT_LIGHT0_DIR          = 3;
-    private static final int BIT_LIGHT1_DIR          = 4;
-    private static final int BIT_COLOR_MATERIAL      = 5;
-    private static final int BIT_SEPARATE_SPECULAR   = 6;
-    private static final int BIT_FOG                 = 7;
-    private static final int BIT_FOG_DIST_MODE       = 8;  // 2 bits: 8-9
-    private static final int BIT_NORMALIZE           = 10;
-    private static final int BIT_RESCALE_NORMAL      = 11;
-    // Per-unit texcoord enable: bits 12-15 (unit 0..3). Unit 1 doubles as the lightmap flag.
-    private static final int BIT_UNIT_TEX_BASE       = 12;
-    private static final int BIT_HAS_VERTEX_COLOR    = 16;
-    private static final int BIT_HAS_VERTEX_NORMAL   = 17;
-    private static final int BIT_HAS_VERTEX_TEX      = 18;
-    private static final int BIT_HAS_VERTEX_LIGHTMAP = 19;
-    private static final int BIT_COLOR_MAT_MODE      = 20;  // 3 bits: 20-22
-    // TexGen modes (unit 0 only, for now): 3 bits each (0=NONE, 1=OBJ_LINEAR, 2=EYE_LINEAR).
-    private static final int BIT_TEXGEN_S            = 23;  // 3 bits: 23-25
-    private static final int BIT_TEXGEN_T            = 26;  // 3 bits: 26-28
-    private static final int BIT_TEXGEN_R            = 29;  // 3 bits: 29-31
-    private static final int BIT_TEXGEN_Q            = 32;  // 3 bits: 32-34
-    private static final int BIT_CLIP_PLANES         = 35;
-    private static final int BIT_WIDE_LINE           = 36;
-    // Per-unit texmat enable: bits 37-40 (unit 0..3). Unit 1 is the lightmap matrix.
-    private static final int BIT_UNIT_TEXMAT_BASE    = 37;
-    private static final int BIT_UNIT23_UV_FROM_UNIT0 = 41;
-    private static final int BIT_LINE_STIPPLE        = 42;
+    private static final int BIT_LIGHT_BASE          = BIT_LIGHTING + 1;
+    private static final int BIT_LIGHT_DIR_BASE      = BIT_LIGHT_BASE + FFP_LIGHT_COUNT;
+    private static final int BIT_COLOR_MATERIAL      = BIT_LIGHT_DIR_BASE + FFP_LIGHT_COUNT;
+    private static final int BIT_SEPARATE_SPECULAR   = BIT_COLOR_MATERIAL + 1;
+    private static final int BIT_FOG                 = BIT_SEPARATE_SPECULAR + 1;
+    private static final int BIT_FOG_DIST_MODE       = BIT_FOG + 1;
+    private static final int BIT_NORMALIZE           = BIT_FOG_DIST_MODE + 2;
+    private static final int BIT_RESCALE_NORMAL      = BIT_NORMALIZE + 1;
+    private static final int BIT_UNIT_TEX_BASE       = BIT_RESCALE_NORMAL + 1;
+    private static final int BIT_HAS_VERTEX_COLOR    = BIT_UNIT_TEX_BASE + MAX_UNITS;
+    private static final int BIT_HAS_VERTEX_NORMAL   = BIT_HAS_VERTEX_COLOR + 1;
+    private static final int BIT_HAS_VERTEX_TEX      = BIT_HAS_VERTEX_NORMAL + 1;
+    private static final int BIT_HAS_VERTEX_LIGHTMAP = BIT_HAS_VERTEX_TEX + 1;
+    private static final int BIT_COLOR_MAT_MODE      = BIT_HAS_VERTEX_LIGHTMAP + 1;
+    // TexGen modes are unit 0 only, for now.
+    private static final int BIT_TEXGEN_S            = BIT_COLOR_MAT_MODE + 3;
+    private static final int BIT_TEXGEN_T            = BIT_TEXGEN_S + 3;
+    private static final int BIT_TEXGEN_R            = BIT_TEXGEN_T + 3;
+    private static final int BIT_TEXGEN_Q            = BIT_TEXGEN_R + 3;
+    private static final int BIT_CLIP_PLANES         = BIT_TEXGEN_Q + 3;
+    private static final int BIT_WIDE_LINE           = BIT_CLIP_PLANES + 1;
+    private static final int BIT_UNIT_TEXMAT_BASE    = BIT_WIDE_LINE + 1;
+    private static final int BIT_UNIT23_UV_FROM_UNIT0 = BIT_UNIT_TEXMAT_BASE + MAX_UNITS;
+    private static final int BIT_LINE_STIPPLE        = BIT_UNIT23_UV_FROM_UNIT0 + 1;
+    private static final int BIT_INSTANCED           = BIT_LINE_STIPPLE + 1;
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -69,10 +68,8 @@ public final class VertexKey {
     public long pack() { return packed; }
 
     public boolean lightingEnabled()       { return bit(BIT_LIGHTING); }
-    public boolean light0Enabled()         { return bit(BIT_LIGHT0); }
-    public boolean light1Enabled()         { return bit(BIT_LIGHT1); }
-    public boolean light0Directional()     { return bit(BIT_LIGHT0_DIR); }
-    public boolean light1Directional()     { return bit(BIT_LIGHT1_DIR); }
+    public boolean lightEnabled(int light)     { return bit(BIT_LIGHT_BASE + light); }
+    public boolean lightDirectional(int light) { return bit(BIT_LIGHT_DIR_BASE + light); }
     public boolean colorMaterialEnabled()  { return bit(BIT_COLOR_MATERIAL); }
     public boolean separateSpecular()      { return bit(BIT_SEPARATE_SPECULAR); }
     public boolean fogEnabled()            { return bit(BIT_FOG); }
@@ -100,6 +97,7 @@ public final class VertexKey {
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
+    public boolean instancedDraw()       { return bit(BIT_INSTANCED); }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -134,17 +132,12 @@ public final class VertexKey {
         if (lighting) {
             bits |= (1L << BIT_LIGHTING);
 
-            if (GLStateManager.getLightStates()[0].isEnabled()) {
-                bits |= (1L << BIT_LIGHT0);
+            for (int i = 0; i < FFP_LIGHT_COUNT; i++) {
+                if (!GLStateManager.getLightStates()[i].isEnabled()) continue;
+                bits |= (1L << (BIT_LIGHT_BASE + i));
                 // position.w == 0 means directional
-                if (GLStateManager.getLightDataStates()[0].position.w == 0.0f) {
-                    bits |= (1L << BIT_LIGHT0_DIR);
-                }
-            }
-            if (GLStateManager.getLightStates()[1].isEnabled()) {
-                bits |= (1L << BIT_LIGHT1);
-                if (GLStateManager.getLightDataStates()[1].position.w == 0.0f) {
-                    bits |= (1L << BIT_LIGHT1_DIR);
+                if (GLStateManager.getLightDataStates()[i].position.w == 0.0f) {
+                    bits |= (1L << (BIT_LIGHT_DIR_BASE + i));
                 }
             }
 
@@ -233,6 +226,10 @@ public final class VertexKey {
             bits |= (1L << BIT_LINE_STIPPLE);
         }
 
+        if (GLStateManager.instancedFfpDrawActive) {
+            bits |= (1L << BIT_INSTANCED);
+        }
+
         return bits;
     }
 
@@ -258,12 +255,12 @@ public final class VertexKey {
 
     @Override
     public String toString() {
-        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b]",
-            packed, lightingEnabled(), light0Enabled(), light1Enabled(),
+        return String.format("FFPVertexKey[0x%011X: lit=%b l0=%b l1=%b cm=%b fog=%b tex=%d%d%d%d texmat=%d%d%d%d col=%b nrm=%b vtex=%b vlm=%b tg=%d/%d/%d/%d clip=%b wline=%b inst=%b]",
+            packed, lightingEnabled(), lightEnabled(0), lightEnabled(1),
             colorMaterialEnabled(), fogEnabled(),
             unitTexCoordEnabled(0)?1:0, unitTexCoordEnabled(1)?1:0, unitTexCoordEnabled(2)?1:0, unitTexCoordEnabled(3)?1:0,
             unitTexMatEnabled(0)?1:0, unitTexMatEnabled(1)?1:0, unitTexMatEnabled(2)?1:0, unitTexMatEnabled(3)?1:0,
             hasVertexColor(), hasVertexNormal(), hasVertexTexCoord(), hasVertexLightmap(),
-            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation());
+            texGenModeS(), texGenModeT(), texGenModeR(), texGenModeQ(), clipPlanesEnabled(), wideLineEmulation(), instancedDraw());
     }
 }

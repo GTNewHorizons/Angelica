@@ -2,10 +2,11 @@ package jss.notfine.gui;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
+import me.jellysquid.mods.sodium.client.gui.FrameRateOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
@@ -42,6 +43,7 @@ public class NotFineGameOptionPages {
     public static OptionPage general() {
         List<OptionGroup> groups = new ArrayList<>();
 
+        final FrameRateOptions frameRate = FrameRateOptions.create(vanillaOpts, sodiumOpts);
         groups.add(OptionGroup.createBuilder()
             .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
                 .setName(I18n.format("options.graphics"))
@@ -62,16 +64,7 @@ public class NotFineGameOptionPages {
                 .setImpact(OptionImpact.HIGH)
                 .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
-            .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
-                .setName(I18n.format("options.vsync"))
-                .setTooltip(I18n.format("sodium.options.v_sync.tooltip"))
-                .setControl(TickBoxControl::new)
-                .setBinding((opts, value) -> {
-                    opts.enableVsync = value;
-                    Display.setVSyncEnabled(opts.enableVsync);
-                }, opts -> opts.enableVsync)
-                .setImpact(OptionImpact.VARIES)
-                .build())
+            .add(frameRate.vsync())
             .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
                 .setName(I18n.format("options.fullscreen"))
                 .setTooltip(I18n.format("sodium.options.fullscreen.tooltip"))
@@ -89,12 +82,7 @@ public class NotFineGameOptionPages {
             .build());
 
         groups.add(OptionGroup.createBuilder()
-            .add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                .setName(I18n.format("options.framerateLimit"))
-                .setTooltip(I18n.format("sodium.options.fps_limit.tooltip"))
-                .setControl(option -> new SliderControl(option, 5, 260, 1, ControlValueFormatter.fpsLimit()))
-                .setBinding((opts, value) -> opts.limitFramerate = value, opts -> opts.limitFramerate)
-                .build())
+            .add(frameRate.maxFramerate())
             .build());
 
         final OptionImpl<GameSettings, Integer> mipmapLevels = OptionImpl.createBuilder(int.class, vanillaOpts)
@@ -412,14 +400,6 @@ public class NotFineGameOptionPages {
                 .setImpact(OptionImpact.LOW)
                 .setBinding((opts, value) -> opts.performance.useNoErrorGLContext = value, opts -> opts.performance.useNoErrorGLContext)
                 .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
-                .build())
-            .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
-                .setName(I18n.format("sodium.options.use_gl_state_cache.name"))
-                .setTooltip(I18n.format("sodium.options.use_gl_state_cache.tooltip"))
-                .setControl(TickBoxControl::new)
-                .setImpact(OptionImpact.EXTREME)
-                .setBinding((opts, value) -> GLStateManager.BYPASS_CACHE = !value, opts -> !GLStateManager.BYPASS_CACHE)
-                .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build())
             .build());
 

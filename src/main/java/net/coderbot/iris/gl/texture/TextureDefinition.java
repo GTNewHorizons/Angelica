@@ -1,5 +1,10 @@
 package net.coderbot.iris.gl.texture;
 
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelFormat;
+import com.gtnewhorizons.angelica.glsm.texture.PixelType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
+
 import lombok.Getter;
 
 @Getter

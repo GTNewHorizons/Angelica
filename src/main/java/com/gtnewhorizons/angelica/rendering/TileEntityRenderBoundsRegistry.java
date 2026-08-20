@@ -59,10 +59,4 @@ public final class TileEntityRenderBoundsRegistry {
         }
         return result;
     }
-
-    public static void clear() {
-        synchronized (classRegistry) {
-            classRegistry.clear();
-        }
-    }
 }

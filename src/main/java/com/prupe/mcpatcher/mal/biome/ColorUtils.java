@@ -1,6 +1,6 @@
 package com.prupe.mcpatcher.mal.biome;
 
-import net.minecraft.util.MathHelper;
+import org.joml.Math;
 
 public class ColorUtils {
 
@@ -28,6 +28,6 @@ public class ColorUtils {
     }
 
     public static float clamp(float f) {
-        return MathHelper.clamp_float(f, 0.0f, 1.0f);
+        return Math.clamp(0.0f, 1.0f, f);
     }
 }

@@ -11,6 +11,7 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.CloudSetting;
 import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.program.Program;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -18,12 +19,14 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
+import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -40,6 +43,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/ClippingHelperImpl;getInstance()Lnet/minecraft/client/renderer/culling/ClippingHelper;", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V")
     private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+        mc.mcProfiler.endStartSection("iris_begin");
         DHCompat.checkFrame();
         Iris.tryLoadShaderpackWhenPossible();
 
@@ -49,7 +53,9 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
         Program.unbind();
 
+        mc.mcProfiler.startSection("iris_prepare_pipeline");
         pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName()));
+        mc.mcProfiler.endSection();
 
         GLStateManager.setShaderColor(1f, 1f, 1f, 1f);
 
@@ -138,5 +144,25 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.get().setPhase(WorldRenderingPhase.DESTROY);
         original.call(instance, tessellator, entity, partialTicks);
         pipeline.get().setPhase(WorldRenderingPhase.NONE);
+    }
+
+    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EffectRenderer;renderLitParticles(Lnet/minecraft/entity/Entity;F)V"))
+    private void iris$litParticlePhase(EffectRenderer instance, Entity viewer, float partialTicks, Operation<Void> original) {
+        final int depth = GbufferPrograms.beginParticles();
+        try {
+            original.call(instance, viewer, partialTicks);
+        } finally {
+            GbufferPrograms.endParticles(depth);
+        }
+    }
+
+    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EffectRenderer;renderParticles(Lnet/minecraft/entity/Entity;F)V"))
+    private void iris$particlePhase(EffectRenderer instance, Entity viewer, float partialTicks, Operation<Void> original) {
+        final int depth = GbufferPrograms.beginParticles();
+        try {
+            original.call(instance, viewer, partialTicks);
+        } finally {
+            GbufferPrograms.endParticles(depth);
+        }
     }
 }

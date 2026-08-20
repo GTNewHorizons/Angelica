@@ -69,13 +69,17 @@ public class CeleritasTerrainPipeline {
             IntFunction<ProgramImages> createTerrainImages,
             IntFunction<ProgramImages> createShadowImages,
             CustomUniforms customUniforms,
-            Optional<ProgramSource> terrainSource,
+            Optional<ProgramSource> terrainSolidSource,
+            Optional<ProgramSource> terrainCutoutSource,
             Optional<ProgramSource> translucentSource,
-            Optional<ProgramSource> shadowSource,
+            Optional<ProgramSource> shadowSolidSource,
+            Optional<ProgramSource> shadowCutoutSource,
             Optional<ProgramSource> shadowTranslucentSource,
-            CompletableFuture<Map<PatchShaderType, String>> terrainFuture,
+            CompletableFuture<Map<PatchShaderType, String>> terrainSolidFuture,
+            CompletableFuture<Map<PatchShaderType, String>> terrainCutoutFuture,
             CompletableFuture<Map<PatchShaderType, String>> translucentFuture,
-            CompletableFuture<Map<PatchShaderType, String>> shadowFuture,
+            CompletableFuture<Map<PatchShaderType, String>> shadowSolidFuture,
+            CompletableFuture<Map<PatchShaderType, String>> shadowCutoutFuture,
             CompletableFuture<Map<PatchShaderType, String>> shadowTranslucentFuture,
             RenderTargets renderTargets,
             ImmutableSet<Integer> flippedAfterPrepare,
@@ -90,11 +94,12 @@ public class CeleritasTerrainPipeline {
 
         // Build program source map (local - only needed during construction)
         final EnumMap<IrisTerrainPass, Optional<ProgramSource>> gbufferProgramSource = new EnumMap<>(IrisTerrainPass.class);
-        gbufferProgramSource.put(IrisTerrainPass.GBUFFER_SOLID, terrainSource);
-        gbufferProgramSource.put(IrisTerrainPass.GBUFFER_CUTOUT, terrainSource);
-        gbufferProgramSource.put(IrisTerrainPass.GBUFFER_TRANSLUCENT, translucentSource.isPresent() ? translucentSource : terrainSource);
-        gbufferProgramSource.put(IrisTerrainPass.SHADOW, shadowSource);
-        gbufferProgramSource.put(IrisTerrainPass.SHADOW_TRANSLUCENT, shadowTranslucentSource.isPresent() ? shadowTranslucentSource : shadowSource);
+        gbufferProgramSource.put(IrisTerrainPass.GBUFFER_SOLID, terrainSolidSource);
+        gbufferProgramSource.put(IrisTerrainPass.GBUFFER_CUTOUT, terrainCutoutSource);
+        gbufferProgramSource.put(IrisTerrainPass.GBUFFER_TRANSLUCENT, translucentSource);
+        gbufferProgramSource.put(IrisTerrainPass.SHADOW, shadowSolidSource);
+        gbufferProgramSource.put(IrisTerrainPass.SHADOW_CUTOUT, shadowCutoutSource);
+        gbufferProgramSource.put(IrisTerrainPass.SHADOW_TRANSLUCENT, shadowTranslucentSource);
 
         // Initialize PassInfo, framebuffers, blend modes, and alpha in single pass
         for (IrisTerrainPass pass : IrisTerrainPass.VALUES) {
@@ -103,10 +108,12 @@ public class CeleritasTerrainPipeline {
 
             // Set up framebuffer, blend mode, and buffer blend overrides
             final ProgramId programId = switch (pass) {
+                case GBUFFER_SOLID -> ProgramId.TerrainSolid;
+                case GBUFFER_CUTOUT -> ProgramId.TerrainCutout;
                 case GBUFFER_TRANSLUCENT -> ProgramId.Water;
                 case SHADOW_TRANSLUCENT -> ProgramId.ShadowWater;
-                case SHADOW, SHADOW_CUTOUT -> ProgramId.Shadow;
-                default -> ProgramId.Terrain;
+                case SHADOW -> ProgramId.ShadowSolid;
+                case SHADOW_CUTOUT -> ProgramId.ShadowCutout;
             };
 
             if (pass.isShadow()) {
@@ -146,10 +153,12 @@ public class CeleritasTerrainPipeline {
         }
 
         // Process and apply shader sources
-        processShaderFuture(terrainFuture, terrainSource, passInfoMap.get(IrisTerrainPass.GBUFFER_SOLID), passInfoMap.get(IrisTerrainPass.GBUFFER_CUTOUT));
+        processShaderFuture(terrainSolidFuture, terrainSolidSource, passInfoMap.get(IrisTerrainPass.GBUFFER_SOLID));
+        processShaderFuture(terrainCutoutFuture, terrainCutoutSource, passInfoMap.get(IrisTerrainPass.GBUFFER_CUTOUT));
         processShaderFuture(translucentFuture, translucentSource, passInfoMap.get(IrisTerrainPass.GBUFFER_TRANSLUCENT));
-        processShaderFuture(shadowFuture, shadowSource, passInfoMap.get(IrisTerrainPass.SHADOW), passInfoMap.get(IrisTerrainPass.SHADOW_CUTOUT));
-        processShaderFuture(shadowTranslucentFuture, shadowTranslucentSource.isPresent() ? shadowTranslucentSource : shadowSource, passInfoMap.get(IrisTerrainPass.SHADOW_TRANSLUCENT));
+        processShaderFuture(shadowSolidFuture, shadowSolidSource, passInfoMap.get(IrisTerrainPass.SHADOW));
+        processShaderFuture(shadowCutoutFuture, shadowCutoutSource, passInfoMap.get(IrisTerrainPass.SHADOW_CUTOUT));
+        processShaderFuture(shadowTranslucentFuture, shadowTranslucentSource, passInfoMap.get(IrisTerrainPass.SHADOW_TRANSLUCENT));
     }
 
     private void processShaderFuture(@Nullable CompletableFuture<Map<PatchShaderType, String>> future, Optional<ProgramSource> source, PassInfo... targets) {
@@ -163,6 +172,7 @@ public class CeleritasTerrainPipeline {
                 target.setSource(PatchShaderType.VERTEX, result.get(PatchShaderType.VERTEX));
                 target.setSource(PatchShaderType.GEOMETRY, result.get(PatchShaderType.GEOMETRY));
                 target.setSource(PatchShaderType.FRAGMENT, result.get(PatchShaderType.FRAGMENT));
+                target.setSource(PatchShaderType.COMPUTE, result.get(PatchShaderType.COMPUTE));
             }
             PatchedShaderPrinter.debugPatchedShaders(sourceName + "_celeritas",
                 result.get(PatchShaderType.VERTEX), result.get(PatchShaderType.GEOMETRY), result.get(PatchShaderType.FRAGMENT));
@@ -204,5 +214,11 @@ public class CeleritasTerrainPipeline {
 
     public ProgramImages initShadowImages(int programId) {
         return createShadowImages.apply(programId);
+    }
+
+    public Optional<String> getShadowVoxelizationComputeSource() {
+        final PassInfo shadow = passInfoMap.get(IrisTerrainPass.SHADOW);
+        if (shadow == null) return Optional.empty();
+        return shadow.sources.get(PatchShaderType.COMPUTE);
     }
 }

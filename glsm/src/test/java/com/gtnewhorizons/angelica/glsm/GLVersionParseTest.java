@@ -22,6 +22,18 @@ class GLVersionParseTest {
     }
 
     @Test
+    void detectsLtwWrapper() {
+        assertTrue(LTWWorkaround.isLtwVersionString("3.3 OpenLTW (Built on: May 21 2026/12:38:14)"));
+        assertFalse(LTWWorkaround.isLtwVersionString(null));
+        assertFalse(LTWWorkaround.isLtwVersionString(""));
+        assertFalse(LTWWorkaround.isLtwVersionString("4.6.0 NVIDIA 551.61"));
+        assertFalse(LTWWorkaround.isLtwVersionString("4.6 (Core Profile) Mesa 24.0.3"));
+        assertFalse(LTWWorkaround.isLtwVersionString("4.1 Metal - 88"));
+        assertFalse(LTWWorkaround.isLtwVersionString("OpenGL ES 3.2 ANGLE (Vulkan)"));
+        assertFalse(LTWWorkaround.isLtwVersionString("2.1 gl4es wrapper"));
+    }
+
+    @Test
     void isContextValid() {
         assertTrue(RenderSystem.isContextValid(4, 4, 46, true));
         assertTrue(RenderSystem.isContextValid(4, 4, 44, true));

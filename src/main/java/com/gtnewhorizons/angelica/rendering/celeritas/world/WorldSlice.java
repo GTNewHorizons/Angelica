@@ -104,6 +104,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     // The chunk origin of this slice
     private ChunkSectionPos origin;
     private StructureBoundingBox volume;
+    private Block renderingBlock;
 
     private final SmoothBiomeColorCache biomeColorCache;
 
@@ -273,6 +274,17 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         }
 
         return skyBrightness << 20 | blockBrightness << 4;
+    }
+
+    public int getRawSkyLight(int x, int y, int z) {
+        final int minHeight = ModStatus.isCubicChunksLoaded ? CubicChunksAPI.getMinHeight(this.world) : 0;
+        final int maxHeight = ModStatus.isCubicChunksLoaded ? CubicChunksAPI.getMaxHeight(this.world) : 256;
+
+        if (y < minHeight || y >= maxHeight || x < -30_000_000 || z < -30_000_000 || x >= 30_000_000 || z >= 30_000_000) {
+            return 15;
+        }
+
+        return this.getLightLevel(EnumSkyBlock.Sky, x, y, z);
     }
 
     private int getSkyBlockTypeBrightness(EnumSkyBlock skyBlock, int x, int y, int z) {
@@ -528,6 +540,18 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
     public static int getLocalSectionIndex(int x, int y, int z) {
         return y << TABLE_BITS << TABLE_BITS | z << TABLE_BITS | x;
+    }
+
+    public boolean containsBlock(int x, int y, int z) {
+        return blockBoxContains(this.volume, x, y, z);
+    }
+
+    public void setRenderingBlock(Block block) {
+        this.renderingBlock = block;
+    }
+
+    public Block getRenderingBlock() {
+        return this.renderingBlock;
     }
 
     private static boolean blockBoxContains(StructureBoundingBox box, int x, int y, int z) {

@@ -75,6 +75,8 @@ public final class DisplayListVBOBuilder {
 
             // Quad/triangle draws of this format whose VAOs need the ext attributes attached after upload.
             final List<IVertexArrayObject> extVaos = wantExt ? new ArrayList<>() : null;
+            // SubVBO slots that need the ext attributes attached on their first draw.
+            final IntArrayList extDrawIndexes = wantExt ? new IntArrayList() : null;
             final IntArrayList extStarts = wantExt ? new IntArrayList() : null;
             final IntArrayList extCounts = wantExt ? new IntArrayList() : null;
             final IntArrayList extPrims = wantExt ? new IntArrayList() : null;
@@ -94,11 +96,13 @@ public final class DisplayListVBOBuilder {
                     }
                     vertexCount = format.getVertexCount(size);
                 }
+                final int flags = format.getVertexFlags();
                 if (data.drawMode == GL11.GL_QUADS) {
                     final IVertexArrayObject indexedVAO = new IndexedVAO(vbo, IndexBuffer.convertQuadsToTrigs(start, start + vertexCount));
-                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(indexedVAO, GL11.GL_TRIANGLES, 0, vertexCount / 4 * 6);
+                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(indexedVAO, GL11.GL_TRIANGLES, 0, vertexCount / 4 * 6, flags);
                     if (wantExt) {
                         extVaos.add(indexedVAO);
+                        extDrawIndexes.add(data.drawIndex);
                         extStarts.add(start);
                         extCounts.add(vertexCount);
                         extPrims.add(4);
@@ -106,22 +110,23 @@ public final class DisplayListVBOBuilder {
                 } else if (data.drawMode == GL11.GL_TRIANGLES) {
                     if (wantExt) {
                         final IVertexArrayObject triVao = new BaseVAO(vbo);
-                        vbos[data.drawIndex] = new DisplayListVBO.SubVBO(triVao, GL11.GL_TRIANGLES, start, vertexCount);
+                        vbos[data.drawIndex] = new DisplayListVBO.SubVBO(triVao, GL11.GL_TRIANGLES, start, vertexCount, flags);
                         extVaos.add(triVao);
+                        extDrawIndexes.add(data.drawIndex);
                         extStarts.add(start);
                         extCounts.add(vertexCount);
                         extPrims.add(3);
                     } else {
-                        vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLES, start, vertexCount);
+                        vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLES, start, vertexCount, flags);
                     }
                 } else if (data.drawMode == GL11.GL_QUAD_STRIP) {
                     // GL_QUAD_STRIP is removed in core profile; an even-length GL_TRIANGLE_STRIP produces the same quads
-                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLE_STRIP, start, vertexCount & ~1);
+                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLE_STRIP, start, vertexCount & ~1, flags);
                 } else if (data.drawMode == GL11.GL_POLYGON) {
                     // GL_POLYGON is removed in core profile; convert to GL_TRIANGLE_FAN which is equivalent for convex polygons
-                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLE_FAN, start, vertexCount);
+                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, GL11.GL_TRIANGLE_FAN, start, vertexCount, flags);
                 } else {
-                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, data.drawMode, start, vertexCount);
+                    vbos[data.drawIndex] = new DisplayListVBO.SubVBO(vao, data.drawMode, start, vertexCount, flags);
                 }
 
 
@@ -132,7 +137,12 @@ public final class DisplayListVBOBuilder {
 
             if (wantExt && !extVaos.isEmpty()) {
                 final int extVbo = buildAndAttachExt(extHandler, format, bigBuffer, extVaos, extStarts, extCounts, extPrims);
-                if (extVbo != 0) extVbos.add(extVbo);
+                if (extVbo != 0) {
+                    extVbos.add(extVbo);
+                    for (int e = 0; e < extDrawIndexes.size(); e++) {
+                        vbos[extDrawIndexes.getInt(e)].setPendingExtVbo(extVbo);
+                    }
+                }
             }
 
             memFree(bigBuffer);
@@ -174,14 +184,6 @@ public final class DisplayListVBOBuilder {
         GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         memFree(ext);
-
-        for (IVertexArrayObject iv : extVaos) {
-            iv.bind();
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
-            ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, extStride);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-            iv.unbind();
-        }
         return extVbo;
     }
 

@@ -1,8 +1,14 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import java.util.EnumMap;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
-import net.coderbot.iris.gl.texture.TextureType;
+import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.pipeline.transform.parameter.AttributeParameters;
 import net.coderbot.iris.pipeline.transform.parameter.CeleritasTerrainParameters;
@@ -87,16 +93,43 @@ public class TransformPatcher {
         }
 
         // if there is no cache result, transform the shaders
+        final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
         if (result == null) {
-            result = ShaderTransformer.transform(vertex, geometry, tessControl, tessEval, fragment, parameters);
+            result = ShaderTransformer.transform(vertex, geometry, tessControl, tessEval, fragment, parameters, artifacts);
             if (useCache) {
                 synchronized (cache) {
                     // Double-check in case another thread added it while we were transforming
                     final Map<PatchShaderType, String> existing = cache.get(key);
                     if (existing != null) {
-                        return existing;
+                        result = existing;
+                    } else {
+                        cache.put(key, result);
                     }
-                    cache.put(key, result);
+                }
+            }
+        }
+
+        if (result != null && RenderSystem.isGLES()) {
+            for (Map.Entry<PatchShaderType, String> entry : result.entrySet()) {
+                final String src = entry.getValue();
+                if (src == null) continue;
+                final PatchShaderType pType = entry.getKey();
+                CompatShaderTransformer.prewarm(src, pType.glShaderType.id, pType == PatchShaderType.FRAGMENT);
+            }
+        }
+
+        if (result != null && BackendManager.RENDER_BACKEND.isSDLGPU()) {
+            final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
+            if (processor != null) {
+                for (Map.Entry<PatchShaderType, String> entry : result.entrySet()) {
+                    final String src = entry.getValue();
+                    if (src == null) continue;
+                    final ShaderTransformer.StageArtifact art = artifacts.get(entry.getKey());
+                    if (art != null) {
+                        processor.onTransformed(src, art.tree(), art.headerLen(), entry.getKey().glShaderType);
+                    } else {
+                        processor.onTransformed(src, entry.getKey().glShaderType);
+                    }
                 }
             }
         }
@@ -106,6 +139,10 @@ public class TransformPatcher {
 
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint) {
         return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs, scrollGlint));
+    }
+
+    public static Map<PatchShaderType, String> patchAttributesInstanced(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs, scrollGlint, true));
     }
 
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {
@@ -153,8 +190,21 @@ public class TransformPatcher {
         if (compute == null) {
             return null;
         }
-        Map<PatchShaderType, String> result = ShaderTransformer.transformCompute(compute, new ComputeParameters(Patch.COMPUTE, stage, textureMap));
-        return result != null ? result.get(PatchShaderType.COMPUTE) : null;
+        final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
+        Map<PatchShaderType, String> result = ShaderTransformer.transformCompute(compute, new ComputeParameters(Patch.COMPUTE, stage, textureMap), artifacts);
+        final String transformed = result != null ? result.get(PatchShaderType.COMPUTE) : null;
+        if (transformed != null && BackendManager.RENDER_BACKEND.isSDLGPU()) {
+            final ShaderTransformPostProcessor processor = GLSMHooks.postTransformProcessor;
+            if (processor != null) {
+                final ShaderTransformer.StageArtifact art = artifacts.get(PatchShaderType.COMPUTE);
+                if (art != null) {
+                    processor.onTransformed(transformed, art.tree(), art.headerLen(), PatchShaderType.COMPUTE.glShaderType);
+                } else {
+                    processor.onTransformed(transformed, PatchShaderType.COMPUTE.glShaderType);
+                }
+            }
+        }
+        return transformed;
     }
 
     public static void clearCache() {

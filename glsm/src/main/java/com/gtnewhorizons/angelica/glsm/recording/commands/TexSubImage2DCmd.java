@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.recording.commands;
 
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -78,6 +79,6 @@ public record TexSubImage2DCmd(
         String dataStr = pixels != null ? (pixels.remaining() + " bytes") : "null";
         return String.format("TexSubImage2D(target=%s, level=%d, offset=(%d,%d), %dx%d, format=%s, type=%s, data=%s, unpack=%s)",
             GLDebug.getTextureTargetName(target), level, xoffset, yoffset, width, height,
-            GLDebug.getTextureFormatName(format), GLDebug.getDataTypeName(type), dataStr, unpack);
+            GLDebug.getTextureFormatName(format), GLTypes.name(type), dataStr, unpack);
     }
 }

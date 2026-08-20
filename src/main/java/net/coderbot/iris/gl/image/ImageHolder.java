@@ -1,6 +1,6 @@
 package net.coderbot.iris.gl.image;
 
-import net.coderbot.iris.gl.texture.InternalTextureFormat;
+import com.gtnewhorizons.angelica.glsm.texture.InternalTextureFormat;
 
 import java.util.function.IntSupplier;
 

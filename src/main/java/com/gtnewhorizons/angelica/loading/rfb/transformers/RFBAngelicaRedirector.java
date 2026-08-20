@@ -9,6 +9,7 @@ import org.intellij.lang.annotations.Pattern;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
+import java.util.jar.Attributes;
 import java.util.jar.Manifest;
 
 /** RfbClassTransformer wrapper for {@link AngelicaRedirector} */
@@ -24,6 +25,13 @@ public class RFBAngelicaRedirector implements RfbClassTransformer {
     @Override
     public @NotNull String id() {
         return "redirector";
+    }
+
+    private static final Attributes.Name LWJGL3_AWARE = new Attributes.Name("Lwjgl3ify-Aware");
+
+    /** We sort before lwjgl3ify:redirect, so an aware caller's descriptors are still org.lwjgl here and stay that way. */
+    private static boolean isLwjgl3Aware(@Nullable Manifest manifest) {
+        return manifest != null && "true".equals(manifest.getMainAttributes().getValue(LWJGL3_AWARE));
     }
 
     @Override
@@ -55,7 +63,7 @@ public class RFBAngelicaRedirector implements RfbClassTransformer {
     public boolean transformClassIfNeeded(@NotNull ExtensibleClassLoader classLoader,
                                           @NotNull RfbClassTransformer.Context context, @Nullable Manifest manifest,
                                           @NotNull String className, @NotNull ClassNodeHandle classNode) {
-        final boolean changed = inner.transformClassNode(className, classNode.getNode());
+        final boolean changed = inner.transformClassNode(className, classNode.getNode(), isLwjgl3Aware(manifest));
         if (changed) {
             classNode.computeMaxs();
             AngelicaClassDump.dumpRFBClass(className, classNode, this);

@@ -1,18 +1,20 @@
 package com.gtnewhorizons.angelica.rendering;
 
+/// Despite not in the `api` package, this interface is used by GT5uNH and GTNHLib, possibly others. Be careful what you
+/// change!
+@SuppressWarnings("unused")
 public interface StateAwareTessellator {
-    /**
-     * True if the vertex originated from a RenderBlocks method call with the enableAO flag set.
-     */
+
+    /// True if the vertex originated from a RenderBlocks method call with the enableAO flag set.
     int RENDERED_WITH_VANILLA_AO = 0x1;
+    int NO_DIRECTIONAL_SHADING = 0x2;
 
     void angelica$setAppliedAo(boolean flag);
+    void angelica$setNoDirectionalShading(boolean flag);
 
-    /**
-     * Sets whether we're doing terrain meshing as part of celeritas -- collects additional information.
-     *
-     * Enables per-vertex AO state collection into {@link #angelica$getVertexStates()}.
-     */
+    /// Sets whether we're doing terrain meshing as part of celeritas -- collects additional information.
+    ///
+    /// Enables per-vertex AO state collection into [#angelica$getVertexStates()].
     void angelica$setCeleritasMeshing(boolean active);
 
     int[] angelica$getVertexStates();

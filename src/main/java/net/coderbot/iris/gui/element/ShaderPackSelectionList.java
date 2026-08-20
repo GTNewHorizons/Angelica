@@ -36,7 +36,6 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
     @Getter
     private ShaderPackEntry applied = null;
 
-    @Setter
     @Getter
     private ShaderPackEntry selected = null;
 
@@ -201,6 +200,11 @@ public class ShaderPackSelectionList extends IrisGuiSlot {
         for (String text : lines) {
             this.entries.add(new LabelEntry(this, text));
         }
+    }
+
+    public void setSelected(ShaderPackEntry selected) {
+        this.selected = selected;
+        this.screen.refreshScreenSwitchButton();
     }
 
     public void select(String name) {

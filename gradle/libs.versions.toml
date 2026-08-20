@@ -1,0 +1,79 @@
+[versions]
+# Frozen to match what MC 1.7.10 / Forge ship. Do not bump.
+lwjgl2 = "2.9.4-nightly-20150209"
+guava = "18.0"
+log4j = "2.0-beta9"
+asmCompile = "5.0.3"
+# End Frozen
+
+lwjgl3 = "3.4.2-20260602.093430-9"
+lwjgl3ify = "3.0.31"
+
+celeritas = "2.5.10-GTNH"
+gtnhlib = "0.11.36"
+eventbus = "7.0-beta.15"
+glslTransformLib = "0.2.0-33.g3ec381e"
+antlr4Runtime = "4.13.2"
+jcpp = "1.4.14"
+tracy = "0.14.0"
+retroFuturaBootstrap = "1.1.0"
+
+lombok = "1.18.46"
+jetbrainsAnnotations = "26.0.2"
+fastutil = "8.5.18"
+joml = "1.10.8"
+commonsLang3 = "3.17.0"
+jvmDowngrader = "1.3.5"
+junit = "5.14.1"
+asmTest = "9.7"
+asmBuild = "9.7"
+mockito = "3.12.4"
+archunit = "1.4.1"
+ant = "1.8.2"
+
+[libraries]
+celeritas-common = { module = "org.embeddedt.celeritas:celeritas-common", version.ref = "celeritas" }
+celeritas-lwjgl2-service = { module = "org.embeddedt.celeritas:celeritas-lwjgl2-service", version.ref = "celeritas" }
+eventbus = { module = "net.minecraftforge:eventbus", version.ref = "eventbus" }
+glsl-transformation-lib = { module = "org.taumc:glsl-transformation-lib", version.ref = "glslTransformLib" }
+antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr4Runtime" }
+jcpp = { module = "org.anarres:jcpp", version.ref = "jcpp" }
+lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
+annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrainsAnnotations" }
+log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }
+log4j-core = { module = "org.apache.logging.log4j:log4j-core", version.ref = "log4j" }
+guava = { module = "com.google.guava:guava", version.ref = "guava" }
+fastutil = { module = "it.unimi.dsi:fastutil", version.ref = "fastutil" }
+joml = { module = "org.joml:joml", version.ref = "joml" }
+commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
+junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
+
+# Versions come from junit-bom via platform()
+junit-jupiter = { module = "org.junit.jupiter:junit-jupiter" }
+junit-jupiter-api = { module = "org.junit.jupiter:junit-jupiter-api" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher" }
+junit-platform-engine = { module = "org.junit.platform:junit-platform-engine" }
+junit-platform-reporting = { module = "org.junit.platform:junit-platform-reporting" }
+
+mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
+ant = { module = "org.apache.ant:ant", version.ref = "ant" }
+asm-tree-compile = { module = "org.ow2.asm:asm-tree", version.ref = "asmCompile" }
+asm-tree-test = { module = "org.ow2.asm:asm-tree", version.ref = "asmTest" }
+asm-build = { module = "org.ow2.asm:asm", version.ref = "asmBuild" }
+lwjgl2 = { module = "org.lwjgl.lwjgl:lwjgl", version.ref = "lwjgl2" }
+lwjgl2-util = { module = "org.lwjgl.lwjgl:lwjgl_util", version.ref = "lwjgl2" }
+lwjgl3 = { module = "org.lwjgl:lwjgl", version.ref = "lwjgl3" }
+lwjgl3-opengl = { module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl3" }
+lwjgl3-sdl = { module = "org.lwjgl:lwjgl-sdl", version.ref = "lwjgl3" }
+lwjgl3-spvc = { module = "org.lwjgl:lwjgl-spvc", version.ref = "lwjgl3" }
+lwjgl3-shaderc = { module = "org.lwjgl:lwjgl-shaderc", version.ref = "lwjgl3" }
+
+# Consumed with an explicit :dev / :universal / :downgraded-8 classifier at the call site.
+gtnhlib = { module = "com.github.GTNewHorizons:GTNHLib", version.ref = "gtnhlib" }
+lwjgl3ify = { module = "com.github.GTNewHorizons:lwjgl3ify", version.ref = "lwjgl3ify" }
+retrofuturabootstrap = { module = "com.gtnewhorizons.retrofuturabootstrap:RetroFuturaBootstrap", version.ref = "retroFuturaBootstrap" }
+jvmdowngrader-java-api = { module = "xyz.wagyourtail.jvmdowngrader:jvmdowngrader-java-api", version.ref = "jvmDowngrader" }
+
+[bundles]
+lwjgl3-sdlgpu = ["lwjgl3", "lwjgl3-sdl", "lwjgl3-spvc", "lwjgl3-shaderc"]

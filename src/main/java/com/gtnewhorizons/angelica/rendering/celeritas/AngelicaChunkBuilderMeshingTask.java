@@ -1,14 +1,18 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
+import com.gtnewhorizons.angelica.mixins.interfaces.OverridesGetDistanceFrom;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
@@ -17,10 +21,10 @@ import net.coderbot.iris.vertices.ExtendedDataHelper;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockDoublePlant;
 import net.minecraft.nbt.NBTTagCompound;
+import net.minecraft.world.World;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
 import net.minecraft.crash.CrashReport;
 import net.minecraft.crash.CrashReportCategory;
@@ -35,7 +39,6 @@ import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildContext;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.data.BuiltSectionMeshParts;
-import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.SectionVisibilityBuilder;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
@@ -51,6 +54,10 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
 
 public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> {
+    private static final Tracy.ZoneId Z_MESH_SECTION = Tracy.zoneId("meshSection");
+    private static final Tracy.ZoneId Z_MESH_DEFERRED = Tracy.zoneId("meshDeferred");
+    private static final Tracy.ZoneId Z_MESH_FINALIZE = Tracy.zoneId("meshFinalize");
+
     protected final RenderSection render;
     protected final int buildTime;
     protected final Vector3d camera;
@@ -88,7 +95,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
         final AngelicaChunkBuildContext buildContext = (AngelicaChunkBuildContext) context;
-        final MinecraftBuiltRenderSectionData<TextureAtlasSprite, TileEntity> renderData = new MinecraftBuiltRenderSectionData<>();
+        final AngelicaBuiltRenderSectionData renderData = new AngelicaBuiltRenderSectionData();
         final SectionVisibilityBuilder occluder = new SectionVisibilityBuilder();
 
         final ChunkBuildBuffers buffers = buildContext.buffers;
@@ -106,9 +113,12 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
         final BlockPos blockPos = new BlockPos(minX, minY, minZ);
         final IBlockAccess region = getBlockAccess();
+        final WorldSlice reportingSlice = region instanceof WorldSlice slice ? slice : null;
+        if (reportingSlice != null) reportingSlice.setRenderingBlock(null);
         final SmoothBiomeColorCache biomeColorCache = getBiomeColorCache();
 
         onEnterExecute();
+        if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_SECTION);
 
         final Tessellator tessellator = getTessellator();
         ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
@@ -122,11 +132,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             final BlockRenderContext blockRenderContext = buildContext.getBlockRenderContext();
 
             final NbtConditionalIdMap<Block> teMap = BlockRenderingSettings.INSTANCE.getBlockNbtMap();
-            final net.minecraft.world.World mcWorld = Minecraft.getMinecraft().theWorld;
+            final World mcWorld = Minecraft.getMinecraft().theWorld;
             final long currentTick = mcWorld != null ? mcWorld.getTotalWorldTime() : 0L;
 
             final boolean threaded = isThreaded();
             final List<DeferredBlock> deferredBlocks = threaded ? new ArrayList<>() : null;
+
+            final FloatArrayList culledBounds = buildContext.getTeBoundsScratch();
+            culledBounds.clear();
+            double maxTeRenderDistSq = 0;
 
             final RenderBlocks renderBlocks = new RenderBlocks(region);
 
@@ -145,17 +159,19 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                             continue;
                         }
 
+                        if (reportingSlice != null) reportingSlice.setRenderingBlock(block);
+
                         final int meta = region.getBlockMetadata(x, y, z);
 
                         if (block.hasTileEntity(meta)) {
                             final TileEntity tileEntity = region.getTileEntity(x, y, z);
                             if (tileEntity != null && TileEntityRendererDispatcher.instance.hasSpecialRenderer(tileEntity)) {
                                 final boolean isGlobal;
+                                AxisAlignedBB aabb = null;
                                 final byte boundsClass = TileEntityRenderBoundsRegistry.classify(tileEntity);
                                 if (boundsClass == TileEntityRenderBoundsRegistry.INFINITE || boundsClass == TileEntityRenderBoundsRegistry.DYNAMIC) {
                                     isGlobal = true;
                                 } else {
-                                    AxisAlignedBB aabb;
                                     try {
                                         aabb = tileEntity.getRenderBoundingBox();
                                     } catch (Throwable t) {
@@ -169,7 +185,23 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                                         isGlobal = true;
                                     }
                                 }
-                                (isGlobal ? renderData.globalBlockEntities : renderData.culledBlockEntities).add(tileEntity);
+                                if (isGlobal) {
+                                    renderData.globalBlockEntities.add(tileEntity);
+                                } else {
+                                    renderData.culledBlockEntities.add(tileEntity);
+                                    AngelicaBuiltRenderSectionData.packSectionLocalBounds(culledBounds, aabb, minX, minY, minZ);
+                                    double teDistSq;
+                                    if (tileEntity instanceof OverridesGetDistanceFrom) {
+                                        teDistSq = Double.POSITIVE_INFINITY;
+                                    } else {
+                                        try {
+                                            teDistSq = tileEntity.getMaxRenderDistanceSquared();
+                                        } catch (Throwable t) {
+                                            teDistSq = Double.POSITIVE_INFINITY;
+                                        }
+                                    }
+                                    if (teDistSq > maxTeRenderDistSq) maxTeRenderDistSq = teDistSq;
+                                }
                             }
                         }
 
@@ -213,18 +245,37 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
             // Process deferred blocks on main thread if any
             if (deferredBlocks != null && !deferredBlocks.isEmpty()) {
-                processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
+                if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_DEFERRED);
+                try {
+                    processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
+                }
             }
 
-            final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes =
-                BuiltSectionMeshParts.groupFromBuildBuffers(buffers,
+            if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_FINALIZE);
+            final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes;
+            try {
+                meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers,
                     (float) camera.x - minX, (float) camera.y - minY, (float) camera.z - minZ);
+                renderData.visibilityData = occluder.computeVisibilityEncoding();
+            } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
+            }
 
             if (!meshes.isEmpty()) {
                 renderData.hasBlockGeometry = true;
+                if (Tracy.ENABLED) {
+                    long meshBytes = 0;
+                    for (BuiltSectionMeshParts parts : meshes.values()) {
+                        if (parts.vertexBuffer() != null) meshBytes += parts.vertexBuffer().getLength();
+                    }
+                    Tracy.zoneValue(meshBytes);
+                }
             }
 
-            renderData.visibilityData = occluder.computeVisibilityEncoding();
+            renderData.culledBlockEntityBounds = culledBounds.isEmpty() ? AngelicaBuiltRenderSectionData.EMPTY_BOUNDS : culledBounds.toFloatArray();
+            renderData.maxTeRenderDistSq = maxTeRenderDistSq;
 
             SmoothBiomeColorCache.clearActiveCache();
             tessellator.setTranslation(0, 0, 0);
@@ -240,6 +291,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         } finally {
             ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
             SmoothBiomeColorCache.clearActiveCache();
+            if (Tracy.ENABLED) Tracy.endZone();
             onExitExecute();
         }
     }

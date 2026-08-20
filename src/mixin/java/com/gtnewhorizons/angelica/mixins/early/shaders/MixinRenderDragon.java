@@ -32,10 +32,19 @@ public abstract class MixinRenderDragon {
     private static final NamespacedId DRAGON_DEATH_RAY = new NamespacedId("minecraft", "dragon_death_rays");
 
     @Unique
-    private int angelica$previousEntityId = -1;
+    private static final int NOTHING_SAVED = Integer.MIN_VALUE;
 
     @Unique
-    private int angelica$previousDeathRayEntityId = -1;
+    private int angelica$previousEntityId = NOTHING_SAVED;
+
+    @Unique
+    private int angelica$previousDeathRayEntityId = NOTHING_SAVED;
+
+    @Unique
+    private int angelica$previousItemId = 0;
+
+    @Unique
+    private int angelica$previousDeathRayItemId = 0;
 
     @Unique
     private boolean angelica$deathBeamsActive = false;
@@ -57,9 +66,10 @@ public abstract class MixinRenderDragon {
             if (entityIdMap != null) {
                 // Save the current entity ID
                 angelica$previousEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+                angelica$previousItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
 
                 int beamId = entityIdMap.applyAsInt(END_CRYSTAL_BEAM);
-                CapturedRenderingState.INSTANCE.setCurrentEntity(beamId);
+                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(beamId, 0);
             }
         }
     }
@@ -69,9 +79,10 @@ public abstract class MixinRenderDragon {
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glPopMatrix()V", ordinal = 0, shift = At.Shift.BEFORE, remap = false)
     )
     private void iris$restoreEntityId(EntityDragon dragon, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        if (angelica$previousEntityId != -1) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(angelica$previousEntityId);
-            angelica$previousEntityId = -1;
+        if (angelica$previousEntityId != NOTHING_SAVED) {
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(angelica$previousEntityId, angelica$previousItemId);
+            angelica$previousEntityId = NOTHING_SAVED;
+            angelica$previousItemId = 0;
         }
     }
 
@@ -92,8 +103,9 @@ public abstract class MixinRenderDragon {
             Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
             if (entityIdMap != null) {
                 angelica$previousDeathRayEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+                angelica$previousDeathRayItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
                 int deathRayId = entityIdMap.applyAsInt(DRAGON_DEATH_RAY);
-                CapturedRenderingState.INSTANCE.setCurrentEntity(deathRayId);
+                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(deathRayId, 0);
             }
 
             angelica$depthPassReplay++;
@@ -131,9 +143,10 @@ public abstract class MixinRenderDragon {
     private void angelica$endDeathBeamsLighting(EntityDragon dragon, float partialTicks, CallbackInfo ci) {
         if (angelica$depthPassReplay > 0) return;
         if (angelica$deathBeamsActive) {
-            if (angelica$previousDeathRayEntityId != -1) {
-                CapturedRenderingState.INSTANCE.setCurrentEntity(angelica$previousDeathRayEntityId);
-                angelica$previousDeathRayEntityId = -1;
+            if (angelica$previousDeathRayEntityId != NOTHING_SAVED) {
+                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(angelica$previousDeathRayEntityId, angelica$previousDeathRayItemId);
+                angelica$previousDeathRayEntityId = NOTHING_SAVED;
+                angelica$previousDeathRayItemId = 0;
             }
             GbufferPrograms.teardownSpecialRenderCondition();
             angelica$deathBeamsActive = false;

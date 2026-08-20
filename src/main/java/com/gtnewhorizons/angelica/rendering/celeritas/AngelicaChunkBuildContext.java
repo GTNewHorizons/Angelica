@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
+import static com.gtnewhorizons.angelica.rendering.StateAwareTessellator.NO_DIRECTIONAL_SHADING;
+
 import com.gtnewhorizons.angelica.api.ExtQuadLightData;
 import com.gtnewhorizons.angelica.api.TintComputer;
 import com.gtnewhorizons.angelica.api.TintRegistry;
@@ -12,6 +14,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.iris.IrisExtendedChunkVert
 import com.gtnewhorizons.angelica.rendering.celeritas.light.LightDataCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.light.VanillaDiffuseProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import lombok.Getter;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.vertices.ExtendedDataHelper;
@@ -27,6 +30,7 @@ import org.embeddedt.embeddium.impl.model.light.data.QuadLightData;
 import org.embeddedt.embeddium.impl.model.light.flat.FlatLightPipeline;
 import org.embeddedt.embeddium.impl.model.light.smooth.SmoothLightPipeline;
 import org.embeddedt.embeddium.impl.model.quad.properties.ModelQuadFacing;
+import org.embeddedt.embeddium.impl.model.quad.properties.ModelQuadFlags;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkColorWriter;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
@@ -42,6 +46,9 @@ import java.util.List;
 public class AngelicaChunkBuildContext extends ChunkBuildContext {
     public static final int NUM_PASSES = 2;
 
+    // Yoinked from Celeritas
+    private static final int[] REVERSED_QUAD_ORDER = { 0, 3, 2, 1 };
+
     private final TextureMapExtension textureAtlas;
     private final ChunkVertexEncoder.Vertex[] vertices = ChunkVertexEncoder.Vertex.uninitializedQuad();
     @Getter
@@ -52,6 +59,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final SmoothLightPipeline smoothLightPipeline;
     private final FlatLightPipeline flatLightPipeline;
     private final QuadLightData quadLightData = new QuadLightData();
+    @Getter private final FloatArrayList teBoundsScratch = new FloatArrayList();
     private final VertexArrayQuadView quadView;
     private final boolean hasColoredLight;
     private final float[] tintResult = new float[3];
@@ -60,6 +68,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private boolean lightPipelineReady = false;
     private int originX, originY, originZ;
     private float cachedSkylightSubtracted;
+    private final float[] fluidQuadPos = new float[12];
+    private ModelQuadFacing fluidQuadLightFace;
 
     public AngelicaChunkBuildContext(RenderPassConfiguration<?> renderPassConfiguration, WorldClient world) {
         super(renderPassConfiguration);
@@ -158,6 +168,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         boolean hasCachedMaterial = false;
         TextureAtlasSprite lastSprite = null;
         Material lastMaterial = null;
+        this.fluidQuadLightFace = null;
 
         for (int quadIdx = 0; quadIdx < numQuads; quadIdx++) {
             float uSum = 0, vSum = 0;
@@ -199,11 +210,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             // Otherwise, we need to use the block's lightmap values as they are as the ISBRH may have
             // specified its own lightmaps for visual purposes (e.g. fullbright)
             if (useAoCalculation && (quadState & StateAwareTessellator.RENDERED_WITH_VANILLA_AO) != 0) {
-                quadView.setup(trueNormal, blockX, blockY, blockZ);
-                final ModelQuadFacing lightFace = quadView.getLightFace();
-                final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
-                final ModelQuadFacing cullFace = quadView.getCullFace();
-                pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shouldApplyDiffuse, true);
+                calculateQuadLight(trueNormal, blockX, blockY, blockZ, worldX, worldY, worldZ, isFluid,
+                    blockAllowsSmoothLighting, shouldApplyDiffuse && (quadState & NO_DIRECTIONAL_SHADING) == 0);
 
                 for (int vIdx = 0; vIdx < 4; vIdx++) {
                     final var vertex = vertices[vIdx];
@@ -225,11 +233,8 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 }
 
                 if (useAoCalculation && isFluid) {
-                    quadView.setup(trueNormal, blockX, blockY, blockZ);
-                    final ModelQuadFacing lightFace = quadView.getLightFace();
-                    final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
-                    final ModelQuadFacing cullFace = quadView.getCullFace();
-                    pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, cullFace, lightFace, shouldApplyDiffuse, true);
+                    calculateQuadLight(trueNormal, blockX, blockY, blockZ, worldX, worldY, worldZ, true,
+                        blockAllowsSmoothLighting, shouldApplyDiffuse);
                     for (int vIdx = 0; vIdx < 4; vIdx++) {
                         vertices[vIdx].light = quadLightData.lm[vIdx];
                     }
@@ -270,6 +275,42 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
 
             builder.getVertexBuffer(facing).push(vertices, correctMaterial);
         }
+    }
+
+    private void calculateQuadLight(int trueNormal, int blockX, int blockY, int blockZ, int worldX, int worldY,
+                                    int worldZ, boolean isFluid, boolean blockAllowsSmoothLighting,
+                                    boolean shouldApplyDiffuse) {
+        final boolean isFlippedFluidCopy = isFluid && fluidQuadLightFace != null && isReversedFluidQuad();
+
+        quadView.setup(trueNormal, blockX, blockY, blockZ, isFluid ? ModelQuadFlags.IS_VANILLA_SHADED : 0,
+            isFlippedFluidCopy ? fluidQuadLightFace : null);
+
+        final LightPipeline pipeline = blockAllowsSmoothLighting ? smoothLightPipeline : flatLightPipeline;
+        pipeline.calculate(quadView, worldX, worldY, worldZ, quadLightData, quadView.getCullFace(),
+            quadView.getLightFace(), shouldApplyDiffuse, true);
+
+        if (isFluid && !isFlippedFluidCopy) {
+            fluidQuadLightFace = quadView.getLightFace();
+            for (int vIdx = 0; vIdx < 4; vIdx++) {
+                final var vertex = vertices[vIdx];
+                fluidQuadPos[vIdx * 3] = vertex.x;
+                fluidQuadPos[vIdx * 3 + 1] = vertex.y;
+                fluidQuadPos[vIdx * 3 + 2] = vertex.z;
+            }
+        } else if (!isFluid) {
+            fluidQuadLightFace = null;
+        }
+    }
+
+    private boolean isReversedFluidQuad() {
+        for (int vIdx = 0; vIdx < 4; vIdx++) {
+            final int src = REVERSED_QUAD_ORDER[vIdx] * 3;
+            final var vertex = vertices[vIdx];
+            if (vertex.x != fluidQuadPos[src] || vertex.y != fluidQuadPos[src + 1] || vertex.z != fluidQuadPos[src + 2]) {
+                return false;
+            }
+        }
+        return true;
     }
 
     private void applyBlockLightTint(int x, int y, int z, ChunkVertexEncoder.Vertex[] vertices) {

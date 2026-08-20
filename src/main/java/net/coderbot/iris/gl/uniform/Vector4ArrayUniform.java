@@ -7,6 +7,7 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 public class Vector4ArrayUniform extends Uniform {
+	private final Runnable updateListener = this::updateValue;
     private final Supplier<float[]> value;
     private float[] cachedValue;
 
@@ -26,7 +27,7 @@ public class Vector4ArrayUniform extends Uniform {
         updateValue();
 
         if (notifier != null) {
-            notifier.setListener(this::updateValue);
+            notifier.setListener(updateListener);
         }
     }
 

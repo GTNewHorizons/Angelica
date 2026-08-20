@@ -15,11 +15,27 @@ class CoreTransformHelper {
      * Handles: ModelView, ModelViewInverse, Projection, ProjectionInverse, NormalMatrix, ModelViewProjectionMatrix, TextureMatrix[0..1], and LightmapTextureMatrix.
      */
     static void injectMatrixUniforms(Transformer transformer) {
-        transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
-        transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
+        injectMatrixUniforms(transformer, false);
+    }
+
+    static void injectMatrixUniforms(Transformer transformer, boolean instancedVertex) {
+        if (instancedVertex) {
+            transformer.injectVariable("layout(location = 7) in vec4 iris_InstMat0;");
+            transformer.injectVariable("layout(location = 8) in vec4 iris_InstMat1;");
+            transformer.injectVariable("layout(location = 9) in vec4 iris_InstMat2;");
+            transformer.injectVariable("layout(location = 10) in vec4 iris_InstMat3;");
+            transformer.injectVariable("layout(location = 11) in vec4 iris_InstColor;");
+            transformer.injectVariable("layout(location = 12) in vec2 iris_InstLightmap;");
+            transformer.injectVariable("mat4 iris_ModelViewMatrix;");
+            transformer.injectVariable("mat4 iris_ModelViewMatrixInverse;");
+            transformer.injectVariable("mat3 iris_NormalMatrix;");
+        } else {
+            transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
+            transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
+            transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
+        }
         transformer.injectVariable("uniform mat4 iris_ProjectionMatrix;");
         transformer.injectVariable("uniform mat4 iris_ProjectionMatrixInverse;");
-        transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
         transformer.injectVariable("uniform mat4 iris_LightmapTextureMatrix;");
         transformer.injectVariable("uniform mat4 iris_TextureMatrix;");
 

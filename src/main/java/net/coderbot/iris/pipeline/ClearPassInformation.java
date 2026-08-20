@@ -2,6 +2,8 @@ package net.coderbot.iris.pipeline;
 
 import org.joml.Vector4f;
 
+import java.util.Objects;
+
 public class ClearPassInformation {
 	private final Vector4f color;
 	private final int width;
@@ -33,6 +35,11 @@ public class ClearPassInformation {
 
 		ClearPassInformation information = (ClearPassInformation) obj;
 
-		return information.color.equals(this.color) && information.height == this.height && information.width == this.width;
+		return Objects.equals(information.color, this.color) && information.height == this.height && information.width == this.width;
+	}
+
+	@Override
+	public int hashCode() {
+		return Objects.hash(color, width, height);
 	}
 }

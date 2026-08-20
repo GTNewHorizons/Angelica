@@ -2,8 +2,11 @@ package net.coderbot.iris.uniforms.custom;
 
 import com.github.bsideup.jabel.Desugar;
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.Object2IntMap;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2LongOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -25,6 +28,7 @@ import net.coderbot.iris.parsing.VectorType;
 import net.coderbot.iris.uniforms.custom.cached.CachedUniform;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.OptionalInt;
@@ -38,11 +42,33 @@ public class CustomUniforms implements FunctionContext {
 	private final Map<String, Expression> variablesExpressions = new Object2ObjectLinkedOpenHashMap<>();
 	private final CustomUniformFixedInputUniformsHolder inputHolder;
 	private final List<CachedUniform> uniformOrder;
-	private final Map<Object, Object2IntMap<CachedUniform>> locationMap = new Object2ObjectOpenHashMap<>();
+	private final Map<Object, PassUniforms> locationMap = new Object2ObjectOpenHashMap<>();
 	private final Map<CachedUniform, List<CachedUniform>> dependsOn;
+
+	private final Object2LongOpenHashMap<Object> lastPushedGen = new Object2LongOpenHashMap<>();
+	private long generation;
+
+	private static final long PLOT_CUSTOM_PUSHED = Tracy.ENABLED ? Tracy.plotHandle("iris.customPushed") : 0;
+	private static final long PLOT_CUSTOM_SKIPPED = Tracy.ENABLED ? Tracy.plotHandle("iris.customSkipped") : 0;
+	private int pushedThisFrame;
+	private int skippedThisFrame;
+
+	private static final class PassUniforms {
+		final CachedUniform[] uniforms;
+		final int[] locations;
+		final int[] lastPushedValueGen;
+
+		PassUniforms(CachedUniform[] uniforms, int[] locations) {
+			this.uniforms = uniforms;
+			this.locations = locations;
+			this.lastPushedValueGen = new int[uniforms.length];
+			Arrays.fill(lastPushedValueGen, -1);
+		}
+	}
 
 	private CustomUniforms(CustomUniformFixedInputUniformsHolder inputHolder, Map<String, Builder.Variable> variables) {
 		this.inputHolder = inputHolder;
+		this.lastPushedGen.defaultReturnValue(-1);
 		ExpressionResolver resolver = new ExpressionResolver(
 			IrisFunctions.functions,
 			(name) -> {
@@ -188,18 +214,20 @@ public class CustomUniforms implements FunctionContext {
 	}
 
 	public void assignTo(LocationalUniformHolder targetHolder) {
-		Object2IntMap<CachedUniform> locations = new Object2IntOpenHashMap<>();
+		final List<CachedUniform> uniforms = new ObjectArrayList<>();
+		final IntArrayList locations = new IntArrayList();
 		for (CachedUniform uniform : this.uniformOrder) {
 			try {
 				OptionalInt location = targetHolder.location(uniform.getName(), Type.convert(uniform.getType()));
 				if (location.isPresent()) {
-					locations.put(uniform, location.getAsInt());
+					uniforms.add(uniform);
+					locations.add(location.getAsInt());
 				}
 			} catch (Exception e) {
 				throw new RuntimeException(uniform.getName(), e);
 			}
 		}
-		this.locationMap.put(targetHolder, locations);
+		this.locationMap.put(targetHolder, new PassUniforms(uniforms.toArray(new CachedUniform[0]), locations.toIntArray()));
 	}
 
 	public void mapholderToPass(LocationalUniformHolder holder, Object pass) {
@@ -208,15 +236,38 @@ public class CustomUniforms implements FunctionContext {
 
 
 	public void update() {
-		for (CachedUniform value : this.uniformOrder) {
-			value.update();
+		if (Tracy.ENABLED) {
+			Tracy.plotInt(PLOT_CUSTOM_PUSHED, pushedThisFrame);
+			Tracy.plotInt(PLOT_CUSTOM_SKIPPED, skippedThisFrame);
+			pushedThisFrame = 0;
+			skippedThisFrame = 0;
+		}
+		generation++;
+		final List<CachedUniform> ordered = this.uniformOrder;
+		for (int i = 0, n = ordered.size(); i < n; i++) {
+			ordered.get(i).update();
 		}
 	}
 
 	public void push(Object pass) {
-		Object2IntMap<CachedUniform> uniforms = this.locationMap.get(pass);
-		if (uniforms != null) {
-			uniforms.forEach(CachedUniform::pushIfChanged);
+		final PassUniforms pu = this.locationMap.get(pass);
+		if (pu == null) return;
+		if (lastPushedGen.getLong(pass) == generation) {
+			return;
+		}
+		lastPushedGen.put(pass, generation);
+		final CachedUniform[] uniforms = pu.uniforms;
+		final int[] locations = pu.locations;
+		final int[] gens = pu.lastPushedValueGen;
+		for (int i = 0; i < uniforms.length; i++) {
+			final int gen = uniforms[i].valueGen();
+			if (gens[i] != gen) {
+				uniforms[i].push(locations[i]);
+				gens[i] = gen;
+				if (Tracy.ENABLED) pushedThisFrame++;
+			} else if (Tracy.ENABLED) {
+				skippedThisFrame++;
+			}
 		}
 	}
 
@@ -250,10 +301,9 @@ public class CustomUniforms implements FunctionContext {
 			}
 		}
 
-		// Count the times a pass depends on a uniform
-		// ensures they wont ever be removed
-		for (Object2IntMap<CachedUniform> map : this.locationMap.values()) {
-			for (CachedUniform cachedUniform : map.keySet()) {
+		// Count the times a pass depends on a uniform ensures they wont ever be removed
+		for (PassUniforms pu : this.locationMap.values()) {
+			for (CachedUniform cachedUniform : pu.uniforms) {
 				dependedByCount.mergeInt(cachedUniform, 1, Integer::sum);
 			}
 		}

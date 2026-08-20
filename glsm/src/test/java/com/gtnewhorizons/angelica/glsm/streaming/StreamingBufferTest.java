@@ -15,6 +15,8 @@ import java.nio.ByteBuffer;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAlloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @GLCompatTest
@@ -55,7 +57,8 @@ class StreamingBufferTest {
     void persistent_uploadAlignment() {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
-        PersistentStreamingBuffer buf = new PersistentStreamingBuffer(4096);
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(4096);
+        assertNotNull(buf);
         try {
             ByteBuffer data = memAlloc(128);
             fillPattern(data);
@@ -74,7 +77,8 @@ class StreamingBufferTest {
     void persistent_dataIntegrity() {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
-        PersistentStreamingBuffer buf = new PersistentStreamingBuffer(4096);
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(4096);
+        assertNotNull(buf);
         try {
             ByteBuffer data = memAlloc(128);
             for (int i = 0; i < 128; i++) data.put((byte) i);
@@ -101,7 +105,8 @@ class StreamingBufferTest {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
         // Small ring: 1024 bytes. stride=16, alignUnit=64.
-        PersistentStreamingBuffer buf = new PersistentStreamingBuffer(1024);
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(1024);
+        assertNotNull(buf);
         try {
             int stride = 16;
 
@@ -142,28 +147,24 @@ class StreamingBufferTest {
     void persistent_fenceReclaim() {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
-        PersistentStreamingBuffer buf = new PersistentStreamingBuffer(4096);
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(4096);
+        assertNotNull(buf);
         try {
             ByteBuffer data = memAlloc(1024);
             fillPattern(data);
             data.flip();
 
             buf.upload(data, 32);
+            assertEquals(4096 - 1024, buf.getRemaining(), "upload consumes its bytes");
             buf.postDraw();
 
-            int remainingAfterUpload = buf.getRemaining();
-
-            GL11.glFinish(); // ensure fence completion
-
-            // New upload triggers reclaim of first upload's bytes
             data.position(0).limit(512);
             buf.upload(data, 32);
-
-            // After reclaim, remaining should be higher than before reclaim (minus new upload)
-            assertTrue(buf.getRemaining() > remainingAfterUpload,
-                "Remaining should increase after fence reclaim (minus new upload cost)");
-
             buf.postDraw();
+
+            GL11.glFinish();
+            buf.postDraw();
+            assertEquals(4096, buf.getRemaining(), "all fenced regions reclaimed after completion");
             memFree(data);
         } finally {
             buf.destroy();
@@ -175,7 +176,8 @@ class StreamingBufferTest {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 
         // Tiny ring: 256 bytes
-        PersistentStreamingBuffer buf = new PersistentStreamingBuffer(256);
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(256);
+        assertNotNull(buf);
         try {
             ByteBuffer data = memAlloc(512);
             fillPattern(data);
@@ -183,6 +185,34 @@ class StreamingBufferTest {
 
             int result = buf.upload(data, 32);
             assertEquals(-1, result, "Should return -1 when data exceeds total capacity");
+            memFree(data);
+        } finally {
+            buf.destroy();
+        }
+    }
+
+
+    @Test
+    void persistent_createOrNullHonorsForceOrphan() {
+        assertNull(PersistentStreamingBuffer.createOrNull(1024, true));
+    }
+
+    @Test
+    void persistent_exhaustionReclaimsPendingWithoutPostDraw() {
+        Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
+
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(1024);
+        assertNotNull(buf);
+        try {
+            ByteBuffer data = memAlloc(512);
+            fillPattern(data);
+            data.flip();
+
+            assertTrue(buf.upload(data, 32) >= 0);
+            data.position(0).limit(512);
+            assertTrue(buf.upload(data, 32) >= 0);
+            data.position(0).limit(512);
+            assertTrue(buf.upload(data, 32) >= 0, "ring must self-fence and reclaim without postDraw");
             memFree(data);
         } finally {
             buf.destroy();

@@ -43,7 +43,7 @@ public final class SelectionBoxRenderer {
     private SelectionBoxRenderer() {}
 
     public static void init() {
-        final boolean needsGS = GLStateManager.wideLineEmulationEnabled;
+        final boolean needsGS = GLStateManager.wideLineEmulationEnabled && GLStateManager.supportsGeometryShaders();
 
         final GlShader vs = ShaderLoader.loadShader(ShaderType.VERTEX, "angelica:selection_box.vert.glsl", ShaderConstants.EMPTY);
         final GlShader fs = ShaderLoader.loadShader(ShaderType.FRAGMENT, "angelica:selection_box.frag.glsl", ShaderConstants.EMPTY);
@@ -72,6 +72,9 @@ public final class SelectionBoxRenderer {
 
     public static void draw(AxisAlignedBB aabb, int color) {
         if (program == null || vao == null) return;
+
+        GLStateManager.enableDepthTest();
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
 
         final float minX = (float) aabb.minX, minY = (float) aabb.minY, minZ = (float) aabb.minZ;
         final float extX = (float) (aabb.maxX - aabb.minX);

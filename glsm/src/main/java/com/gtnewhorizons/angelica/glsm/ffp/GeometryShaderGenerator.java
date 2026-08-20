@@ -14,8 +14,8 @@ public final class GeometryShaderGenerator {
         sb.append("layout(lines) in;\n");
         sb.append("layout(triangle_strip, max_vertices = 4) out;\n\n");
 
-        sb.append("uniform vec2 u_ViewportSize;\n");
-        sb.append("uniform float u_LineWidth;\n\n");
+        sb.append(FFPUniformBlock.GLSL_DECL);
+        sb.append('\n');
 
         sb.append("// Pass-through varyings\n");
         sb.append("in vec4 v_Color_gs[];\n");

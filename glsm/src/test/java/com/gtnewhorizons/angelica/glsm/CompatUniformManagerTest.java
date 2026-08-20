@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import org.lwjgl.opengl.GL11;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL20;
@@ -70,7 +71,7 @@ class CompatUniformManagerTest {
         CompatUniformManager.refreshCompatUniforms(program);
 
         // Verify no GL errors
-        assertEquals(0, org.lwjgl.opengl.GL11.glGetError(), "GL error after uniform upload");
+        assertEquals(0, GL11.glGetError(), "GL error after uniform upload");
     }
 
     @Test
@@ -147,7 +148,7 @@ class CompatUniformManagerTest {
         GL20.glUseProgram(program);
         CompatUniformManager.refreshCompatUniforms(program);
 
-        assertEquals(0, org.lwjgl.opengl.GL11.glGetError(), "GL error after fog uniform upload");
+        assertEquals(0, GL11.glGetError(), "GL error after fog uniform upload");
     }
 
     @Test

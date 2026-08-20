@@ -5,8 +5,10 @@ import com.gtnewhorizon.gtnhlib.blockpos.IBlockPos;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightSource;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
+import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.item.EntityItem;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.World;
 import net.minecraftforge.common.util.ForgeDirection;
@@ -36,6 +38,8 @@ public abstract class MixinEntity implements IDynamicLightSource {
     public abstract float getEyeHeight();
     @Shadow
     public boolean isDead;
+    @Shadow
+    public int ticksExisted;
 
     @Unique
     protected int angelica$luminance = 0;
@@ -51,6 +55,10 @@ public abstract class MixinEntity implements IDynamicLightSource {
     private LongOpenHashSet angelica$trackedLitChunkPos = null;
     @Unique
     private LongOpenHashSet angelica$prevTrackedLitChunkPos = null;
+    @Unique
+    private int angelica$cachedStackLum;
+    @Unique
+    private int angelica$lumRecheckTick;
 
     @Override
     public double angelica$getDynamicLightX() {
@@ -84,7 +92,11 @@ public abstract class MixinEntity implements IDynamicLightSource {
             if (isDead) {
                 angelica$setDynamicLightEnabled(false);
             } else {
-                angelica$dynamicLightTick();
+                if (EntityLightConfig.isEntityTypeEnabled(this)) {
+                    angelica$dynamicLightTick();
+                } else {
+                    this.angelica$luminance = 0;
+                }
                 DynamicLights.updateTracking(this);
             }
         }
@@ -92,7 +104,16 @@ public abstract class MixinEntity implements IDynamicLightSource {
 
     @Override
     public void angelica$dynamicLightTick() {
-        this.angelica$luminance = DynamicLights.getLuminanceFromEntity((Entity) (Object) this);
+        final Entity self = (Entity) (Object) this;
+        if (self instanceof EntityItem item) {
+            if (ticksExisted >= this.angelica$lumRecheckTick) {
+                this.angelica$cachedStackLum = DynamicLights.getLuminanceFromItemStack(item.getEntityItem());
+                this.angelica$lumRecheckTick = ticksExisted + 4;
+            }
+            this.angelica$luminance = DynamicLights.getLuminanceFromEntityItem(item, this.angelica$cachedStackLum);
+        } else {
+            this.angelica$luminance = DynamicLights.getLuminanceFromEntity(self);
+        }
     }
 
     @Override

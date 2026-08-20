@@ -1,7 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import net.coderbot.iris.gl.uniform.UniformHolder;
-import net.coderbot.iris.gl.uniform.UniformType;
+import com.gtnewhorizons.angelica.glsm.shader.UniformType;
 
 public class ExternallyManagedUniforms {
 	private ExternallyManagedUniforms() {

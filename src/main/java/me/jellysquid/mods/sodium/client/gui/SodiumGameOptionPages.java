@@ -11,12 +11,13 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.MathHelper;
 
-import org.lwjgl.opengl.Display;
-
 import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.rendering.celeritas.MultiDrawModeResolver;
+import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
+import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import cpw.mods.fml.common.Optional.Method;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
@@ -44,12 +45,16 @@ import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStor
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
+import net.coderbot.iris.pipeline.ShadowRenderer;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 
 public class SodiumGameOptionPages {
     private static final SodiumOptionsStorage sodiumOpts = new SodiumOptionsStorage();
     private static final MinecraftOptionsStorage vanillaOpts = new MinecraftOptionsStorage();
     private static final AngelicaOptionsStorage angelicaOpts = new AngelicaOptionsStorage();
+
+    private static final int MIN_RENDER_AHEAD = 0;
+    private static final int MAX_RENDER_AHEAD = 9;
 
     public static OptionPage general() {
         final List<OptionGroup> groups = new ArrayList<>();
@@ -101,6 +106,7 @@ public class SodiumGameOptionPages {
         groups.add(firstGroupBuilder.build());
 
         int maxGuiScale = Math.max(3, Math.min(Minecraft.getMinecraft().displayWidth / 320, Minecraft.getMinecraft().displayHeight / 240));
+        final FrameRateOptions frameRate = FrameRateOptions.create(vanillaOpts, sodiumOpts);
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(I18n.format("options.guiScale"))
@@ -134,22 +140,8 @@ public class SodiumGameOptionPages {
                             }
                         }, (opts) -> opts.fullScreen)
                         .build())
-                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
-                        .setName(I18n.format("options.vsync"))
-                        .setTooltip(I18n.format("sodium.options.v_sync.tooltip"))
-                        .setControl(TickBoxControl::new)
-                        .setBinding((opts, value) -> {
-                            opts.enableVsync = value;
-                            Display.setVSyncEnabled(opts.enableVsync);
-                        }, opts -> opts.enableVsync)
-                        .setImpact(OptionImpact.VARIES)
-                        .build())
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(I18n.format("options.framerateLimit"))
-                        .setTooltip(I18n.format("sodium.options.fps_limit.tooltip"))
-                        .setControl(option -> new SliderControl(option, 5, 260, 5, ControlValueFormatter.fpsLimit()))
-                        .setBinding((opts, value) -> opts.limitFramerate = value, opts -> opts.limitFramerate)
-                        .build())
+                .add(frameRate.vsync())
+                .add(frameRate.maxFramerate())
                 .build());
 
         groups.add(OptionGroup.createBuilder()
@@ -300,8 +292,7 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("sodium.options.multidraw_mode.name"))
                         .setTooltip(I18n.format("sodium.options.multidraw_mode.tooltip"))
                         .setControl(o -> {
-                            boolean indirectSupported = GLStateManager.capabilities != null && (GLStateManager.capabilities.OpenGL43 || GLStateManager.capabilities.GL_ARB_multi_draw_indirect);
-                            MultiDrawMode[] allowed = indirectSupported ? MultiDrawMode.values() : new MultiDrawMode[]{MultiDrawMode.DIRECT, MultiDrawMode.INDIVIDUAL};
+                            MultiDrawMode[] allowed = MultiDrawModeResolver.indirectSupported() ? MultiDrawMode.values() : new MultiDrawMode[]{MultiDrawMode.DIRECT, MultiDrawMode.INDIVIDUAL};
                             return new CyclingControl<>(o, MultiDrawMode.class, allowed);
                         })
                         .setBinding((opts, value) -> opts.advanced.multiDrawMode = value, opts -> opts.advanced.multiDrawMode)
@@ -374,6 +365,14 @@ public class SodiumGameOptionPages {
                         .build()
                 )
                 .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.section_gated_tesr_culling.name"))
+                        .setTooltip(I18n.format("sodium.options.section_gated_tesr_culling.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> opts.performance.sectionGatedTesrCulling = value, opts -> opts.performance.sectionGatedTesrCulling)
+                        .build()
+                )
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.use_particle_culling.name"))
                         .setTooltip(I18n.format("sodium.options.use_particle_culling.tooltip"))
                         .setControl(TickBoxControl::new)
@@ -439,6 +438,25 @@ public class SodiumGameOptionPages {
                 )
                 .build());
 
+        final OptionImpl<AngelicaConfig, GpuCullingMode> gpuCullingMode =
+                OptionImpl.createBuilder(GpuCullingMode.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.gpuCullingMode"))
+                        .setTooltip(I18n.format("options.angelica.gpuCullingMode.tooltip"))
+                        .setControl(o -> new CyclingControl<>(o, GpuCullingMode.class, new GpuCullingMode[]{
+                                GpuCullingMode.CPU_ONLY, GpuCullingMode.COMPUTE}))
+                        .setBinding((opts, value) -> {
+                                AngelicaConfig.gpuCullingMode = value;
+                                AngelicaConfig.applyGpuCullingMode();
+                            }, opts -> AngelicaConfig.gpuCullingMode)
+                        .setImpact(OptionImpact.HIGH)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .setEnabled(true)
+                        .build();
+        gpuCullingMode.iris$dynamicallyEnable(GpuCulling::isAvailable);
+        groups.add(OptionGroup.createBuilder()
+                .add(gpuCullingMode)
+                .build());
+
         return new OptionPage(I18n.format("sodium.options.pages.advanced"), ImmutableList.copyOf(groups));
     }
 
@@ -491,13 +509,43 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(int.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.cpu_render_ahead_limit.name"))
                         .setTooltip(I18n.format("sodium.options.cpu_render_ahead_limit.tooltip"))
-                        .setControl(o -> new SliderControl(o, 0, 9, 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
+                        .setControl(o -> new SliderControl(o, MIN_RENDER_AHEAD, MAX_RENDER_AHEAD, 1, ControlValueFormatter.quantity("sodium.options.cpu_render_ahead_limit.value")))
                         .setImpact(OptionImpact.MEDIUM)
                         .setBinding((opts, value) -> opts.performance.cpuRenderAheadLimit = value, opts -> opts.performance.cpuRenderAheadLimit)
                         .setEnabled(GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL32)
                         .build())
 
                 .build());
+
+        if (Iris.enabled) {
+            final OptionImpl<AngelicaConfig, Integer> shadowGraphAngleDelta =
+                OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.shadowGraphAngleDelta"))
+                        .setTooltip(I18n.format("options.angelica.shadowGraphAngleDelta.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 100, 1, ControlValueFormatter.shadowGraphAngleDelta()))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.shadowGraphAngleDelta = value * 0.001f,
+                            opts -> Math.round(AngelicaConfig.shadowGraphAngleDelta * 1000.0f))
+                        .build();
+            shadowGraphAngleDelta.iris$dynamicallyEnable(ShadowRenderer::shadowGraphGateIsNotBypassed);
+
+            final OptionImpl<AngelicaConfig, Integer> shadowGraphHorizonScale =
+                OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.shadowGraphHorizonScale"))
+                        .setTooltip(I18n.format("options.angelica.shadowGraphHorizonScale.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 100, 1, ControlValueFormatter.shadowGraphHorizonScale()))
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.shadowGraphHorizonScale = value * 0.01f,
+                            opts -> Math.round(AngelicaConfig.shadowGraphHorizonScale * 100.0f))
+                        .build();
+            shadowGraphHorizonScale.iris$dynamicallyEnable(
+                () -> ShadowRenderer.shadowGraphGateIsNotBypassed() && shadowGraphAngleDelta.getValue() != 0);
+
+            groups.add(OptionGroup.createBuilder()
+                .add(shadowGraphAngleDelta)
+                .add(shadowGraphHorizonScale)
+                .build());
+        }
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)

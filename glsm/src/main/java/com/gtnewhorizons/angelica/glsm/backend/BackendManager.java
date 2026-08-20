@@ -4,7 +4,6 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import java.util.Iterator;
-import java.util.ServiceConfigurationError;
 import java.util.ServiceLoader;
 
 public final class BackendManager {
@@ -39,8 +38,8 @@ public final class BackendManager {
                 if (backend.isAvailable() && (best == null || backend.getPriority() > best.getPriority())) {
                     best = backend;
                 }
-            } catch (ServiceConfigurationError | LinkageError e) {
-                LOGGER.debug("Skipping unavailable backend: {}", e.getMessage());
+            } catch (Throwable t) {
+                LOGGER.debug("Skipping unavailable backend: {}", t.getMessage());
             }
         }
 
