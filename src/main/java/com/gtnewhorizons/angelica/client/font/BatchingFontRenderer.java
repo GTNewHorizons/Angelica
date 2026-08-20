@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.client.font;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryStack;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.IndexBuffer;
+import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
@@ -382,13 +383,21 @@ public class BatchingFontRenderer {
         idxWriterIndex += 6;
     }
 
+    /** Draw layers; see {@link FontDrawCmd#layer}. */
+    private static final int LAYER_BACKGROUND = -1;
+    private static final int LAYER_DEFAULT = 0;
+
     private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture, boolean isUnicode) {
+        pushDrawCmd(startIdx, idxCount, texture, isUnicode, LAYER_DEFAULT);
+    }
+
+    private void pushDrawCmd(int startIdx, int idxCount, ResourceLocation texture, boolean isUnicode, int layer) {
         arenaOwner = this;
         // Never coalesce into a command below the watermark - it belongs to a sealed segment.
         if (batchCommands.size() > batchSealedEnd) {
             final FontDrawCmd lastCmd = batchCommands.get(batchCommands.size() - 1);
             final int prevEndVtx = lastCmd.startVtx + lastCmd.idxCount;
-            if (prevEndVtx == startIdx && lastCmd.texture == texture) {
+            if (prevEndVtx == startIdx && lastCmd.texture == texture && lastCmd.layer == layer) {
                 // Coalesce into one
                 lastCmd.idxCount += idxCount;
                 return;
@@ -400,7 +409,7 @@ public class BatchingFontRenderer {
             }
         }
         final FontDrawCmd cmd = batchCommandPool.pop();
-        cmd.reset(startIdx, idxCount, texture, isUnicode);
+        cmd.reset(startIdx, idxCount, texture, isUnicode, layer);
         batchCommands.add(cmd);
     }
 
@@ -410,8 +419,19 @@ public class BatchingFontRenderer {
         public int idxCount;
         public boolean isUnicode;
         public ResourceLocation texture;
+        /**
+         * Sorted ahead of the texture, so lower layers draw first. Sorting by texture
+         * means submission order is not kept, so anything belonging under the glyphs
+         * needs a lower layer rather than an earlier push.
+         */
+        public int layer;
 
         public void reset(int startVtx, int vtxCount, ResourceLocation texture, boolean isUnicode) {
+            reset(startVtx, vtxCount, texture, isUnicode, LAYER_DEFAULT);
+        }
+
+        public void reset(int startVtx, int vtxCount, ResourceLocation texture, boolean isUnicode, int layer) {
+            this.layer = layer;
             this.startVtx = startVtx;
             this.idxCount = vtxCount;
             this.texture = texture;
@@ -446,9 +466,12 @@ public class BatchingFontRenderer {
                 + ']';
         }
 
-        public static final Comparator<FontDrawCmd> DRAW_ORDER_COMPARATOR = Comparator.comparing((FontDrawCmd fdc) -> fdc.texture,
-            Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
-                .thenComparing(ResourceLocation::getResourcePath))).thenComparing(fdc -> fdc.startVtx);
+        public static final Comparator<FontDrawCmd> DRAW_ORDER_COMPARATOR =
+            Comparator.comparingInt((FontDrawCmd fdc) -> fdc.layer)
+                .thenComparing(fdc -> fdc.texture,
+                    Comparator.nullsLast(Comparator.comparing(ResourceLocation::getResourceDomain)
+                        .thenComparing(ResourceLocation::getResourcePath)))
+                .thenComparing(fdc -> fdc.startVtx);
     }
 
     /**
@@ -1258,6 +1281,7 @@ public class BatchingFontRenderer {
             boolean curWave = false;
             boolean curDinnerbone = false;
             boolean curGradient = false;
+            long curCustomEffects = 0L;
             boolean curShadow = false;
             boolean curShadowCustomColor = false;
             int curShadowColorOverride = 0;
@@ -1308,6 +1332,16 @@ public class BatchingFontRenderer {
                         if (rgb != -1) {
                             curRainbow = false;
                             curGradient = false;
+                            curCustomEffects = 0L;
+                            // Styles normally carry through a hex colour; a text mod that owns
+                            // this grammar can say otherwise, and the widths follow the same call.
+                            if (FontRendering.hexColorResetsStyles()) {
+                                curRandom = false;
+                                curBold = false;
+                                curStrikethrough = false;
+                                curUnderline = false;
+                                curItalic = false;
+                            }
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
                             charIdx += SECTION_X_PAYLOAD;
@@ -1323,6 +1357,7 @@ public class BatchingFontRenderer {
                             curItalic = false;
                             curRainbow = false;
                             curGradient = false;
+                            curCustomEffects = 0L;
                             // wave/dinnerbone NOT reset — they're positional effects, independent of color
 
                             final int colorIdx = is09 ? (fmtCode - '0') : (fmtCode - 'a' + 10);
@@ -1378,6 +1413,10 @@ public class BatchingFontRenderer {
                                 gradientStep = gradientTotalChars > 1 ? 1f / (gradientTotalChars - 1) : 0f;
                                 charIdx += GRADIENT_PAYLOAD;
                             }
+                        } else if (FontEffectRegistry.isRegistered(fmtCode)) {
+                            // Toggles, like wave and dinnerbone, so a span can be closed
+                            // without a colour or §r. Those still clear it as before.
+                            curCustomEffects ^= FontEffectRegistry.bit(fmtCode);
                         } else if (fmtCode == 'r') {
                             curRandom = false;
                             curBold = false;
@@ -1388,6 +1427,7 @@ public class BatchingFontRenderer {
                             curWave = false;
                             curDinnerbone = false;
                             curGradient = false;
+                            curCustomEffects = 0L;
                             curShadow = false;
                             curShadowCustomColor = false;
                             curColor = color;
@@ -1411,19 +1451,23 @@ public class BatchingFontRenderer {
                     }
                 }
 
-                if (curRandom) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
-                }
+                // ASCII space, NBSP, NNBSP, decided before obfuscation as vanilla does.
+                final boolean whitespace = chr == ' ' || chr == '\u00A0' || chr == '\u202F';
 
                 FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
+
+                // Asked of the provider that draws the glyph, so §k keeps to the font in use
+                // and to the width it was measured at, under a custom or unicode font too.
+                if (curRandom && !whitespace) {
+                    chr = fontProvider.getRandomReplacement(chr);
+                }
 
                 heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);
                 float heightSouth = (underlying.FONT_HEIGHT - 1.0f) * glyphScaleY * fontProvider.getYScaleMultiplier();
 
                 visibleCharIndex++;
 
-                // Check ASCII space, NBSP, NNBSP
-                if (chr == ' ' || chr == '\u00A0' || chr == '\u202F') {
+                if (whitespace) {
                     curX += 4 * this.getWhitespaceScale() + (curBold ? 1 : 0);
                     continue;
                 }
@@ -1456,7 +1500,6 @@ public class BatchingFontRenderer {
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
                 final ResourceLocation texture = fontProvider.getTexture(chr);
-                final int idxId = idxWriterIndex;
 
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
@@ -1465,27 +1508,55 @@ public class BatchingFontRenderer {
                     renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
                 }
 
+                float renderX = curX;
+                int glyphColor = curColor;
+                int glyphShadowColor = curShadowColor;
+                int glyphBackground = 0;
+                if (curCustomEffects != 0L) {
+                    long fx = curCustomEffects;
+                    while (fx != 0L) {
+                        final CustomGlyphEffect effect = FontEffectRegistry.get(Long.numberOfTrailingZeros(fx));
+                        fx &= fx - 1L;
+                        glyphColor = effect.transformColor(glyphColor, false, visibleCharIndex);
+                        glyphShadowColor = effect.transformColor(glyphShadowColor, true, visibleCharIndex);
+                        renderX += effect.offsetX(visibleCharIndex);
+                        renderY += effect.offsetY(visibleCharIndex);
+                        final int background = effect.backgroundColor(visibleCharIndex);
+                        if (background != 0) glyphBackground = background;
+                    }
+                }
+
+                // Untextured, with its own draw command, like the underline below.
+                if (glyphBackground != 0) {
+                    final int bgIdx = idxWriterIndex;
+                    pushUntexRect(renderX, renderY, glyphW, heightSouth, glyphBackground);
+                    pushDrawCmd(bgIdx, 6, null, false, LAYER_BACKGROUND);
+                }
+
+                // After the background, so this command covers only what is counted below.
+                final int idxId = idxWriterIndex;
+
                 final boolean drawShadow = enableShadow || curShadow;
                 if (drawShadow) {
                     final int effectiveShadowColor = curShadowCustomColor
-                        ? ((curColor & 0xFF000000) | (curShadowColorOverride & 0x00FFFFFF))
-                        : curShadowColor;
+                        ? ((glyphColor & 0xFF000000) | (curShadowColorOverride & 0x00FFFFFF))
+                        : glyphShadowColor;
                     for (int n = 1; n <= shadowCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / shadowCopies);
-                        pushTexRect(curX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, effectiveShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                        pushTexRect(renderX + shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, effectiveShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
 
                         if (curBold) {
-                            pushTexRect(curX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, effectiveShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                            pushTexRect(renderX + 2.0f * shadowOffsetPart, renderY + shadowOffsetPart, glyphW - 1.0f, heightSouth, itOff, effectiveShadowColor, uStart, vStart, uSz, vSz, curDinnerbone);
                         }
                     }
                 }
 
-                pushTexRect(curX, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                pushTexRect(renderX, renderY, glyphW - 1.0f, heightSouth, itOff, glyphColor, uStart, vStart, uSz, vSz, curDinnerbone);
 
                 if (curBold) {
                     for (int n = 1; n <= boldCopies; n++) {
                         final float shadowOffsetPart = shadowOffset * ((float) n / boldCopies);
-                        pushTexRect(curX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, curColor, uStart, vStart, uSz, vSz, curDinnerbone);
+                        pushTexRect(renderX + shadowOffsetPart, renderY, glyphW - 1.0f, heightSouth, itOff, glyphColor, uStart, vStart, uSz, vSz, curDinnerbone);
                     }
                 }
 
