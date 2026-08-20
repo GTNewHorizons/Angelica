@@ -1,5 +1,11 @@
 package net.coderbot.iris.pipeline.transform;
 
+import static org.junit.jupiter.api.Assertions.assertNull;
+import java.util.HashMap;
+import java.util.regex.Pattern;
+import java.util.regex.Matcher;
+import net.coderbot.iris.gl.shader.ProgramCreator;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
@@ -94,14 +100,28 @@ class AttributeTransformerInstancedTest {
     }
 
     @Test
+    void generatedInstancedShaderHasNoOverlappingAttributeLocations() {
+        final String v = instancedVertex(VERTEX);
+        final Matcher m = Pattern.compile("layout\\s*\\(\\s*location\\s*=\\s*(\\d+)\\s*\\)\\s*in\\s+\\w+\\s+(\\w+)").matcher(v);
+        final Map<Integer, String> byLocation = new HashMap<>();
+        while (m.find()) {
+            final int loc = Integer.parseInt(m.group(1));
+            final String name = m.group(2);
+            final String previous = byLocation.put(loc, name);
+            assertNull(previous, "location " + loc + " declared twice: " + previous + " and " + name);
+        }
+        assertFalse(byLocation.isEmpty(), "expected the instanced variant to declare attribute locations");
+    }
+
+    @Test
     void declaresInstanceAttribsAndGlobalMatrices() {
         final String v = instancedVertex(VERTEX);
-        assertHas(v, "layout(location = 7) in vec4 iris_InstMat0");
-        assertHas(v, "layout(location = 8) in vec4 iris_InstMat1");
-        assertHas(v, "layout(location = 9) in vec4 iris_InstMat2");
-        assertHas(v, "layout(location = 10) in vec4 iris_InstMat3");
-        assertHas(v, "layout(location = 11) in vec4 iris_InstColor");
-        assertHas(v, "layout(location = 12) in vec2 iris_InstLightmap");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_MATRIX_COL0 + ") in vec4 iris_InstMat0");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_MATRIX_COL1 + ") in vec4 iris_InstMat1");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_MATRIX_COL2 + ") in vec4 iris_InstMat2");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_MATRIX_COL3 + ") in vec4 iris_InstMat3");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_COLOR + ") in vec4 iris_InstColor");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_LIGHTMAP + ") in vec2 iris_InstLightmap");
         assertLacks(v, "uniform mat4 iris_ModelViewMatrix;");
         assertLacks(v, "uniform mat3 iris_NormalMatrix;");
         assertHas(v, "mat4 iris_ModelViewMatrix;");
@@ -123,12 +143,12 @@ class AttributeTransformerInstancedTest {
     }
 
     @Test
-    void foldsEntityAndMidTexCoordAttributes() {
+    void foldsEntityAttributeButKeepsMidTexCoord() {
         final String v = instancedVertex(VERTEX);
         assertLacks(v, "mc_Entity");
-        assertLacks(v, "mc_midTexCoord");
         assertHas(v, "vec4(-1.0, -1.0, 0.0, 1.0)");
-        assertHas(v, "vec4(0.5, 0.5, 0.0, 1.0)");
+        assertHas(v, "mc_midTexCoord");
+        assertLacks(v, "vec4(0.5, 0.5, 0.0, 1.0)");
     }
 
     @Test
