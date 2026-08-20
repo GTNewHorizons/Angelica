@@ -43,9 +43,6 @@ public final class FontProviderMC implements FontProvider {
         return MCFONT_ASCII_MAP.containsKey(chr);
     }
 
-    /** Tries before obfuscation gives up and leaves the character alone. */
-    private static final int RANDOM_GLYPH_TRIES = 64;
-
     /**
      * A random glyph of the same width, for {@code §k}. Only slots the reverse lookup
      * agrees with are eligible: {@link #MCFONT_CHARS} repeats {@code U+0000} and the map

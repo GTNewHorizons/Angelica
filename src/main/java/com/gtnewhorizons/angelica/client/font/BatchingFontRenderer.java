@@ -1456,10 +1456,10 @@ public class BatchingFontRenderer {
 
                 FontProvider fontProvider = FontStrategist.getFontProvider(this, chr, FontConfig.enableCustomFont, unicodeFlag);
 
-                // Obfuscation swaps in a glyph of equal width from the Minecraft font's
-                // width table, so it only applies where that table is what gets drawn.
-                if (curRandom && !whitespace && fontProvider == FontProviderMC.get(this.isSGA)) {
-                    chr = FontProviderMC.get(this.isSGA).getRandomReplacement(chr);
+                // Asked of the provider that draws the glyph, so §k keeps to the font in use
+                // and to the width it was measured at, under a custom or unicode font too.
+                if (curRandom && !whitespace) {
+                    chr = fontProvider.getRandomReplacement(chr);
                 }
 
                 heightNorth = anchorY + (underlying.FONT_HEIGHT - 1.0f) * (0.5f - glyphScaleY * fontProvider.getYScaleMultiplier() / 2);

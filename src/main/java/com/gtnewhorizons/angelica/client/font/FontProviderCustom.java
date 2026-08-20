@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
+import jss.util.RandomXoshiro256StarStar;
 import lombok.Setter;
 import lombok.Value;
 import net.minecraft.client.Minecraft;
@@ -31,6 +32,7 @@ public final class FontProviderCustom implements FontProvider {
     static final int ATLAS_SIZE = 128;
     static final int ATLAS_COUNT = 512;
     private final byte id; // 0 - primary font, 1 - fallback font
+    private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
     private FontAtlas[] fontAtlases = new FontAtlas[ATLAS_COUNT];
     private float currentFontQuality = FontConfig.customFontQuality;
     @Setter
@@ -239,8 +241,29 @@ public final class FontProviderCustom implements FontProvider {
         return (getAtlas(chr).glyphData[chr % ATLAS_SIZE] != null);
     }
 
+    /**
+     * A random glyph of the same width, for {@code §k}. Kept inside the character's own
+     * atlas: atlases are rasterized on first use, so reaching outside one would build a
+     * new atlas mid-frame. Slots the font has no glyph for are skipped.
+     */
     @Override
     public char getRandomReplacement(char chr) {
+        if (this.font == null) {
+            return chr;
+        }
+        final FontAtlas atlas = getAtlas(chr);
+        final GlyphData target = atlas.glyphData[chr % ATLAS_SIZE];
+        if (target == null) {
+            return chr;
+        }
+        final int atlasStart = (chr / ATLAS_SIZE) * ATLAS_SIZE;
+        for (int attempt = 0; attempt < RANDOM_GLYPH_TRIES; attempt++) {
+            final int slot = fontRandom.nextInt(ATLAS_SIZE);
+            final GlyphData candidate = atlas.glyphData[slot];
+            if (candidate != null && candidate.xAdvance == target.xAdvance) {
+                return (char) (atlasStart + slot);
+            }
+        }
         return chr;
     }
 
