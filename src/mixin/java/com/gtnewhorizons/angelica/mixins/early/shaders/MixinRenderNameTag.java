@@ -23,7 +23,13 @@ public class MixinRenderNameTag {
     private static final NamespacedId NAME_TAG_ID = new NamespacedId("minecraft", "name_tag");
 
     @Unique
-    private int angelica$previousEntityId = -1;
+    private static final int NOTHING_SAVED = Integer.MIN_VALUE;
+
+    @Unique
+    private int angelica$previousEntityId = NOTHING_SAVED;
+
+    @Unique
+    private int angelica$previousItemId = 0;
 
     /**
      * Inject at the HEAD of func_147906_a to set the special name_tag entity ID before rendering.
@@ -37,10 +43,11 @@ public class MixinRenderNameTag {
         Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
         if (entityIdMap != null) {
             angelica$previousEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+            angelica$previousItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
 
             // Set the special name_tag entity ID
             int nameTagId = entityIdMap.applyAsInt(NAME_TAG_ID);
-            CapturedRenderingState.INSTANCE.setCurrentEntity(nameTagId);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(nameTagId, 0);
         }
     }
 
@@ -52,9 +59,10 @@ public class MixinRenderNameTag {
         at = @At("RETURN")
     )
     private void iris$restoreEntityId(Entity entity, String name, double x, double y, double z, int maxDistance, CallbackInfo ci) {
-        if (angelica$previousEntityId != -1) {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(angelica$previousEntityId);
-            angelica$previousEntityId = -1;
+        if (angelica$previousEntityId != NOTHING_SAVED) {
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(angelica$previousEntityId, angelica$previousItemId);
+            angelica$previousEntityId = NOTHING_SAVED;
+            angelica$previousItemId = 0;
         }
     }
 }

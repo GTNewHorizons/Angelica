@@ -82,6 +82,10 @@ public class OptionMenuContainer {
 
 	// Screens will call this when they contain a "*" element, so that the list of
 	// unused options can be added after all other screens have been resolved
+	public boolean hasMenuElements() {
+		return !this.originalMainElements.isEmpty();
+	}
+
 	public void queueForUnusedOptionDump(int index, List<OptionMenuElement> elementList) {
 		this.unusedOptionDumpQueue.put(elementList, index);
 	}

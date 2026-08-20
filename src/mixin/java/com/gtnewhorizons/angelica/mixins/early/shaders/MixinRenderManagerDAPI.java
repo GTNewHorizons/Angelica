@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -23,16 +24,27 @@ public class MixinRenderManagerDAPI {
         require = 1 // Require this if DAPI is present, which should be the case when this mixin is applied.
     )
     private void iris$wrapDoRenderDragonAPI(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        int entityId = EntityIdHelper.getEntityId(entity);
-        CapturedRenderingState.INSTANCE.setCurrentEntity(entityId);
+        final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
+        final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        final Class<?> prevRenderable = TesrAttribution.currentRenderable;
+
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(EntityIdHelper.getEntityId(entity), 0);
+        TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
         }
-        original.call(render, entity, x, y, z, entityYaw, partialTicks);
-        if (lightning) {
-            GbufferPrograms.teardownSpecialRenderCondition();
+        final boolean nestedInBlockEntity = GbufferPrograms.beginNestedEntityPhase();
+
+        try {
+            original.call(render, entity, x, y, z, entityYaw, partialTicks);
+        } finally {
+            GbufferPrograms.endNestedEntityPhase(nestedInBlockEntity);
+            if (lightning) {
+                GbufferPrograms.teardownSpecialRenderCondition();
+            }
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
+            TesrAttribution.currentRenderable = prevRenderable;
         }
-        CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
     }
 }

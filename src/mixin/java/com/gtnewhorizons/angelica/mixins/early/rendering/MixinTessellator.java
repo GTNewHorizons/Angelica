@@ -22,6 +22,8 @@ public class MixinTessellator implements StateAwareTessellator {
 
     @Unique
     private boolean appliedAo;
+    @Unique
+    private boolean angelica$noDirectionalShading;
 
     @Unique
     private boolean celeritasMeshing;
@@ -35,9 +37,10 @@ public class MixinTessellator implements StateAwareTessellator {
     private void addElementState(CallbackInfo ci) {
         if (!celeritasMeshing) return;
         int state = 0;
-        if (appliedAo) {
-            state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;
-        }
+
+        if (appliedAo) state |= StateAwareTessellator.RENDERED_WITH_VANILLA_AO;
+        if (angelica$noDirectionalShading) state |= StateAwareTessellator.NO_DIRECTIONAL_SHADING;
+
         this.vertexStates.add(state);
         this.shaderOverrideBlockIds.add(currentShaderOverrideBlockId);
     }
@@ -47,11 +50,18 @@ public class MixinTessellator implements StateAwareTessellator {
         this.vertexStates.clear();
         this.shaderOverrideBlockIds.clear();
         this.currentShaderOverrideBlockId = -1;
+        this.appliedAo = false;
+        this.angelica$noDirectionalShading = false;
     }
 
     @Override
     public void angelica$setAppliedAo(boolean flag) {
         this.appliedAo = flag;
+    }
+
+    @Override
+    public void angelica$setNoDirectionalShading(boolean flag) {
+        this.angelica$noDirectionalShading = flag;
     }
 
     @Override
