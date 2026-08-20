@@ -98,6 +98,7 @@ public class TileLoader {
             logger.severe("beforeChange was not called, invoking directly");
             changeHandler.beforeChange();
         }
+        long currentSize = Long.MIN_VALUE;
         for (TileLoader loader : loaders) {
             if (loader.isForThisMap(mapName)) {
                 if (loader.baseTextureMap == null) {
@@ -105,10 +106,13 @@ public class TileLoader {
                     loader.baseTexturesByName.putAll(map);
                 }
                 if (!loader.tilesToRegister.isEmpty()) {
+                    if (currentSize == Long.MIN_VALUE) currentSize = getTextureSize(map.values());
                     loader.subLogger
                         .fine("adding icons to %s (%d remaining)", mapName, loader.tilesToRegister.size(), mapName);
-                    while (!loader.tilesToRegister.isEmpty() && loader.registerOneIcon(textureMap, mapName, map)) {
-                        // nothing
+                    while (!loader.tilesToRegister.isEmpty()) {
+                        long updatedSize = loader.registerOneIcon(textureMap, mapName, map, currentSize);
+                        if (updatedSize < 0) break;
+                        currentSize = updatedSize;
                     }
                     loader.subLogger.fine(
                         "done adding icons to %s (%d remaining)",
@@ -275,42 +279,44 @@ public class TileLoader {
         return false;
     }
 
-    protected boolean registerOneIcon(TextureMap textureMap, String mapName, Map<String, TextureAtlasSprite> map) {
+    protected long registerOneIcon(TextureMap textureMap, String mapName, Map<String, TextureAtlasSprite> map,
+        long currentSize) {
         ResourceLocation resource = tilesToRegister.iterator()
             .next();
         String name = resource.toString();
         if (registerDefaultIcon(name)) {
             tilesToRegister.remove(resource);
-            return true;
+            return currentSize;
         }
         BufferedImage image = tileImages.get(resource);
         if (image == null) {
             subLogger.error("tile for %s unexpectedly missing", resource);
             tilesToRegister.remove(resource);
-            return true;
+            return currentSize;
         }
         int width = image.getWidth();
         int height = image.getHeight();
-        long currentSize = getTextureSize(map.values());
         long newSize = 4 * width * width;
         if (newSize + currentSize > MAX_TILESHEET_SIZE) {
             float sizeMB = (float) currentSize / 1048576.0f;
             if (currentSize <= 0) {
                 subLogger.error("%s too big for any tilesheet (%.1fMB), dropping", name, sizeMB);
                 tilesToRegister.remove(resource);
-                return true;
+                return currentSize;
             } else {
                 subLogger.warning("%s nearly full (%.1fMB), will start a new tilesheet", mapName, sizeMB);
-                return false;
+                return -1;
             }
         }
+        TextureAtlasSprite previous = map.get(name);
         TextureAtlasSprite icon = registerIconToMap(textureMap, resource, name);
         map.put(name, icon);
+        currentSize += getTextureSize(icon) - getTextureSize(previous);
         iconMap.put(name, icon);
         String extra = (width == height ? "" : ", " + (height / width) + " frames");
         subLogger.finer("%s -> %s icon %dx%d%s", name, mapName, width, width, extra);
         tilesToRegister.remove(resource);
-        return true;
+        return currentSize;
     }
 
     protected TextureAtlasSprite registerIconToMap(TextureMap textureMap, ResourceLocation resource, String name) {

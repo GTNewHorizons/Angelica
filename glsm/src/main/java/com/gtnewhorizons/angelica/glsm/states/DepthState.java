@@ -18,6 +18,12 @@ public class DepthState implements ISettableState<DepthState> {
         return this;
     }
 
+    public void setExceptMask(DepthState state) {
+        final boolean mask = enabled;
+        set(state);
+        this.enabled = mask;
+    }
+
     @Override
     public boolean sameAs(Object state) {
         if (this == state) return true;

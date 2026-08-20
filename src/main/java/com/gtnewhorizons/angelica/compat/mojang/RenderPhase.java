@@ -9,7 +9,9 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
+import java.util.Map;
 import java.util.Objects;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.Optional;
 
 
@@ -77,6 +79,7 @@ public abstract class RenderPhase {
     protected static final WriteMaskState COLOR_MASK;
     protected static final WriteMaskState DEPTH_MASK;
     protected static final Layering NO_LAYERING;
+
     protected static final Fog NO_FOG;
     protected static final Fog FOG;
     protected static final Fog BLACK_FOG;
@@ -84,6 +87,22 @@ public abstract class RenderPhase {
     protected static final Target OUTLINE_TARGET;
     protected static final Target TRANSLUCENT_TARGET;
     protected static final Shader NO_SHADER = new Shader("no_shader", () -> {}, () -> {});
+
+    private static final Map<Long, Layering> POLYGON_OFFSET_LAYERINGS = new ConcurrentHashMap<>();
+
+    public static Layering polygonOffset(float factor, float units) {
+        if (factor == 0.0f && units == 0.0f) {
+            return NO_LAYERING;
+        }
+        final long key = ((long) Float.floatToIntBits(factor) << 32) | (Float.floatToIntBits(units) & 0xFFFFFFFFL);
+        return POLYGON_OFFSET_LAYERINGS.computeIfAbsent(key, k -> new Layering("polygon_offset_" + factor + "_" + units, () -> {
+            GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLStateManager.glPolygonOffset(factor, units);
+        }, () -> {
+            GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
+            GLStateManager.glPolygonOffset(0.0f, 0.0f);
+        }));
+    }
 
     public RenderPhase(String name, Runnable beginAction, Runnable endAction) {
         this.name = name;

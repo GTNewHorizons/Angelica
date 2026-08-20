@@ -58,7 +58,7 @@ public final class SystemProperties {
     public static final boolean DEBUG_F3_DETAIL = Boolean.getBoolean("angelica.debug.f3Detail");
     public static final boolean ENABLE_TEST_BLOCKS = Boolean.getBoolean("angelica.debug.testBlocks");
     public static final boolean DUMP_CLASS = Boolean.getBoolean("angelica.debug.dumpClass");
-    public static final boolean DUMP_SHADERS = Boolean.getBoolean("angelica.debug.dumpShaders") || isDeobf();
+    private static final boolean DUMP_SHADERS_PROP = Boolean.getBoolean("angelica.debug.dumpShaders");
     public static final boolean REDIRECTOR_LOGSPAM = Boolean.getBoolean("angelica.debug.redirectorLogspam");
     public static final boolean DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debug.displayLists");
     public static final boolean LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.debug.displayLists.compilation");
@@ -68,8 +68,12 @@ public final class SystemProperties {
     // Set by us, read by celeritas
     public static final String KEY_CELERITAS_ENABLE_GL_DEBUG = "celeritas.enableGLDebug";
 
+    public static boolean dumpShaders() {
+        return DUMP_SHADERS_PROP || isDeobf();
+    }
+
     public static Path shaderDumpDir(String phase) {
-        return DUMP_SHADERS ? Paths.get(SHADER_DUMP_ROOT, phase) : null;
+        return dumpShaders() ? Paths.get(SHADER_DUMP_ROOT, phase) : null;
     }
 
     public enum UnmappedGLMode {
@@ -118,7 +122,7 @@ public final class SystemProperties {
         }
     }
 
-    private static boolean isDeobf() {
+    public static boolean isDeobf() {
         return Launch.blackboard != null && Boolean.TRUE.equals(Launch.blackboard.get("fml.deobfuscatedEnvironment"));
     }
 

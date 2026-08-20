@@ -6,6 +6,4 @@ public interface ITileEntityBoundingBoxCache {
     AxisAlignedBB angelica$getCachedRenderBoundingBox();
 
     byte angelica$boundsClass();
-
-    byte angelica$passClass();
 }

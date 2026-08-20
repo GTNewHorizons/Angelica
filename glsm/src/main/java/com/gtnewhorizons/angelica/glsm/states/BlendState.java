@@ -55,6 +55,15 @@ public class BlendState implements ISettableState<BlendState> {
         return this;
     }
 
+    public void setExceptFunc(BlendState state) {
+        final int sRgb = srcRgb, dRgb = dstRgb, sAlpha = srcAlpha, dAlpha = dstAlpha;
+        set(state);
+        this.srcRgb = sRgb;
+        this.dstRgb = dRgb;
+        this.srcAlpha = sAlpha;
+        this.dstAlpha = dAlpha;
+    }
+
     @Override
     public boolean sameAs(Object state) {
         if (this == state) return true;

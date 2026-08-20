@@ -11,8 +11,6 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.util.MathHelper;
 
-import org.lwjgl.opengl.Display;
-
 import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -21,7 +19,6 @@ import com.gtnewhorizons.angelica.rendering.celeritas.MultiDrawModeResolver;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import cpw.mods.fml.common.Optional.Method;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import jss.notfine.core.Settings;
@@ -48,6 +45,7 @@ import me.jellysquid.mods.sodium.client.gui.options.storage.MinecraftOptionsStor
 import me.jellysquid.mods.sodium.client.gui.options.storage.SodiumOptionsStorage;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gui.option.IrisVideoSettings;
+import net.coderbot.iris.pipeline.ShadowRenderer;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 
 public class SodiumGameOptionPages {
@@ -518,6 +516,36 @@ public class SodiumGameOptionPages {
                         .build())
 
                 .build());
+
+        if (Iris.enabled) {
+            final OptionImpl<AngelicaConfig, Integer> shadowGraphAngleDelta =
+                OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.shadowGraphAngleDelta"))
+                        .setTooltip(I18n.format("options.angelica.shadowGraphAngleDelta.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 100, 1, ControlValueFormatter.shadowGraphAngleDelta()))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.shadowGraphAngleDelta = value * 0.001f,
+                            opts -> Math.round(AngelicaConfig.shadowGraphAngleDelta * 1000.0f))
+                        .build();
+            shadowGraphAngleDelta.iris$dynamicallyEnable(ShadowRenderer::shadowGraphGateIsNotBypassed);
+
+            final OptionImpl<AngelicaConfig, Integer> shadowGraphHorizonScale =
+                OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.shadowGraphHorizonScale"))
+                        .setTooltip(I18n.format("options.angelica.shadowGraphHorizonScale.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 100, 1, ControlValueFormatter.shadowGraphHorizonScale()))
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.shadowGraphHorizonScale = value * 0.01f,
+                            opts -> Math.round(AngelicaConfig.shadowGraphHorizonScale * 100.0f))
+                        .build();
+            shadowGraphHorizonScale.iris$dynamicallyEnable(
+                () -> ShadowRenderer.shadowGraphGateIsNotBypassed() && shadowGraphAngleDelta.getValue() != 0);
+
+            groups.add(OptionGroup.createBuilder()
+                .add(shadowGraphAngleDelta)
+                .add(shadowGraphHorizonScale)
+                .build());
+        }
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)

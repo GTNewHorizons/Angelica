@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.block_rendering.BlockRenderingSettings;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
@@ -49,7 +50,7 @@ public class MixinRenderPlayerArmor {
     }
 
     /**
-     * Set "minecraft:player_cape" when rendering the player's cape.
+     * Set "minecraft:player_cape" when rendering the player's cape, and declare the cape opaque.
      */
     @WrapOperation(
         method = "renderEquippedItems(Lnet/minecraft/client/entity/AbstractClientPlayer;F)V",
@@ -62,7 +63,12 @@ public class MixinRenderPlayerArmor {
             CapturedRenderingState.INSTANCE.setCurrentRenderedItem(capeId);
         }
 
-        original.call(modelBiped, scale);
+        final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(Boolean.FALSE);
+        try {
+            original.call(modelBiped, scale);
+        } finally {
+            GbufferPrograms.endTranslucencyDeclaration(previous);
+        }
         ItemIdManager.resetItemId();
     }
 }

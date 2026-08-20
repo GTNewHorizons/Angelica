@@ -11,7 +11,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class PacerSleeperTest {
 
     private static final long MS = 1_000_000L;
-    private static final long SPIN_FLOOR = 100_000L;
+    private static final long COLD_FLOOR = PacerSleeper.MIN_SPIN_FLOOR_NANOS;
 
     private static final class FakeTime {
         long now;
@@ -53,20 +53,20 @@ class PacerSleeperTest {
         s.sleepUntil(10 * MS, 0L);
 
         assertEquals(1, time.parks, "the request must be sized to the deadline, not to a fixed chunk");
-        assertEquals(10 * MS - SPIN_FLOOR, time.lastRequest, "the park should land one spin floor short of the deadline");
+        assertEquals(10 * MS - COLD_FLOOR, time.lastRequest, "the park should land one spin floor short of the deadline");
     }
 
     @Test
-    void whatIsLeftForTheSpinNeverExceedsTheFloor() {
+    void aWellBehavedTimerLeavesNoMoreThanTheFloorToSpin() {
         final FakeTime time = new FakeTime();
         time.lag = 20_000L;
         final PacerSleeper s = sleeper(time);
 
         for (int i = 0; i < 20; i++) {
             final long deadline = time.now + 13 * MS;
+            final long floor = s.spinFloorNanos();
             final long woke = s.sleepUntil(deadline, time.now);
-            assertTrue(deadline - woke <= SPIN_FLOOR,
-                "left " + (deadline - woke) + "ns to spin, floor is " + SPIN_FLOOR);
+            assertTrue(deadline - woke <= floor, "left " + (deadline - woke) + "ns to spin, floor is " + floor);
         }
     }
 
@@ -95,7 +95,7 @@ class PacerSleeperTest {
         final long woke = s.sleepUntil(10 * MS, 0L);
 
         assertEquals(2, time.parks, "a short park must be followed by another, not by a spin");
-        assertTrue(10 * MS - woke <= SPIN_FLOOR, "the second park should still land inside the floor");
+        assertTrue(10 * MS - woke <= s.spinFloorNanos(), "the second park should still land inside the floor");
     }
 
     @Test
@@ -172,11 +172,73 @@ class PacerSleeperTest {
     }
 
     @Test
+    void theSpinLoopFinishesTheFrameAndIsCounted() {
+        final long step = 10_000L;
+        final long[] clock = { 0L };
+        final PacerSleeper s = new PacerSleeper(() -> clock[0] += step, nanos -> clock[0] += nanos, true);
+
+        final long woke = s.sleepUntil(5 * MS, 0L);
+
+        assertEquals(5 * MS, woke, "the spin must carry the frame to the deadline");
+        assertEquals(1, s.lastParks);
+        assertEquals(10_000L, s.lastSpinNanos, "the spin covers what the park left short");
+    }
+
+    @Test
+    void aGapWiderThanTheFloorIsStillClosedWithoutParking() {
+        final long step = 10_000L;
+        final long overshoot = 2 * MS;
+        final long[] clock = { 0L };
+        final PacerSleeper s = new PacerSleeper(() -> clock[0] += step, nanos -> clock[0] += nanos + overshoot, true);
+
+        for (int i = 0; i < PacerSleeper.SLOTS; i++) {
+            s.sleepUntil(clock[0] + 13 * MS, clock[0]);
+        }
+        assertTrue(s.avgOvershootNanos() > MS, "the park estimate must exceed the remaining gap for this branch to be reached");
+
+        final long deadline = clock[0] + MS;
+        final long woke = s.sleepUntil(deadline, clock[0]);
+
+        assertEquals(0, s.lastParks, "a gap under one park quantum must not park again");
+        assertTrue(s.lastSpinNanos > 0L, "the spin loop has to close a gap far wider than the floor");
+        assertTrue(woke >= deadline, "woke " + woke + "ns short of deadline " + deadline);
+    }
+
+    @Test
+    void aSteadyPlatformNeedsOnlyTheMinimumSpinFloor() {
+        final FakeTime time = new FakeTime();
+        time.lag = 300_000L;
+        final PacerSleeper s = sleeper(time);
+
+        for (int i = 0; i < PacerSleeper.SLOTS; i++) {
+            s.sleepUntil(time.now + 13 * MS, time.now);
+        }
+
+        assertEquals(PacerSleeper.MIN_SPIN_FLOOR_NANOS, s.spinFloorNanos(), "identical overshoots are pure bias, not jitter, so the floor stays at its minimum");
+    }
+
+    @Test
+    void aJitteryPlatformWidensTheSpinFloorToCoverTheWorstPark() {
+        final FakeTime time = new FakeTime();
+        time.lag = 100_000L;
+        final PacerSleeper s = sleeper(time);
+
+        for (int i = 0; i < PacerSleeper.SLOTS - 1; i++) {
+            s.sleepUntil(time.now + 13 * MS, time.now);
+        }
+        time.lag = 500_000L;
+        s.sleepUntil(time.now + 13 * MS, time.now);
+
+        assertEquals(140_000L, s.avgOvershootNanos());
+        assertEquals(500_000L - 140_000L, s.spinFloorNanos(), "the floor must cover the spread between the worst park and the mean, not the mean itself");
+    }
+
+    @Test
     void aDeadlineInsideTheFloorParksNotAtAll() {
         final FakeTime time = new FakeTime();
         final PacerSleeper s = sleeper(time);
 
-        final long woke = s.sleepUntil(SPIN_FLOOR, 0L);
+        final long woke = s.sleepUntil(COLD_FLOOR, 0L);
 
         assertEquals(0, time.parks);
         assertEquals(0L, woke);
