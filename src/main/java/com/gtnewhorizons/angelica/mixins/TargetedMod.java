@@ -12,6 +12,7 @@ public enum TargetedMod implements ITargetMod {
     CAMPFIRE_BACKPORT(null, "campfirebackport"),
     CHISEL(null, "chisel"),
     COFHCORE( "cofh.asm.LoadingPlugin", "CoFHCore"),
+    CUBIC_CHUNKS("com.cardinalstar.cubicchunks.asm.coremod.CubicChunksCoreMod", "cubicchunks"),
     DYNAMIC_SURROUNDINGS_MIST("org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround"),
     DYNAMIC_SURROUNDINGS_ORIGINAL("org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround"),
     DRAGON_API("Reika.DragonAPI.Auxiliary.DragonAPIASMHandler", "DragonAPI"),
