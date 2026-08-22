@@ -283,3 +283,10 @@ sodium.options.upload_method.buffer_subdata=BufferSubData
 sodium.options.upload_method.map_buffer=MapBufferRange
 sodium.options.enable_deferred_batching.name=Deferred Particle Batching
 sodium.options.enable_deferred_batching.tooltip=Batches particle draw calls into fewer merged draws per layer. Disable if particles render incorrectly.
+
+rso.search_bar_empty=Search options...
+
+Iris Keybinds=Iris Keybinds
+Reload Shaders=Reload Shaders
+Toggle Shaders=Toggle Shaders
+Shaderpack Selection Screen=Shaderpack Selection Screen
