@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -2537,12 +2538,17 @@ public class GLStateManager {
             return;
         }
         try {
-            if (mode == GL11.GL_QUADS) {
-                QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
-                return;
+            final boolean ffpExt = FfpExtendedAttribs.maybeBindIndexed(mode, indices_count, type, indices_buffer_offset);
+            try {
+                if (mode == GL11.GL_QUADS) {
+                    QuadConverter.drawQuadElementsAsTriangles(indices_count, type, indices_buffer_offset);
+                    return;
+                }
+                preDraw(mode);
+                RENDER_BACKEND.drawElements(mode, indices_count, type, indices_buffer_offset);
+            } finally {
+                if (ffpExt) FfpExtendedAttribs.unbind();
             }
-            preDraw(mode);
-            RENDER_BACKEND.drawElements(mode, indices_count, type, indices_buffer_offset);
         } finally {
             if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
         }
@@ -2652,19 +2658,24 @@ public class GLStateManager {
             FeedbackManager.processDrawArrays(mode, first, count);
             return;
         }
-        if (mode == GL11.GL_QUADS) {
-            QuadConverter.drawQuadsAsTriangles(first, count);
-        } else if (mode == GL11.GL_QUAD_STRIP) {
-            preDraw();
-            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
-        } else if (mode == GL11.GL_POLYGON) {
-            preDraw();
-            RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
-        } else {
-            preDraw(mode);
-            RENDER_BACKEND.drawArrays(mode, first, count);
+        final boolean ffpExt = FfpExtendedAttribs.maybeBind(mode, first, count);
+        try {
+            if (mode == GL11.GL_QUADS) {
+                QuadConverter.drawQuadsAsTriangles(first, count);
+            } else if (mode == GL11.GL_QUAD_STRIP) {
+                preDraw();
+                RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_STRIP, first, count & ~1);
+            } else if (mode == GL11.GL_POLYGON) {
+                preDraw();
+                RENDER_BACKEND.drawArrays(GL11.GL_TRIANGLE_FAN, first, count);
+            } else {
+                preDraw(mode);
+                RENDER_BACKEND.drawArrays(mode, first, count);
+            }
+        } finally {
+            if (ffpExt) FfpExtendedAttribs.unbind();
+            if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
         }
-        if (savedRecorder != null) DisplayListManager.resumeRecording(savedRecorder);
     }
 
     private static void ffpClientArrayPointer(int index, int size, int type, boolean normalized, int stride, long offset) {
@@ -5841,6 +5852,7 @@ public class GLStateManager {
         if (buffer == 0) return;
         final boolean locked = acquireDrawLock();
         try {
+            FfpExtendedAttribs.onDeleteBuffer(buffer);
             if (glCtx.boundVBO == buffer) glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             if (VAOManager.boundEBO == buffer) glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
             if (glCtx.boundPixelUnpackBuffer == buffer) glBindBuffer(GL21.GL_PIXEL_UNPACK_BUFFER, 0);
@@ -5944,15 +5956,29 @@ public class GLStateManager {
         for (int i = 0; i < buffers.length; i++) buffers[i] = RENDER_BACKEND.createBuffers();
     }
 
-    public static void glBufferData(int target, long size, int usage) { RENDER_BACKEND.bufferData(target, size, usage); }
-    public static void glBufferData(int target, ByteBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, ShortBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, IntBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, FloatBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, DoubleBuffer data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
+    private static void onBufferRespec(int target) {
+        if (FfpExtendedAttribs.isEmpty()) return;
+        if (target == GL15.GL_ARRAY_BUFFER) {
+            FfpExtendedAttribs.onBufferRespecified(ctx().boundVBO);
+        } else if (target == GL15.GL_ELEMENT_ARRAY_BUFFER) {
+            FfpExtendedAttribs.onBufferRespecified(VAOManager.boundEBO);
+        }
+    }
+
+    private static void onNamedBufferRespec(int buffer) {
+        if (FfpExtendedAttribs.isEmpty()) return;
+        FfpExtendedAttribs.onBufferRespecified(buffer);
+    }
+
+    public static void glBufferData(int target, long size, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, size, usage); }
+    public static void glBufferData(int target, ByteBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, ShortBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, IntBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, FloatBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, DoubleBuffer data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, LongBuffer data, int usage) { glBufferData(target, MemoryUtilities.memByteBuffer(data), usage); }
-    public static void glBufferData(int target, int[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
-    public static void glBufferData(int target, float[] data, int usage) { RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, int[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
+    public static void glBufferData(int target, float[] data, int usage) { onBufferRespec(target); RENDER_BACKEND.bufferData(target, data, usage); }
     public static void glBufferData(int target, short[] data, int usage) {
         final ByteBuffer copy = copyOf(data);
         glBufferData(target, copy, usage);
@@ -5977,11 +6003,11 @@ public class GLStateManager {
         glBufferData(target, MemoryUtilities.memByteBuffer(data, checkedSize(size)), usage);
     }
 
-    public static void glBufferSubData(int target, long offset, ByteBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, ShortBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, IntBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, FloatBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
-    public static void glBufferSubData(int target, long offset, DoubleBuffer data) { RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, ByteBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, ShortBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, IntBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, FloatBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
+    public static void glBufferSubData(int target, long offset, DoubleBuffer data) { onBufferRespec(target); RENDER_BACKEND.bufferSubData(target, offset, data); }
     public static void glBufferSubData(int target, long offset, LongBuffer data) { glBufferSubData(target, offset, MemoryUtilities.memByteBuffer(data)); }
     public static void glBufferSubData(int target, long offset, short[] data) {
         final ByteBuffer copy = copyOf(data);
@@ -6064,8 +6090,8 @@ public class GLStateManager {
     public static void glGetBufferParameteriv(int target, int pname, IntBuffer params) { params.put(params.position(), glGetBufferParameteri(target, pname)); }
     public static void glGetBufferParameteriv(int target, int pname, int[] params) { params[0] = glGetBufferParameteri(target, pname); }
 
-    public static void glBufferStorage(int target, long size, int flags) { RENDER_BACKEND.bufferStorage(target, size, flags); }
-    public static void glBufferStorage(int target, ByteBuffer data, int flags) { RENDER_BACKEND.bufferStorage(target, data, flags); }
+    public static void glBufferStorage(int target, long size, int flags) { onBufferRespec(target); RENDER_BACKEND.bufferStorage(target, size, flags); }
+    public static void glBufferStorage(int target, ByteBuffer data, int flags) { onBufferRespec(target); RENDER_BACKEND.bufferStorage(target, data, flags); }
     public static void glBufferStorage(int target, ShortBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
     public static void glBufferStorage(int target, IntBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
     public static void glBufferStorage(int target, FloatBuffer data, int flags) { glBufferStorage(target, MemoryUtilities.memByteBuffer(data), flags); }
@@ -6091,9 +6117,9 @@ public class GLStateManager {
         MemoryUtilities.memFree(copy);
     }
 
-    public static void glNamedBufferData(int buffer, long size, int usage) { RENDER_BACKEND.namedBufferData(buffer, size, usage); }
-    public static void glNamedBufferData(int buffer, ByteBuffer data, int usage) { RENDER_BACKEND.namedBufferData(buffer, data, usage); }
-    public static void glNamedBufferData(int buffer, FloatBuffer data, int usage) { RENDER_BACKEND.namedBufferData(buffer, data, usage); }
+    public static void glNamedBufferData(int buffer, long size, int usage) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferData(buffer, size, usage); }
+    public static void glNamedBufferData(int buffer, ByteBuffer data, int usage) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferData(buffer, data, usage); }
+    public static void glNamedBufferData(int buffer, FloatBuffer data, int usage) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferData(buffer, data, usage); }
     public static void glNamedBufferData(int buffer, ShortBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
     public static void glNamedBufferData(int buffer, IntBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
     public static void glNamedBufferData(int buffer, LongBuffer data, int usage) { glNamedBufferData(buffer, MemoryUtilities.memByteBuffer(data), usage); }
@@ -6124,7 +6150,7 @@ public class GLStateManager {
         MemoryUtilities.memFree(copy);
     }
 
-    public static void glNamedBufferSubData(int buffer, long offset, ByteBuffer data) { RENDER_BACKEND.namedBufferSubData(buffer, offset, data); }
+    public static void glNamedBufferSubData(int buffer, long offset, ByteBuffer data) { onNamedBufferRespec(buffer); RENDER_BACKEND.namedBufferSubData(buffer, offset, data); }
     public static void glNamedBufferSubData(int buffer, long offset, ShortBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
     public static void glNamedBufferSubData(int buffer, long offset, IntBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
     public static void glNamedBufferSubData(int buffer, long offset, LongBuffer data) { glNamedBufferSubData(buffer, offset, MemoryUtilities.memByteBuffer(data)); }
@@ -6942,6 +6968,10 @@ public class GLStateManager {
     public static void glDeleteProgram(int program) {
         if (program == 0) return;
         CompatUniformManager.onDeleteProgram(program);
+        if (GLSMHooks.PROGRAM_DELETE.hasListeners()) {
+            GLSMHooks.programDeleteEvent.program = program;
+            GLSMHooks.PROGRAM_DELETE.post(GLSMHooks.programDeleteEvent);
+        }
 
         // GL defers deletion of a bound program until unbind; activeProgram stays set so the
         // cache matches GL_CURRENT_PROGRAM and the next glUseProgram is not skipped as redundant.

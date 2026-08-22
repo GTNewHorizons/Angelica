@@ -90,7 +90,7 @@ public class NativeImage extends BufferedImage {
     }
 
     public static int getR(int i) {
-        return i >> 0 & 255;
+        return i & 255;
     }
 
     public static int getG(int i) {
@@ -102,11 +102,15 @@ public class NativeImage extends BufferedImage {
     }
 
     public int getPixelRGBA(int x, int y) {
-        return getRGB(x, y);
+        return swapRedBlue(getRGB(x, y));
     }
 
     public void setPixelRGBA(int x, int y, int rgb) {
-        setRGB(x, y, rgb);
+        setRGB(x, y, swapRedBlue(rgb));
+    }
+
+    private static int swapRedBlue(int c) {
+        return (c & 0xFF00FF00) | ((c >>> 16) & 0xFF) | ((c & 0xFF) << 16);
     }
 
 

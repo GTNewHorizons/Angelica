@@ -16,6 +16,7 @@ public final class GLSMConfig {
 
     public static boolean hudCacheOverride;
 
+    public static boolean extendedAttribsExpected;
     public static volatile boolean expandVertexFormats;
 
     private GLSMConfig() {}

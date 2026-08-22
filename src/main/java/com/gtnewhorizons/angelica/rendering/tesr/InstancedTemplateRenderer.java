@@ -2,6 +2,8 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer;
@@ -17,6 +19,8 @@ import org.lwjgl.opengl.GL15;
 import java.nio.ByteBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCalloc;
+import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.COLOR_INDEX;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.NORMAL_INDEX;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.TEX_X_INDEX;
@@ -34,6 +38,7 @@ final class InstancedTemplateRenderer {
     private static final class TemplateMesh {
         int vao;
         int vbo;
+        int extVbo;
         int vertexCount;
         int drawMode;
         long lastUsedMs;
@@ -179,6 +184,13 @@ final class InstancedTemplateRenderer {
         GLStateManager.glVertexAttribPointer(4, 3, GL11.GL_BYTE, true, TEMPLATE_STRIDE, NORMAL_INDEX * 4L);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
+        mesh.extVbo = buildExt(template);
+        if (mesh.extVbo != 0) {
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, mesh.extVbo);
+            ImmediateExtendedAttribHandler.setupExtAttribPointers(0L, ImmediateExtendedAttribHandler.EXT_STRIDE);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        }
+
         for (int loc = InstancedAttribs.LOC_MATRIX_COL0; loc <= InstancedAttribs.LOC_LIGHTMAP; loc++) {
             GLStateManager.glEnableVertexAttribArray(loc);
             GLStateManager.glVertexAttribDivisor(loc, 1);
@@ -186,6 +198,25 @@ final class InstancedTemplateRenderer {
         VAOManager.setCurrentVertexFlags(TEMPLATE_FLAGS);
         GLStateManager.glBindVertexArray(0);
         return mesh;
+    }
+
+    private static int buildExt(TemplateBuffer template) {
+        final ImmediateExtendedAttribHandler handler = GLSMHooks.immediateExtendedHandler;
+        if (handler == null || !handler.wantsExtendedCapture()) return 0;
+        final int extPrim = ImmediateExtendedAttribHandler.extPrimVerts(template.drawMode, template.vertexCount);
+        if (extPrim == 0) return 0;
+
+        final int extStride = ImmediateExtendedAttribHandler.EXT_STRIDE;
+        final ByteBuffer ext = memCalloc(template.vertexCount, extStride);
+        handler.build(template.data, template.vertexCount, extPrim,
+            ImmediateExtendedAttribHandler.RAW_NORMAL_INDEX, memAddress0(ext), extStride);
+
+        final int extVbo = GLStateManager.glGenBuffers();
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, extVbo);
+        ext.position(0).limit(template.vertexCount * extStride);
+        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, ext, GL15.GL_STATIC_DRAW);
+        memFree(ext);
+        return extVbo;
     }
 
     void endFrame() {
@@ -215,6 +246,7 @@ final class InstancedTemplateRenderer {
 
     private static void delete(TemplateMesh mesh) {
         GLStateManager.glDeleteBuffers(mesh.vbo);
+        if (mesh.extVbo != 0) GLStateManager.glDeleteBuffers(mesh.extVbo);
         GLStateManager.glDeleteVertexArrays(mesh.vao);
     }
 

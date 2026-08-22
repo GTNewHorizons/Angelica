@@ -136,6 +136,7 @@ public final class ClientProxy extends CommonProxy {
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
         if (AngelicaConfig.enableIris) {
+            IrisGLSMBridge.installImmediateExtendedHandler();
             Iris.warmupShaderTransforms();
         }
     }

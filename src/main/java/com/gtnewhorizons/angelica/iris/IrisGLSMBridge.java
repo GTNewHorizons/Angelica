@@ -67,6 +67,10 @@ public class IrisGLSMBridge {
         StateUpdateNotifiers.colorModulatorNotifier = listener -> colorModulatorListener = listener;
     }
 
+    public static void installImmediateExtendedHandler() {
+        GLSMHooks.immediateExtendedHandler = new ImmediateExtendedAttribs();
+    }
+
     public static void installPostTransformHook() {
         if (GLSMHooks.postTransformProcessor != null) return;
         GLSMHooks.postTransformProcessor = new ShaderTransformPostProcessor() {
@@ -297,6 +301,14 @@ public class IrisGLSMBridge {
                 }
             }
         });
+
+        GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
+            if (Iris.enabled && event.postBind) {
+                ImmediateExtendedAttribs.onProgramBound(event.newProgram);
+            }
+        });
+
+        GLSMHooks.PROGRAM_DELETE.addListener(event -> ImmediateExtendedAttribs.onProgramDeleted(event.program));
 
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
