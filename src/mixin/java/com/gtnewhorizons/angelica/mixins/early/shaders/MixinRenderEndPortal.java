@@ -1,11 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import net.coderbot.iris.Iris;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.tileentity.RenderEndPortal;
-import net.minecraft.tileentity.TileEntityEndPortal;
+import net.minecraft.tileentity.TileEntity;
 import net.minecraft.util.ResourceLocation;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -25,9 +26,9 @@ public class MixinRenderEndPortal {
     @Unique private static final float iris$GREEN = 0.15f;
     @Unique private static final float iris$BLUE = 0.2f;
 
-    @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntityEndPortal;DDDF)V", at = @At("HEAD"), cancellable = true)
-    private void iris$renderShaderPortal(TileEntityEndPortal te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        // Always use shader-based portal rendering — eliminates glTexGen dependency for core profile
+    @Inject(method = "renderTileEntityAt(Lnet/minecraft/tileentity/TileEntity;DDDF)V", at = @At("HEAD"), cancellable = true)
+    private void iris$renderShaderPortal(TileEntity te, double x, double y, double z, float partialTicks, CallbackInfo ci) {
+        if (Iris.getCurrentPack().isEmpty()) return;
         ci.cancel();
 
         float progress = (SystemTimeUniforms.TIMER.getFrameTimeCounter() * 0.01f) % 1.0f;

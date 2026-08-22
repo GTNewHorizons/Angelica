@@ -108,7 +108,7 @@ public class TessellatorStreamingDrawer {
 
                 final int defaultBrightness;
                 if (!tess.hasBrightness) {
-                    defaultBrightness = ((int) GLSMConfig.lastBrightnessY << 16) | ((int) GLSMConfig.lastBrightnessX & 0xFFFF);
+                    defaultBrightness = GLSMConfig.packedLastBrightness();
                 } else {
                     defaultBrightness = 0;
                 }

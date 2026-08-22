@@ -2,6 +2,8 @@ package me.jellysquid.mods.sodium.client.gui.options.control;
 
 import net.minecraft.client.resources.I18n;
 
+import java.util.Locale;
+
 public interface ControlValueFormatter {
     static ControlValueFormatter guiScale() {
         return (v) -> (v == 0) ? I18n.format("options.guiScale.auto") : I18n.format(v + "x");
@@ -46,5 +48,15 @@ public interface ControlValueFormatter {
 
     static ControlValueFormatter number() {
         return String::valueOf;
+    }
+
+    static ControlValueFormatter shadowGraphAngleDelta() {
+        return (v) -> v == 0
+            ? I18n.format("options.angelica.shadowGraphAngleDelta.always")
+            : String.format(Locale.ROOT, "%.3f°", v * 0.001f);
+    }
+
+    static ControlValueFormatter shadowGraphHorizonScale() {
+        return (v) -> v == 100 ? I18n.format("options.angelica.shadowGraphHorizonScale.off") : v + "%";
     }
 }

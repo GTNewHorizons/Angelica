@@ -123,11 +123,11 @@ public class DeferredEntityOverlay {
         GbufferPrograms.beginEntities();
         try {
             for (DeferredEntry entry : deferred) {
-                CapturedRenderingState.INSTANCE.setCurrentEntity(EntityIdHelper.getEntityId(entry.entity));
+                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(EntityIdHelper.getEntityId(entry.entity), 0);
                 renderOverlay(entry);
             }
         } finally {
-            CapturedRenderingState.INSTANCE.setCurrentEntity(-1);
+            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(-1, 0);
             GbufferPrograms.endEntities();
         }
         recycle();

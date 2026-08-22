@@ -31,7 +31,7 @@ public class ItemIdManager {
      * Set the item ID for a Block rendered outside of terrain.
      */
     public static void setBlockId(Block block, int metadata) {
-        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(Math.max(0, ItemMaterialHelper.getMaterialId(block, metadata)));
+        CapturedRenderingState.INSTANCE.setCurrentRenderedItem(ItemMaterialHelper.getMaterialId(block, metadata));
     }
 
     /**
