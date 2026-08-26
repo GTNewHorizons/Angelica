@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.GuiVideoSettings;
+import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.network.NetHandlerPlayClient;
 import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.Direction;
@@ -355,6 +356,7 @@ public final class ClientProxy extends CommonProxy {
     }
 
     private float gameStartTime = -1;
+    private boolean videoOptionsWarmedUp;
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
@@ -366,6 +368,14 @@ public final class ClientProxy extends CommonProxy {
 
             // force reset zoom when a GUI is opened
             if (AngelicaConfig.enableZoom && event.gui != null) Zoom.resetZoom();
+        }
+    }
+
+    @SubscribeEvent
+    public void onMainMenuInit(GuiScreenEvent.InitGuiEvent.Post event) {
+        if (event.gui instanceof GuiMainMenu && !videoOptionsWarmedUp) {
+            warmupVideoOptions();
+            videoOptionsWarmedUp = true;
         }
     }
 
@@ -402,6 +412,26 @@ public final class ClientProxy extends CommonProxy {
         if (event.phase == TickEvent.Phase.END && mc.theWorld != null) {
             CloudRenderer.getCloudRenderer().checkSettings();
         }
+    }
+
+    private void warmupVideoOptions() {
+        final GuiScreen videoOptions;
+        if (AngelicaConfig.enableNotFineOptions) {
+            videoOptions = new GuiCustomMenu(
+                    null,
+                    NotFineGameOptionPages.general(),
+                    NotFineGameOptionPages.detail(),
+                    NotFineGameOptionPages.atmosphere(),
+                    NotFineGameOptionPages.particles(),
+                    NotFineGameOptionPages.other());
+        } else if (!AngelicaConfig.enableReesesSodiumOptions) {
+            videoOptions = new SodiumOptionsGUI(null);
+        } else {
+            videoOptions = new ReeseSodiumVideoOptionsScreen(null);
+        }
+
+        final ScaledResolution resolution = new ScaledResolution(mc, mc.displayWidth, mc.displayHeight);
+        videoOptions.setWorldAndResolution(mc, resolution.getScaledWidth(), resolution.getScaledHeight());
     }
 
     // This only disables FOV changes from vanilla, leaving mod FOV changes untouched
