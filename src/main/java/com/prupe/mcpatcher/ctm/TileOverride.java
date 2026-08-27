@@ -159,8 +159,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         if (matchBlocks.isEmpty() && matchTiles.isEmpty()) {
             matchTiles.add(baseFilename);
         }
-        connectBlocks = getBlockList(
-            properties.getString("connectBlocks", ""), properties.getString("connectMetadata", ""));
+        connectBlocks = getBlockList(properties.getString("connectBlocks", ""), properties.getString("connectMetadata", ""));
 
         faceMatcher = BlockFaceMatcher.create(properties.getString("faces", ""));
 
