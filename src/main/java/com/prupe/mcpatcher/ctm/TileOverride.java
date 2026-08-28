@@ -1,6 +1,7 @@
 package com.prupe.mcpatcher.ctm;
 
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_BLOCK;
+import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_LIST;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_MATERIAL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_TILE;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.NORMALS;
@@ -40,6 +41,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final int weight;
     private final List<BlockStateMatcher> matchBlocks;
     private final Set<String> matchTiles;
+    private final List<BlockStateMatcher> connectBlocks;
     private final BlockFaceMatcher faceMatcher;
     private final int connectType;
     private final boolean innerSeams;
@@ -157,6 +159,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         if (matchBlocks.isEmpty() && matchTiles.isEmpty()) {
             matchTiles.add(baseFilename);
         }
+        connectBlocks = getBlockList(properties.getString("connectBlocks", ""), properties.getString("connectMetadata", ""));
 
         faceMatcher = BlockFaceMatcher.create(properties.getString("faces", ""));
 
@@ -167,6 +170,14 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case "block" -> connectType = CONNECT_BY_BLOCK;
             case "tile" -> connectType = CONNECT_BY_TILE;
             case "material" -> connectType = CONNECT_BY_MATERIAL;
+            case "list" -> {
+                if (connectBlocks.isEmpty()) {
+                    properties.error("connect=list requires a non-empty connectBlocks= list");
+                    connectType = CONNECT_BY_BLOCK;
+                } else {
+                    connectType = CONNECT_BY_LIST;
+                }
+            }
             default -> {
                 properties.error("invalid connect type %s", connectType1);
                 connectType = CONNECT_BY_BLOCK;
@@ -433,6 +444,16 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case CONNECT_BY_TILE -> renderBlockState.shouldConnectByTile(neighbor, icon, x, y, z);
             case CONNECT_BY_BLOCK -> renderBlockState.shouldConnectByBlock(neighbor, x, y, z);
             case CONNECT_BY_MATERIAL -> block.blockMaterial == neighbor.blockMaterial;
+            case CONNECT_BY_LIST -> {
+                boolean matched = false;
+                for (BlockStateMatcher matcher : connectBlocks) {
+                    if (matcher.match(blockAccess, x, y, z)) {
+                        matched = true;
+                        break;
+                    }
+                }
+                yield matched;
+            }
             default -> false;
         };
     }
