@@ -71,7 +71,7 @@ public class CTMUtils {
     }
 
     public static void clearCurrentCompact() {
-        CURRENT_COMPACT.remove();
+        CURRENT_COMPACT.set(null);
     }
 
     private static final StampedLock lock = new StampedLock();
