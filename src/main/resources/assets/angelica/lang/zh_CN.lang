@@ -164,7 +164,6 @@ options.dynamiclights.entities=配置实体……
 options.dynamiclights.entities.title=动态光源 - 实体
 options.dynamiclights.entities.info=切换哪些实体类型发射动态光。部分条目用于模组兼容性。
 options.dynamiclights.entities.search=搜索（@模组, $开启, $关闭）
-options.dynamiclights.entity.tooltip=切换 %s 实体的动态光照。如果此类型实体产生不必要光照，禁用以提升性能。
 
 options.angelica.search.no_results=无匹配选项
 options.angelica.fontconfig=字体配置...

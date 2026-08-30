@@ -190,10 +190,14 @@ options.dynamic_lights_cull_timeout=Culling Timeout (ticks)
 options.dynamic_lights_cull_timeout.tooltip=Maximum ticks a hidden chunk can wait before being forced to rebuild. Lower = more responsive but more GPU work.
 options.dynamiclights.page=Dynamic Lights
 options.dynamiclights.entities=Configure Entities...
+options.dynamiclights.entities.tooltip=Choose which entity types emit dynamic light.
 options.dynamiclights.entities.title=Dynamic Lights - Entities
 options.dynamiclights.entities.info=Toggle which entity types emit dynamic light. Some entries are for mod compatibility.
 options.dynamiclights.entities.search=Search (@mod, $on, $off)
-options.dynamiclights.entity.tooltip=Toggle dynamic lighting for %s entities. Disable to improve performance if this entity type emits unwanted lights.
+options.dynamiclights.entities.enableall=Enable All
+options.dynamiclights.entities.disableall=Disable All
+options.dynamiclights.entities.enableshown=Enable Shown
+options.dynamiclights.entities.disableshown=Disable Shown
 
 options.angelica.search.no_results=No matching options
 options.angelica.fontconfig=Font Configuration...

@@ -202,16 +202,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     }
 
     private void updateControls() {
-        boolean hasChanges = this.getAllOptions()
-                .anyMatch(Option::hasChanged);
-
-        for (OptionPage page : this.pages) {
-            for (Option<?> option : page.getOptions()) {
-                if (option.hasChanged()) {
-                    hasChanges = true;
-                }
-            }
-        }
+        final boolean hasChanges = this.getAllOptions().anyMatch(Option::hasChanged);
 
         this.applyButton.setEnabled(hasChanges);
         this.undoButton.setVisible(hasChanges);

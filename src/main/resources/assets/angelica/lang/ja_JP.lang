@@ -161,7 +161,6 @@ options.dynamiclights.entities=エンティティの設定...
 options.dynamiclights.entities.title=ダイナミックライト- エンティティ
 options.dynamiclights.entities.info=ダイナミックライトを適用するエンティティの種類を設定します。一部の項目はMODとの互換性のために設定されています。
 options.dynamiclights.entities.search=検索 (@mod, $on, $off)
-options.dynamiclights.entity.tooltip=%sのエンティティのダイナミックライトを設定します。そのエンティティタイプが不要な光を発する場合は、パフォーマンス向上のために無効にしてください。
 
 options.angelica.search.no_results=該当する設定が見つかりません
 options.angelica.fontconfig=フォント設定...

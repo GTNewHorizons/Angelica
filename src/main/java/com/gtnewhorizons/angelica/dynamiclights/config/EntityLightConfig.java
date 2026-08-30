@@ -71,7 +71,6 @@ public final class EntityLightConfig {
         }
     }
 
-    @SuppressWarnings("unchecked")
     public static List<EntityTypeEntry> getAllEntityTypes() {
         List<EntityTypeEntry> entries = new ArrayList<>();
         Set<String> seenClasses = new HashSet<>();
@@ -88,9 +87,8 @@ public final class EntityLightConfig {
 
             String modId = getModIdForEntity(entityClass, entityId);
             String displayName = getDisplayName(entityId, entityClass);
-            boolean enabled = !disabledClassNames.contains(className);
 
-            entries.add(new EntityTypeEntry(displayName, className, modId, enabled));
+            entries.add(new EntityTypeEntry(displayName, entityClass, modId));
         }
 
         // Sort by mod ID, then by display name
