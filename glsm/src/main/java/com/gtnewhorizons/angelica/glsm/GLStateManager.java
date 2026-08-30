@@ -504,6 +504,7 @@ public class GLStateManager {
             .addFeature(GL11.GL_COLOR_WRITEMASK)
             .addFeature(GL11.GL_CURRENT_COLOR)
             .addFeature(GL11.GL_CURRENT_NORMAL)
+            .addFeature(GL14.GL_CURRENT_SECONDARY_COLOR)
             .addFeature(GL11.GL_CURRENT_RASTER_COLOR)
             .addFeature(GL11.GL_CURRENT_RASTER_POSITION)
             .addFeature(GL11.GL_CURRENT_RASTER_TEXTURE_COORDS)
@@ -659,6 +660,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> enableBlend();
             case GL11.GL_COLOR_MATERIAL -> enableColorMaterial();
             case GL11.GL_COLOR_LOGIC_OP -> glCtx.colorLogicOpState.enable();
+            case GL14.GL_COLOR_SUM -> glCtx.colorSumState.enable();
             case GL11.GL_CULL_FACE -> enableCull();
             case GL11.GL_DEPTH_TEST -> enableDepthTest();
             case GL11.GL_DITHER -> glCtx.ditherState.enable();
@@ -740,6 +742,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> disableBlend();
             case GL11.GL_COLOR_MATERIAL -> disableColorMaterial();
             case GL11.GL_COLOR_LOGIC_OP -> glCtx.colorLogicOpState.disable();
+            case GL14.GL_COLOR_SUM -> glCtx.colorSumState.disable();
             case GL11.GL_CULL_FACE -> disableCull();
             case GL11.GL_DEPTH_TEST -> disableDepthTest();
             case GL11.GL_DITHER -> glCtx.ditherState.disable();
@@ -815,6 +818,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> glCtx.blendMode.isEnabled();
             case GL11.GL_COLOR_MATERIAL -> glCtx.colorMaterial.isEnabled();
             case GL11.GL_COLOR_LOGIC_OP -> glCtx.colorLogicOpState.isEnabled();
+            case GL14.GL_COLOR_SUM -> glCtx.colorSumState.isEnabled();
             case GL11.GL_CULL_FACE -> glCtx.cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> glCtx.depthTest.isEnabled();
             case GL11.GL_DITHER -> glCtx.ditherState.isEnabled();
@@ -890,6 +894,7 @@ public class GLStateManager {
             case GL11.GL_BLEND -> glCtx.blendMode.isEnabled();
             case GL11.GL_COLOR_MATERIAL -> glCtx.colorMaterial.isEnabled();
             case GL11.GL_COLOR_LOGIC_OP -> glCtx.colorLogicOpState.isEnabled();
+            case GL14.GL_COLOR_SUM -> glCtx.colorSumState.isEnabled();
             case GL11.GL_CULL_FACE -> glCtx.cullState.isEnabled();
             case GL11.GL_DEPTH_TEST -> glCtx.depthTest.isEnabled();
             case GL11.GL_DEPTH_WRITEMASK -> glCtx.depthState.isEnabled();
@@ -1133,6 +1138,7 @@ public class GLStateManager {
             case GL11.GL_TEXTURE_MATRIX -> glCtx.textures.getTextureUnitMatrix(getActiveTextureUnit()).get(0, params);
             case GL11.GL_COLOR_CLEAR_VALUE -> glCtx.clearColor.get(params);
             case GL11.GL_CURRENT_COLOR -> glCtx.color.get(params);
+            case GL14.GL_CURRENT_SECONDARY_COLOR -> glCtx.secondaryColor.get(params);
             case GL11.GL_DEPTH_RANGE -> {
                 final int pos = params.position();
                 params.put(pos, (float) glCtx.viewportState.depthRangeNear);
@@ -1231,7 +1237,7 @@ public class GLStateManager {
             }
             case GL11.GL_MODELVIEW_MATRIX, GL11.GL_PROJECTION_MATRIX, GL11.GL_TEXTURE_MATRIX -> widenFromFloat(pname, params, 16);
             case GL11.GL_COLOR_CLEAR_VALUE, GL11.GL_CURRENT_COLOR, GL11.GL_CURRENT_TEXTURE_COORDS, GL11.GL_FOG_COLOR,
-                GL11.GL_LIGHT_MODEL_AMBIENT, GL14.GL_BLEND_COLOR -> widenFromFloat(pname, params, 4);
+                GL11.GL_LIGHT_MODEL_AMBIENT, GL14.GL_BLEND_COLOR, GL14.GL_CURRENT_SECONDARY_COLOR -> widenFromFloat(pname, params, 4);
             case GL11.GL_CURRENT_NORMAL -> widenFromFloat(pname, params, 3);
             default -> {
                 if (!HAS_MULTIPLE_SET.contains(pname)) {
@@ -1752,6 +1758,40 @@ public class GLStateManager {
             return true;
         }
         return false;
+    }
+
+    public static void glSecondaryColor3f(float red, float green, float blue) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            DisplayListManager.recordSecondaryColor(red, green, blue);
+            if (mode == RecordMode.COMPILE) {
+                return;
+            }
+        }
+        changeSecondaryColor(red, green, blue);
+    }
+
+    public static void glSecondaryColor3d(double red, double green, double blue) {
+        glSecondaryColor3f((float) red, (float) green, (float) blue);
+    }
+
+    public static void glSecondaryColor3b(byte red, byte green, byte blue) {
+        glSecondaryColor3f(b2f(red), b2f(green), b2f(blue));
+    }
+
+    public static void glSecondaryColor3ub(byte red, byte green, byte blue) {
+        glSecondaryColor3f(ub2f(red), ub2f(green), ub2f(blue));
+    }
+
+    /** Helper for glSecondaryColor* - the color sum is emulated by the FFP shaders, nothing is sent to the driver. */
+    private static void changeSecondaryColor(float red, float green, float blue) {
+        final GLContextState glCtx = ctx();
+        if (!isCachingEnabled() || red != glCtx.secondaryColor.getRed() || green != glCtx.secondaryColor.getGreen() || blue != glCtx.secondaryColor.getBlue()) {
+            glCtx.secondaryColor.setRed(red);
+            glCtx.secondaryColor.setGreen(green);
+            glCtx.secondaryColor.setBlue(blue);
+            glCtx.fragmentGeneration++;
+        }
     }
 
     private static final Color4 DirtyColor = new Color4(-1.0F, -1.0F, -1.0F, -1.0F);
@@ -3656,6 +3696,9 @@ public class GLStateManager {
             glCtx.restoreDrawBufferChanged = glCtx.drawBuffer.topChanged();
             glCtx.restoreLogicOpChanged = glCtx.logicOpMode.topChanged();
         }
+        if ((mask & GL11.GL_CURRENT_BIT) != 0) {
+            glCtx.restoreSecondaryColorChanged = glCtx.secondaryColor.topChanged();
+        }
         if ((mask & GL11.GL_STENCIL_BUFFER_BIT) != 0) {
             glCtx.restoreStencilChanged = glCtx.stencilState.topChanged();
         }
@@ -3832,6 +3875,8 @@ public class GLStateManager {
                 ShaderManager.bumpTexCoordGeneration();
                 glCtx.dirtyTexCoordAttrib = true;
             }
+            // The secondary color is a fragment stage uniform, not a vertex attribute
+            if (glCtx.restoreSecondaryColorChanged) glCtx.fragmentGeneration++;
         }
 
         postVanillaBlendChangeIfMoved(blendSnapshotted);
@@ -7409,6 +7454,14 @@ public class GLStateManager {
 
     public static Color4Stack getColor() {
         return ctx().color;
+    }
+
+    public static Color4Stack getSecondaryColor() {
+        return ctx().secondaryColor;
+    }
+
+    public static BooleanStateStack getColorSumState() {
+        return ctx().colorSumState;
     }
 
     public static Color4Stack getClearColor() {

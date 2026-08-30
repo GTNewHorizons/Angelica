@@ -307,6 +307,11 @@ public class DisplayListManager {
         }
     }
 
+    public static void recordSecondaryColor(float r, float g, float b) {
+        drawBarrier();
+        currentRecorder.writeSecondaryColor(r, g, b);
+    }
+
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) {
         drawBarrier();
         currentRecorder.writeColorMask(r, g, b, a);

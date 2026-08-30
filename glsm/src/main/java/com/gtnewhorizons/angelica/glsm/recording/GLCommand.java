@@ -61,6 +61,7 @@ public final class GLCommand {
     public static final int COLOR = 54;              // [cmd:4][r:4f][g:4f][b:4f][a:4f]
     public static final int CLEAR_COLOR = 55;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
     public static final int BLEND_COLOR = 56;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
+    public static final int SECONDARY_COLOR = 57;    // [cmd:4][r:4f][g:4f][b:4f]
 
     // === Mixed int+float commands ===
     public static final int ALPHA_FUNC = 60;         // [cmd:4][func:4][ref:4f]
@@ -155,6 +156,7 @@ public final class GLCommand {
             case COLOR -> "COLOR";
             case CLEAR_COLOR -> "CLEAR_COLOR";
             case BLEND_COLOR -> "BLEND_COLOR";
+            case SECONDARY_COLOR -> "SECONDARY_COLOR";
             case ALPHA_FUNC -> "ALPHA_FUNC";
             case FOGF -> "FOGF";
             case LIGHTF -> "LIGHTF";
@@ -211,7 +213,7 @@ public final class GLCommand {
             // Three int commands (16 bytes)
             case GLCommand.STENCIL_FUNC, GLCommand.STENCIL_OP, GLCommand.TEX_PARAMETERI,
                  GLCommand.LIGHTF, GLCommand.LIGHTI,
-                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF -> 16;
+                 GLCommand.MATERIALF, GLCommand.TEX_PARAMETERF, GLCommand.SECONDARY_COLOR -> 16;
 
             // Four int commands (20 bytes)
             case GLCommand.VIEWPORT, GLCommand.BLEND_FUNC, GLCommand.COLOR_MASK,

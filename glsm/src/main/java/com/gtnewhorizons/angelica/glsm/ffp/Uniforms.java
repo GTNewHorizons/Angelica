@@ -331,6 +331,9 @@ public class Uniforms {
             GLStateManager.getOverlayR(), GLStateManager.getOverlayG(),
             GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
 
+        final var secondary = GLStateManager.getSecondaryColor();
+        putVec3(FFPUniformBlock.SECONDARY_COLOR, secondary.getRed(), secondary.getGreen(), secondary.getBlue());
+
         // Mesa STATE_FOG_PARAMS_OPTIMIZED
         final FogState fog = GLStateManager.getFogState();
         final float start = fog.getStart();

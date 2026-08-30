@@ -29,7 +29,7 @@ public class Zoom {
     private static long zoomLerpLastNano = 0L;
 
     @Getter
-    private static final KeyBinding zoomKey = new KeyBinding("Zoom", 0, "key.categories.misc");
+    private static final KeyBinding zoomKey = new KeyBinding("angelica.keybind.zoom", 0, "key.categories.misc");
 
     private static boolean zoomEnabled = false;
 

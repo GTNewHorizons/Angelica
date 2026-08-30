@@ -99,6 +99,7 @@ public class Feature {
         ));
         attribToFeatures.put(GL11.GL_CURRENT_BIT, ImmutableSet.of(
               GLStateManager.getColor()
+            , GLStateManager.getSecondaryColor() // Current secondary color
             , ShaderManager.getNormalStack()    // Current normal vector
             , ShaderManager.getTexCoordStack()  // Current texture coordinates
             // Current color index
@@ -122,6 +123,7 @@ public class Feature {
             , GLStateManager.getBlendMode()
             , GLStateManager.getColorLogicOpState()
             , GLStateManager.getColorMaterial()
+            , GLStateManager.getColorSumState()
             , GLStateManager.getCullState()
             , GLStateManager.getDepthTest()
             , GLStateManager.getDitherState()
@@ -197,6 +199,7 @@ public class Feature {
         ));
         attribToFeatures.put(GL11.GL_FOG_BIT, ImmutableSet.of(
               GLStateManager.getFogMode()
+            , GLStateManager.getColorSumState()
             , GLStateManager.getFogState()
                                        // ^^ Fog density
                                        // ^^ Linear fog start

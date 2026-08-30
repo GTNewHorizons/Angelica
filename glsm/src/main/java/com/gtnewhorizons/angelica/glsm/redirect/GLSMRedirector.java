@@ -142,6 +142,7 @@ public class GLSMRedirector {
     private static final String GLU = "org/lwjgl/util/glu/GLU";
     private static final String OpenGlHelper = "net/minecraft/client/renderer/OpenGlHelper";
     private static final String EXTBlendFunc = "org/lwjgl/opengl/EXTBlendFuncSeparate";
+    private static final String EXTSecondaryColor = "org/lwjgl/opengl/EXTSecondaryColor";
     private static final String ARBMultiTexture = "org/lwjgl/opengl/ARBMultitexture";
     private static final String ARBShaderObjects = "org/lwjgl/opengl/ARBShaderObjects";
     private static final String ARBInstancedArrays = "org/lwjgl/opengl/ARBInstancedArrays";
@@ -403,7 +404,12 @@ public class GLSMRedirector {
             .add("glBlendEquation")
             .add("glMultiDrawArrays")
             .add("glPointParameterf")
-            .add("glPointParameteri");
+            .add("glPointParameteri")
+            // Removed in core profile - emulated by the FFP shaders, calling through would abort the JVM
+            .add("glSecondaryColor3f")
+            .add("glSecondaryColor3d")
+            .add("glSecondaryColor3b")
+            .add("glSecondaryColor3ub");
         final var gl15 = RedirectMap.newMap()
             .add("glGenBuffers")
             .add("glBindBuffer")
@@ -589,6 +595,11 @@ public class GLSMRedirector {
             .add("isFramebufferEnabled")
         );
         methodRedirects.put(EXTBlendFunc, RedirectMap.newMap().add("glBlendFuncSeparateEXT", "tryBlendFuncSeparate"));
+        methodRedirects.put(EXTSecondaryColor, RedirectMap.newMap()
+            .add("glSecondaryColor3bEXT", "glSecondaryColor3b")
+            .add("glSecondaryColor3fEXT", "glSecondaryColor3f")
+            .add("glSecondaryColor3dEXT", "glSecondaryColor3d")
+            .add("glSecondaryColor3ubEXT", "glSecondaryColor3ub"));
 
         // ARB
         methodRedirects.put(ARBMultiTexture, RedirectMap.newMap()
