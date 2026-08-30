@@ -18,14 +18,8 @@ public class ClientProxy extends CommonProxy {
         FMLCommonHandler.instance().bus().register(this);
         MinecraftForge.EVENT_BUS.register(this);
 
-        if(!NotFineConfig.allowAdvancedOpenGL) {
-            Minecraft.getMinecraft().gameSettings.advancedOpengl = false;
-        }
         if(!NotFineConfig.allowToggle3DAnaglyph) {
             Minecraft.getMinecraft().gameSettings.anaglyph = false;
-        }
-        if(!NotFineConfig.allowToggleFBO) {
-            Minecraft.getMinecraft().gameSettings.fboEnable = true;
         }
 
         for(Settings setting : Settings.values()) {

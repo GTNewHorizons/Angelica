@@ -12,9 +12,7 @@ public class NotFineConfig {
     private static final String CATEGORY_TOGGLE = "toggle";
     private static final String CATEGORY_UNFINISHED = "unfinished";
 
-    public static boolean allowAdvancedOpenGL;
     public static boolean allowToggle3DAnaglyph;
-    public static boolean allowToggleFBO;
 
     public static boolean betterBlockFaceCulling;
     public static boolean renderPass;
@@ -23,12 +21,7 @@ public class NotFineConfig {
         File configFile = new File(Launch.minecraftHome + File.separator + "config" + File.separator + NotFine.MODID + File.separator + "notfine.cfg");
         Configuration config = new Configuration(configFile);
 
-        allowAdvancedOpenGL = config.getBoolean("allowAdvancedOpenGL", CATEGORY_GENERAL, false,
-            "Allow Advanced OpenGL to be enabled when it might be supported.");
-        allowToggle3DAnaglyph = config.getBoolean("allowToggle3DAnaglyph", CATEGORY_GENERAL, true,
-            "Allow 3D Anaglyph to be enabled.");
-        allowToggleFBO = config.getBoolean("allowToggleFBO", CATEGORY_GENERAL, false,
-            "Allow FBOs to be disabled.");
+        allowToggle3DAnaglyph = config.getBoolean("allowToggle3DAnaglyph", CATEGORY_GENERAL, true, "Allow 3D Anaglyph to be enabled.");
 
         config.setCategoryComment(CATEGORY_TOGGLE, "Toggle mod features.");
         betterBlockFaceCulling = config.getBoolean("betterBlockFaceCulling", CATEGORY_TOGGLE, true,
@@ -43,10 +36,7 @@ public class NotFineConfig {
             config.save();
         }
 
-        //These will probably break hard with Angelica.
-        //AdvancedOpenGL even breaks hard on its own.
-        allowAdvancedOpenGL = false;
-        allowToggleFBO = false;
+        //This will probably break hard with Angelica.
         renderPass = false;
     }
 

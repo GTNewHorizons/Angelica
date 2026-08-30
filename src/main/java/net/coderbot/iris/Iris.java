@@ -343,11 +343,11 @@ public class Iris {
             final Minecraft mc = Minecraft.getMinecraft();
             try {
                 reload();
-                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText("Shaders Reloaded!"));
+                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(I18n.format("iris.shaders.reloaded")));
 
             } catch (Exception e) {
                 logger.error("Error while reloading Shaders for Iris!", e);
-                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText( "Failed tgo reload shaders! Reason: " + Throwables.getRootCause(e).getMessage()));
+                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(I18n.format("iris.shaders.reloaded.failure", Throwables.getRootCause(e).getMessage())));
             }
         } else if (toggleShadersKeybind.isPressed()) {
             final Minecraft mc = Minecraft.getMinecraft();
@@ -356,7 +356,7 @@ public class Iris {
             } catch (Exception e) {
                 logger.error("Error while toggling shaders!", e);
 
-                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText( "Failed tgo toggle shaders! Reason: " + Throwables.getRootCause(e).getMessage()));
+                if (mc.thePlayer != null) mc.thePlayer.addChatMessage(new ChatComponentText(I18n.format("iris.shaders.toggled.failure", Throwables.getRootCause(e).getMessage())));
                 setShadersDisabled();
                 fallback = true;
             }
@@ -974,9 +974,9 @@ public class Iris {
 
     public void fmlInitEvent() {
         IRIS_VERSION = Tags.VERSION;
-        reloadKeybind = new KeyBinding("Reload Shaders", 0, "Iris Keybinds");
-        toggleShadersKeybind = new KeyBinding("Toggle Shaders", 0, "Iris Keybinds");
-        shaderpackScreenKeybind = new KeyBinding("Shaderpack Selection Screen", 0, "Iris Keybinds");
+        reloadKeybind = new KeyBinding("iris.keybind.reload", 0, "key.category.iris.keybinds");
+        toggleShadersKeybind = new KeyBinding("iris.keybind.toggleShaders", 0, "key.category.iris.keybinds");
+        shaderpackScreenKeybind = new KeyBinding("iris.keybind.shaderPackSelection", 0, "key.category.iris.keybinds");
 
         ClientRegistry.registerKeyBinding(reloadKeybind);
         ClientRegistry.registerKeyBinding(toggleShadersKeybind);
