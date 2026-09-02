@@ -17,6 +17,10 @@ public final class BopFogColorSource implements BopFogBlend.ColorSource {
         return this;
     }
 
+    public void freeWorld() {
+        this.world = null;
+    }
+
     @Override
     public int fogColour(int x, int y, int z) {
         final BiomeGenBase biome = FogBiomeCache.get(world, x, z);

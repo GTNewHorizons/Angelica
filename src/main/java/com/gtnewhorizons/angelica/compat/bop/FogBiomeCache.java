@@ -9,7 +9,7 @@ public final class FogBiomeCache {
     private static final int MAX_ENTRIES = 16384;
 
     private static final Long2ObjectOpenHashMap<BiomeGenBase> CACHE = new Long2ObjectOpenHashMap<>();
-    private static World lastWorld;
+    private static World cachedWorld;
     private static int generation;
 
     private FogBiomeCache() {}
@@ -18,10 +18,14 @@ public final class FogBiomeCache {
         return generation;
     }
 
+    public static void invalidate() {
+        cachedWorld = null;
+    }
+
     public static BiomeGenBase get(World world, int x, int z) {
-        if (world != lastWorld) {
+        if (world != cachedWorld) {
             CACHE.clear();
-            lastWorld = world;
+            cachedWorld = world;
             generation++;
         }
         final long key = ((long) x << 32) | (z & 0xFFFFFFFFL);
