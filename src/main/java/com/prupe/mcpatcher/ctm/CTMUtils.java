@@ -263,6 +263,35 @@ public class CTMUtils {
         return getBlockIcon(icon, block, face, 0);
     }
 
+    private static boolean hasTranslucentOverrideWithoutLock(Block block) {
+        List<BlockStateMatcher> matchers = overrides.getBlock().get(block);
+        if (matchers == null) {
+            return false;
+        }
+        for (BlockStateMatcher matcher : matchers) {
+            if (((TileOverride) matcher.getData()).getRenderPass() == RenderPassAPI.TRANSLUCENT_RENDER_PASS) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // Used by MixinBlock_TranslucentCtm to decide whether this block should also get a translucent-pass
+    // invocation from the chunk mesher, for a CTM override that explicitly opted in via renderPass=translucent.
+    public static boolean hasTranslucentOverride(Block block) {
+        long stamp = lock.tryOptimisticRead();
+        boolean value = hasTranslucentOverrideWithoutLock(block);
+        if (!lock.validate(stamp)) {
+            stamp = lock.readLock();
+            try {
+                value = hasTranslucentOverrideWithoutLock(block);
+            } finally {
+                lock.unlockRead(stamp);
+            }
+        }
+        return value;
+    }
+
     public static void reset() {
         clearCurrentCompact();
     }

@@ -903,7 +903,10 @@ public enum Mixins implements IMixins {
     MCPATCHER_FORGE_CONNECTED_TEXTURES(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures && MCPatcherForgeConfig.ConnectedTextures.enabled)
-        .addClientMixins("mcpatcherforge.ctm.MixinRenderBlocks")
+        .addClientMixins(addPrefix("mcpatcherforge.ctm.",
+            "MixinRenderBlocks",
+            "MixinBlock_TranslucentCtm"
+        ))
     ),
     MCPATCHER_FORGE_EXTENDED_HD(new MixinBuilder()
         .setPhase(Phase.EARLY)
