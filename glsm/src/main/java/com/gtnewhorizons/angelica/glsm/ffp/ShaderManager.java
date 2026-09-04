@@ -80,6 +80,10 @@ public final class ShaderManager {
         warmUp();
         enabled = true;
 
+        if (GLStateManager.getActiveProgram() == 0) {
+            activate();
+        }
+
         GLStateManager.LOGGER.info("FFP shader emulation enabled");
     }
 
