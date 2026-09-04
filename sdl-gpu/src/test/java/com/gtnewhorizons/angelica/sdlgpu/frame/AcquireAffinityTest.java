@@ -12,22 +12,17 @@ class AcquireAffinityTest {
 
     @Test
     void acquiringOnTheWindowThreadIsTheOnlyAcceptedCase() {
-        assertFalse(FrameManager.acquireAffinityViolated(WINDOW, WINDOW, 0));
+        assertFalse(FrameManager.acquireAffinityViolated(WINDOW, WINDOW));
     }
 
     @Test
     void acquiringOnAnyOtherThreadViolatesTheSdlContract() {
-        assertTrue(FrameManager.acquireAffinityViolated(OTHER, WINDOW, 0));
-    }
-
-    @Test
-    void aLaterAcquireFromASecondThreadViolatesEvenWhenTheFirstWasCorrect() {
-        assertTrue(FrameManager.acquireAffinityViolated(WINDOW, WINDOW, 1),
-            "drift after a correct first acquire must still be caught");
+        assertTrue(FrameManager.acquireAffinityViolated(OTHER, WINDOW));
     }
 
     @Test
     void anUnknownWindowThreadCannotBeJudged() {
-        assertFalse(FrameManager.acquireAffinityViolated(OTHER, null, 3));
+        assertFalse(FrameManager.acquireAffinityViolated(OTHER, null),
+            "the check runs before the window is claimed; judging a null window would throw at startup");
     }
 }

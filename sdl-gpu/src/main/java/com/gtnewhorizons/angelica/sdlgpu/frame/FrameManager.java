@@ -466,11 +466,15 @@ public final class FrameManager {
 
     private volatile boolean acquireThreadReported;
 
+    static boolean acquireAffinityViolated(Thread self, Thread window) {
+        return window != null && window != self;
+    }
+
     private void checkAcquireOnWindowThread() {
         if (acquireThreadReported) return;
         final Thread self = Thread.currentThread();
         final Thread window = device.getWindowThread();
-        if (window == null || window == self) return;
+        if (!acquireAffinityViolated(self, window)) return;
         acquireThreadReported = true;
 
         final String message = "Swapchain acquired on '" + self.getName() + "', window created on '" + window.getName() + "'";
