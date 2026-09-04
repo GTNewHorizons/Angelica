@@ -8,6 +8,7 @@ import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.resources.DefaultResourcePack;
+import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -21,7 +22,6 @@ import java.io.IOException;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.List;
 import java.util.Objects;
 
 public class FontStrategist {
@@ -76,9 +76,11 @@ public class FontStrategist {
             packMap.put(FontProviderCustom.getFallback().getAtlasResourceName(i), new File(FontProviderCustom.getFallback().getAtlasFullPath(i)));
         }
 
+        Minecraft mc = Minecraft.getMinecraft();
         DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
-        List defaultResourcePacks = ((ResourceAccessor) Minecraft.getMinecraft()).angelica$getDefaultResourcePacks();
-        defaultResourcePacks.add(fontResourcePack);
+
+        ((ResourceAccessor) mc).angelica$getDefaultResourcePacks().add(fontResourcePack);
+        ((SimpleReloadableResourceManager) mc.getResourceManager()).reloadResourcePack(fontResourcePack);
     }
 
     // Load .ttf/.otf shipped with the pack so customFontName* can point at a font that isn't installed
