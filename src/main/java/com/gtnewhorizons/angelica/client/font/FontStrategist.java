@@ -33,37 +33,33 @@ public class FontStrategist {
     static {
         HashMap<String, Font> fontSet = new HashMap<>();
 
-        if (GraphicsEnvironment.isHeadless()) {
-            LOGGER.warn("GraphicsEnvironment.isHeadless() returned true! Only bundled fonts will be available. This is likely a MacOS issue.");
-        } else {
-            // get available fonts without duplicates (250 copies of dialog.plain need not apply)
-            Font[] availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-            HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
+        // get available fonts without duplicates (250 copies of dialog.plain need not apply)
+        Font[] availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
 
-            for (Font font : availableFontsDirty) {
-                String fontName = font.getFontName();
-                if (fontSet.containsKey(fontName)) {
-                    duplicates.add(fontName);
-                } else {
-                    fontSet.put(fontName, font);
-                }
+        for (Font font : availableFontsDirty) {
+            String fontName = font.getFontName();
+            if (fontSet.containsKey(fontName)) {
+                duplicates.add(fontName);
+            } else {
+                fontSet.put(fontName, font);
             }
-
-            if (!duplicates.isEmpty()) {
-                StringBuilder sb = new StringBuilder(duplicates.size() + " duplicate font(s) found in the list reported by Java: ");
-                for (Iterator<String> iter = duplicates.stream().distinct().iterator(); iter.hasNext(); ) {
-                    String dupe = iter.next();
-                    sb.append(duplicates.count(dupe)).append("x ").append(dupe);
-                    if (iter.hasNext()) {
-                        sb.append(", ");
-                    }
-                }
-                sb.append(". Some fonts may be missing from the font selection menu.");
-                LOGGER.warn(sb.toString());
-            }
-
-            LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, fontSet.size());
         }
+
+        if (!duplicates.isEmpty()) {
+            StringBuilder sb = new StringBuilder(duplicates.size() + " duplicate font(s) found in the list reported by Java: ");
+            for (Iterator<String> iter = duplicates.stream().distinct().iterator(); iter.hasNext(); ) {
+                String dupe = iter.next();
+                sb.append(duplicates.count(dupe)).append("x ").append(dupe);
+                if (iter.hasNext()) {
+                    sb.append(", ");
+                }
+            }
+            sb.append(". Some fonts may be missing from the font selection menu.");
+            LOGGER.warn(sb.toString());
+        }
+
+        LOGGER.info("Got {} fonts from GraphicsEnvironment ({} after deduplication)", availableFontsDirty.length, fontSet.size());
 
         loadBundledFonts(fontSet);
 
