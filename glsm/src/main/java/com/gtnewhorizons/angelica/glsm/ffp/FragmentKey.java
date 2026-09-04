@@ -12,7 +12,7 @@ import org.lwjgl.opengl.GL13;
  * Packed-long fragment shader permutation key for FFP emulation.
  *
  * Layout:
- *   long[0]: global bits (12) + unit 0 (47 bits at offset 12)
+ *   long[0]: global bits (13) + unit 0 (47 bits at offset 13)
  *   long[1..3]: unit 1..3 (47 bits each, low-aligned)
  * Only max(1, nrEnabledUnits) longs are significant.
  *
@@ -63,7 +63,7 @@ public final class FragmentKey {
     public static final int FOG_EXP    = 2;
     public static final int FOG_EXP2   = 3;
 
-    private static final int GLOBAL_BITS = 12;
+    private static final int GLOBAL_BITS = 13;
     private static final int BIT_FOG_MODE          = 0;  // 2 bits
     private static final int BIT_ALPHA_TEST        = 2;  // 1 bit
     private static final int BIT_ALPHA_FUNC        = 3;  // 3 bits
@@ -71,6 +71,7 @@ public final class FragmentKey {
     private static final int BIT_NR_ENABLED_UNITS  = 7;  // 3 bits
     private static final int BIT_OVERLAY_ENABLED   = 10; // 1 bit
     private static final int BIT_LINE_STIPPLE      = 11; // 1 bit
+    private static final int BIT_COLOR_SUM         = 12; // 1 bit
 
     private static final int U_ENABLED         = 0;
     private static final int U_MODE            = 1;   // 3 bits
@@ -130,10 +131,12 @@ public final class FragmentKey {
             global |= (1L << BIT_LINE_STIPPLE);
         }
 
-        // Separate specular
+        // Separate specular / color sum
         if (GLStateManager.getLightingState().isEnabled()
             && GLStateManager.getLightModel().colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
             global |= (1L << BIT_SEPARATE_SPECULAR);
+        } else if (GLStateManager.getColorSumState().isEnabled()) {
+            global |= (1L << BIT_COLOR_SUM);
         }
 
         // Per-unit state
@@ -238,6 +241,7 @@ public final class FragmentKey {
     public boolean alphaTestEnabled() { return ((packed[0] >> BIT_ALPHA_TEST) & 1) != 0; }
     public int alphaTestFunc()        { return (int) ((packed[0] >> BIT_ALPHA_FUNC) & 0x7); }
     public boolean separateSpecular() { return ((packed[0] >> BIT_SEPARATE_SPECULAR) & 1) != 0; }
+    public boolean colorSum()         { return ((packed[0] >> BIT_COLOR_SUM) & 1) != 0; }
     public boolean lineStipple()      { return ((packed[0] >> BIT_LINE_STIPPLE) & 1) != 0; }
     public int nrEnabledUnits()       { return (int) ((packed[0] >> BIT_NR_ENABLED_UNITS) & 0x7); }
     public boolean overlayEnabled()   { return ((packed[0] >> BIT_OVERLAY_ENABLED) & 1) != 0; }
@@ -374,10 +378,10 @@ public final class FragmentKey {
             default -> "?";
         };
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b overlay=%b units=%d",
+        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b colorSum=%b overlay=%b units=%d",
             fogName, alphaTestEnabled(),
             alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-",
-            separateSpecular(), overlayEnabled(), nrEnabledUnits()));
+            separateSpecular(), colorSum(), overlayEnabled(), nrEnabledUnits()));
         for (int i = 0; i < nrEnabledUnits(); i++) {
             if (!unitEnabled(i)) {
                 sb.append(String.format(" u%d=OFF", i));

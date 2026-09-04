@@ -276,6 +276,10 @@ public final class FragmentShaderGenerator {
             sb.append("  // Add separate specular\n");
             sb.append("  color.rgb += v_SpecularColor;\n");
         }
+        if (key.colorSum()) {
+            sb.append("  // Color sum - GL_COLOR_SUM with the current secondary color\n");
+            sb.append("  color.rgb += u_SecondaryColor;\n");
+        }
     }
 
     private static void emitAlphaTest(StringBuilder sb, FragmentKey key) {

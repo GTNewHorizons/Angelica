@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import com.gtnewhorizons.angelica.compat.bop.BopFogBlend;
+import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -168,6 +170,8 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         ModelPartBatcher.INSTANCE.clear();
         GpuCulling.onWorldUnload();
         FfpExtendedAttribs.reset();
+        BopFogBlend.invalidate();
+        FogBiomeCache.invalidate();
         super.unloadWorld();
     }
 

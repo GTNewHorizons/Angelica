@@ -204,10 +204,19 @@ public class BatchingFontRenderer {
         return (argb & 0xFF000000) | (red << 16) | (green << 8) | blue;
     }
 
+    /**
+     * True only for a perspective projection (world-space text: signs, nameplates, etc).
+     * GUI/HUD text uses an orthographic projection and must never be shaded by world lighting -
+     * mods rely on getting back the exact color they requested (e.g. GTNHLib's ColorResource).
+     */
+    private static boolean isWorldSpaceText() {
+        return GLStateManager.getProjectionMatrix().m33() == 0.0f;
+    }
+
     private void captureLightmapState() {
         final int unitBinding = GLStateManager.getTextures().getTextureUnitBindings(LIGHTMAP_TEX_UNIT).getBinding();
 
-        final boolean active = GLStateManager.getProjectionMatrix().m33() == 0.0f && unitBinding != 0;
+        final boolean active = isWorldSpaceText() && unitBinding != 0;
 
         float u = 0.0f;
         float v = 0.0f;
@@ -1236,7 +1245,7 @@ public class BatchingFontRenderer {
 
         this.beginBatch();
         this.captureLightmapState();
-        this.lightingFactorActive = FFPVertexLighting.modulatesVertexColor(this.lightingFactor);
+        this.lightingFactorActive = isWorldSpaceText() && FFPVertexLighting.modulatesVertexColor(this.lightingFactor);
         float curX = anchorX;
         try {
             final int totalStringLength = string.length();

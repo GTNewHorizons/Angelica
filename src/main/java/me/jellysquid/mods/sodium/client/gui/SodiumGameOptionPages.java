@@ -303,9 +303,10 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(StreamingUploader.UploadStrategy.class, sodiumOpts)
                     .setName(I18n.format("sodium.options.upload_method.name"))
                     .setTooltip(I18n.format("sodium.options.upload_method.tooltip"))
-                    .setControl(o ->
-                        new CyclingControl<>(o, StreamingUploader.UploadStrategy.class, StreamingUploader.UploadStrategy.values())
-                    )
+                    .setControl(o -> new CyclingControl<>(o, StreamingUploader.UploadStrategy.class, new String[]{
+                        I18n.format("sodium.options.upload_method.buffer_data"),
+                        I18n.format("sodium.options.upload_method.buffer_subdata"),
+                        I18n.format("sodium.options.upload_method.map_buffer") }))
                     .setBinding((opts, value) -> opts.advanced.streamingUploadStrategy = value, opts -> opts.advanced.streamingUploadStrategy)
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .setImpact(OptionImpact.VARIES)
@@ -409,7 +410,10 @@ public class SodiumGameOptionPages {
                 .add(OptionImpl.createBuilder(AsyncOcclusionMode.class, sodiumOpts)
                         .setName(I18n.format("sodium.options.async_occlusion_mode.name"))
                         .setTooltip(I18n.format("sodium.options.async_occlusion_mode.tooltip"))
-                        .setControl(o -> new CyclingControl<>(o, AsyncOcclusionMode.class, new String[]{"None", "Only Shadow", "Everything"}))
+                        .setControl(o -> new CyclingControl<>(o, AsyncOcclusionMode.class, new String[]{
+                            I18n.format("sodium.options.async_occlusion_mode.none"),
+                            I18n.format("sodium.options.async_occlusion_mode.only_shadow"),
+                            I18n.format("sodium.options.async_occlusion_mode.everything") }))
                         .setImpact(OptionImpact.MEDIUM)
                         .setBinding((opts, value) -> opts.performance.asyncOcclusionMode = value, opts -> opts.performance.asyncOcclusionMode)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)

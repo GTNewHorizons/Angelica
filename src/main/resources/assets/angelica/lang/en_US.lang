@@ -101,13 +101,18 @@ sodium.options.use_no_error_context.name=No Error Context
 sodium.options.use_no_error_context.tooltip=If enabled, the OpenGL context will be created with error checking disabled. This may slightly improve performance, but it also increases the risk that the game will crash instead of gracefully handling OpenGL errors. You should disable this option if you are experiencing sudden unexplained crashes.
 sodium.options.async_occlusion_mode.name=Async Occlusion
 sodium.options.async_occlusion_mode.tooltip=Controls which render passes use asynchronous occlusion culling. ONLY_SHADOW (default) runs async occlusion only for the shadow pass, keeping the main render list synchronous. EVERYTHING runs all passes async, which may cause 1-frame visibility lag during fast camera movement. NONE disables async occlusion entirely.
+sodium.options.async_occlusion_mode.none=None
+sodium.options.async_occlusion_mode.only_shadow=Only Shadow
+sodium.options.async_occlusion_mode.everything=Everything
 sodium.options.use_occlusion_culling.name=Occlusion Culling
 sodium.options.use_occlusion_culling.tooltip=If enabled, chunks that are hidden behind other chunks will not be rendered. Disabling this will significantly reduce performance but can be useful for debugging.
 sodium.options.threads.value=%s thread(s)
 sodium.options.default=Default
 sodium.options.buttons.undo=Undo
 sodium.options.buttons.apply=Apply
-sodium.options.buttons.donate=Buy coffee for JellySquid!
+sodium.options.anaglyph.tooltip=If enabled, the world will be rendered twice with red/cyan color masks.
+sodium.options.show_cape.tooltip=If enabled, your cape will be shown.
+rso.search_bar_empty=Search options...
 
 options.dynamic_fov=Dynamic FOV
 options.dynamic_fov.tooltip=If enabled, the game's field of view will change based on the player's speed.
@@ -115,6 +120,15 @@ options.framerate=%s FPS
 
 iris.shaders.toggled=Toggled shaders to %s!
 iris.shaders.disabled=Shaders disabled!
+iris.shaders.reloaded=Shaders Reloaded!
+iris.shaders.reloaded.failure=Failed to reload shaders! Reason: %s
+iris.shaders.toggled.failure=Failed to toggle shaders! Reason: %s
+
+key.category.iris.keybinds=Iris Keybinds
+iris.keybind.reload=Reload Shaders
+iris.keybind.toggleShaders=Toggle Shaders
+iris.keybind.shaderPackSelection=Shaderpack Selection Screen
+angelica.keybind.zoom=Zoom
 
 options.iris.apply=Apply
 options.iris.refresh=Refresh
@@ -176,10 +190,14 @@ options.dynamic_lights_cull_timeout=Culling Timeout (ticks)
 options.dynamic_lights_cull_timeout.tooltip=Maximum ticks a hidden chunk can wait before being forced to rebuild. Lower = more responsive but more GPU work.
 options.dynamiclights.page=Dynamic Lights
 options.dynamiclights.entities=Configure Entities...
+options.dynamiclights.entities.tooltip=Choose which entity types emit dynamic light.
 options.dynamiclights.entities.title=Dynamic Lights - Entities
 options.dynamiclights.entities.info=Toggle which entity types emit dynamic light. Some entries are for mod compatibility.
 options.dynamiclights.entities.search=Search (@mod, $on, $off)
-options.dynamiclights.entity.tooltip=Toggle dynamic lighting for %s entities. Disable to improve performance if this entity type emits unwanted lights.
+options.dynamiclights.entities.enableall=Enable All
+options.dynamiclights.entities.disableall=Disable All
+options.dynamiclights.entities.enableshown=Enable Shown
+options.dynamiclights.entities.disableshown=Disable Shown
 
 options.angelica.search.no_results=No matching options
 options.angelica.fontconfig=Font Configuration...

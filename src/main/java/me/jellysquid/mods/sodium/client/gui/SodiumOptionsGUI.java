@@ -54,7 +54,6 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
     protected OptionPage shaderPacks;
 
-
     public SodiumOptionsGUI(GuiScreen prevScreen) {
         this.prevScreen = prevScreen;
 
@@ -67,10 +66,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
         // Add Dynamic Lights page if enabled
         if (DynamicLights.configEnabled) {
-            var dlPage = DynamicLightsOptionPages.dynamicLights();
-            if (dlPage != null) {
-                this.pages.add(dlPage);
-            }
+            this.pages.add(DynamicLightsOptionPages.dynamicLights());
         }
 
         if (Iris.enabled) {
@@ -194,15 +190,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
                 .findFirst()
                 .orElse(null);
 
-        boolean hasChanges = this.getAllOptions().anyMatch(Option::hasChanged);
-
-        for (OptionPage page : this.pages) {
-            for (Option<?> option : page.getOptions()) {
-                if (option.hasChanged()) {
-                    hasChanges = true;
-                }
-            }
-        }
+        final boolean hasChanges = this.getAllOptions().anyMatch(Option::hasChanged);
 
         this.applyButton.setEnabled(hasChanges);
         this.undoButton.setVisible(hasChanges);

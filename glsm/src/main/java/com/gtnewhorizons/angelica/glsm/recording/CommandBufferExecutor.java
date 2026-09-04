@@ -274,6 +274,13 @@ public final class CommandBufferExecutor {
                     ptr += 16;
                     GLStateManager.glColor4f(r, g, b, a);
                 }
+                case GLCommand.SECONDARY_COLOR -> {
+                    final float r = memGetFloat(ptr);
+                    final float g = memGetFloat(ptr + 4);
+                    final float b = memGetFloat(ptr + 8);
+                    ptr += 12;
+                    GLStateManager.glSecondaryColor3f(r, g, b);
+                }
                 case GLCommand.CLEAR_COLOR -> {
                     final float r = memGetFloat(ptr);
                     final float g = memGetFloat(ptr + 4);

@@ -11,6 +11,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHold
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.utils.NaturalTextureUtils;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceMap;
@@ -361,8 +363,16 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         setRenderPass(pass);
         // Trigger side effects from canRenderInPass (some ISBRHs like BuildCraft set global state in this method that gets read elsewhere renderWorldBlock)
         block.canRenderInPass(pass);
+
+        // Some blocks get randomly rotated top faces
+        final boolean applyNaturalTex = AngelicaConfig.enableNaturalTextures && NaturalTextureUtils.isNaturalBlock(block);
+        if (applyNaturalTex) { renderBlocks.uvRotateTop = NaturalTextureUtils.getTopRotation(x, y, z); }
+
         tessellator.startDrawingQuads();
         renderBlocks.renderBlockByRenderType(block, x, y, z);
+
+        if (applyNaturalTex) { renderBlocks.uvRotateTop = 0; } // Reset
+
         boolean blockAllowsSmoothLighting = Minecraft.isAmbientOcclusionEnabled() // smooth lighting on
             && block.getLightValue() == 0; // does not emit real block light
         buildContext.copyRawBuffer(tessellator.rawBuffer, tessellator.vertexCount,

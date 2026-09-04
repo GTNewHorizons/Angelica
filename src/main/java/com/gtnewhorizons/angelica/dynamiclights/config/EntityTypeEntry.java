@@ -1,42 +1,47 @@
 package com.gtnewhorizons.angelica.dynamiclights.config;
 
+import java.util.Locale;
+
 import org.jetbrains.annotations.NotNull;
 
-public class EntityTypeEntry {
-    private final String displayName;
-    private final String className;
-    private final String modId;
-    private boolean enabled;
+public final class EntityTypeEntry {
 
-    public EntityTypeEntry(@NotNull String displayName, @NotNull String className, @NotNull String modId, boolean enabled) {
+    private final String displayName;
+    private final Class<?> entityClass;
+    private final String modId;
+    private final String searchName;
+    private final String searchModId;
+
+    public EntityTypeEntry(@NotNull String displayName, @NotNull Class<?> entityClass, @NotNull String modId) {
         this.displayName = displayName;
-        this.className = className;
+        this.entityClass = entityClass;
         this.modId = modId;
-        this.enabled = enabled;
+        this.searchName = displayName.toLowerCase(Locale.ROOT);
+        this.searchModId = modId.toLowerCase(Locale.ROOT);
     }
 
     public String getDisplayName() {
         return displayName;
     }
 
-    public String getClassName() {
-        return className;
+    public Class<?> getEntityClass() {
+        return entityClass;
     }
 
     public String getModId() {
         return modId;
     }
 
-    public boolean isEnabled() {
-        return enabled;
+    public String getSearchName() {
+        return searchName;
     }
 
-    public void setEnabled(boolean enabled) {
-        this.enabled = enabled;
+    public String getSearchModId() {
+        return searchModId;
     }
 
     @Override
     public String toString() {
-        return displayName + " (" + modId + ") [" + (enabled ? "ON" : "OFF") + "]";
+        return displayName + " (" + modId + ")";
     }
 }

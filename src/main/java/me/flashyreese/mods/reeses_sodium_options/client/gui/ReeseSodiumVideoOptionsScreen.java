@@ -105,9 +105,9 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         final Dim2i applyButtonDim = new Dim2i(tabFrameDim.getLimitX() - 134, tabFrameDim.getLimitY() + 5, 65, 20);
         final Dim2i closeButtonDim = new Dim2i(tabFrameDim.getLimitX() - 65, tabFrameDim.getLimitY() + 5, 65, 20);
 
-        this.undoButton = new FlatButtonWidget(undoButtonDim, "Undo", this::undoChanges);
-        this.applyButton = new FlatButtonWidget(applyButtonDim, "Apply", this::applyChanges);
-        this.closeButton = new FlatButtonWidget(closeButtonDim, "Close", this::onClose);
+        this.undoButton = new FlatButtonWidget(undoButtonDim, I18n.format("sodium.options.buttons.undo"), this::undoChanges);
+        this.applyButton = new FlatButtonWidget(applyButtonDim, I18n.format("sodium.options.buttons.apply"), this::applyChanges);
+        this.closeButton = new FlatButtonWidget(closeButtonDim, I18n.format("gui.done"), this::onClose);
 
         // Pre-compute button text and widths to avoid duplicate calculations
         final String irisText = Iris.enabled ? I18n.format(IrisApi.getInstance().getMainScreenLanguageKey()) : null;
@@ -202,16 +202,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     }
 
     private void updateControls() {
-        boolean hasChanges = this.getAllOptions()
-                .anyMatch(Option::hasChanged);
-
-        for (OptionPage page : this.pages) {
-            for (Option<?> option : page.getOptions()) {
-                if (option.hasChanged()) {
-                    hasChanges = true;
-                }
-            }
-        }
+        final boolean hasChanges = this.getAllOptions().anyMatch(Option::hasChanged);
 
         this.applyButton.setEnabled(hasChanges);
         this.undoButton.setVisible(hasChanges);

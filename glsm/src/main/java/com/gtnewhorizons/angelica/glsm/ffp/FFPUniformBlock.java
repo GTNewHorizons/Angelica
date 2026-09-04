@@ -103,6 +103,7 @@ public final class FFPUniformBlock {
     public static final int TEX_ENV_COLOR_2 = vec4("u_TexEnvColor2");
     public static final int TEX_ENV_COLOR_3 = vec4("u_TexEnvColor3");
     public static final int OVERLAY_COLOR = vec4("u_OverlayColor");
+    public static final int SECONDARY_COLOR = vec3("u_SecondaryColor");
     public static final int FOG_PARAMS = vec4("u_FogParams");
     public static final int FOG_COLOR = vec4("u_FogColor");
 

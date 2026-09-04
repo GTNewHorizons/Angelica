@@ -356,6 +356,14 @@ public final class CommandRecorder {
         writeFloat(a);
     }
 
+    public void writeSecondaryColor(float r, float g, float b) {
+        ensureCapacity(16);
+        writeInt(GLCommand.SECONDARY_COLOR);
+        writeFloat(r);
+        writeFloat(g);
+        writeFloat(b);
+    }
+
     public void writeClearColor(float r, float g, float b, float a) {
         ensureCapacity(20);
         writeInt(GLCommand.CLEAR_COLOR);

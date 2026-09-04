@@ -93,11 +93,7 @@ public class SearchTextFieldComponent extends AbstractWidget {
             return;
         }
         if (!this.isFocused() && this.text.isEmpty()) {
-            final String key = "rso.search_bar_empty";
-            String text = I18n.format(key);
-            if (text.equals(key))
-                text = "Search options...";
-            this.textRenderer.drawString(text, this.dim.getOriginX() + 6, this.dim.getOriginY() + 6, 0xFFAAAAAA);
+            this.textRenderer.drawString(I18n.format("rso.search_bar_empty"), this.dim.getOriginX() + 6, this.dim.getOriginY() + 6, 0xFFAAAAAA);
         }
 
         drawRect(this.dim.getOriginX(), this.dim.getOriginY(), this.dim.getLimitX(), this.dim.getLimitY(), this.isFocused() ? 0xE0000000 : 0x90000000);
