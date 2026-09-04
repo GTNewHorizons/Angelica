@@ -187,6 +187,9 @@ fun Test.configureAngelicaJava8() {
     }
     dependsOn(tasks.extractNatives2)
     jvmArgs("-Djava.library.path=${tasks.extractNatives2.get().destinationFolder.asFile.get().path}")
+    if (isMacOs) {
+        jvmArgs("-Dapple.awt.UIElement=true")
+    }
     testLogging { events("passed", "skipped", "failed") }
 
     val swaps = mapOf(

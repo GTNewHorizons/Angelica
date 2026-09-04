@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.lwjgl.sdl.SDLError;
+import org.lwjgl.sdl.SDLHints;
 import org.lwjgl.sdl.SDLInit;
 
 import java.lang.reflect.Field;
@@ -67,8 +68,13 @@ public final class SdlTestRig {
 
     private static final int SHADER_FORMATS = SDL_GPU_SHADERFORMAT_SPIRV | SDL_GPU_SHADERFORMAT_MSL | SDL_GPU_SHADERFORMAT_DXBC | SDL_GPU_SHADERFORMAT_DXIL;
 
+    public static void initSdlVideo() {
+        SDLHints.SDL_SetHint(SDLHints.SDL_HINT_MAC_BACKGROUND_APP, "1");
+        assumeTrue(SDLInit.SDL_Init(SDL_INIT_VIDEO), () -> "SDL_Init failed: " + SDLError.SDL_GetError());
+    }
+
     public static SdlTestRig acquireRealDevice() throws ReflectiveOperationException {
-        assumeTrue(SDLInit.SDL_Init(SDL_INIT_VIDEO), "SDL_Init failed: " + SDLError.SDL_GetError());
+        initSdlVideo();
         realSdlDevice = SDL_CreateGPUDevice(SHADER_FORMATS, true, (CharSequence) null);
         assumeTrue(realSdlDevice != 0, "No SDL GPU device: " + SDLError.SDL_GetError());
 

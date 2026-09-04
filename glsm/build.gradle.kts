@@ -224,6 +224,9 @@ fun Test.configureGlsmJava8() {
     val extractNatives = rootProject.tasks.named("extractNatives2")
     dependsOn(extractNatives)
     jvmArgs("-Djava.library.path=${extractNatives.get().property("destinationFolder").let { (it as DirectoryProperty).asFile.get().path }}")
+    if (System.getProperty("os.name").lowercase().contains("mac")) {
+        jvmArgs("-Dapple.awt.UIElement=true")
+    }
 }
 
 tasks.test {

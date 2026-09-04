@@ -1,16 +1,14 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
+import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
-import org.lwjgl.sdl.SDLError;
-import org.lwjgl.sdl.SDLInit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
-import static org.lwjgl.sdl.SDLInit.SDL_INIT_VIDEO;
 
 class DeviceLifecycleGpuTest {
 
@@ -18,7 +16,7 @@ class DeviceLifecycleGpuTest {
 
     @BeforeAll
     static void initSdl() {
-        assumeTrue(SDLInit.SDL_Init(SDL_INIT_VIDEO), () -> "SDL_Init failed: " + SDLError.SDL_GetError());
+        SdlTestRig.initSdlVideo();
     }
 
     @AfterEach
