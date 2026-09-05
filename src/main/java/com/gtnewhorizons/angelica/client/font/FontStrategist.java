@@ -4,6 +4,7 @@ import com.google.common.collect.HashMultiset;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
 import cpw.mods.fml.client.SplashProgress;
+import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
@@ -34,8 +35,15 @@ public class FontStrategist {
         HashMap<String, Font> fontSet = new HashMap<>();
 
         // get available fonts without duplicates (250 copies of dialog.plain need not apply)
-        Font[] availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
-        HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
+        final Font[] availableFontsDirty;
+        final HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
+
+        if (isSafeToUseAwtEnvironmentData()) {
+            availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
+        } else {
+            LOGGER.warn("System font enumeration is disabled because AWT API is unsafe in this environment. Update lwjgl3ify!");
+            availableFontsDirty = new Font[0];
+        }
 
         for (Font font : availableFontsDirty) {
             String fontName = font.getFontName();
@@ -77,6 +85,25 @@ public class FontStrategist {
 
         ((ResourceAccessor) mc).angelica$getDefaultResourcePacks().add(fontResourcePack);
         ((SimpleReloadableResourceManager) mc.getResourceManager()).reloadResourcePack(fontResourcePack);
+    }
+
+    private static boolean isSafeToUseAwtEnvironmentData() {
+        if (!GraphicsEnvironment.isHeadless()) return true;
+
+        try {
+            Class<?> tags = Class.forName(
+                "me.eigenraven.lwjgl3ify.Tags",
+                false,
+                FontStrategist.class.getClassLoader());
+            String version = (String) tags.getField("VERSION").get(null);
+
+            // See https://github.com/GTNewHorizons/RetroFuturaBootstrap/commit/6d39c56ba0f1496b5599a3660d1578df3b28ff17
+            // This change corresponds to RFB 1.0.14, switch was used since lwjgl3ify 3.0.8
+            return new DefaultArtifactVersion(version)
+                .compareTo(new DefaultArtifactVersion("3.0.8")) >= 0;
+        } catch (ReflectiveOperationException | LinkageError e) {
+            return false;
+        }
     }
 
     // Load .ttf/.otf shipped with the pack so customFontName* can point at a font that isn't installed
