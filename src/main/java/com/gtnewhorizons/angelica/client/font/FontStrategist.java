@@ -13,8 +13,6 @@ import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import cpw.mods.fml.common.Loader;
-
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
@@ -109,13 +107,8 @@ public class FontStrategist {
     // Load .ttf/.otf shipped with the pack so customFontName* can point at a font that isn't installed
     // on the system. fontfiles/ is SmoothFont's folder, kept so packs built for it work unchanged.
     private static void loadBundledFonts(HashMap<String, Font> fontSet) {
-        File configDir = Loader.instance().getConfigDir();
-        if (configDir == null) {
-            LOGGER.warn("Loader.instance().getConfigDir() returned null. Bundled fonts will not be loaded.");
-            return;
-        }
-        File parent = configDir.getParentFile();
-        File[] fontDirs = { new File(parent, "fontfiles"), new File(configDir, "angelica/fonts") };
+        File gameDir = Minecraft.getMinecraft().mcDataDir;
+        File[] fontDirs = { new File(gameDir, "fontfiles"), new File(gameDir, "config/angelica/fonts") };
         GraphicsEnvironment ge = GraphicsEnvironment.isHeadless() ? null : GraphicsEnvironment.getLocalGraphicsEnvironment();
         int loaded = 0;
         for (File dir : fontDirs) {
