@@ -32,6 +32,7 @@ public class FontStrategist {
     @Getter
     private static final Font[] availableFonts;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
+    private static final boolean isSafeToUseAwtEnvironmentData = checkIsSafeToUseAwtEnvironmentData();
 
     static {
         HashMap<String, Font> fontSet = new HashMap<>();
@@ -40,7 +41,7 @@ public class FontStrategist {
         final Font[] availableFontsDirty;
         final HashMultiset<String> duplicates = HashMultiset.create(); // for debugging
 
-        if (isSafeToUseAwtEnvironmentData()) {
+        if (isSafeToUseAwtEnvironmentData) {
             availableFontsDirty = GraphicsEnvironment.getLocalGraphicsEnvironment().getAllFonts();
         } else {
             LOGGER.warn("System font enumeration is disabled because AWT API is unsafe in this environment. Update lwjgl3ify!");
@@ -89,7 +90,7 @@ public class FontStrategist {
         ((SimpleReloadableResourceManager) mc.getResourceManager()).reloadResourcePack(fontResourcePack);
     }
 
-    private static boolean isSafeToUseAwtEnvironmentData() {
+    private static boolean checkIsSafeToUseAwtEnvironmentData() {
         if (!GraphicsEnvironment.isHeadless()) return true;
 
         try (InputStream stream = ClassLoader.getSystemResourceAsStream(
@@ -121,7 +122,7 @@ public class FontStrategist {
     private static void loadBundledFonts(HashMap<String, Font> fontSet) {
         File gameDir = Minecraft.getMinecraft().mcDataDir;
         File[] fontDirs = { new File(gameDir, "fontfiles"), new File(gameDir, "config/angelica/fonts") };
-        GraphicsEnvironment ge = GraphicsEnvironment.isHeadless() ? null : GraphicsEnvironment.getLocalGraphicsEnvironment();
+        GraphicsEnvironment ge = !isSafeToUseAwtEnvironmentData ? null : GraphicsEnvironment.getLocalGraphicsEnvironment();
         int loaded = 0;
         for (File dir : fontDirs) {
             File[] files = dir.listFiles((d, name) -> name.toLowerCase().endsWith(".ttf") || name.toLowerCase().endsWith(".otf"));
