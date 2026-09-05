@@ -16,8 +16,8 @@ import org.apache.logging.log4j.Logger;
 import java.awt.Font;
 import java.awt.FontFormatException;
 import java.awt.GraphicsEnvironment;
-import java.io.File;
-import java.io.IOException;
+import java.io.*;
+import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
@@ -88,18 +88,26 @@ public class FontStrategist {
     private static boolean isSafeToUseAwtEnvironmentData() {
         if (!GraphicsEnvironment.isHeadless()) return true;
 
-        try {
-            Class<?> tags = Class.forName(
-                "me.eigenraven.lwjgl3ify.Tags",
-                false,
-                FontStrategist.class.getClassLoader());
-            String version = (String) tags.getField("VERSION").get(null);
+        try (InputStream stream = ClassLoader.getSystemResourceAsStream(
+            "META-INF/lwjgl3ify-forgePatches-version.txt")) {
+
+            if (stream == null) {
+                LOGGER.warn("Failed to identify lwjgl3ify version");
+                return false;
+            }
+
+            String version;
+            try (BufferedReader reader = new BufferedReader(
+                new InputStreamReader(stream, StandardCharsets.UTF_8))) {
+                version = reader.readLine();
+            }
 
             // See https://github.com/GTNewHorizons/RetroFuturaBootstrap/commit/6d39c56ba0f1496b5599a3660d1578df3b28ff17
-            // This change corresponds to RFB 1.0.14, switch was used since lwjgl3ify 3.0.8
+            // This change corresponds to RFB 1.0.14, used since lwjgl3ify 3.0.8
             return new DefaultArtifactVersion(version)
                 .compareTo(new DefaultArtifactVersion("3.0.8")) >= 0;
-        } catch (ReflectiveOperationException | LinkageError e) {
+        } catch (IOException e) {
+            LOGGER.warn("Failed to identify lwjgl3ify version", e);
             return false;
         }
     }
