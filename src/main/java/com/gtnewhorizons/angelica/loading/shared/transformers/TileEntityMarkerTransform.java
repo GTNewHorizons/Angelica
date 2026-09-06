@@ -30,6 +30,13 @@ public final class TileEntityMarkerTransform {
     private static final String TILE_ENTITY = "net/minecraft/tileentity/TileEntity";
     private static final int SCAN_FLAGS = ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES;
 
+    /**
+     * Opcodes.ASM9, spelled out because this is compiled against ASM 5. An ASM5 visitor refuses to visit attributes
+     * added by later class file versions, such as the NestMember one javac emits for classes with nested classes,
+     * which would leave those classes unmarked.
+     */
+    private static final int ASM_API = 0x00090000;
+
     private record Marker(int bit, String method, String desc, String iface) {}
 
     private final Marker[] markers;
@@ -67,7 +74,7 @@ public final class TileEntityMarkerTransform {
     public byte[] addMarkers(byte[] classBytes, int markers) {
         final ClassReader cr = new ClassReader(classBytes);
         final ClassWriter cw = new ClassWriter(cr, 0);
-        cr.accept(new ClassVisitor(Opcodes.ASM5, cw) {
+        cr.accept(new ClassVisitor(ASM_API, cw) {
 
             @Override
             public void visit(int version, int access, String name, String sig, String superName, String[] interfaces) {
@@ -112,7 +119,7 @@ public final class TileEntityMarkerTransform {
         private int alreadyPresent;
 
         MarkerScanner() {
-            super(Opcodes.ASM5);
+            super(ASM_API);
         }
 
         @Override
