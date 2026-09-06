@@ -30,20 +30,20 @@ public final class TileEntityMarkerTransform {
     private static final String TILE_ENTITY = "net/minecraft/tileentity/TileEntity";
     private static final int SCAN_FLAGS = ClassReader.SKIP_CODE | ClassReader.SKIP_DEBUG | ClassReader.SKIP_FRAMES;
 
-    /**
-     * Opcodes.ASM9, spelled out because this is compiled against ASM 5. An ASM5 visitor refuses to visit attributes
-     * added by later class file versions, such as the NestMember one javac emits for classes with nested classes,
-     * which would leave those classes unmarked.
-     */
-    private static final int ASM_API = 0x00090000;
-
     private record Marker(int bit, String method, String desc, String iface) {}
+
+    /**
+     * A visitor refuses to visit attributes newer than its api level, such as the NestMember one javac emits for
+     * classes with nested classes, so the caller passes the highest level its class loader supports.
+     */
+    private final int asmApi;
 
     private final Marker[] markers;
     private final ClassConstantPoolParser prefilter;
     private final Set<String> tileEntities = Collections.newSetFromMap(new ConcurrentHashMap<>());
 
-    public TileEntityMarkerTransform(boolean isObf) {
+    public TileEntityMarkerTransform(boolean isObf, int asmApi) {
+        this.asmApi = asmApi;
         this.markers = new Marker[] {
             new Marker(MARK_DESCRIPTION_PACKET, isObf ? "func_145844_m" : "getDescriptionPacket", "()Lnet/minecraft/network/Packet;", SENDS_DESCRIPTION_PACKET),
             new Marker(MARK_SHOULD_RENDER_IN_PASS, "shouldRenderInPass", "(I)Z", OVERRIDES_SHOULD_RENDER_IN_PASS),
@@ -74,7 +74,7 @@ public final class TileEntityMarkerTransform {
     public byte[] addMarkers(byte[] classBytes, int markers) {
         final ClassReader cr = new ClassReader(classBytes);
         final ClassWriter cw = new ClassWriter(cr, 0);
-        cr.accept(new ClassVisitor(ASM_API, cw) {
+        cr.accept(new ClassVisitor(asmApi, cw) {
 
             @Override
             public void visit(int version, int access, String name, String sig, String superName, String[] interfaces) {
@@ -119,7 +119,7 @@ public final class TileEntityMarkerTransform {
         private int alreadyPresent;
 
         MarkerScanner() {
-            super(ASM_API);
+            super(asmApi);
         }
 
         @Override
