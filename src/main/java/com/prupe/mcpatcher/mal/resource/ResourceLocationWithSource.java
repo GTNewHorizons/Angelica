@@ -15,14 +15,15 @@ public class ResourceLocationWithSource extends ResourceLocation {
     private final boolean isDirectory;
 
     public ResourceLocationWithSource(IResourcePack source, ResourceLocation resource) {
+        String resourcePath = resource.getResourcePath();
+        boolean isDirectory = resourcePath.endsWith("/");
+
         super(
             resource.getResourceDomain(),
-            resource.getResourcePath()
-                .replaceFirst("/$", ""));
+            isDirectory ? resourcePath.substring(0, resourcePath.length() - 1) : resourcePath);
         this.source = source;
-        order = ResourceList.getResourcePackOrder(source);
-        isDirectory = resource.getResourcePath()
-            .endsWith("/");
+        this.order = ResourceList.getResourcePackOrder(source);
+        this.isDirectory = isDirectory;
     }
 
     public IResourcePack getSource() {
