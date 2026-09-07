@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.sugar.Local;
 import com.prupe.mcpatcher.ctm.CTMUtils;
@@ -199,22 +200,26 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Unique
     private void angelica$handleCompactCtmFace(IIcon icon, ForgeDirection direction, CallbackInfo ci) {
         CTMUtils.CTMCompactContext ctx = CTMUtils.getCurrentCompact();
+
         if (ctx == null) {
             return;
         }
-        CompactCtmQuadProcessor processor = ctx.compact().getProcessor();
         RenderBlockState renderBlockState = ctx.renderBlockState();
         CTMUtils.clearCurrentCompact();
         if (this.blockAccess == null || renderBlockState.getBlockAccess() == null) {
             return;
         }
-
         RenderBlocks rb = (RenderBlocks) (Object) this;
-        if (rb.hasOverrideBlockTexture()) {
+        if(rb.hasOverrideBlockTexture()) {
             return;
         }
-        if (processor.processFace(rb, renderBlockState, icon, direction.ordinal())) {
-            ci.cancel();
+
+        int renderPass = RenderPassHelper.getWorldRenderPass();
+        if(renderPass==ctx.compact().getRenderPass()) {
+            if(ctx.compact().getProcessor().processFace(rb, renderBlockState, icon, direction.ordinal())) {
+                ci.cancel();
+                return;
+            }
         }
     }
 

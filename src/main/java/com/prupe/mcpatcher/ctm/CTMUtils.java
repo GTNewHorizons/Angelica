@@ -4,6 +4,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.IdentityHashMap;
+import java.util.BitSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -41,6 +42,7 @@ public class CTMUtils {
         private final List<TileOverride> all = new ArrayList<>();
         private final Map<Block, List<BlockStateMatcher>> block = new IdentityHashMap<>();
         private final Map<String, List<TileOverride>> tile = new HashMap<>();
+        private final Map<Block, BitSet> passes = new IdentityHashMap();
 
         public List<TileOverride> getAll() {
             return all;
@@ -52,6 +54,9 @@ public class CTMUtils {
 
         public Map<String, List<TileOverride>> getTile() {
             return tile;
+        }
+        public BitSet getBlockPasses(Block block) {
+            return passes.get(block);
         }
     }
 
@@ -169,6 +174,7 @@ public class CTMUtils {
                             TileOverride override = (TileOverride) matcher.getData();
                             if (override.getRenderPass() >= 0) {
                                 RenderPassAPI.instance.setRenderPassForBlock(entry.getKey(), override.getRenderPass());
+                                newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet()).set(1, override.getRenderPass() != 0);
                             }
                         }
                     }
@@ -263,33 +269,19 @@ public class CTMUtils {
         return getBlockIcon(icon, block, face, 0);
     }
 
-    private static boolean hasTranslucentOverrideWithoutLock(Block block) {
-        List<BlockStateMatcher> matchers = overrides.getBlock().get(block);
-        if (matchers == null) {
-            return false;
-        }
-        for (BlockStateMatcher matcher : matchers) {
-            if (((TileOverride) matcher.getData()).getRenderPass() == RenderPassAPI.TRANSLUCENT_RENDER_PASS) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    // Used by MixinBlock_TranslucentCtm to decide whether this block should also get a translucent-pass
-    // invocation from the chunk mesher, for a CTM override that explicitly opted in via renderPass=translucent.
-    public static boolean hasTranslucentOverride(Block block) {
+    public static boolean bBlockNeedsPass(Block block, int pass) {
         long stamp = lock.tryOptimisticRead();
-        boolean value = hasTranslucentOverrideWithoutLock(block);
+        BitSet passes = overrides.getBlockPasses(block);
         if (!lock.validate(stamp)) {
             stamp = lock.readLock();
             try {
-                value = hasTranslucentOverrideWithoutLock(block);
+                passes = overrides.getBlockPasses(block);
             } finally {
                 lock.unlockRead(stamp);
             }
         }
-        return value;
+        return passes != null && passes.get(pass);
+
     }
 
     public static void reset() {
