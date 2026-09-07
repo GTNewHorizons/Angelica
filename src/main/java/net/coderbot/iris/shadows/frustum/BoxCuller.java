@@ -96,4 +96,10 @@ public class BoxCuller {
 
 		return maxZ < this.minRelZ || minZ > this.maxRelZ;
 	}
+
+	public boolean isFullyInsideViewRelative(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		return minX >= this.minRelX && maxX <= this.maxRelX
+				&& minY >= this.minRelY && maxY <= this.maxRelY
+				&& minZ >= this.minRelZ && maxZ <= this.maxRelZ;
+	}
 }

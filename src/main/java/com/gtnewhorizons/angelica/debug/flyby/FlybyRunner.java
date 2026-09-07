@@ -7,6 +7,7 @@ import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
+import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
@@ -27,7 +28,6 @@ public final class FlybyRunner {
     private static final float[] NO_YAW = new float[0];
     private static final byte[] NO_PHASE = new byte[0];
     private static final int MAX_RECORDED_FRAMES = 200_000;
-    private static final long FIXED_TIME_OF_DAY = 6000L;
 
     private enum State { IDLE, WAITING, WARMUP, RUNNING, SETTLE, EXITING, DONE }
 
@@ -123,6 +123,14 @@ public final class FlybyRunner {
         if (event.phase != TickEvent.Phase.END || this.state == State.IDLE || this.state == State.DONE) return;
 
         final Minecraft mc = Minecraft.getMinecraft();
+        if (this.state == State.EXITING) {
+            if (++this.tick >= EXIT_TICKS) {
+                this.state = State.DONE;
+                this.exitGame(mc);
+            }
+            return;
+        }
+
         final EntityClientPlayerMP player = mc.thePlayer;
         if (player == null || mc.theWorld == null) return;
 
@@ -150,13 +158,6 @@ public final class FlybyRunner {
                 this.holdPosition(player);
                 if (++this.tick >= SETTLE_TICKS) {
                     this.teardown(mc, player);
-                }
-            }
-            case EXITING -> {
-                if (++this.tick >= EXIT_TICKS) {
-                    this.state = State.DONE;
-                    LOGGER.info("Flyby complete, shutting down so the capture can finalise");
-                    mc.shutdown();
                 }
             }
             default -> { }
@@ -383,9 +384,9 @@ public final class FlybyRunner {
             world.getWorldInfo().setRainTime(Integer.MAX_VALUE);
             world.getWorldInfo().setThunderTime(Integer.MAX_VALUE);
 
-            if (world.getWorldTime() % 24000L != FIXED_TIME_OF_DAY) {
-                LOGGER.info("Flyby: freezing time at {}", FIXED_TIME_OF_DAY);
-                world.setWorldTime(FIXED_TIME_OF_DAY);
+            if (world.getWorldTime() % 24000L != SystemProperties.FLYBY_TIME_OF_DAY) {
+                LOGGER.info("Flyby: freezing time at {}", SystemProperties.FLYBY_TIME_OF_DAY);
+                world.setWorldTime(SystemProperties.FLYBY_TIME_OF_DAY);
             }
         }
     }
@@ -417,6 +418,16 @@ public final class FlybyRunner {
 
         this.tick = 0;
         this.state = this.exitWhenDone ? State.EXITING : State.DONE;
+    }
+
+    private void exitGame(Minecraft mc) {
+        LOGGER.info("Flyby complete, shutting down.");
+        if (mc.theWorld != null) {
+            mc.theWorld.sendQuittingDisconnectingPacket();
+            mc.loadWorld(null);
+            mc.displayGuiScreen(new GuiMainMenu());
+        }
+        mc.shutdown();
     }
 
     private void restorePauseOnLostFocus(Minecraft mc) {

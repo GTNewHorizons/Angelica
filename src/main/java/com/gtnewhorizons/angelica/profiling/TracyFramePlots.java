@@ -4,7 +4,6 @@ import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.rendering.culling.GpuIndirectMultiDrawEmitter;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
@@ -22,20 +21,18 @@ import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.WorldRenderer;
 import org.embeddedt.embeddium.impl.render.chunk.SharedQuadIndexBuffer;
-import org.embeddedt.embeddium.impl.render.chunk.multidraw.IndirectMultiDrawEmitter;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegionManager;
 
 public final class TracyFramePlots {
     private static long lastChunkUpdates;
     private static long lastDrawCalls, lastTexBindMisses, lastProgramSwitches, lastListPlaybacks;
     private static long lastStreamedBytes, lastStreamDraws, lastOrphanFallbacks, lastStreamContiguous;
-    private static long lastSectionMetaBytes, lastRingWraps, lastVariantSwitches;
+    private static long lastRingWraps, lastVariantSwitches;
     private static long lastTesrRebuilds, lastTesrRetainedDraws, lastTesrInstDraws, lastTesrInstInstances;
     private static long lastTesrStreamedInstances, lastTesrPromotions, lastTesrCacheHits, lastTesrCacheMisses;
     private static long lastBatcherParts, lastBatcherLiveFallbacks;
     private static final long[] lastBails = new long[ModelPartBatcher.BailReason.VALUES.length];
-    private static long lastSectionsUploaded, lastBytesUploaded;
-    private static int lastCullSubmitted;
+    private static long lastSectionsUploaded, lastBytesUploaded, lastIndexBufferGrowths;
 
     private static final long P_ALLOC_RATE = Tracy.plotHandle("allocRate", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long P_HEAP_USED = Tracy.plotHandle("heapUsed", TracyBackend.PLOT_FORMAT_MEMORY);
@@ -61,7 +58,7 @@ public final class TracyFramePlots {
     private static final long P_VOX_ENCODERS = Tracy.plotHandle("voxelization.encoders");
     private static final long P_VOX_DISPATCHES = Tracy.plotHandle("voxelization.dispatches");
     private static final long P_VOX_REGIONS = Tracy.plotHandle("voxelization.regions");
-    private static final long P_DRAW_ARENA_GROWTHS = Tracy.plotHandle("draw.arenaGrowths");
+    private static final long P_DRAW_BATCH_REBUILDS = Tracy.plotHandle("draw.batchRebuilds");
     private static final long P_DRAW_INDEX_BUFFER_GROWTHS = Tracy.plotHandle("draw.indexBufferGrowths");
 
     private static final long P_CULL_COMMANDS_SUBMITTED = Tracy.plotHandle("cull.commandsSubmitted");
@@ -175,20 +172,17 @@ public final class TracyFramePlots {
         lastOrphanFallbacks = delta(P_GL_ORPHAN_FALLBACKS, TessellatorStreamingDrawer.orphanFallbacks, lastOrphanFallbacks);
         lastStreamContiguous = delta(P_GL_STREAM_CONTIGUOUS, TessellatorStreamingDrawer.streamContiguous, lastStreamContiguous);
         lastRingWraps = delta(P_GL_RING_WRAPS, TessellatorStreamingDrawer.ringWraps(), lastRingWraps);
-        lastSectionMetaBytes = delta(P_GL_SECTION_META_BYTES, GpuIndirectMultiDrawEmitter.sectionMetaBytes, lastSectionMetaBytes);
+        Tracy.plotInt(P_GL_SECTION_META_BYTES, TerrainDrawStats.takeSectionMetaBytes());
         Tracy.plotInt(P_SHADOW_RELAY_FRAMES, ShadowRenderer.SHADOW_TERRAIN_RELAID ? 1 : 0);
         Tracy.plotInt(P_TERRAIN_DRAW_COMMANDS, TerrainDrawStats.takeCommandsSubmitted());
         Tracy.plotInt(P_TERRAIN_REGIONS_DRAWN, TerrainDrawStats.takeRegionsDrawn());
-        Tracy.plotInt(P_DRAW_ARENA_GROWTHS, IndirectMultiDrawEmitter.takeArenaGrowths());
-        Tracy.plotInt(P_DRAW_INDEX_BUFFER_GROWTHS, SharedQuadIndexBuffer.takeGrowths());
+        Tracy.plotInt(P_DRAW_BATCH_REBUILDS, TerrainDrawStats.takeBatchRebuilds());
         Tracy.plotInt(P_VOX_ENCODERS, SdlShadowVoxelizationSink.takeEncoders());
         Tracy.plotInt(P_VOX_DISPATCHES, SdlShadowVoxelizationSink.takeDispatches());
         Tracy.plotInt(P_VOX_REGIONS, SdlShadowVoxelizationSink.takeRegions());
-        Tracy.plotInt(P_CULL_REGIONS_DRAWN, GpuIndirectMultiDrawEmitter.takeRegionsDrawn());
-        Tracy.plotInt(P_CULL_MAX_REGION_COMMANDS, GpuIndirectMultiDrawEmitter.takeMaxRegionCommands());
-        final int submitted = GpuIndirectMultiDrawEmitter.commandsSubmitted();
-        Tracy.plotInt(P_CULL_COMMANDS_SUBMITTED, submitted - lastCullSubmitted);
-        lastCullSubmitted = submitted;
+        Tracy.plotInt(P_CULL_REGIONS_DRAWN, TerrainDrawStats.takeCullRegionsDrawn());
+        Tracy.plotInt(P_CULL_MAX_REGION_COMMANDS, TerrainDrawStats.takeCullMaxRegionCommands());
+        Tracy.plotInt(P_CULL_COMMANDS_SUBMITTED, TerrainDrawStats.takeCullCommandsSubmitted());
 
         final ShaderManager ffp = ShaderManager.getInstance();
         Tracy.plotInt(P_FFP_PRE_DRAW_CALLS, ffp.statLastFramePreDrawCalls());
@@ -231,6 +225,7 @@ public final class TracyFramePlots {
 
         lastSectionsUploaded = delta(P_MESH_UPLOADED_SECTIONS, RenderRegionManager.getSectionsUploaded(), lastSectionsUploaded);
         lastBytesUploaded = delta(P_MESH_UPLOADED_BYTES, RenderRegionManager.getBytesUploaded(), lastBytesUploaded);
+        lastIndexBufferGrowths = delta(P_DRAW_INDEX_BUFFER_GROWTHS, SharedQuadIndexBuffer.getGrowths(), lastIndexBufferGrowths);
         Tracy.plotInt(P_MESH_META_SLOTS, GpuCulling.sectionMeta().getHighWaterMark());
         Tracy.plotInt(P_MT_QUEUE_DEPTH, AngelicaRenderQueue.getQueueDepth());
         Tracy.plotInt(P_MT_QUEUE_TASKS, AngelicaRenderQueue.getLastFrameTasksRan());

@@ -58,6 +58,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
+import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -599,27 +600,82 @@ public final class ShaderManager {
 
     private static int patchAttribLocations(ByteBuffer spirv, StageReflection vs, Object2IntOpenHashMap<String> bindings, int[] outVecSize, int[] outBaseType, String[] outName, Object2IntOpenHashMap<String> resolvedOut) {
         final IntBuffer vsBuf = spirv.asIntBuffer();
-        int mask = 0;
-        if (outName != null) Arrays.fill(outName, null);
-        for (VsInput vi : vs.vsInputs()) {
-            int finalLoc = vi.originalLocation();
-            final int desired = bindings.getInt(vi.name());
-            if (desired != -1 && desired != vi.originalLocation()) {
-                if (vsBuf.get(vi.binaryOffset()) != vi.originalLocation()) {
-                    LOG.error("applyAttribLocations: sanity check failed for '{}' (expected {}, got {})", vi.name(), vi.originalLocation(), vsBuf.get(vi.binaryOffset()));
-                } else {
-                    vsBuf.put(vi.binaryOffset(), desired);
-                    finalLoc = desired;
+        final List<VsInput> inputs = vs.vsInputs();
+        final int count = inputs.size();
+        final int[] finalLoc = new int[count];
+        int taken = 0;
+
+        for (final IntIterator it = bindings.values().iterator(); it.hasNext(); ) {
+            final int bound = it.nextInt();
+            if (bound >= 0 && bound < ContextState.MAX_VERTEX_ATTRIBS) taken |= 1 << bound;
+        }
+        for (int i = 0; i < count; i++) {
+            finalLoc[i] = bindings.getInt(inputs.get(i).name());
+        }
+
+        int movers = 0;
+        for (int i = 0; i < count; i++) {
+            if (finalLoc[i] != -1) continue;
+            final int original = inputs.get(i).originalLocation();
+            if (original >= 0 && original < ContextState.MAX_VERTEX_ATTRIBS && (taken & (1 << original)) == 0) {
+                finalLoc[i] = original;
+                taken |= 1 << original;
+            } else {
+                movers++;
+            }
+        }
+
+        for (int n = 0; n < movers; n++) {
+            int pick = -1;
+            for (int i = 0; i < count; i++) {
+                if (finalLoc[i] == -1 && (pick == -1 || inputs.get(i).originalLocation() < inputs.get(pick).originalLocation())) {
+                    pick = i;
                 }
             }
-            if (resolvedOut != null) resolvedOut.put(vi.name(), finalLoc);
-            if (finalLoc < 0 || finalLoc >= 16) continue;
-            mask |= (1 << finalLoc);
-            outVecSize[finalLoc] = vi.vecSize();
-            outBaseType[finalLoc] = vi.baseType();
-            if (outName != null) outName[finalLoc] = vi.name();
+            final int free = Integer.numberOfTrailingZeros(~taken);
+            if (free >= ContextState.MAX_VERTEX_ATTRIBS) {
+                LOG.error("applyAttribLocations: no free vertex attribute slot for '{}'; leaving it at {}", inputs.get(pick).name(), inputs.get(pick).originalLocation());
+                finalLoc[pick] = inputs.get(pick).originalLocation();
+            } else {
+                finalLoc[pick] = free;
+                taken |= 1 << free;
+            }
+        }
+
+        int mask = 0;
+        int seen = 0;
+        if (outName != null) Arrays.fill(outName, null);
+        for (int i = 0; i < count; i++) {
+            final VsInput vi = inputs.get(i);
+            int loc = finalLoc[i];
+            if (loc != vi.originalLocation()) {
+                if (vsBuf.get(vi.binaryOffset()) != vi.originalLocation()) {
+                    LOG.error("applyAttribLocations: sanity check failed for '{}' (expected {}, got {})", vi.name(), vi.originalLocation(), vsBuf.get(vi.binaryOffset()));
+                    loc = vi.originalLocation();
+                } else {
+                    vsBuf.put(vi.binaryOffset(), loc);
+                }
+            }
+            finalLoc[i] = loc;
+            if (resolvedOut != null) resolvedOut.put(vi.name(), loc);
+            if (loc < 0 || loc >= ContextState.MAX_VERTEX_ATTRIBS) continue;
+            if ((seen & (1 << loc)) != 0) {
+                LOG.error("applyAttribLocations: '{}' and '{}' both resolved to location {}", inputNameAtLocation(inputs, finalLoc, i, loc), vi.name(), loc);
+            }
+            seen |= 1 << loc;
+            mask |= 1 << loc;
+            outVecSize[loc] = vi.vecSize();
+            outBaseType[loc] = vi.baseType();
+            if (outName != null) outName[loc] = vi.name();
         }
         return mask;
+    }
+
+    private static String inputNameAtLocation(List<VsInput> inputs, int[] finalLoc, int limit, int loc) {
+        for (int i = 0; i < limit; i++) {
+            if (finalLoc[i] == loc) return inputs.get(i).name();
+        }
+        return "<unknown>";
     }
 
     public VertexVariant getOrBuildVertexVariant(int program, long key, List<UscaledRetype.Attrib> attribs) {

@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
-import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.compat.DriverCompatabilityCheck;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
@@ -42,13 +41,9 @@ public class MixinInitGLStateManager {
             GLDebug.reloadDebugState();
         }
         GLStateManager.initialize(GLSMInitConfig.builder()
-            .displaySize(mc.displayWidth, mc.displayHeight)
-            .lwjglDebug(AngelicaMod.lwjglDebug)
             .streamingUploadStrategy(ClientProxy.options().advanced.streamingUploadStrategy)
             .noErrorChecks(AngelicaConfig.disableErrorChecks && GTNHLibCore.isObf() && !AngelicaMod.lwjglDebug)
             .enableDSA(AngelicaConfig.enableDSA)
-            .directDrawer(TessellatorStreamingDrawer::drawDirect)
-            .streamingDrawerDestroy(TessellatorStreamingDrawer::destroy)
             .postInitCallback(SelectionBoxRenderer::init)
             .build());
 

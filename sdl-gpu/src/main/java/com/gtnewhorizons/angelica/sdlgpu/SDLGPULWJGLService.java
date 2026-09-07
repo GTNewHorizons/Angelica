@@ -5,10 +5,10 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.sdlgpu.device.MemoryStackWrapper;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
-import com.mitchej123.lwjgl.DebugMessageHandler;
-import com.mitchej123.lwjgl.GLExtension;
-import com.mitchej123.lwjgl.LWJGLService;
-import com.mitchej123.lwjgl.MemoryStack;
+import org.taumc.celeritas.lwjgl.DebugMessageHandler;
+import org.taumc.celeritas.lwjgl.GLExtension;
+import org.taumc.celeritas.lwjgl.LWJGLService;
+import org.taumc.celeritas.lwjgl.MemoryStack;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.Buffer;
@@ -17,19 +17,32 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.util.Arrays;
 
-/** SDL GPU implementation of {@link LWJGLService} for Celeritas */
-public final class SDLGPULWJGLService extends LWJGLService {
+public final class SDLGPULWJGLService implements LWJGLService {
 
-    private static volatile boolean offeredAsAvailable;
+    private static final ThreadLocal<MemoryStackWrapper> STACK =
+        ThreadLocal.withInitial(() -> new MemoryStackWrapper(org.lwjgl.system.MemoryStack.stackGet()));
 
-    public static boolean isOfferedAsAvailable() { return offeredAsAvailable; }
+    private static volatile boolean constructed;
 
-    @Override public int getPriority() {
-        if (!SystemProperties.USE_SDL_GPU || !SDLGPUGate.isSDLGPUAvailable() || !SDLGPUGate.isEngaged()) {
-            return PRIORITY_UNAVAILABLE;
+    public static SDLGPULWJGLService create() {
+        if (!SDLGPUGate.isEngaged()) {
+            throw new IllegalStateException("SDL GPU is not engaged; " + SystemProperties.KEY_CELERITAS_LWJGL_SERVICE + " must not name " + SDLGPULWJGLService.class.getName());
         }
-        offeredAsAvailable = true;
-        return 200;
+        constructed = true;
+        return new SDLGPULWJGLService();
+    }
+
+    public static boolean isConstructed() { return constructed; }
+
+    static void bind() {
+        System.setProperty(SystemProperties.KEY_CELERITAS_LWJGL_SERVICE, SDLGPULWJGLService.class.getName());
+    }
+
+    static void unbind() {
+        final String key = SystemProperties.KEY_CELERITAS_LWJGL_SERVICE;
+        if (SDLGPULWJGLService.class.getName().equals(System.getProperty(key))) {
+            System.clearProperty(key);
+        }
     }
 
     @Override public boolean isOpenGLVersionSupported(int major, int minor) {
@@ -47,7 +60,6 @@ public final class SDLGPULWJGLService extends LWJGLService {
                  ARB_uniform_buffer_object,
                  ARB_vertex_array_object,
                  ARB_shader_storage_buffer_object,
-                 ARB_instanced_arrays,
                  KHR_debug
                  -> true;
             case ARB_timer_query,
@@ -75,11 +87,20 @@ public final class SDLGPULWJGLService extends LWJGLService {
             BackendManager.RENDER_BACKEND.bufferData(target, size, usage);
         }
     }
-    @Override public void glBufferSubData(int target, long offset, ByteBuffer data) { BackendManager.RENDER_BACKEND.bufferSubData(target, offset, data); }
-    @Override public void glBufferSubData(int target, long offset, long size, long data) {
-        BackendManager.RENDER_BACKEND.bufferSubData(target, offset, MemoryUtil.memByteBuffer(data, (int) size));
-    }
     @Override public void glBufferStorage(int target, long size, int flags) { BackendManager.RENDER_BACKEND.bufferStorage(target, size, flags); }
+    @Override public void glBlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1, int mask, int filter) {
+        BackendManager.RENDER_BACKEND.blitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+    }
+    @Override public void glDrawArrays(int mode, int first, int count) { BackendManager.RENDER_BACKEND.drawArrays(mode, first, count); }
+    @Override public void glDrawBuffers(int[] buffers) {
+        try (var stack = MemoryStack.stackPush()) {
+            BackendManager.RENDER_BACKEND.drawBuffers(stack.ints(buffers));
+        }
+    }
+    @Override public void glTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
+        GLStateManager.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
+    }
+    @Override public void glTexParameteri(int target, int pname, int param) { GLStateManager.glTexParameteri(target, pname, param); }
     @Override public ByteBuffer glMapBufferRange(int target, long offset, long length, int flags) { return BackendManager.RENDER_BACKEND.mapBufferRange(target, offset, length, flags); }
     @Override public long nglMapBuffer(int target, int access) { return 0; }
     @Override public ByteBuffer glMapBuffer(int target, int access) { return BackendManager.RENDER_BACKEND.mapBuffer(target, access); }
@@ -231,7 +252,8 @@ public final class SDLGPULWJGLService extends LWJGLService {
     @Override public int glGetAttribLocation(int program, CharSequence name) { return BackendManager.RENDER_BACKEND.getAttribLocation(program, name); }
 
     @Override public MemoryStack stackPush() {
-        return new MemoryStackWrapper(org.lwjgl.system.MemoryStack.stackPush());
+        org.lwjgl.system.MemoryStack.stackPush();
+        return STACK.get();
     }
 
     @Override public long nmemAlloc(long size) { return MemoryUtil.nmemAlloc(size); }

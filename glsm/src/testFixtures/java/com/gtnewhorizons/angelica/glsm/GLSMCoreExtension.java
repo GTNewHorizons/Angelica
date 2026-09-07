@@ -39,7 +39,12 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
                 new ContextAttribs(3, 3).withProfileCore(true).withForwardCompatible(true));
 
             GLSMExtension.setMainThread(Thread.currentThread());
-            GLStateManager.initialize(GLSMInitConfig.builder().displaySize(800, 600).build());
+            GLStateManager.initialize(GLSMInitConfig.builder()
+                .displaySize(800, 600)
+                .directDrawer(t -> {})
+                .streamingDrawerDestroy(() -> {})
+                .enableDSA(false)
+                .build());
             GLStateManager.setRunningSplash(false);
             GLStateManager.markSplashComplete("test");
 

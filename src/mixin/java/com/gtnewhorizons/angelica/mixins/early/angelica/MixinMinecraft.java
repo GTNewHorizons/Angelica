@@ -18,7 +18,6 @@ import org.lwjgl.input.Keyboard;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -37,27 +36,11 @@ public abstract class MixinMinecraft {
     @Shadow
     public GuiScreen currentScreen;
 
-    @Shadow(remap = false)
-    private static int max_texture_size;
-
     @Unique
     private final RenderAheadManager celeritas$renderAheadManager = new RenderAheadManager();
 
     @Unique
     private static boolean angelica$hadWorld;
-
-    /**
-     * @author mitchej123
-     * @reason Avoid GL_PROXY_TEXTURE_2D which doesn't work with GLSM's texture binding.
-     *         Uses the standard GL_MAX_TEXTURE_SIZE query instead.
-     */
-    @Overwrite
-    public static int getGLMaximumTextureSize() {
-        if (max_texture_size == -1) {
-            max_texture_size = GLStateManager.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
-        }
-        return max_texture_size;
-    }
 
     @Inject(
         method = "runGameLoop",

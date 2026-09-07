@@ -46,6 +46,27 @@ tasks.withType<Jar>().configureEach {
     exclude("net/minecraft/**")
 }
 
+val stubsElements by configurations.creating {
+    isCanBeConsumed = true
+    isCanBeResolved = false
+    attributes {
+        attribute(Usage.USAGE_ATTRIBUTE, objects.named(Usage::class.java, Usage.JAVA_RUNTIME))
+        attribute(Category.CATEGORY_ATTRIBUTE, objects.named(Category::class.java, Category.LIBRARY))
+        attribute(rfgObfAttr, "mcp")
+        attribute(rfgTransformedAttr, true)
+    }
+    outgoing {
+        capability("${project.group}:glsm-stubs:${project.version}")
+    }
+}
+
+artifacts {
+    add(stubsElements.name, sourceSets["stubs"].java.classesDirectory) {
+        type = "java-classes-directory"
+        builtBy(tasks.named("stubsClasses"))
+    }
+}
+
 repositories {
     maven {
         name = "Mojang"
@@ -141,7 +162,6 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
     testRuntimeOnly(libs.log4j.core)
     testImplementation(libs.celeritas.common) { isTransitive = false }
-    testRuntimeOnly(libs.celeritas.lwjgl2.service) { isTransitive = false }
     testRuntimeOnly(libs.jvmdowngrader.java.api) { artifact { classifier = "downgraded-8" } }
     testRuntimeOnly(libs.commons.lang3)
 }

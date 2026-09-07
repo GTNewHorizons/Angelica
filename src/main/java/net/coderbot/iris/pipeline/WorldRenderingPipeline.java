@@ -22,7 +22,7 @@ import java.util.OptionalInt;
 public interface WorldRenderingPipeline {
 	void beginLevelRendering();
 	void renderShadows(EntityRenderer levelRenderer, Camera camera);
-	default void preSubmitShadowGraph(int frame, boolean spectator) {}
+	default void preSubmitShadowGraph(int frame) {}
 	void addDebugText(List<String> messages);
 	OptionalInt getForcedShadowRenderDistanceChunksForDisplay();
 

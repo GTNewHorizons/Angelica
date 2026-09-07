@@ -9,6 +9,7 @@ import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.ChunkPrimitiveT
 import org.embeddedt.embeddium.impl.render.chunk.data.SectionRenderDataStorage;
 import org.embeddedt.embeddium.impl.render.chunk.data.SectionRenderDataUnsafe;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
+import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -32,11 +33,13 @@ public abstract class MixinSectionRenderDataStorage implements SectionRenderData
     @Override public void angelica$setPassIndex(int passIndex) { this.angelica$passIndex = passIndex; }
     @Override public int[] angelica$getSlotCache() { return angelica$slotCache; }
 
+    @Shadow @Final private SectionRenderDataUnsafe.Strategy storageStrategy;
+
     @Shadow public abstract long getDataPointer(int sectionIndex);
 
-    @Shadow public abstract SectionRenderDataUnsafe.Strategy getStorageStrategy();
-
     @Shadow public abstract ChunkPrimitiveType getPrimitiveType();
+
+    @Shadow public abstract int getSliceMask(int sectionIndex);
 
     @Inject(method = "setMeshes", at = @At("RETURN"))
     private void angelica$onSetMeshes(int localSectionIndex, GlBufferSegment allocation, GlBufferSegment indexAllocation, Map<ModelQuadFacing, VertexRange> ranges, CallbackInfo ci) {
@@ -77,12 +80,12 @@ public abstract class MixinSectionRenderDataStorage implements SectionRenderData
     private void angelica$pushUpdate(int localSectionIndex) {
         final RenderRegion r = angelica$region;
         if (r == null) return;
-        final long dataPtr = getDataPointer(localSectionIndex);
-        if (SectionRenderDataUnsafe.getSliceMask(dataPtr) == 0) {
+        final int sliceMask = getSliceMask(localSectionIndex);
+        if (sliceMask == 0) {
             angelica$releaseSlot(r, localSectionIndex);
             return;
         }
-        final int slot = GpuCulling.sectionMeta().update(angelica$passIndex, r.getOriginX(), r.getOriginY(), r.getOriginZ(), localSectionIndex, dataPtr, getStorageStrategy(), getPrimitiveType());
+        final int slot = GpuCulling.sectionMeta().update(angelica$passIndex, r.getOriginX(), r.getOriginY(), r.getOriginZ(), localSectionIndex, getDataPointer(localSectionIndex), sliceMask, storageStrategy, getPrimitiveType());
         if (slot < 0) return;
         int[] cache = angelica$slotCache;
         if (cache == null) {

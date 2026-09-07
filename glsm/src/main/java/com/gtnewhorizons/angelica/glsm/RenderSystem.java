@@ -9,7 +9,7 @@ import com.gtnewhorizons.angelica.glsm.dsa.DSAEXT;
 import com.gtnewhorizons.angelica.glsm.dsa.DSAUnsupported;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
-import com.mitchej123.lwjgl.LWJGLServiceProvider;
+import org.taumc.celeritas.lwjgl.LWJGLServiceProvider;
 import lombok.Getter;
 import org.jetbrains.annotations.Nullable;
 import org.joml.Matrix4f;

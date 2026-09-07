@@ -6,10 +6,10 @@ log4j = "2.0-beta9"
 asmCompile = "5.0.3"
 # End Frozen
 
-lwjgl3 = "3.4.2"
+lwjgl3 = "3.4.2-SNAPSHOT"
 lwjgl3ify = "3.0.31"
 
-celeritas = "2.5.10-GTNH"
+celeritas = "2.5.11-GTNH"
 gtnhlib = "0.11.36"
 eventbus = "7.0-beta.15"
 glslTransformLib = "0.2.0-33.g3ec381e"
@@ -30,10 +30,10 @@ asmBuild = "9.7"
 mockito = "3.12.4"
 archunit = "1.4.1"
 ant = "1.8.2"
+distantHorizonsApi = "5.1.0"
 
 [libraries]
 celeritas-common = { module = "org.embeddedt.celeritas:celeritas-common", version.ref = "celeritas" }
-celeritas-lwjgl2-service = { module = "org.embeddedt.celeritas:celeritas-lwjgl2-service", version.ref = "celeritas" }
 eventbus = { module = "net.minecraftforge:eventbus", version.ref = "eventbus" }
 glsl-transformation-lib = { module = "org.taumc:glsl-transformation-lib", version.ref = "glslTransformLib" }
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr4Runtime" }
@@ -58,6 +58,7 @@ junit-platform-reporting = { module = "org.junit.platform:junit-platform-reporti
 mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
 archunit-junit5 = { module = "com.tngtech.archunit:archunit-junit5", version.ref = "archunit" }
 ant = { module = "org.apache.ant:ant", version.ref = "ant" }
+distant-horizons-api = { module = "maven.modrinth:DistantHorizonsApi", version.ref = "distantHorizonsApi" }
 asm-tree-compile = { module = "org.ow2.asm:asm-tree", version.ref = "asmCompile" }
 asm-tree-test = { module = "org.ow2.asm:asm-tree", version.ref = "asmTest" }
 asm-build = { module = "org.ow2.asm:asm", version.ref = "asmBuild" }

@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
-import com.gtnewhorizons.angelica.mixins.interfaces.RenderListManagerAccessor;
 import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
@@ -50,6 +49,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     private static final long P_MESH_SCHEDULED_JOBS = Tracy.plotHandle("mesh.scheduledJobs");
     private static final long P_MESH_BUSY_THREADS = Tracy.plotHandle("mesh.busyThreads");
     private static final long P_MESH_DEVICE_USED = Tracy.plotHandle("mesh.deviceUsed", TracyBackend.PLOT_FORMAT_MEMORY);
+    private static final long P_DRAW_REGION_BUFFERS = Tracy.plotHandle("draw.regionBuffers");
     private static final long P_MESH_DEVICE_ALLOCATED = Tracy.plotHandle("mesh.deviceAllocated", TracyBackend.PLOT_FORMAT_MEMORY);
 
     private static final Tracy.ZoneId Z_BIOME_REBUILDS = Tracy.zoneId("biomeRebuilds", Tracy.COLOR_TERRAIN);
@@ -91,27 +91,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         this.cameraPosition.set(x, y, z);
     }
 
-    private boolean isChunkNotLoaded(int chunkX, int chunkZ) {
-        return this.world.getChunkFromChunkCoords(chunkX, chunkZ).isEmpty();
-    }
-
-    @Override
-    public void onSectionAdded(int x, int y, int z) {
-        super.onSectionAdded(x, y, z);
-
-        // If chunk isn't actually loaded (EmptyChunk placeholder), make sections opaque for main pass.
-        // This prevents BFS from traversing through chunks we haven't received from the server.
-        if (isChunkNotLoaded(x, z)) {
-            renderListManager.updateVisibilityData(x, y, z, 0L);
-        }
-    }
-
     @Override
     public void update(Viewport positionedViewport, int frame, boolean spectator) {
-        if (isInShadowPass() && !needsUpdate()) {
+        if (isInShadowPass()) {
             return;
         }
-        if (!isInShadowPass() && !initialCameraSectionReady) {
+        if (!initialCameraSectionReady) {
             var origin = positionedViewport.getChunkCoord();
             long key = PositionUtil.packSection(origin.x(), origin.y(), origin.z());
             if (!((RenderSectionManagerAccessor) this).angelica$getSectionByPosition().containsKey(key)) {
@@ -130,6 +115,11 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     @Override
     protected boolean shouldRespectUpdateTaskQueueSizeLimit() {
         return true;
+    }
+
+    @Override
+    protected boolean useRasterOcclusionCulling() {
+        return false;
     }
 
     @Override
@@ -267,14 +257,15 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         }
     }
 
-    public boolean preSubmitShadowGraphUpdate(Viewport viewport, int frame, boolean spectator) {
-        if (this.shadowRenderListManager == null || !this.shadowRenderListManager.isNeedsUpdate()) return false;
-        if (((RenderListManagerAccessor) this.shadowRenderListManager).angelica$hasOcclusionFutureInFlight()) return false;
+    @Override
+    public boolean canSubmitShadowGraphSearch() {
+        return super.canSubmitShadowGraphSearch() && this.shadowRenderListManager.isNeedsUpdate()
+            && !this.shadowRenderListManager.hasOcclusionFutureInFlight();
+    }
 
-        final RenderSectionManagerAccessor self = (RenderSectionManagerAccessor) this;
-        final int targetQueueSize = shouldRespectUpdateTaskQueueSizeLimit() ? (int) Math.min(Integer.MAX_VALUE, (long) getBuilder().getTargetQueueSize() * 10) : Integer.MAX_VALUE;
-        this.shadowRenderListManager.startGraphUpdate(viewport, frame, self.angelica$getRegions().getRegionIdsLength(), self.angelica$getSearchDistance(), shouldUseOcclusionCulling(viewport, spectator), targetQueueSize);
-        return true;
+    @Override
+    public boolean submitShadowGraphSearch(Viewport viewport, int frame) {
+        return super.submitShadowGraphSearch(viewport, frame);
     }
 
     public boolean isShadowGraphDirty() {
@@ -361,5 +352,6 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         final var mem = this.getDeviceMemoryStats();
         Tracy.plotInt(P_MESH_DEVICE_USED, mem.deviceUsed + mem.indexUsed);
         Tracy.plotInt(P_MESH_DEVICE_ALLOCATED, mem.deviceAllocated + mem.indexAllocated);
+        Tracy.plotInt(P_DRAW_REGION_BUFFERS, mem.bufferCount);
     }
 }

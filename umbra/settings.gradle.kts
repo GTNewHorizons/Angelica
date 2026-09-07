@@ -32,3 +32,6 @@ project(":glsm").projectDir = file("../glsm")
 
 include("lwjgl3-backend")
 project(":lwjgl3-backend").projectDir = file("../lwjgl3-backend")
+
+include("sdl-gpu")
+project(":sdl-gpu").projectDir = file("../sdl-gpu")

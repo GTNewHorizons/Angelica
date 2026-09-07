@@ -25,6 +25,11 @@ public class CullEverythingFrustum extends Frustrum implements ViewportProvider,
 	}
 
 	@Override
+	public int intersectAab(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		return OUTSIDE;
+	}
+
+	@Override
 	public Viewport sodium$createViewport() {
 		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
 	}
