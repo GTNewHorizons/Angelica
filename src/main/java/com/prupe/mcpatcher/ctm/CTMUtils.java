@@ -18,6 +18,8 @@ import net.minecraft.client.resources.IResourcePack;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 
 import com.prupe.mcpatcher.MCLogger;
 import com.prupe.mcpatcher.MCPatcherUtils;
@@ -43,6 +45,7 @@ public class CTMUtils {
         private final Map<Block, List<BlockStateMatcher>> block = new IdentityHashMap<>();
         private final Map<String, List<TileOverride>> tile = new HashMap<>();
         private final Map<Block, BitSet> passes = new IdentityHashMap();
+        private final Map<Block, Int2ObjectMap<List<BlockStateMatcher>>> layeredCompacts = new IdentityHashMap<>();
 
         public List<TileOverride> getAll() {
             return all;
@@ -57,6 +60,9 @@ public class CTMUtils {
         }
         public BitSet getBlockPasses(Block block) {
             return passes.get(block);
+        }
+        public List<BlockStateMatcher>> getCompacts(Block block, int renderLayer) {
+            return layeredCompacts.get(block).get(renderLayer);
         }
     }
 
@@ -186,6 +192,16 @@ public class CTMUtils {
                             TileOverride o2 = (TileOverride) m2.getData();
                             return o1.compareTo(o2);
                         });
+                    }
+                    for (Map.Entry<Block, List<BlockStateMatcher>> entry : newOverrides.block.entrySet()) {
+                        for (BlockStateMatcher matcher : entry.getValue()) {
+                            if(matcher.getData() instanceof TileOverrideImpl.CTMCompact compact) {
+                                newOverrides.layeredCompacts.computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
+                                    .computeIfAbsent(compact.getRenderLayer(), k -> new ArrayList<>())
+                                    .add(matcher);
+                            }
+
+                        }
                     }
                     for (List<TileOverride> overrides : newOverrides.tile.values()) {
                         Collections.sort(overrides);
