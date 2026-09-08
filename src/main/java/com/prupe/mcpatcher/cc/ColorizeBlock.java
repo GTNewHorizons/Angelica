@@ -250,8 +250,8 @@ public class ColorizeBlock {
         }
         colorMap = wrapBlockMap(colorMap);
         for (String idString : idList.split("\\s+")) {
-            BlockStateMatcher blockMatcher = BlockAPI.createMatcher(new PropertiesFile(logger, resource), idString);
-            if (blockMatcher != null) {
+            for (BlockStateMatcher blockMatcher : BlockAPI
+                .createMatchers(new PropertiesFile(logger, resource), idString)) {
                 List<BlockStateMatcher> maps = blockColorMaps
                     .computeIfAbsent(blockMatcher.getBlock(), k -> new ArrayList<>());
                 blockMatcher.setData(colorMap);

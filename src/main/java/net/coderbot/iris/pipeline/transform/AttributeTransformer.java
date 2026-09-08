@@ -87,7 +87,6 @@ class AttributeTransformer {
 
 			if (instancedVertex) {
 				foldConstantAttribute(transformer, "mc_Entity", "-1.0", "vec2(-1.0, -1.0)", "vec3(-1.0, -1.0, 0.0)", "vec4(-1.0, -1.0, 0.0, 1.0)");
-				foldConstantAttribute(transformer, "mc_midTexCoord", "0.5", "vec2(0.5, 0.5)", "vec3(0.5, 0.5, 0.0)", "vec4(0.5, 0.5, 0.0, 1.0)");
 
 				final StringBuilder init = new StringBuilder(256);
 				init.append("{ iris_ModelViewMatrix = mat4(iris_InstMat0, iris_InstMat1, iris_InstMat2, iris_InstMat3);");

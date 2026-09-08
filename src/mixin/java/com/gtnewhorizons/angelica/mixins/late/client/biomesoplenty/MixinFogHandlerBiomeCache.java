@@ -52,6 +52,7 @@ public class MixinFogHandlerBiomeCache {
         final float[] sums = angelica$sums;
         BopFogBlend.accumulate(world, FogBiomeCache.generation(), BopFogColorSource.INSTANCE.forWorld(world),
             playerEntity.posX, playerEntity.posZ, playerX, playerY, playerZ, distance, sums);
+        BopFogColorSource.INSTANCE.freeWorld();
 
         float rBiomeFog = sums[0];
         float gBiomeFog = sums[1];

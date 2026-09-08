@@ -27,7 +27,6 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCalloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memGetInt;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutInt;
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Maintains the shared {@link FFPUniformBlock} image from GLSM cached state and streams it to the UBO ring.
@@ -209,7 +208,7 @@ public class Uniforms {
                 ring = new UniformRingBuffer(RING_CAPACITY, FFPUniformBlock.SIZE);
             }
             final int offset = ring.writeBlock(staging);
-            RENDER_BACKEND.bindBufferRange(GL31.GL_UNIFORM_BUFFER, FFPUniformBlock.BINDING_POINT,
+            GLStateManager.glBindBufferRange(GL31.GL_UNIFORM_BUFFER, FFPUniformBlock.BINDING_POINT,
                 ring.getBufferId(), offset, FFPUniformBlock.SIZE);
             bound = true;
             blockWrites++;

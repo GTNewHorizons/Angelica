@@ -61,13 +61,17 @@ public class NativeImage extends BufferedImage {
 //        final int width = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_WIDTH);
 //        final int height = GL11.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, level, GL11.GL_TEXTURE_HEIGHT);
 
-        final IntBuffer buffer = MemoryUtilities.memAllocInt(size);
+        final int pixels = width * height;
+        final IntBuffer buffer = MemoryUtilities.memAllocInt(pixels);
 
         try {
             GLStateManager.glGetTexImage(GL11.GL_TEXTURE_2D, level, format.glFormat, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, buffer);
 
-            int[] data = new int[size];
-            buffer.get(data);
+            int[] data = new int[pixels];
+            buffer.get(data, 0, pixels);
+            for (int i = 0; i < pixels; i++) {
+                data[i] = swapRedBlue(data[i]);
+            }
             setRGB(0, 0, width, height, data, 0, width);
         } finally {
             MemoryUtilities.memFree(buffer);
@@ -90,7 +94,7 @@ public class NativeImage extends BufferedImage {
     }
 
     public static int getR(int i) {
-        return i >> 0 & 255;
+        return i & 255;
     }
 
     public static int getG(int i) {
@@ -102,11 +106,15 @@ public class NativeImage extends BufferedImage {
     }
 
     public int getPixelRGBA(int x, int y) {
-        return getRGB(x, y);
+        return swapRedBlue(getRGB(x, y));
     }
 
     public void setPixelRGBA(int x, int y, int rgb) {
-        setRGB(x, y, rgb);
+        setRGB(x, y, swapRedBlue(rgb));
+    }
+
+    private static int swapRedBlue(int c) {
+        return (c & 0xFF00FF00) | ((c >>> 16) & 0xFF) | ((c & 0xFF) << 16);
     }
 
 

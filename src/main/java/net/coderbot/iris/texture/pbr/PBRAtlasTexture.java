@@ -89,7 +89,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 		}
 
 		if (AngelicaConfig.enablePBRDebug) {
-			TextureExporter.exportTextures("pbr_debug/atlas", id.getResourceDomain() + "_" + id.getResourcePath().replaceAll("/", "_"), glId, mipLevel, atlasWidth, atlasHeight);
+			TextureExporter.exportTextures("pbr_debug/atlas", id.getResourceDomain() + "_" + id.getResourcePath().replace("/", "_") + ".png", glId, mipLevel, atlasWidth, atlasHeight);
 		}
 	}
 

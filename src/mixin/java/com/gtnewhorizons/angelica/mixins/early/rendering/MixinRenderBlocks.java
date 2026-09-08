@@ -209,7 +209,11 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
             return;
         }
 
-        if (processor.processFace((RenderBlocks)(Object)this, renderBlockState, icon, direction.ordinal())) {
+        RenderBlocks rb = (RenderBlocks) (Object) this;
+        if (rb.hasOverrideBlockTexture()) {
+            return;
+        }
+        if (processor.processFace(rb, renderBlockState, icon, direction.ordinal())) {
             ci.cancel();
         }
     }

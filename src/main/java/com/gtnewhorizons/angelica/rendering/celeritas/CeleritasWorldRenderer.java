@@ -6,6 +6,8 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
+import com.gtnewhorizons.angelica.compat.bop.BopFogBlend;
+import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -43,6 +45,7 @@ import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.ITileEntityBoundingBoxCache;
 import com.gtnewhorizons.angelica.mixins.interfaces.OverridesShouldRenderInPass;
@@ -166,6 +169,9 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         TesrBatchRenderer.INSTANCE.clearRetained();
         ModelPartBatcher.INSTANCE.clear();
         GpuCulling.onWorldUnload();
+        FfpExtendedAttribs.reset();
+        BopFogBlend.invalidate();
+        FogBiomeCache.invalidate();
         super.unloadWorld();
     }
 

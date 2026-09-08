@@ -559,7 +559,7 @@ public class RenderSystem {
     }
 
     public static void bindBufferBase(int target, int index, int buffer) {
-        RENDER_BACKEND.bindBufferBase(target, index, buffer);
+        GLStateManager.glBindBufferBase(target, index, buffer);
     }
 
     public static void bufferStorage(int target, long size, int flags) {

@@ -1,4 +1,7 @@
 # A specification for models
+
+🌐 **Languages:** [English](model-spec.md) | [Українська](model-spec_uk.md)
+
 This is borrowed from [the unofficial Minecraft wiki](https://minecraft.wiki/w/Tutorials/Models) under the CC BY-NC-SA 3.0.
 
 The folder `assets/<namespace>/models/block` holds the model files for all the specified variants. The names of the files can be changed, but must always correspond with the names used in the variant files.
@@ -8,7 +11,7 @@ The folder `assets/<namespace>/models/block` holds the model files for all the s
     * Can be set to `"builtin/generated"` to use a model that is created out of the specified icon. Note that only the first layer is supported, and rotation can be achieved only by using block states files.
   * `[TAG_byte]` **ambientocclusion**: Whether to use [ambient occlusion](http://en.wikipedia.org/wiki/Ambient_occlusion) (`true` - default), or not (`false`). Note:only works on Parent file
   * `[TAG_object]` **display**: Holds the different places where item models are displayed.
-    * `[TAG_compound]` ***Position***: Named `thirdperson_righthand`, `thirdperson_lefthand`, `firstperson_righthand`, `firstperson_lefthand`, `gui`, `head`, `ground`, or `fixed`. Place where an item model is displayed. Holds its rotation, translation and scale for the specified situation. '''fixed''' refers to item frames, while the rest are as their name states. Note that translations are applied to the model before rotations.
+    * `[TAG_compound]` ***Position***: Named `thirdperson_righthand`, `thirdperson_lefthand`, `firstperson_righthand`, `firstperson_lefthand`, `gui`, `head`, `ground`, or `fixed`. Place where an item model is displayed. Holds its rotation, translation and scale for the specified situation. **'''fixed'''** refers to item frames, while the rest are as their name states. Note that translations are applied to the model before rotations.
       * `[TAG_list]` **rotation**: Specifies the rotation of the model according to the scheme `[x, y, z]`.
       * `[TAG_list]` **translation**: Specifies the position of the model according to the scheme `[x, y, z]`. The values are clamped between -80 and 80.
       * `[TAG_list]` **scale**: Specifies the scale of the model according to the scheme `[x, y, z]`. If the value is greater than 4, it is displayed as 4.

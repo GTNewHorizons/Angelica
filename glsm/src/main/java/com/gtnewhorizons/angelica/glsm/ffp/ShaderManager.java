@@ -80,6 +80,10 @@ public final class ShaderManager {
         warmUp();
         enabled = true;
 
+        if (GLStateManager.getActiveProgram() == 0) {
+            activate();
+        }
+
         GLStateManager.LOGGER.info("FFP shader emulation enabled");
     }
 
@@ -179,6 +183,7 @@ public final class ShaderManager {
         sm.lastFramePreDrawCalls = sm.preDrawCalls;
         sm.preDrawCalls = 0;
         sm.uniforms.endFrame();
+        FfpExtendedAttribs.endFrame();
     }
 
     public static void setCurrentNormal(float x, float y, float z) {

@@ -13,6 +13,7 @@ import java.util.function.Consumer;
 
 import com.github.bsideup.jabel.Desugar;
 import net.minecraft.block.Block;
+import net.minecraft.client.resources.IResourcePack;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.IBlockAccess;
@@ -25,6 +26,7 @@ import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
 import com.prupe.mcpatcher.mal.block.RenderPassAPI;
 import com.prupe.mcpatcher.mal.resource.BlendMethod;
 import com.prupe.mcpatcher.mal.resource.ResourceList;
+import com.prupe.mcpatcher.mal.resource.ResourceLocationWithSource;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
@@ -128,8 +130,14 @@ public class CTMUtils {
                     logger.info("loading CTM overrides");
                     newOverrides = new Overrides();
                     if (MCPatcherForgeConfig.ConnectedTextures.standard || MCPatcherForgeConfig.ConnectedTextures.nonStandard) {
-                        for (ResourceLocation resource : ResourceList.getInstance()
-                            .listResources(TexturePackAPI.MCPATCHER_SUBDIR + "ctm", ".properties", true)) {
+                        final List<ResourceLocation> ctmResources = new ArrayList<>();
+                        for (String subdir : new String[] { TexturePackAPI.MCPATCHER_SUBDIR, TexturePackAPI.OPTIFINE_SUBDIR }) {
+                            ctmResources.addAll(ResourceList.getInstance()
+                                .listResources(subdir + "ctm", ".properties", true));
+                        }
+                        final Map<String, Map<IResourcePack, Integer>> packPriority = new HashMap<>();
+                        ctmResources.sort((a, b) -> packPriorityOf(packPriority, b) - packPriorityOf(packPriority, a));
+                        for (ResourceLocation resource : ctmResources) {
                             registerOverrideWithoutLock(newOverrides, TileOverride.create(resource, tileLoader));
                         }
                         for (Consumer<Overrides> callback : ctmRegistrationCallbacks) {
@@ -294,9 +302,7 @@ public class CTMUtils {
             Set<String> matchingTiles = override.getMatchingTiles();
             if (!MCPatcherUtils.isNullOrEmpty(matchingTiles)) {
                 for (String name : matchingTiles) {
-                    List<TileOverride> list = overrides.tile.computeIfAbsent(name, k -> new ArrayList<>());
-                    list.add(override);
-                    logger.fine("using %s for tile %s", override, name);
+                    registerTileWithoutLock(overrides, name, override);
                     registered = true;
                 }
             }
@@ -304,6 +310,30 @@ public class CTMUtils {
                 overrides.all.add(override);
             }
         }
+    }
+
+    private static void registerTileWithoutLock(Overrides overrides, String name, TileOverride override) {
+        overrides.tile.computeIfAbsent(name, k -> new ArrayList<>())
+            .add(override);
+        logger.fine("using %s for tile %s", override, name);
+    }
+
+    private static Map<IResourcePack, Integer> getPackPriority(String namespace) {
+        final List<IResourcePack> packs = TexturePackAPI.getResourcePacks(namespace);
+        final Map<IResourcePack, Integer> priority = new IdentityHashMap<>(packs.size());
+        for (int i = 0; i < packs.size(); i++) {
+            priority.put(packs.get(i), i);
+        }
+        return priority;
+    }
+
+
+    private static int packPriorityOf(Map<String, Map<IResourcePack, Integer>> byDomain, ResourceLocation resource) {
+        if (!(resource instanceof ResourceLocationWithSource source)) return -1;
+        final Integer rank = byDomain
+            .computeIfAbsent(resource.getResourceDomain(), CTMUtils::getPackPriority)
+            .get(source.getSource());
+        return rank == null ? -1 : rank;
     }
 
     private static void setBlankResourceWithoutLock() {

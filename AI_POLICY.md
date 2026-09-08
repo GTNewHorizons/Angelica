@@ -1,5 +1,7 @@
 # AI Usage Policy
 
+🌐 **Languages:** [English](AI_POLICY.md) | [Українська](AI_POLICY_uk.md)
+
 This project has strict rules for AI usage:
 
 * **The human-in-the-loop must fully understand all code.** If you

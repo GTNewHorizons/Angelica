@@ -1,3 +1,7 @@
+🌐 **Languages:** [English](LICENSE-HUDCaching.md) | [Українська](LICENSE-HUDCaching_uk.md)
+
+---
+
 HUDCaching was backported from https://github.com/Sk1erLLC/Patcher under the following license:
 
 # Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International

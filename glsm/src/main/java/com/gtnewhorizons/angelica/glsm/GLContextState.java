@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.ints.IntSet;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
@@ -180,6 +184,10 @@ class GLContextState {
     public int boundVAO;
     public int boundPixelUnpackBuffer;
     public int boundPixelPackBuffer;
+    public int boundCopyReadBuffer;
+    public int boundCopyWriteBuffer;
+    public final Int2IntMap boundOtherBuffers = new Int2IntOpenHashMap();
+    public final IntSet writeMappedBuffers = new IntOpenHashSet();
     public PixelUnpackState pixelUnpackState = PixelUnpackState.DEFAULT;
     public final int[] clientAttribSavedTextureUnit = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public final int[] clientAttribSavedVertexFlags = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];

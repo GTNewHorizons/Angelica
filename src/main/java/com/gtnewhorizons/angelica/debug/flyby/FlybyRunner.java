@@ -13,6 +13,7 @@ import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.Display;
 
 import java.util.Arrays;
 
@@ -41,9 +42,12 @@ public final class FlybyRunner {
     private int runTicks;
     private int tick;
     private boolean waitForTracy;
+    private boolean waitForFocus;
     private boolean exitWhenDone;
     private boolean startedFromProperties;
     private volatile boolean freezeRequested;
+    private boolean pauseOnLostFocusSaved;
+    private boolean pauseOnLostFocusOverridden;
 
     private double originX, originY, originZ;
     private float originYaw, originPitch;
@@ -83,10 +87,11 @@ public final class FlybyRunner {
         this.startedFromProperties = true;
         this.start(configured, SystemProperties.FLYBY_LENGTH, SystemProperties.FLYBY_WARMUP_TICKS, SystemProperties.FLYBY_SPEED);
         this.waitForTracy = SystemProperties.FLYBY_WAIT_FOR_TRACY;
+        this.waitForFocus = SystemProperties.FLYBY_WAIT_FOR_FOCUS;
         this.exitWhenDone = SystemProperties.FLYBY_EXIT_WHEN_DONE;
-        LOGGER.info("Flyby started from properties: route={} warmup={} length={} {} ({} ticks) waitForTracy={} exitWhenDone={}",
+        LOGGER.info("Flyby started from properties: route={} warmup={} length={} {} ({} ticks) waitForTracy={} waitForFocus={} exitWhenDone={}",
             configured.id(), this.warmupTicks, this.runLength, configured.lengthUnit(), this.runTicks,
-            this.waitForTracy, this.exitWhenDone);
+            this.waitForTracy, this.waitForFocus, this.exitWhenDone);
     }
 
     public void start(FlybyRoute route, int length, int warmupTicks, double speed) {
@@ -99,6 +104,7 @@ public final class FlybyRunner {
         this.frameCount = 0;
         this.framesTruncated = false;
         this.waitForTracy = false;
+        this.waitForFocus = false;
         this.exitWhenDone = false;
         this.state = State.WAITING;
     }
@@ -123,6 +129,7 @@ public final class FlybyRunner {
         switch (this.state) {
             case WAITING -> {
                 if (this.waitForTracy && !Tracy.isConnected()) return;
+                if (this.waitForFocus && !Display.isActive()) return;
                 this.begin(mc, player);
             }
             case WARMUP -> {
@@ -172,6 +179,15 @@ public final class FlybyRunner {
     }
 
     private void begin(Minecraft mc, EntityClientPlayerMP player) {
+        if (mc.currentScreen != null) {
+            mc.displayGuiScreen(null);
+        }
+        if (!this.pauseOnLostFocusOverridden) {
+            this.pauseOnLostFocusSaved = mc.gameSettings.pauseOnLostFocus;
+            this.pauseOnLostFocusOverridden = true;
+            mc.gameSettings.pauseOnLostFocus = false;
+        }
+
         this.originX = player.posX;
         this.originY = player.posY;
         this.originZ = player.posZ;
@@ -397,9 +413,16 @@ public final class FlybyRunner {
         Tracy.message("flyby teardown");
 
         this.returnToOrigin(player);
+        this.restorePauseOnLostFocus(mc);
 
         this.tick = 0;
         this.state = this.exitWhenDone ? State.EXITING : State.DONE;
+    }
+
+    private void restorePauseOnLostFocus(Minecraft mc) {
+        if (!this.pauseOnLostFocusOverridden) return;
+        mc.gameSettings.pauseOnLostFocus = this.pauseOnLostFocusSaved;
+        this.pauseOnLostFocusOverridden = false;
     }
 
     private void returnToOrigin(EntityClientPlayerMP player) {
@@ -448,6 +471,7 @@ public final class FlybyRunner {
             Tracy.sectionLeave(this.runSection);
             this.runSection = 0L;
             FramePacer.endStats();
+            this.restorePauseOnLostFocus(Minecraft.getMinecraft());
         }
     }
 

@@ -97,6 +97,12 @@ import net.coderbot.iris.client.IrisDebugScreenHandler;
 
 public final class ClientProxy extends CommonProxy {
 
+    /**
+     * So you don't need to be in a dev env to have access to the commands.
+     * Do not commit with this set to true.
+     */
+    private static final boolean FORCE_DEBUG_MODE = false;
+
     public static BlockError blockError;
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
     private static final Logger LOGGER = LogManager.getLogger("Angelica");
@@ -136,6 +142,7 @@ public final class ClientProxy extends CommonProxy {
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
         if (AngelicaConfig.enableIris) {
+            IrisGLSMBridge.installImmediateExtendedHandler();
             Iris.warmupShaderTransforms();
         }
     }
@@ -190,7 +197,7 @@ public final class ClientProxy extends CommonProxy {
         }
 
         // Debug tooling
-        if (!AngelicaClientTweaker.isObfEnv()) {
+        if (FORCE_DEBUG_MODE || !AngelicaClientTweaker.isObfEnv()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
 
             FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);

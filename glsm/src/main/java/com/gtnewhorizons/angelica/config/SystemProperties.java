@@ -47,6 +47,7 @@ public final class SystemProperties {
     // Flyby
     public static final String FLYBY_ROUTE = System.getProperty("angelica.flyby.route", "");
     public static final boolean FLYBY_WAIT_FOR_TRACY = Boolean.getBoolean("angelica.flyby.waitForTracy");
+    public static final boolean FLYBY_WAIT_FOR_FOCUS = Boolean.getBoolean("angelica.flyby.waitForFocus");
     public static final int FLYBY_WARMUP_TICKS = Integer.getInteger("angelica.flyby.warmupTicks", 400);
     public static final int FLYBY_LENGTH = Integer.getInteger("angelica.flyby.length", 0); // Blocks for moving routes, ticks for stationary
     public static final double FLYBY_SPEED = parseDouble("angelica.flyby.speed"); // Travel speed in blocks per tick

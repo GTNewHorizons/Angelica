@@ -33,10 +33,14 @@ public final class SplashDispatcher {
         return (long) w << 32 | (h & 0xffffffffL);
     }
 
+    static boolean intervalElapsed(long now, long lastBlitNanos, boolean force) {
+        return force || now - lastBlitNanos >= MIN_INTERVAL_NS;
+    }
+
     public static void tryDispatch(SDLGPURenderBackend backend, OffscreenTarget target, boolean force) {
         if (!frameReady || target == null) return;
         final long now = System.nanoTime();
-        if (!force && now - lastBlitNanos < MIN_INTERVAL_NS) return;
+        if (!intervalElapsed(now, lastBlitNanos, force)) return;
         lastBlitNanos = now;
         frameReady = false;
         backend.dispatchSplashBlit(target);

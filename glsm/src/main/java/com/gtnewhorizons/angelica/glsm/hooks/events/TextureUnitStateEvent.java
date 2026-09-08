@@ -4,5 +4,6 @@ import net.minecraftforge.eventbus.api.event.MutableEvent;
 
 public final class TextureUnitStateEvent extends MutableEvent {
     public int unit;
+    public int cap;
     public boolean enabled;
 }

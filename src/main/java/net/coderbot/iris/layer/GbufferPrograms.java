@@ -4,6 +4,7 @@ import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import net.coderbot.iris.gl.shader.ProgramCreator;
@@ -240,8 +241,7 @@ public class GbufferPrograms {
 
 	public static void setBlockEntityDefaults() {
 		GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short)-1, (short)-1);
-		GLStateManager.glVertexAttrib2f(ProgramCreator.MC_MID_TEX_COORD, 0.5f, 0.5f);
-		GLStateManager.glVertexAttrib4f(ProgramCreator.AT_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+		FfpExtendedAttribs.setNeutralCurrentValues();
 		GLStateManager.glVertexAttrib4f(ProgramCreator.AT_MIDBLOCK, 0.0f, 0.0f, 0.0f, 0.0f);
 	}
 

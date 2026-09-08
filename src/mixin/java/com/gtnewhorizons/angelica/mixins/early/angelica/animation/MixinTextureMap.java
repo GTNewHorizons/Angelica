@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
-import com.gtnewhorizons.angelica.utils.AnimationMode;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
@@ -30,9 +29,8 @@ public abstract class MixinTextureMap extends AbstractTexture {
      */
     @Overwrite
     public void updateAnimations() {
-        final boolean renderAll = ClientProxy.animationsMode.is(AnimationMode.ALL);
-        final boolean renderVisible = ClientProxy.animationsMode.is(AnimationMode.VISIBLE_ONLY);
-
+        final boolean renderVisible = ClientProxy.options().performance.animateOnlyVisibleTextures;
+        
         Minecraft.getMinecraft().mcProfiler.startSection("updateAnimations");
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.getGlTextureId());
 
@@ -42,7 +40,7 @@ public abstract class MixinTextureMap extends AbstractTexture {
             final IPatchedTextureAtlasSprite patched = (IPatchedTextureAtlasSprite) sprite;
 
             // needsAnimationUpdate() is one-shot: returns true if marked, then auto-resets
-            if (renderAll || (renderVisible && patched.needsAnimationUpdate())) {
+            if (!renderVisible || patched.needsAnimationUpdate()) {
                 sprite.updateAnimation();
             } else {
                 // Keep frame counters in sync for sprites not being updated

@@ -517,7 +517,8 @@ public class GLSMRedirector {
             .add("glFramebufferRenderbuffer")
             .add("glIsFramebuffer")
             .add("glIsRenderbuffer")
-            .add("glBindBufferBase");
+            .add("glBindBufferBase")
+            .add("glBindBufferRange");
         final var gl31 = RedirectMap.newMap()
             .add("glDrawElementsInstanced")
             .add("glDrawArraysInstanced")
@@ -722,6 +723,7 @@ public class GLSMRedirector {
         );
         final var uniformBufferObject = RedirectMap.newMap()
             .add("glBindBufferBase")
+            .add("glBindBufferRange")
             .add("glGetUniformBlockIndex")
             .add("glUniformBlockBinding");
         methodRedirects.put(ARBUniformBufferObject, uniformBufferObject);

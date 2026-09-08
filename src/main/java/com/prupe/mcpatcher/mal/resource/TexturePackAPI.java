@@ -43,6 +43,7 @@ public class TexturePackAPI {
     public static final String DEFAULT_NAMESPACE = "minecraft";
 
     public static final String MCPATCHER_SUBDIR = "mcpatcher/";
+    public static final String OPTIFINE_SUBDIR = "optifine/";
     public static final ResourceLocation ITEMS_PNG = new ResourceLocation("textures/atlas/items.png");
 
     private static final String ASSETS = "assets/";
@@ -195,13 +196,21 @@ public class TexturePackAPI {
         }
         path = path.replace(File.separatorChar, '/');
         if (path.startsWith(ASSETS)) {
-            path = path.substring(ASSETS.length());
-            int slash = path.indexOf('/');
-            if (slash > 0 && slash + 1 < path.length()) {
-                return new ResourceLocation(path.substring(0, slash), path.substring(slash + 1));
+            int namespaceStart = ASSETS.length();
+            int slash = path.indexOf('/', namespaceStart);
+
+            if (slash > namespaceStart && slash + 1 < path.length()) {
+                return new ResourceLocation(
+                    path.substring(namespaceStart, slash),
+                    path.substring(slash + 1));
             }
         }
         return null;
+    }
+
+    private static String subdirOf(ResourceLocation baseResource) {
+        return baseResource != null && baseResource.getResourcePath()
+            .startsWith(OPTIFINE_SUBDIR) ? OPTIFINE_SUBDIR : MCPATCHER_SUBDIR;
     }
 
     public static ResourceLocation parseResourceLocation(ResourceLocation baseResource, String path) {
@@ -232,8 +241,8 @@ public class TexturePackAPI {
         ResourceLocation resource;
         if (path.startsWith("~/")) {
             // Relative to namespace mcpatcher dir:
-            // ~/path -> assets/(namespace of base file)/mcpatcher/path
-            resource = new ResourceLocation(baseResource.getResourceDomain(), MCPATCHER_SUBDIR + path.substring(2));
+            // ~/path -> assets/(namespace of base file)/(mcpatcher|optifine)/path
+            resource = new ResourceLocation(baseResource.getResourceDomain(), subdirOf(baseResource) + path.substring(2));
         } else if (path.startsWith("./")) {
             // Relative to properties file:
             // ./path -> (dir of base file)/path

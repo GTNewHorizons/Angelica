@@ -1,5 +1,6 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import org.taumc.glsl.Transformer;
 
 import java.util.HashMap;
@@ -20,12 +21,12 @@ class CoreTransformHelper {
 
     static void injectMatrixUniforms(Transformer transformer, boolean instancedVertex) {
         if (instancedVertex) {
-            transformer.injectVariable("layout(location = 7) in vec4 iris_InstMat0;");
-            transformer.injectVariable("layout(location = 8) in vec4 iris_InstMat1;");
-            transformer.injectVariable("layout(location = 9) in vec4 iris_InstMat2;");
-            transformer.injectVariable("layout(location = 10) in vec4 iris_InstMat3;");
-            transformer.injectVariable("layout(location = 11) in vec4 iris_InstColor;");
-            transformer.injectVariable("layout(location = 12) in vec2 iris_InstLightmap;");
+            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL0 + ") in vec4 iris_InstMat0;");
+            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL1 + ") in vec4 iris_InstMat1;");
+            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL2 + ") in vec4 iris_InstMat2;");
+            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL3 + ") in vec4 iris_InstMat3;");
+            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_COLOR + ") in vec4 iris_InstColor;");
+            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_LIGHTMAP + ") in vec2 iris_InstLightmap;");
             transformer.injectVariable("mat4 iris_ModelViewMatrix;");
             transformer.injectVariable("mat4 iris_ModelViewMatrixInverse;");
             transformer.injectVariable("mat3 iris_NormalMatrix;");

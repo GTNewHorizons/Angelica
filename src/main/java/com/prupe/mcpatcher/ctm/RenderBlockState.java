@@ -36,6 +36,7 @@ abstract public class RenderBlockState {
     public static final int CONNECT_BY_BLOCK = 0;
     public static final int CONNECT_BY_TILE = 1;
     public static final int CONNECT_BY_MATERIAL = 2;
+    public static final int CONNECT_BY_LIST = 3;
 
     protected static int[] add(int[] a, int[] b) {
         if (a.length != b.length) {
