@@ -50,7 +50,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     private final List<BlockStateMatcher> abuttingBlocks;
     private final BlockFaceMatcher faceMatcher;
     private final int connectType;
-x    private final boolean innerSeams;
+    private final boolean innerSeams;
     private final BitSet biomes;
     private final BitSet height;
     private final boolean disabled;
