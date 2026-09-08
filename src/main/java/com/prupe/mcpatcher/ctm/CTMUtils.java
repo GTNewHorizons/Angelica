@@ -75,6 +75,14 @@ public class CTMUtils {
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
 
+
+    public static List<BlockStateMatcher> getCompactsOfLayer(Block block, int renderLayer) {
+        return overrides.getCompacts(block, renderLayer);
+    }
+    public static Int2ObjectMap<List<BlockStateMatcher>> getCompactLayers(Block block) {
+        return overrides.getCompactLayers(block);
+    }
+
     @Desugar
     public record CTMCompactContext(TileOverrideImpl.CTMCompact[] compacts, RenderBlockState renderBlockState) {}
 
