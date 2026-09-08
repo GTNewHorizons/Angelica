@@ -53,6 +53,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
 x    private final boolean innerSeams;
     private final BitSet biomes;
     private final BitSet height;
+    private final boolean disabled;
 
     protected final List<ResourceLocation> tileNames = new ArrayList<>();
     protected IIcon[] icons;
@@ -140,6 +141,8 @@ x    private final boolean innerSeams;
             .replaceFirst("\\.properties$", "");
         this.tileLoader = tileLoader;
 
+
+        disabled = properties.getString("disabled", "false") == "true";
         String renderPassStr = properties.getString("renderPass", "");
         renderPass = RenderPassAPI.instance.parseRenderPass(renderPassStr);
         if (renderPassStr.matches("\\d+") && renderPass >= 0 && renderPass <= RenderPassAPI.MAX_EXTRA_RENDER_PASS) {
@@ -363,7 +366,7 @@ x    private final boolean innerSeams;
     }
 
     final public boolean isDisabled() {
-        return !properties.valid();
+        return !properties.valid() || disabled;
     }
 
     final public List<BlockStateMatcher> getMatchingBlocks() {
