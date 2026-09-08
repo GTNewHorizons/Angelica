@@ -61,8 +61,13 @@ public class CTMUtils {
         public BitSet getBlockPasses(Block block) {
             return passes.get(block);
         }
-        public List<BlockStateMatcher>> getCompacts(Block block, int renderLayer) {
-            return layeredCompacts.get(block).get(renderLayer);
+        public List<BlockStateMatcher> getCompacts(Block block, int renderLayer) {
+            Int2ObjectMap<List<BlockStateMatcher>> byLayer = layeredCompacts.get(block);
+            return byLayer == null ? null : byLayer.get(renderLayer);
+        }
+
+        public Int2ObjectMap<List<BlockStateMatcher>> getCompactLayers(Block block) {
+            return layeredCompacts.get(block);
         }
     }
 
