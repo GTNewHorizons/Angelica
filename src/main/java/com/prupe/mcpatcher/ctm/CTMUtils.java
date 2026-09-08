@@ -3,6 +3,7 @@ package com.prupe.mcpatcher.ctm;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.BitSet;
 import java.util.List;
@@ -206,15 +207,24 @@ public class CTMUtils {
                             return o1.compareTo(o2);
                         });
                     }
+                    Set<Block> solidBlocks = new HashSet<>();
+                    Set<Block> duplicates = new HashSet<>();
                     for (Map.Entry<Block, List<BlockStateMatcher>> entry : newOverrides.block.entrySet()) {
                         for (BlockStateMatcher matcher : entry.getValue()) {
-                            if(matcher.getData() instanceof TileOverrideImpl.CTMCompact compact) {
+                            if (matcher.getData() instanceof TileOverrideImpl.CTMCompact compact) {
                                 newOverrides.layeredCompacts.computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
                                     .computeIfAbsent(compact.getRenderLayer(), k -> new ArrayList<>())
                                     .add(matcher);
+                                if (compact.getRenderPass()==0) {
+                                    if (!solidBlocks.add(entry.getKey())) {
+                                        duplicates.add(entry.getKey());
+                                    }
+                                }
                             }
-
                         }
+                    }
+                    for (Block each : duplicates) {
+                        logger.warning("Block %s has multiple solid layers.  Convention is lowest weight/filename wins", each);
                     }
                     for (List<TileOverride> overrides : newOverrides.tile.values()) {
                         Collections.sort(overrides);
