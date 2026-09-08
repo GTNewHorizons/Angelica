@@ -377,7 +377,8 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     }
 
     final public int getRenderPass() {
-        return renderPass;
+        //Angelica only supports two passes, although -1 is valid from RenderPassAPI.
+        return renderPass < 0 ? renderPass : (renderPass == 0 ? 0 : 1);
     }
 
     final public int getWeight() {
