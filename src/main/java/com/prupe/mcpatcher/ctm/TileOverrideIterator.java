@@ -14,6 +14,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 
 import jss.notfine.config.MCPatcherForgeConfig;
 
@@ -121,21 +122,27 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         lastMatchedOverride = null;
         skipOverrides.clear();
 
-        pass: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
+        passLoop: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
             while (hasNext()) {
                 TileOverride override = next();
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
+                int worldRenderPass = RenderPassHelper.getWorldRenderPass();
                 if (newIcon != null) {
-                    if (override instanceof TileOverrideImpl.CTMCompact compact) {
-                        CTMUtils.setCurrentCompact(
-                            collectCompactLayers(compact, renderBlockState, origIcon),
-                            renderBlockState);
+                    if (override instanceof TileOverrideImpl.CTMCompact compact
+                        && override.getRenderPass() == worldRenderPass) {
+                            if (worldRenderPass == 0) {
+                                CTMUtils.setCurrentCompact(new TileOverrideImpl.CTMCompact[] {compact}, renderBlockState);
+                            }  else {
+                            CTMUtils.setCurrentCompact(
+                                collectCompactLayers(compact, renderBlockState, origIcon, worldRenderPass),
+                                renderBlockState);
+                            }
                     }
                     lastMatchedOverride = override;
                     skipOverrides.add(override);
                     currentIcon = newIcon;
                     resetForNextPass();
-                    continue pass;
+                    continue passLoop;
                 }
             }
             break;
@@ -143,7 +150,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         return lastMatchedOverride;
     }
     private TileOverrideImpl.CTMCompact[] collectCompactLayers(TileOverrideImpl.CTMCompact primary,
-        RenderBlockState renderBlockState, IIcon origIcon) {
+        RenderBlockState renderBlockState, IIcon origIcon, int worldRenderPass) {
         Int2ObjectSortedMap<TileOverrideImpl.CTMCompact> layers = new Int2ObjectAVLTreeMap<>();
         layers.putIfAbsent(primary.getRenderLayer(), primary);
         BlockStateMatcher primaryFilter = renderBlockState.getFilter();
@@ -159,7 +166,10 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
                     if (candidateOverride.isDisabled()) {
                         continue;
                     }
-                    if(!renderBlockState.match(candidate)) {
+                    if (candidateOverride.getRenderPass() != worldRenderPass) {
+                        continue;
+                    }
+                    if (!renderBlockState.match(candidate)) {
                         continue;
                     }
                     renderBlockState.setFilter(candidate);
