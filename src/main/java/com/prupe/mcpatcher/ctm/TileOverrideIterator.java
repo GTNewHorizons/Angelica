@@ -1,5 +1,6 @@
 package com.prupe.mcpatcher.ctm;
 
+import java.util.TreeMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -8,6 +9,9 @@ import java.util.Set;
 
 import net.minecraft.block.Block;
 import net.minecraft.util.IIcon;
+import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectSortedMap;
+import it.unimi.dsi.fastutil.ints.Int2ObjectAVLTreeMap;
 
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
 
@@ -123,7 +127,9 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
                 if (newIcon != null) {
                     if (override instanceof TileOverrideImpl.CTMCompact compact) {
-                        CTMUtils.setCurrentCompact(compact, renderBlockState);
+                        CTMUtils.setCurrentCompact(
+                            collectCompactLayers(compact, renderBlockState, origIcon),
+                            renderBlockState);
                     }
                     lastMatchedOverride = override;
                     skipOverrides.add(override);
@@ -135,6 +141,40 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
             break;
         }
         return lastMatchedOverride;
+    }
+    private TileOverrideImpl.CTMCompact[] collectCompactLayers(TileOverrideImpl.CTMCompact primary,
+        RenderBlockState renderBlockState, IIcon origIcon) {
+        Int2ObjectSortedMap<TileOverrideImpl.CTMCompact> layers = new Int2ObjectAVLTreeMap<>();
+        layers.putIfAbsent(primary.getRenderLayer(), primary);
+        BlockStateMatcher primaryFilter = renderBlockState.getFilter();
+        Int2ObjectMap<List<BlockStateMatcher>> layeredCandidates = CTMUtils.getCompactLayers(renderBlockState.getBlock());
+        
+        try {
+            LayerLoop: for (Map.Entry<Integer, List<BlockStateMatcher>> entry: layeredCandidates.int2ObjectEntrySet()) {
+                if(layers.containsKey(entry.getKey())) {
+                    continue;
+                }
+                for (BlockStateMatcher candidate : entry.getValue()) {
+                    TileOverrideImpl.CTMCompact candidateOverride = (TileOverrideImpl.CTMCompact) candidate.getData();
+                    if (candidateOverride.isDisabled()) {
+                        continue;
+                    }
+                    if(!renderBlockState.match(candidate)) {
+                        continue;
+                    }
+                    renderBlockState.setFilter(candidate);
+                    if (getTile(candidateOverride, renderBlockState, origIcon) != null) {
+                        layers.putIfAbsent(candidateOverride.getRenderLayer(), candidateOverride);
+                        continue LayerLoop;
+                    }
+                }
+            }
+        } finally {
+            renderBlockState.setFilter(primaryFilter);
+        }
+
+        //layers.sort(Comparator.comparingInt(TileOverrideImpl.CTMCompact::getRenderLayer));
+        return layers.values().toArray(new TileOverrideImpl.CTMCompact[0]);
     }
 
     public IIcon getIcon() {
