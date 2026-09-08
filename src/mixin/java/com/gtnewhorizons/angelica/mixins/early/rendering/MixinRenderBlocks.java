@@ -221,22 +221,23 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
             angelica$savedMaxY = rb.renderMaxY;
             angelica$savedMaxZ = rb.renderMaxZ;
             for (int i=0; i < compacts.length; i++) {
-                angelica$nudgeFaceOutward();
+                angelica$nudgeFaceOutward(rb, face);
             }
             return;
         }
         if (RenderPassHelper.getWorldRenderPass()==1) {
-            angelica$nudgeFaceOutward();
+            angelica$nudgeFaceOutward(rb, face);
         }
         for (int i = 0; i < compacts.length; i++) {
-            compacts[i].getProcessor().processFace(rb, renderBlockState, icon, face))
-            angelica$nudgeFaceOutward();
+            compacts[i].getProcessor().processFace(rb, renderBlockState, icon, face);
+            angelica$nudgeFaceOutward(rb, face);
         }
         ci.cancel();
     }
 
     @Unique
     private static final double NUDGE_EPSILON = 5e-4;
+
     @Unique
     private static void angelica$nudgeFaceOutward(RenderBlocks rb, int face) {
         switch(face) {
@@ -250,11 +251,11 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     }
 
     @Unique
-    private double angelica$savedMinX, angelica$savedMinY, angelcia$savedMinZ;
+    private double angelica$savedMinX, angelica$savedMinY, angelica$savedMinZ;
     @Unique
     private double angelica$savedMaxX, angelica$savedMaxY, angelica$savedMaxZ;
     @Unique
-    private boolean angelica$overrideBoundsNudged = false
+    private boolean angelica$overrideBoundsNudged = false;
 
     @Unique
     private void angelica$restoreOverrideBounds() {
@@ -306,32 +307,32 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
     @Inject(method = "renderFaceYNeg", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$restoreOverrideBoundsAfterFace();
+        angelica$restoreOverrideBounds();
     }
 
     @Inject(method = "renderFaceYPos", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceYPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$restoreOverrideBoundsAfterFace();
+        angelica$restoreOverrideBounds();
     }
 
     @Inject(method = "renderFaceZNeg", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceZNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$restoreOverrideBoundsAfterFace();
+        angelica$restoreOverrideBounds();
     }
 
     @Inject(method = "renderFaceZPos", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceZPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$restoreOverrideBoundsAfterFace();
+        angelica$restoreOverrideBounds();
     }
 
     @Inject(method = "renderFaceXNeg", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceXNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$restoreOverrideBoundsAfterFace();
+        angelica$restoreOverrideBounds();
     }
 
     @Inject(method = "renderFaceXPos", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
-        angelica$restoreOverrideBoundsAfterFace();
+        angelica$restoreOverrideBounds();
     }
 
     @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
