@@ -174,7 +174,9 @@ public class CTMUtils {
                             TileOverride override = (TileOverride) matcher.getData();
                             if (override.getRenderPass() >= 0) {
                                 RenderPassAPI.instance.setRenderPassForBlock(entry.getKey(), override.getRenderPass());
+                                newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet()).set(0, override.getRenderPass() == 0);
                                 newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet()).set(1, override.getRenderPass() != 0);
+
                             }
                         }
                     }
