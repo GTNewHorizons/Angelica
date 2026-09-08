@@ -1,6 +1,5 @@
 package com.prupe.mcpatcher.ctm;
 
-import java.util.TreeMap;
 import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
@@ -125,11 +124,13 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         passLoop: for (int pass = 0; pass < MCPatcherForgeConfig.ConnectedTextures.maxRecursion; pass++) {
             while (hasNext()) {
                 TileOverride override = next();
-                IIcon newIcon = getTile(override, renderBlockState, origIcon);
                 int worldRenderPass = RenderPassHelper.getWorldRenderPass();
+                if(!(override.getRenderPass() == -1 || override.getRenderPass() == worldRenderPass)) {
+                    continue;
+                }
+                IIcon newIcon = getTile(override, renderBlockState, origIcon);
                 if (newIcon != null) {
-                    if (override instanceof TileOverrideImpl.CTMCompact compact
-                        && override.getRenderPass() == worldRenderPass) {
+                    if (override instanceof TileOverrideImpl.CTMCompact compact) {
                             if (worldRenderPass == 0) {
                                 CTMUtils.setCurrentCompact(new TileOverrideImpl.CTMCompact[] {compact}, renderBlockState);
                             }  else {
@@ -166,7 +167,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
                     if (candidateOverride.isDisabled()) {
                         continue;
                     }
-                    if (candidateOverride.getRenderPass() != worldRenderPass) {
+                    if (candidateOverride.getRenderPass() != -1 && candidateOverride.getRenderPass() != worldRenderPass) {
                         continue;
                     }
                     if (!renderBlockState.match(candidate)) {
