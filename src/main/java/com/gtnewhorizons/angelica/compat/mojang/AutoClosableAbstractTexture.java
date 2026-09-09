@@ -6,7 +6,9 @@ import org.lwjgl.opengl.GL11;
 
 public abstract class AutoClosableAbstractTexture extends AbstractTexture implements AutoCloseable {
     @Override
-    public void close() throws Exception {}
+    public void close() {
+        deleteGlTexture();
+    }
 
     // TODO: Is this needed?
     public void bind() {

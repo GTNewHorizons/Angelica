@@ -140,5 +140,8 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
                 case SPECULAR -> pbrHolder.setSpecularAtlas(null);
             }
 		}
+
+        clear();
+        super.close();
 	}
 }

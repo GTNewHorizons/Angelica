@@ -29,6 +29,7 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import org.lwjgl.opengl.GL11;
 
 public class IrisGLSMBridge {
 
@@ -257,6 +258,7 @@ public class IrisGLSMBridge {
 
         GLSMHooks.TEXTURE_UNIT_STATE.addListener(event -> {
             if (!Iris.enabled) return;
+            if (event.cap != GL11.GL_TEXTURE_2D) return;
             boolean updatePipeline = false;
             if (event.unit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.albedoSampler = event.enabled;

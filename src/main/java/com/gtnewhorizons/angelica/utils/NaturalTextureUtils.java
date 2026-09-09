@@ -14,9 +14,14 @@ public class NaturalTextureUtils {
     private volatile static Set<Block> cachedWhitelistedBlocks = null;
 
     public static int getTopRotation(int x, int y, int z) {
-        long hash = (x * 3129871L) ^ (z * 116586811L) ^ y;
-        hash = hash * hash * 42317861L + hash * 11L;
-        return (int) (hash & 3);
+        long hash = x * 0x9E3779B97F4A7C15L + z * 0xC2B2AE3D27D4EB4FL + y * 0x165667B19E3779F9L;
+        // splitmix64 finalizer
+        hash ^= hash >>> 30;
+        hash *= 0xBF58476D1CE4E5B9L;
+        hash ^= hash >>> 27;
+        hash *= 0x94D049BB133111EBL;
+        hash ^= hash >>> 31;
+        return (int) (hash >>> 62);
     }
 
     // This method gets called from worker threads
