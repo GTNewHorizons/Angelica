@@ -114,6 +114,7 @@ dependencies {
     testRuntimeOnly(libs.lwjgl3) { artifact { classifier = lwjglNatives } }
     // @Lwjgl3Aware annotation
     compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
+    compileOnly(libs.retrofuturabootstrap) { isTransitive = false }
 
     compileOnly(libs.lombok) { isTransitive = false }
     annotationProcessor(libs.lombok)

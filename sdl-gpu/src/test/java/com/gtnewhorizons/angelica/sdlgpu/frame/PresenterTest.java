@@ -9,6 +9,7 @@ import java.util.Deque;
 import java.util.concurrent.Executor;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_NONE;
 
@@ -70,6 +71,21 @@ class PresenterTest {
 
         executor.runNext();
         drainer.join();
+    }
+
+    @Test
+    void requestReusesOneRunnableAcrossCalls() {
+        final DeferredExecutor executor = new DeferredExecutor();
+        final Presenter p = presenter(executor);
+
+        p.requestPresent(1L, 10, 10, SDL_FLIP_NONE);
+        final Runnable first = executor.tasks.peekFirst();
+        executor.runNext();
+
+        p.requestPresent(2L, 10, 10, SDL_FLIP_NONE);
+        final Runnable second = executor.tasks.peekFirst();
+
+        assertSame(first, second, "Presenter must submit the same preallocated Runnable on every request");
     }
 
     @Test

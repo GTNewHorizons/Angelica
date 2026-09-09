@@ -56,8 +56,8 @@ public class MixinMinecraft_FrameHook {
     @Unique
     private static void angelica$pushFrameGroup() {
         CaptureGate.refresh();
-        GLDebug.pushGroup("frame:" + angelica$frameCounter);
-        angelica$frameGroupActive = true;
+        angelica$frameGroupActive = GLDebug.isActive();
+        if (angelica$frameGroupActive) GLDebug.pushGroup("frame:", (int) angelica$frameCounter);
     }
 
     @Unique
@@ -65,8 +65,8 @@ public class MixinMinecraft_FrameHook {
         if (angelica$frameGroupActive) {
             GLDebug.popGroup();
             angelica$frameGroupActive = false;
-            angelica$frameCounter++;
         }
+        angelica$frameCounter++;
     }
 
     @Inject(method = "shutdownMinecraftApplet", at = @At("HEAD"))

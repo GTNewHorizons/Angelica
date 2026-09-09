@@ -2,163 +2,199 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend.GateSample;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 
-import java.util.concurrent.locks.LockSupport;
+import java.util.function.LongConsumer;
+
+import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 public final class FramePacer {
 
-    public interface IdleWork {
-        void run(long deadlineNanos);
+    interface Backend {
+        VSyncMode effectiveVSyncMode();
+        long refreshPeriodNanos();
+        boolean vsyncHonored();
+        int displayGeneration();
+        void awaitPresent();
+        void readGateSample(GateSample out);
+        void pumpDisplayMessages();
+        void parkNanos(long nanos);
+        long nanoTime();
     }
 
-    private static final int MIN_PLAUSIBLE_REFRESH_HZ = 20;
-    private static final int MAX_PLAUSIBLE_REFRESH_HZ = 1000;
-    private static final long IDLE_WORK_MIN_BUDGET_NANOS = 500_000L;
-    private static final long GATE_BLOCK_MIN_NANOS = 100_000L;
-    private static final int GATE_STREAK_FRAMES = 60;
-    static final int GATE_SETTLE_FRAMES = 120;
-    static final int PACING_HEADROOM_PERCENT = 5;
+    private static final class RenderBackendAdapter implements Backend {
+        @Override public VSyncMode effectiveVSyncMode() { return RENDER_BACKEND.getEffectiveVSyncMode(); }
+        @Override public long refreshPeriodNanos() { return RENDER_BACKEND.refreshPeriodNanos(); }
+        @Override public boolean vsyncHonored() { return RENDER_BACKEND.vsyncHonored(); }
+        @Override public int displayGeneration() { return RENDER_BACKEND.displayGeneration(); }
+        @Override public void awaitPresent() { RENDER_BACKEND.awaitPresent(); }
+        @Override public void readGateSample(GateSample out) { RENDER_BACKEND.readGateSample(out); }
+        @Override public void pumpDisplayMessages() { GLStateManager.pumpDisplayMessages(); }
+        @Override public void parkNanos(long nanos) { RENDER_BACKEND.parkNanos(nanos); }
+        @Override public long nanoTime() { return System.nanoTime(); }
+    }
 
     private static final Tracy.ZoneId Z_PACER_WAIT = Tracy.zoneId("pacerBackpressure", Tracy.COLOR_SWAP);
-    private static final Tracy.ZoneId Z_PACER_IDLE = Tracy.zoneId("pacerIdleWork", Tracy.COLOR_CLIENT);
-    private static final Tracy.ZoneId Z_PACER_SLEEP = Tracy.zoneId("pacerSleep", Tracy.COLOR_SWAP);
-    private static final long P_FRAME_GATE_US = Tracy.plotHandle("frameGateUs");
-    private static final long P_SLACK_US = Tracy.plotHandle("pacer.slackUs");
-    private static final long P_SPIN_US = Tracy.plotHandle("pacer.spinUs");
-    private static final long P_CEILING_HZ = Tracy.plotHandle("pacer.ceilingHz");
-    private static final long P_GATE_ACTIVE = Tracy.plotHandle("pacer.gateActive");
+    private static final Tracy.ZoneId Z_PACER_BEGIN = Tracy.zoneId("pacerBegin", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_PACER_PRESENT_SLEEP = Tracy.zoneId("pacerPresentSleep", Tracy.COLOR_SWAP);
 
-    private static long deadline;
-    private static long lastFrameTime;
+
+    private static Backend BACKEND = new RenderBackendAdapter();
+
+    private static void parkNanos(long nanos) {
+        BACKEND.parkNanos(nanos);
+    }
+
+    private static long nanoTime() {
+        return BACKEND.nanoTime();
+    }
+
+    private static PacerSleeper sleeper = new PacerSleeper(FramePacer::nanoTime, FramePacer::parkNanos, true);
+    static PacerCore core = new PacerCore(FramePacer::nanoTime, sleeper);
+    private static final GateSample sample = new GateSample();
 
     private static boolean warnedUncapped;
-    private static boolean pacedLastFrame;
-    private static boolean statsActive;
+    private static int lastDisplayGeneration;
 
-    private static VSyncMode lastVSyncMode = VSyncMode.ON;
-    private static int lastCapHz;
-    private static int lastRefreshHz;
+    private static VSyncMode currentMode = VSyncMode.ON;
+    private static int currentRefreshHz;
+    private static int currentCapHz;
+    private static int currentEffectiveCapHz;
 
-    private static IdleWork idleWork;
-    private static PacerSleeper sleeper = newSleeper();
-    private static int gateStreak;
-    private static Boolean settledBlocking;
-    private static boolean candidateBlocking;
-    private static int candidateFrames;
-    private static Boolean loggedBlocking;
     private static VSyncMode loggedMode;
     private static int loggedRefreshHz;
     private static int loggedCapHz;
-
-    private static long lastSeenGateEnd;
+    private static int loggedEffectiveCapHz;
+    private static boolean loggedLocked;
+    private static boolean loggedProbing;
 
     private FramePacer() {}
 
-    private static PacerSleeper newSleeper() {
-        return new PacerSleeper(System::nanoTime, LockSupport::parkNanos, true);
+    public static void setIdleWork(LongConsumer work) {
+        core.setIdleWork(work);
     }
 
-    public static void setIdleWork(IdleWork work) {
-        idleWork = work;
+    public static void invalidate() {
+        core.invalidate();
     }
 
     public static boolean pacedLastFrame() {
-        return pacedLastFrame;
+        return core.paced();
     }
 
     public static void beginStats() {
         sleeper.resetStats();
-        statsActive = true;
     }
 
     public static String endStats() {
-        statsActive = false;
         final String summary = sleeper.summary(configLine());
         Tracy.message(summary);
         return summary;
     }
 
-    static boolean statsActive() {
-        return statsActive;
-    }
-
-    static String configLine(VSyncMode mode, int refreshHz, int capHz, int ceilingHz) {
+    private static String configLine(VSyncMode mode, int refreshHz, int capHz, int ceilingHz) {
         return "cfg=[" + mode + " refresh=" + refreshHz + "Hz cap=" + capHz + " ceiling=" + ceilingHz + "Hz]";
     }
 
     private static String configLine() {
-        return configLine(lastVSyncMode, lastRefreshHz, lastCapHz,
-            pacingCeilingHz(lastVSyncMode, lastCapHz, lastRefreshHz, gateActive()));
+        return configLine(currentMode, currentRefreshHz, currentCapHz, currentEffectiveCapHz);
     }
 
-    public static int plausibleRefreshHz(int hz) {
-        return hz >= MIN_PLAUSIBLE_REFRESH_HZ && hz <= MAX_PLAUSIBLE_REFRESH_HZ ? hz : 0;
-    }
-
-    public static int withHeadroom(int hz, int percent) {
-        if (hz <= 0) return 0;
-        return (int) Math.max(hz + 1L, Math.round(hz * (100 + percent) / 100.0));
-    }
-
-    public static int pacingCeilingHz(VSyncMode mode, int capHz, int refreshHz, boolean gateActive) {
+    public static long endFrame(int capHz, Runnable renderAheadWait) {
+        final VSyncMode mode = BACKEND.effectiveVSyncMode();
         final int cap = Math.max(capHz, 0);
-        final int backstop = backstopHz(mode, refreshHz, gateActive);
-        if (cap == 0) return backstop;
-        if (backstop == 0) return cap;
-        return Math.min(cap, backstop);
-    }
+        final long refreshPeriodNanos = BACKEND.refreshPeriodNanos();
+        final boolean honored = BACKEND.vsyncHonored();
+        final int refreshHz = refreshHz(mode, cap, refreshPeriodNanos);
 
-    static int backstopHz(VSyncMode mode, int refreshHz, boolean gateActive) {
-        if (!mode.tearFree()) return 0;
-        final int refresh = plausibleRefreshHz(refreshHz);
-        if (mode == VSyncMode.ON && gateActive) return withHeadroom(refresh, PACING_HEADROOM_PERCENT);
-        return refresh;
-    }
+        core.setRefreshPeriodNanos(refreshPeriodNanos);
+        core.setTearFree(mode.tearFree());
+        core.setVsyncOn(mode == VSyncMode.ON && honored);
+        core.setCap(cap);
 
-    static boolean observeGate(long gateNanos, long thresholdNanos) {
-        if (gateNanos > thresholdNanos) gateStreak = GATE_STREAK_FRAMES;
-        else if (gateStreak > 0) gateStreak--;
-        return gateStreak > 0;
-    }
-
-    static boolean gateActive() {
-        return gateStreak > 0;
-    }
-
-    static Boolean settleGateBlocking(boolean observed) {
-        if (settledBlocking != null && observed == settledBlocking) {
-            candidateFrames = 0;
-        } else if (candidateFrames == 0 || observed != candidateBlocking) {
-            candidateBlocking = observed;
-            candidateFrames = 1;
-        } else if (++candidateFrames >= GATE_SETTLE_FRAMES) {
-            settledBlocking = observed;
-            candidateFrames = 0;
+        final int generation = BACKEND.displayGeneration();
+        if (generation != lastDisplayGeneration) {
+            lastDisplayGeneration = generation;
+            core.invalidate();
         }
-        return settledBlocking;
-    }
 
-    static boolean vsyncNotHonoured(VSyncMode mode, boolean gateBlocking) {
-        return mode == VSyncMode.ON && !gateBlocking;
-    }
-
-    static boolean pacingStatusChanged(boolean blocking, VSyncMode mode, int refreshHz, int capHz) {
-        final Boolean settled = settleGateBlocking(blocking);
-        if (settled == null) return false;
-        if (settled.equals(loggedBlocking) && mode == loggedMode && refreshHz == loggedRefreshHz && capHz == loggedCapHz) {
-            return false;
+        if (mode == VSyncMode.ON && honored) {
+            BACKEND.awaitPresent();
         }
-        loggedBlocking = settled;
+        BACKEND.readGateSample(sample);
+        core.onGateSample(sample.durationNanos, sample.endNanos);
+        core.onGpuWait(sample.gpuWaitNanos);
+
+        Tracy.beginZone(Z_PACER_WAIT);
+        try {
+            if (renderAheadWait != null) {
+                final long waitStart = nanoTime();
+                renderAheadWait.run();
+                core.onGpuWait(nanoTime() - waitStart);
+            }
+        } finally {
+            Tracy.endZone();
+        }
+
+        Tracy.beginZone(Z_PACER_BEGIN);
+        try {
+            core.beginFrame(nanoTime());
+        } finally {
+            Tracy.endZone();
+        }
+
+        BACKEND.pumpDisplayMessages();
+        core.markFrameStart(nanoTime());
+
+        final int effectiveCapHz = core.effectiveCapHz();
+        final boolean locked = core.locked();
+        final boolean probing = core.probing();
+
+        currentMode = mode;
+        currentRefreshHz = refreshHz;
+        currentCapHz = cap;
+        currentEffectiveCapHz = effectiveCapHz;
+
+        maybeLog(mode, refreshHz, cap, effectiveCapHz, locked, probing);
+
+        return core.lastPresentIntervalNanos();
+    }
+
+    public static void beforePresent() {
+        final long firstClearBlockNanos = GLStateManager.takeFirstClearBlockNanos();
+        Tracy.beginZone(Z_PACER_PRESENT_SLEEP);
+        try {
+            core.beforePresent(nanoTime(), firstClearBlockNanos);
+        } finally {
+            Tracy.endZone();
+        }
+    }
+
+
+    private static void maybeLog(VSyncMode mode, int refreshHz, int capHz, int effectiveCapHz, boolean locked, boolean probing) {
+        if (mode == loggedMode && refreshHz == loggedRefreshHz && capHz == loggedCapHz
+            && effectiveCapHz == loggedEffectiveCapHz && locked == loggedLocked && probing == loggedProbing) {
+            return;
+        }
         loggedMode = mode;
         loggedRefreshHz = refreshHz;
         loggedCapHz = capHz;
-        return true;
+        loggedEffectiveCapHz = effectiveCapHz;
+        loggedLocked = locked;
+        loggedProbing = probing;
+
+        final String line = pacingLine(mode, refreshHz, capHz, effectiveCapHz, locked, probing);
+        final boolean wallClock = mode == VSyncMode.ON && !locked && !probing;
+        if (wallClock) AngelicaMod.LOGGER.warn(line);
+        else AngelicaMod.LOGGER.info(line);
+        Tracy.message(line, wallClock ? TracyBackend.SEVERITY_WARNING : TracyBackend.SEVERITY_INFO);
     }
 
-    static String pacingLine(VSyncMode mode, int refreshHz, int capHz, boolean gateBlocking) {
+    static String pacingLine(VSyncMode mode, int refreshHz, int capHz, int effectiveCapHz, boolean locked, boolean probing) {
         final StringBuilder sb = new StringBuilder("Frame pacing: ");
         sb.append(switch (mode) {
             case OFF -> "vsync off";
@@ -166,141 +202,68 @@ public final class FramePacer {
             case ON -> "vsync";
         });
         if (mode.tearFree() && refreshHz > 0) sb.append(' ').append(refreshHz).append("Hz");
-        if (capHz > 0) sb.append(", cap ").append(capHz);
-        if (vsyncNotHonoured(mode, gateBlocking)) sb.append(", driver not blocking, paced by wall clock");
-        else if (gateBlocking) sb.append(", hardware paced");
+        if (mode == VSyncMode.ON) {
+            if (locked) sb.append(", hardware paced");
+            else if (probing) sb.append(", probing");
+            else sb.append(", driver not blocking, paced by wall clock");
+        }
+        if (capHz > 0) {
+            sb.append(", cap ").append(capHz);
+            if (effectiveCapHz > 0 && effectiveCapHz != capHz) sb.append(" -> ").append(effectiveCapHz);
+        }
         return sb.toString();
     }
 
-    static long gateBlockThresholdNanos(long targetNanos) {
-        return Math.max(GATE_BLOCK_MIN_NANOS, targetNanos / 32);
-    }
-
-    public static long nextDeadline(long previousDeadline, long now, long targetNanos) {
-        if (previousDeadline == 0L || now - previousDeadline > 2 * targetNanos) return now + targetNanos;
-        return previousDeadline + targetNanos;
-    }
-
-    public static long endFrame(int capHz, Runnable renderAheadWait) {
-        lastVSyncMode = GLStateManager.getEffectiveVSyncMode();
-        lastCapHz = Math.max(capHz, 0);
-        lastRefreshHz = refreshHz();
-        return pace(pacingCeilingHz(lastVSyncMode, lastCapHz, lastRefreshHz, gateActive()), renderAheadWait);
-    }
-
-    public static long pace(int ceilingHz, Runnable renderAheadWait) {
-        long now = System.nanoTime();
-        long phaseEnd;
-
-        final long targetNanos = ceilingHz > 0 ? 1_000_000_000L / ceilingHz : 0L;
-        final long thresholdNanos = gateBlockThresholdNanos(targetNanos);
-        long frameGateNanos = 0L;
-
-        pacedLastFrame = ceilingHz > 0;
-        Tracy.plotInt(P_CEILING_HZ, ceilingHz);
-
-        if (ceilingHz > 0) {
-            frameGateNanos = GLStateManager.lastFrameGateNanos();
-            final long gateEnd = GLStateManager.lastFrameGateEndNanos();
-            Tracy.plotInt(P_FRAME_GATE_US, frameGateNanos / 1000);
-
-            if (gateEnd != lastSeenGateEnd) {
-                lastSeenGateEnd = gateEnd;
-                if (frameGateNanos > thresholdNanos && GLStateManager.gateAnchorsNextFrameStart()) {
-                    deadline = gateEnd;
-                }
-            }
-            deadline = nextDeadline(deadline, now, targetNanos);
-
-            final IdleWork work = idleWork;
-            if (work != null && deadline - now > IDLE_WORK_MIN_BUDGET_NANOS) {
-                Tracy.beginZone(Z_PACER_IDLE);
-                try {
-                    work.run(deadline);
-                } finally {
-                    Tracy.endZone();
-                }
-                phaseEnd = System.nanoTime();
-                now = phaseEnd;
-            }
-
-            final long slackNanos = deadline - now;
-            Tracy.plotInt(P_SLACK_US, slackNanos / 1000);
-
-            final boolean slept = now < deadline;
-            if (slept) {
-                Tracy.beginZone(Z_PACER_SLEEP);
-                try {
-                    now = sleeper.sleepUntil(deadline, now);
-                } finally {
-                    Tracy.endZone();
-                }
-            }
-            if (Tracy.ENABLED || statsActive) {
-                sleeper.noteFrame(slackNanos, slept ? now - deadline : 0L, slept);
-                Tracy.plotInt(P_SPIN_US, sleeper.lastSpinNanos / 1000);
-            }
-        } else {
-            deadline = 0L;
-        }
-
-        Tracy.beginZone(Z_PACER_WAIT);
-        try {
-            if (renderAheadWait != null) renderAheadWait.run();
-        } finally {
-            Tracy.endZone();
-        }
-        phaseEnd = System.nanoTime();
-        final long waitNanos = phaseEnd - now;
-        now = phaseEnd;
-        if (ceilingHz > 0 && waitNanos > thresholdNanos) deadline = now;
-        final boolean gateBlocking = observeGate(ceilingHz > 0 ? Math.max(frameGateNanos, waitNanos) : 0L, thresholdNanos);
-        Tracy.plotInt(P_GATE_ACTIVE, gateBlocking ? 1 : 0);
-
-        GLStateManager.pumpDisplayMessages();
-
-        if (pacingStatusChanged(gateBlocking, lastVSyncMode, lastRefreshHz, lastCapHz)) {
-            final boolean blocking = settledBlocking;
-            final String line = pacingLine(lastVSyncMode, lastRefreshHz, lastCapHz, blocking);
-            final boolean notHonoured = vsyncNotHonoured(lastVSyncMode, blocking);
-            if (notHonoured) AngelicaMod.LOGGER.warn(line);
-            else AngelicaMod.LOGGER.info(line);
-            Tracy.message(line, notHonoured ? TracyBackend.SEVERITY_WARNING : TracyBackend.SEVERITY_INFO);
-        }
-
-        final long period = lastFrameTime == 0L ? 0L : now - lastFrameTime;
-        lastFrameTime = now;
-        return period;
-    }
-
-    private static int refreshHz() {
-        final int reported = GLStateManager.getDisplayRefreshRateHz();
-        final int hz = plausibleRefreshHz(reported);
-
-        if (hz == 0 && lastCapHz == 0 && lastVSyncMode.tearFree() && !warnedUncapped) {
+    private static int refreshHz(VSyncMode mode, int capHz, long refreshPeriodNanos) {
+        final int hz = RenderBackend.hzFromPeriod(refreshPeriodNanos);
+        if (hz == 0 && capHz == 0 && mode.tearFree() && !warnedUncapped) {
             warnedUncapped = true;
-            AngelicaMod.LOGGER.warn("Display refresh rate reported as {}Hz, so the frame rate cannot be bounded if the driver ignores vsync. Set Max Framerate to bound it.", reported);
+            AngelicaMod.LOGGER.warn("Display refresh rate is unknown, so the frame rate cannot be bounded if the driver ignores vsync. Set Max Framerate to bound it.");
         }
         return hz;
     }
 
-    public static String debugIndicator(VSyncMode mode, int refreshHz, int capHz, boolean gateActive) {
+    static String debugIndicator(VSyncMode mode, int refreshHz, int capHz, int effectiveCapHz, boolean locked, boolean probing) {
         final int cap = Math.max(capHz, 0);
-        final boolean showCap = cap > 0 && cap == pacingCeilingHz(mode, cap, refreshHz, gateActive);
+        final boolean showCap = cap > 0;
         if (!mode.tearFree() && !showCap) return null;
 
         final StringBuilder sb = new StringBuilder(" [");
         if (mode.tearFree()) {
             sb.append(mode == VSyncMode.MAILBOX ? "mailbox" : "vsync");
-            final int refresh = plausibleRefreshHz(refreshHz);
-            if (refresh > 0) sb.append(' ').append(refresh);
-            if (showCap) sb.append(", ");
+            if (refreshHz > 0) sb.append(' ').append(refreshHz);
+            if (mode == VSyncMode.ON) {
+                if (probing) sb.append(", probing");
+                else if (!locked) sb.append(", wall clock");
+            }
+            if (showCap) sb.append(", cap ").append(cap).append(" -> ").append(effectiveCapHz);
+        } else {
+            sb.append("cap ").append(cap);
         }
-        if (showCap) sb.append("cap ").append(cap);
         return sb.append(']').toString();
     }
 
+    public static long gateDurationNanos() { return sample.durationNanos; }
+
+    public static long gpuWaitNanos() { return core.lastGpuWaitNanos(); }
+
+    public static long slackNanos() { return core.slackNanos(); }
+
+    public static long spinNanos() { return sleeper.lastFrameSpinNanos; }
+
+    public static long marginNanos() { return core.marginNanos(); }
+
+    public static long presentIntervalNanos() { return core.lastPresentIntervalNanos(); }
+
+    public static long idleOvershootNanos() { return core.lastIdleOvershootNanos(); }
+
+    public static int effectiveCapHz() { return core.effectiveCapHz(); }
+
+    public static boolean locked() { return core.locked(); }
+
+    public static boolean probing() { return core.probing(); }
+
     public static String debugIndicator() {
-        return debugIndicator(lastVSyncMode, lastRefreshHz, lastCapHz, gateActive());
+        return debugIndicator(currentMode, currentRefreshHz, currentCapHz, currentEffectiveCapHz, core.locked(), core.probing());
     }
 }

@@ -4,9 +4,13 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GLESCaps;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.DebugMessageHandler;
+import com.gtnewhorizons.angelica.glsm.backend.MainThreadPump;
+import com.gtnewhorizons.retrofuturabootstrap.MainStartOnFirstThread;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
+import me.eigenraven.lwjgl3ify.client.MainThreadExec;
+import org.lwjglx.Lwjgl3ifyEventLoop;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.ARBClearTexture;
@@ -36,7 +40,9 @@ import org.lwjgl.opengl.GLDebugMessageCallback;
 import org.lwjgl.sdl.SDL_DisplayMode;
 import org.lwjgl.sdl.SDL_DropEvent;
 import org.lwjgl.sdl.SDL_EventFilter;
+import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDLEvents;
+import org.lwjgl.sdl.SDLTimer;
 import org.lwjgl.sdl.SDLVideo;
 import org.lwjgl.system.JNI;
 import org.lwjgl.system.MemoryStack;
@@ -71,6 +77,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     private SDL_EventFilter dropEventFilter;
     private final ConcurrentLinkedQueue<String> droppedFiles = new ConcurrentLinkedQueue<>();
     private volatile boolean watchingDrops;
+    private boolean swapIntervalHonored = true;
 
     @Override
     public void init() {
@@ -173,19 +180,50 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     protected VSyncMode applyVSyncMode(VSyncMode preferred) {
-        final boolean enabled = preferred.tearFree();
-        SDLVideo.SDL_GL_SetSwapInterval(enabled ? 1 : 0);
-        return enabled ? VSyncMode.ON : VSyncMode.OFF;
+        final int want = preferred.tearFree() ? 1 : 0;
+        final boolean setOk = SDLVideo.SDL_GL_SetSwapInterval(want);
+        final String setError = setOk ? null : SDLError.SDL_GetError();
+        int got = want;
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final IntBuffer readback = stack.callocInt(1);
+            if (SDLVideo.SDL_GL_GetSwapInterval(readback)) got = readback.get(0);
+        }
+        if (!setOk) {
+            LOGGER.warn("SDL_GL_SetSwapInterval({}) failed: {}", want, setError);
+        } else if (got != want && !(want == 1 && got == -1)) {
+            LOGGER.warn("Requested swap interval {} but the driver reports {}", want, got);
+        }
+        swapIntervalHonored = want == 0 || got != 0;
+        return want != 0 && swapIntervalHonored ? VSyncMode.ON : VSyncMode.OFF;
     }
 
     @Override
-    protected int queryDisplayRefreshRateHz() {
+    protected boolean applyHonored() {
+        return swapIntervalHonored;
+    }
+
+    @Override
+    protected long queryRefreshPeriodNanos() {
         final long window = Display.getWindow();
         final int displayId = window == 0 ? SDLVideo.SDL_GetPrimaryDisplay() : SDLVideo.SDL_GetDisplayForWindow(window);
-        if (displayId == 0) return 0;
+        if (displayId == 0) return 0L;
         final SDL_DisplayMode mode = SDLVideo.SDL_GetCurrentDisplayMode(displayId);
-        if (mode == null) return 0;
-        return refreshHzFrom(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
+        if (mode == null) return 0L;
+        return periodFromRational(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
+    }
+
+    @Override
+    public void parkNanos(long nanos) {
+        SDLTimer.SDL_DelayNS(nanos);
+    }
+
+    private static final class Pump {
+        static final MainThreadPump INSTANCE = new MainThreadPump(MainStartOnFirstThread.instance(), MainThreadExec::isMainThread, Lwjgl3ifyEventLoop::pumpEvents, MainThreadPump::pollInput);
+    }
+
+    @Override
+    public void pumpDisplayMessages() {
+        Pump.INSTANCE.pumpMessages();
     }
 
     @Override

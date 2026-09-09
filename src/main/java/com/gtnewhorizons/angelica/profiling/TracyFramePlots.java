@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
+import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.celeritas.TerrainDrawStats;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
@@ -121,6 +122,17 @@ public final class TracyFramePlots {
 
     private TracyFramePlots() {}
 
+    private static final long P_FRAME_GATE_US = Tracy.plotHandle("frameGateUs");
+    private static final long P_PACER_GPU_WAIT_US = Tracy.plotHandle("pacer.gpuWaitUs");
+    private static final long P_PACER_SLACK_US = Tracy.plotHandle("pacer.slackUs");
+    private static final long P_PACER_SPIN_US = Tracy.plotHandle("pacer.spinUs");
+    private static final long P_PACER_CEILING_HZ = Tracy.plotHandle("pacer.ceilingHz");
+    private static final long P_PACER_MARGIN_US = Tracy.plotHandle("pacer.marginUs");
+    private static final long P_PACER_LOCKED = Tracy.plotHandle("pacer.locked");
+    private static final long P_PACER_PROBING = Tracy.plotHandle("pacer.probing");
+    private static final long P_PACER_PRESENT_INTERVAL_US = Tracy.plotHandle("pacer.presentIntervalUs");
+    private static final long P_PACER_IDLE_OVERSHOOT_US = Tracy.plotHandle("pacer.idleOvershootUs");
+
     public static void onFrame(Minecraft mc) {
         if (!Tracy.ENABLED) return;
 
@@ -132,6 +144,18 @@ public final class TracyFramePlots {
             final Runtime runtime = Runtime.getRuntime();
             Tracy.plotInt(P_HEAP_USED, runtime.totalMemory() - runtime.freeMemory());
         }
+
+        Tracy.plotInt(P_FRAME_GATE_US, FramePacer.gateDurationNanos() / 1000L);
+        Tracy.plotInt(P_PACER_GPU_WAIT_US, FramePacer.gpuWaitNanos() / 1000L);
+        Tracy.plotInt(P_PACER_SLACK_US, FramePacer.slackNanos() / 1000L);
+        Tracy.plotInt(P_PACER_SPIN_US, FramePacer.spinNanos() / 1000L);
+        Tracy.plotInt(P_PACER_MARGIN_US, FramePacer.marginNanos() / 1000L);
+        Tracy.plotInt(P_PACER_PRESENT_INTERVAL_US, FramePacer.presentIntervalNanos() / 1000L);
+        Tracy.plotInt(P_PACER_IDLE_OVERSHOOT_US, FramePacer.idleOvershootNanos() / 1000L);
+        Tracy.plotInt(P_PACER_CEILING_HZ, FramePacer.effectiveCapHz());
+        Tracy.plotInt(P_PACER_LOCKED, FramePacer.locked() ? 1 : 0);
+        Tracy.plotInt(P_PACER_PROBING, FramePacer.probing() ? 1 : 0);
+
         final int chunksUpdated = WorldRenderer.chunksUpdated;
         Tracy.plotInt(P_CHUNK_UPDATES, chunksUpdated - lastChunkUpdates);
         lastChunkUpdates = chunksUpdated;
