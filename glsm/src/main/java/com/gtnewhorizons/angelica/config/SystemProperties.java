@@ -53,8 +53,23 @@ public final class SystemProperties {
     public static final double FLYBY_SPEED = parseDouble("angelica.flyby.speed"); // Travel speed in blocks per tick
     public static final boolean FLYBY_EXIT_WHEN_DONE = Boolean.getBoolean("angelica.flyby.exitWhenDone");
     public static final long FLYBY_TIME_OF_DAY = Math.floorMod(Long.getLong("angelica.flyby.timeOfDay", 6000L), 24000L);
+    public static final boolean FLYBY_FREEZE_ENTITIES = !"false".equalsIgnoreCase(System.getProperty("angelica.flyby.freezeEntities", "true"));
+    public static final long FLYBY_SEED = Long.getLong("angelica.flyby.seed", 0xA9CE71CAL); // 0 leaves the world RNG alone
+    public static final String FLYBY_MOBS = System.getProperty("angelica.flyby.mobs", "");
+    public static final int FLYBY_CHUNK_WAIT_TIMEOUT_TICKS = Integer.getInteger("angelica.flyby.chunkWaitTimeoutTicks", 2400);
+    public static final boolean FLYBY_FLY_ROUTE_WHILE_LOADING = Boolean.getBoolean("angelica.flyby.flyRouteWhileLoading");
+    public static final boolean FLYBY_FREEZE_BLOCK_TICKS = !"false".equalsIgnoreCase(System.getProperty("angelica.flyby.freezeBlockTicks", "true"));
+    public static final boolean FLYBY_MEASURED_WINDOW_ONLY = Boolean.getBoolean("angelica.flyby.measuredWindowOnly");
+    public static final int FLYBY_RUNS = Integer.getInteger("angelica.flyby.runs", 1);
+    public static final int FLYBY_COOLDOWN_TICKS = Integer.getInteger("angelica.flyby.cooldownTicks", 600);
+    public static final boolean FLYBY_RELOAD_RENDERER = !"false".equalsIgnoreCase(System.getProperty("angelica.flyby.reloadRenderer", "true"));
+    public static final boolean FLYBY_DISCARD_WORLD_CHANGES = !"false".equalsIgnoreCase(System.getProperty("angelica.flyby.discardWorldChanges", "true"));
+    public static final String FLYBY_TRACY_TOOLS_DIR = System.getProperty("angelica.flyby.tracyToolsDir", "");
+    public static final String FLYBY_TRACE_DIR = System.getProperty("angelica.flyby.traceDir", "tracy");
+    public static final int FLYBY_TRACY_MEMORY_PERCENT = Math.clamp(Integer.getInteger("angelica.flyby.tracyMemoryPercent", 50), 1, 999);
 
     // Debug
+    private static final boolean DEBUG_TOOLING_PROP = Boolean.getBoolean("angelica.debug.tooling");
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");
     public static final boolean DEBUG_MARKERS = Boolean.getBoolean("angelica.debug.markers");
     public static final boolean DEBUG_F3_DETAIL = Boolean.getBoolean("angelica.debug.f3Detail");
@@ -124,6 +139,10 @@ public final class SystemProperties {
         } catch (NumberFormatException e) {
             return 0.0D;
         }
+    }
+
+    public static boolean debugTooling() {
+        return DEBUG_TOOLING_PROP || isDeobf();
     }
 
     public static boolean isDeobf() {

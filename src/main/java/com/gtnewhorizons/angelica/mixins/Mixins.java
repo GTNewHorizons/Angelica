@@ -242,6 +242,26 @@ public enum Mixins implements IMixins {
             , "celeritas.debug.MixinGLDebug"
         )
     ),
+    ANGELICA_FLYBY_FREEZE(new MixinBuilder("Freeze entity AI for the flyby benchmark")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> SystemProperties.debugTooling() && SystemProperties.FLYBY_FREEZE_ENTITIES)
+        .addClientMixins("angelica.debug.MixinWorld_FlybyFreeze", "angelica.debug.MixinEntityLivingBase_FlybyFreeze")
+    ),
+    ANGELICA_FLYBY_FREEZE_BLOCK_TICKS(new MixinBuilder("Freeze block ticks for flyby benchmarks")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> SystemProperties.debugTooling() && SystemProperties.FLYBY_FREEZE_BLOCK_TICKS)
+        .addClientMixins("angelica.debug.MixinWorldServer_FlybyFreeze")
+    ),
+    ANGELICA_FLYBY_SEED(new MixinBuilder("Lets the flyby benchmark seed the world's random tick counter")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> SystemProperties.debugTooling() && SystemProperties.FLYBY_SEED != 0L)
+        .addClientMixins("angelica.debug.MixinWorld_UpdateLCG")
+    ),
+    ANGELICA_FLYBY_DISCARD_WORLD_CHANGES(new MixinBuilder("Prevent world saving so runs start in the same exact conditions")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> SystemProperties.debugTooling() && SystemProperties.FLYBY_DISCARD_WORLD_CHANGES)
+        .addClientMixins("angelica.debug.MixinSaveHandler_FlybyDiscard", "angelica.debug.MixinAnvilChunkLoader_FlybyDiscard")
+    ),
     ANGELICA_DYNAMIC_LIGHTS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableDynamicLights)

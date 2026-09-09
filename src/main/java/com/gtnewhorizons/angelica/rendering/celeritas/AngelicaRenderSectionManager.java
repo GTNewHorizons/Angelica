@@ -22,7 +22,13 @@ import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
+import org.embeddedt.embeddium.impl.render.chunk.ChunkUpdateType;
+import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRebuildLists;
+import org.embeddedt.embeddium.impl.render.chunk.lists.RenderListManager;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkBuilder;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
+import org.embeddedt.embeddium.impl.render.chunk.data.BuiltRenderSectionData;
+import org.embeddedt.embeddium.impl.render.chunk.occlusion.VisibilityEncoding;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SectionTicker;
@@ -89,6 +95,52 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     public void setCameraPosition(double x, double y, double z) {
         this.cameraPosition.set(x, y, z);
+    }
+
+    private boolean isChunkNotLoaded(int chunkX, int chunkZ) {
+        return this.world.getChunkFromChunkCoords(chunkX, chunkZ).isEmpty();
+    }
+
+    public int getPendingMeshUpdates() {
+        final ChunkBuilder builder = getBuilder();
+        return pendingIn(renderListManager)
+            + sectionsRequestingUpdate.size()
+            + builder.getScheduledJobCount()
+            + builder.getBusyThreadCount();
+    }
+
+    public String describePendingMeshUpdates() {
+        final ChunkBuilder builder = getBuilder();
+        return "rebuildList=" + pendingIn(renderListManager)
+            + " requesting=" + sectionsRequestingUpdate.size()
+            + " queued=" + builder.getScheduledJobCount()
+            + " busy=" + builder.getBusyThreadCount()
+            + " (shadowList=" + (shadowRenderListManager != null ? pendingIn(shadowRenderListManager) : 0) + ", not waited on)";
+    }
+
+    private static int pendingIn(RenderListManager manager) {
+        final ChunkRebuildLists lists = manager.getRebuildLists();
+        return lists.getUpdateCount(ChunkUpdateType.INITIAL_BUILD)
+            + lists.getUpdateCount(ChunkUpdateType.REBUILD)
+            + lists.getUpdateCount(ChunkUpdateType.IMPORTANT_REBUILD)
+            + (lists.hasAdditionalUpdates() ? 1 : 0);
+    }
+
+    private static final BuiltRenderSectionData UNLOADED_CHUNK_DATA = unloadedChunkData();
+
+    private static BuiltRenderSectionData unloadedChunkData() {
+        final BuiltRenderSectionData data = new BuiltRenderSectionData();
+        data.hasBlockGeometry = false;
+        data.visibilityData = VisibilityEncoding.NULL;
+        return data;
+    }
+
+    @Override
+    protected boolean updateSectionInfo(RenderSection section, BuiltRenderSectionData data) {
+        if (data == RenderSection.EMPTY_DATA && isChunkNotLoaded(section.getChunkX(), section.getChunkZ())) {
+            data = UNLOADED_CHUNK_DATA;
+        }
+        return super.updateSectionInfo(section, data);
     }
 
     @Override

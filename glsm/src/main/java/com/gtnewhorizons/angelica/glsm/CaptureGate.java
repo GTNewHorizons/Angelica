@@ -28,12 +28,18 @@ public final class CaptureGate {
 
     private CaptureGate() {}
 
+    public static volatile boolean suppressed;
+
     public static void refresh() {
-        markersThisFrame = gateValue(FORCED, TOOL_ATTACHED, Tracy.isConnected());
+        markersThisFrame = gateValue(FORCED, TOOL_ATTACHED, Tracy.isConnected(), suppressed);
     }
 
     static boolean gateValue(boolean forced, boolean toolAttached, boolean tracyConnected) {
-        return forced || toolAttached || tracyConnected;
+        return gateValue(forced, toolAttached, tracyConnected, false);
+    }
+
+    static boolean gateValue(boolean forced, boolean toolAttached, boolean tracyConnected, boolean suppressed) {
+        return !suppressed && (forced || toolAttached || tracyConnected);
     }
 
     public static boolean enabledAtStartup() {

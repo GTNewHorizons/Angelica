@@ -32,6 +32,17 @@ class CaptureGateTest {
     }
 
     @Test
+    void suppressionBeatsEveryReasonToBeOn() {
+        assertFalse(CaptureGate.gateValue(true, true, true, true));
+    }
+
+    @Test
+    void suppressionOffLeavesTheGateAlone() {
+        assertTrue(CaptureGate.gateValue(false, false, true, false));
+        assertFalse(CaptureGate.gateValue(false, false, false, false));
+    }
+
+    @Test
     void envDetectionMatchesRenderDocVariables() {
         assertTrue(CaptureGate.detectFromEnv(k -> "RENDERDOC_CAPTURE_KEYPRESS".equals(k) ? "1" : null));
         assertTrue(CaptureGate.detectFromEnv(k -> "ENABLE_VULKAN_RENDERDOC_CAPTURE".equals(k) ? "1" : null));

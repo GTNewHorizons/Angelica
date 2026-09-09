@@ -264,6 +264,11 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     }
 
     private CameraState lastMainCameraState;
+    private boolean pendingReload;
+
+    public void requestReload() {
+        this.pendingReload = true;
+    }
 
     @Override
     public void setupTerrain(Viewport viewport, CameraState cameraState, int frame, boolean spectator, boolean updateChunksImmediately) {
@@ -271,6 +276,12 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         if (transform.x == 0 && transform.y == 0 && transform.z == 0) {
             return;
+        }
+
+        if (this.pendingReload && !renderSectionManager.isInShadowPass()) {
+            this.pendingReload = false;
+            renderSectionManager.finishAllGraphUpdates();
+            this.reload();
         }
 
         renderSectionManager.setCameraPosition(transform.x, transform.y, transform.z);

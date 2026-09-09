@@ -47,6 +47,7 @@ import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
@@ -58,7 +59,6 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
-import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
@@ -199,10 +199,11 @@ public final class ClientProxy extends CommonProxy {
         }
 
         // Debug tooling
-        if (FORCE_DEBUG_MODE || !AngelicaClientTweaker.isObfEnv()) {
+        if (FORCE_DEBUG_MODE || SystemProperties.debugTooling()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
 
             FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);
+            MinecraftForge.EVENT_BUS.register(FlybyRunner.INSTANCE);
             FlybyRunner.INSTANCE.startFromProperties();
         }
     }

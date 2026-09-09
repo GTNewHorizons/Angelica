@@ -15,6 +15,7 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
+import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
@@ -82,7 +83,8 @@ public abstract class MixinMinecraft {
         }
 
         FpsReducer.evaluateFrame();
-        final int capHz = FpsReducer.effectiveCap(gameSettings.limitFramerate, theWorld == null && currentScreen != null);
+        final int capHz = FlybyRunner.pacingSuppressed() ? 0
+            : FpsReducer.effectiveCap(gameSettings.limitFramerate, theWorld == null && currentScreen != null);
         AngelicaMod.proxy.putFrametime(FramePacer.endFrame(capHz, angelica$renderAheadWait));
         return !FramePacer.pacedLastFrame();
     }

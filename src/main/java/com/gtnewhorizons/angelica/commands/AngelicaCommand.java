@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.commands;
 
 // Debug commands adapted from Beddium by Ven and FalsePattern
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.ChunkDebugMinimap;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRoute;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
@@ -33,7 +34,7 @@ public class AngelicaCommand extends CommandBase {
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 2; // op
+        return 0;
     }
 
     @Override
@@ -95,8 +96,14 @@ public class AngelicaCommand extends CommandBase {
             return;
         }
 
+        if (FlybyRunner.cannotRun()) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED
+                + "[Angelica] Flyby is singleplayer only!!"));
+            return;
+        }
+
         if (args.length < 2) {
-            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica flyby <" + FlybyRoute.ids() + "|cancel> [length] [blocksPerTick]"));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica flyby <" + FlybyRoute.ids() + "|cancel> [length] [blocksPerTick] [Pig*24@10]"));
             for (FlybyRoute r : FlybyRoute.values()) {
                 sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  " + r.id() + " - default " + r.defaultLength() + " " + r.lengthUnit()));
             }
@@ -111,31 +118,57 @@ public class AngelicaCommand extends CommandBase {
         }
 
         int length = 0;
-        if (args.length >= 3) {
-            try {
-                length = Integer.parseInt(args[2]);
-            } catch (NumberFormatException e) {
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] Not a length: " + args[2]));
-                return;
-            }
-        }
-
         double speed = 0.0D;
-        if (args.length >= 4) {
+        String mobs = "";
+        boolean confirmed = false;
+        int numbersSeen = 0;
+        for (int i = 2; i < args.length; i++) {
+            final String arg = args[i];
+            if ("confirm".equalsIgnoreCase(arg)) {
+                confirmed = true;
+                continue;
+            }
+            if (arg.indexOf('*') > 0) {
+                mobs = mobs.isEmpty() ? arg : mobs + "," + arg;
+                continue;
+            }
             try {
-                speed = Double.parseDouble(args[3]);
+                if (numbersSeen == 0) {
+                    length = Integer.parseInt(arg);
+                } else if (numbersSeen == 1) {
+                    speed = Double.parseDouble(arg);
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] Too many numbers: " + arg));
+                    return;
+                }
+                numbersSeen++;
             } catch (NumberFormatException e) {
-                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] Not a speed: " + args[3]));
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED
+                    + "[Angelica] Expected a number or a mob group like Pig*24@10, got: " + arg));
                 return;
             }
         }
 
-        FlybyRunner.INSTANCE.start(route, length, 0, speed);
         final int used = length > 0 ? length : route.defaultLength();
+        if (!mobs.isEmpty() && !SystemProperties.FLYBY_DISCARD_WORLD_CHANGES && !confirmed) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED
+                + "[Angelica] '" + mobs + "' kills every non-player entity in every loaded dimension."));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED
+                + "[Angelica] angelica.flyby.discardWorldChanges is off, so this will be written to the save."));
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.YELLOW
+                + "[Angelica] Add 'confirm' to the end of the command to run."));
+            return;
+        }
+
+        final String chosenMobs = mobs.isEmpty() ? SystemProperties.FLYBY_MOBS : mobs;
+        FlybyRunner.INSTANCE.start(route, used, SystemProperties.FLYBY_WARMUP_TICKS, speed, chosenMobs);
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE
             + "Flyby started: " + route.id() + " for " + used + " " + route.lengthUnit()
             + " at " + route.speedOr(speed) + " b/t"
-            + " (" + route.toTicks(used, speed) + " ticks)"));
+            + " (" + route.toTicks(used, speed) + " ticks)"
+            + ", seed=" + (SystemProperties.FLYBY_SEED == 0L ? "off" : Long.toHexString(SystemProperties.FLYBY_SEED))
+            + ", freezeEntities=" + SystemProperties.FLYBY_FREEZE_ENTITIES
+            + ", mobs=" + (chosenMobs.isEmpty() ? "none" : chosenMobs)));
     }
 
     private void sendHelp(ICommandSender sender) {

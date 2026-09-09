@@ -212,12 +212,6 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
      * Returns the appropriate name according to current environment's obfuscation
      */
     public static String obf(String deobf, String obf) {
-        if (OBF_ENV == null) {
-            throw new IllegalStateException("Obfuscation state has been accessed too early!");
-        }
-        if (OBF_ENV) {
-            return obf;
-        }
-        return deobf;
+        return isObfEnv() ? obf : deobf;
     }
 }
