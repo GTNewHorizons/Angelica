@@ -828,6 +828,7 @@ public class Iris {
         currentPack = null;
 
         getPipelineManager().destroyPipeline();
+        PBRTextureManager.INSTANCE.clear();
 
         // Close the zip filesystem that the shaderpack was loaded from
         //
