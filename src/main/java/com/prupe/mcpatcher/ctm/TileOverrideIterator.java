@@ -157,7 +157,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         BlockStateMatcher primaryFilter = renderBlockState.getFilter();
         Int2ObjectMap<List<BlockStateMatcher>> layeredCandidates = CTMUtils.getCompactLayers(renderBlockState.getBlock());
         if(layeredCandidates==null) {
-            return new TileOverrideImpl.CTMCompact[] {compact};
+            return new TileOverrideImpl.CTMCompact[] {primary};
         }
 
         try {
