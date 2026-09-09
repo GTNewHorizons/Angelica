@@ -483,6 +483,9 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             properties.error("no images loaded, disabling");
             return null;
         }
+        if (disabled == true) {
+            return null;
+        }
         IBlockAccess blockAccess = renderBlockState.getBlockAccess();
         Block block = renderBlockState.getBlock();
         int x = renderBlockState.getX();
