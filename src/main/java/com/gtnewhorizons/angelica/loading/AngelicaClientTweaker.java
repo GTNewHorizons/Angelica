@@ -10,12 +10,11 @@ import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
-import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
+import com.gtnewhorizons.angelica.glsm.loading.Lwjgl3ifyExclusions;
 import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
 import com.gtnewhorizons.angelica.lwjgl3.MissingDependencySdl;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import com.gtnewhorizons.angelica.mixins.Mixins;
-import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
 import cpw.mods.fml.relauncher.FMLLaunchHandler;
 import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
@@ -33,8 +32,6 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
-import javax.swing.JOptionPane;
-import java.awt.GraphicsEnvironment;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -57,7 +54,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
 
         final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
         if (rfbLoaded) {
-            addLwjgl3ifyExclusions();
+            Lwjgl3ifyExclusions.apply();
         } else {
             // Fucking java 8 and non RFB
             try {
@@ -86,7 +83,9 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         } catch (ConfigException e) {
             throw new RuntimeException(e);
         }
-        verifyDependencies();
+        DependencyVerifier.verifyOrHalt(AngelicaTweaker.class, "Angelica",
+            DependencyVerifier.gtnhLibChecks("Angelica"), LOGGER,
+            (title, message) -> MissingDependencySdl.showFatal(title, message));
 
         if (SystemProperties.USE_SDL_GPU) {
             if (SDLGPUGate.isSDLGPUAvailable()) {
@@ -107,56 +106,6 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
                 Launch.classLoader.registerTransformer(transformer);
             }
         }
-    }
-
-    private static void addLwjgl3ifyExclusions() {
-        final var handle = SharedConfig.getRfbTransformers().stream()
-            .filter(transformer -> transformer.id().equals("lwjgl3ify:redirect"))
-            .findFirst()
-            .orElse(null);
-        if (handle != null) {
-            for (String exclusion : EcosystemNarrowRules.LWJGL3IFY_EXCLUSIONS_SHARED) {
-                handle.exclusions().add(exclusion);
-            }
-            handle.exclusions().add("com.gtnewhorizons.angelica.sdlgpu");
-        }
-    }
-
-    private static void verifyDependencies() {
-        try {
-            DependencyVerifier.verify(AngelicaTweaker.class, List.of(
-                new DependencyVerifier.Check(
-                    "/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class",
-                    "Missing dependency: Angelica requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib"),
-                new DependencyVerifier.Check(
-                    "/com/gtnewhorizon/gtnhlib/client/renderer/VertexCallbackManager.class",
-                    "GTNHLib is outdated: Angelica requires GTNHLib 0.10.0 or newer! Download: https://modrinth.com/mod/gtnhlib"),
-                new DependencyVerifier.Check(
-                    "/it/unimi/dsi/fastutil/objects/ObjectBooleanBiConsumer.class",
-                    "GTNHLib is outdated: Angelica requires GTNHLib 0.11.19 or newer (fastutil 8.5.18+)! Download: https://modrinth.com/mod/gtnhlib")
-            ));
-        } catch (RuntimeException ex) {
-            fatalDependencyError(ex.getMessage());
-        }
-    }
-
-    private static void fatalDependencyError(String message) {
-        final String title = "Angelica - Missing Dependency";
-        System.err.println("FATAL: " + message);
-        try {
-            LOGGER.fatal(message);
-        } catch (Throwable ignored) {}
-
-        final int lwjgl3ifyMajor = ((Integer) Launch.blackboard.getOrDefault("lwjgl3ify:major-version", Integer.MIN_VALUE));
-        try {
-            if (lwjgl3ifyMajor >= 3) {
-                MissingDependencySdl.showFatal(title, message);
-            } else if (!GraphicsEnvironment.isHeadless()) {
-                JOptionPane.showMessageDialog(null, message, title, JOptionPane.ERROR_MESSAGE);
-            }
-        } catch (Throwable ignored) {}
-
-        Runtime.getRuntime().halt(1);
     }
 
     @Override

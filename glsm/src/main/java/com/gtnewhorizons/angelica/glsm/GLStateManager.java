@@ -493,7 +493,9 @@ public class GLStateManager {
 
     public static void initialize(GLSMInitConfig config) {
         initConfig = config;
-        preInit(config.getDisplayWidth(), config.getDisplayHeight());
+        final int width = config.getDisplayWidth() > 0 ? config.getDisplayWidth() : Display.getWidth();
+        final int height = config.getDisplayHeight() > 0 ? config.getDisplayHeight() : Display.getHeight();
+        preInit(width, height);
         init(config.getPostInitCallback());
     }
 
@@ -2003,6 +2005,7 @@ public class GLStateManager {
     }
 
     public static void glBindTexture(int target, int texture) {
+        if (TextureInfoCache.isProxyTarget(target)) return;
         final GLContextState glCtx = ctx();
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -4576,6 +4579,11 @@ public class GLStateManager {
         };
     }
 
+    private static int mipLevelSize(int base, int level) {
+        if (base <= 0 || level < 0 || level >= Integer.SIZE - 1) return 1;
+        return Math.max(base >> level, 1);
+    }
+
     public static int glGetTexLevelParameteri(int target, int level, int pname) {
         if (target != GL11.GL_TEXTURE_2D || !isCachingEnabled()) {
             return RENDER_BACKEND.getTexLevelParameteri(target, level, pname);
@@ -4590,8 +4598,8 @@ public class GLStateManager {
             return RENDER_BACKEND.getTexLevelParameteri(target, level, pname);
         }
         return switch (pname) {
-            case GL11.GL_TEXTURE_WIDTH -> Math.max(info.getWidth() >> level, 1);
-            case GL11.GL_TEXTURE_HEIGHT -> Math.max(info.getHeight() >> level, 1);
+            case GL11.GL_TEXTURE_WIDTH -> mipLevelSize(info.getWidth(), level);
+            case GL11.GL_TEXTURE_HEIGHT -> mipLevelSize(info.getHeight(), level);
             case GL11.GL_TEXTURE_INTERNAL_FORMAT -> {
                 if (info.needsInternalFormatResolve() && isRecordingDisplayList()) {
                     throw new IllegalStateException(String.format("glGetTexLevelParameteri(GL_TEXTURE_INTERNAL_FORMAT) needs to resolve a generic compressed format for texture %d during display list recording", getBoundTextureForServerState()));

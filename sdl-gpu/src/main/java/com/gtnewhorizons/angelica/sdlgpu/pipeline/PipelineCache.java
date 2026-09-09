@@ -185,6 +185,10 @@ public final class PipelineCache {
         this.maxAttribs = ContextState.MAX_VERTEX_ATTRIBS;
     }
 
+    long lastKey() {
+        return lastKey;
+    }
+
     public void markInputDirty()  { inputDirty  = true; lastKey = 0L; }
 
     public boolean markInputDirtyIfLivenessChanged(PipelineStore store, int oldBuffer, int newBuffer) {

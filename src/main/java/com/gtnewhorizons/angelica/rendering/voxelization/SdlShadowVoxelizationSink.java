@@ -32,7 +32,7 @@ public final class SdlShadowVoxelizationSink implements ShadowVoxelizer.Sink {
 
     @Override
     public boolean region(RenderRegion region, GlVertexFormat format, float offsetX, float offsetY, float offsetZ) {
-        final RenderRegion.DeviceResources resources = region.getResources(format);
+        final RenderRegion.DeviceResources resources = region.getResources();
         if (resources == null) return false;
         final GlBuffer vertexBuffer = resources.getVertexBuffer();
         if (vertexBuffer == null || vertexBuffer.handle() == 0) return false;

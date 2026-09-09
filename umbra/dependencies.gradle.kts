@@ -34,6 +34,7 @@ DependencyHandlerScope.of(dependencies).apply {
 
     shadowImplementation(project(":glsm")) { isTransitive = false }
     shadowImplementation(project(":lwjgl3-backend")) { isTransitive = false }
+    shadowImplementation(project(":sdl-gpu")) { isTransitive = false }
     shadowImplementation(libs.eventbus)
 
     shadowImplementation(libs.jcpp) // Apache 2.0
@@ -43,7 +44,5 @@ DependencyHandlerScope.of(dependencies).apply {
     shadowImplementation(libs.antlr4.runtime)
 
     embedOnly(libs.celeritas.common) { isTransitive = false }
-    embedOnly(libs.celeritas.lwjgl2.service) { isTransitive = false }
     runtimeOnlyNonPublishable(libs.celeritas.common) { isTransitive = false }
-    runtimeOnlyNonPublishable(libs.celeritas.lwjgl2.service) { isTransitive = false }
 }

@@ -91,9 +91,8 @@ public final class EcosystemNarrowRules {
     public static final String[] LWJGL3IFY_EXCLUSIONS_SHARED = {
         "org.embeddedt.embeddium",
         "org.taumc.celeritas",
-        "com.mitchej123.lwjgl.lwjgl3",
-        "com.mitchej123.glsm",
         "com.gtnewhorizons.angelica.lwjgl3",
+        "com.gtnewhorizons.angelica.sdlgpu",
     };
 
     public static final String[] EARLY_REDIRECTOR_TARGETS = {

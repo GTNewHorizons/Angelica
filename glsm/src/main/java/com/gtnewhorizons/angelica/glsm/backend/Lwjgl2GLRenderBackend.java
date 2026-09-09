@@ -40,7 +40,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
-import static com.mitchej123.lwjgl.LWJGLServiceProvider.LWJGL;
+import static org.taumc.celeritas.lwjgl.LWJGLServiceProvider.LWJGL;
 
 /**
  * LWJGL2 GL implementation of {@link RenderBackend}.

@@ -77,6 +77,9 @@ dependencies {
     testImplementation(platform(libs.junit.bom))
     testImplementation(libs.junit.jupiter)
     testImplementation(testFixtures(project(":glsm")))
+    testImplementation(project(":glsm")) {
+        capabilities { requireCapability("${project.group}:glsm-stubs") }
+    }
     testImplementation(libs.celeritas.common) { isTransitive = false }
     testImplementation(libs.lwjgl3.opengl)
     // GL.<clinit> loads liblwjgl_opengl.so. Test scope only: a root-level runtimeOnly collides with lwjgl3Bindings.
@@ -84,14 +87,76 @@ dependencies {
     testRuntimeOnly(libs.junit.platform.launcher)
     testRuntimeOnly(libs.log4j.core)
     testRuntimeOnly(libs.fastutil)
+    testRuntimeOnly(libs.joml)
+    testRuntimeOnly(libs.commons.lang3)
+    testRuntimeOnly(libs.guava)
+    testImplementation(libs.asm.tree.test)
+}
+
+val glsmSdlTag = "glsm-sdl"
+
+val glsmSdlStubs = sourceSets.create("glsmSdlStubs") {
+    java.srcDir("src/glsmSdlStubs/java")
+}
+
+val glsmSdlAgent = sourceSets.create("glsmSdlAgent") {
+    java.srcDir("src/glsmSdlAgent/java")
+}
+
+dependencies {
+    "glsmSdlAgentCompileOnly"(project(":glsm"))
+    "glsmSdlAgentCompileOnly"(libs.asm.tree.test)
+    testImplementation(glsmSdlAgent.output)
 }
 
 tasks.test {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags(glsmSdlTag)
+    }
     if (System.getProperty("os.name").startsWith("Mac")) {
         jvmArgs("-XstartOnFirstThread")
     }
 }
+
+val glsmSdlRedirectAgentJar by tasks.registering(Jar::class) {
+    archiveClassifier = "glsm-sdl-redirect-agent"
+    from(glsmSdlAgent.output)
+    manifest {
+        attributes("Premain-Class" to "com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlRedirectAgent")
+    }
+}
+
+val glsmSdlTest by tasks.registering(Test::class) {
+    description = "Runs the headless GLSM-on-SDL FFP rig in its own JVM, with the SDL GPU gate engaged."
+    group = "verification"
+    testClassesDirs = sourceSets["test"].output.classesDirs
+    classpath = glsmSdlStubs.output.classesDirs.plus(
+        sourceSets["test"].runtimeClasspath.filter { file ->
+            !file.name.startsWith("lwjgl-2.") && !file.name.startsWith("lwjgl_util-") && !file.name.startsWith("lwjgl-platform-")
+        }
+    )
+    useJUnitPlatform {
+        includeTags(glsmSdlTag)
+    }
+    dependsOn(tasks.named("glsmSdlStubsClasses"), glsmSdlRedirectAgentJar)
+    val agentJarPath = glsmSdlRedirectAgentJar.flatMap { it.archiveFile }.map { it.asFile.path }
+    jvmArgumentProviders.add(CommandLineArgumentProvider { listOf("-javaagent:${agentJarPath.get()}") })
+    jvmArgs(
+        "-Dangelica.sdlgpu.enable=true",
+        "-Dangelica.sdlgpu.disablePresenterThread=true",
+        "-Dceleritas.lwjglService=com.gtnewhorizons.angelica.sdlgpu.SDLGPULWJGLService",
+    )
+    if (System.getProperty("os.name").startsWith("Mac")) {
+        jvmArgs("-XstartOnFirstThread")
+    }
+    testLogging {
+        events("passed", "skipped", "failed")
+        exceptionFormat = org.gradle.api.tasks.testing.logging.TestExceptionFormat.FULL
+    }
+    mustRunAfter(tasks.test)
+}
+
+tasks.check { dependsOn(glsmSdlTest) }
 
 tasks.named<JavaCompile>("compileJava") {
     val classesDir = destinationDirectory

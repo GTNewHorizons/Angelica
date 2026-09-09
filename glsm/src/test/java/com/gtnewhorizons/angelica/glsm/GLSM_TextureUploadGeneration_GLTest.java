@@ -23,6 +23,21 @@ public class GLSM_TextureUploadGeneration_GLTest {
     }
 
     @Test
+    void aLevelBeyondTheShiftWidthClampsToOne() {
+        final int texId = allocate(64);
+        try {
+            assertEquals(64, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 0, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 6, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 31, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 32, GL11.GL_TEXTURE_WIDTH));
+            assertEquals(1, GLStateManager.glGetTexLevelParameteri(GL11.GL_TEXTURE_2D, 64, GL11.GL_TEXTURE_HEIGHT));
+        } finally {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLStateManager.glDeleteTextures(texId);
+        }
+    }
+
+    @Test
     void anUploadLeavesANonZeroGeneration() {
         final int texId = allocate(4);
         try {

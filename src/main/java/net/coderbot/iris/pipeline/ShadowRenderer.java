@@ -127,14 +127,40 @@ public class ShadowRenderer {
 	private final CelestialUniforms celestialUniforms;
 
 
+	private static final class MemoizedBoxCuller {
+		private BoxCuller culler;
+		private double lastDistance;
+
+		BoxCuller get(double distance) {
+			if (culler == null) {
+				culler = new BoxCuller(distance);
+				lastDistance = distance;
+			} else if (lastDistance != distance) {
+				culler.setMaxDistance(distance);
+				lastDistance = distance;
+			}
+			return culler;
+		}
+	}
+
 	private static final class FrustumCaches {
 		final AdvancedShadowCullingFrustum advancedFrustum = new AdvancedShadowCullingFrustum();
-		BoxCuller boxCuller;
+		final MemoizedBoxCuller boxCuller = new MemoizedBoxCuller();
+		final MemoizedBoxCuller advancedBoxCuller = new MemoizedBoxCuller();
+		final MemoizedBoxCuller safeZoneDistanceCuller = new MemoizedBoxCuller();
+		SafeZoneCullingFrustum safeZoneFrustum;
 		BoxCullingFrustum boxCullingFrustum;
-		BoxCuller advancedBoxCuller;
-		double lastBoxCullerDistance = -1;
-		double lastAdvancedBoxCullerDistance = -1;
+		String distanceInfo = "(unavailable)";
+		String cullingInfo = "(unavailable)";
+		int infoBranch = -1;
+		double infoDistance = Double.NaN;
+		int infoRenderDistanceBlocks = -1;
+		boolean infoHasSafeZone;
+		boolean infoPackSetter;
 	}
+
+	private static final int INFO_BRANCH_DISTANCE_ONLY = 0;
+	private static final int INFO_BRANCH_ADVANCED = 1;
 
 	private static final long SHADOW_RELAY_MAX_AGE_NANOS = 250_000_000L;
 
@@ -145,7 +171,7 @@ public class ShadowRenderer {
 	private final FrustumCaches entityFrustumCaches = new FrustumCaches();
 	private float lastGraphShadowAngle = Float.NaN;
 	private float relayShadowAngle = Float.NaN;
-	private FrustumHolder preSubmitFrustumHolder = new FrustumHolder();
+	private FrustumHolder preSubmitFrustumHolder = new FrustumHolder("preSubmit");
 	private final FrustumCaches preSubmitFrustumCaches = new FrustumCaches();
 	private boolean preSubmitActive;
 	private float preSubmittedShadowAngle = Float.NaN;
@@ -159,29 +185,28 @@ public class ShadowRenderer {
 			AngelicaConfig.shadowGraphHorizonScale);
 	}
 
-	public void preSubmitGraphUpdate(int frame, boolean spectator) {
+	public void preSubmitGraphUpdate(int frame) {
 		final AngelicaRenderSectionManager rsm = CeleritasWorldRenderer.getInstance().getRenderSectionManager();
 		final float currentShadowAngle = getShadowAngle();
 		if (ShadowGraphGate.shouldMarkDirty(lastGraphShadowAngle, currentShadowAngle, shadowAngleDelta())) {
 			rsm.markShadowGraphDirty();
 			lastGraphShadowAngle = currentShadowAngle;
 		}
-		if (!rsm.isShadowGraphDirty()) return;
+		if (!rsm.canSubmitShadowGraphSearch()) return;
 
 		preSubmitFrustumHolder = createShadowFrustum(renderDistanceMultiplier, preSubmitFrustumHolder, preSubmitFrustumCaches);
 		if (!(preSubmitFrustumHolder.getFrustum() instanceof ViewportProvider provider)) return;
 		final Vector3d entityPos = Camera.INSTANCE.getEntityPos();
 		preSubmitFrustumHolder.getFrustum().setPosition(entityPos.x, entityPos.y, entityPos.z);
 
-		if (rsm.preSubmitShadowGraphUpdate(provider.sodium$createViewport(), frame, spectator)) {
+		if (rsm.submitShadowGraphSearch(provider.sodium$createViewport(), frame)) {
 			preSubmittedShadowAngle = lastGraphShadowAngle;
 			preSubmitActive = true;
 		}
 	}
 	private long lastRelayNanos;
 	private final Vector3f shadowLightVectorCache = new Vector3f();
-	private BoxCuller cachedTileEntityCuller;
-	private double lastTileEntityCullerDistance = -1;
+	private final MemoizedBoxCuller tileEntityCuller = new MemoizedBoxCuller();
 	private final boolean shouldRenderDH;
 	private final float nearPlane, farPlane;
 	private final BooleanSupplier packUsesShadowtex1;
@@ -214,8 +239,8 @@ public class ShadowRenderer {
 
 		debugStringOverall = "half plane = " + halfPlaneLength + " meters @ " + resolution + "x" + resolution;
 
-		this.terrainFrustumHolder = new FrustumHolder();
-		this.entityFrustumHolder = new FrustumHolder();
+		this.terrainFrustumHolder = new FrustumHolder("terrain");
+		this.entityFrustumHolder = new FrustumHolder("entity");
 
 		this.fov = shadowDirectives.getFov();
 		this.targets = shadowRenderTargets;
@@ -390,115 +415,120 @@ public class ShadowRenderer {
 
 	private FrustumHolder createShadowFrustum(float renderMultiplier, FrustumHolder holder, FrustumCaches caches) {
 		// TODO: Cull entities / block entities with Advanced Frustum Culling even if voxelization is detected.
-		String distanceInfo;
-		String cullingInfo;
+		final int renderDistanceBlocks = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16;
+
 		if ((packCullingState == ShadowCullState.DISTANCE || packHasVoxelization) && packCullingState != ShadowCullState.ADVANCED && packCullingState != ShadowCullState.SAFE_ZONE) {
-			double distance = halfPlaneLength * renderMultiplier;
+			final double distance = halfPlaneLength * renderMultiplier;
+			final boolean packSetter = packCullingState == ShadowCullState.DISTANCE;
+			final boolean capped = distance <= 0 || distance > renderDistanceBlocks;
 
-			String reason;
+			if (infoInputsChanged(caches, INFO_BRANCH_DISTANCE_ONLY, distance, renderDistanceBlocks, false, packSetter)) {
+				final String reason = packSetter ? "(set by shader pack)" : "(voxelization detected)";
 
-			if (packCullingState == ShadowCullState.DISTANCE) {
-				reason = "(set by shader pack)";
-			} else /*if (packHasVoxelization)*/ {
-				reason = "(voxelization detected)";
+				if (capped) {
+					caches.distanceInfo = renderDistanceBlocks + " blocks (capped by normal render distance)";
+					caches.cullingInfo = "disabled " + reason;
+				} else {
+					caches.distanceInfo = distance + " blocks (set by shader pack)";
+					caches.cullingInfo = "distance only " + reason;
+				}
 			}
 
-			if (distance <= 0 || distance > Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16) {
-				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
-				cullingInfo = "disabled " + reason;
-				return holder.setInfo(NON_CULLING_FRUSTUM, distanceInfo, cullingInfo);
-			} else {
-				distanceInfo = distance + " blocks (set by shader pack)";
-				cullingInfo = "distance only " + reason;
-				holder.setInfo(getOrCreateBoxCullingFrustum(distance, caches), distanceInfo, cullingInfo);
+			if (capped) {
+				return applyInfo(holder, NON_CULLING_FRUSTUM, caches);
 			}
+
+			return applyInfo(holder, getOrCreateBoxCullingFrustum(distance, caches), caches);
 		} else {
-			BoxCuller boxCuller;
-
-			boolean hasSafeZone = packCullingState == ShadowCullState.SAFE_ZONE;
+			final boolean hasSafeZone = packCullingState == ShadowCullState.SAFE_ZONE;
 
 			if (hasSafeZone && renderMultiplier < 0) renderMultiplier = 1.0f;
 
+			final boolean userSetter = renderMultiplier < 0;
 			double distance = (hasSafeZone ? voxelDistance : halfPlaneLength) * renderMultiplier;
-			String setter = "(set by shader pack)";
 
-			if (renderMultiplier < 0) {
+			if (userSetter) {
                 // TODO: GUI
 				distance = IrisVideoSettings.shadowDistance * 16; // can be zero :(
-				setter = "(set by user)";
 			}
 
-			if (distance >= Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16 && !hasSafeZone) {
-				distanceInfo = Minecraft.getMinecraft().gameSettings.renderDistanceChunks * 16
-					+ " blocks (capped by normal render distance)";
-				boxCuller = null;
-			} else {
-				distanceInfo = distance + " blocks " + setter;
+			final boolean capped = distance >= renderDistanceBlocks && !hasSafeZone;
+			final boolean cullEverything = !capped && distance == 0.0 && !hasSafeZone;
 
-				if (distance == 0.0 && !hasSafeZone) {
-					cullingInfo = "no shadows rendered";
-					return holder.setInfo(CULL_EVERYTHING_FRUSTUM, distanceInfo, cullingInfo);
+			if (infoInputsChanged(caches, INFO_BRANCH_ADVANCED, distance, renderDistanceBlocks, hasSafeZone, !userSetter)) {
+				if (capped) {
+					caches.distanceInfo = renderDistanceBlocks + " blocks (capped by normal render distance)";
+				} else {
+					caches.distanceInfo = distance + " blocks " + (userSetter ? "(set by user)" : "(set by shader pack)");
 				}
 
-				boxCuller = getOrCreateAdvancedBoxCuller(distance, caches);
+				if (cullEverything) {
+					caches.cullingInfo = "no shadows rendered";
+				} else {
+					caches.cullingInfo = hasSafeZone ? "Safe Zone Frustum Culling enabled" : "Advanced Occlusion Culling enabled";
+				}
 			}
 
-			cullingInfo = (hasSafeZone ? "Safe Zone" : "Advanced") + " Frustum Culling enabled";
+			if (cullEverything) {
+				return applyInfo(holder, CULL_EVERYTHING_FRUSTUM, caches);
+			}
+
+			final BoxCuller boxCuller = capped ? null : caches.advancedBoxCuller.get(distance);
 
 			final Vector4f shadowLightPosition = celestialUniforms.getShadowLightPositionInWorldSpace();
 			shadowLightVectorCache.set(shadowLightPosition.x(), shadowLightPosition.y(), shadowLightPosition.z());
 			shadowLightVectorCache.normalize();
 
-			Matrix4fc projView = ((shouldRenderDH && DHCompat.hasRenderingEnabled()) ? DHCompat.getProjection() : RenderingState.INSTANCE.getProjectionMatrix());
+			final Matrix4fc projView = ((shouldRenderDH && DHCompat.hasRenderingEnabled()) ? DHCompat.getProjection() : RenderingState.INSTANCE.getProjectionMatrix());
 
 			if (hasSafeZone) {
-				BoxCuller distanceCuller = new BoxCuller(halfPlaneLength * renderMultiplier);
-				SafeZoneCullingFrustum safeZoneFrustum = new SafeZoneCullingFrustum(
-					RenderingState.INSTANCE.getModelViewMatrix(), projView,
-					shadowLightVectorCache, boxCuller, distanceCuller);
-				return holder.setInfo(safeZoneFrustum, distanceInfo, cullingInfo);
+				if (caches.safeZoneFrustum == null) {
+					caches.safeZoneFrustum = new SafeZoneCullingFrustum();
+				}
+				caches.safeZoneFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), projView, shadowLightVectorCache,
+					boxCuller, caches.safeZoneDistanceCuller.get(halfPlaneLength * renderMultiplier));
+				return applyInfo(holder, caches.safeZoneFrustum, caches);
 			} else {
 				caches.advancedFrustum.init(RenderingState.INSTANCE.getModelViewMatrix(), projView, shadowLightVectorCache, boxCuller);
-				return holder.setInfo(caches.advancedFrustum, distanceInfo, cullingInfo);
+				return applyInfo(holder, caches.advancedFrustum, caches);
 			}
+		}
+	}
+
+	private static boolean infoInputsChanged(FrustumCaches caches, int branch, double distance, int renderDistanceBlocks, boolean hasSafeZone, boolean packSetter) {
+		if (caches.infoBranch == branch && caches.infoDistance == distance
+			&& caches.infoRenderDistanceBlocks == renderDistanceBlocks
+			&& caches.infoHasSafeZone == hasSafeZone && caches.infoPackSetter == packSetter) {
+			return false;
+		}
+
+		caches.infoBranch = branch;
+		caches.infoDistance = distance;
+		caches.infoRenderDistanceBlocks = renderDistanceBlocks;
+		caches.infoHasSafeZone = hasSafeZone;
+		caches.infoPackSetter = packSetter;
+		return true;
+	}
+
+	private static FrustumHolder applyInfo(FrustumHolder holder, Frustrum frustum, FrustumCaches caches) {
+		final boolean changed = !caches.cullingInfo.equals(holder.getCullingInfo())
+			|| !caches.distanceInfo.equals(holder.getDistanceInfo());
+		holder.setInfo(frustum, caches.distanceInfo, caches.cullingInfo);
+
+		if (changed) {
+			Iris.logger.info("Shadow culling ({}): {}, {}", holder.getRole(), caches.cullingInfo, caches.distanceInfo);
 		}
 
 		return holder;
 	}
 
 	private static BoxCullingFrustum getOrCreateBoxCullingFrustum(double distance, FrustumCaches caches) {
-		if (caches.boxCuller == null) {
-			caches.boxCuller = new BoxCuller(distance);
-			caches.boxCullingFrustum = new BoxCullingFrustum(caches.boxCuller);
-			caches.lastBoxCullerDistance = distance;
-		} else if (caches.lastBoxCullerDistance != distance) {
-			caches.boxCuller.setMaxDistance(distance);
-			caches.lastBoxCullerDistance = distance;
+		final BoxCuller culler = caches.boxCuller.get(distance);
+
+		if (caches.boxCullingFrustum == null) {
+			caches.boxCullingFrustum = new BoxCullingFrustum(culler);
 		}
 		return caches.boxCullingFrustum;
-	}
-
-	private static BoxCuller getOrCreateAdvancedBoxCuller(double distance, FrustumCaches caches) {
-		if (caches.advancedBoxCuller == null) {
-			caches.advancedBoxCuller = new BoxCuller(distance);
-			caches.lastAdvancedBoxCullerDistance = distance;
-		} else if (caches.lastAdvancedBoxCullerDistance != distance) {
-			caches.advancedBoxCuller.setMaxDistance(distance);
-			caches.lastAdvancedBoxCullerDistance = distance;
-		}
-		return caches.advancedBoxCuller;
-	}
-
-	private BoxCuller getOrCreateTileEntityCuller(double distance) {
-		if (cachedTileEntityCuller == null) {
-			cachedTileEntityCuller = new BoxCuller(distance);
-			lastTileEntityCullerDistance = distance;
-		} else if (lastTileEntityCullerDistance != distance) {
-			cachedTileEntityCuller.setMaxDistance(distance);
-			lastTileEntityCullerDistance = distance;
-		}
-		return cachedTileEntityCuller;
 	}
 
 	private void setupGlState(Matrix4f projMatrix) {
@@ -780,7 +810,7 @@ public class ShadowRenderer {
 		BoxCuller culler = null;
 		if (hasEntityFrustum) {
 			double distance = halfPlaneLength * (renderDistanceMultiplier * entityShadowDistanceMultiplier);
-			culler = getOrCreateTileEntityCuller(distance);
+			culler = tileEntityCuller.get(distance);
 			culler.setPosition(cameraX, cameraY, cameraZ);
 		}
 

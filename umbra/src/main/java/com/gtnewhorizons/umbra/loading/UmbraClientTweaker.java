@@ -2,14 +2,18 @@ package com.gtnewhorizons.umbra.loading;
 
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
-import com.gtnewhorizons.angelica.glsm.loading.EcosystemNarrowRules;
-import com.gtnewhorizons.retrofuturabootstrap.SharedConfig;
+import com.gtnewhorizons.angelica.glsm.loading.Lwjgl3ifyExclusions;
+import com.gtnewhorizons.angelica.lwjgl3.MissingDependencySdl;
+import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import com.gtnewhorizons.umbra.loading.shared.AngelicaDetector;
 import com.gtnewhorizons.umbra.mixins.Mixins;
 import cpw.mods.fml.relauncher.FMLRelaunchLog;
 import cpw.mods.fml.relauncher.IFMLLoadingPlugin;
 import net.minecraft.launchwrapper.Launch;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
 import java.util.Collections;
@@ -23,6 +27,7 @@ import java.util.Set;
  */
 public class UmbraClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader {
 
+    public static final Logger LOGGER = LogManager.getLogger("Umbra");
     private static Boolean OBF_ENV;
     private final boolean disabled;
 
@@ -42,10 +47,20 @@ public class UmbraClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader 
         disabled = false;
 
         if (Boolean.TRUE.equals(Launch.blackboard.get("umbra.rfbPluginLoaded"))) {
-            addLwjgl3ifyExclusions();
+            Lwjgl3ifyExclusions.apply();
         }
 
-        verifyDependencies();
+        DependencyVerifier.verifyOrHalt(UmbraClientTweaker.class, "Umbra",
+            DependencyVerifier.gtnhLibChecks("Umbra"), LOGGER,
+            (title, message) -> MissingDependencySdl.showFatal(title, message));
+
+        if (SystemProperties.USE_SDL_GPU) {
+            if (SDLGPUGate.isSDLGPUAvailable()) {
+                LOGGER.info("SDL GPU window mode enabled");
+            } else {
+                LOGGER.warn("angelica.sdlgpu.enable=true but SDL GPU dependencies not available, falling back to GL");
+            }
+        }
 
         // Register early redirector if RFB is not loaded (RFB handles its own registration)
         if (!Boolean.TRUE.equals(Launch.blackboard.get("umbra.rfbPluginLoaded"))) {
@@ -53,29 +68,6 @@ public class UmbraClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader 
             Launch.classLoader.registerTransformer(earlyTransformer);
             FMLRelaunchLog.info("[Umbra] Registered early redirector transformer");
         }
-    }
-
-    private static void addLwjgl3ifyExclusions() {
-        final var handle = SharedConfig.getRfbTransformers().stream()
-            .filter(transformer -> transformer.id().equals("lwjgl3ify:redirect"))
-            .findFirst()
-            .orElse(null);
-        if (handle != null) {
-            for (String exclusion : EcosystemNarrowRules.LWJGL3IFY_EXCLUSIONS_SHARED) {
-                handle.exclusions().add(exclusion);
-            }
-        }
-    }
-
-    private static void verifyDependencies() {
-        DependencyVerifier.verify(UmbraClientTweaker.class, List.of(
-            new DependencyVerifier.Check(
-                "/it/unimi/dsi/fastutil/ints/Int2ObjectMap.class",
-                "Missing dependency: Umbra requires GTNHLib! Download: https://modrinth.com/mod/gtnhlib"),
-            new DependencyVerifier.Check(
-                "/com/gtnewhorizon/gtnhlib/client/renderer/VertexCallbackManager.class",
-                "GTNHLib is outdated: Angelica requires GTNHLib 0.10.0 or newer! Download: https://modrinth.com/mod/gtnhlib")
-        ));
     }
 
     @Override

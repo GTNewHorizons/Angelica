@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
 import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
@@ -775,7 +776,10 @@ public final class FrameManager {
     }
 
     public int getSwapchainFormat() {
-        return device.getSwapchainTextureFormat();
+        if (device.getClaimedWindow() != 0L) return device.getSwapchainTextureFormat();
+        if (resourceManager == null || !finalTarget.isReady()) return 0;
+        final FboState fbo = resourceManager.getFbo(finalTarget.fboId());
+        return fbo != null ? fbo.getColorFormat() : 0;
     }
 
     public boolean isFrameActive() {

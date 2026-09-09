@@ -40,7 +40,7 @@ public final class SectionMetaBuffer {
     }
 
     public synchronized int update(int passIndex, int regionOriginX, int regionOriginY, int regionOriginZ, int localSectionIndex,
-                                   long dataPtr, SectionRenderDataUnsafe.Strategy layout, ChunkPrimitiveType primitiveType) {
+                                   long dataPtr, int sliceMask, SectionRenderDataUnsafe.Strategy layout, ChunkPrimitiveType primitiveType) {
         if (dataPtr == 0L) return -1;
         final int sectionOriginX = regionOriginX + (((localSectionIndex >> 5) & 0x07) << 4);
         final int sectionOriginY = regionOriginY + (((localSectionIndex     ) & 0x03) << 4);
@@ -51,7 +51,7 @@ public final class SectionMetaBuffer {
             slot = allocateSlot();
             keyToSlot.put(key, slot);
         }
-        writeSlot(slot, sectionOriginX, sectionOriginY, sectionOriginZ, dataPtr, layout, primitiveType);
+        writeSlot(slot, sectionOriginX, sectionOriginY, sectionOriginZ, dataPtr, sliceMask, layout, primitiveType);
         dirty = true;
         return slot;
     }
@@ -97,12 +97,12 @@ public final class SectionMetaBuffer {
         capacity = newCapacity;
     }
 
-    private void writeSlot(int slot, int sectionOriginX, int sectionOriginY, int sectionOriginZ, long dataPtr, SectionRenderDataUnsafe.Strategy layout, ChunkPrimitiveType primitiveType) {
+    private void writeSlot(int slot, int sectionOriginX, int sectionOriginY, int sectionOriginZ, long dataPtr, int sliceMask, SectionRenderDataUnsafe.Strategy layout, ChunkPrimitiveType primitiveType) {
         final int base = slot * BYTES_PER_SECTION;
         mirror.putInt(base + 0,  sectionOriginX);
         mirror.putInt(base + 4,  sectionOriginY);
         mirror.putInt(base + 8,  sectionOriginZ);
-        mirror.putInt(base + OFFSET_SLICE_MASK, SectionRenderDataUnsafe.getSliceMask(dataPtr));
+        mirror.putInt(base + OFFSET_SLICE_MASK, sliceMask);
         for (int facing = 0; facing < FACING_COUNT; facing++) {
             mirror.putInt(base + OFFSET_POSTS + facing * 4, layout.getVertexOffset(dataPtr, facing));
         }

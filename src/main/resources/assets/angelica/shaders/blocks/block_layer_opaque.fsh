@@ -35,7 +35,7 @@ uniform float u_EnvFogStart;
 uniform float u_EnvFogEnd;
 #endif
 
-#ifdef USE_FOG_EXP2
+#if defined(USE_FOG_EXP) || defined(USE_FOG_EXP2)
 uniform float u_FogDensity;
 #endif
 
@@ -130,6 +130,8 @@ void main() {
     fragColor = vec4(mix(diffuseColor.rgb, u_FogColor.rgb, fogValue * u_FogColor.a), diffuseColor.a);
 #elif defined(USE_FOG_EXP2)
     fragColor = _exp2Fog(diffuseColor, v_FragDistance, u_FogColor, u_FogDensity);
+#elif defined(USE_FOG_EXP)
+    fragColor = _expFog(diffuseColor, v_FragDistance, u_FogColor, u_FogDensity);
 #elif defined(USE_FOG_SMOOTH)
     fragColor = _linearFog(diffuseColor, v_FragDistance, u_FogColor, u_FogStart, u_FogEnd);
 #endif
