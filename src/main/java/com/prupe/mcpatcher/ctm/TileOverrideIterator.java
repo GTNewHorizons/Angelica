@@ -156,7 +156,10 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         layers.putIfAbsent(primary.getRenderLayer(), primary);
         BlockStateMatcher primaryFilter = renderBlockState.getFilter();
         Int2ObjectMap<List<BlockStateMatcher>> layeredCandidates = CTMUtils.getCompactLayers(renderBlockState.getBlock());
-        
+        if(layeredCandidates==null) {
+            return new TileOverrideImpl.CTMCompact[] {compact};
+        }
+
         try {
             LayerLoop: for (Map.Entry<Integer, List<BlockStateMatcher>> entry: layeredCandidates.int2ObjectEntrySet()) {
                 if(layers.containsKey(entry.getKey())) {

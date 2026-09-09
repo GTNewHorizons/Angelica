@@ -62,11 +62,6 @@ public class CTMUtils {
         public BitSet getBlockPasses(Block block) {
             return passes.get(block);
         }
-        public List<BlockStateMatcher> getCompacts(Block block, int renderLayer) {
-            Int2ObjectMap<List<BlockStateMatcher>> byLayer = layeredCompacts.get(block);
-            return byLayer == null ? null : byLayer.get(renderLayer);
-        }
-
         public Int2ObjectMap<List<BlockStateMatcher>> getCompactLayers(Block block) {
             return layeredCompacts.get(block);
         }
@@ -76,10 +71,6 @@ public class CTMUtils {
     private static Overrides newOverrides = null;
     private static TileLoader tileLoader;
 
-
-    public static List<BlockStateMatcher> getCompactsOfLayer(Block block, int renderLayer) {
-        return overrides.getCompacts(block, renderLayer);
-    }
     public static Int2ObjectMap<List<BlockStateMatcher>> getCompactLayers(Block block) {
         return overrides.getCompactLayers(block);
     }
@@ -194,9 +185,12 @@ public class CTMUtils {
                             TileOverride override = (TileOverride) matcher.getData();
                             if (override.getRenderPass() >= 0) {
                                 RenderPassAPI.instance.setRenderPassForBlock(entry.getKey(), override.getRenderPass());
-                                newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet()).set(0, override.getRenderPass() == 0);
-                                newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet()).set(1, override.getRenderPass() != 0);
-
+                                BitSet bits = newOverrides.passes.computeIfAbsent(entry.getKey(), k -> new BitSet());
+                                if (override.getRenderPass() == 0) {
+                                    bits.set(0);
+                                } else {
+                                    bits.set(1);
+                                }
                             }
                         }
                     }
@@ -215,7 +209,7 @@ public class CTMUtils {
                                 newOverrides.layeredCompacts.computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
                                     .computeIfAbsent(compact.getRenderLayer(), k -> new ArrayList<>())
                                     .add(matcher);
-                                if (compact.getRenderPass()==0) {
+                                if (compact.getRenderPass()==0 || compact.getRenderPass() == -1) {
                                     if (!solidBlocks.add(entry.getKey())) {
                                         duplicates.add(entry.getKey());
                                     }
