@@ -19,6 +19,9 @@ import java.util.Locale;
 
 public record FrameRateOptions(Option<VSyncMode> vsync, Option<Integer> maxFramerate) {
 
+    public static final int MIN_FRAMERATE = 5;
+    public static final int MAX_FRAMERATE = 260;
+
     public static FrameRateOptions create(MinecraftOptionsStorage vanillaOpts, SodiumOptionsStorage sodiumOpts) {
         final VSyncMode[] allowed = selectableModes();
         final String[] names = modeNames(VSyncMode.values());
@@ -40,7 +43,7 @@ public record FrameRateOptions(Option<VSyncMode> vsync, Option<Integer> maxFrame
         final OptionImpl<GameSettings, Integer> maxFramerate = OptionImpl.createBuilder(int.class, vanillaOpts)
             .setName(I18n.format("options.framerateLimit"))
             .setTooltip(I18n.format("sodium.options.fps_limit.tooltip"))
-            .setControl(option -> new SliderControl(option, 5, 260, 1, ControlValueFormatter.fpsLimit()))
+            .setControl(option -> new SliderControl(option, MIN_FRAMERATE, MAX_FRAMERATE, 1, ControlValueFormatter.fpsLimit()))
             .setBinding((opts, value) -> opts.limitFramerate = value, opts -> opts.limitFramerate)
             .build();
 

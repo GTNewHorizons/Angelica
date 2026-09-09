@@ -335,7 +335,7 @@ public final class Device {
             }
             vsyncMode = candidate;
             LOG.info("SDL present mode {} (preferred={}), refresh {}Hz, {}, video={}, framesInFlight={}, supported: vsync={} immediate={} mailbox={}",
-                candidate, preferred, getDisplayRefreshRateHz(),
+                candidate, preferred, RenderBackend.hzFromPeriod(getDisplayRefreshPeriodNanos()),
                 (SDL_GetWindowFlags(window) & SDL_WINDOW_FULLSCREEN) != 0 ? "fullscreen" : "windowed",
                 SDL_GetCurrentVideoDriver(), FRAMES_IN_FLIGHT,
                 supportsVSyncMode(VSyncMode.ON), supportsVSyncMode(VSyncMode.OFF), supportsVSyncMode(VSyncMode.MAILBOX));
@@ -376,13 +376,13 @@ public final class Device {
         };
     }
 
-    public int getDisplayRefreshRateHz() {
+    public long getDisplayRefreshPeriodNanos() {
         final long window = Display.getWindow();
         final int displayId = window == 0 ? SDL_GetPrimaryDisplay() : SDL_GetDisplayForWindow(window);
-        if (displayId == 0) return 0;
+        if (displayId == 0) return 0L;
         final SDL_DisplayMode mode = SDL_GetCurrentDisplayMode(displayId);
-        if (mode == null) return 0;
-        return RenderBackend.refreshHzFrom(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
+        if (mode == null) return 0L;
+        return RenderBackend.periodFromRational(mode.refresh_rate_numerator(), mode.refresh_rate_denominator(), mode.refresh_rate());
     }
 
     public int getSwapchainTextureFormat() {

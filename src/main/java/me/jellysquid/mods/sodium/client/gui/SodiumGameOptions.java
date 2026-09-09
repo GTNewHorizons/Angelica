@@ -38,6 +38,7 @@ public class SodiumGameOptions {
     public final QualitySettings quality = new QualitySettings();
     public final AdvancedSettings advanced = new AdvancedSettings();
     public final PerformanceSettings performance = new PerformanceSettings();
+    public final ReducerSettings reducer = new ReducerSettings();
     private Path configPath;
 
     public static void recordAtlasMipmapClamp(int requestedMipmapLevels, int actualMipmapLevels) {
@@ -241,5 +242,16 @@ public class SodiumGameOptions {
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS;
+    }
+
+    public static class ReducerSettings {
+        public boolean enabled = false;
+        public int unfocusedFpsLimit = 10;
+        public int unfocusedVolume = 100;
+        public int minimizedVolume = 100;
+        public int idleTimeoutMinutes = 5;
+        public int idleFpsLimit = 30;
+        public int idleVolume = 100;
+        public boolean limitMenuFrameRate = true;
     }
 }

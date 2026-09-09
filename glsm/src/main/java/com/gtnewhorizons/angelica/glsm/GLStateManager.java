@@ -3534,6 +3534,9 @@ public class GLStateManager {
         Display.swapBuffers();
     }
 
+    private static boolean firstClearPending;
+    private static long firstClearBlockNanos;
+
     public static void updateDisplay() throws LWJGLException {
         updateDisplay(true);
     }
@@ -3541,17 +3544,19 @@ public class GLStateManager {
     public static void updateDisplay(boolean processMessages) throws LWJGLException {
         if (Thread.currentThread() != MainThread) {
             swapBuffers();
-            if (processMessages) Display.processMessages();
+            if (processMessages) pumpDisplayMessages();
             return;
         }
+        if (processMessages) pumpDisplayMessages();
         if (!RENDER_BACKEND.wantsDisplayUpdateGateTiming()) {
-            Display.update(processMessages);
+            Display.update(false);
             return;
         }
         final long start = System.nanoTime();
-        Display.update(processMessages);
+        Display.update(false);
         final long end = System.nanoTime();
-        RENDER_BACKEND.recordFrameGate(end - start, end);
+        RENDER_BACKEND.recordGate(end - start, end);
+        firstClearPending = true;
     }
 
     /**
@@ -3902,7 +3907,24 @@ public class GLStateManager {
                 return;
             }
         }
+        if (firstClearPending && Thread.currentThread() == MainThread && getDrawFramebuffer() == 0) {
+            firstClearPending = false;
+            final long start = System.nanoTime();
+            RENDER_BACKEND.clear(mask);
+            final long end = System.nanoTime();
+            if (end - start > 0) {
+                firstClearBlockNanos += end - start;
+                RENDER_BACKEND.recordGate(end - start, end);
+            }
+            return;
+        }
         RENDER_BACKEND.clear(mask);
+    }
+
+    public static long takeFirstClearBlockNanos() {
+        final long value = firstClearBlockNanos;
+        firstClearBlockNanos = 0L;
+        return value;
     }
 
     public static void glPushAttrib(int mask) {
@@ -5246,20 +5268,8 @@ public class GLStateManager {
         return RENDER_BACKEND.getEffectiveVSyncMode();
     }
 
-    public static int getDisplayRefreshRateHz() {
-        return RENDER_BACKEND.getDisplayRefreshRateHz();
-    }
-
-    public static boolean gateAnchorsNextFrameStart() {
-        return RENDER_BACKEND.gateAnchorsNextFrameStart();
-    }
-
-    public static long lastFrameGateNanos() {
-        return RENDER_BACKEND.lastFrameGateNanos();
-    }
-
-    public static long lastFrameGateEndNanos() {
-        return RENDER_BACKEND.lastFrameGateEndNanos();
+    public static void setPresentSuppressed(boolean suppressed) {
+        RENDER_BACKEND.setPresentSuppressed(suppressed);
     }
 
     public static boolean hasSwapchainBackpressure() {
@@ -5267,7 +5277,7 @@ public class GLStateManager {
     }
 
     public static void pumpDisplayMessages() {
-        Display.processMessages();
+        RENDER_BACKEND.pumpDisplayMessages();
     }
 
     public static int glGetError() {

@@ -528,6 +528,15 @@ public enum Mixins implements IMixins {
             "angelica.zoom.MixinMouseFilter"
         )),
 
+    ANGELICA_FPS_REDUCER(new MixinBuilder("Reduce frame rate and volume while unfocused, minimized, or idle")
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.fpsreducer.MixinGameSettings_FpsReducerVolume",
+            "angelica.fpsreducer.MixinGuiScreen_FpsReducerInput",
+            "angelica.fpsreducer.MixinMinecraft_FpsReducerInput",
+            "angelica.fpsreducer.MixinSoundManagerLoader_FpsReducerVolume"
+        )),
+
     HUD_CACHING(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableHudCaching)

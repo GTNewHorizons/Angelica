@@ -7,6 +7,9 @@ import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.backend.MainThreadPump;
+import me.eigenraven.lwjgl3ify.client.MainThreadExec;
+import org.lwjglx.Lwjgl3ifyEventLoop;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
@@ -89,6 +92,7 @@ import java.util.function.BiConsumer;
 
 import org.lwjgl.sdl.SDLGPU;
 import org.lwjgl.sdl.SDL_GPUBlitInfo;
+import org.lwjgl.sdl.SDLTimer;
 import org.lwjgl.sdl.SDL_GPUBufferLocation;
 import org.lwjgl.sdl.SDL_GPUTextureLocation;
 import org.lwjgl.system.MemoryStack;
@@ -398,25 +402,27 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
     }
 
-    @Override protected int queryDisplayRefreshRateHz() {
-        return device.getDisplayRefreshRateHz();
+    @Override protected long queryRefreshPeriodNanos() {
+        return device.getDisplayRefreshPeriodNanos();
     }
-
-    @Override public boolean gateAnchorsNextFrameStart() { return true; }
 
     @Override public boolean wantsDisplayUpdateGateTiming() { return false; }
 
-    @Override public long lastFrameGateNanos() {
-        if (presenter != null) return frameManager.windowFrame().lastFrameGateNanos;
-        return frameManager.lastFrameGateNanos();
-    }
-
-    @Override public long lastFrameGateEndNanos() {
-        if (presenter != null) return frameManager.windowFrame().lastFrameGateEndNanos;
-        return frameManager.lastFrameGateEndNanos();
-    }
-
     @Override public boolean hasSwapchainBackpressure() { return true; }
+
+    @Override public void awaitPresent() {
+        if (presenter != null) presenter.drain();
+    }
+
+    @Override public void parkNanos(long nanos) {
+        SDLTimer.SDL_DelayNS(nanos);
+    }
+
+    private static final class Pump {
+        static final MainThreadPump INSTANCE = new MainThreadPump(MainStartOnFirstThread.instance(), MainThreadExec::isMainThread, Lwjgl3ifyEventLoop::pumpEvents, MainThreadPump::pollInput);
+    }
+
+    @Override public void pumpDisplayMessages() { Pump.INSTANCE.pumpMessages(); }
 
     @Override public void shutdown() {
         if (shutdown) return;
@@ -675,6 +681,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public void onPreSwapchainInvalidatingChange(Object change) {
+        super.onPreSwapchainInvalidatingChange(change);
         if (presenter != null) presenter.drain();
         endFrameUploadFlush();
         if (frameManager.isFrameActive()) {

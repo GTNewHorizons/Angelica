@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.event.ClientEvent;
 import com.gtnewhorizons.angelica.event.ClientEventType;
+import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.shader.Framebuffer;
@@ -19,7 +20,8 @@ public class MixinMinecraft_IconifyGuard {
     private void angelica$skipRenderWhenIconified(EntityRenderer entityRenderer, float partialTicks) {
         ClientEvent.post(ClientEventType.ON_TICK);
         final Framebuffer fb = Minecraft.getMinecraft().getFramebuffer();
-        if (fb == null || fb.framebufferWidth < 16 || fb.framebufferHeight < 16) {
+        if (fb == null || fb.framebufferWidth < 16 || fb.framebufferHeight < 16 || FpsReducer.skipRender()) {
+            FpsReducer.onRenderSkipped();
             return;
         }
         entityRenderer.updateCameraAndRender(partialTicks);

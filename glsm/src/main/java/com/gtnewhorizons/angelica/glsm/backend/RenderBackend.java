@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.backend;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
@@ -12,6 +13,7 @@ import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 import java.util.Collections;
 import java.util.List;
+import java.util.concurrent.locks.LockSupport;
 import java.util.function.Predicate;
 
 /**
@@ -72,7 +74,9 @@ public abstract class RenderBackend {
 
     public final void setVSyncMode(VSyncMode preferred) {
         setVSyncPreference(preferred);
-        publishVSyncMode(applyVSyncMode(preferred));
+        final VSyncMode mode = applyVSyncMode(preferred);
+        vsyncHonored = applyHonored();
+        publishVSyncMode(mode);
     }
 
     public final void setVSyncPreference(VSyncMode preferred) {
@@ -90,50 +94,146 @@ public abstract class RenderBackend {
 
     protected abstract VSyncMode applyVSyncMode(VSyncMode preferred);
 
+    protected boolean applyHonored() { return true; }
+
+    private boolean vsyncHonored = true;
+
+    public final boolean vsyncHonored() { return vsyncHonored; }
+
     public boolean supportsVSyncMode(VSyncMode mode) { return mode != VSyncMode.MAILBOX; }
 
-    protected final void publishVSyncMode(VSyncMode mode) { effectiveVSyncMode = mode; }
+    protected final void publishVSyncMode(VSyncMode mode) {
+        effectiveVSyncMode = mode;
+        bumpDisplayGeneration();
+    }
 
     public final VSyncMode getEffectiveVSyncMode() { return effectiveVSyncMode; }
 
+    private int displayGeneration;
+
+    public final int displayGeneration() { return displayGeneration; }
+
+    protected final void bumpDisplayGeneration() { displayGeneration++; }
+
     private static final long REFRESH_POLL_NANOS = 1_000_000_000L;
+    private static final long MIN_PLAUSIBLE_PERIOD_NANOS = 1_000_000L;
+    private static final long MAX_PLAUSIBLE_PERIOD_NANOS = 50_000_000L;
 
     private long refreshPollNanos;
-    private int cachedRefreshHz;
+    private long cachedRefreshPeriodNanos;
 
-    public final int getDisplayRefreshRateHz() {
+    public final long refreshPeriodNanos() {
         final long now = System.nanoTime();
         if (refreshPollNanos == 0L || now - refreshPollNanos >= REFRESH_POLL_NANOS) {
             refreshPollNanos = now;
-            cachedRefreshHz = queryDisplayRefreshRateHz();
+            final long fresh = plausiblePeriodNanos(queryRefreshPeriodNanos());
+            if (fresh != cachedRefreshPeriodNanos) bumpDisplayGeneration();
+            cachedRefreshPeriodNanos = fresh;
         }
-        return cachedRefreshHz;
+        return cachedRefreshPeriodNanos;
     }
 
-    protected int queryDisplayRefreshRateHz() { return 0; }
+    protected long queryRefreshPeriodNanos() { return 0L; }
 
-    public static int refreshHzFrom(int numerator, int denominator, float fallbackHz) {
-        if (numerator > 0 && denominator > 0) return (numerator + denominator - 1) / denominator;
-        return fallbackHz > 0.0f ? (int) Math.ceil(fallbackHz) : 0;
+    static long plausiblePeriodNanos(long periodNanos) {
+        return (periodNanos >= MIN_PLAUSIBLE_PERIOD_NANOS && periodNanos <= MAX_PLAUSIBLE_PERIOD_NANOS) ? periodNanos : 0L;
+    }
+
+    public static long periodFromRational(int numerator, int denominator, float fallbackHz) {
+        if (numerator > 0 && denominator > 0) {
+            final long scaledDenominator = 1_000_000_000L * denominator;
+            return (scaledDenominator + numerator / 2) / numerator;
+        }
+        return fallbackHz > 0.0f ? Math.round(1_000_000_000.0 / fallbackHz) : 0L;
+    }
+
+    private static final int[] TRUNCATED_NTSC_HZ = {23, 29, 59, 71, 119, 143, 239};
+
+    private static boolean isTruncatedNtscRate(int hz) {
+        for (int candidate : TRUNCATED_NTSC_HZ) {
+            if (candidate == hz) return true;
+        }
+        return false;
+    }
+
+    public static long periodFromIntegerHz(int hz) {
+        if (hz <= 0) return 0L;
+        if (isTruncatedNtscRate(hz)) {
+            final long denominator = (hz + 1) * 1000L;
+            return Math.round(1_000_000_000.0 * 1001 / denominator);
+        }
+        return Math.round(1_000_000_000.0 / hz);
+    }
+
+    public static int hzFromPeriod(long periodNanos) {
+        return periodNanos <= 0L ? 0 : (int) Math.round(1_000_000_000.0 / periodNanos);
     }
 
     public boolean hasSwapchainBackpressure() { return false; }
 
-    private long frameGateNanos;
-    private long frameGateEndNanos;
+    public static final class GateSample {
+        public long durationNanos;
+        public long endNanos;
+        public long gpuWaitNanos;
+    }
 
-    public boolean gateAnchorsNextFrameStart() { return false; }
+    static final class GateRecorder {
+
+        private long gateDurationNanos;
+        private long gateEndNanos;
+        private long gpuWaitNanos;
+
+        synchronized void recordGate(long durationNanos, long endNanos) {
+            if (gateEndNanos != 0L && gateDurationNanos >= durationNanos) return;
+            gateDurationNanos = durationNanos;
+            gateEndNanos = endNanos;
+        }
+
+        synchronized void recordGpuWait(long nanos) {
+            gpuWaitNanos += nanos;
+        }
+
+        synchronized void readGateSample(GateSample out) {
+            final long end = gateEndNanos;
+            out.durationNanos = end == 0L ? 0L : gateDurationNanos;
+            out.endNanos = end;
+            out.gpuWaitNanos = gpuWaitNanos;
+            gpuWaitNanos = 0L;
+            gateEndNanos = 0L;
+        }
+    }
+
+    private final GateRecorder gateRecorder = new GateRecorder();
 
     public boolean wantsDisplayUpdateGateTiming() { return true; }
 
-    public void recordFrameGate(long durationNanos, long endNanos) {
-        frameGateNanos = durationNanos;
-        frameGateEndNanos = endNanos;
+    public final void recordGate(long durationNanos, long endNanos) {
+        gateRecorder.recordGate(durationNanos, endNanos);
     }
 
-    public long lastFrameGateNanos() { return frameGateNanos; }
+    public final void recordGpuWait(long nanos) {
+        gateRecorder.recordGpuWait(nanos);
+    }
 
-    public long lastFrameGateEndNanos() { return frameGateEndNanos; }
+    public final void readGateSample(GateSample out) {
+        gateRecorder.readGateSample(out);
+    }
+
+    public void awaitPresent() {}
+
+    public void parkNanos(long nanos) {
+        LockSupport.parkNanos(nanos);
+    }
+
+    public void pumpDisplayMessages() {
+        Display.processMessages();
+    }
+
+    private boolean presentSuppressed;
+
+    public final void setPresentSuppressed(boolean suppressed) { presentSuppressed = suppressed; }
+
+    public final boolean isPresentSuppressed() { return presentSuppressed; }
 
     public void onFrameBegin() {
         if (GLStateManager.takeStateSeedPending()) {
@@ -144,7 +244,7 @@ public abstract class RenderBackend {
     public void onFrameEnd() {}
 
     /** Fired by lwjgl3ify Display before a mutation that recreates the swapchain. */
-    public void onPreSwapchainInvalidatingChange(Object change) {}
+    public void onPreSwapchainInvalidatingChange(Object change) { bumpDisplayGeneration(); }
 
     public boolean handleMakeCurrent(Object drawable) { return false; }
     public boolean handleReleaseContext(Object drawable) { return false; }

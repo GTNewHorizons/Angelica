@@ -37,6 +37,7 @@ final class SdlFramePlots {
     private static final long PLOT_PER_PASS_BLOCK_FLUSHES = Tracy.plotHandle("sdl.perPassBlockFlushes");
     private static final long PLOT_PER_PASS_BLOCK_BYTES = Tracy.plotHandle("sdl.perPassBlockBytes", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long PLOT_ACQUIRE_WAIT_US = Tracy.plotHandle("sdl.acquireWaitUs");
+    private static final long PLOT_GPU_WAIT_US = Tracy.plotHandle("sdl.gpuWaitUs");
     private static final long PLOT_PRESENT_TO_PRESENT_US = Tracy.plotHandle("sdl.presentToPresentUs");
     private static final long PLOT_FRAMES_IN_FLIGHT = Tracy.plotHandle("sdl.framesInFlight");
     private static final long PLOT_MIP_GENS = Tracy.plotHandle("sdl.mipGens");
@@ -97,6 +98,7 @@ final class SdlFramePlots {
         Tracy.plotInt(PLOT_PER_PASS_BLOCK_FLUSHES, f.uniformBlockFlushesThisFrame[ShaderManager.BLOCK_PER_PASS]);
         Tracy.plotInt(PLOT_PER_PASS_BLOCK_BYTES, f.uniformBlockBytesThisFrame[ShaderManager.BLOCK_PER_PASS]);
         Tracy.plotInt(PLOT_ACQUIRE_WAIT_US, f.acquireWaitNanosThisFrame / 1000);
+        Tracy.plotInt(PLOT_GPU_WAIT_US, f.gpuWaitNanosThisFrame / 1000);
         final long nowNanos = System.nanoTime();
         if (f.lastEndFrameNanos != 0) Tracy.plotInt(PLOT_PRESENT_TO_PRESENT_US, (nowNanos - f.lastEndFrameNanos) / 1000);
         f.lastEndFrameNanos = nowNanos;
