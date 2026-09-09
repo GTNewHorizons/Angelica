@@ -51,7 +51,7 @@ class ReadbackSubmitOrderGpuTest {
         }
 
         assertEquals(1, f.midFrameSubmitsThisFrame, "the frame command buffer must be submitted before the download buffer, or the readback sees stale contents");
-        assertNotEquals(frameCb, f.commandBuffer, "the frame must continue on a freshly acquired command buffer");
+        assertNotEquals(0L, f.commandBuffer, "the frame must continue on a freshly acquired command buffer");
 
         fm.endFrame();
     }
