@@ -221,17 +221,21 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
             angelica$savedMaxY = rb.renderMaxY;
             angelica$savedMaxZ = rb.renderMaxZ;
             for (int i=0; i < compacts.length; i++) {
-                //angelica$nudgeFaceOutward(rb, face);
+                angelica$nudgeFaceOutward(rb, face);
             }
             return;
         }
+        double minX = rb.renderMinX, minY = rb.renderMinY, minZ = rb.renderMinZ;
+        double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
         if (RenderPassHelper.getWorldRenderPass()==1) {
-            //angelica$nudgeFaceOutward(rb, face);
+            angelica$nudgeFaceOutward(rb, face);
         }
         for (int i = 0; i < compacts.length; i++) {
             compacts[i].getProcessor().processFace(rb, renderBlockState, icon, face);
-            //angelica$nudgeFaceOutward(rb, face);
+            angelica$nudgeFaceOutward(rb, face);
         }
+
+        rb.setRenderBounds(minX, minY, minZ, maxX, maxY, maxZ);
         ci.cancel();
     }
 
@@ -305,7 +309,7 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     }
 
 
-    /*@Inject(method = "renderFaceYNeg", at = @At("TAIL"))
+    @Inject(method = "renderFaceYNeg", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceYNeg(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
     }
@@ -333,7 +337,7 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
     @Inject(method = "renderFaceXPos", at = @At("TAIL"))
     private void compactCtm_afterRenderFaceXPos(Block block, double x, double y, double z, IIcon icon, CallbackInfo ci) {
         angelica$restoreOverrideBounds();
-    }*/
+    }
 
     @Inject(method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z", at = @At("RETURN"))
     private void compactCtm_resetAfterBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
