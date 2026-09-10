@@ -212,16 +212,18 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         }
         RenderBlocks rb = (RenderBlocks) (Object) this;
         int face = direction.ordinal();
+
+        angelica$savedMinX = rb.renderMinX;
+        angelica$savedMinY = rb.renderMinY;
+        angelica$savedMinZ = rb.renderMinZ;
+        angelica$savedMaxX = rb.renderMaxX;
+        angelica$savedMaxY = rb.renderMaxY;
+        angelica$savedMaxZ = rb.renderMaxZ;
+
         if (rb.hasOverrideBlockTexture()) {
-            angelica$overrideBoundsNudged = true;
-            angelica$savedMinX = rb.renderMinX;
-            angelica$savedMinY = rb.renderMinY;
-            angelica$savedMinZ = rb.renderMinZ;
-            angelica$savedMaxX = rb.renderMaxX;
-            angelica$savedMaxY = rb.renderMaxY;
-            angelica$savedMaxZ = rb.renderMaxZ;
             for (int i=0; i < compacts.length; i++) {
                 angelica$nudgeFaceOutward(rb, face);
+                angelica$overrideBoundsNudged = true;
             }
             return;
         }
@@ -229,13 +231,14 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
         if (RenderPassHelper.getWorldRenderPass()==1) {
             angelica$nudgeFaceOutward(rb, face);
+            angelica$overrideBoundsNudged = true;
         }
         for (int i = 0; i < compacts.length; i++) {
             compacts[i].getProcessor().processFace(rb, renderBlockState, icon, face);
             angelica$nudgeFaceOutward(rb, face);
+            angelica$overrideBoundsNudged = true;
         }
-
-        rb.setRenderBounds(minX, minY, minZ, maxX, maxY, maxZ);
+        angelica$restoreOverrideBounds();
         ci.cancel();
     }
 
