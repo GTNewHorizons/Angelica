@@ -180,6 +180,8 @@ public class CTMUtils {
                     for (TileOverride override : newOverrides.all) {
                         override.registerIcons();
                     }
+                    Set<Block> solidBlocks = new HashSet<>();
+                    Set<Block> duplicates = new HashSet<>();
                     for (Map.Entry<Block, List<BlockStateMatcher>> entry : newOverrides.block.entrySet()) {
                         for (BlockStateMatcher matcher : entry.getValue()) {
                             TileOverride override = (TileOverride) matcher.getData();
@@ -192,19 +194,6 @@ public class CTMUtils {
                                     bits.set(1);
                                 }
                             }
-                        }
-                    }
-                    for (List<BlockStateMatcher> overrides : newOverrides.block.values()) {
-                        overrides.sort((m1, m2) -> {
-                            TileOverride o1 = (TileOverride) m1.getData();
-                            TileOverride o2 = (TileOverride) m2.getData();
-                            return o1.compareTo(o2);
-                        });
-                    }
-                    Set<Block> solidBlocks = new HashSet<>();
-                    Set<Block> duplicates = new HashSet<>();
-                    for (Map.Entry<Block, List<BlockStateMatcher>> entry : newOverrides.block.entrySet()) {
-                        for (BlockStateMatcher matcher : entry.getValue()) {
                             if (matcher.getData() instanceof TileOverrideImpl.CTMCompact compact) {
                                 newOverrides.layeredCompacts.computeIfAbsent(entry.getKey(), k -> new Int2ObjectOpenHashMap<>())
                                     .computeIfAbsent(compact.getRenderLayer(), k -> new ArrayList<>())
@@ -216,6 +205,13 @@ public class CTMUtils {
                                 }
                             }
                         }
+                    }
+                    for (List<BlockStateMatcher> overrides : newOverrides.block.values()) {
+                        overrides.sort((m1, m2) -> {
+                            TileOverride o1 = (TileOverride) m1.getData();
+                            TileOverride o2 = (TileOverride) m2.getData();
+                            return o1.compareTo(o2);
+                        });
                     }
                     for (Block each : duplicates) {
                         logger.warning("Block %s has multiple solid layers.  Convention is lowest weight/filename wins", each);
