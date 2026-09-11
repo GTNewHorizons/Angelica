@@ -2268,6 +2268,14 @@ public class GLStateManager {
         final GLContextState glCtx = ctx();
         if (id == 0) return;
 
+        // Splash rendering uses shared contexts. Another context can recycle this name before
+        // the queued resize completes, corrupting the replacement texture. Leave its storage
+        // untouched until flushDeferredTextureDeletes performs the actual deletion.
+        if (!splashComplete) {
+            deferredDeleteTextures.add(id);
+            return;
+        }
+
         final int savedUnit = glCtx.activeTextureUnit.getValue();
         final int savedBinding = glCtx.textures.getTextureUnitBindings(savedUnit).getBinding();
         boolean changedUnit = false;
