@@ -1,7 +1,9 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import lombok.Getter;
+import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.uniform.UniformHolder;
 import net.minecraft.client.Minecraft;
 import org.joml.Matrix3f;
@@ -57,8 +59,17 @@ public class CameraUniforms {
 	}
 
 	private static int getRenderDistanceInBlocks() {
-		// TODO: Should we ask the game renderer for this?
-		return client.gameSettings.renderDistanceChunks * 16;
+		int renderDistanceChunks = client.gameSettings.renderDistanceChunks;
+
+		// The default Celeritas tracker waits for all neighboring chunks before rendering a chunk.
+		// Since chunks outside the configured render distance are not loaded, this leaves the
+		// outermost ring unrendered. Shader packs use `far` for effects such as the vanilla-to-DH
+		// transition, so report the actual rendered boundary instead of the configured load radius.
+		if (DHCompat.isPresent() && !AngelicaConfig.useVanillaChunkTracking) {
+			renderDistanceChunks = Math.max(1, renderDistanceChunks - 1);
+		}
+
+		return renderDistanceChunks * 16;
 	}
 
 	public static Vector3d getUnshiftedCameraPosition() {
