@@ -17,12 +17,10 @@ import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
-
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import com.prupe.mcpatcher.mal.util.WeightedIndex;
 import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
-
 import net.minecraft.util.ResourceLocation;
 
 import java.awt.image.BufferedImage;

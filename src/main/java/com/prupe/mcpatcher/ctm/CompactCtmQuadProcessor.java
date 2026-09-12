@@ -70,7 +70,7 @@ public final class CompactCtmQuadProcessor {
             return true;
         }
 
-        if (neighborBits == 0 || neighborBits == 0xFF) {
+        if (!override.connectsByReverseList() && (neighborBits == 0 || neighborBits == 0xFF)) {
             IIcon sprite = sprites[getCompactSpriteIndex(neighborBits)];
             if (sprite != null) {
                 renderWholeFace(rb, renderBlockState, sprite, face);
@@ -106,7 +106,7 @@ public final class CompactCtmQuadProcessor {
      */
     private int getCompactSpriteIndex(int connections) {
         if (connections == 0xFF) {
-            return override.connectsByReverseList() ? SPRITE_DEFAULT : SPRITE_ALL;
+            return SPRITE_ALL;
         }
 
         if ((connections & ((1 << RenderBlockState.REL_L) | (1 << RenderBlockState.REL_R))) ==
@@ -147,7 +147,8 @@ public final class CompactCtmQuadProcessor {
             bTL = bTR = bBL = bBR = 0f;
             brTL = brTR = brBL = brBR = 0;
         }
-        int notchBits = override.getNotchBits();
+        
+        int notchBits = override.getNotchBits(renderBlockState);
         for (int q = 0; q < 4; q++) {
             int quad = override.connectsByReverseList()
                 ? getProjectionSprite(q, connections, notchBits)
