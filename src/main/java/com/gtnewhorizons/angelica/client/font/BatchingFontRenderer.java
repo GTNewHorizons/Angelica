@@ -26,10 +26,13 @@ import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.MathHelper;
 import net.minecraft.util.ResourceLocation;
+import net.minecraftforge.client.MinecraftForgeClient;
 import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -202,6 +205,37 @@ public class BatchingFontRenderer {
         final int green = Math.max(0, Math.min(255, (int) (((argb >> 8) & 0xFF) * lightingFactor.y + 0.5f)));
         final int blue = Math.max(0, Math.min(255, (int) ((argb & 0xFF) * lightingFactor.z + 0.5f)));
         return (argb & 0xFF000000) | (red << 16) | (green << 8) | blue;
+    }
+
+    public static boolean matchGuiScreen(GuiScreen screen) {
+        String[] classes = {
+            //"net.minecraft.client.gui.GuiOptions",
+            //"net.minecraft.client.gui.inventory.GuiContainer",
+            //"net.minecraft.client.gui.GuiIngameMenu",
+        };
+
+        for (String cl : classes) {
+            try {
+                if (Class.forName(cl).isInstance(screen)) {
+                    return true;
+                }
+            } catch (ClassNotFoundException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return false;
+    }
+    private static boolean inScreenDraw;
+    public static boolean beginScreenDraw() {
+        final boolean previous = inScreenDraw;
+        inScreenDraw = true;
+        return previous;
+    }
+    public static void endScreenDraw(boolean previous) {
+        inScreenDraw = previous;
+    }
+    public static boolean isInScreenDraw() {
+        return inScreenDraw;
     }
 
     /**
@@ -1483,10 +1517,22 @@ public class BatchingFontRenderer {
 
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
+                float time = HUDCaching.renderingCacheOverride ? 0f : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
                 if (curWave) {
-                    float time = HUDCaching.renderingCacheOverride ? 0f : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
                     renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
                 }
+
+                //if (isInScreenDraw() || Minecraft.getMinecraft().theWorld == null) {
+                if (isInScreenDraw()) {
+                    curColor = 0xFFFF0000 + (int)(Math.round(0x00007F80 * (Math.sin(2 * time) + 1)) & 0x0000FFFF);
+                } else {
+                    curColor &= 0xFFFFFFFF;
+                }
+                /*
+                if (MinecraftForgeClient.getRenderPass() == 1) {
+                    curColor = 0xFFFF00FF;
+                }
+                 */
 
                 final boolean drawShadow = enableShadow || curShadow;
                 if (drawShadow) {
