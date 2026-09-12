@@ -5,7 +5,9 @@ import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import com.gtnewhorizons.angelica.utils.MipmapGenerator;
 import com.gtnewhorizons.angelica.utils.MipmapStrategies;
 import com.gtnewhorizons.angelica.utils.MipmapStrategy;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
+import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.embeddedt.embeddium.api.util.ColorARGB;
 import org.embeddedt.embeddium.impl.render.chunk.sprite.SpriteTransparencyLevel;
 import org.spongepowered.asm.mixin.Final;
@@ -14,9 +16,11 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
+import java.awt.image.BufferedImage;
 import java.util.List;
 
 /**
@@ -34,8 +38,6 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     @Unique
     private static final int SCAN_BLOCK = 256;
     @Shadow
-    public boolean useAnisotropicFiltering;
-    @Shadow
     public List<int[][]> framesTextureData;
     @Shadow
     @Final
@@ -52,6 +54,8 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     private boolean celeritas$hasTransparentTexels;
     @Unique
     private boolean celeritas$alwaysTranslucent;
+    @Unique
+    private int angelica$gutterWidth;
 
     @Unique
     private static boolean celeritas$isAlwaysTranslucent(String name) {
@@ -142,9 +146,59 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
             target = "Lnet/minecraft/client/renderer/texture/TextureUtil;generateMipmapData(II[[I)[[I"))
     private int[][] celeritas$generateMipmapData(int p_147949_0_, int p_147949_1_, int[][] p_147949_2_) {
         final MipmapStrategy strategy = celeritas$resolvedStrategy();
-        final int border = this.useAnisotropicFiltering ? 8 : 0;
 
-        return MipmapGenerator.generateMipLevels(p_147949_0_, p_147949_1_, p_147949_2_, strategy, this.celeritas$hasTransparentTexels, border);
+        return MipmapGenerator.generateMipLevels(p_147949_0_, p_147949_1_, p_147949_2_, strategy,
+            this.celeritas$hasTransparentTexels);
+    }
+
+    /**
+     * Vanilla's anisotropic path inflates width/height by 16 and insets the UVs by 8, which is the number
+     * mods subtract to unpad. The gutter goes in the stitcher slot instead, so this always reads false and
+     * the sprite keeps its real dims.
+     */
+    @ModifyVariable(method = "loadSprite", at = @At("HEAD"), argsOnly = true)
+    private boolean angelica$neverInflateSprite(boolean useAnisotropicFiltering) {
+        return false;
+    }
+
+    @Inject(method = "loadSprite", at = @At("HEAD"))
+    private void angelica$latchGutter(BufferedImage[] images, AnimationMetadataSection metadata,
+        boolean useAnisotropicFiltering, CallbackInfo ci) {
+        final int gutter = SpritePadding.currentGutter();
+        if (gutter != 0) {
+            this.angelica$gutterWidth = gutter;
+        }
+    }
+
+    @ModifyVariable(method = "initSprite", at = @At("HEAD"), ordinal = 2, argsOnly = true)
+    private int angelica$insetOriginX(int x) {
+        return x + this.angelica$gutterWidth;
+    }
+
+    @ModifyVariable(method = "initSprite", at = @At("HEAD"), ordinal = 3, argsOnly = true)
+    private int angelica$insetOriginY(int y) {
+        return y + this.angelica$gutterWidth;
+    }
+
+    @Redirect(
+        method = "updateAnimation",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/texture/TextureUtil;uploadTextureMipmap([[IIIIIZZ)V"))
+    private void angelica$uploadPaddedFrame(int[][] frameData, int width, int height, int originX, int originY,
+        boolean blur, boolean clamp) {
+        SpritePadding.uploadPadded(frameData, width, height, originX, originY,
+            this.angelica$gutterWidth, blur, clamp);
+    }
+
+    @Override
+    public int angelica$getGutterWidth() {
+        return this.angelica$gutterWidth;
+    }
+
+    @Override
+    public void angelica$setGutterWidth(int gutter) {
+        this.angelica$gutterWidth = gutter;
     }
 
     @Override

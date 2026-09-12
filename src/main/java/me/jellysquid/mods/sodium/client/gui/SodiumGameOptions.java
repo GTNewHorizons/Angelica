@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import net.coderbot.iris.Iris;
 import net.minecraft.client.Minecraft;
@@ -26,7 +27,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 
 public class SodiumGameOptions {
-    private static final int MIN_ANISOTROPY_FOR_PADDING = 2;
+    private static final int MIN_ANISOTROPY = 2;
     private static final int MIN_ANISOTROPY_LEVEL = 1;
     private static final int MAX_ANISOTROPY_LEVEL = 4;
     private static final Gson GSON = new GsonBuilder()
@@ -35,6 +36,7 @@ public class SodiumGameOptions {
         .excludeFieldsWithModifiers(Modifier.PRIVATE)
         .create();
     private static int resourcePackMipmapCeiling = Integer.MAX_VALUE;
+    private static int atlasMipmapLevels = -1;
     public final QualitySettings quality = new QualitySettings();
     public final AdvancedSettings advanced = new AdvancedSettings();
     public final PerformanceSettings performance = new PerformanceSettings();
@@ -43,6 +45,14 @@ public class SodiumGameOptions {
 
     public static void recordAtlasMipmapClamp(int requestedMipmapLevels, int actualMipmapLevels) {
         resourcePackMipmapCeiling = actualMipmapLevels < requestedMipmapLevels ? actualMipmapLevels : Integer.MAX_VALUE;
+    }
+
+    public static void recordAtlasMipmapLevels(int mipmapLevels) {
+        atlasMipmapLevels = mipmapLevels;
+    }
+
+    public static int terrainMipmapLevels() {
+        return atlasMipmapLevels >= 0 ? atlasMipmapLevels : effectiveMipmapLevelsEstimate();
     }
 
     public static void applyAtlasSettings() {
@@ -60,7 +70,7 @@ public class SodiumGameOptions {
             : TextureFilterMode.NONE;
 
         return mode.usesAnisotropy()
-            ? MathHelper.clamp_int(mc.gameSettings.anisotropicFiltering, MIN_ANISOTROPY_FOR_PADDING, 1 << maxAnisotropyLevel())
+            ? MathHelper.clamp_int(mc.gameSettings.anisotropicFiltering, MIN_ANISOTROPY, 1 << maxAnisotropyLevel())
             : 1;
     }
 
@@ -68,23 +78,13 @@ public class SodiumGameOptions {
         return effectiveMipmapLevelsEstimate() > 0;
     }
 
-    private static int effectiveMipmapLevelsEstimate() {
+    public static int effectiveMipmapLevelsEstimate() {
         return Math.min(Minecraft.getMinecraft().gameSettings.mipmapLevels, resourcePackMipmapCeiling);
     }
 
-    public static boolean needsForcedSpritePadding() {
-        final TextureFilterMode mode = filteringPossible()
-            ? resolveFilterMode(ClientProxy.options().quality.textureFilterMode)
-            : TextureFilterMode.NONE;
-        return mode.needsSpritePadding() && !mode.usesAnisotropy();
-    }
 
     public static TextureFilterMode effectiveTextureFilterMode() {
-        final TextureFilterMode mode = resolveFilterMode(ClientProxy.options().quality.textureFilterMode);
-        if (mode == TextureFilterMode.NONE) {
-            return mode;
-        }
-        return Minecraft.getMinecraft().getTextureMapBlocks().mipmapLevels > 0 ? mode : TextureFilterMode.NONE;
+        return resolveFilterMode(ClientProxy.options().quality.textureFilterMode);
     }
 
     public static TextureFilterMode resolveFilterMode(TextureFilterMode mode) {
@@ -144,6 +144,10 @@ public class SodiumGameOptions {
 
         if (config.quality.textureFilterMode == null) {
             config.quality.textureFilterMode = TextureFilterMode.RGSS;
+        }
+
+        if (config.quality.texelSampling == null) {
+            config.quality.texelSampling = TexelSampling.LINEAR;
         }
 
         if (GLStateManager.capabilities != null) {
@@ -242,6 +246,7 @@ public class SodiumGameOptions {
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS;
+        public TexelSampling texelSampling = TexelSampling.LINEAR;
     }
 
     public static class ReducerSettings {

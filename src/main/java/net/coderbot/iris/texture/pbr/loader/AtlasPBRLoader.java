@@ -6,6 +6,8 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
+import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
@@ -18,9 +20,9 @@ import net.coderbot.iris.texture.pbr.PBRType;
 import net.coderbot.iris.texture.pbr.TextureAtlasSpriteExtension;
 import net.coderbot.iris.texture.util.ImageManipulationUtil;
 import net.coderbot.iris.texture.util.TextureExporter;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
-import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.IResource;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.data.AnimationFrame;
@@ -32,7 +34,6 @@ import javax.annotation.Nullable;
 import java.io.FileNotFoundException;
 import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collection;
 import java.util.List;
 import java.util.Objects;
@@ -93,32 +94,9 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         }
 
         if (AngelicaConfig.enablePBRDebug && (normalAtlas != null || specularAtlas != null)) {
-            TextureExporter.exportTextures("pbr_debug/atlas", "base_atlas.png", texMap.getGlTextureId(), mipLevel, atlasWidth, atlasHeight);
+            final String atlas = texMap == Minecraft.getMinecraft().getTextureMapBlocks() ? "blocks" : "items";
+            TextureExporter.exportTextures("pbr_debug/atlas", "base_atlas_" + atlas + ".png", texMap.getGlTextureId(), mipLevel, atlasWidth, atlasHeight);
         }
-    }
-
-    @Nullable
-    private static NativeImage padAnisotropic(NativeImage image, int frameWidth, int frameHeight) {
-        final int width = image.getWidth();
-        final int height = image.getHeight();
-        final int frames = (frameWidth == width && frameHeight > 0) ? height / frameHeight : 0;
-        if (frames < 1) {
-            return null;
-        }
-
-        final int paddedWidth = frameWidth + 16;
-        final int paddedHeight = frameHeight + 16;
-        final int framePixels = paddedWidth * paddedHeight;
-
-        final NativeImage padded = new NativeImage(paddedWidth, paddedHeight * frames, false);
-        final int[] frame = new int[framePixels];
-        for (int f = 0; f < frames; f++) {
-            Arrays.fill(frame, 0);
-            image.getRGB(0, f * frameHeight, frameWidth, frameHeight, frame, 0, frameWidth);
-            TextureUtil.prepareAnisotropicData(frame, frameWidth, frameHeight, 8);
-            padded.setRGB(0, f * paddedHeight, paddedWidth, paddedHeight, frame, 0, paddedWidth);
-        }
-        return padded;
     }
 
     private static AnimationMetadataSection withFrameSize(AnimationMetadataSection src, int frameWidth, int frameHeight) {
@@ -156,9 +134,8 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             final Pair<Integer, Integer> frameSize = this.getFrameSize(nativeImage.getWidth(), nativeImage.getHeight(), animationMetadata);
             int frameWidth = frameSize.getLeft();
             int frameHeight = frameSize.getRight();
-            final int spritePadding = sprite.useAnisotropicFiltering ? 16 : 0;
-            final int targetFrameWidth = sprite.getIconWidth() - spritePadding;
-            final int targetFrameHeight = sprite.getIconHeight() - spritePadding;
+            final int targetFrameWidth = sprite.getIconWidth();
+            final int targetFrameHeight = sprite.getIconHeight();
             if (frameWidth != targetFrameWidth || frameHeight != targetFrameHeight) {
                 final int imageWidth = nativeImage.getWidth();
                 final int imageHeight = nativeImage.getHeight();
@@ -190,17 +167,16 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             final ResourceLocation pbrSpriteName = new ResourceLocation(spriteName.getResourceDomain(), spriteName.getResourcePath() + pbrType.getSuffix());
             final TextureAtlasSpriteInfo pbrSpriteInfo = new PBRTextureAtlasSpriteInfo(pbrSpriteName, frameWidth, frameHeight, pbrType);
 
-            final int x = sprite.getOriginX();
-            final int y = sprite.getOriginY();
-            boolean padInLoadSprite = sprite.useAnisotropicFiltering;
-            if (padInLoadSprite) {
-                final NativeImage padded = padAnisotropic(nativeImage, frameWidth, frameHeight);
-                if (padded != null) {
-                    nativeImage = padded;
-                    padInLoadSprite = false;
-                }
+            final int gutter = ((SpriteExtension) sprite).angelica$getGutterWidth();
+            final int x = sprite.getOriginX() - gutter;
+            final int y = sprite.getOriginY() - gutter;
+
+            final int previousGutter = SpritePadding.setGutter(gutter);
+            try {
+                pbrSprite = new PBRTextureAtlasSprite(pbrSpriteInfo, animationMetadata, atlasWidth, atlasHeight, x, y, nativeImage, false, mipLevel);
+            } finally {
+                SpritePadding.setGutter(previousGutter);
             }
-            pbrSprite = new PBRTextureAtlasSprite(pbrSpriteInfo, animationMetadata, atlasWidth, atlasHeight, x, y, nativeImage, padInLoadSprite, mipLevel);
             syncAnimation(sprite, pbrSprite);
         } catch (FileNotFoundException e) {
             //

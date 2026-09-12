@@ -106,8 +106,6 @@ public class NotFineGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD, OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build();
 
-        textureFilterMode.iris$dynamicallyEnable(() -> mipmapLevels.getValue() > 0);
-
         int maxGuiScale = Math.max(3, Math.min(Minecraft.getMinecraft().displayWidth / 320, Minecraft.getMinecraft().displayHeight / 240));
         groups.add(OptionGroup.createBuilder()
             .add(OptionImpl.createBuilder(int.class, vanillaOpts)

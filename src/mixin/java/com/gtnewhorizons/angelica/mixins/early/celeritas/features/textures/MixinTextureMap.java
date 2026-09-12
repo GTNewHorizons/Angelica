@@ -3,9 +3,10 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.features.textures;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureMetadataExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.TextureMapExtension;
+import com.google.common.collect.Lists;
 import com.gtnewhorizons.angelica.utils.MipmapStrategies;
 import com.gtnewhorizons.angelica.utils.MipmapStrategy;
-import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -16,19 +17,19 @@ import net.minecraft.client.renderer.texture.IIconRegister;
 import net.minecraft.client.renderer.texture.Stitcher;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.data.TextureMetadataSection;
 import net.minecraft.util.IIcon;
 import net.minecraft.util.MathHelper;
 import org.embeddedt.embeddium.impl.util.collections.quadtree.QuadTree;
 import org.embeddedt.embeddium.impl.util.collections.quadtree.Rect2i;
-import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArg;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -44,10 +45,16 @@ public class MixinTextureMap implements TextureMapExtension {
     @Final
     public Map<String, TextureAtlasSprite> mapUploadedSprites;
     @Shadow
+    @Final
+    public Map<String, TextureAtlasSprite> mapRegisteredSprites;
+    @Shadow
     public int mipmapLevels;
     @Shadow
     @Final
     private int textureType;
+    @Shadow
+    @Final
+    private TextureAtlasSprite missingImage;
     @Unique
     private QuadTree<TextureAtlasSprite> celeritas$quadTree;
     @Unique
@@ -55,11 +62,24 @@ public class MixinTextureMap implements TextureMapExtension {
     @Unique
     private int celeritas$height;
 
-    @Inject(method = "loadTextureAtlas", at = @At("HEAD"))
+    @Inject(method = { "loadTexture", "loadTextureAtlas" }, at = @At("HEAD"))
     private void angelica$applyAtlasSettings(CallbackInfo ci) {
         if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
             SodiumGameOptions.applyAtlasSettings();
         }
+    }
+
+    @Inject(
+        method = "loadTextureAtlas",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/Stitcher;doStitch()V"))
+    private void angelica$assignGutters(CallbackInfo ci) {
+        final boolean blocksAtlas = (Object) this == Minecraft.getMinecraft().getTextureMapBlocks();
+        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, false);
+
+        for (TextureAtlasSprite sprite : this.mapRegisteredSprites.values()) {
+            ((SpriteExtension) sprite).angelica$setGutterWidth(gutter);
+        }
+        ((SpriteExtension) this.missingImage).angelica$setGutterWidth(gutter);
     }
 
     /**
@@ -97,30 +117,32 @@ public class MixinTextureMap implements TextureMapExtension {
         MipmapStrategies.recordSprite(this.textureType, p_94245_1_);
     }
 
-    @ModifyArg(
+    /**
+     * Forces vanilla's unpadded branch.
+     */
+    @Inject(method = "initMissingImage", at = @At("HEAD"), cancellable = true)
+    private void angelica$buildMissingImage(CallbackInfo ci) {
+        final int size = (int) Math.sqrt(TextureUtil.missingTextureData.length);
+
+        this.missingImage.useAnisotropicFiltering = false;
+        this.missingImage.setIconWidth(size);
+        this.missingImage.setIconHeight(size);
+
+        final int[][] mips = new int[this.mipmapLevels + 1][];
+        mips[0] = TextureUtil.missingTextureData;
+        this.missingImage.setFramesTextureData(Lists.newArrayList(new int[][][] { mips }));
+        ci.cancel();
+    }
+
+    @Redirect(
         method = "loadTextureAtlas",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;loadSprite([Ljava/awt/image/BufferedImage;Lnet/minecraft/client/resources/data/AnimationMetadataSection;Z)V"))
-    private boolean angelica$forceSpritePadding(boolean useAnisotropicFiltering) {
-        if ((Object) this != Minecraft.getMinecraft().getTextureMapBlocks()) {
-            return useAnisotropicFiltering;
-        }
-        return useAnisotropicFiltering || SodiumGameOptions.needsForcedSpritePadding();
-    }
-
-    @ModifyExpressionValue(
-        method = "initMissingImage",
-        at = @At(
-            value = "FIELD",
-            target = "Lnet/minecraft/client/renderer/texture/TextureMap;anisotropicFiltering:I",
-            opcode = Opcodes.GETFIELD))
-    private int angelica$forceMissingImagePadding(int anisotropicFiltering) {
-        if ((Object) this != Minecraft.getMinecraft().getTextureMapBlocks()) {
-            return anisotropicFiltering;
-        }
-        final int forced = SodiumGameOptions.needsForcedSpritePadding() ? 2 : 1;
-        return Math.max(SodiumGameOptions.resolvedAnisotropicFiltering(), forced);
+            target = "Lnet/minecraft/client/renderer/texture/TextureUtil;uploadTextureMipmap([[IIIIIZZ)V"))
+    private void angelica$uploadPaddedSprite(int[][] frameData, int width, int height, int originX, int originY,
+        boolean blur, boolean clamp, @Local(ordinal = 0) TextureAtlasSprite sprite) {
+        SpritePadding.uploadPadded(frameData, width, height, originX, originY,
+            ((SpriteExtension) sprite).angelica$getGutterWidth(), blur, clamp);
     }
 
     /**
@@ -148,8 +170,7 @@ public class MixinTextureMap implements TextureMapExtension {
     private int celeritas$unpaddedMipmapCeiling() {
         int minDimension = Integer.MAX_VALUE;
         for (TextureAtlasSprite sprite : this.mapUploadedSprites.values()) {
-            final int padding = sprite.useAnisotropicFiltering ? 16 : 0;
-            minDimension = Math.min(minDimension, Math.min(sprite.getIconWidth(), sprite.getIconHeight()) - padding);
+            minDimension = Math.min(minDimension, Math.min(sprite.getIconWidth(), sprite.getIconHeight()));
         }
         return minDimension == Integer.MAX_VALUE ? Integer.MAX_VALUE : MathHelper.calculateLogBaseTwo(minDimension);
     }

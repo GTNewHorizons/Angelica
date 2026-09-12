@@ -40,6 +40,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.CubicChunksOptionStorage;
@@ -194,7 +195,15 @@ public class SodiumGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD, OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build();
 
-        textureFilterMode.iris$dynamicallyEnable(() -> mipmapLevels.getValue() > 0);
+        final OptionImpl<SodiumGameOptions, TexelSampling> texelSampling =
+            OptionImpl.createBuilder(TexelSampling.class, sodiumOpts)
+                .setName(I18n.format("sodium.options.texel_sampling.name"))
+                .setTooltip(I18n.format("sodium.options.texel_sampling.tooltip"))
+                .setControl(option -> new CyclingControl<>(option, TexelSampling.class))
+                .setBinding((opts, value) -> opts.quality.texelSampling = value,
+                    opts -> opts.quality.texelSampling)
+                .setImpact(OptionImpact.LOW)
+                .build();
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
@@ -250,6 +259,7 @@ public class SodiumGameOptionPages {
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .build())
                 .add(textureFilterMode)
+                .add(texelSampling)
                 .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue, mipmapLevels::getValue),
                     SodiumGameOptions.anisotropySupported())
                 // TODO

@@ -372,6 +372,7 @@ public enum Mixins implements IMixins {
             , "celeritas.features.mipmaps.MixinTextureMetadataSectionSerializer"
             , "celeritas.features.textures.MixinTextureMap"
             , "celeritas.features.textures.MixinTextureAtlasSprite"
+            , "celeritas.features.textures.MixinStitcherHolder"
             , "celeritas.biome_blending.MixinBlockGrass"
             , "celeritas.biome_blending.MixinBlockLeaves"
             , "celeritas.biome_blending.MixinBlockLiquid"

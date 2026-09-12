@@ -6,7 +6,7 @@ package me.jellysquid.mods.sodium.client.gui.options.named;
 public enum TextureFilterMode implements NamedState {
     RGSS("sodium.options.texture_filtering.rgss"),
     ANISOTROPIC("sodium.options.texture_filtering.anisotropic"),
-    NONE("options.off");
+    NONE("sodium.options.texture_filtering.none");
 
     private static final TextureFilterMode[] WITHOUT_ANISOTROPY = {RGSS, NONE};
     private final String name;
@@ -32,7 +32,4 @@ public enum TextureFilterMode implements NamedState {
         return this == ANISOTROPIC;
     }
 
-    public boolean needsSpritePadding() {
-        return this == RGSS;
-    }
 }

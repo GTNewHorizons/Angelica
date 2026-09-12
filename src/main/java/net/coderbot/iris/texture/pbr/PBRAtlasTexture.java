@@ -2,6 +2,8 @@ package net.coderbot.iris.texture.pbr;
 
 import com.gtnewhorizons.angelica.compat.mojang.AutoClosableAbstractTexture;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.util.TextureExporter;
@@ -109,6 +111,7 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
     }
 
     protected void uploadSprite(TextureAtlasSprite sprite) {
+        final int gutter = ((SpriteExtension) sprite).angelica$getGutterWidth();
 
 		if (sprite.animationMetadata.getFrameCount() > 1) {
 			final AnimationMetadataSection metadata = sprite.animationMetadata;
@@ -116,12 +119,12 @@ public class PBRAtlasTexture extends AutoClosableAbstractTexture {
 			for (int frame = sprite.frameCounter; frame >= 0; frame--) {
 				final int frameIndex = metadata.getFrameIndex(frame);
 				if (frameIndex >= 0 && frameIndex < frameCount) {
-                    TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
+                    SpritePadding.uploadPadded(sprite.getFrameTextureData(frameIndex), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), gutter, false, false);
 					return;
 				}
 			}
 		}
-		TextureUtil.uploadTextureMipmap(sprite.getFrameTextureData(0), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), false, false);
+		SpritePadding.uploadPadded(sprite.getFrameTextureData(0), sprite.getIconWidth(), sprite.getIconHeight(), sprite.getOriginX(), sprite.getOriginY(), gutter, false, false);
 	}
 
 	public void cycleAnimationFrames() {

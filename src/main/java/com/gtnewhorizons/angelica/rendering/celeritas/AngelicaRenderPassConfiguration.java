@@ -23,6 +23,7 @@ public class AngelicaRenderPassConfiguration {
 
     @Getter
     private static boolean rgssEnabled;
+    private static int terrainMipLevels;
 
     private static TerrainRenderPass.TerrainRenderPassBuilder builderForRenderType(int pass, boolean disableAlphaTest, ChunkVertexType vertexType) {
         final TerrainRenderPass.TerrainRenderPassBuilder builder = TerrainRenderPass.builder()
@@ -32,6 +33,7 @@ public class AngelicaRenderPassConfiguration {
 
         if (rgssEnabled) {
             builder.extraDefine("USE_RGSS", "");
+            builder.extraDefine("TERRAIN_MIP_LEVELS", Integer.toString(terrainMipLevels));
         }
 
         return builder;
@@ -39,6 +41,7 @@ public class AngelicaRenderPassConfiguration {
 
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {
         rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode() == TextureFilterMode.RGSS;
+        terrainMipLevels = SodiumGameOptions.terrainMipmapLevels();
 
         SOLID_PASS = builderForRenderType(0, true, vertexType)
             .name("solid")
