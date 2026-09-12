@@ -118,6 +118,8 @@ class CopyTexSubImageFromFbo0GpuTest {
     }
 
     private static ByteBuffer download(int destGlId) {
+        frameManager.submitMidFrame();
+
         final ByteBuffer out = MemoryUtil.memAlloc(SIZE * SIZE * 4);
         textureOps.readbackTexture(resourceManager.getTextureHandle(destGlId), 0, 0, SIZE, SIZE, 0, out);
         out.rewind();
