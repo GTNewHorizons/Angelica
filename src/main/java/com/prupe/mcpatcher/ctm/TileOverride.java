@@ -2,6 +2,7 @@ package com.prupe.mcpatcher.ctm;
 
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_BLOCK;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_LIST;
+import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_RLIST;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_MATERIAL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.CONNECT_BY_TILE;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.NORMALS;
@@ -179,6 +180,14 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case "block" -> connectType = CONNECT_BY_BLOCK;
             case "tile" -> connectType = CONNECT_BY_TILE;
             case "material" -> connectType = CONNECT_BY_MATERIAL;
+            case "rlist" -> {
+                if (connectBlocks.isEmpty()) {
+                    properties.error("connect=rlist requires a non-empty connectBlocks= list");
+                    connectType = CONNECT_BY_BLOCK;
+                } else {
+                    connectType = CONNECT_BY_RLIST;
+                }
+            }
             case "list" -> {
                 if (connectBlocks.isEmpty()) {
                     properties.error("connect=list requires a non-empty connectBlocks= list");
@@ -373,6 +382,15 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         return matchBlocks;
     }
 
+    final public List<BlockStateMatcher> getConnectingBlocks() {
+        return connectBlocks;
+    }
+    
+    final boolean connectsByReverseList() {
+        return connectType == CONNECT_BY_RLIST;
+    }
+
+
     final public Set<String> getMatchingTiles() {
         if (MCPatcherUtils.isNullOrEmpty(matchTiles)) {
             return null;
@@ -464,6 +482,16 @@ public abstract class TileOverride implements Comparable<TileOverride> {
             case CONNECT_BY_TILE -> renderBlockState.shouldConnectByTile(neighbor, icon, x, y, z);
             case CONNECT_BY_BLOCK -> renderBlockState.shouldConnectByBlock(neighbor, x, y, z);
             case CONNECT_BY_MATERIAL -> block.blockMaterial == neighbor.blockMaterial;
+            case CONNECT_BY_RLIST -> {
+                boolean matched = false;
+                for (BlockStateMatcher matcher : matchBlocks) {
+                    if (matcher.match(blockAccess, x, y, z)) {
+                        matched = true;
+                        break;
+                    }
+                }
+                yield matched;
+            }
             case CONNECT_BY_LIST -> {
                 boolean matched = false;
                 for (BlockStateMatcher matcher : connectBlocks) {

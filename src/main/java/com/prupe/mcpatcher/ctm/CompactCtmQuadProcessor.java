@@ -106,7 +106,7 @@ public final class CompactCtmQuadProcessor {
      */
     private int getCompactSpriteIndex(int connections) {
         if (connections == 0xFF) {
-            return SPRITE_ALL;
+            return override.connectsByReverseList() ? SPRITE_DEFAULT : SPRITE_ALL;
         }
 
         if ((connections & ((1 << RenderBlockState.REL_L) | (1 << RenderBlockState.REL_R))) ==
@@ -147,9 +147,13 @@ public final class CompactCtmQuadProcessor {
             bTL = bTR = bBL = bBR = 0f;
             brTL = brTR = brBL = brBR = 0;
         }
-
+        int notchBits = override.getNotchBits();
         for (int q = 0; q < 4; q++) {
-            final IIcon icon = sprites[getQuadrantSprite(q, connections)];
+            int quad = override.connectsByReverseList()
+                ? getProjectionSprite(q, connections, notchBits)
+                : getQuadrantSprite(q, connections);
+
+            final IIcon icon = sprites[quad];
             if (icon == null) {
                 continue;
             }
@@ -329,6 +333,29 @@ public final class CompactCtmQuadProcessor {
                 : SPRITE_HORIZONTAL;
         }
 
+        return SPRITE_DEFAULT;
+    }
+    private int getProjectionSprite(int quadrant, int connections, int hosts) {
+        int sideA = QUAD_A[quadrant];
+        int sideB = QUAD_B[quadrant];
+        int diag = QUAD_DIAG[quadrant];
+
+        boolean hostA = (hosts & (1 << sideA)) != 0;
+        boolean hostB = (hosts & (1 << sideB)) != 0;
+
+        if ( hostA && hostB ) {
+            return SPRITE_ALL;
+        }
+        if (hostA ^ hostB) {
+            int hostSide = hostA ? sideA : sideB;
+            return (hostSide == RenderBlockState.REL_L || hostSide == RenderBlockState.REL_R)
+                    ? SPRITE_VERTICAL : SPRITE_HORIZONTAL;
+        }
+        boolean connA = (connections & (1 << sideA)) != 0;
+        boolean connB = (connections & (1 << sideB)) != 0;
+        if ((hosts & (1 << diag)) != 0 && connA && connB) {
+            return SPRITE_MIXED;
+        }
         return SPRITE_DEFAULT;
     }
 }

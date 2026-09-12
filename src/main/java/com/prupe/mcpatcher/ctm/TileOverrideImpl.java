@@ -15,10 +15,14 @@ import static com.prupe.mcpatcher.ctm.RenderBlockState.TOP_FACE;
 import com.prupe.mcpatcher.mal.block.RenderPassAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import net.minecraft.util.IIcon;
+import net.minecraft.world.IBlockAccess;
+
 
 import com.prupe.mcpatcher.mal.resource.PropertiesFile;
 import com.prupe.mcpatcher.mal.tile.TileLoader;
 import com.prupe.mcpatcher.mal.util.WeightedIndex;
+import com.prupe.mcpatcher.mal.block.BlockStateMatcher;
+
 import net.minecraft.util.ResourceLocation;
 
 import java.awt.image.BufferedImage;
@@ -510,6 +514,28 @@ public class TileOverrideImpl {
                 this.processor = p;
             }
             return p;
+        }
+        protected int getNotchBits(RenderBlockState renderBlockState) {
+            int notchBits = 0;
+            for (int bit = 0; bit < 8; bit++) {
+                int[] offset = renderBlockState.getOffset(renderBlockState.getBlockFace(), bit);
+                if (notchConnect(renderBlockState, offset)) {
+                    notchBits |= (1 << bit);
+                }
+            }
+            return notchBits;
+        }
+        private boolean notchConnect(RenderBlockState renderBlockState, int[] offset) {
+            IBlockAccess blockAccess = renderBlockState.getBlockAccess();
+            int x = renderBlockState.getX() + offset[0];
+            int y = renderBlockState.getY() + offset[1];
+            int z = renderBlockState.getZ() + offset[2];
+            for (BlockStateMatcher connector : getConnectingBlocks()) {
+                if(connector.match(blockAccess, x, y, z)) {
+                    return true;
+                }
+            }
+            return false;
         }
     }
 
