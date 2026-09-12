@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import org.apache.logging.log4j.LogManager;
+import org.apache.logging.log4j.Logger;
+
+import java.util.function.BooleanSupplier;
 
 /**
  * Utility for converting {@code &}-based shorthand into {@code §}-based
@@ -16,6 +20,8 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 public final class ColorCodeUtils {
 
     private ColorCodeUtils() {}
+
+    private static final Logger LOGGER = LogManager.getLogger("AngelicaFontEffects");
 
     public static final char FORMATTING_CHAR = '§';
     public static final char ESCAPED_AMPERSAND = '';
@@ -69,8 +75,26 @@ public final class ColorCodeUtils {
     private static String lastConversionInput;
     private static String lastConversionOutput;
 
+    private static BooleanSupplier conversionSuppressor;
+
+    /**
+     * Lets text mods that draw format codes as literal characters (e.g. inside edit GUIs)
+     * suspend {@code &} conversion for strings rendered while the supplier returns true.
+     */
+    public static void setConversionSuppressor(BooleanSupplier suppressor) {
+        if (suppressor != null && conversionSuppressor != null && suppressor != conversionSuppressor) {
+            LOGGER.info("Replacing the & conversion suppressor; only the newest one is consulted");
+        }
+        conversionSuppressor = suppressor;
+    }
+
+    public static boolean isConversionSuppressed() {
+        final BooleanSupplier suppressor = conversionSuppressor;
+        return suppressor != null && suppressor.getAsBoolean();
+    }
+
     public static String convertAmpersandToSectionX(String text) {
-        if (text == null || !AngelicaConfig.enableAmpersandConversion) return text;
+        if (text == null || !AngelicaConfig.enableAmpersandConversion || isConversionSuppressed()) return text;
 
         if (text == lastConversionInput) return lastConversionOutput;
 

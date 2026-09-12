@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.client.font;
 
 import com.gtnewhorizons.angelica.config.FontConfig;
+import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
@@ -34,6 +35,7 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
 
     private static final ResourceLocation[] unicodePageLocations = new ResourceLocation[256];
     private final byte[] glyphWidth = new byte[65536];
+    private final RandomXoshiro256StarStar fontRandom = new RandomXoshiro256StarStar();
 
     private ResourceLocation getUnicodePageLocation(int page) {
         final ResourceLocation lookup = unicodePageLocations[page];
@@ -53,8 +55,24 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
         return true;
     }
 
+    /**
+     * A random glyph of the same width, for {@code §k}. Kept inside the character's own
+     * 256-glyph page so the swap neither pulls in another page's texture nor splits the
+     * batch. Empty entries are left alone, and never swapped in for a glyph that draws.
+     */
     @Override
     public char getRandomReplacement(char chr) {
+        if (this.glyphWidth[chr] == 0) {
+            return chr;
+        }
+        final int pageStart = (chr / 256) * 256;
+        final float targetWidth = getXAdvance(chr);
+        for (int attempt = 0; attempt < RANDOM_GLYPH_TRIES; attempt++) {
+            final char candidate = (char) (pageStart + fontRandom.nextInt(256));
+            if (this.glyphWidth[candidate] != 0 && getXAdvance(candidate) == targetWidth) {
+                return candidate;
+            }
+        }
         return chr;
     }
 
