@@ -45,33 +45,35 @@ out vec4 fragColor;
 #define fragColor gl_FragColor
 #endif
 
-vec4 sampleTexelSnapped(sampler2D tex, vec2 uv, vec2 texelSize, vec2 du, vec2 dv, vec2 texelsPerPixel) {
+vec2 snapToTexelCentre(vec2 uv, vec2 texelSize, vec2 texelsPerPixel) {
     vec2 centreCoords = uv / texelSize - 0.5;
     vec2 lowerCentre = floor(centreCoords);
     vec2 alongSeam = centreCoords - lowerCentre;
 
-    vec2 rampWidth = max(texelsPerPixel, vec2(1e-8));
+    vec2 rampWidth = clamp(texelsPerPixel, vec2(1e-8), vec2(1.0));
     alongSeam = clamp((alongSeam - 0.5) / rampWidth + 0.5, 0.0, 1.0);
 
-    float gradientScale = exp2(v_MaterialMipBias);
-    return textureGrad(tex, (lowerCentre + alongSeam + 0.5) * texelSize, du * gradientScale, dv * gradientScale);
+    return (lowerCentre + alongSeam + 0.5) * texelSize;
+}
+
+vec2 texelsPerPixelOf(vec2 du, vec2 dv, vec2 texelSize) {
+    return sqrt(du * du + dv * dv) / texelSize;
 }
 
 vec4 sampleTexelSnapped(sampler2D tex, vec2 uv, vec2 texelSize) {
     vec2 du = dFdx(uv);
     vec2 dv = dFdy(uv);
-    return sampleTexelSnapped(tex, uv, texelSize, du, dv, sqrt(du * du + dv * dv) / texelSize);
+
+    float gradientScale = exp2(v_MaterialMipBias);
+    return textureGrad(tex, snapToTexelCentre(uv, texelSize, texelsPerPixelOf(du, dv, texelSize)),
+        du * gradientScale, dv * gradientScale);
 }
 
 #ifdef USE_RGSS
-#ifndef TERRAIN_MIP_LEVELS
-#define TERRAIN_MIP_LEVELS 4
-#endif
 
-float terrainLod(vec2 duTexels, vec2 dvTexels) {
-    float squaredLengthProduct = dot(duTexels, duTexels) * dot(dvTexels, dvTexels);
-    return clamp(0.25 * log2(squaredLengthProduct) + v_MaterialMipBias, 0.0, float(TERRAIN_MIP_LEVELS));
-}
+#ifndef RGSS_MIP_BIAS
+#define RGSS_MIP_BIAS -1.0
+#endif
 
 // Standard rotated-grid supersampling offsets, in texels.
 const vec2 RGSS_OFFSETS[4] = vec2[4](
@@ -81,33 +83,23 @@ const vec2 RGSS_OFFSETS[4] = vec2[4](
     vec2(-0.375,  0.125)
 );
 
-// Sprites are padded so RGSS taps don't cross into a neighbouring atlas sprite
-const float MAX_TAP_SCALE = 8.0;
-
 vec4 sampleRGSS(sampler2D tex, vec2 uv, vec2 texelSize) {
     vec2 du = dFdx(uv);
     vec2 dv = dFdy(uv);
 
-    vec2 texelsPerPixel = sqrt(du * du + dv * dv) / texelSize;
-    float blendFactor = smoothstep(1.0, 2.0, max(texelsPerPixel.x, texelsPerPixel.y));
+    vec2 snapped = snapToTexelCentre(uv, texelSize, texelsPerPixelOf(du, dv, texelSize));
 
-    float lod = terrainLod(du / texelSize, dv / texelSize);
-    vec4 rgss = vec4(0.0);
+    float gradientScale = exp2(v_MaterialMipBias + RGSS_MIP_BIAS);
+    vec2 gradU = du * gradientScale;
+    vec2 gradV = dv * gradientScale;
 
-    if (blendFactor > 0.0) {
-        vec2 tapSize = texelSize * min(exp2(lod), MAX_TAP_SCALE);
-
-        for (int i = 0; i < 4; i++) {
-            rgss += textureLod(tex, uv + RGSS_OFFSETS[i] * tapSize, lod);
-        }
-        rgss *= 0.25;
-
-        if (blendFactor >= 1.0) {
-            return rgss;
-        }
+    vec4 color = vec4(0.0);
+    for (int i = 0; i < 4; i++) {
+        vec2 tap = RGSS_OFFSETS[i].x * du + RGSS_OFFSETS[i].y * dv;
+        color += textureGrad(tex, snapped + tap, gradU, gradV);
     }
 
-    return mix(sampleTexelSnapped(tex, uv, texelSize, du, dv, texelsPerPixel), rgss, blendFactor);
+    return color * 0.25;
 }
 #endif
 

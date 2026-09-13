@@ -2,7 +2,6 @@ package jss.notfine.gui;
 
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import com.gtnewhorizons.angelica.config.SystemProperties;
 import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
@@ -138,10 +137,7 @@ public class NotFineGameOptionPages {
             .add(Settings.DYNAMIC_FOV.option)
             .add(mipmapLevels)
             .add(textureFilterMode)
-            .add(SodiumGameOptionPages.anisotropicFilteringSlider(
-                vanillaOpts,
-                textureFilterMode::getValue,
-                mipmapLevels::getValue),
+            .add(SodiumGameOptionPages.anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                 SodiumGameOptions.anisotropySupported())
             .build());
 

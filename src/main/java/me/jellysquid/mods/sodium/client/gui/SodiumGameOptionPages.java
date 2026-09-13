@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
@@ -260,7 +259,7 @@ public class SodiumGameOptionPages {
                     .build())
                 .add(textureFilterMode)
                 .add(texelSampling)
-                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue, mipmapLevels::getValue),
+                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
                 // TODO
                 /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
@@ -691,7 +690,7 @@ public class SodiumGameOptionPages {
     }
 
     public static OptionImpl<GameSettings, Integer> anisotropicFilteringSlider(MinecraftOptionsStorage storage,
-        Supplier<TextureFilterMode> mode, IntSupplier mipmapLevels) {
+        Supplier<TextureFilterMode> mode) {
         final int min = SodiumGameOptions.minAnisotropyLevel();
         final int max = Math.max(SodiumGameOptions.maxAnisotropyLevel(), min + 1);
         final OptionImpl<GameSettings, Integer> option = OptionImpl.createBuilder(int.class, storage)
@@ -705,8 +704,7 @@ public class SodiumGameOptionPages {
             .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
             .build();
 
-        option.iris$dynamicallyEnable(() -> mipmapLevels.getAsInt() > 0 && mode.get().usesAnisotropy()
-            && SodiumGameOptions.hasAnisotropyRange());
+        option.iris$dynamicallyEnable(() -> mode.get().usesAnisotropy() && SodiumGameOptions.hasAnisotropyRange());
 
         return option;
     }

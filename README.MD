@@ -101,3 +101,5 @@ Targets GL 3.3+ core profile
   * FFP vertex shader generation inspired by ffvertex_prog.c (Copyright 2007 VMware, Inc.)
   * FFP fragment shader generation inspired by ff_fragment_shader.c (Copyright 2007, 2009 VMware, Inc. / 2010-2011 Intel Corporation)
   * Fog parameter optimization inspired by st_nir_lower_fog.c (Copyright 2023 Google LLC) and prog_statevars.c (Copyright 1999-2007 Brian Paul)
+* RGSS Terrain Texture Filtering
+  * Indiesoft for [defold-sharp-sprite](https://github.com/indiesoftby/defold-sharp-sprite), used as the reference implementation under the MIT license

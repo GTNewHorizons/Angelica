@@ -6,6 +6,7 @@ package me.jellysquid.mods.sodium.client.gui.options.named;
 public enum TextureFilterMode implements NamedState {
     RGSS("sodium.options.texture_filtering.rgss"),
     ANISOTROPIC("sodium.options.texture_filtering.anisotropic"),
+    RGSS_ANISOTROPIC("sodium.options.texture_filtering.rgss_anisotropic"),
     NONE("sodium.options.texture_filtering.none");
 
     private static final TextureFilterMode[] WITHOUT_ANISOTROPY = {RGSS, NONE};
@@ -16,8 +17,8 @@ public enum TextureFilterMode implements NamedState {
     }
 
     /**
-     * Anisotropic filtering rides on an extension that isn't guaranteed in GL 3.3, so it is only offered when the
-     * driver actually exposes it.
+     * Anisotropic filtering rides on an extension that isn't guaranteed in GL 3.3, so the modes that use it are only
+     * offered when the driver actually exposes it.
      */
     public static TextureFilterMode[] selectableValues(boolean anisotropySupported) {
         return anisotropySupported ? values() : WITHOUT_ANISOTROPY;
@@ -28,8 +29,12 @@ public enum TextureFilterMode implements NamedState {
         return this.name;
     }
 
+    public boolean usesRgss() {
+        return this == RGSS || this == RGSS_ANISOTROPIC;
+    }
+
     public boolean usesAnisotropy() {
-        return this == ANISOTROPIC;
+        return this == ANISOTROPIC || this == RGSS_ANISOTROPIC;
     }
 
 }

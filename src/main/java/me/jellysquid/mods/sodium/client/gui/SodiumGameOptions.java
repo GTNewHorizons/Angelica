@@ -65,17 +65,10 @@ public class SodiumGameOptions {
 
     public static int resolvedAnisotropicFiltering() {
         final Minecraft mc = Minecraft.getMinecraft();
-        final TextureFilterMode mode = filteringPossible()
-            ? resolveFilterMode(ClientProxy.options().quality.textureFilterMode)
-            : TextureFilterMode.NONE;
 
-        return mode.usesAnisotropy()
+        return effectiveTextureFilterMode().usesAnisotropy()
             ? MathHelper.clamp_int(mc.gameSettings.anisotropicFiltering, MIN_ANISOTROPY, 1 << maxAnisotropyLevel())
             : 1;
-    }
-
-    private static boolean filteringPossible() {
-        return effectiveMipmapLevelsEstimate() > 0;
     }
 
     public static int effectiveMipmapLevelsEstimate() {
@@ -91,7 +84,10 @@ public class SodiumGameOptions {
         if (mode == null) {
             mode = TextureFilterMode.RGSS;
         }
-        return mode.usesAnisotropy() && !anisotropySupported() ? TextureFilterMode.RGSS : mode;
+        if (mode.usesAnisotropy() && !anisotropySupported()) {
+            return mode.usesRgss() ? TextureFilterMode.RGSS : TextureFilterMode.NONE;
+        }
+        return mode;
     }
 
     public static int maxAnisotropyLevel() {

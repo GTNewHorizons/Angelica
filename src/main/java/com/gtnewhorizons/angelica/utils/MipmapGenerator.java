@@ -12,7 +12,7 @@ import static org.joml.Math.clamp;
 public final class MipmapGenerator {
 
     private static final float CUTOUT_ALPHA_REF = 0.5f;
-    private static final float STRICT_COVERAGE_TARGET = 0.35f;
+    private static final float STRICT_CUTOUT_ALPHA_REF = 0.3f;
     private static final float ALPHA_BIAS = 0.025f;
 
     private MipmapGenerator() {
@@ -218,8 +218,7 @@ public final class MipmapGenerator {
         for (int i = 0; i < image.length; i++) {
             final int color = image[i];
             final int rawAlpha = ColorARGB.unpackAlpha(color);
-            final float bias = rawAlpha > 0 ? ALPHA_BIAS : 0.0f;
-            final int alpha = (int) Math.floor(clamp(0.0f, 1.0f, rawAlpha / 255.0f * bestScale + bias) * 255.0f);
+            final int alpha = (int) Math.floor(clamp(0.0f, 1.0f, rawAlpha / 255.0f * bestScale + ALPHA_BIAS) * 255.0f);
             image[i] = ColorARGB.withAlpha(color, alpha);
         }
     }
@@ -247,15 +246,8 @@ public final class MipmapGenerator {
             return result;
         }
 
-        final boolean autoResolved = strategy == null || strategy == MipmapStrategy.AUTO;
-        final boolean strictCoverage = resolved == MipmapStrategy.STRICT_CUTOUT;
-        float originalCoverage = 0.0f;
-        if (isCutout) {
-            originalCoverage = alphaTestCoverage(base, width, CUTOUT_ALPHA_REF, 1.0f);
-            if (strictCoverage || (autoResolved && originalCoverage < STRICT_COVERAGE_TARGET)) {
-                originalCoverage = Math.max(originalCoverage, STRICT_COVERAGE_TARGET);
-            }
-        }
+        final float cutoutRef = resolved == MipmapStrategy.STRICT_CUTOUT ? STRICT_CUTOUT_ALPHA_REF : CUTOUT_ALPHA_REF;
+        final float originalCoverage = isCutout ? alphaTestCoverage(base, width, cutoutRef, 1.0f) : 0.0f;
 
         for (int level = 1; level <= mipLevel; level++) {
             final int levelWidth = width >> level;
@@ -282,7 +274,7 @@ public final class MipmapGenerator {
             }
 
             if (isCutout) {
-                scaleAlphaToCoverage(result[level], levelWidth, originalCoverage, CUTOUT_ALPHA_REF);
+                scaleAlphaToCoverage(result[level], levelWidth, originalCoverage, cutoutRef);
             }
         }
 

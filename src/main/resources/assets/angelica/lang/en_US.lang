@@ -47,6 +47,7 @@ sodium.options.texture_filtering.tooltip=Controls how block textures are sampled
 sodium.options.texture_filtering.none=None
 sodium.options.texture_filtering.rgss=RGSS
 sodium.options.texture_filtering.anisotropic=Anisotropic
+sodium.options.texture_filtering.rgss_anisotropic=RGSS & Anisotropic
 sodium.options.texel_sampling.name=Texel Blending
 sodium.options.texel_sampling.tooltip=Sets how the boundary between two texels of a block texture is drawn. Nearest is sharp, Linear blends.
 sodium.options.texel_sampling.linear=Linear
