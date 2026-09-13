@@ -218,7 +218,8 @@ public final class MipmapGenerator {
         for (int i = 0; i < image.length; i++) {
             final int color = image[i];
             final int rawAlpha = ColorARGB.unpackAlpha(color);
-            final int alpha = (int) Math.floor(clamp(0.0f, 1.0f, rawAlpha / 255.0f * bestScale + ALPHA_BIAS) * 255.0f);
+            final float bias = rawAlpha > 0 ? ALPHA_BIAS : 0.0f;
+            final int alpha = (int) Math.floor(clamp(0.0f, 1.0f, rawAlpha / 255.0f * bestScale + bias) * 255.0f);
             image[i] = ColorARGB.withAlpha(color, alpha);
         }
     }
