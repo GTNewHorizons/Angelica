@@ -101,9 +101,9 @@ public final class TextureOps {
         st.samplerBindGen++;
     }
 
+    /// requires a flush + submit to not read stale data
     public void readbackTexture(long texHandle, int x, int y, int w, int h, int level, ByteBuffer output) {
         if (texHandle == 0 || output == null) return;
-        frameManager.submitMidFrame();
 
         final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (cb == 0) return;
