@@ -4,27 +4,20 @@ import net.minecraft.client.renderer.texture.TextureUtil;
 
 public final class SpritePadding {
 
-    private static int currentGutter;
-
     private static int[][] scratch;
 
     private SpritePadding() {}
 
+    /**
+     * The gutter has to survive being halved once per mip level, and the stitcher slot has to stay a multiple
+     * of 2^mipmapLevels so every level's origin lands on a texel, so 1 &lt;&lt; mipmapLevels is the only workable
+     * width. At mip 0 the terrain atlas still needs one texel for the RGSS taps to land in.
+     */
     public static int gutterFor(int mipmapLevels, boolean terrainAtlas) {
         if (mipmapLevels <= 0) {
             return terrainAtlas ? 1 : 0;
         }
         return 1 << mipmapLevels;
-    }
-
-    public static int setGutter(int gutter) {
-        final int previous = currentGutter;
-        currentGutter = gutter;
-        return previous;
-    }
-
-    public static int currentGutter() {
-        return currentGutter;
     }
 
     public static void uploadPadded(int[][] frameData, int width, int height, int originX, int originY, int gutter,
@@ -56,7 +49,7 @@ public final class SpritePadding {
             final int size = (levelWidth + 2 * levelGutter) * (levelHeight + 2 * levelGutter);
 
             int[] target = padded[level];
-            if (target == null || target.length != size) {
+            if (target == null || target.length < size) {
                 target = new int[size];
                 padded[level] = target;
             }

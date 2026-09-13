@@ -81,6 +81,7 @@ public final class TextureOps {
             case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = (float) param;
             case GL14.GL_TEXTURE_COMPARE_MODE -> ss.compareMode = param;
             case GL14.GL_TEXTURE_COMPARE_FUNC -> ss.compareFunc = param;
+            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
             default -> { return; }
         }
         ss.sdlSampler = 0;

@@ -190,7 +190,7 @@ public final class MipmapGenerator {
         return clamp(0.0f, 1.0f, ColorARGB.unpackAlpha(color) * alphaFactor);
     }
 
-    static void scaleAlphaToCoverage(int[] image, int width, float desiredCoverage) {
+    static void scaleAlphaToCoverage(int[] image, int width, float desiredCoverage, float alphaRef) {
         float min = 0.0f;
         float max = 4.0f;
         float scale = 1.0f;
@@ -198,7 +198,7 @@ public final class MipmapGenerator {
         float bestError = Float.POSITIVE_INFINITY;
 
         for (int i = 0; i < 5; i++) {
-            final float coverage = alphaTestCoverage(image, width, (float) 0.5, scale);
+            final float coverage = alphaTestCoverage(image, width, alphaRef, scale);
             final float error = Math.abs(coverage - desiredCoverage);
             if (error < bestError) {
                 bestError = error;
@@ -282,7 +282,7 @@ public final class MipmapGenerator {
             }
 
             if (isCutout) {
-                scaleAlphaToCoverage(result[level], levelWidth, originalCoverage);
+                scaleAlphaToCoverage(result[level], levelWidth, originalCoverage, CUTOUT_ALPHA_REF);
             }
         }
 

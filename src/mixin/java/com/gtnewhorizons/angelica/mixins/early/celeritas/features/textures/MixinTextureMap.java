@@ -20,7 +20,6 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.client.resources.data.TextureMetadataSection;
 import net.minecraft.util.IIcon;
-import net.minecraft.util.MathHelper;
 import org.embeddedt.embeddium.impl.util.collections.quadtree.QuadTree;
 import org.embeddedt.embeddium.impl.util.collections.quadtree.Rect2i;
 import org.spongepowered.asm.mixin.Final;
@@ -74,7 +73,7 @@ public class MixinTextureMap implements TextureMapExtension {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/Stitcher;doStitch()V"))
     private void angelica$assignGutters(CallbackInfo ci) {
         final boolean blocksAtlas = (Object) this == Minecraft.getMinecraft().getTextureMapBlocks();
-        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, false);
+        final int gutter = SpritePadding.gutterFor(this.mipmapLevels, blocksAtlas);
 
         for (TextureAtlasSprite sprite : this.mapRegisteredSprites.values()) {
             ((SpriteExtension) sprite).angelica$setGutterWidth(gutter);
@@ -166,20 +165,12 @@ public class MixinTextureMap implements TextureMapExtension {
         }
     }
 
-    @Unique
-    private int celeritas$unpaddedMipmapCeiling() {
-        int minDimension = Integer.MAX_VALUE;
-        for (TextureAtlasSprite sprite : this.mapUploadedSprites.values()) {
-            minDimension = Math.min(minDimension, Math.min(sprite.getIconWidth(), sprite.getIconHeight()));
-        }
-        return minDimension == Integer.MAX_VALUE ? Integer.MAX_VALUE : MathHelper.calculateLogBaseTwo(minDimension);
-    }
-
     @Inject(method = "loadTextureAtlas", at = @At("RETURN"))
     private void celeritas$generateQuadTree(CallbackInfo ci, @Local(ordinal = 0) Stitcher stitcher) {
         if ((Object) this == Minecraft.getMinecraft().getTextureMapBlocks()) {
             SodiumGameOptions.recordAtlasMipmapClamp(Minecraft.getMinecraft().gameSettings.mipmapLevels,
-                Math.min(this.mipmapLevels, celeritas$unpaddedMipmapCeiling()));
+                this.mipmapLevels);
+            SodiumGameOptions.recordAtlasMipmapLevels(this.mipmapLevels);
         }
 
         this.celeritas$width = stitcher.getCurrentWidth();

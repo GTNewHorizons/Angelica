@@ -1295,14 +1295,26 @@ public class SDLGPURenderBackend extends RenderBackend {
         return isProxyTarget(target) ? 0 : st.boundTextures[st.activeTextureUnit];
     }
 
+    private int requestedMipLevels(int glId) {
+        return Math.max(1, resourceManager.getOrCreateTexSamplerState(glId).maxLevel + 1);
+    }
+
+    private int fullMipLevels(int glId, int width, int height) {
+        final int full = PixelOps.defaultMipLevels(width, height);
+        final int maxLevel = resourceManager.getOrCreateTexSamplerState(glId).maxLevel;
+        return maxLevel >= 0 ? Math.min(full, maxLevel + 1) : full;
+    }
+
+    private boolean growForLevel(int glId, int level) {
+        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
+        final int wanted = meta != null
+            ? Math.max(level + 1, fullMipLevels(glId, meta.width(), meta.height()))
+            : level + 1;
+        return resourceManager.ensureTextureLevels(glId, wanted);
+    }
+
     private void ensureLevel0Storage(ContextState st, int glId, int target, int internalFormat, int width, int height, int depth, int format, boolean mipmapped) {
-        final int numLevels;
-        if (mipmapped) {
-            final TextureSamplerState ss = resourceManager.getOrCreateTexSamplerState(glId);
-            numLevels = ss.maxLevel >= 0 ? ss.maxLevel + 1 : PixelOps.defaultMipLevels(width, height);
-        } else {
-            numLevels = 1;
-        }
+        final int numLevels = mipmapped ? requestedMipLevels(glId) : 1;
         final boolean bgraSwizzle = format == GL12.GL_BGRA && (internalFormat == GL11.GL_RGBA || internalFormat == GL11.GL_RGBA8);
         final int targetSdlFormat = bgraSwizzle
             ? SDLGPU.SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM
@@ -1326,7 +1338,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             && m.width() == w
             && m.height() == h
             && m.depth() == d
-            && m.levels() == levels
+            && m.levels() >= levels
             && m.glTarget() == target
             && m.glFormat() == glFormat
             && m.sdlFormat() == sdlFormat;
@@ -1343,6 +1355,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
         if (level == 0) {
             ensureLevel0Storage(st, glId, target, internalFormat, width, height, 1, format, true);
+        } else if (!growForLevel(glId, level)) {
+            return;
         }
 
         textureOps.uploadTextureRegion(st, glId, resourceManager.getTextureMeta(glId), resourceManager.getTextureHandle(glId), pixels, 0, 0, width, height, level, format, type);
@@ -1413,6 +1427,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
         if (level == 0) {
             ensureLevel0Storage(st, glId, target, internalFormat, width, height, 1, format, true);
+        } else if (!growForLevel(glId, level)) {
+            return;
         }
 
         if (st.boundPixelUnpackBuffer == 0) return;
@@ -1463,6 +1479,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
         if (level == 0) {
             ensureLevel0Storage(cs, destGlId, target, internalFormat, width, height, 1, GL11.GL_NONE, true);
+        } else if (!growForLevel(destGlId, level)) {
+            return;
         }
 
         textureOps.copyTexSubImageImpl(cs, destGlId, level, 0, 0, x, y, width, height);
@@ -1567,6 +1585,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = (float) param;
             case GL14.GL_TEXTURE_COMPARE_MODE -> ss.compareMode = param;
             case GL14.GL_TEXTURE_COMPARE_FUNC -> ss.compareFunc = param;
+            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
             default -> { return; }
         }
         ss.sdlSampler = 0;
@@ -3264,32 +3283,31 @@ public class SDLGPURenderBackend extends RenderBackend {
         resourceManager.refreshTextureReferences(glId);
     }
     @Override public void generateTextureMipmap(int texture) {
-        final long texHandle = resourceManager.getTextureHandle(texture);
-        if (texHandle == 0 || frameManager.getCommandBuffer() == 0) return;
-        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
-        if (meta == null || meta.levels() <= 1) return;
+        if (resourceManager.getTextureHandle(texture) == 0 || frameManager.getCommandBuffer() == 0) return;
+        ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
+        if (meta == null) return;
+        // The texture was created with only the levels GL had defined, so grow it to the chain glGenerateMipmap fills.
+        final int wanted = fullMipLevels(texture, meta.width(), meta.height());
+        if (wanted > meta.levels()) {
+            if (!resourceManager.ensureTextureLevels(texture, wanted)) return;
+            meta = resourceManager.getTextureMeta(texture);
+            if (meta == null) return;
+        }
+        if (meta.levels() <= 1) return;
         // SDL asserts if any pass (render or copy) is active when generating mipmaps.
         frameManager.endCopyPassIfActive();
         frameManager.endRenderPassIfActive();
         frameManager.noteMipGen();
         textureOps.clearPendingMipGen(texture);
-        SDL_GenerateMipmapsForGPUTexture(frameManager.getCommandBuffer(), texHandle);
+        SDL_GenerateMipmapsForGPUTexture(frameManager.getCommandBuffer(), resourceManager.getTextureHandle(texture));
     }
     @Override public void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         if (texture == 0) return;
         final ContextState st = s();
         if (level == 0) {
-            final TextureSamplerState ss = resourceManager.getOrCreateTexSamplerState(texture);
-            final int numLevels = ss.maxLevel >= 0 ? ss.maxLevel + 1 : PixelOps.defaultMipLevels(width, height);
-            textureOps.releaseTextureForRealloc(st, texture);
-            if (format == GL12.GL_BGRA && (internalformat == GL11.GL_RGBA || internalformat == GL11.GL_RGBA8)) {
-                resourceManager.createTextureWithSdlFormat(texture, target,
-                    SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM,
-                    internalformat, width, height, 1, numLevels);
-            } else {
-                resourceManager.createTexture(texture, target, internalformat, width, height, 1, numLevels);
-            }
-            resourceManager.refreshTextureReferences(texture);
+            ensureLevel0Storage(st, texture, target, internalformat, width, height, 1, format, true);
+        } else if (!growForLevel(texture, level)) {
+            return;
         }
         textureOps.uploadTextureRegion(st, texture, resourceManager.getTextureMeta(texture), resourceManager.getTextureHandle(texture), pixels, 0, 0, width, height, level, format, type);
     }
@@ -3554,6 +3572,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_MAX_TEXTURE_SIZE -> MAX_TEXTURE_SIZE;
             case GL12.GL_MAX_3D_TEXTURE_SIZE -> MAX_3D_TEXTURE_SIZE;
             case GL13.GL_MAX_CUBE_MAP_TEXTURE_SIZE -> MAX_CUBE_MAP_TEXTURE_SIZE;
+            case EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT -> (int) MAX_ANISOTROPY;
             default -> -1;
         };
     }
@@ -3563,6 +3582,8 @@ public class SDLGPURenderBackend extends RenderBackend {
     static final int MAX_TEXTURE_SIZE = 16384;
     static final int MAX_CUBE_MAP_TEXTURE_SIZE = 16384;
     static final int MAX_3D_TEXTURE_SIZE = 2048;
+    /** D3D12 and Metal both cap anisotropy at 16, and every desktop Vulkan driver reports 16. */
+    static final float MAX_ANISOTROPY = 16.0f;
 
     private static int unknownGetInteger(int pname) {
         synchronized (UNKNOWN_GET_INTEGER_SEEN) {
@@ -3577,11 +3598,22 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void getInteger(int pname, IntBuffer params) {
         if (params.remaining() > 0) params.put(params.position(), getInteger(pname));
     }
+    private static float unknownGetFloat(int pname) {
+        synchronized (UNKNOWN_GET_FLOAT_SEEN) {
+            if (UNKNOWN_GET_FLOAT_SEEN.add(pname)) {
+                LOG.warn("getFloat: unhandled pname 0x{}, returning 0; callers reading this as a device limit will treat the feature as unavailable", Integer.toHexString(pname));
+            }
+        }
+        return 0.0f;
+    }
+
+    private static final IntOpenHashSet UNKNOWN_GET_FLOAT_SEEN = new IntOpenHashSet();
     @Override public float getFloat(int pname) {
         return switch (pname) {
             case GL11.GL_LINE_WIDTH -> 1.0f;
             case GL11.GL_POINT_SIZE -> 1.0f;
-            default -> 0.0f;
+            case EXTTextureFilterAnisotropic.GL_MAX_TEXTURE_MAX_ANISOTROPY_EXT -> MAX_ANISOTROPY;
+            default -> unknownGetFloat(pname);
         };
     }
     @Override public void getFloat(int pname, FloatBuffer params) {

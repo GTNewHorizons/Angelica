@@ -70,6 +70,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private boolean terrainSamplerNearest;
     private int packTerrainSampler;
     private boolean packTerrainSamplerResolved;
+    private int packTerrainSamplerAnisotropy = -1;
     private boolean terrainSamplerBound;
     private final GpuTerrainCuller culler;
     private final ReusableCachedBatch gpuBatch = new ReusableCachedBatch();
@@ -216,19 +217,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             terrainSamplerAnisotropy = anisotropy;
             terrainSamplerNearest = nearest;
 
-            if (terrainSampler != 0) {
-
-                RenderSystem.samplerParameteri(terrainSampler, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-                RenderSystem.samplerParameteri(terrainSampler, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-                RenderSystem.samplerParameteri(terrainSampler, GL11.GL_TEXTURE_MIN_FILTER,
-                    nearest ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_LINEAR_MIPMAP_LINEAR);
-                RenderSystem.samplerParameteri(terrainSampler, GL11.GL_TEXTURE_MAG_FILTER,
-                    nearest ? GL11.GL_NEAREST : GL11.GL_LINEAR);
-                if (SodiumGameOptions.anisotropySupported()) {
-                    RenderSystem.samplerParameteri(terrainSampler,
-                        EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
-                }
-            }
+            configureTerrainSampler(terrainSampler, nearest, anisotropy);
         }
 
         if (terrainSampler != 0) {
@@ -238,22 +227,40 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     }
 
     private void bindPackTerrainSampler() {
-        if (!packTerrainSamplerResolved) {
-            packTerrainSamplerResolved = true;
-            packTerrainSampler = RenderSystem.genSampler();
-            if (packTerrainSampler == 0) {
-                AngelicaMod.LOGGER.warn("Sampler objects unavailable; shader pack terrain filtering will fall back to the atlas texture's own parameters");
-            } else {
-                RenderSystem.samplerParameteri(packTerrainSampler, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
-                RenderSystem.samplerParameteri(packTerrainSampler, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
-                RenderSystem.samplerParameteri(packTerrainSampler, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST_MIPMAP_LINEAR);
-                RenderSystem.samplerParameteri(packTerrainSampler, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        final int anisotropy = SodiumGameOptions.resolvedAnisotropicFiltering();
+
+        if (!packTerrainSamplerResolved || packTerrainSamplerAnisotropy != anisotropy) {
+            if (!packTerrainSamplerResolved) {
+                packTerrainSampler = RenderSystem.genSampler();
+                if (packTerrainSampler == 0) {
+                    AngelicaMod.LOGGER.warn("Sampler objects unavailable; shader pack terrain filtering will fall back to the atlas texture's own parameters");
+                }
             }
+            packTerrainSamplerResolved = true;
+            packTerrainSamplerAnisotropy = anisotropy;
+
+            configureTerrainSampler(packTerrainSampler, true, anisotropy);
         }
 
         if (packTerrainSampler != 0) {
             RenderSystem.bindSamplerToUnit(BLOCK_TEXTURE_UNIT, packTerrainSampler);
             terrainSamplerBound = true;
+        }
+    }
+
+    private static void configureTerrainSampler(int sampler, boolean nearest, int anisotropy) {
+        if (sampler == 0) {
+            return;
+        }
+        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_WRAP_S, GL12.GL_CLAMP_TO_EDGE);
+        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_WRAP_T, GL12.GL_CLAMP_TO_EDGE);
+        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_MIN_FILTER,
+            nearest ? GL11.GL_NEAREST_MIPMAP_LINEAR : GL11.GL_LINEAR_MIPMAP_LINEAR);
+        RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_MAG_FILTER,
+            nearest ? GL11.GL_NEAREST : GL11.GL_LINEAR);
+        if (SodiumGameOptions.anisotropySupported()) {
+            RenderSystem.samplerParameteri(sampler,
+                EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
         }
     }
 
@@ -281,6 +288,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         RenderSystem.destroySampler(packTerrainSampler);
         packTerrainSampler = 0;
         packTerrainSamplerResolved = false;
+        packTerrainSamplerAnisotropy = -1;
     }
 
     @Override

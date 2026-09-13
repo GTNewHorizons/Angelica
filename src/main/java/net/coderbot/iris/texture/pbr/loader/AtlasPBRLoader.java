@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.mixins.interfaces.ISpriteExt;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
-import com.gtnewhorizons.angelica.utils.SpritePadding;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.texture.format.TextureFormat;
 import net.coderbot.iris.texture.format.TextureFormatLoader;
@@ -168,15 +167,9 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
             final TextureAtlasSpriteInfo pbrSpriteInfo = new PBRTextureAtlasSpriteInfo(pbrSpriteName, frameWidth, frameHeight, pbrType);
 
             final int gutter = ((SpriteExtension) sprite).angelica$getGutterWidth();
-            final int x = sprite.getOriginX() - gutter;
-            final int y = sprite.getOriginY() - gutter;
 
-            final int previousGutter = SpritePadding.setGutter(gutter);
-            try {
-                pbrSprite = new PBRTextureAtlasSprite(pbrSpriteInfo, animationMetadata, atlasWidth, atlasHeight, x, y, nativeImage, false, mipLevel);
-            } finally {
-                SpritePadding.setGutter(previousGutter);
-            }
+            pbrSprite = new PBRTextureAtlasSprite(pbrSpriteInfo, animationMetadata, atlasWidth, atlasHeight,
+                sprite.getOriginX(), sprite.getOriginY(), gutter, nativeImage, false, mipLevel);
             syncAnimation(sprite, pbrSprite);
         } catch (FileNotFoundException e) {
             //
@@ -237,10 +230,11 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
 
     public static class PBRTextureAtlasSprite extends TextureAtlasSprite implements CustomMipmapGenerator.Provider {
         // This feels super janky
-        protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, NativeImage nativeImage, boolean useAnisotropicFiltering, int miplevel) {
+        protected PBRTextureAtlasSprite(TextureAtlasSpriteInfo info, AnimationMetadataSection animationMetaDataSection, int atlasWidth, int atlasHeight, int x, int y, int gutter, NativeImage nativeImage, boolean useAnisotropicFiltering, int miplevel) {
             super(info.name().toString());
+            ((SpriteExtension) this).angelica$setGutterWidth(gutter);
             super.loadSprite(Objects.requireNonNull(getMipmapGenerator(info, atlasWidth, atlasHeight)).generateMipLevels(nativeImage, miplevel), animationMetaDataSection, useAnisotropicFiltering);
-            super.initSprite(atlasWidth, atlasHeight, x, y, false);
+            super.initSprite(atlasWidth, atlasHeight, x - gutter, y - gutter, false);
         }
 
         @Override

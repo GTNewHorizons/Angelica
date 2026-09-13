@@ -7,7 +7,6 @@ import com.gtnewhorizons.angelica.utils.MipmapStrategies;
 import com.gtnewhorizons.angelica.utils.MipmapStrategy;
 import com.gtnewhorizons.angelica.utils.SpritePadding;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.embeddedt.embeddium.api.util.ColorARGB;
 import org.embeddedt.embeddium.impl.render.chunk.sprite.SpriteTransparencyLevel;
 import org.spongepowered.asm.mixin.Final;
@@ -20,7 +19,6 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.awt.image.BufferedImage;
 import java.util.List;
 
 /**
@@ -159,15 +157,6 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     @ModifyVariable(method = "loadSprite", at = @At("HEAD"), argsOnly = true)
     private boolean angelica$neverInflateSprite(boolean useAnisotropicFiltering) {
         return false;
-    }
-
-    @Inject(method = "loadSprite", at = @At("HEAD"))
-    private void angelica$latchGutter(BufferedImage[] images, AnimationMetadataSection metadata,
-        boolean useAnisotropicFiltering, CallbackInfo ci) {
-        final int gutter = SpritePadding.currentGutter();
-        if (gutter != 0) {
-            this.angelica$gutterWidth = gutter;
-        }
     }
 
     @ModifyVariable(method = "initSprite", at = @At("HEAD"), ordinal = 2, argsOnly = true)
