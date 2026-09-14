@@ -385,6 +385,9 @@ public abstract class TileOverride implements Comparable<TileOverride> {
     final public List<BlockStateMatcher> getConnectingBlocks() {
         return connectBlocks;
     }
+    final protected boolean getInnerSeams() {
+        return innerSeams;
+    }
     
     final boolean connectsByReverseList() {
         return connectType == CONNECT_BY_RLIST;

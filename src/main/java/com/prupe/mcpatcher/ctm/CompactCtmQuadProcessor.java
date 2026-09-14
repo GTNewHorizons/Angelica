@@ -43,6 +43,7 @@ public final class CompactCtmQuadProcessor {
     private final IIcon[] sprites;
     private final CompactConnectingCtmProperties props;
     private final TileOverrideImpl.CTMCompact override;
+    private final boolean isReverseList;
 
     CompactCtmQuadProcessor(IIcon[] sprites, CompactConnectingCtmProperties props, TileOverrideImpl.CTMCompact compact) {
         this.sprites = new IIcon[5];
@@ -51,6 +52,7 @@ public final class CompactCtmQuadProcessor {
         }
         this.props = props;
         this.override = compact;
+        this.isReverseList = compact.connectsByReverseList();
     }
 
     public boolean processFace(RenderBlocks rb, RenderBlockState renderBlockState, IIcon origIcon, int face) {
@@ -61,7 +63,16 @@ public final class CompactCtmQuadProcessor {
         if(shouldFlip && renderBlockState instanceof BlockOrientation blockOrientation){
             blockOrientation.flipFace();
         }
-        int neighborBits = override.getNeighborBits(renderBlockState, origIcon);
+        int neighborBits = 0;
+        int projectionBits = 0;
+
+        if(isReverseList) {
+            int temp = override.getCombinedBits(renderBlockState);
+            neighborBits = temp & 0xFF;
+            projectionBits = (temp >>> 8) & 0xFF; 
+        } else {
+            neighborBits = override.getNeighborBits(renderBlockState, origIcon);
+        }
 
         int ctmIndex = TileOverride.neighborMap[neighborBits & 0xFF];
         IIcon replacement = getReplacementIcon(ctmIndex);
@@ -70,7 +81,7 @@ public final class CompactCtmQuadProcessor {
             return true;
         }
 
-        if (!override.connectsByReverseList() && (neighborBits == 0 || neighborBits == 0xFF)) {
+        if (!isReverseList && (neighborBits == 0 || neighborBits == 0xFF)) {
             IIcon sprite = sprites[getCompactSpriteIndex(neighborBits)];
             if (sprite != null) {
                 renderWholeFace(rb, renderBlockState, sprite, face);
@@ -79,7 +90,7 @@ public final class CompactCtmQuadProcessor {
             return false;
         }
 
-        renderSplitFace(rb, renderBlockState, neighborBits, face);
+        renderSplitFace(rb, renderBlockState, neighborBits, face, projectionBits);
         return true;
     }
 
@@ -122,7 +133,7 @@ public final class CompactCtmQuadProcessor {
         return SPRITE_DEFAULT;
     }
 
-    private void renderSplitFace(RenderBlocks rb, RenderBlockState renderBlockState, int connections, int face) {
+    private void renderSplitFace(RenderBlocks rb, RenderBlockState renderBlockState, int connections, int face, int projectiveBits) {
 
         final double minX = rb.renderMinX, minY = rb.renderMinY, minZ = rb.renderMinZ;
         final double maxX = rb.renderMaxX, maxY = rb.renderMaxY, maxZ = rb.renderMaxZ;
@@ -148,10 +159,9 @@ public final class CompactCtmQuadProcessor {
             brTL = brTR = brBL = brBR = 0;
         }
         
-        int notchBits = override.getNotchBits(renderBlockState);
         for (int q = 0; q < 4; q++) {
-            int quad = override.connectsByReverseList()
-                ? getProjectionSprite(q, connections, notchBits)
+            int quad = isReverseList
+                ? getProjectionSprite(q, connections, projectiveBits)
                 : getQuadrantSprite(q, connections);
 
             final IIcon icon = sprites[quad];

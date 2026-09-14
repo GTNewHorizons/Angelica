@@ -11,6 +11,9 @@ import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_U;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_UL;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.REL_UR;
 import static com.prupe.mcpatcher.ctm.RenderBlockState.TOP_FACE;
+import static com.prupe.mcpatcher.ctm.RenderBlockState.NORMALS;
+
+import net.minecraft.block.Block;
 
 import com.prupe.mcpatcher.mal.block.RenderPassAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
@@ -513,27 +516,59 @@ public class TileOverrideImpl {
             }
             return p;
         }
-        protected int getNotchBits(RenderBlockState renderBlockState) {
-            int notchBits = 0;
+        protected int getCombinedBits(RenderBlockState renderBlockState) {
+            int neighborsCombined = 0;
             for (int bit = 0; bit < 8; bit++) {
                 int[] offset = renderBlockState.getOffset(renderBlockState.getBlockFace(), bit);
-                if (notchConnect(renderBlockState, offset)) {
-                    notchBits |= (1 << bit);
-                }
+                neighborsCombined  |= (neighborConnect(renderBlockState, offset) << bit);
             }
-            return notchBits;
+            return neighborsCombined;
         }
-        private boolean notchConnect(RenderBlockState renderBlockState, int[] offset) {
+        private int neighborConnect(RenderBlockState renderBlockState, int[] offset) {
+            int returnNeighbors = 0;
             IBlockAccess blockAccess = renderBlockState.getBlockAccess();
+            Block self = renderBlockState.getBlock();
             int x = renderBlockState.getX() + offset[0];
             int y = renderBlockState.getY() + offset[1];
             int z = renderBlockState.getZ() + offset[2];
-            for (BlockStateMatcher connector : getConnectingBlocks()) {
-                if(connector.match(blockAccess, x, y, z)) {
-                    return true;
+            Block neighbor = blockAccess.getBlock(x, y, z);
+            int metadata = blockAccess.getBlockMetadata(x, y, z);
+            if (neighbor == null) {
+                return 0;
+            }
+            if (self == neighbor) {
+                BlockStateMatcher filter = renderBlockState.getFilter();
+                if (filter != null && filter.match(neighbor, metadata)) {
+                    return 0;
                 }
             }
-            return false;
+            if (getInnerSeams()) {
+                int blockFace = renderBlockState.getBlockFace();
+                if (blockFace >= 0) {
+                    int[] normal = NORMALS[blockFace];
+                    if (!neighbor.shouldSideBeRendered(
+                        blockAccess,
+                        x + normal[0],
+                        y + normal[1],
+                        z + normal[2],
+                        blockFace)) {
+                            return 0;
+                        }
+                }
+            }
+            for (BlockStateMatcher matcher : getMatchingBlocks()) {
+                if (matcher.match(neighbor, metadata)) {
+                    returnNeighbors += 1;
+                    break;
+                }
+            }
+            for (BlockStateMatcher connector : getConnectingBlocks()) {
+                if(connector.match(neighbor, metadata)) {
+                    returnNeighbors |= (1 << 8);
+                    break;
+                }
+            }
+            return returnNeighbors;
         }
     }
 
