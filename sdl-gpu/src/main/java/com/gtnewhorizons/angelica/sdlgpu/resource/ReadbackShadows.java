@@ -1,8 +1,9 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import it.unimi.dsi.fastutil.longs.Long2ObjectMap;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
+import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.sdl.SDLError;
@@ -86,13 +87,14 @@ public final class ReadbackShadows {
     }
 
     public void release(int glId) {
-        final LongArrayList doomed = new LongArrayList();
-        for (long k : slots.keySet()) {
-            if ((int) (k >>> 32) == glId) doomed.add(k);
-        }
-        for (int i = 0; i < doomed.size(); i++) {
-            final Slot slot = slots.remove(doomed.getLong(i));
-            if (slot != null) releaseSlot(slot);
+        if (slots.isEmpty()) return;
+        final ObjectIterator<Long2ObjectMap.Entry<Slot>> it = slots.long2ObjectEntrySet().fastIterator();
+        while (it.hasNext()) {
+            final Long2ObjectMap.Entry<Slot> entry = it.next();
+            if ((int) (entry.getLongKey() >>> 32) == glId) {
+                releaseSlot(entry.getValue());
+                it.remove();
+            }
         }
     }
 

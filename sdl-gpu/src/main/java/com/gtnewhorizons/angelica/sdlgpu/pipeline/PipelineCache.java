@@ -59,11 +59,11 @@ public final class PipelineCache {
 
     public int primitiveType = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
-    public final boolean[] blendEnabledPerAttachment = new boolean[ContextState.MAX_COLOR_ATTACHMENTS];
-    public int srcColorFactor = SDL_GPU_BLENDFACTOR_ONE;
-    public int dstColorFactor = SDL_GPU_BLENDFACTOR_ZERO;
-    public int srcAlphaFactor = SDL_GPU_BLENDFACTOR_ONE;
-    public int dstAlphaFactor = SDL_GPU_BLENDFACTOR_ZERO;
+    public final boolean[] blendEnabledPerDrawBuffer = new boolean[ContextState.MAX_COLOR_ATTACHMENTS];
+    public final int[] srcColorFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
+    public final int[] dstColorFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
+    public final int[] srcAlphaFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
+    public final int[] dstAlphaFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
     public int colorBlendOp = SDL_GPU_BLENDOP_ADD;
     public int alphaBlendOp = SDL_GPU_BLENDOP_ADD;
 
@@ -160,15 +160,35 @@ public final class PipelineCache {
         return true;
     }
 
-    private int attachmentForSlot(int slot) {
-        final int[] db = drawBuffers;
-        if (db == null || slot < 0 || slot >= db.length) return 0;
-        final int idx = db[slot];
-        return (idx >= 0 && idx < ContextState.MAX_COLOR_ATTACHMENTS) ? idx : 0;
+    private boolean blendEnabledForSlot(int slot) {
+        return slot >= 0 && slot < ContextState.MAX_COLOR_ATTACHMENTS && blendEnabledPerDrawBuffer[slot];
     }
 
-    private boolean blendEnabledForSlot(int slot) {
-        return blendEnabledPerAttachment[attachmentForSlot(slot)];
+    public boolean setBlendFactors(int sc, int dc, int sa, int da) {
+        boolean changed = false;
+        for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
+            if (srcColorFactors[i] != sc || dstColorFactors[i] != dc || srcAlphaFactors[i] != sa || dstAlphaFactors[i] != da) {
+                srcColorFactors[i] = sc;
+                dstColorFactors[i] = dc;
+                srcAlphaFactors[i] = sa;
+                dstAlphaFactors[i] = da;
+                changed = true;
+            }
+        }
+        if (changed) markOutputDirty();
+        return changed;
+    }
+
+    public boolean setBlendFactors(int drawBuffer, int sc, int dc, int sa, int da) {
+        if (srcColorFactors[drawBuffer] == sc && dstColorFactors[drawBuffer] == dc && srcAlphaFactors[drawBuffer] == sa && dstAlphaFactors[drawBuffer] == da) {
+            return false;
+        }
+        srcColorFactors[drawBuffer] = sc;
+        dstColorFactors[drawBuffer] = dc;
+        srcAlphaFactors[drawBuffer] = sa;
+        dstAlphaFactors[drawBuffer] = da;
+        markOutputDirty();
+        return true;
     }
 
     public int maxAttribs;
@@ -183,6 +203,10 @@ public final class PipelineCache {
 
     public PipelineCache() {
         this.maxAttribs = ContextState.MAX_VERTEX_ATTRIBS;
+        Arrays.fill(srcColorFactors, SDL_GPU_BLENDFACTOR_ONE);
+        Arrays.fill(dstColorFactors, SDL_GPU_BLENDFACTOR_ZERO);
+        Arrays.fill(srcAlphaFactors, SDL_GPU_BLENDFACTOR_ONE);
+        Arrays.fill(dstAlphaFactors, SDL_GPU_BLENDFACTOR_ZERO);
     }
 
     long lastKey() {
@@ -197,6 +221,16 @@ public final class PipelineCache {
         if ((resolver.applyAsLong(oldBuffer) == 0L) == (resolver.applyAsLong(newBuffer) == 0L)) return false;
         markInputDirty();
         return true;
+    }
+
+    public void setVertexInputs(int mask, int[] vecSize, int[] baseType, String[] names) {
+        if (shaderInputMask != mask || !Arrays.equals(shaderInputVecSize, vecSize) || !Arrays.equals(shaderInputBaseType, baseType)) {
+            markInputDirty();
+        }
+        shaderInputMask = mask;
+        shaderInputVecSize = vecSize;
+        shaderInputBaseType = baseType;
+        shaderInputName = names;
     }
 
     public void markOutputDirty() { outputDirty = true; lastKey = 0L; }
@@ -296,9 +330,11 @@ public final class PipelineCache {
             | (((long) blendBits & 0xFFFFFFFFL) << 32);
         long h = OUTPUT_SEED;
         h = Hashing.fmix64(h, bits);
-        h = Hashing.fmix64(h, Hashing.packHiLo(primitiveType, srcColorFactor));
-        h = Hashing.fmix64(h, Hashing.packHiLo(dstColorFactor, srcAlphaFactor));
-        h = Hashing.fmix64(h, Hashing.packHiLo(dstAlphaFactor, colorBlendOp));
+        h = Hashing.fmix64(h, Hashing.packHiLo(primitiveType, colorBlendOp));
+        for (int i = 0; i < ctfLen; i++) {
+            h = Hashing.fmix64(h, Hashing.packHiLo(srcColorFactors[i], dstColorFactors[i]));
+            h = Hashing.fmix64(h, Hashing.packHiLo(srcAlphaFactors[i], dstAlphaFactors[i]));
+        }
         h = Hashing.fmix64(h, Hashing.packHiLo(alphaBlendOp, depthCompareOp));
         h = Hashing.fmix64(h, Hashing.packHiLo(stencilFrontCompareOp, stencilFrontFailOp));
         h = Hashing.fmix64(h, Hashing.packHiLo(stencilFrontDepthFailOp, stencilFrontPassOp));
@@ -390,11 +426,11 @@ public final class PipelineCache {
                 desc.format(colorTargetFormats()[i]);
                 desc.blend_state()
                     .enable_blend(blendEnabledForSlot(i))
-                    .src_color_blendfactor(srcColorFactor)
-                    .dst_color_blendfactor(dstColorFactor)
+                    .src_color_blendfactor(srcColorFactors[i])
+                    .dst_color_blendfactor(dstColorFactors[i])
                     .color_blend_op(colorBlendOp)
-                    .src_alpha_blendfactor(srcAlphaFactor)
-                    .dst_alpha_blendfactor(dstAlphaFactor)
+                    .src_alpha_blendfactor(srcAlphaFactors[i])
+                    .dst_alpha_blendfactor(dstAlphaFactors[i])
                     .alpha_blend_op(alphaBlendOp)
                     .color_write_mask((byte) colorWriteMask)
                     .enable_color_write_mask(true);
@@ -504,8 +540,10 @@ public final class PipelineCache {
               .append(" backCmp=").append(stencilBackCompareOp).append('\n');
         }
         sb.append("  Blend: enabled=").append(blendEnabledForSlot(0))
-          .append(" srcColor=").append(srcColorFactor).append(" dstColor=").append(dstColorFactor).append(" colorOp=").append(colorBlendOp)
-          .append(" srcAlpha=").append(srcAlphaFactor).append(" dstAlpha=").append(dstAlphaFactor).append(" alphaOp=").append(alphaBlendOp)
+          .append(" srcColor=").append(srcColorFactors[0]).append(" dstColor=").append(dstColorFactors[0])
+          .append(" colorOp=").append(colorBlendOp)
+          .append(" srcAlpha=").append(srcAlphaFactors[0]).append(" dstAlpha=").append(dstAlphaFactors[0])
+          .append(" alphaOp=").append(alphaBlendOp)
           .append(" mask=0x").append(Integer.toHexString(colorWriteMask)).append('\n');
         sb.append("  Rasterizer: cull=").append(getEffectiveCullMode())
           .append(" front=").append(effectiveFrontFace())
