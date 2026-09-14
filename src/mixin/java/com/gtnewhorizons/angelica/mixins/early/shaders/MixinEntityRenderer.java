@@ -28,6 +28,7 @@ import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
@@ -71,6 +72,9 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         pipeline.set(null);
         Program.unbind();
         GLStateManager.glDepthMask(true);
+        GLStateManager.disableBlend();
+        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
+        GLStateManager.enableAlphaTest();
     }
 
     @WrapOperation(method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))

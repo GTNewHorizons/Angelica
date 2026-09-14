@@ -9,7 +9,7 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(value = WorldProvider.class)
 public abstract class MixinWorldProvider {
 
-    @ModifyReturnValue(method = "getCloudHeight", at = @At("RETURN"), remap = false)
+    @ModifyReturnValue(method = "getCloudHeight", at = @At("RETURN"))
     private float notFine$applyCloudHeightOffset(float original) {
         return original + SettingsManager.cloudHeightOffset;
     }

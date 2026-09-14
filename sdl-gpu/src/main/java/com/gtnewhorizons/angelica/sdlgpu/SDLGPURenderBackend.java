@@ -629,7 +629,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
     }
 
-    private void midFrameFenceFlush() {
+    private void flushAndSubmitMidFrame() {
         final ContextState st = s();
         drainDeferredPersistentRegions(st);
         pipelineApplier.flushAttribRingChunk(st);
@@ -638,6 +638,10 @@ public class SDLGPURenderBackend extends RenderBackend {
             transferThread.awaitSubmittedUpTo(st.frameHighestEnqueuedSeq);
         }
         frameManager.submitMidFrame();
+    }
+
+    private void midFrameFenceFlush() {
+        flushAndSubmitMidFrame();
         fenceTracker.resolvePendingFences();
     }
 
@@ -1836,6 +1840,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 pixels.position(0);
                 pixels.limit(start + h * stride);
                 pixels.position(start);
+                flushAndSubmitMidFrame();
                 textureOps.readbackTexture(texHandle, sx, sy, w, h, 0, pixels);
                 pixels.position(0);
                 pixels.limit(baseLimit);
@@ -1844,6 +1849,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             } else {
                 final ByteBuffer staging = MemoryUtil.memAlloc(w * h * 4);
                 try {
+                    flushAndSubmitMidFrame();
                     textureOps.readbackTexture(texHandle, sx, sy, w, h, 0, staging);
                     staging.rewind();
                     PixelOps.postProcessReadback(staging, w, h, format, srcSdlFormat, fromFbo0);
@@ -1875,6 +1881,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final long texHandle = resourceManager.getTextureHandle(glId);
         final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
         if (meta == null) return;
+        flushAndSubmitMidFrame();
         textureOps.readbackTexture(texHandle, 0, 0, meta.width(), meta.height(), level, pixels);
         pixels.rewind();
         PixelOps.postProcessReadback(pixels, meta.width(), meta.height(), format, meta.sdlFormat(), false);

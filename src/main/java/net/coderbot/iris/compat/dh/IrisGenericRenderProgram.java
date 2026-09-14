@@ -137,7 +137,6 @@ public class IrisGenericRenderProgram implements IDhApiGenericObjectShaderProgra
 
         this.va = GLStateManager.glGenVertexArrays();
         GLStateManager.glBindVertexArray(va);
-        GLStateManager.glVertexAttribPointer(0, 3, GL11.GL_FLOAT, false, 0, 0);
         GLStateManager.glEnableVertexAttribArray(0);
 
         this.instancedShaderOffsetChunkUniform = this.tryGetUniformLocation2("uOffsetChunk");
