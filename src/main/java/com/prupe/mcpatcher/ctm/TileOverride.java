@@ -143,7 +143,7 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         this.tileLoader = tileLoader;
 
 
-        disabled = properties.getString("disabled", "false") == "true";
+        disabled = properties.getString("disabled", "false").equals("true");
         String renderPassStr = properties.getString("renderPass", "");
         renderPass = RenderPassAPI.instance.parseRenderPass(renderPassStr);
         if (renderPassStr.matches("\\d+") && renderPass >= 0 && renderPass <= RenderPassAPI.MAX_EXTRA_RENDER_PASS) {

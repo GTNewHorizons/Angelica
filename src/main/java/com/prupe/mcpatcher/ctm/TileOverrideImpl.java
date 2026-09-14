@@ -538,7 +538,7 @@ public class TileOverrideImpl {
             }
             if (self == neighbor) {
                 BlockStateMatcher filter = renderBlockState.getFilter();
-                if (filter != null && filter.match(neighbor, metadata)) {
+                if (filter != null && !filter.match(neighbor, metadata)) {
                     return 0;
                 }
             }
