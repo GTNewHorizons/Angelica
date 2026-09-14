@@ -75,39 +75,58 @@ public final class SDLGPULWJGLService implements LWJGLService {
 
     @Override public int getPointerSize() { return 8; } // 64-bit
 
-    @Override public int glGenBuffers() { return BackendManager.RENDER_BACKEND.genBuffers(); }
-    @Override public void glDeleteBuffers(int buffer) { BackendManager.RENDER_BACKEND.deleteBuffers(buffer); }
+    @Override public int glGenBuffers() { return GLStateManager.glGenBuffers(); }
+    @Override public void glDeleteBuffers(int buffer) { GLStateManager.glDeleteBuffers(buffer); }
     @Override public void glBindBuffer(int target, int buffer) { GLStateManager.glBindBuffer(target, buffer); }
-    @Override public void glBufferData(int target, long size, int usage) { BackendManager.RENDER_BACKEND.bufferData(target, size, usage); }
-    @Override public void glBufferData(int target, ByteBuffer data, int usage) { BackendManager.RENDER_BACKEND.bufferData(target, data, usage); }
+    @Override public void glBufferData(int target, long size, int usage) {
+        GLStateManager.glBufferData(target, size, usage);
+    }
+    @Override public void glBufferData(int target, ByteBuffer data, int usage) {
+        GLStateManager.glBufferData(target, data, usage);
+    }
     @Override public void glBufferData(int target, long size, long data, int usage) {
         if (data != 0) {
-            BackendManager.RENDER_BACKEND.bufferData(target, MemoryUtil.memByteBuffer(data, (int) size), usage);
+            GLStateManager.nglBufferData(target, size, data, usage);
         } else {
-            BackendManager.RENDER_BACKEND.bufferData(target, size, usage);
+            GLStateManager.glBufferData(target, size, usage);
         }
     }
-    @Override public void glBufferStorage(int target, long size, int flags) { BackendManager.RENDER_BACKEND.bufferStorage(target, size, flags); }
-    @Override public void glBlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1, int mask, int filter) {
-        BackendManager.RENDER_BACKEND.blitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+    @Override public void glBufferStorage(int target, long size, int flags) {
+        GLStateManager.glBufferStorage(target, size, flags);
     }
-    @Override public void glDrawArrays(int mode, int first, int count) { BackendManager.RENDER_BACKEND.drawArrays(mode, first, count); }
+    @Override public void glBlitFramebuffer(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1, int mask, int filter) {
+        GLStateManager.glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, mask, filter);
+    }
+    @Override public void glDrawArrays(int mode, int first, int count) {
+        GLStateManager.glDrawArrays(mode, first, count);
+    }
     @Override public void glDrawBuffers(int[] buffers) {
         try (var stack = MemoryStack.stackPush()) {
-            BackendManager.RENDER_BACKEND.drawBuffers(stack.ints(buffers));
+            GLStateManager.glDrawBuffers(stack.ints(buffers));
         }
     }
     @Override public void glTexImage2D(int target, int level, int internalFormat, int width, int height, int border, int format, int type, ByteBuffer pixels) {
         GLStateManager.glTexImage2D(target, level, internalFormat, width, height, border, format, type, pixels);
     }
     @Override public void glTexParameteri(int target, int pname, int param) { GLStateManager.glTexParameteri(target, pname, param); }
-    @Override public ByteBuffer glMapBufferRange(int target, long offset, long length, int flags) { return BackendManager.RENDER_BACKEND.mapBufferRange(target, offset, length, flags); }
+    @Override public ByteBuffer glMapBufferRange(int target, long offset, long length, int flags) {
+        return GLStateManager.glMapBufferRange(target, offset, length, flags);
+    }
     @Override public long nglMapBuffer(int target, int access) { return 0; }
-    @Override public ByteBuffer glMapBuffer(int target, int access) { return BackendManager.RENDER_BACKEND.mapBuffer(target, access); }
-    @Override public void glUnmapBuffer(int target) { BackendManager.RENDER_BACKEND.unmapBuffer(target); }
-    @Override public void glFlushMappedBufferRange(int target, long offset, long length) { BackendManager.RENDER_BACKEND.flushMappedBufferRange(target, offset, length); }
-    @Override public void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset, long size) { BackendManager.RENDER_BACKEND.copyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size); }
-    @Override public void glBindBufferBase(int target, int index, int buffer) { BackendManager.RENDER_BACKEND.bindBufferBase(target, index, buffer); }
+    @Override public ByteBuffer glMapBuffer(int target, int access) {
+        return GLStateManager.glMapBuffer(target, access);
+    }
+    @Override public void glUnmapBuffer(int target) { GLStateManager.glUnmapBuffer(target); }
+    @Override public void glFlushMappedBufferRange(int target, long offset, long length) {
+        GLStateManager.glFlushMappedBufferRange(target, offset, length);
+    }
+    @Override public void glCopyBufferSubData(int readTarget, int writeTarget, long readOffset, long writeOffset,
+                                              long size) {
+        GLStateManager.glCopyBufferSubData(readTarget, writeTarget, readOffset, writeOffset, size);
+    }
+    @Override public void glBindBufferBase(int target, int index, int buffer) {
+        GLStateManager.glBindBufferBase(target, index, buffer);
+    }
 
     @Override public int glGenVertexArrays() { return GLStateManager.glGenVertexArrays(); }
     @Override public void glDeleteVertexArrays(int array) { GLStateManager.glDeleteVertexArrays(array); }
@@ -117,63 +136,80 @@ public final class SDLGPULWJGLService implements LWJGLService {
     @Override public void glEnableVertexAttribArray(int index) { GLStateManager.glEnableVertexAttribArray(index); }
     @Override public void glVertexAttribDivisor(int index, int divisor) { GLStateManager.glVertexAttribDivisor(index, divisor); }
 
-    @Override public int glCreateShader(int type) { return BackendManager.RENDER_BACKEND.createShader(type); }
-    @Override public void glShaderSource(int shader, CharSequence source) { BackendManager.RENDER_BACKEND.shaderSource(shader, source); }
-    @Override public void glShaderSourceSafe(int shader, CharSequence source) { BackendManager.RENDER_BACKEND.shaderSource(shader, source); }
-    @Override public void glCompileShader(int shader) { BackendManager.RENDER_BACKEND.compileShader(shader); }
-    @Override public String glGetShaderInfoLog(int shader, int maxLength) { return BackendManager.RENDER_BACKEND.getShaderInfoLog(shader, maxLength); }
-    @Override public int glGetShaderi(int shader, int pname) { return BackendManager.RENDER_BACKEND.getShaderi(shader, pname); }
-    @Override public void glDeleteShader(int shader) { BackendManager.RENDER_BACKEND.deleteShader(shader); }
+    @Override public int glCreateShader(int type) { return GLStateManager.glCreateShader(type); }
+    @Override public void glShaderSource(int shader, CharSequence source) {
+        GLStateManager.glShaderSource(shader, source);
+    }
+    @Override public void glShaderSourceSafe(int shader, CharSequence source) {
+        GLStateManager.glShaderSource(shader, source);
+    }
+    @Override public void glCompileShader(int shader) { GLStateManager.glCompileShader(shader); }
+    @Override public String glGetShaderInfoLog(int shader, int maxLength) {
+        return GLStateManager.glGetShaderInfoLog(shader, maxLength);
+    }
+    @Override public int glGetShaderi(int shader, int pname) { return GLStateManager.glGetShaderi(shader, pname); }
+    @Override public void glDeleteShader(int shader) { GLStateManager.glDeleteShader(shader); }
 
-    @Override public int glCreateProgram() { return BackendManager.RENDER_BACKEND.createProgram(); }
-    @Override public void glAttachShader(int program, int shader) { BackendManager.RENDER_BACKEND.attachShader(program, shader); }
-    @Override public void glLinkProgram(int program) { BackendManager.RENDER_BACKEND.linkProgram(program); }
-    @Override public String glGetProgramInfoLog(int program, int maxLength) { return BackendManager.RENDER_BACKEND.getProgramInfoLog(program, maxLength); }
-    @Override public int glGetProgrami(int program, int pname) { return BackendManager.RENDER_BACKEND.getProgrami(program, pname); }
+    @Override public int glCreateProgram() { return GLStateManager.glCreateProgram(); }
+    @Override public void glAttachShader(int program, int shader) { GLStateManager.glAttachShader(program, shader); }
+    @Override public void glLinkProgram(int program) { GLStateManager.glLinkProgram(program); }
+    @Override public String glGetProgramInfoLog(int program, int maxLength) {
+        return GLStateManager.glGetProgramInfoLog(program, maxLength);
+    }
+    @Override public int glGetProgrami(int program, int pname) { return GLStateManager.glGetProgrami(program, pname); }
     @Override public void glUseProgram(int program) { GLStateManager.glUseProgram(program); }
-    @Override public void glDeleteProgram(int program) { BackendManager.RENDER_BACKEND.deleteProgram(program); }
-    @Override public void glBindAttribLocation(int program, int index, CharSequence name) { BackendManager.RENDER_BACKEND.bindAttribLocation(program, index, name); }
+    @Override public void glDeleteProgram(int program) { GLStateManager.glDeleteProgram(program); }
+    @Override public void glBindAttribLocation(int program, int index, CharSequence name) {
+        GLStateManager.glBindAttribLocation(program, index, name);
+    }
     @Override public void glBindFragDataLocation(int program, int colorNumber, CharSequence name) {}
 
-    @Override public int glGetUniformLocation(int program, CharSequence name) { return BackendManager.RENDER_BACKEND.getUniformLocation(program, name); }
+    @Override public int glGetUniformLocation(int program, CharSequence name) {
+        return GLStateManager.glGetUniformLocation(program, name);
+    }
     @Override public int glGetUniformBlockIndex(int program, CharSequence name) { return -1; /* TODO */ }
     @Override public void glUniformBlockBinding(int program, int blockIndex, int blockBinding) { /* TODO */ }
-    @Override public void glUniform1f(int location, float v0) { BackendManager.RENDER_BACKEND.uniform1f(location, v0); }
-    @Override public void glUniform1i(int location, int v0) { BackendManager.RENDER_BACKEND.uniform1i(location, v0); }
-    @Override public void glUniform1fv(int location, FloatBuffer value) { BackendManager.RENDER_BACKEND.uniform1fv(location, value); }
-    @Override public void glUniform2i(int location, int v0, int v1) { BackendManager.RENDER_BACKEND.uniform2i(location, v0, v1); }
-    @Override public void glUniform3f(int location, float v0, float v1, float v2) { BackendManager.RENDER_BACKEND.uniform3f(location, v0, v1, v2); }
-    @Override public void glUniform3fv(int location, FloatBuffer value) { BackendManager.RENDER_BACKEND.uniform3(location, value); }
-    @Override public void glUniform3fv(int location, float[] value) {
-        try (var stack = MemoryStack.stackPush()) {
-            final FloatBuffer buf = stack.floats(value);
-            BackendManager.RENDER_BACKEND.uniform3(location, buf);
-        }
+    @Override public void glUniform1f(int location, float v0) { GLStateManager.glUniform1f(location, v0); }
+    @Override public void glUniform1i(int location, int v0) { GLStateManager.glUniform1i(location, v0); }
+    @Override public void glUniform1fv(int location, FloatBuffer value) { GLStateManager.glUniform1(location, value); }
+    @Override public void glUniform2i(int location, int v0, int v1) { GLStateManager.glUniform2i(location, v0, v1); }
+    @Override public void glUniform3f(int location, float v0, float v1, float v2) {
+        GLStateManager.glUniform3f(location, v0, v1, v2);
     }
-    @Override public void glUniform4fv(int location, FloatBuffer value) { BackendManager.RENDER_BACKEND.uniform4(location, value); }
-    @Override public void glUniform4fv(int location, float[] value) {
-        try (var stack = MemoryStack.stackPush()) {
-            final FloatBuffer buf = stack.floats(value);
-            BackendManager.RENDER_BACKEND.uniform4(location, buf);
-        }
+    @Override public void glUniform3fv(int location, FloatBuffer value) { GLStateManager.glUniform3(location, value); }
+    @Override public void glUniform3fv(int location, float[] value) { GLStateManager.glUniform3(location, value); }
+    @Override public void glUniform4fv(int location, FloatBuffer value) { GLStateManager.glUniform4(location, value); }
+    @Override public void glUniform4fv(int location, float[] value) { GLStateManager.glUniform4(location, value); }
+    @Override public void glUniformMatrix3fv(int location, boolean transpose, FloatBuffer value) {
+        GLStateManager.glUniformMatrix3(location, transpose, value);
     }
-    @Override public void glUniformMatrix3fv(int location, boolean transpose, FloatBuffer value) { BackendManager.RENDER_BACKEND.uniformMatrix3(location, transpose, value); }
-    @Override public void glUniformMatrix4fv(int location, boolean transpose, FloatBuffer value) { BackendManager.RENDER_BACKEND.uniformMatrix4(location, transpose, value); }
+    @Override public void glUniformMatrix4fv(int location, boolean transpose, FloatBuffer value) {
+        GLStateManager.glUniformMatrix4(location, transpose, value);
+    }
 
-    @Override public void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) { BackendManager.RENDER_BACKEND.drawElementsBaseVertex(mode, count, type, indices, basevertex); }
-    @Override public void glMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount, long pBaseVertex) { BackendManager.RENDER_BACKEND.multiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex); }
-    @Override public void glMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) { BackendManager.RENDER_BACKEND.multiDrawElementsIndirect(mode, type, indirect, drawcount, stride); }
+    @Override public void glDrawElementsBaseVertex(int mode, int count, int type, long indices, int basevertex) {
+        GLStateManager.glDrawElementsBaseVertex(mode, count, type, indices, basevertex);
+    }
+    @Override public void glMultiDrawElementsBaseVertex(int mode, long pCount, int type, long pIndices, int drawcount,
+                                                        long pBaseVertex) {
+        GLStateManager.glMultiDrawElementsBaseVertex(mode, pCount, type, pIndices, drawcount, pBaseVertex);
+    }
+    @Override public void glMultiDrawElementsIndirect(int mode, int type, long indirect, int drawcount, int stride) {
+        GLStateManager.glMultiDrawElementsIndirect(mode, type, indirect, drawcount, stride);
+    }
 
-    @Override public long glFenceSync(int condition, int flags) { return BackendManager.RENDER_BACKEND.fenceSync(condition, flags); }
-    @Override public int glClientWaitSync(long sync, int flags, long timeout) { return BackendManager.RENDER_BACKEND.clientWaitSync(sync, flags, timeout); }
+    @Override public long glFenceSync(int condition, int flags) { return GLStateManager.glFenceSync(condition, flags); }
+    @Override public int glClientWaitSync(long sync, int flags, long timeout) {
+        return GLStateManager.glClientWaitSync(sync, flags, timeout);
+    }
     @Override public int glGetSynci(long sync, int pname, IntBuffer length) {
         if (length != null && length.remaining() > 0) length.put(0, 1);
         return ((SDLGPURenderBackend) BackendManager.RENDER_BACKEND).getSyncStatus(sync);
     }
     @Override public void glWaitSync(long sync, int flags, long timeout) {
-        ((SDLGPURenderBackend) BackendManager.RENDER_BACKEND).waitSync(sync, flags, timeout);
+        GLStateManager.glWaitSync(sync, flags, timeout);
     }
-    @Override public void glDeleteSync(long sync) { BackendManager.RENDER_BACKEND.deleteSync(sync); }
+    @Override public void glDeleteSync(long sync) { GLStateManager.glDeleteSync(sync); }
 
     private long[] queryElapsed = new long[64];
     private int activeQueryId = -1;
@@ -185,7 +221,7 @@ public final class SDLGPULWJGLService implements LWJGLService {
         }
     }
 
-    @Override public int glGenQueries() { return BackendManager.RENDER_BACKEND.genQueries(); }
+    @Override public int glGenQueries() { return GLStateManager.glGenQueries(); }
     @Override public void glDeleteQueries(int query) { }
     @Override public void glBeginQuery(int target, int id) {
         ensureQueryCapacity(id);
@@ -204,29 +240,42 @@ public final class SDLGPULWJGLService implements LWJGLService {
 
     @Override public int setupDebugCallback(DebugMessageHandler handler) { return 0; }
     @Override public void disableDebugCallback() { }
-    @Override public void glObjectLabel(int identifier, int name, CharSequence label) { BackendManager.RENDER_BACKEND.objectLabel(identifier, name, label); }
-    @Override public void glPushDebugGroup(int source, int id, CharSequence message) { BackendManager.RENDER_BACKEND.pushDebugGroup(source, id, message); }
-    @Override public void glPopDebugGroup() { BackendManager.RENDER_BACKEND.popDebugGroup(); }
-
-    @Override public int glGenTextures() { return BackendManager.RENDER_BACKEND.genTextures(); }
-    @Override public void glGenTextures(int[] textures) {
-        for (int i = 0; i < textures.length; i++) textures[i] = BackendManager.RENDER_BACKEND.genTextures();
+    @Override public void glObjectLabel(int identifier, int name, CharSequence label) {
+        GLStateManager.glObjectLabel(identifier, name, label);
     }
-    @Override public void glDeleteTextures(int texture) { BackendManager.RENDER_BACKEND.deleteTextures(texture); }
+    @Override public void glPushDebugGroup(int source, int id, CharSequence message) {
+        GLStateManager.glPushDebugGroup(source, id, message);
+    }
+    @Override public void glPopDebugGroup() { GLStateManager.glPopDebugGroup(); }
+
+    @Override public int glGenTextures() { return GLStateManager.glGenTextures(); }
+    @Override public void glGenTextures(int[] textures) {
+        for (int i = 0; i < textures.length; i++) textures[i] = GLStateManager.glGenTextures();
+    }
+    @Override public void glDeleteTextures(int texture) { GLStateManager.glDeleteTextures(texture); }
     @Override public void glDeleteTextures(int[] textures) {
-        for (int t : textures) BackendManager.RENDER_BACKEND.deleteTextures(t);
+        for (int t : textures) GLStateManager.glDeleteTextures(t);
     }
     @Override public void glBindTexture(int target, int texture) { GLStateManager.glBindTexture(target, texture); }
     @Override public void glActiveTexture(int texture) { GLStateManager.glActiveTexture(texture); }
-    @Override public int glGetTexLevelParameteri(int target, int level, int pname) { return BackendManager.RENDER_BACKEND.getTexLevelParameteri(target, level, pname); }
-    @Override public void glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) { BackendManager.RENDER_BACKEND.copyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height); }
-    @Override public void glPixelStorei(int pname, int param) { BackendManager.RENDER_BACKEND.pixelStorei(pname, param); }
+    @Override public int glGetTexLevelParameteri(int target, int level, int pname) {
+        return GLStateManager.glGetTexLevelParameteri(target, level, pname);
+    }
+    @Override public void glCopyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width,
+                                              int height) {
+        GLStateManager.glCopyTexSubImage2D(target, level, xoffset, yoffset, x, y, width, height);
+    }
+    @Override public void glPixelStorei(int pname, int param) { GLStateManager.glPixelStorei(pname, param); }
 
-    @Override public int glGenFramebuffers() { return BackendManager.RENDER_BACKEND.genFramebuffers(); }
-    @Override public void glDeleteFramebuffers(int framebuffer) { BackendManager.RENDER_BACKEND.deleteFramebuffers(framebuffer); }
+    @Override public int glGenFramebuffers() { return GLStateManager.glGenFramebuffers(); }
+    @Override public void glDeleteFramebuffers(int framebuffer) { GLStateManager.glDeleteFramebuffers(framebuffer); }
     @Override public void glBindFramebuffer(int target, int framebuffer) { GLStateManager.glBindFramebuffer(target, framebuffer); }
-    @Override public int glCheckFramebufferStatus(int target) { return BackendManager.RENDER_BACKEND.checkFramebufferStatus(target); }
-    @Override public void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) { BackendManager.RENDER_BACKEND.framebufferTexture2D(target, attachment, textarget, texture, level); }
+    @Override public int glCheckFramebufferStatus(int target) {
+        return GLStateManager.glCheckFramebufferStatus(target);
+    }
+    @Override public void glFramebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
+        GLStateManager.glFramebufferTexture2D(target, attachment, textarget, texture, level);
+    }
 
     @Override public void glEnable(int cap) { GLStateManager.glEnable(cap); }
     @Override public void glDisable(int cap) { GLStateManager.glDisable(cap); }
@@ -236,20 +285,22 @@ public final class SDLGPULWJGLService implements LWJGLService {
     @Override public void glDepthMask(boolean flag) { GLStateManager.glDepthMask(flag); }
     @Override public void glColorMask(boolean red, boolean green, boolean blue, boolean alpha) { GLStateManager.glColorMask(red, green, blue, alpha); }
     @Override public void glViewport(int x, int y, int width, int height) { GLStateManager.glViewport(x, y, width, height); }
-    @Override public void glClear(int mask) { BackendManager.RENDER_BACKEND.clear(mask); }
-    @Override public void glClearColor(float red, float green, float blue, float alpha) { BackendManager.RENDER_BACKEND.clearColor(red, green, blue, alpha); }
-    @Override public int glGetError() { return BackendManager.RENDER_BACKEND.getError(); }
-
-    @Override public void glMatrixMode(int mode) { /* Handled by GLSM FFP emulation */ }
-    @Override public void glLoadMatrixf(FloatBuffer m) { /* Handled by GLSM FFP emulation */ }
-
-    @Override public int glGetInteger(int pname) { return BackendManager.RENDER_BACKEND.getInteger(pname); }
-    @Override public void glGetIntegerv(int pname, int[] params) {
-        if (params.length > 0) params[0] = BackendManager.RENDER_BACKEND.getInteger(pname);
+    @Override public void glClear(int mask) { GLStateManager.glClear(mask); }
+    @Override public void glClearColor(float red, float green, float blue, float alpha) {
+        GLStateManager.glClearColor(red, green, blue, alpha);
     }
-    @Override public boolean glGetBoolean(int pname) { return BackendManager.RENDER_BACKEND.getBoolean(pname); }
-    @Override public String glGetString(int pname) { return BackendManager.RENDER_BACKEND.getString(pname); }
-    @Override public int glGetAttribLocation(int program, CharSequence name) { return BackendManager.RENDER_BACKEND.getAttribLocation(program, name); }
+    @Override public int glGetError() { return GLStateManager.glGetError(); }
+
+    @Override public void glMatrixMode(int mode) { GLStateManager.glMatrixMode(mode); }
+    @Override public void glLoadMatrixf(FloatBuffer m) { GLStateManager.glLoadMatrix(m); }
+
+    @Override public int glGetInteger(int pname) { return GLStateManager.glGetInteger(pname); }
+    @Override public void glGetIntegerv(int pname, int[] params) { GLStateManager.glGetInteger(pname, params); }
+    @Override public boolean glGetBoolean(int pname) { return GLStateManager.glGetBoolean(pname); }
+    @Override public String glGetString(int pname) { return GLStateManager.glGetString(pname); }
+    @Override public int glGetAttribLocation(int program, CharSequence name) {
+        return GLStateManager.glGetAttribLocation(program, name);
+    }
 
     @Override public MemoryStack stackPush() {
         org.lwjgl.system.MemoryStack.stackPush();

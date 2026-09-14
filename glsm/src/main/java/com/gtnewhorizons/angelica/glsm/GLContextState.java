@@ -27,6 +27,7 @@ import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import com.gtnewhorizons.angelica.glsm.states.ImageUnitArray;
+import com.gtnewhorizons.angelica.glsm.states.SamplerUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntStack;
@@ -101,6 +102,7 @@ class GLContextState {
     public final IntegerStateStack shadeModelState = new IntegerStateStack(GL11.GL_SMOOTH);
     public final TextureUnitArray textures = new TextureUnitArray();
     public final ImageUnitArray imageUnits = new ImageUnitArray();
+    public final SamplerUnitArray samplerUnits = new SamplerUnitArray();
     public final BlendStateStack blendState = new BlendStateStack();
     public final BooleanStateStack blendMode = track(new BooleanStateStack(GL11.GL_BLEND));
     public final BooleanStateStack scissorTest = track(new BooleanStateStack(GL11.GL_SCISSOR_TEST));

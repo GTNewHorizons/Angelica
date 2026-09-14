@@ -104,9 +104,9 @@ public final class FFPTrace {
             .append("/front=").append(p.frontFace).append("/all=").append(p.cullAll);
         sb.append(" depth=").append(p.depthTestEnabled).append("/func=").append(p.depthCompareOp)
             .append("/write=").append(p.depthWriteEnabled);
-        sb.append(" blend=").append(p.blendEnabledPerAttachment[0])
-            .append("/src=").append(p.srcColorFactor).append("/dst=").append(p.dstColorFactor)
-            .append("/srcA=").append(p.srcAlphaFactor).append("/dstA=").append(p.dstAlphaFactor)
+        sb.append(" blend=").append(p.blendEnabledPerDrawBuffer[0])
+            .append("/src=").append(p.srcColorFactors[0]).append("/dst=").append(p.dstColorFactors[0])
+            .append("/srcA=").append(p.srcAlphaFactors[0]).append("/dstA=").append(p.dstAlphaFactors[0])
             .append("/op=").append(p.colorBlendOp).append('/').append(p.alphaBlendOp);
         sb.append(" colorMask=0x").append(Integer.toHexString(p.colorWriteMask));
         sb.append(" primitiveType=").append(p.primitiveType);

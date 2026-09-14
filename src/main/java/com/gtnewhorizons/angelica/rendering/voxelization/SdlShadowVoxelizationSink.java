@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.voxelization;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import net.coderbot.iris.pipeline.transform.RwImageStoreExtractor;
@@ -8,6 +9,7 @@ import org.embeddedt.embeddium.impl.gl.buffer.GlBuffer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
+import org.lwjgl.opengl.GL43;
 
 public final class SdlShadowVoxelizationSink implements ShadowVoxelizer.Sink {
 
@@ -47,7 +49,8 @@ public final class SdlShadowVoxelizationSink implements ShadowVoxelizer.Sink {
     @Override
     public boolean range(int vertexOffset, int vertexCount) {
         if (pendingVertexBuffer != 0) {
-            if (!sdl().bindVoxelizationRegion(SSBO_BINDING, pendingVertexBuffer, pass, pendingX, pendingY, pendingZ)) {
+            GLStateManager.glBindBufferBase(GL43.GL_SHADER_STORAGE_BUFFER, SSBO_BINDING, pendingVertexBuffer);
+            if (!sdl().bindVoxelizationRegion(SSBO_BINDING, pass, pendingX, pendingY, pendingZ)) {
                 if (!warnedBindFailure) {
                     warnedBindFailure = true;
                     LOG.warn("shadow voxelization: could not bind region vertex buffer {} at SSBO slot {}", pendingVertexBuffer, SSBO_BINDING);
