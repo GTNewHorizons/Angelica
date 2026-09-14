@@ -82,7 +82,7 @@ public class SodiumGameOptions {
 
     public static TextureFilterMode resolveFilterMode(TextureFilterMode mode) {
         if (mode == null) {
-            mode = TextureFilterMode.RGSS;
+            mode = TextureFilterMode.RGSS_ANISOTROPIC;
         }
         if (mode.usesAnisotropy() && !anisotropySupported()) {
             return mode.usesRgss() ? TextureFilterMode.RGSS : TextureFilterMode.NONE;
@@ -139,7 +139,7 @@ public class SodiumGameOptions {
         }
 
         if (config.quality.textureFilterMode == null) {
-            config.quality.textureFilterMode = TextureFilterMode.RGSS;
+            config.quality.textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
         }
 
         if (config.quality.texelSampling == null) {
@@ -241,7 +241,7 @@ public class SodiumGameOptions {
     public static class QualitySettings {
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public boolean useCeleritasSmoothLighting = true;
-        public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS;
+        public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
         public TexelSampling texelSampling = TexelSampling.LINEAR;
     }
 
