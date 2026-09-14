@@ -494,9 +494,7 @@ public final class GLDebug {
 
         @Override
         public void popGroup() {
-            if (depth - 1 < 0) {
-                throw new RuntimeException("Stack underflow");
-            }
+            if (depth == 0) return;
             BackendManager.RENDER_BACKEND.popDebugGroup();
             depth--;
             groupStack[depth] = null;
