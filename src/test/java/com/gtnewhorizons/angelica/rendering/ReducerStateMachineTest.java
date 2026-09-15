@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
 import com.gtnewhorizons.angelica.rendering.ReducerStateMachine.State;
 
 import org.junit.jupiter.api.Test;
@@ -125,6 +126,19 @@ class ReducerStateMachineTest {
     void unlimitedUserAndNoStateCapIsUncapped() {
         assertEquals(0, ReducerStateMachine.mergeCap(0, 0, false, true));
         assertEquals(0, ReducerStateMachine.mergeCap(260, 0, false, true));
+    }
+
+    @Test
+    void benchmarkCapIsZeroWhenUncapped() {
+        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.UNCAPPED, 60));
+        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.UNCAPPED, 0));
+    }
+
+    @Test
+    void configuredBenchmarkCapIgnoresReducerAndMenu() {
+        assertEquals(60, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, 60));
+        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, 0));
+        assertEquals(0, ReducerStateMachine.benchmarkCap(FlybyPacing.CONFIGURED, ReducerStateMachine.MAX_FPS_SETTING));
     }
 
     @Test

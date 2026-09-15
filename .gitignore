@@ -44,5 +44,6 @@ tracy-client/src/main/resources/natives/
 tracy-client/angelica/
 dist/tracy-natives/
 *.tracy
+*.jfr
 
 tracy-client/angelica/

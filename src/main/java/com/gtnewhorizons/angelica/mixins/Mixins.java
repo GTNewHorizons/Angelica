@@ -242,6 +242,18 @@ public enum Mixins implements IMixins {
             , "celeritas.debug.MixinGLDebug"
         )
     ),
+
+    ANGELICA_FLYBY(new MixinBuilder("Flyby benchmark scene support: freeze world saving, hold chunks, suppress undead sunlight burn")
+        .setPhase(Phase.EARLY)
+        .setApplyIf(() -> SystemProperties.debugTooling())
+        .addClientMixins(
+              "angelica.debug.MixinSaveHandler_FlybyDiscard"
+            , "angelica.debug.MixinAnvilChunkLoader_FlybyDiscard"
+            , "angelica.debug.MixinWorldServer_FlybyDiscard"
+            , "angelica.debug.MixinEntityUndead_FlybySunlight"
+        )
+    ),
+
     ANGELICA_DYNAMIC_LIGHTS(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableDynamicLights)
