@@ -71,15 +71,11 @@ public class DarkModeFontTransform {
             new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest", "drawGuiContainerForegroundLayer", null, "(II)V")
         ),
         // SC2
-        // vswe.stevescarts.Interfaces.GuiNEIKiller
-        // INVOKEVIRTUAL vswe/stevescarts/Interfaces/GuiNEIKiller.drawGuiContainerForegroundLayer (II)V
         new FlagAtCallSitesTarget(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller", "drawScreen", null, "(IIF)V"),
             new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller", "drawGuiContainerForegroundLayer", null, "(II)V")
         ),
         // Binnie
-        // binnie.core.craftgui.minecraft.GuiCraftGUI drawScreen(IIF)V
-        // INVOKEVIRTUAL binnie/core/craftgui/minecraft/Window.render ()V
         new FlagAtCallSitesTarget(
             new MethodInfo("binnie.core.craftgui.minecraft.GuiCraftGUI", "drawScreen", null, "(IIF)V"),
             new MethodInfo("binnie.core.craftgui.minecraft.Window", "render", null, "()V")
@@ -92,16 +88,13 @@ public class DarkModeFontTransform {
         }
     }
 
-    public boolean shouldTransform(byte[] classBytes) {
-        return false; // TODO
-    }
-
     public boolean transformClassNode(ClassNode cn, String className, boolean isObf) {
         boolean changed = false;
         for (FlagAtCallSitesTarget tg : targets) {
             if (!className.equals(tg.callingMethod.className)) { continue; }
             for (MethodNode mn : cn.methods) {
-                if (!mn.name.equals(tg.callingMethod.getName(isObf)) || !mn.desc.equals(tg.callingMethod.desc)) { continue; }
+                if (!mn.name.equals(tg.callingMethod.getName(isObf))) { continue; }
+                if (!mn.desc.equals(tg.callingMethod.desc)) { continue; }
                 changed = flagMethodAtCallSites(mn, tg.calledMethod, isObf) || changed;
             }
         }
@@ -116,19 +109,15 @@ public class DarkModeFontTransform {
                 if (!min.owner.equals(calledMethod.classNameSlash)) { continue; }
                 if (!min.name.equals(calledMethod.getName(isObf))) { continue; }
                 if (!min.desc.equals(calledMethod.desc)) { continue; }
-                LOGGER.info("Adding flags at call site of {}", calledMethod.toString());
-
                 int maxLocals = mn.maxLocals;
-                // invokestatic com/gtnewhorizons/angelica/client/font/BatchingFontRenderer/enterRecolorSection()Z
-                // pop the boolean from the stack and istore it as local maxlocals
+
                 insnList.insertBefore(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "()Z", false));
                 insnList.insertBefore(min, new VarInsnNode(Opcodes.ISTORE, maxLocals));
-                // iload the boolean onto the stack from maxlocals
-                // invokestatic com/gtnewhorizons/angelica/client/font/BatchingFontRenderer/exitRecolorSection(Z)V
-                // reverse order because we're pushing it in front of min
+
                 insnList.insert(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
                 insnList.insert(min, new VarInsnNode(Opcodes.ILOAD, maxLocals));
 
+                LOGGER.info("Added flags at call site of {}", calledMethod.toString());
                 changed = true;
             }
         }
