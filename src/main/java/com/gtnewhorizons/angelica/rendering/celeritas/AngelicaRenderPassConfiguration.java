@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
-import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
@@ -38,7 +37,7 @@ public class AngelicaRenderPassConfiguration {
     }
 
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {
-        rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode() == TextureFilterMode.RGSS;
+        rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode().usesRgss();
 
         SOLID_PASS = builderForRenderType(0, true, vertexType)
             .name("solid")

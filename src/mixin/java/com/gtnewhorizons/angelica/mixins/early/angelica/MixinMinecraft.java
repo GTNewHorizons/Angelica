@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
@@ -17,6 +18,7 @@ import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
+import org.objectweb.asm.Opcodes;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
@@ -112,5 +114,12 @@ public abstract class MixinMinecraft {
         TessellatorStreamingDrawer.endFrame();
         BatchingFontRenderer.endFrame();
         ShaderManager.endFrame();
+    }
+
+    @ModifyExpressionValue(
+        method = "runGameLoop",
+        at = @At(value = "FIELD", target = "Lnet/minecraft/client/settings/GameSettings;fancyGraphics:Z", opcode = Opcodes.GETFIELD))
+    private boolean angelica$applyGrassQuality(boolean fancyGraphics) {
+        return ClientProxy.options().quality.grassQuality.isFancy();
     }
 }

@@ -4,7 +4,6 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.BiConsumer;
-import java.util.function.IntSupplier;
 import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
@@ -40,6 +39,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.CubicChunksOptionStorage;
@@ -194,7 +194,15 @@ public class SodiumGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD, OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build();
 
-        textureFilterMode.iris$dynamicallyEnable(() -> mipmapLevels.getValue() > 0);
+        final OptionImpl<SodiumGameOptions, TexelSampling> texelSampling =
+            OptionImpl.createBuilder(TexelSampling.class, sodiumOpts)
+                .setName(I18n.format("sodium.options.texel_sampling.name"))
+                .setTooltip(I18n.format("sodium.options.texel_sampling.tooltip"))
+                .setControl(option -> new CyclingControl<>(option, TexelSampling.class))
+                .setBinding((opts, value) -> opts.quality.texelSampling = value,
+                    opts -> opts.quality.texelSampling)
+                .setImpact(OptionImpact.LOW)
+                .build();
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
@@ -250,7 +258,8 @@ public class SodiumGameOptionPages {
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .build())
                 .add(textureFilterMode)
-                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue, mipmapLevels::getValue),
+                .add(texelSampling)
+                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
                 // TODO
                 /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
@@ -681,7 +690,7 @@ public class SodiumGameOptionPages {
     }
 
     public static OptionImpl<GameSettings, Integer> anisotropicFilteringSlider(MinecraftOptionsStorage storage,
-        Supplier<TextureFilterMode> mode, IntSupplier mipmapLevels) {
+        Supplier<TextureFilterMode> mode) {
         final int min = SodiumGameOptions.minAnisotropyLevel();
         final int max = Math.max(SodiumGameOptions.maxAnisotropyLevel(), min + 1);
         final OptionImpl<GameSettings, Integer> option = OptionImpl.createBuilder(int.class, storage)
@@ -695,8 +704,7 @@ public class SodiumGameOptionPages {
             .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
             .build();
 
-        option.iris$dynamicallyEnable(() -> mipmapLevels.getAsInt() > 0 && mode.get().usesAnisotropy()
-            && SodiumGameOptions.hasAnisotropyRange());
+        option.iris$dynamicallyEnable(() -> mode.get().usesAnisotropy() && SodiumGameOptions.hasAnisotropyRange());
 
         return option;
     }
