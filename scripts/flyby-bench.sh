@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Usage: scripts/flyby-bench.sh <name> ffp|pack [flyby-capture.sh args...]
-# Env: FLYBY_SCENE, TIME_OF_DAY, QUICKPLAY_WORLD, TRACY_CAPTURE, SDLGPU, RENDER_DISTANCE.
+# Env: FLYBY_SCENE, FLYBY_ORIGIN, TIME_OF_DAY, QUICKPLAY_WORLD, TRACY_CAPTURE, SDLGPU, RENDER_DISTANCE.
 # Forces particles:0 for the run and restores it after exit; the game rewrites options.txt on quit.
 # A worktree needs tracy-client/src/main/resources/natives copied in.
 
@@ -40,6 +40,7 @@ fi
 
 export FLYBY_SCENE="${FLYBY_SCENE:-scripts/flyby-scenes/entities-x8.txt}"
 export QUICKPLAY_WORLD="${QUICKPLAY_WORLD:-Flat World - No Mods}"
+if [ "$QUICKPLAY_WORLD" = "Flat World - No Mods" ]; then export FLYBY_ORIGIN="${FLYBY_ORIGIN-1509.5,-924.5,0}"; fi
 export TRACY_CAPTURE="${TRACY_CAPTURE:-$HOME/dev/mc/tracy/capture/build/tracy-capture}"
 export SDLGPU="${SDLGPU:-1}"
 
