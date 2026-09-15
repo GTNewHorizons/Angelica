@@ -47,7 +47,9 @@ import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.ConfigMigrator;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.F3Direction;
+import com.gtnewhorizons.angelica.debug.flyby.FlybyFallGuard;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
@@ -58,7 +60,6 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
-import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
@@ -97,12 +98,6 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 
 public final class ClientProxy extends CommonProxy {
-
-    /**
-     * So you don't need to be in a dev env to have access to the commands.
-     * Do not commit with this set to true.
-     */
-    private static final boolean FORCE_DEBUG_MODE = false;
 
     public static BlockError blockError;
     public static final ManagedEnum<AnimationMode> animationsMode = new ManagedEnum<>(AnimationMode.VISIBLE_ONLY);
@@ -199,10 +194,11 @@ public final class ClientProxy extends CommonProxy {
         }
 
         // Debug tooling
-        if (FORCE_DEBUG_MODE || !AngelicaClientTweaker.isObfEnv()) {
+        if (SystemProperties.debugTooling()) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
 
             FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);
+            MinecraftForge.EVENT_BUS.register(FlybyFallGuard.INSTANCE);
             FlybyRunner.INSTANCE.startFromProperties();
         }
     }

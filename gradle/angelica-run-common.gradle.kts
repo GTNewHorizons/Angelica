@@ -23,12 +23,15 @@ repositories {
     }
 }
 
+val forwardedRunProperties = System.getProperties().stringPropertyNames().filter { it.startsWith("angelica.") || it.startsWith("quickPlay") }
+
+configure<MinecraftExtension> {
+    extraRunJvmArguments.set(extraRunJvmArguments.get().filterNot { arg -> forwardedRunProperties.any { arg.startsWith("-D$it=") } })
+}
+
 tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
-    for ((key, value) in System.getProperties()) {
-        val name = key.toString()
-        if (name.startsWith("angelica.") || name.startsWith("quickPlay")) {
-            jvmArgs("-D$name=$value")
-        }
+    for (name in forwardedRunProperties) {
+        jvmArgs("-D$name=${System.getProperty(name)}")
     }
 }
 
@@ -38,7 +41,7 @@ val lwjglDebug = project.extra.has("lwjglDebug") && project.extra["lwjglDebug"] 
 tasks.withType<JavaExec>().configureEach {
     if (name.startsWith("runClient") && name != "runClient" && isMacOs) {
         jvmArgs("-XstartOnFirstThread")
-        jvmArgs("-Dangelica.sdlgpu.encoderAssertions=" + if (lwjglDebug) "fatal" else "warn")
+        if ("angelica.sdlgpu.encoderAssertions" !in forwardedRunProperties) jvmArgs("-Dangelica.sdlgpu.encoderAssertions=" + if (lwjglDebug) "fatal" else "warn")
         if (lwjglDebug) {
             environment("METAL_DEVICE_WRAPPER_TYPE", "1")
             environment("METAL_DEBUG_ERROR_MODE", "0")
