@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.commands;
 
 // Debug commands adapted from Beddium by Ven and FalsePattern
 
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.ChunkDebugMinimap;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRoute;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
@@ -130,7 +131,7 @@ public class AngelicaCommand extends CommandBase {
             }
         }
 
-        FlybyRunner.INSTANCE.start(route, length, 0, speed);
+        FlybyRunner.INSTANCE.start(route, length, SystemProperties.FLYBY_WARMUP_TICKS, speed);
         final int used = length > 0 ? length : route.defaultLength();
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE
             + "Flyby started: " + route.id() + " for " + used + " " + route.lengthUnit()

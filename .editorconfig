@@ -22,6 +22,8 @@ indent_size = 2
 trim_trailing_whitespace = false
 
 [*.java]
+max_line_length = 240
+ij_java_wrap_long_lines = false
 ij_java_use_single_class_imports = true
 ij_java_class_count_to_use_import_on_demand = 999
 ij_java_names_count_to_use_import_on_demand = 999

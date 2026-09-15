@@ -115,6 +115,12 @@ class PacerCoreTest {
     }
 
     @Test
+    void aZeroCapUsesTheRefreshPeriodOnlyWhenTearFree() {
+        assertEquals(P60, PacerCore.cadencePeriodNanos(0, P60, true));
+        assertEquals(0L, PacerCore.cadencePeriodNanos(0, P60, false));
+    }
+
+    @Test
     void threeConsistentPairsOnTheRefreshGridLockThePhase() {
         final Rig rig = new Rig(P60, true, 0);
         rig.feedRun(PacerCore.LOCK_PAIRS, 20 * MS, 5 * MS, P60);

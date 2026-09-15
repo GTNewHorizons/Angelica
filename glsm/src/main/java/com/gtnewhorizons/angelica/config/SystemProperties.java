@@ -53,6 +53,8 @@ public final class SystemProperties {
     public static final double FLYBY_SPEED = parseDouble("angelica.flyby.speed"); // Travel speed in blocks per tick
     public static final boolean FLYBY_EXIT_WHEN_DONE = Boolean.getBoolean("angelica.flyby.exitWhenDone");
     public static final long FLYBY_TIME_OF_DAY = Math.floorMod(Long.getLong("angelica.flyby.timeOfDay", 6000L), 24000L);
+    public static final String FLYBY_COMMANDS = System.getProperty("angelica.flyby.commands", "");
+    public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
 
     // Debug
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");
@@ -61,6 +63,7 @@ public final class SystemProperties {
     public static final boolean ENABLE_TEST_BLOCKS = Boolean.getBoolean("angelica.debug.testBlocks");
     public static final boolean DUMP_CLASS = Boolean.getBoolean("angelica.debug.dumpClass");
     private static final boolean DUMP_SHADERS_PROP = Boolean.getBoolean("angelica.debug.dumpShaders");
+    private static final boolean DEBUG_TOOLING_PROP = Boolean.getBoolean("angelica.debug.tooling");
     public static final boolean REDIRECTOR_LOGSPAM = Boolean.getBoolean("angelica.debug.redirectorLogspam");
     public static final boolean DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debug.displayLists");
     public static final boolean FFP_TRACE = Boolean.getBoolean("angelica.debug.ffpTrace");
@@ -74,6 +77,10 @@ public final class SystemProperties {
 
     public static boolean dumpShaders() {
         return DUMP_SHADERS_PROP || isDeobf();
+    }
+
+    public static boolean debugTooling() {
+        return DEBUG_TOOLING_PROP || isDeobf();
     }
 
     public static Path shaderDumpDir(String phase) {
@@ -103,6 +110,11 @@ public final class SystemProperties {
         OFF,
         WARN,
         FATAL
+    }
+
+    public enum FlybyPacing {
+        UNCAPPED,
+        CONFIGURED
     }
 
     private static <E extends Enum<E>> E parseEnum(String key, E whenAbsent, E whenInvalid, Class<E> type) {

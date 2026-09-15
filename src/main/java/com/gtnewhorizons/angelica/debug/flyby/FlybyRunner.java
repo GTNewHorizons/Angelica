@@ -1,16 +1,22 @@
 package com.gtnewhorizons.angelica.debug.flyby;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.entity.EntityClientPlayerMP;
 import net.minecraft.client.gui.GuiMainMenu;
+import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.world.MinecraftException;
 import net.minecraft.world.WorldServer;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -27,6 +33,7 @@ public final class FlybyRunner {
     private static final double[] NO_PATH = new double[0];
     private static final float[] NO_YAW = new float[0];
     private static final byte[] NO_PHASE = new byte[0];
+    private static final String[] NO_COMMANDS = new String[0];
     private static final int MAX_RECORDED_FRAMES = 200_000;
 
     private enum State { IDLE, WAITING, WARMUP, RUNNING, SETTLE, EXITING, DONE }
@@ -46,8 +53,17 @@ public final class FlybyRunner {
     private boolean exitWhenDone;
     private boolean startedFromProperties;
     private volatile boolean freezeRequested;
+    private String[] sceneCommands = NO_COMMANDS;
+    private String scenePlayerName;
+    private volatile boolean sceneRequested;
+    private volatile boolean sceneClearRequested;
+    private int sceneSpawnTotal;
     private boolean pauseOnLostFocusSaved;
     private boolean pauseOnLostFocusOverridden;
+    private boolean vsyncOverridden;
+
+    private static volatile boolean sceneGuarded;
+    private static volatile boolean worldChangesDiscarded;
 
     private double originX, originY, originZ;
     private float originYaw, originPitch;
@@ -68,11 +84,22 @@ public final class FlybyRunner {
 
     private long[] frameTimesNs = NO_FRAMES;
     private int frameCount;
+    private final int[] phaseStartFrame = new int[64];
+    private final int[] phaseKey = new int[64];
+    private int phaseCount;
     private boolean framesTruncated;
     private long lastFrameNs;
     private long runStartNs;
 
     private FlybyRunner() {}
+
+    public static boolean sceneGuarded() {
+        return sceneGuarded;
+    }
+
+    public static boolean worldChangesDiscarded() {
+        return worldChangesDiscarded;
+    }
 
     public void startFromProperties() {
         final String id = SystemProperties.FLYBY_ROUTE;
@@ -89,6 +116,10 @@ public final class FlybyRunner {
         this.waitForTracy = SystemProperties.FLYBY_WAIT_FOR_TRACY;
         this.waitForFocus = SystemProperties.FLYBY_WAIT_FOR_FOCUS;
         this.exitWhenDone = SystemProperties.FLYBY_EXIT_WHEN_DONE;
+        if (!SystemProperties.FLYBY_COMMANDS.isEmpty()) {
+            this.sceneCommands = FlybyScene.load(SystemProperties.FLYBY_COMMANDS);
+            LOGGER.info("Flyby scene '{}': {} commands", SystemProperties.FLYBY_COMMANDS, this.sceneCommands.length);
+        }
         LOGGER.info("Flyby started from properties: route={} warmup={} length={} {} ({} ticks) waitForTracy={} waitForFocus={} exitWhenDone={}",
             configured.id(), this.warmupTicks, this.runLength, configured.lengthUnit(), this.runTicks,
             this.waitForTracy, this.waitForFocus, this.exitWhenDone);
@@ -106,6 +137,7 @@ public final class FlybyRunner {
         this.waitForTracy = false;
         this.waitForFocus = false;
         this.exitWhenDone = false;
+        sceneGuarded = false;
         this.state = State.WAITING;
     }
 
@@ -120,9 +152,19 @@ public final class FlybyRunner {
 
     @SubscribeEvent
     public void onClientTick(TickEvent.ClientTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || this.state == State.IDLE || this.state == State.DONE) return;
+        if (event.phase != TickEvent.Phase.END) return;
 
         final Minecraft mc = Minecraft.getMinecraft();
+        if (worldChangesDiscarded && mc.getIntegratedServer() == null) {
+            worldChangesDiscarded = false;
+        }
+        if (this.state == State.IDLE || this.state == State.DONE) return;
+
+        if (mc.theWorld == null && (this.state == State.WARMUP || this.state == State.RUNNING || this.state == State.SETTLE)) {
+            this.cancel();
+            return;
+        }
+
         if (this.state == State.EXITING) {
             if (++this.tick >= EXIT_TICKS) {
                 this.state = State.DONE;
@@ -144,7 +186,7 @@ public final class FlybyRunner {
                 this.applyPosition(player, 0);
                 if (++this.tick >= this.warmupTicks) {
                     this.tick = 0;
-                    this.beginMeasuring();
+                    this.beginMeasuring(mc);
                 }
             }
             case RUNNING -> {
@@ -201,17 +243,38 @@ public final class FlybyRunner {
 
         this.buildPath();
         this.freezeTimeAndWeather(mc);
+        if (this.sceneCommands.length > 0 && mc.getIntegratedServer() != null) {
+            this.scenePlayerName = player.getCommandSenderName();
+            this.sceneRequested = true;
+        }
+
+        this.suppressPacing();
 
         this.tick = 0;
         if (this.warmupTicks > 0) {
             this.state = State.WARMUP;
             this.warmupSection = Tracy.sectionEnter(Tracy.SECTION_BENCHMARK, "flyby warmup");
         } else {
-            this.beginMeasuring();
+            this.beginMeasuring(mc);
         }
 
         LOGGER.info("Flyby {} starting at {} {} {} yaw {}", this.route.id(),
             this.originX, this.originY, this.originZ, this.originYaw);
+    }
+
+    private void suppressPacing() {
+        FpsReducer.beginBenchmark();
+        if (SystemProperties.FLYBY_PACING == FlybyPacing.UNCAPPED && GLStateManager.getEffectiveVSyncMode().tearFree()) {
+            GLStateManager.setVSyncMode(VSyncMode.OFF);
+            this.vsyncOverridden = true;
+        }
+    }
+
+    private void restorePacing(Minecraft mc) {
+        FpsReducer.endBenchmark();
+        if (!this.vsyncOverridden) return;
+        GLStateManager.setVSyncEnabled(mc.gameSettings.enableVsync);
+        this.vsyncOverridden = false;
     }
 
     private void buildPath() {
@@ -268,24 +331,37 @@ public final class FlybyRunner {
     }
 
     private void emitPhase(int index) {
-        if (!Tracy.ENABLED || index >= this.pathLeg.length) return;
+        if (index >= this.pathLeg.length) return;
 
         final int leg = this.pathLeg[index];
         final int turning = this.pathTurning[index];
-        Tracy.plotInt(this.plotLeg, leg);
-        Tracy.plotInt(this.plotTurning, turning);
+        if (Tracy.ENABLED) {
+            Tracy.plotInt(this.plotLeg, leg);
+            Tracy.plotInt(this.plotTurning, turning);
+        }
 
         final int phase = (leg << 1) | turning;
         if (phase != this.lastPhase) {
             this.lastPhase = phase;
-            final String label = "flyby " + (turning != 0 ? "turn" : "leg") + " " + leg;
-            Tracy.message(label);
-            Tracy.sectionLeave(this.legSection);
-            this.legSection = Tracy.sectionEnter(Tracy.SECTION_BENCHMARK, label);
+            if (this.phaseCount < this.phaseStartFrame.length) {
+                this.phaseStartFrame[this.phaseCount] = this.frameCount;
+                this.phaseKey[this.phaseCount] = phase;
+                this.phaseCount++;
+            }
+            if (Tracy.ENABLED) {
+                final String label = phaseLabel(phase);
+                Tracy.message(label);
+                Tracy.sectionLeave(this.legSection);
+                this.legSection = Tracy.sectionEnter(Tracy.SECTION_BENCHMARK, label);
+            }
         }
     }
 
-    private void beginMeasuring() {
+    private static String phaseLabel(int phase) {
+        return "flyby " + ((phase & 1) != 0 ? "turn" : "leg") + " " + (phase >> 1);
+    }
+
+    private void beginMeasuring(Minecraft mc) {
         this.state = State.RUNNING;
         Tracy.sectionLeave(this.warmupSection);
         this.warmupSection = 0L;
@@ -295,12 +371,16 @@ public final class FlybyRunner {
         this.lastPhase = -1;
         this.frameTimesNs = new long[Math.min(MAX_RECORDED_FRAMES, Math.max(1024, this.runTicks * 20))];
         this.frameCount = 0;
+        this.phaseCount = 0;
         this.lastFrameNs = 0L;
         this.runStartNs = System.nanoTime();
         FramePacer.beginStats();
+
+        final String config = "backend=" + GLStateManager.getRenderBackendName() + " pacing=" + SystemProperties.FLYBY_PACING + " vsync=" + GLStateManager.getEffectiveVSyncMode() + " discard=" + (mc.getIntegratedServer() != null);
         if (Tracy.ENABLED) {
-            Tracy.message("flyby start route=" + this.route.id() + " length=" + this.runLength + this.route.lengthUnit() + " speed=" + this.route.speedOr(this.speed) + "b/t ticks=" + this.runTicks + " sdlgpu=" + SystemProperties.USE_SDL_GPU);
+            Tracy.message("flyby start route=" + this.route.id() + " length=" + this.runLength + this.route.lengthUnit() + " speed=" + this.route.speedOr(this.speed) + "b/t ticks=" + this.runTicks + " " + config);
         }
+        LOGGER.info("Flyby measuring: {}", config);
     }
 
     private void holdPosition(EntityClientPlayerMP player) {
@@ -358,17 +438,57 @@ public final class FlybyRunner {
             return;
         }
 
+        sceneGuarded = true;
         this.freezeRequested = true;
     }
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
-        if (event.phase != TickEvent.Phase.END || !this.freezeRequested) return;
-        this.freezeRequested = false;
+        if (event.phase != TickEvent.Phase.END) return;
+        final boolean clear = this.sceneClearRequested;
+        final boolean freeze = this.freezeRequested;
+        final boolean scene = this.sceneRequested;
+        if (!clear && !freeze && !scene) return;
 
         final MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return;
 
+        if (clear) {
+            this.sceneClearRequested = false;
+            this.clearScene(server);
+        }
+        if (freeze || scene) {
+            this.discardWorldChanges(server);
+        }
+        if (freeze) {
+            this.freezeRequested = false;
+            this.applyFreeze(server);
+        }
+        if (scene) {
+            this.sceneRequested = false;
+            this.runScene(server);
+        }
+    }
+
+    private void discardWorldChanges(MinecraftServer server) {
+        if (worldChangesDiscarded) return;
+
+        for (WorldServer world : server.worldServers) {
+            if (world == null) continue;
+            try {
+                world.saveAllChunks(true, null);
+            } catch (MinecraftException e) {
+                LOGGER.error("Flyby: failed to save the world before discarding changes", e);
+            }
+        }
+        server.getConfigurationManager().saveAllPlayerData();
+
+        worldChangesDiscarded = true;
+        LOGGER.warn("Flyby: world saving is off until you leave this world");
+        server.getConfigurationManager().sendChatMsg(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Flyby: world saving is off until you leave this world"));
+    }
+
+    private void applyFreeze(MinecraftServer server) {
         for (WorldServer world : server.worldServers) {
             if (world == null) continue;
 
@@ -389,6 +509,45 @@ public final class FlybyRunner {
                 world.setWorldTime(SystemProperties.FLYBY_TIME_OF_DAY);
             }
         }
+    }
+
+    private void runScene(MinecraftServer server) {
+        final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(this.scenePlayerName);
+        if (player == null) {
+            LOGGER.warn("Flyby scene: no server player named '{}', skipping scene", this.scenePlayerName);
+            return;
+        }
+
+        this.clearScene(server);
+
+        final FlybyCommandSender sender = new FlybyCommandSender(player);
+        for (String line : this.sceneCommands) {
+            if (server.getCommandManager().executeCommand(sender, line) == 0) {
+                LOGGER.warn("flyby scene command did not execute: {}", line);
+            }
+        }
+        LOGGER.info("Flyby scene: ran {} commands", this.sceneCommands.length);
+        if (Tracy.ENABLED) Tracy.message("flyby scene " + this.sceneCommands.length + " commands");
+        int total = 0;
+        for (WorldServer world : server.worldServers) {
+            if (world != null) total += FlybyScene.count(world);
+        }
+        this.sceneSpawnTotal = total;
+    }
+
+    private void clearScene(MinecraftServer server) {
+        int remaining = 0;
+        int cleared = 0;
+        for (WorldServer world : server.worldServers) {
+            if (world == null) continue;
+            remaining += FlybyScene.count(world);
+            cleared += FlybyScene.clear(world);
+        }
+        if (cleared > 0) LOGGER.info("Flyby scene: cleared {} entities and blocks", cleared);
+        if (worldChangesDiscarded && remaining < this.sceneSpawnTotal) {
+            LOGGER.warn("Flyby scene: {} of {} spawned entities and blocks were lost before the clear", this.sceneSpawnTotal - remaining, this.sceneSpawnTotal);
+        }
+        this.sceneSpawnTotal = 0;
     }
 
     private void finish(Minecraft mc, EntityClientPlayerMP player) {
@@ -415,6 +574,9 @@ public final class FlybyRunner {
 
         this.returnToOrigin(player);
         this.restorePauseOnLostFocus(mc);
+        sceneGuarded = false;
+        this.sceneClearRequested = this.sceneCommands.length > 0;
+        this.restorePacing(mc);
 
         this.tick = 0;
         this.state = this.exitWhenDone ? State.EXITING : State.DONE;
@@ -454,21 +616,31 @@ public final class FlybyRunner {
           .append(": ").append(this.frameCount).append(" frames in ")
           .append(String.format("%.2fs", elapsedNs / 1_000_000_000.0D));
 
-        if (this.frameCount > 0) {
-            final long[] sorted = Arrays.copyOf(this.frameTimesNs, this.frameCount);
-            Arrays.sort(sorted);
-            long total = 0L;
-            for (long ns : sorted) total += ns;
-            sb.append(String.format(", avg %.2fms, p50 %.2fms, p99 %.2fms, max %.2fms",
-                total / (double) this.frameCount / 1e6D,
-                sorted[this.frameCount / 2] / 1e6D,
-                sorted[Math.min(this.frameCount - 1, (int) (this.frameCount * 0.99D))] / 1e6D,
-                sorted[this.frameCount - 1] / 1e6D));
-        }
+        if (this.frameCount > 0) appendFrameStats(sb, 0, this.frameCount);
         if (this.framesTruncated) sb.append(" (frame samples truncated)");
+        for (int i = 0; i < this.phaseCount; i++) {
+            final int from = this.phaseStartFrame[i];
+            final int to = i + 1 < this.phaseCount ? this.phaseStartFrame[i + 1] : this.frameCount;
+            if (to <= from) continue;
+            sb.append("; ").append(phaseLabel(this.phaseKey[i]).substring(6)).append(": ").append(to - from).append(" frames");
+            appendFrameStats(sb, from, to);
+        }
 
         sb.append(String.format(", end position %.6f %.6f %.6f", player.posX, player.posY, player.posZ));
         return sb.toString();
+    }
+
+    private void appendFrameStats(StringBuilder sb, int from, int to) {
+        final int n = to - from;
+        final long[] sorted = Arrays.copyOfRange(this.frameTimesNs, from, to);
+        Arrays.sort(sorted);
+        long total = 0L;
+        for (long ns : sorted) total += ns;
+        sb.append(String.format(", avg %.2fms, p50 %.2fms, p99 %.2fms, max %.2fms",
+            total / (double) n / 1e6D,
+            sorted[n / 2] / 1e6D,
+            sorted[Math.min(n - 1, (int) (n * 0.99D))] / 1e6D,
+            sorted[n - 1] / 1e6D));
     }
 
     public void cancel() {
@@ -482,7 +654,13 @@ public final class FlybyRunner {
             Tracy.sectionLeave(this.runSection);
             this.runSection = 0L;
             FramePacer.endStats();
-            this.restorePauseOnLostFocus(Minecraft.getMinecraft());
+            final Minecraft mc = Minecraft.getMinecraft();
+            this.restorePauseOnLostFocus(mc);
+            this.freezeRequested = false;
+            this.sceneRequested = false;
+            sceneGuarded = false;
+            this.sceneClearRequested = this.sceneCommands.length > 0;
+            this.restorePacing(mc);
         }
     }
 
