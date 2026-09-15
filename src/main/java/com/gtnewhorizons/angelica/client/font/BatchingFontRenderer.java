@@ -1163,6 +1163,16 @@ public class BatchingFontRenderer {
         lightmapTextureId = 0;
     }
 
+    public static boolean darkModeRecolorEnabled = false;
+    public static boolean enterRecolorSection() {
+        boolean prev = darkModeRecolorEnabled;
+        darkModeRecolorEnabled = true;
+        return prev;
+    }
+    public static void exitRecolorSection(boolean prev) {
+        darkModeRecolorEnabled = prev;
+    }
+
     // === Actual text mesh generation
 
     public static boolean charInRange(char what, char fromInclusive, char toInclusive) {
@@ -1486,6 +1496,13 @@ public class BatchingFontRenderer {
                 if (curWave) {
                     float time = HUDCaching.renderingCacheOverride ? 0f : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
                     renderY += (float) Math.sin(visibleCharIndex * WAVE_FREQUENCY + time) * AngelicaConfig.waveAmplitude;
+                }
+
+                if (darkModeRecolorEnabled) {
+                    float time = HUDCaching.renderingCacheOverride ? 0f : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
+                    curColor = 0xFFFF0000 + (int)(Math.round(0x00007F80 * (Math.sin(2 * time) + 1)) & 0x0000FFFF);
+                } else {
+                    curColor &= 0xFFFFFFFF;
                 }
 
                 final boolean drawShadow = enableShadow || curShadow;
