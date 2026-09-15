@@ -40,7 +40,7 @@ import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
 import java.nio.ShortBuffer;
 
-import static com.mitchej123.lwjgl.LWJGLServiceProvider.LWJGL;
+import static org.taumc.celeritas.lwjgl.LWJGLServiceProvider.LWJGL;
 
 /**
  * LWJGL2 GL implementation of {@link RenderBackend}.
@@ -122,11 +122,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    protected int queryDisplayRefreshRateHz() {
+    protected long queryRefreshPeriodNanos() {
         final DisplayMode mode = Display.getDisplayMode();
-        if (mode != null && mode.getFrequency() > 0) return mode.getFrequency();
+        if (mode != null && mode.getFrequency() > 0) return periodFromIntegerHz(mode.getFrequency());
         final DisplayMode desktop = Display.getDesktopDisplayMode();
-        return desktop == null ? 0 : desktop.getFrequency();
+        return desktop == null ? 0L : periodFromIntegerHz(desktop.getFrequency());
     }
 
     @Override

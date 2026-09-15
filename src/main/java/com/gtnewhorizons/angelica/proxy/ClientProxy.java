@@ -63,6 +63,7 @@ import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.render.CloudRenderer;
 import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
+import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
@@ -187,6 +188,7 @@ public final class ClientProxy extends CommonProxy {
         if (AngelicaConfig.enableZoom) {
             Zoom.init();
         }
+        FpsReducer.init();
         AngelicaConfig.applyGpuCullingMode();
         if (AngelicaConfig.enableDynamicLights) {
             EntityLightConfig.init(new java.io.File(mc.mcDataDir, "config"));

@@ -52,6 +52,7 @@ public final class SystemProperties {
     public static final int FLYBY_LENGTH = Integer.getInteger("angelica.flyby.length", 0); // Blocks for moving routes, ticks for stationary
     public static final double FLYBY_SPEED = parseDouble("angelica.flyby.speed"); // Travel speed in blocks per tick
     public static final boolean FLYBY_EXIT_WHEN_DONE = Boolean.getBoolean("angelica.flyby.exitWhenDone");
+    public static final long FLYBY_TIME_OF_DAY = Math.floorMod(Long.getLong("angelica.flyby.timeOfDay", 6000L), 24000L);
 
     // Debug
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");
@@ -62,12 +63,14 @@ public final class SystemProperties {
     private static final boolean DUMP_SHADERS_PROP = Boolean.getBoolean("angelica.debug.dumpShaders");
     public static final boolean REDIRECTOR_LOGSPAM = Boolean.getBoolean("angelica.debug.redirectorLogspam");
     public static final boolean DEBUG_DISPLAY_LISTS = Boolean.getBoolean("angelica.debug.displayLists");
+    public static final boolean FFP_TRACE = Boolean.getBoolean("angelica.debug.ffpTrace");
     public static final boolean LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.debug.displayLists.compilation");
     public static final boolean FORCE_ORPHAN_STREAMING = Boolean.getBoolean("angelica.debug.forceOrphanStreaming");
     public static final String SHADER_DUMP_ROOT = "angelica_dumps";
 
     // Set by us, read by celeritas
     public static final String KEY_CELERITAS_ENABLE_GL_DEBUG = "celeritas.enableGLDebug";
+    public static final String KEY_CELERITAS_LWJGL_SERVICE = "celeritas.lwjglService";
 
     public static boolean dumpShaders() {
         return DUMP_SHADERS_PROP || isDeobf();

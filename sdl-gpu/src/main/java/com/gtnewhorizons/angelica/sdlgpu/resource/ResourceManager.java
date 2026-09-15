@@ -2208,7 +2208,24 @@ public final class ResourceManager {
         return mapTextureFormat(glFormat, preferredD24, preferredD24S8);
     }
 
+    public boolean isMappableTextureFormat(int glFormat) {
+        return lookupTextureFormat(glFormat, preferredD24, preferredD24S8) != SDL_GPU_TEXTUREFORMAT_INVALID;
+    }
+
     public static int mapTextureFormat(int glFormat, int preferredD24, int preferredD24S8) {
+        final int mapped = lookupTextureFormat(glFormat, preferredD24, preferredD24S8);
+        if (mapped != SDL_GPU_TEXTUREFORMAT_INVALID) return mapped;
+        synchronized (UNMAPPED_TEXTURE_FORMAT_SEEN) {
+            if (UNMAPPED_TEXTURE_FORMAT_SEEN.add(glFormat)) {
+                LOG.warn("Unmapped GL texture format: 0x{}", Integer.toHexString(glFormat));
+            }
+        }
+        return SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
+    }
+
+    private static final IntOpenHashSet UNMAPPED_TEXTURE_FORMAT_SEEN = new IntOpenHashSet();
+
+    private static int lookupTextureFormat(int glFormat, int preferredD24, int preferredD24S8) {
         return switch (glFormat) {
             case GL11.GL_RGBA, GL11.GL_RGBA8 -> SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
             case GL11.GL_RGB, GL11.GL_RGB8 -> SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM; // RGB -> RGBA promotion
@@ -2262,10 +2279,7 @@ public final class ResourceManager {
             case GL31.GL_RGBA8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8G8B8A8_SNORM;
             case GL31.GL_RGBA16_SNORM -> SDL_GPU_TEXTUREFORMAT_R16G16B16A16_SNORM;
             case GL31.GL_RGB16_SNORM -> SDL_GPU_TEXTUREFORMAT_R16G16B16A16_SNORM; // RGB SNORM -> RGBA SNORM promotion
-            default -> {
-                LOG.warn("Unmapped GL texture format: 0x{}", Integer.toHexString(glFormat));
-                yield SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
-            }
+            default -> SDL_GPU_TEXTUREFORMAT_INVALID;
         };
     }
 

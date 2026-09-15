@@ -242,6 +242,12 @@ public final class FBOClearTracker {
         return true;
     }
 
+    public void resolveDestinationForWrite(ContextState st, long destTex, ResourceManager.TextureMeta destMeta, int level, int dx, int dy, int dz, int w, int h) {
+        if (dz != 0 || !discardPendingClearIfFullyCovered(st, destTex, dx, dy, level, w, h, destMeta)) {
+            materializePendingClearForTexture(st, destTex);
+        }
+    }
+
     public void materializePendingClearForTexture(ContextState st, long handle) {
         if (handle == 0) return;
         final boolean depthPending = st.pendingDepthTextures.remove(handle);

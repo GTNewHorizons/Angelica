@@ -1908,8 +1908,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
-	public void preSubmitShadowGraph(int frame, boolean spectator) {
-		if (shadowRenderer != null) shadowRenderer.preSubmitGraphUpdate(frame, spectator);
+	public void preSubmitShadowGraph(int frame) {
+		if (shadowRenderer != null) shadowRenderer.preSubmitGraphUpdate(frame);
 	}
 
 	@Override

@@ -19,9 +19,6 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexEncoder;
 import org.joml.Vector3f;
 
-/**
- * Writes Iris-extended vertices. Delegates base 28 bytes to VANILLA_LIKE encoder.
- */
 public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEncoder {
     // Offsets derived from format definition
     private static final int MID_TEX_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("mc_midTexCoord").getPointer();
@@ -102,6 +99,11 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     }
 
     @Override
+    public boolean supportsBilinearCorrection() {
+        return false;
+    }
+
+    @Override
     public long write(long ptr, Material material, Vertex vertex, int sectionIndex) {
         uSum += vertex.u;
         vSum += vertex.v;
@@ -109,6 +111,7 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
 
         final BlockRenderContext ctx = context;
 
+        vertex.rdhFactor = 0;
         baseEncoder.write(ptr, material, vertex, sectionIndex);
 
         // Per-vertex: mc_Entity (packed blockId + renderType), midBlock, lightValue

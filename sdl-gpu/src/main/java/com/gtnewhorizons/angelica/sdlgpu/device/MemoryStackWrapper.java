@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
-import com.mitchej123.lwjgl.MemoryStack;
+import org.taumc.celeritas.lwjgl.MemoryStack;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;

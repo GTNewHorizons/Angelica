@@ -54,6 +54,28 @@ public final class ContextState {
 
     public final PixelStoreState pixelStore = new PixelStoreState();
 
+    public static final class ProxyTextureState {
+        public int target;
+        public int width;
+        public int height;
+        public int depth;
+        public int internalFormat;
+
+        public void accept(int target, int width, int height, int depth, int internalFormat) {
+            this.target = target;
+            this.width = width;
+            this.height = height;
+            this.depth = depth;
+            this.internalFormat = internalFormat;
+        }
+
+        public void reject(int target) {
+            accept(target, 0, 0, 0, 0);
+        }
+    }
+
+    public final ProxyTextureState proxyTexture = new ProxyTextureState();
+
     public static final class VAOState {
         public final boolean[] attribEnabled = new boolean[MAX_VERTEX_ATTRIBS];
         public int attribEnabledMask;
@@ -211,6 +233,7 @@ public final class ContextState {
 
     public int boundArrayBuffer;
     public int boundIndirectBuffer;
+    public int boundDispatchIndirectBuffer;
     public int boundUniformBuffer;
     public int boundCopyReadBuffer;
     public int boundCopyWriteBuffer;
@@ -226,6 +249,7 @@ public final class ContextState {
             case GL30.GL_PIXEL_UNPACK_BUFFER -> boundPixelUnpackBuffer;
             case GL30.GL_PIXEL_PACK_BUFFER -> boundPixelPackBuffer;
             case GL40.GL_DRAW_INDIRECT_BUFFER -> boundIndirectBuffer;
+            case GL43.GL_DISPATCH_INDIRECT_BUFFER -> boundDispatchIndirectBuffer;
             case GL31.GL_COPY_READ_BUFFER -> boundCopyReadBuffer;
             case GL31.GL_COPY_WRITE_BUFFER -> boundCopyWriteBuffer;
             case GL43.GL_SHADER_STORAGE_BUFFER -> boundSSBO;

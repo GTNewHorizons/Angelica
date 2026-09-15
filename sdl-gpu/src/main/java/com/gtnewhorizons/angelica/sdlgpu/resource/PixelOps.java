@@ -13,6 +13,12 @@ import static org.lwjgl.sdl.SDLGPU.*;
 public final class PixelOps {
     private PixelOps() {}
 
+    public static int mipLevelSize(int base, int level) {
+        if (base <= 0 || level < 0) return 0;
+        if (level >= Integer.SIZE - 1) return 1;
+        return Math.max(1, base >> level);
+    }
+
     public static int defaultMipLevels(int width, int height) {
         final int max = Math.max(1, Math.max(width, height));
         return Math.max(1, 32 - Integer.numberOfLeadingZeros(max));

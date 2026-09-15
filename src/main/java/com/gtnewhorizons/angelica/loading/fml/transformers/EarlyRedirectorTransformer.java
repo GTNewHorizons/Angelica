@@ -18,13 +18,10 @@ import net.minecraft.launchwrapper.IClassTransformer;
  */
 public class EarlyRedirectorTransformer implements IClassTransformer {
 
-    private final EarlyRedirectorCore impl = new EarlyRedirectorCore(
-        "com.gtnewhorizons.angelica.lwjgl3.",
-        "com.gtnewhorizons.angelica.transform"
-    );
+    private final EarlyRedirectorCore impl = new EarlyRedirectorCore("com.gtnewhorizons.angelica.transform");
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        return impl.transform(transformedName, basicClass);
+        return impl.transform(transformedName, basicClass, this);
     }
 }

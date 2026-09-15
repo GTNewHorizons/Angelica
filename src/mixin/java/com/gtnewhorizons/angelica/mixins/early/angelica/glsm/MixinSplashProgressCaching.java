@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.FrameHooks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -10,10 +10,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = cpw.mods.fml.client.SplashProgress.class, remap = false)
 public class MixinSplashProgressCaching {
 
-    // VAOs aren't shared across GL contexts; the SharedDrawable the client thread just swapped
-    // onto has none. Core profile (macOS) rejects glValidateProgram without one.
-    @Inject(method = "start", at = @At("RETURN"))
+    @Inject(method = "start", at = @At("TAIL"))
     private static void angelica$bindSharedDrawableVAO(CallbackInfo ci) {
-        GLStateManager.glBindVertexArray(GLStateManager.glGenVertexArrays());
+        FrameHooks.bindSplashVao();
+    }
+
+    @Inject(method = "finish", at = @At("RETURN"))
+    private static void angelica$enableCachingOnFinish(CallbackInfo ci) {
+        FrameHooks.splashFinished();
     }
 }

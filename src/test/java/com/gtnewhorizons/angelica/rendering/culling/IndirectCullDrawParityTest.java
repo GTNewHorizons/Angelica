@@ -1,13 +1,15 @@
 package com.gtnewhorizons.angelica.rendering.culling;
 
-import org.embeddedt.embeddium.impl.render.chunk.multidraw.DrawCommandSink;
 import org.embeddedt.embeddium.impl.render.chunk.data.SectionRenderDataUnsafe;
+import org.embeddedt.embeddium.impl.render.chunk.multidraw.BatchAssembler;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.rendering.RenderRegionKeys;
+import com.gtnewhorizons.angelica.rendering.celeritas.IndividualDrawBatch;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexAttribute;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexAttributeBinding;
 import org.embeddedt.embeddium.impl.gl.attribute.GlVertexAttributeFormat;
@@ -20,10 +22,10 @@ import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlPrimitiveType;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlVertexArrayTessellation;
 import org.embeddedt.embeddium.impl.gl.tessellation.TessellationBinding;
-import org.embeddedt.embeddium.impl.render.chunk.multidraw.BatchAssembler;
-import org.embeddedt.embeddium.impl.render.chunk.multidraw.DirectMultiDrawEmitter;
-import org.embeddedt.embeddium.impl.render.chunk.multidraw.IndirectMultiDrawEmitter;
-import org.embeddedt.embeddium.impl.render.chunk.multidraw.MultiDrawEmitter;
+import org.embeddedt.embeddium.impl.gl.device.DirectMultiDrawBatch;
+import org.embeddedt.embeddium.impl.gl.device.IndirectMultiDrawBatch;
+import org.embeddedt.embeddium.impl.gl.device.MultiDrawBatch;
+import org.embeddedt.embeddium.impl.gl.device.MultiDrawBatchFactory;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterAll;
@@ -36,7 +38,6 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL43;
 
-import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
@@ -109,18 +110,86 @@ class IndirectCullDrawParityTest {
         }
     }
 
+    private static final class SceneRig implements AutoCloseable {
+        GlMutableBuffer vertexBuffer;
+        GlMutableBuffer sharedIndexBuffer;
+        GlMutableBuffer sortedIndexBuffer;
+        GlVertexArrayTessellation tessNonSorted;
+        GlVertexArrayTessellation tessSorted;
+
+        SceneRig(Scene scene) {
+            try {
+                final ByteBuffer vertexBytes = BufferUtils.createByteBuffer(scene.vertices.capacity() * 4).order(ByteOrder.nativeOrder());
+                vertexBytes.asFloatBuffer().put(scene.vertices.duplicate());
+                vertexBuffer = upload(vertexBytes);
+                sharedIndexBuffer = upload(scene.sharedIndices.duplicate().order(ByteOrder.nativeOrder()));
+                sortedIndexBuffer = upload(scene.sortedIndices.duplicate().order(ByteOrder.nativeOrder()));
+                tessNonSorted = tessellation(vertexBuffer, sharedIndexBuffer);
+                tessSorted = tessellation(vertexBuffer, sortedIndexBuffer);
+            } catch (RuntimeException | Error e) {
+                close();
+                throw e;
+            }
+        }
+
+        @Override
+        public void close() {
+            if (tessNonSorted != null) tessNonSorted.delete(commandList);
+            if (tessSorted != null) tessSorted.delete(commandList);
+            if (vertexBuffer != null) commandList.deleteBuffer(vertexBuffer);
+            if (sharedIndexBuffer != null) commandList.deleteBuffer(sharedIndexBuffer);
+            if (sortedIndexBuffer != null) commandList.deleteBuffer(sortedIndexBuffer);
+        }
+    }
+
+    private static final class Fbo implements AutoCloseable {
+        int id;
+        final int[] textures = new int[2];
+
+        Fbo() {
+            try {
+                textures[0] = GLStateManager.glGenTextures();
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[0]);
+                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, FBO_SIZE, FBO_SIZE, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+                GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+
+                textures[1] = GLStateManager.glGenTextures();
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, textures[1]);
+                GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, FBO_SIZE, FBO_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+
+                id = GLStateManager.glGenFramebuffers();
+                GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, id);
+                GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, textures[0], 0);
+                GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, textures[1], 0);
+                assertEquals(GL30.GL_FRAMEBUFFER_COMPLETE, GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER), "parity FBO incomplete");
+            } catch (RuntimeException | Error e) {
+                close();
+                throw e;
+            }
+        }
+
+        @Override
+        public void close() {
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            if (id != 0) GLStateManager.glDeleteFramebuffers(id);
+            for (int tex : textures) {
+                if (tex != 0) GLStateManager.glDeleteTextures(tex);
+            }
+        }
+    }
+
     @BeforeAll
     static void setUpDevice() {
         GLRenderDevice.VANILLA_STATE_RESETTER = () -> {};
         RenderDevice.enterManagedCode();
         commandList = RenderDevice.INSTANCE.createCommandList();
         program = buildProgram();
-        GpuCulling.setMode(GpuCullingMode.COMPUTE);
     }
 
     @AfterAll
     static void tearDownDevice() {
-        GpuCulling.setMode(GpuCullingMode.CPU_ONLY);
         if (program != 0) GLStateManager.glDeleteProgram(program);
         RenderDevice.exitManagedCode();
     }
@@ -275,27 +344,6 @@ class IndirectCullDrawParityTest {
         return tess;
     }
 
-    private static int newFbo(int[] texturesOut) {
-        final int depthTex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, depthTex);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL30.GL_DEPTH_COMPONENT32F, FBO_SIZE, FBO_SIZE, 0, GL11.GL_DEPTH_COMPONENT, GL11.GL_FLOAT, (ByteBuffer) null);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        final int colorTex = GLStateManager.glGenTextures();
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, colorTex);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, FBO_SIZE, FBO_SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
-
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_ATTACHMENT, GL11.GL_TEXTURE_2D, depthTex, 0);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, colorTex, 0);
-        assertEquals(GL30.GL_FRAMEBUFFER_COMPLETE, GLStateManager.glCheckFramebufferStatus(GL30.GL_FRAMEBUFFER), "parity FBO incomplete");
-        texturesOut[0] = depthTex;
-        texturesOut[1] = colorTex;
-        return fbo;
-    }
-
     private static void beginDrawing(int fbo) {
         GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
         GLStateManager.glViewport(0, 0, FBO_SIZE, FBO_SIZE);
@@ -324,38 +372,41 @@ class IndirectCullDrawParityTest {
         return covered;
     }
 
-    private static void assertDepthParity(int directFbo, int gpuFbo, String label) {
+    private static void assertDepthParity(int directFbo, int otherFbo, String label) {
         final FloatBuffer direct = readDepth(directFbo);
-        final FloatBuffer gpu = readDepth(gpuFbo);
+        final FloatBuffer other = readDepth(otherFbo);
         final int covered = coveredPixels(direct);
         assertTrue(covered > 100, label + ": direct path drew almost nothing (" + covered + " covered pixels); scene setup is broken");
-        assertEquals(covered, coveredPixels(gpu), label + ": covered pixel count differs between direct and GPU-culled indirect");
+        assertEquals(covered, coveredPixels(other), label + ": covered pixel count differs between direct and the compared path");
         for (int i = 0; i < direct.capacity(); i++) {
-            if (direct.get(i) != gpu.get(i)) {
+            if (direct.get(i) != other.get(i)) {
                 final int x = i % FBO_SIZE;
                 final int y = i / FBO_SIZE;
-                assertEquals(direct.get(i), gpu.get(i), label + ": depth mismatch at (" + x + "," + y + "); the GPU-culled indirect path rendered different geometry than the direct path");
+                assertEquals(direct.get(i), other.get(i), label + ": depth mismatch at (" + x + "," + y + "); the compared path rendered different geometry than the direct path");
             }
         }
     }
 
-    private static RenderRegion newRegionKey() {
+    private static void setFrustumUbo(GpuTerrainCuller culler, ByteBuffer ubo) {
         try {
-            for (Constructor<?> ctor : RenderRegion.class.getDeclaredConstructors()) {
-                if (ctor.getParameterCount() == 5) {
-                    ctor.setAccessible(true);
-                    return (RenderRegion) ctor.newInstance(0, 0, 0, 0, null);
-                }
-            }
+            final Field field = GpuTerrainCuller.class.getDeclaredField("frustumUboBytes");
+            field.setAccessible(true);
+            field.set(culler, ubo);
         } catch (ReflectiveOperationException e) {
             throw new IllegalStateException(e);
         }
-        throw new IllegalStateException("RenderRegion constructor shape changed");
     }
 
-    private static int reflectInt(GpuIndirectMultiDrawEmitter emitter, String fieldName) {
+    private static void executeRegion(GpuTerrainCuller culler, RenderRegion region, GlVertexArrayTessellation tessellation) {
+        final MultiDrawBatch batch = culler.batchForRegion(region);
+        if (batch != null) {
+            batch.execute(commandList, tessellation, GlPrimitiveType.TRIANGLES);
+        }
+    }
+
+    private static int reflectInt(GpuTerrainCuller emitter, String fieldName) {
         try {
-            final Field field = GpuIndirectMultiDrawEmitter.class.getDeclaredField(fieldName);
+            final Field field = GpuTerrainCuller.class.getDeclaredField(fieldName);
             field.setAccessible(true);
             return field.getInt(emitter);
         } catch (ReflectiveOperationException e) {
@@ -374,72 +425,62 @@ class IndirectCullDrawParityTest {
     }
 
     private static void metaUpdate(SectionMetaBuffer meta, Section section, int localSectionIndex) {
-        section.slot = meta.update(section.passIndex, 0, 0, 0, localSectionIndex, section.srdAddress(), SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
+        section.slot = meta.update(section.passIndex, 0, 0, 0, localSectionIndex, section.srdAddress(), section.sliceMask, SectionRenderDataUnsafe.Strategy.FULL, QuadPrimitiveType.TRIANGULATED);
         assertTrue(section.slot >= 0, "meta rejected section for pass " + section.passIndex + " local index " + localSectionIndex);
     }
 
-    private static void pushSectionCommands(DrawCommandSink sink, long srdAddress, int sliceMask, int indexPointerMask) {
+    private static void pushSectionCommands(MultiDrawBatch batch, long srdAddress, int sliceMask, int indexPointerMask) {
         for (int facing = 0; facing < FACINGS; facing++) {
             if (((sliceMask >> facing) & 1) == 0) {
                 continue;
             }
 
-            sink.push(SectionRenderDataUnsafe.Strategy.FULL.getVertexOffset(srdAddress, facing),
+            batch.appendDrawCommand(SectionRenderDataUnsafe.Strategy.FULL.getVertexOffset(srdAddress, facing),
                     SectionRenderDataUnsafe.Strategy.FULL.getElementCount(srdAddress, facing, QuadPrimitiveType.TRIANGULATED),
                     SectionRenderDataUnsafe.Strategy.FULL.getIndexOffset(srdAddress, facing) & indexPointerMask);
         }
     }
 
-    private static void renderCpuEmitter(Scene scene, int fbo, GlVertexArrayTessellation tessNonSorted, GlVertexArrayTessellation tessSorted, MultiDrawEmitter emitter) {
+    private static void renderCpuBatches(Scene scene, int fbo, GlVertexArrayTessellation tessNonSorted, GlVertexArrayTessellation tessSorted, MultiDrawBatchFactory factory) {
         beginDrawing(fbo);
 
-        renderCpuPass(emitter, tessNonSorted, 0, List.of(
+        renderCpuPass(factory, tessNonSorted, 0, List.of(
                 scene.solid.subList(0, REGION1_SOLID_SECTIONS),
                 scene.solid.subList(REGION1_SOLID_SECTIONS, scene.solid.size())));
-        renderCpuPass(emitter, tessNonSorted, 0, List.of(scene.cutout));
-        renderCpuPass(emitter, tessSorted, 0xFFFFFFFF, List.of(scene.sorted));
+        renderCpuPass(factory, tessNonSorted, 0, List.of(scene.cutout));
+        renderCpuPass(factory, tessSorted, 0xFFFFFFFF, List.of(scene.sorted));
     }
 
-    private static void renderCpuPass(MultiDrawEmitter emitter, GlVertexArrayTessellation tessellation, int indexPointerMask, List<List<Section>> regions) {
-        final DrawCommandSink sink = emitter.getCommandSink();
-
-        if (!emitter.batchesWholePass()) {
-            for (List<Section> region : regions) {
-                sink.clear();
-                for (Section section : region) {
-                    pushSectionCommands(sink, section.srdAddress(), section.sliceMask, indexPointerMask);
-                }
-                emitter.executeBatch(commandList, tessellation, GlPrimitiveType.TRIANGLES);
-            }
-            return;
-        }
-
-        int sectionCount = 0;
+    private static void renderCpuPass(MultiDrawBatchFactory factory, GlVertexArrayTessellation tessellation, int indexPointerMask, List<List<Section>> regions) {
         for (List<Section> region : regions) {
-            sectionCount += region.size();
-        }
-
-        emitter.beginPass(commandList, sectionCount);
-
-        final int[] commandCounts = new int[regions.size()];
-        for (int r = 0; r < regions.size(); r++) {
-            sink.clear();
-            for (Section section : regions.get(r)) {
-                pushSectionCommands(sink, section.srdAddress(), section.sliceMask, indexPointerMask);
+            final MultiDrawBatch batch = factory.create(MultiDrawBatch.MAX_COMMAND_COUNT);
+            try {
+                for (Section section : region) {
+                    pushSectionCommands(batch, section.srdAddress(), section.sliceMask, indexPointerMask);
+                }
+                batch.upload(commandList);
+                batch.execute(commandList, tessellation, GlPrimitiveType.TRIANGLES);
+            } finally {
+                batch.delete();
             }
-            commandCounts[r] = sink.size();
         }
+    }
 
-        emitter.finishAssembly(commandList);
-
-        int firstCommand = 0;
-        for (int count : commandCounts) {
-            emitter.selectDrawRange(firstCommand, count);
-            firstCommand += count;
-            emitter.executeBatch(commandList, tessellation, GlPrimitiveType.TRIANGLES);
+    private static void mutateFirstSolidSection(Scene scene) {
+        final Section mutated = scene.solid.get(0);
+        int shrinkFacing = -1;
+        for (int f = 0; f < FACINGS; f++) {
+            if ((mutated.sliceMask & (1 << f)) != 0 && mutated.quadCount[f] > 1) { shrinkFacing = f; break; }
         }
+        assertTrue(shrinkFacing >= 0, "scene has no shrinkable facing");
+        mutated.quadCount[shrinkFacing]--;
+        mutated.elementCount[shrinkFacing] -= 6;
 
-        emitter.onPassFinished(commandList);
+        for (int f = shrinkFacing + 1; f < FACINGS; f++) {
+            mutated.vertexOffset[f] -= 4;
+            if (mutated.passIndex == SORTED_PASS) mutated.indexOffset[f] -= 6 * 4;
+        }
+        mutated.writeSrd();
     }
 
     private static final class GpuFramePasses {
@@ -449,13 +490,13 @@ class IndirectCullDrawParityTest {
         int sortedIndirectBuffer;
     }
 
-    private static GpuFramePasses renderGpu(Scene scene, int fbo, GlVertexArrayTessellation tessNonSorted, GlVertexArrayTessellation tessSorted, GpuIndirectMultiDrawEmitter gpu, RenderRegion region1, RenderRegion region2, String frameLabel) {
+    private static GpuFramePasses renderGpu(Scene scene, int fbo, GlVertexArrayTessellation tessNonSorted, GlVertexArrayTessellation tessSorted, GpuTerrainCuller gpu, RenderRegion region1, RenderRegion region2, String frameLabel) {
         final GpuFramePasses result = new GpuFramePasses();
         beginDrawing(fbo);
 
         gpu.beginCombinedPasses(0, 0);
         assertTrue(gpu.isComputeActiveThisPass(), "compute path unexpectedly inactive");
-        gpu.setFrustumUboBytes(frustumUbo(0));
+        setFrustumUbo(gpu, frustumUbo(0));
         gpu.syncSectionMetaIfDirty();
 
         int outputBase = 0;
@@ -465,25 +506,21 @@ class IndirectCullDrawParityTest {
         walkSections(scene.cutout, gpu, region1, outputBase, result.expectedCombined, 0);
         gpu.finishCombinedBuild();
 
-        gpu.prepareRegion(region1);
-        gpu.executeBatch(commandList, tessNonSorted, GlPrimitiveType.TRIANGLES);
-        gpu.prepareRegion(region2);
-        gpu.executeBatch(commandList, tessNonSorted, GlPrimitiveType.TRIANGLES);
+        executeRegion(gpu, region1, tessNonSorted);
+        executeRegion(gpu, region2, tessNonSorted);
         gpu.endPass();
 
         assertTrue(gpu.selectPreparedSecondPass(), "prepared cutout pass was not selectable");
-        gpu.prepareRegion(region1);
-        gpu.executeBatch(commandList, tessNonSorted, GlPrimitiveType.TRIANGLES);
+        executeRegion(gpu, region1, tessNonSorted);
         gpu.endPass();
         result.combinedIndirectBuffer = reflectInt(gpu, "indirectSsboGlId");
         assertIndirectBufferMatches(result.combinedIndirectBuffer, result.expectedCombined, frameLabel + " combined solid+cutout pass");
 
         gpu.beginCullPass(0xFFFFFFFF);
-        gpu.setFrustumUboBytes(frustumUbo(0xFFFFFFFF));
+        setFrustumUbo(gpu, frustumUbo(0xFFFFFFFF));
         gpu.syncSectionMetaIfDirty();
         walkSections(scene.sorted, gpu, region1, 0, result.expectedSorted, 0xFFFFFFFF);
-        gpu.prepareRegion(region1);
-        gpu.executeBatch(commandList, tessSorted, GlPrimitiveType.TRIANGLES);
+        executeRegion(gpu, region1, tessSorted);
         gpu.endPass();
         result.sortedIndirectBuffer = reflectInt(gpu, "indirectSsboGlId");
         assertIndirectBufferMatches(result.sortedIndirectBuffer, result.expectedSorted, frameLabel + " sorted pass");
@@ -491,18 +528,14 @@ class IndirectCullDrawParityTest {
         return result;
     }
 
-    private static int walkSections(List<Section> sections, GpuIndirectMultiDrawEmitter gpu, RenderRegion region, int outputBase, List<int[]> expectedCommands, int indexPointerMask) {
+    private static int walkSections(List<Section> sections, GpuTerrainCuller gpu, RenderRegion region, int outputBase, List<int[]> expectedCommands, int indexPointerMask) {
         gpu.reserveSections(sections.size());
         final int drawStart = outputBase;
         int drawCount = 0;
-        int entryStart = -1;
-        int entryCount = 0;
         int maxElems = 0;
         for (int i = 0; i < sections.size(); i++) {
             final Section section = sections.get(i);
-            final int entryIdx = gpu.appendSection(section.slot, section.sliceMask, outputBase);
-            if (entryStart < 0) entryStart = entryIdx;
-            entryCount++;
+            gpu.appendSection(section.slot, section.sliceMask, outputBase);
 
             final boolean mergeRuns = indexPointerMask == 0;
             final long runs = mergeRuns ? BatchAssembler.packRuns(section.sliceMask & 0x7F) : 0L;
@@ -530,7 +563,7 @@ class IndirectCullDrawParityTest {
             }
         }
         if (drawCount > 0) {
-            gpu.recordRegion(region, drawStart, drawCount, entryStart, entryCount, maxElems);
+            gpu.recordRegion(region, drawStart, drawCount, maxElems);
         }
         return outputBase;
     }
@@ -549,97 +582,100 @@ class IndirectCullDrawParityTest {
         }
     }
 
+    private static void runCpuFactoryParity(MultiDrawBatchFactory other, String label) {
+        final Scene scene = buildScene();
+        final MultiDrawBatchFactory direct = DirectMultiDrawBatch::new;
+
+        try {
+            try (SceneRig rig = new SceneRig(scene);
+                 Fbo directFbo = new Fbo();
+                 Fbo otherFbo = new Fbo()) {
+
+                for (int frame = 1; frame <= 2; frame++) {
+                    renderCpuBatches(scene, directFbo.id, rig.tessNonSorted, rig.tessSorted, direct);
+                    renderCpuBatches(scene, otherFbo.id, rig.tessNonSorted, rig.tessSorted, other);
+                    assertDepthParity(directFbo.id, otherFbo.id, "frame " + frame + " (" + label + ")");
+                }
+
+                mutateFirstSolidSection(scene);
+
+                renderCpuBatches(scene, directFbo.id, rig.tessNonSorted, rig.tessSorted, direct);
+                renderCpuBatches(scene, otherFbo.id, rig.tessNonSorted, rig.tessSorted, other);
+                assertDepthParity(directFbo.id, otherFbo.id, "frame 3 (" + label + ")");
+            }
+        } finally {
+            for (Section section : scene.all()) MemoryUtilities.memFree(section.srd);
+        }
+    }
+
+    @Test
+    void cpuIndirectBatchMatchesDirectAcrossFrames() {
+        assumeTrue(RenderSystem.supportsMultiDrawIndirect(), "multi-draw-indirect unsupported");
+        runCpuFactoryParity(IndirectMultiDrawBatch::new, "celeritas CPU indirect emitter");
+    }
+
+    @Test
+    void individualDrawBatchMatchesDirectAcrossFrames() {
+        runCpuFactoryParity(IndividualDrawBatch::new, "individual draw batch");
+    }
+
     @Test
     void gpuCulledIndirectMatchesDirectAcrossFrames() {
-        assumeTrue(RenderSystem.supportsCompute(), "compute shaders unsupported");
-        final Scene scene = buildScene();
-        final GpuDrivenChunkCuller culler = new GpuDrivenChunkCuller();
-        assertTrue(culler.ensureReady(), "chunk_cull.csh failed to load on a real driver");
-        final SectionMetaBuffer meta = new SectionMetaBuffer();
-        final GpuIndirectMultiDrawEmitter gpu = new GpuIndirectMultiDrawEmitter(culler, meta);
-        final RenderRegion region1 = newRegionKey();
-        final RenderRegion region2 = newRegionKey();
+        assumeTrue(RenderSystem.supportsCompute() && RenderSystem.supportsMultiDrawIndirect(),
+            "compute-driven indirect culling unsupported");
 
-        final DirectMultiDrawEmitter direct = new DirectMultiDrawEmitter();
-        final IndirectMultiDrawEmitter cpuIndirect = new IndirectMultiDrawEmitter();
-        GlMutableBuffer vertexBuffer = null;
-        GlMutableBuffer sharedIndexBuffer = null;
-        GlMutableBuffer sortedIndexBuffer = null;
-        GlVertexArrayTessellation tessNonSorted = null;
-        GlVertexArrayTessellation tessSorted = null;
-        final int[] directTex = new int[2];
-        final int[] cpuTex = new int[2];
-        final int[] gpuTex = new int[2];
-        int directFbo = 0;
-        int cpuFbo = 0;
-        int gpuFbo = 0;
+        GpuCulling.setMode(GpuCullingMode.COMPUTE);
         try {
-            final ByteBuffer vertexBytes = BufferUtils.createByteBuffer(scene.vertices.capacity() * 4).order(ByteOrder.nativeOrder());
-            vertexBytes.asFloatBuffer().put(scene.vertices.duplicate());
-            vertexBuffer = upload(vertexBytes);
-            sharedIndexBuffer = upload(scene.sharedIndices.duplicate().order(ByteOrder.nativeOrder()));
-            sortedIndexBuffer = upload(scene.sortedIndices.duplicate().order(ByteOrder.nativeOrder()));
-            tessNonSorted = tessellation(vertexBuffer, sharedIndexBuffer);
-            tessSorted = tessellation(vertexBuffer, sortedIndexBuffer);
-            directFbo = newFbo(directTex);
-            cpuFbo = newFbo(cpuTex);
-            gpuFbo = newFbo(gpuTex);
-
-            int local = 0;
-            for (Section section : scene.solid) metaUpdate(meta, section, local++);
-            local = 0;
-            for (Section section : scene.cutout) metaUpdate(meta, section, local++);
-            local = 0;
-            for (Section section : scene.sorted) metaUpdate(meta, section, local++);
-
-            for (int frame = 1; frame <= 2; frame++) {
-                renderCpuEmitter(scene, directFbo, tessNonSorted, tessSorted, direct);
-                renderCpuEmitter(scene, cpuFbo, tessNonSorted, tessSorted, cpuIndirect);
-                renderGpu(scene, gpuFbo, tessNonSorted, tessSorted, gpu, region1, region2, "frame " + frame);
-                assertDepthParity(directFbo, cpuFbo, "frame " + frame + " (celeritas CPU indirect emitter)");
-                assertDepthParity(directFbo, gpuFbo, "frame " + frame + " (GPU-culled indirect emitter)");
+            final Scene scene = buildScene();
+            final GpuDrivenChunkCuller culler = new GpuDrivenChunkCuller();
+            final SectionMetaBuffer meta = new SectionMetaBuffer();
+            final GpuTerrainCuller gpu;
+            try {
+                assertTrue(culler.ensureReady(), "chunk_cull.csh failed to load on a real driver");
+                gpu = new GpuTerrainCuller(culler, meta);
+            } catch (RuntimeException | Error e) {
+                meta.shutdown();
+                culler.shutdown();
+                throw e;
             }
 
-            final Section mutated = scene.solid.get(0);
-            int shrinkFacing = -1;
-            for (int f = 0; f < FACINGS; f++) {
-                if ((mutated.sliceMask & (1 << f)) != 0 && mutated.quadCount[f] > 1) { shrinkFacing = f; break; }
-            }
-            assertTrue(shrinkFacing >= 0, "scene has no shrinkable facing");
-            mutated.quadCount[shrinkFacing]--;
-            mutated.elementCount[shrinkFacing] -= 6;
+            final RenderRegion region1 = RenderRegionKeys.create(0, 0, 0, 0);
+            final RenderRegion region2 = RenderRegionKeys.create(0, 0, 0, 1);
+            final MultiDrawBatchFactory direct = DirectMultiDrawBatch::new;
 
-            for (int f = shrinkFacing + 1; f < FACINGS; f++) {
-                mutated.vertexOffset[f] -= 4;
-                if (mutated.passIndex == SORTED_PASS) mutated.indexOffset[f] -= 6 * 4;
-            }
-            mutated.writeSrd();
-            metaUpdate(meta, mutated, 0);
+            try {
+                try (SceneRig rig = new SceneRig(scene);
+                     Fbo directFbo = new Fbo();
+                     Fbo gpuFbo = new Fbo()) {
 
-            renderCpuEmitter(scene, directFbo, tessNonSorted, tessSorted, direct);
-            renderCpuEmitter(scene, cpuFbo, tessNonSorted, tessSorted, cpuIndirect);
-            renderGpu(scene, gpuFbo, tessNonSorted, tessSorted, gpu, region1, region2, "frame 3 (after section mesh update)");
-            assertDepthParity(directFbo, cpuFbo, "frame 3 (celeritas CPU indirect emitter)");
-            assertDepthParity(directFbo, gpuFbo, "frame 3 (GPU-culled indirect emitter)");
+                    int local = 0;
+                    for (Section section : scene.solid) metaUpdate(meta, section, local++);
+                    local = 0;
+                    for (Section section : scene.cutout) metaUpdate(meta, section, local++);
+                    local = 0;
+                    for (Section section : scene.sorted) metaUpdate(meta, section, local++);
+
+                    for (int frame = 1; frame <= 2; frame++) {
+                        renderCpuBatches(scene, directFbo.id, rig.tessNonSorted, rig.tessSorted, direct);
+                        renderGpu(scene, gpuFbo.id, rig.tessNonSorted, rig.tessSorted, gpu, region1, region2, "frame " + frame);
+                        assertDepthParity(directFbo.id, gpuFbo.id, "frame " + frame + " (GPU-culled indirect emitter)");
+                    }
+
+                    mutateFirstSolidSection(scene);
+                    metaUpdate(meta, scene.solid.get(0), 0);
+
+                    renderCpuBatches(scene, directFbo.id, rig.tessNonSorted, rig.tessSorted, direct);
+                    renderGpu(scene, gpuFbo.id, rig.tessNonSorted, rig.tessSorted, gpu, region1, region2, "frame 3 (after section mesh update)");
+                    assertDepthParity(directFbo.id, gpuFbo.id, "frame 3 (GPU-culled indirect emitter)");
+                }
+            } finally {
+                gpu.delete();
+                meta.shutdown();
+                culler.shutdown();
+                for (Section section : scene.all()) MemoryUtilities.memFree(section.srd);
+            }
         } finally {
-            direct.delete();
-            cpuIndirect.delete();
-            gpu.delete();
-            meta.shutdown();
-            culler.shutdown();
-            if (tessNonSorted != null) tessNonSorted.delete(commandList);
-            if (tessSorted != null) tessSorted.delete(commandList);
-            if (vertexBuffer != null) commandList.deleteBuffer(vertexBuffer);
-            if (sharedIndexBuffer != null) commandList.deleteBuffer(sharedIndexBuffer);
-            if (sortedIndexBuffer != null) commandList.deleteBuffer(sortedIndexBuffer);
-            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
-            if (directFbo != 0) GLStateManager.glDeleteFramebuffers(directFbo);
-            if (cpuFbo != 0) GLStateManager.glDeleteFramebuffers(cpuFbo);
-            if (gpuFbo != 0) GLStateManager.glDeleteFramebuffers(gpuFbo);
-            for (int tex : directTex) if (tex != 0) GLStateManager.glDeleteTextures(tex);
-            for (int tex : cpuTex) if (tex != 0) GLStateManager.glDeleteTextures(tex);
-            for (int tex : gpuTex) if (tex != 0) GLStateManager.glDeleteTextures(tex);
-            for (Section section : scene.all()) MemoryUtilities.memFree(section.srd);
+            GpuCulling.setMode(GpuCullingMode.CPU_ONLY);
         }
     }
 }

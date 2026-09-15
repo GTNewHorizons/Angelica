@@ -6,16 +6,18 @@ import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.GuiScreen;
+import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.settings.GameSettings;
 import org.embeddedt.embeddium.impl.render.frame.RenderAheadManager;
 import org.lwjgl.input.Keyboard;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -29,29 +31,16 @@ public abstract class MixinMinecraft {
     public GameSettings gameSettings;
 
     @Shadow
-    public abstract boolean isFramerateLimitBelowMax();
+    public WorldClient theWorld;
 
     @Shadow
-    public abstract int getLimitFramerate();
-
-    @Shadow(remap = false)
-    private static int max_texture_size;
+    public GuiScreen currentScreen;
 
     @Unique
     private final RenderAheadManager celeritas$renderAheadManager = new RenderAheadManager();
 
-    /**
-     * @author mitchej123
-     * @reason Avoid GL_PROXY_TEXTURE_2D which doesn't work with GLSM's texture binding.
-     *         Uses the standard GL_MAX_TEXTURE_SIZE query instead.
-     */
-    @Overwrite
-    public static int getGLMaximumTextureSize() {
-        if (max_texture_size == -1) {
-            max_texture_size = GLStateManager.glGetInteger(GL11.GL_MAX_TEXTURE_SIZE);
-        }
-        return max_texture_size;
-    }
+    @Unique
+    private static boolean angelica$hadWorld;
 
     @Inject(
         method = "runGameLoop",
@@ -75,17 +64,25 @@ public abstract class MixinMinecraft {
     }
 
     @Inject(method = "runGameLoop", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;func_147120_f()V"))
-    private void celeritas$renderAheadFence(CallbackInfo ci) {
+    private void angelica$beforePresent(CallbackInfo ci) {
         if (ClientProxy.options().performance.cpuRenderAheadLimit > 0 && !GLStateManager.hasSwapchainBackpressure()) {
             celeritas$renderAheadManager.endFrame();
         }
+        FramePacer.beforePresent();
     }
 
     @WrapWithCondition(method = "runGameLoop", at = @At(value = "INVOKE", target = "Ljava/lang/Thread;yield()V", remap = false))
     private boolean angelica$limitFPS() {
         if (AngelicaMod.proxy == null) return true;
 
-        final int capHz = isFramerateLimitBelowMax() ? getLimitFramerate() : 0;
+        final boolean hasWorld = theWorld != null;
+        if (hasWorld != angelica$hadWorld) {
+            angelica$hadWorld = hasWorld;
+            FramePacer.invalidate();
+        }
+
+        FpsReducer.evaluateFrame();
+        final int capHz = FpsReducer.effectiveCap(gameSettings.limitFramerate, theWorld == null && currentScreen != null);
         AngelicaMod.proxy.putFrametime(FramePacer.endFrame(capHz, angelica$renderAheadWait));
         return !FramePacer.pacedLastFrame();
     }

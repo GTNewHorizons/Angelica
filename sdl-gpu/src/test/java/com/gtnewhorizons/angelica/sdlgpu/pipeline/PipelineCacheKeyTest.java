@@ -8,6 +8,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 import java.lang.reflect.Method;
+import java.util.Arrays;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.lwjgl.sdl.SDLGPU.*;
@@ -45,7 +46,7 @@ class PipelineCacheKeyTest {
     void testBlendChangeProducesDifferentKey() {
         final PipelineCache a = createCache();
         final PipelineCache b = createCache();
-        b.blendEnabledPerAttachment[0] = true;
+        b.blendEnabledPerDrawBuffer[0] = true;
 
         assertNotEquals(computeKey(a), computeKey(b), "Blend state change should produce different key");
     }
@@ -105,10 +106,73 @@ class PipelineCacheKeyTest {
     void testBlendFactorChangeProducesDifferentKey() {
         final PipelineCache a = createCache();
         final PipelineCache b = createCache();
-        b.srcColorFactor = SDL_GPU_BLENDFACTOR_SRC_ALPHA;
-        b.dstColorFactor = SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA;
+        b.setBlendFactors(SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO);
 
         assertNotEquals(computeKey(a), computeKey(b), "Blend factor change should produce different key");
+    }
+
+    @Test
+    void perDrawBufferFactorOnLiveSlotChangesKey() {
+        final PipelineCache a = createCache();
+        final PipelineCache b = createCache();
+        b.setBlendFactors(0, SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO);
+
+        assertNotEquals(computeKey(a), computeKey(b), "factor on the only color target must change the key");
+    }
+
+    @Test
+    void perDrawBufferFactorOnUnusedSlotKeepsKey() {
+        final PipelineCache a = createCache();
+        final PipelineCache b = createCache();
+        b.setBlendFactors(1, SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE_MINUS_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO);
+
+        assertEquals(computeKey(a), computeKey(b), "factor on a draw buffer with no color target must keep the key");
+    }
+
+    @Test
+    void globalFactorsAfterIndexedSetMatchFreshCache() {
+        final PipelineCache fresh = createCache();
+        final PipelineCache b = createCache();
+        b.setBlendFactors(0, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ONE);
+        b.setBlendFactors(3, SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ONE);
+        b.setBlendFactors(SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO);
+
+        final int[] fourTargets = new int[4];
+        Arrays.fill(fourTargets, SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM);
+        fresh.setColorTargetFormats(fourTargets);
+        b.setColorTargetFormats(fourTargets);
+        assertEquals(computeKey(fresh), computeKey(b), "a global blend func must overwrite every indexed entry");
+    }
+
+    @Test
+    void blendFactorSettersReportNoChangeForIdenticalValues() {
+        final PipelineCache c = createCache();
+        assertFalse(c.setBlendFactors(SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO));
+        assertFalse(c.setBlendFactors(2, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO));
+        assertTrue(c.setBlendFactors(2, SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ZERO, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO));
+        assertFalse(c.setBlendFactors(2, SDL_GPU_BLENDFACTOR_SRC_ALPHA, SDL_GPU_BLENDFACTOR_ZERO, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO));
+        assertTrue(c.setBlendFactors(SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO, SDL_GPU_BLENDFACTOR_ONE, SDL_GPU_BLENDFACTOR_ZERO));
+    }
+
+    @Test
+    void blendEnableIsIndexedByDrawBufferNotAttachment() {
+        final int[] twoTargets = {SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_FLOAT};
+        final PipelineCache base = createCache();
+        base.setColorTargetFormats(twoTargets);
+        base.setDrawBuffers(new int[]{3, 5});
+
+        final PipelineCache slot0 = createCache();
+        slot0.setColorTargetFormats(twoTargets);
+        slot0.setDrawBuffers(new int[]{3, 5});
+        slot0.blendEnabledPerDrawBuffer[0] = true;
+
+        final PipelineCache attachment3 = createCache();
+        attachment3.setColorTargetFormats(twoTargets);
+        attachment3.setDrawBuffers(new int[]{3, 5});
+        attachment3.blendEnabledPerDrawBuffer[3] = true;
+
+        assertNotEquals(computeKey(base), computeKey(slot0), "draw buffer 0 is the first color target");
+        assertEquals(computeKey(base), computeKey(attachment3), "index 3 is a draw buffer past the two targets");
     }
 
     @Test

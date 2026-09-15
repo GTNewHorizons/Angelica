@@ -44,22 +44,48 @@ class BackendPolicyTest {
     }
 
     @Test
-    void refreshPrefersTheExactRational() {
-        assertEquals(144, RenderBackend.refreshHzFrom(144, 1, 0.0f));
-        assertEquals(60, RenderBackend.refreshHzFrom(60000, 1001, 0.0f));
+    void periodPrefersTheExactRational() {
+        assertEquals(16_683_333L, RenderBackend.periodFromRational(60000, 1001, 0.0f));
+        assertEquals(6_944_444L, RenderBackend.periodFromRational(144, 1, 0.0f));
     }
 
     @Test
-    void refreshRoundsUp() {
-        assertEquals(144, RenderBackend.refreshHzFrom(0, 0, 143.98f));
-        assertEquals(60, RenderBackend.refreshHzFrom(0, 0, 59.94f));
-        assertEquals(60, RenderBackend.refreshHzFrom(0, 0, 60.0f));
+    void periodFallsBackToTheFloatRate() {
+        assertEquals(16_683_350L, RenderBackend.periodFromRational(0, 0, 59.94f));
+        assertEquals(16_666_667L, RenderBackend.periodFromRational(0, 0, 60.0f));
     }
 
     @Test
-    void refreshIsZeroWhenUnknown() {
-        assertEquals(0, RenderBackend.refreshHzFrom(0, 0, 0.0f));
-        assertEquals(0, RenderBackend.refreshHzFrom(-1, -1, -1.0f));
-        assertEquals(0, RenderBackend.refreshHzFrom(144, 0, 0.0f));
+    void periodIsZeroWhenUnknown() {
+        assertEquals(0L, RenderBackend.periodFromRational(0, 0, 0.0f));
+        assertEquals(0L, RenderBackend.periodFromRational(-1, -1, -1.0f));
+        assertEquals(0L, RenderBackend.periodFromRational(144, 0, 0.0f));
+    }
+
+    @Test
+    void integerNtscRatesAreAdjusted() {
+        assertEquals(16_683_333L, RenderBackend.periodFromIntegerHz(59));
+        assertEquals(6_951_389L, RenderBackend.periodFromIntegerHz(143));
+        assertEquals(16_666_667L, RenderBackend.periodFromIntegerHz(60));
+        assertEquals(6_944_444L, RenderBackend.periodFromIntegerHz(144));
+        assertEquals(0L, RenderBackend.periodFromIntegerHz(0));
+        assertEquals(0L, RenderBackend.periodFromIntegerHz(-60));
+        assertEquals(60, RenderBackend.hzFromPeriod(RenderBackend.periodFromIntegerHz(59)));
+    }
+
+    @Test
+    void hzFromPeriodRoundsToNearest() {
+        assertEquals(60, RenderBackend.hzFromPeriod(16_666_667L));
+        assertEquals(144, RenderBackend.hzFromPeriod(6_944_444L));
+        assertEquals(0, RenderBackend.hzFromPeriod(0L));
+        assertEquals(0, RenderBackend.hzFromPeriod(-1L));
+    }
+
+    @Test
+    void plausiblePeriodFilterKeeps20To1000Hz() {
+        assertEquals(0L, RenderBackend.plausiblePeriodNanos(999_000L));
+        assertEquals(1_000_000L, RenderBackend.plausiblePeriodNanos(1_000_000L));
+        assertEquals(50_000_000L, RenderBackend.plausiblePeriodNanos(50_000_000L));
+        assertEquals(0L, RenderBackend.plausiblePeriodNanos(51_000_000L));
     }
 }

@@ -337,6 +337,11 @@ public final class PipelineApplier {
         st.ringChunkUsedBlocks = 0;
     }
 
+    private int fbo0Height(ContextState st) {
+        final int h = frameManager.getFbo0Height();
+        return h > 0 ? h : (int) (st.viewportY + st.viewportH);
+    }
+
     public boolean applyPipelineAndState(ContextState st) {
         return applyPipelineAndState(st, frameManager.frame());
     }
@@ -435,11 +440,14 @@ public final class PipelineApplier {
         }
 
         if (st.viewportDirty) {
-            float vpY = st.viewportY;
-            float vpH = st.viewportH;
+            final float vpY;
+            final float vpH;
             if (renderingToFbo) {
                 vpY = st.viewportY + st.viewportH;
                 vpH = -st.viewportH;
+            } else {
+                vpY = fbo0Height(st) - st.viewportY - st.viewportH;
+                vpH = st.viewportH;
             }
             final long addr = st.cachedViewport.address();
             MemoryAccess.putFloat(addr + SDL_GPUViewport.X, st.viewportX);
@@ -455,15 +463,9 @@ public final class PipelineApplier {
         if (st.scissorDirty) {
             final long addr = st.cachedScissor.address();
             final int sx, sy, sw, sh;
-            final int fbHeight;
             if (st.scissorEnabled) {
-                if (renderingToFbo) {
-                    fbHeight = (fboState != null && fboState.height > 0) ? fboState.height : (int)(st.viewportY + st.viewportH);
-                } else {
-                    fbHeight = (int)(st.viewportY + st.viewportH);
-                }
                 sx = st.scissorX;
-                sy = fbHeight - st.scissorY - st.scissorH;
+                sy = renderingToFbo ? st.scissorY : (fbo0Height(st) - st.scissorY - st.scissorH);
                 sw = st.scissorW;
                 sh = st.scissorH;
                 MemoryAccess.putInt(addr + SDL_Rect.X, sx);
@@ -471,11 +473,12 @@ public final class PipelineApplier {
                 MemoryAccess.putInt(addr + SDL_Rect.W, sw);
                 MemoryAccess.putInt(addr + SDL_Rect.H, sh);
                 if ((sw <= 0 || sh <= 0) && bogusScissorWarned.add(Hashing.packHiLo(sw, sh))) {
-                    LOG.warn("applyPipelineAndState: scissor degenerate (x={} y={} w={} h={}) - all fragments clipped; boundProgram={} boundFbo={} fbHeight={} scissorEn={} src=[{},{},{},{}]", sx, sy, sw, sh, st.boundProgram, st.boundFboId, fbHeight, st.scissorEnabled, st.scissorX, st.scissorY, st.scissorW, st.scissorH);
+                    LOG.warn("applyPipelineAndState: scissor degenerate (x={} y={} w={} h={}) - all fragments clipped; boundProgram={} boundFbo={} scissorEn={} src=[{},{},{},{}]", sx, sy, sw, sh, st.boundProgram, st.boundFboId, st.scissorEnabled, st.scissorX, st.scissorY, st.scissorW, st.scissorH);
                 }
             } else {
+                final int rectY = renderingToFbo ? (int) st.viewportY : (int) (fbo0Height(st) - st.viewportY - st.viewportH);
                 MemoryAccess.putInt(addr + SDL_Rect.X, (int) st.viewportX);
-                MemoryAccess.putInt(addr + SDL_Rect.Y, (int) st.viewportY);
+                MemoryAccess.putInt(addr + SDL_Rect.Y, rectY);
                 MemoryAccess.putInt(addr + SDL_Rect.W, (int) st.viewportW);
                 MemoryAccess.putInt(addr + SDL_Rect.H, (int) st.viewportH);
             }
@@ -674,10 +677,9 @@ public final class PipelineApplier {
 
     public float[] reuseOrAlloc(ContextState st, int location, int length) {
         final ShaderManager.ProgramObject prog = st.boundProgramObj;
-        if (prog != null && location >= 0 && location < prog.uniformSlotCount) {
-            final float[] existing = st.uniformStaging(prog).uniformDataBySlot[location];
-            if (existing != null && existing.length == length) return existing;
-        }
+        if (prog == null || location < 0 || location >= prog.uniformSlotCount) return null;
+        final float[] existing = st.uniformStaging(prog).uniformDataBySlot[location];
+        if (existing != null && existing.length == length) return existing;
         return new float[length];
     }
 
@@ -825,11 +827,13 @@ public final class PipelineApplier {
         final int count = n / floatsPerMatrix;
         if (count == 0) {
             final float[] v = reuseOrAlloc(st, location, n);
+            if (v == null) return;
             value.get(value.position(), v);
             putUniform(st, location, v);
             return;
         }
         final float[] out = reuseOrAlloc(st, location, count * floatsPerMatrix);
+        if (out == null) return;
         MatrixMarshal.marshalMatrixToColumnMajor(value, value.position(), count, size, transpose, out, 0);
         putUniform(st, location, out);
     }

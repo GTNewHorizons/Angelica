@@ -126,7 +126,16 @@ public class PBRTextureManager {
 	}
 
 	private static void closeTexture(AbstractTexture texture) {
-		texture.deleteGlTexture();
+        if (texture instanceof AutoCloseable closeable) {
+            try {
+                closeable.close();
+                return;
+            } catch (Exception e) {
+                Iris.logger.error("Failed to close PBR texture", e);
+            }
+        }
+
+        texture.deleteGlTexture();
 	}
 
 	public static void notifyPBRTexturesChanged() {

@@ -103,12 +103,6 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_SDL_GPU_SHADOW_VOXEL_PREPASS(new MixinBuilder("Voxelization compute pre-pass before shadow raster (SDL_GPU)")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
-        .addClientMixins("sdlgpu.MixinDefaultChunkRenderer_ShadowVoxelization")
-    ),
-
     ANGELICA_VBO_CLOUDS(
         new MixinBuilder()
             .setApplyIf(() -> AngelicaConfig.enableVBOClouds)
@@ -367,7 +361,6 @@ public enum Mixins implements IMixins {
               "celeritas.terrain.MixinChunkProviderClient"
             , "celeritas.terrain.MixinMinecraft_ChunkUpdates"
             , "celeritas.terrain.MixinRenderGlobal"
-            , "celeritas.terrain.MixinRenderListManager"
             , "celeritas.terrain.MixinRenderSectionManager"
             , "celeritas.terrain.MixinWorldClient"
             , "celeritas.frustum.MixinClippingHelper"
@@ -391,7 +384,6 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
-            , "celeritas.terrain.MixinDefaultChunkRenderer"
             , "celeritas.terrain.MixinDefaultChunkShaderInterface"
         )
     ),
@@ -526,6 +518,15 @@ public enum Mixins implements IMixins {
             "angelica.zoom.MixinEntityRenderer_Zoom",
             "angelica.zoom.MixinMinecraft_Zoom",
             "angelica.zoom.MixinMouseFilter"
+        )),
+
+    ANGELICA_FPS_REDUCER(new MixinBuilder("Reduce frame rate and volume while unfocused, minimized, or idle")
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.fpsreducer.MixinGameSettings_FpsReducerVolume",
+            "angelica.fpsreducer.MixinGuiScreen_FpsReducerInput",
+            "angelica.fpsreducer.MixinMinecraft_FpsReducerInput",
+            "angelica.fpsreducer.MixinSoundManagerLoader_FpsReducerVolume"
         )),
 
     HUD_CACHING(new MixinBuilder()

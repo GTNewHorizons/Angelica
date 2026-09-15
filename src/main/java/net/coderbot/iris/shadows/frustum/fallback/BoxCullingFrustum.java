@@ -39,6 +39,15 @@ public class BoxCullingFrustum extends Frustrum implements ViewportProvider, Fru
 	}
 
 	@Override
+	public int intersectAab(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		if (boxCuller.isCulledViewRelative(minX, minY, minZ, maxX, maxY, maxZ)) {
+			return OUTSIDE;
+		}
+
+		return boxCuller.isFullyInsideViewRelative(minX, minY, minZ, maxX, maxY, maxZ) ? FULLY_INSIDE : PARTIALLY_INSIDE;
+	}
+
+	@Override
 	public Viewport sodium$createViewport() {
 		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
 	}

@@ -1,19 +1,16 @@
 import com.modrinth.minotaur.TaskModrinthUpload
 import net.darkhax.curseforgegradle.TaskPublishCurseForge
-import xyz.wagyourtail.jvmdg.gradle.flags.DowngradeFlags
-import xyz.wagyourtail.jvmdg.gradle.task.DowngradeJar
 import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
 
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
 
-tasks.withType<DowngradeJar>().configureEach { logLevel.set("FATAL") }
-tasks.withType<DowngradeFiles>().configureEach { logLevel.set("FATAL") }
 val lwjglDebug = false
 val gpuHud = false
 val renderdoc = false
 val rgp = false
+extra["lwjglDebug"] = lwjglDebug
 
 minecraft   {
     extraRunJvmArguments.add("-Dangelica.debug.testBlocks=true")
@@ -24,24 +21,13 @@ minecraft   {
 
     extraRunJvmArguments.add("-Dsun.net.client.defaultConnectTimeout=5000")
     extraRunJvmArguments.add("-Dsun.net.client.defaultReadTimeout=5000")
-    // TODO: Remove once GTNHGradle includes shaderc/spvc in the default lwjgl3Bindings list
-    lwjgl3Bindings.addAll("shaderc", "spvc")
-    lwjgl3Version = libs.versions.lwjgl3.get()
 //    extraRunJvmArguments.addAll("-Dlegacy.debugClassLoadingSave=true")
 //    extraRunJvmArguments.addAll("-Drfb.dumpLoadedClasses=true", "-Drfb.dumpLoadedClassesPerTransformer=true")
     //extraRunJvmArguments.add("-Dangelica.debug.redirectorLogspam=true")
 
 }
 
-// Forward -Dangelica.* from the gradle invocation to the client
-tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
-    for ((key, value) in System.getProperties()) {
-        val name = key.toString()
-        if (name.startsWith("angelica.")) {
-            jvmArgs("-D$name=$value")
-        }
-    }
-}
+apply(from = "gradle/angelica-run-common.gradle.kts")
 
 if (gpuHud) {
     tasks.withType<JavaExec>().matching { it.name.startsWith("runClient") }.configureEach {
@@ -57,46 +43,11 @@ if (gpuHud) {
 
 configurations.all {
     exclude(group = "com.github.GTNewHorizons", module = "Angelica")
-    resolutionStrategy.dependencySubstitution {
-        substitute(module("com.github.GTNewHorizons:lwjgl3ify"))
-            .using(module("com.github.GTNewHorizons:lwjgl3ify:${libs.versions.lwjgl3ify.get()}"))
-    }
-}
-
-// lwjgl3ify pulls a pinned lwjgl 3.4.2 snapshot transitively from here.
-repositories {
-    maven {
-        name = "Maven Central Snapshots"
-        url = uri("https://central.sonatype.com/repository/maven-snapshots/")
-        content { includeGroup("org.lwjgl") }
-    }
 }
 
 val osName = System.getProperty("os.name").lowercase()
 val isMacOs = org.gradle.internal.os.OperatingSystem.current().isMacOsX
 val isMacOsArm64 = isMacOs && System.getProperty("os.arch") == "aarch64"
-
-tasks.withType<JavaExec>().configureEach {
-    if (name.startsWith("runClient") && name != "runClient") {
-        if (isMacOs) {
-            // SDL3 / Cocoa / Metal must initialize on the JVM main thread.
-            jvmArgs("-XstartOnFirstThread")
-            jvmArgs("-Dangelica.sdlgpu.encoderAssertions=" + if (lwjglDebug) "fatal" else "warn")
-            if (lwjglDebug) {
-                environment("METAL_DEVICE_WRAPPER_TYPE", "1")
-                environment("METAL_DEBUG_ERROR_MODE", "0")
-                environment("MTL_SHADER_VALIDATION", "1")
-                environment("MTL_SHADER_VALIDATION_REPORT_TO_STDERR", "1")
-                environment("MTL_DEBUG_LAYER", "1")
-                environment("MallocScribble", "1")
-                environment("MallocPreScribble", "1")
-                environment("MallocGuardEdges", "1")
-                environment("MallocStackLogging", "1")
-                environment("MallocStackLoggingNoCompact", "1")
-            }
-        }
-    }
-}
 
 // Linux runClient: RenderDoc frame capture (F12) OR RADV RGP/SQTT capture. Mutually exclusive; RGP wins
 tasks.withType<JavaExec>().configureEach {
@@ -123,14 +74,6 @@ tasks.withType<JavaExec>().configureEach {
                 doFirst { logger.lifecycle("RENDERDOC: enabled but ${renderdocLib.absolutePath} not found; set -PrenderdocLib=<path>") }
             }
         }
-    }
-}
-
-tasks.processResources {
-    val projectVersion = project.version.toString()
-    inputs.property("version", projectVersion)
-    filesMatching("META-INF/rfb-plugin/*") {
-        expand("version" to projectVersion)
     }
 }
 
@@ -206,6 +149,7 @@ fun Test.configureAngelicaJava8() {
 tasks.test {
     useJUnitPlatform { excludeTags = setOf("gl-core") }
     configureAngelicaJava8()
+    jvmArgs("-Dceleritas.lwjglService=org.taumc.celeritas.lwjgl.HeadlessTestLWJGLService")
     dependsOn(":glsm:classes", ":lwjgl3-backend:classes", ":sdl-gpu:classes")
 }
 
@@ -233,29 +177,7 @@ val glCoreTest by tasks.registering(Test::class) {
 
 tasks.test { finalizedBy(glCoreTest) }
 
-tasks.shadowJar {
-    dependsOn(embedOnly)
-    from(embedOnly.map(::zipTree))
-
-    duplicatesStrategy = DuplicatesStrategy.INCLUDE
-    mergeServiceFiles()
-
-    minimize {
-        exclude(project(rootProject.path))
-        exclude(project(":glsm"))
-        exclude(project(":lwjgl3-backend"))
-        exclude(project(":sdl-gpu"))
-        exclude(dependency("org.taumc:.*:.*"))
-        exclude(dependency("org.antlr:.*:.*"))
-    }
-
-    relocate("com.mitchej123", "com.mitchej123")
-    relocate("org.embeddedt", "org.embeddedt")
-    relocate("com.gtnewhorizons.angelica.config", "com.gtnewhorizons.angelica.config")
-    relocate("com.gtnewhorizons.angelica.glsm", "com.gtnewhorizons.angelica.glsm")
-    relocate("com.gtnewhorizons.angelica.lwjgl3", "com.gtnewhorizons.angelica.lwjgl3")
-    relocate("com.gtnewhorizons.angelica.sdlgpu", "com.gtnewhorizons.angelica.sdlgpu")
-}
+apply(from = "gradle/angelica-shadow-common.gradle.kts")
 
 tasks.withType<TaskPublishCurseForge>().configureEach {
     uploadArtifacts.forEach { it.addGameVersion("Client") }

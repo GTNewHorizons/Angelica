@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.glsm.hooks;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
 import lombok.Getter;
 
 import java.util.function.Consumer;
@@ -14,7 +16,7 @@ public final class GLSMInitConfig {
     @Getter private final int displayWidth;
     @Getter private final int displayHeight;
     @Getter private final Runnable postInitCallback;
-    @Getter private final boolean DSAEnabled;
+    private final boolean dsaEnabled;
     @Getter private final boolean noErrorChecks;
 
     private GLSMInitConfig(Builder builder) {
@@ -26,7 +28,11 @@ public final class GLSMInitConfig {
         this.displayWidth = builder.displayWidth;
         this.displayHeight = builder.displayHeight;
         this.postInitCallback = builder.postInitCallback;
-        this.DSAEnabled = builder.enableDSA;
+        this.dsaEnabled = builder.dsaEnabled;
+    }
+
+    public boolean isDSAEnabled() {
+        return dsaEnabled;
     }
 
     public static Builder builder() {
@@ -34,14 +40,14 @@ public final class GLSMInitConfig {
     }
 
     public static final class Builder {
-        private boolean lwjglDebug = false;
+        private boolean lwjglDebug = SystemProperties.LWJGL_DEBUG;
         private StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.BUFFER_DATA;
-        private Consumer<DirectTessellator> directDrawer = null;
-        private Runnable streamingDrawerDestroy = null;
+        private Consumer<DirectTessellator> directDrawer = TessellatorStreamingDrawer::drawDirect;
+        private Runnable streamingDrawerDestroy = TessellatorStreamingDrawer::destroy;
         private int displayWidth = 0;
         private int displayHeight = 0;
         private Runnable postInitCallback = null;
-        private boolean enableDSA = false;
+        private boolean dsaEnabled = true;
         private boolean noErrorChecks;
 
         private Builder() {}
@@ -83,7 +89,7 @@ public final class GLSMInitConfig {
         }
 
         public Builder enableDSA(boolean enableDSA) {
-            this.enableDSA = enableDSA;
+            this.dsaEnabled = enableDSA;
             return this;
         }
 
