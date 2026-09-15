@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
+import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -83,6 +84,12 @@ public final class GlsmSdlHeadlessRig {
 
         PipelineCache.setSwapchainFormats(new int[]{ colorTargetSdlFormat() });
         endFrame();
+    }
+
+    public static int glsmBufferBinding(int target) {
+        final Object ctx = Reflect.getStatic(GLStateManager.class, "primaryContext");
+        final Int2IntMap bound = Reflect.get(ctx, "boundOtherBuffers");
+        return bound.get(target);
     }
 
     private static int colorTargetSdlFormat() {

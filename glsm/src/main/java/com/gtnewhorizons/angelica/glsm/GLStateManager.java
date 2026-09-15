@@ -52,6 +52,7 @@ import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
+import com.gtnewhorizons.angelica.glsm.states.SamplerUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.ImageUnitBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -91,6 +92,7 @@ import org.lwjgl.opengl.GL21;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL32;
+import org.lwjgl.opengl.GL33;
 import org.lwjgl.opengl.GLContext;
 import org.lwjgl.opengl.KHRDebug;
 import org.lwjgl.opengl.KHRDebugCallback;
@@ -1054,6 +1056,8 @@ public class GLStateManager {
             case GL30.GL_DRAW_FRAMEBUFFER_BINDING -> glCtx.drawFramebuffer;
             case GL30.GL_READ_FRAMEBUFFER_BINDING -> glCtx.readFramebuffer;
 
+            case GL33.GL_SAMPLER_BINDING -> glCtx.samplerUnits.get(glCtx.activeTextureUnit.getValue());
+
             default -> switch (pname) {
                 case GL11.GL_FOG_MODE -> glCtx.fogState.getFogMode();
                 case GL11.GL_LINE_STIPPLE_PATTERN -> glCtx.lineState.getStipplePattern() & 0xFFFF;
@@ -1306,6 +1310,29 @@ public class GLStateManager {
         }
     }
 
+    public static void glEnablei(int cap, int index) {
+        RENDER_BACKEND.enablei(cap, index);
+        markIndexedCapUnknown(cap);
+    }
+
+    public static void glDisablei(int cap, int index) {
+        RENDER_BACKEND.disablei(cap, index);
+        markIndexedCapUnknown(cap);
+    }
+
+    private static void markIndexedCapUnknown(int cap) {
+        if (cap == GL11.GL_BLEND) {
+            ctx().blendMode.setUnknownState();
+        } else if (cap == GL11.GL_SCISSOR_TEST) {
+            ctx().scissorTest.setUnknownState();
+        }
+    }
+
+    public static void glBlendFuncSeparatei(int buf, int srcRGB, int dstRGB, int srcAlpha, int dstAlpha) {
+        RENDER_BACKEND.blendFuncSeparatei(buf, srcRGB, dstRGB, srcAlpha, dstAlpha);
+        ctx().blendState.setFuncUnknownState();
+    }
+
     public static void enableBlend() {
         final RecordMode mode = DisplayListManager.getRecordMode();
         if (mode != RecordMode.NONE) {
@@ -1451,6 +1478,7 @@ public class GLStateManager {
         final boolean caching = isCachingEnabled();
         if (GLSMConfig.hudCacheOverride) {
             glCtx.blendState.setAll(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            glCtx.blendState.clearFuncUnknownState();
             RENDER_BACKEND.blendFuncSeparate(srcFactor, dstFactor, GL11.GL_ONE, GL11.GL_ONE_MINUS_SRC_ALPHA);
             if (GLSMHooks.BLEND_FUNC_CHANGE.hasListeners()) {
                 GLSMHooks.blendFuncChangeEvent.srcRgb = srcFactor;
@@ -1467,8 +1495,10 @@ public class GLStateManager {
                 || glCtx.blendState.getSrcRgb() != srcFactor
                 || glCtx.blendState.getDstRgb() != dstFactor
                 || glCtx.blendState.getSrcAlpha() != srcFactor
-                || glCtx.blendState.getDstAlpha() != dstFactor) {
+                || glCtx.blendState.getDstAlpha() != dstFactor
+                || glCtx.blendState.isFuncUnknown()) {
             glCtx.blendState.setAll(srcFactor, dstFactor, srcFactor, dstFactor);
+            glCtx.blendState.clearFuncUnknownState();
             RENDER_BACKEND.blendFunc(srcFactor, dstFactor);
             if (GLSMHooks.BLEND_FUNC_CHANGE.hasListeners()) {
                 GLSMHooks.blendFuncChangeEvent.srcRgb = srcFactor;
@@ -1531,8 +1561,9 @@ public class GLStateManager {
         }
         final boolean caching = isCachingEnabled();
         final boolean bypass = !caching;
-        if (bypass || glCtx.blendState.getSrcRgb() != srcRgb || glCtx.blendState.getDstRgb() != dstRgb || glCtx.blendState.getSrcAlpha() != srcAlpha || glCtx.blendState.getDstAlpha() != dstAlpha) {
+        if (bypass || glCtx.blendState.getSrcRgb() != srcRgb || glCtx.blendState.getDstRgb() != dstRgb || glCtx.blendState.getSrcAlpha() != srcAlpha || glCtx.blendState.getDstAlpha() != dstAlpha || glCtx.blendState.isFuncUnknown()) {
             glCtx.blendState.setAll(srcRgb, dstRgb, srcAlpha, dstAlpha);
+            glCtx.blendState.clearFuncUnknownState();
             RENDER_BACKEND.blendFuncSeparate(srcRgb, dstRgb, srcAlpha, dstAlpha);
             if (GLSMHooks.BLEND_FUNC_CHANGE.hasListeners()) {
                 GLSMHooks.blendFuncChangeEvent.srcRgb = srcRgb;
@@ -3756,6 +3787,7 @@ public class GLStateManager {
         RENDER_BACKEND.clearDepth(glCtx.depthState.getClearValue());
 
         RENDER_BACKEND.blendFuncSeparate(glCtx.blendState.getSrcRgb(), glCtx.blendState.getDstRgb(), glCtx.blendState.getSrcAlpha(), glCtx.blendState.getDstAlpha());
+        glCtx.blendState.clearFuncUnknownState();
         RENDER_BACKEND.blendEquationSeparate(glCtx.blendState.getEquationRgb(), glCtx.blendState.getEquationAlpha());
         RENDER_BACKEND.blendColor(glCtx.blendState.getBlendColorR(), glCtx.blendState.getBlendColorG(), glCtx.blendState.getBlendColorB(), glCtx.blendState.getBlendColorA());
         RENDER_BACKEND.colorMask(glCtx.colorMask.red, glCtx.colorMask.green, glCtx.colorMask.blue, glCtx.colorMask.alpha);
@@ -3779,6 +3811,12 @@ public class GLStateManager {
         applyPolygonOffset(glCtx);
         RENDER_BACKEND.cullFace(glCtx.polygonState.getCullFaceMode());
         RENDER_BACKEND.frontFace(glCtx.polygonState.getFrontFace());
+
+        final SamplerUnitArray samplerUnits = glCtx.samplerUnits;
+        for (int i = 0; i < samplerUnits.size(); i++) {
+            final int sampler = samplerUnits.get(i);
+            if (sampler != 0) RENDER_BACKEND.bindSampler(i, sampler);
+        }
     }
 
     private static void applyPolygonOffset(GLContextState glCtx) {
@@ -3803,13 +3841,18 @@ public class GLStateManager {
             RENDER_BACKEND.clearDepth(glCtx.depthState.getClearValue());
         }
         if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0) {
-            if (glCtx.restoreBlendChanged) {
+            final BlendStateStack blend = glCtx.blendState;
+            if (glCtx.restoreBlendChanged || blend.isFuncUnknown()) {
                 final DeferredBlendHandler restoreBlendHandler = GLSMHooks.blendHandler;
                 if (restoreBlendHandler == null || !restoreBlendHandler.isOverrideHeld()) {
-                    RENDER_BACKEND.blendFuncSeparate(glCtx.blendState.getSrcRgb(), glCtx.blendState.getDstRgb(), glCtx.blendState.getSrcAlpha(), glCtx.blendState.getDstAlpha());
+                    RENDER_BACKEND.blendFuncSeparate(blend.getSrcRgb(), blend.getDstRgb(), blend.getSrcAlpha(), blend.getDstAlpha());
+                    blend.clearFuncUnknownState();
                 }
-                RENDER_BACKEND.blendEquationSeparate(glCtx.blendState.getEquationRgb(), glCtx.blendState.getEquationAlpha());
-                RENDER_BACKEND.blendColor(glCtx.blendState.getBlendColorR(), glCtx.blendState.getBlendColorG(), glCtx.blendState.getBlendColorB(), glCtx.blendState.getBlendColorA());
+                if (glCtx.restoreBlendChanged) {
+                    RENDER_BACKEND.blendEquationSeparate(blend.getEquationRgb(), blend.getEquationAlpha());
+                    RENDER_BACKEND.blendColor(
+                        blend.getBlendColorR(), blend.getBlendColorG(), blend.getBlendColorB(), blend.getBlendColorA());
+                }
             }
             if (glCtx.restoreColorMaskChanged && !isDepthColorOverridden()) {
                 RENDER_BACKEND.colorMask(glCtx.colorMask.red, glCtx.colorMask.green, glCtx.colorMask.blue, glCtx.colorMask.alpha);
@@ -4721,8 +4764,61 @@ public class GLStateManager {
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
 
     public static int glGenSamplers() { return RENDER_BACKEND.genSamplers(); }
-    public static void glDeleteSamplers(int sampler) { RENDER_BACKEND.deleteSamplers(sampler); }
-    public static void glBindSampler(int unit, int sampler) { RENDER_BACKEND.bindSampler(unit, sampler); }
+
+    public static void glGenSamplers(IntBuffer samplers) {
+        for (int i = samplers.position(); i < samplers.limit(); i++) samplers.put(i, RENDER_BACKEND.genSamplers());
+    }
+
+    public static void glGenSamplers(int[] samplers) {
+        for (int i = 0; i < samplers.length; i++) samplers[i] = RENDER_BACKEND.genSamplers();
+    }
+
+    public static void glDeleteSamplers(int sampler) {
+        if (sampler == 0) return;
+        ctx().samplerUnits.unbindEverywhere(sampler);
+        RENDER_BACKEND.deleteSamplers(sampler);
+    }
+
+    public static void glDeleteSamplers(IntBuffer samplers) {
+        for (int i = samplers.position(); i < samplers.limit(); i++) glDeleteSamplers(samplers.get(i));
+    }
+
+    public static void glDeleteSamplers(int[] samplers) {
+        for (int sampler : samplers) glDeleteSamplers(sampler);
+    }
+
+    public static void glBindSampler(int unit, int sampler) {
+        final SamplerUnitArray units = ctx().samplerUnits;
+        if (isCachingEnabled() && unit >= 0 && unit < units.size() && units.get(unit) == sampler) return;
+        if (!units.set(unit, sampler)) {
+            warnOnce("samplerUnitRange", "glBindSampler unit {} exceeds GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS {}", unit, units.size());
+        }
+        RENDER_BACKEND.bindSampler(unit, sampler);
+    }
+
+    public static void glBindSamplers(int first, int count, IntBuffer samplers) {
+        if (samplers == null) {
+            for (int i = 0; i < count; i++) glBindSampler(first + i, 0);
+            return;
+        }
+        if (samplers.remaining() < count) {
+            throw new IllegalArgumentException("Number of remaining buffer elements is " + samplers.remaining() + ", must be at least " + count);
+        }
+        final int base = samplers.position();
+        for (int i = 0; i < count; i++) glBindSampler(first + i, samplers.get(base + i));
+    }
+
+    public static void glBindSamplers(int first, IntBuffer samplers) {
+        if (samplers != null) glBindSamplers(first, samplers.remaining(), samplers);
+    }
+
+    public static void glBindSamplers(int first, int[] samplers) {
+        if (samplers == null) return;
+        for (int i = 0; i < samplers.length; i++) glBindSampler(first + i, samplers[i]);
+    }
+
+    public static int getSamplerBinding(int unit) { return ctx().samplerUnits.get(unit); }
+    public static int getSamplerUnitCount() { return ctx().samplerUnits.size(); }
     public static void glSamplerParameteri(int sampler, int pname, int param) { RENDER_BACKEND.samplerParameteri(sampler, pname, param); }
     public static void glSamplerParameterf(int sampler, int pname, float param) { RENDER_BACKEND.samplerParameterf(sampler, pname, param); }
 
@@ -6173,6 +6269,10 @@ public class GLStateManager {
     public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) { onBufferMap(target, access); return RENDER_BACKEND.mapBuffer(target, access, length, old_buffer); }
     public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access) { onBufferMapRange(target, access); return RENDER_BACKEND.mapBufferRange(target, offset, length, access); }
     public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access, ByteBuffer old_buffer) { return glMapBufferRange(target, offset, length, access); }
+    public static long glMapBufferRangeAddress(int target, long offset, long length, int access) {
+        onBufferMapRange(target, access);
+        return RENDER_BACKEND.mapBufferRangeAddress(target, offset, length, access);
+    }
     public static void glFlushMappedBufferRange(int target, long offset, long length) { RENDER_BACKEND.flushMappedBufferRange(target, offset, length); }
     public static boolean glUnmapBuffer(int target) { onBufferUnmap(target); return RENDER_BACKEND.unmapBuffer(target); }
 

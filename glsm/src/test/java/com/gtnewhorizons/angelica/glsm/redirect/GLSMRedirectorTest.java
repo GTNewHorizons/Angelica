@@ -17,6 +17,8 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 
 import java.lang.reflect.Field;
+import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.util.ArrayList;
 import java.util.Set;
 
@@ -298,6 +300,74 @@ class GLSMRedirectorTest {
         assertEquals(GLSM, firstCall(cn).owner);
         assertEquals(expectedName, firstCall(cn).name);
         assertTrue(unmappedSeen().isEmpty(), owner + "." + name + " should not be recorded");
+    }
+
+    private static boolean glsmDeclares(String name, String desc) throws ClassNotFoundException {
+        final Class<?> glsm = Class.forName(GLSM.replace('/', '.'), false, GLSMRedirectorTest.class.getClassLoader());
+        for (Method m : glsm.getDeclaredMethods()) {
+            final int mods = m.getModifiers();
+            if (!Modifier.isPublic(mods) || !Modifier.isStatic(mods) || !m.getName().equals(name)) continue;
+            if (Type.getMethodDescriptor(m).equals(desc)) return true;
+        }
+        return false;
+    }
+
+    private static void assertRedirectedToDeclaredTarget(String[][] cases) throws ClassNotFoundException {
+        for (boolean aware : new boolean[]{false, true}) {
+            for (String[] c : cases) {
+                final String call = c[0] + "." + c[1] + c[2] + (aware ? " aware" : "");
+                final ClassNode cn = makeClassWithMethodCall(c[0], c[1], c[2]);
+                assertTrue(new GLSMRedirector().transformClassNode("com.example.TestClass", cn, aware), call);
+                final MethodInsnNode target = firstCall(cn);
+                assertEquals(GLSM, target.owner, call);
+                assertEquals(c[1], target.name, call);
+                assertEquals(c[2], target.desc, call);
+                assertTrue(glsmDeclares(target.name, target.desc), () -> "GLStateManager lacks the target of " + call);
+            }
+        }
+        assertTrue(unmappedSeen().isEmpty(), () -> "unexpected reports: " + unmappedSeen());
+    }
+
+    @Test
+    void samplerGenDeleteOverloadsHaveDeclaredTargets() throws Exception {
+        assertRedirectedToDeclaredTarget(new String[][]{
+            {"org/lwjgl/opengl/GL33", "glGenSamplers", "()I"},
+            {"org/lwjgl/opengl/GL33", "glGenSamplers", "(Ljava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/GL33C", "glGenSamplers", "([I)V"},
+            {"org/lwjgl/opengl/GL33", "glGenSamplers", "([I)V"},
+            {"org/lwjgl/opengl/GL33", "glDeleteSamplers", "(I)V"},
+            {"org/lwjgl/opengl/GL33", "glDeleteSamplers", "(Ljava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/GL33C", "glDeleteSamplers", "([I)V"},
+            {"org/lwjgl/opengl/GL33", "glDeleteSamplers", "([I)V"},
+        });
+    }
+
+    @Test
+    void bindSamplersHasDeclaredTargets() throws Exception {
+        assertRedirectedToDeclaredTarget(new String[][]{
+            {"org/lwjgl/opengl/GL44", "glBindSamplers", "(IILjava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/GL44C", "glBindSamplers", "(ILjava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/GL44", "glBindSamplers", "(I[I)V"},
+            {"org/lwjgl/opengl/ARBMultiBind", "glBindSamplers", "(IILjava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/ARBMultiBind", "glBindSamplers", "(ILjava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/ARBMultiBind", "glBindSamplers", "(I[I)V"},
+        });
+    }
+
+    @Test
+    void arbSamplerObjectsHasDeclaredTargets() throws Exception {
+        assertRedirectedToDeclaredTarget(new String[][]{
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glGenSamplers", "()I"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glGenSamplers", "(Ljava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glGenSamplers", "([I)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glDeleteSamplers", "(I)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glDeleteSamplers", "(Ljava/nio/IntBuffer;)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glDeleteSamplers", "([I)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glIsSampler", "(I)Z"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glBindSampler", "(II)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glSamplerParameteri", "(III)V"},
+            {"org/lwjgl/opengl/ARBSamplerObjects", "glSamplerParameterf", "(IIF)V"},
+        });
     }
 
     @Test

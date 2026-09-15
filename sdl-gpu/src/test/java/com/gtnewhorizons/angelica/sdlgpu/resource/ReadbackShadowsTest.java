@@ -1,16 +1,22 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.sdlgpu.SdlAsserts;
 import org.junit.jupiter.api.Test;
 
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
+import java.util.Map;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class ReadbackShadowsTest {
 
     private static final long SENTINEL_HANDLE = 0xBEEFL;
+    private static final int SLOTS_PER_BUFFER = 32;
+    private static final int SLOT_STRIDE = 64;
 
     private static ReadbackShadows shadows() {
         return new ReadbackShadows(null);
@@ -61,5 +67,40 @@ class ReadbackShadowsTest {
 
         assertFalse(shadows.hasSlotsFor(7), "deleting a buffer must drop all of its ring slots");
         assertTrue(shadows.hasSlotsFor(8), "deleting one buffer must not drop another's slots");
+    }
+
+    private static int slotCount(ReadbackShadows shadows) {
+        return Reflect.<Map<Long, Object>>get(shadows, "slots").size();
+    }
+
+    private static ReadbackShadows ringShadows(int... glIds) {
+        final ReadbackShadows shadows = shadows();
+        for (int glId : glIds) {
+            for (int i = 0; i < SLOTS_PER_BUFFER; i++) {
+                SdlReflect.putReadbackSlot(shadows, glId, (long) i * SLOT_STRIDE, 0L, SLOT_STRIDE, true);
+            }
+        }
+        return shadows;
+    }
+
+    @Test
+    void releaseRemovesExactlyTheSlotsOfItsBuffer() {
+        final ReadbackShadows shadows = ringShadows(1, 2, 3);
+
+        shadows.release(2);
+
+        assertFalse(shadows.hasSlotsFor(2));
+        assertEquals(2 * SLOTS_PER_BUFFER, slotCount(shadows));
+        for (int glId = 1; glId <= 3; glId += 2) {
+            for (int i = 0; i < SLOTS_PER_BUFFER; i++) {
+                assertTrue(SdlReflect.readbackSlotValid(shadows, glId, (long) i * SLOT_STRIDE));
+            }
+        }
+    }
+
+    @Test
+    void releaseWithNoSlotsDoesNotAllocate() {
+        final ReadbackShadows shadows = shadows();
+        SdlAsserts.assertAllocationFree(() -> shadows.release(7), "releases with no readback slots");
     }
 }

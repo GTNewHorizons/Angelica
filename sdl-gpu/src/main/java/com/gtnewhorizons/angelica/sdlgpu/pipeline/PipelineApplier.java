@@ -677,10 +677,9 @@ public final class PipelineApplier {
 
     public float[] reuseOrAlloc(ContextState st, int location, int length) {
         final ShaderManager.ProgramObject prog = st.boundProgramObj;
-        if (prog != null && location >= 0 && location < prog.uniformSlotCount) {
-            final float[] existing = st.uniformStaging(prog).uniformDataBySlot[location];
-            if (existing != null && existing.length == length) return existing;
-        }
+        if (prog == null || location < 0 || location >= prog.uniformSlotCount) return null;
+        final float[] existing = st.uniformStaging(prog).uniformDataBySlot[location];
+        if (existing != null && existing.length == length) return existing;
         return new float[length];
     }
 
@@ -828,11 +827,13 @@ public final class PipelineApplier {
         final int count = n / floatsPerMatrix;
         if (count == 0) {
             final float[] v = reuseOrAlloc(st, location, n);
+            if (v == null) return;
             value.get(value.position(), v);
             putUniform(st, location, v);
             return;
         }
         final float[] out = reuseOrAlloc(st, location, count * floatsPerMatrix);
+        if (out == null) return;
         MatrixMarshal.marshalMatrixToColumnMajor(value, value.position(), count, size, transpose, out, 0);
         putUniform(st, location, out);
     }

@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
+
 import me.jellysquid.mods.sodium.client.gui.FrameRateOptions;
 
 import java.util.function.LongSupplier;
@@ -108,6 +110,10 @@ final class ReducerStateMachine {
             cap = min0(cap, MENU_CAP_HZ);
         }
         return min0(cap, stateCap);
+    }
+
+    static int benchmarkCap(FlybyPacing pacing, int userLimit) {
+        return pacing == FlybyPacing.UNCAPPED ? 0 : mergeCap(userLimit, 0, false, false);
     }
 
     static float masterVolume(float user, int percent) {
