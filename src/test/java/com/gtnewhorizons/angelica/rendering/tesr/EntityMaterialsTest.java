@@ -39,6 +39,27 @@ class EntityMaterialsTest {
     }
 
     @Test
+    void additiveKeepsCapturedAlphaTest() {
+        assertSame(EntityMaterials.ADDITIVE_CUTOUT, EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
+        assertSame(EntityMaterials.ADDITIVE_CUTOUT_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false));
+        assertSame(EntityMaterials.ADDITIVE_ALPHA_CUTOUT, EntityMaterials.fromState(true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
+        assertSame(EntityMaterials.ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false));
+    }
+
+    @Test
+    void texAnimatedAdditiveKeepsCapturedAlphaTest() {
+        assertSame(EntityMaterials.ADDITIVE_CUTOUT, EntityMaterials.fromState(true, true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
+        assertSame(EntityMaterials.ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE, EntityMaterials.fromState(true, true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false));
+    }
+
+    @Test
+    void additiveWithUnrepresentableAlphaTestStaysLive() {
+        assertNull(EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true), () -> "additive with a nonstandard alpha ref must stay live, not silently drop the test");
+        assertNull(EntityMaterials.fromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_LESS, 0.1f, GL11.GL_LEQUAL, true), () -> "additive with a non-GREATER alpha func must stay live");
+        assertNull(EntityMaterials.fromState(true, true, true, SA, GL11.GL_ONE, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true), () -> "animated additive with a nonstandard alpha ref must stay live");
+    }
+
+    @Test
     void hurtOverlayMapsToOverlay() {
         assertSame(EntityMaterials.OVERLAY, EntityMaterials.fromState(false, true, SA, OMSA, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true));
     }
