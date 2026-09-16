@@ -19,9 +19,6 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.material.Material;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexEncoder;
 import org.joml.Vector3f;
 
-/**
- * Writes Iris-extended vertices. Delegates base 28 bytes to VANILLA_LIKE encoder.
- */
 public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEncoder {
     // Offsets derived from format definition
     private static final int MID_TEX_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("mc_midTexCoord").getPointer();
@@ -29,11 +26,7 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     private static final int NORMAL_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("iris_Normal").getPointer();
     private static final int MC_ENTITY_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("mc_Entity").getPointer();
     private static final int MID_BLOCK_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("at_midBlock").getPointer();
-    private static final int A_TEXCOORD_OFFSET = IrisExtendedChunkVertexType.VERTEX_FORMAT.getAttribute("a_TexCoord").getPointer();
-
-    // One unit of UV-space shift toward the quad centroid. Stops bilinear /
-    // mipmap sampling from bleeding pixels from neighboring atlas cells.
-    private static final float TEX_CENTROID_BIAS = 1.0f / 32768.0f;
+    // a_TexCoord used to be here, if something related to it breaks add this back.
 
     private final ChunkVertexEncoder baseEncoder = IrisExtendedChunkVertexType.BASE_TYPE.createEncoder();
     private final CeleritasQuadView quad = new CeleritasQuadView();
@@ -102,6 +95,11 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
     }
 
     @Override
+    public boolean supportsBilinearCorrection() {
+        return false;
+    }
+
+    @Override
     public long write(long ptr, Material material, Vertex vertex, int sectionIndex) {
         uSum += vertex.u;
         vSum += vertex.v;
@@ -109,6 +107,7 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
 
         final BlockRenderContext ctx = context;
 
+        vertex.rdhFactor = 0;
         baseEncoder.write(ptr, material, vertex, sectionIndex);
 
         // Per-vertex: mc_Entity (packed blockId + renderType), midBlock, lightValue
@@ -129,14 +128,6 @@ public class IrisExtendedChunkVertexEncoder implements ContextAwareChunkVertexEn
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE, midUV);
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE * 2, midUV);
             memPutInt(ptr + MID_TEX_OFFSET - STRIDE * 3, midUV);
-
-            for (int vIdx = 0; vIdx < 4; vIdx++) {
-                final long uvBase = ptr - (long) (3 - vIdx) * STRIDE + A_TEXCOORD_OFFSET;
-                final float vU = memGetFloat(uvBase);
-                final float vV = memGetFloat(uvBase + 4L);
-                memPutFloat(uvBase, vU + (vU < midU ? TEX_CENTROID_BIAS : -TEX_CENTROID_BIAS));
-                memPutFloat(uvBase + 4L, vV + (vV < midV ? TEX_CENTROID_BIAS : -TEX_CENTROID_BIAS));
-            }
 
             quad.setup(ptr, STRIDE);
             NormalHelper.computeFaceNormal(normal, quad);

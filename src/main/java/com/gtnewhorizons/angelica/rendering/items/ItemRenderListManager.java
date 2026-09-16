@@ -37,9 +37,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import org.lwjgl.opengl.GL11;
@@ -52,62 +49,22 @@ import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memCalloc;
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 
 public class ItemRenderListManager {
-    // Least used element is at position 0. This is in theory slightly faster.
-    private static final Object2ObjectLinkedOpenHashMap<ItemProp, CachedVBO> vboCache = new Object2ObjectLinkedOpenHashMap<>(64);
 
-    // 1 minute
-    private static final int EXPIRY_TICKS = 1_200;
-    private static int smallestExpiry;
-
-    private static final ItemProp prop = new ItemProp();
+    private static final ItemPropCache<CachedVBO> vboCache = new ItemPropCache<>(() -> AngelicaConfig.itemRendererCacheSize, CachedVBO::new, CachedVBO::delete);
 
     public static CachedVBO pre(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
-        prop.set(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
-
-        if (!vboCache.isEmpty()) {
-
-            final CachedVBO vbo = vboCache.getAndMoveToLast(prop);
-
-            if (vbo != null) {
-                final int time = getElapsedTicks();
-                vbo.render(time);
-
-                // Prevent constant map lookups by only storing the expiry of the least recently used entry
-                if (time > smallestExpiry && time > (smallestExpiry = (vboCache.get(vboCache.firstKey()).expiry + 20))) {
-                    vboCache.removeFirst().delete();
-                    if (!vboCache.isEmpty()) {
-                        smallestExpiry = vboCache.get(vboCache.firstKey()).expiry + 20;
-                    }
-                }
-
-                return null;
-            }
+        final CachedVBO hit = vboCache.get(minU, minV, maxU, maxV, widthSubdivisions, heightSubdivisions, thickness);
+        if (hit != null) {
+            hit.render();
+            return null;
         }
-
-        final CachedVBO vbo;
-        if (vboCache.size() >= AngelicaConfig.itemRendererCacheSize) {
-            final ItemProp oldestProp = vboCache.firstKey();
-            vbo = vboCache.removeFirst();
-            oldestProp.set(prop);
-            vboCache.put(oldestProp, vbo);
-        } else {
-            vbo = new CachedVBO();
-            vboCache.put(new ItemProp(prop), vbo);
-        }
-
-        vbo.expiry = getElapsedTicks() + EXPIRY_TICKS;
-
-        return vbo;
+        return vboCache.insert();
     }
 
     public static void post(DirectTessellator tessellator, CachedVBO vbo) {
         vbo.allocate(tessellator);
         TessellatorManager.stopCapturingDirect();
         vbo.vertexBuffer.render();
-    }
-
-    private static int getElapsedTicks() {
-        return Minecraft.getMinecraft().thePlayer.ticksExisted;
     }
 
     public static void registerReloadListener(){
@@ -117,16 +74,12 @@ public class ItemRenderListManager {
     }
 
     public static void clearCache() {
-        for (CachedVBO value : vboCache.values()) {
-            value.delete();
-        }
         vboCache.clear();
     }
 
     public static final class CachedVBO {
         private final IVertexArrayObject vertexBuffer;
         private final IndexBuffer ebo;
-        private int expiry;
         private int extVbo = 0;
 
         public CachedVBO() {
@@ -195,9 +148,8 @@ public class ItemRenderListManager {
             extVbo = 0;
         }
 
-        private void render(int elapsedTicks) {
+        private void render() {
             vertexBuffer.render();
-            expiry = elapsedTicks + EXPIRY_TICKS;
         }
 
         private void delete() {
@@ -210,43 +162,4 @@ public class ItemRenderListManager {
         }
     }
 
-    @NoArgsConstructor
-    @Data
-    private static final class ItemProp {
-        private float minU;
-        private float minV;
-        private float maxU;
-        private float maxV;
-        private int widthSubdivisions;
-        private int heightSubdivisions;
-        private float thickness;
-
-        public ItemProp(ItemProp old) {
-            set(
-                old.minU, old.minV,
-                old.maxU, old.maxV,
-                old.widthSubdivisions, old.heightSubdivisions,
-                old.thickness
-            );
-        }
-
-        public void set(ItemProp other) {
-            set(
-                other.minU, other.minV,
-                other.maxU, other.maxV,
-                other.widthSubdivisions, other.heightSubdivisions,
-                other.thickness
-            );
-        }
-
-        public void set(float minU, float minV, float maxU, float maxV, int widthSubdivisions, int heightSubdivisions, float thickness) {
-            this.minU = minU;
-            this.minV = minV;
-            this.maxU = maxU;
-            this.maxV = maxV;
-            this.widthSubdivisions = widthSubdivisions;
-            this.heightSubdivisions = heightSubdivisions;
-            this.thickness = thickness;
-        }
-    }
 }

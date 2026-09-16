@@ -85,11 +85,15 @@ public class BlendModeStorage {
     }
 
     public static void deferBlendModeToggle(boolean enabled) {
+        if (enabled == vanillaBlendEnable) return;
         vanillaBlendEnable = enabled;
         hasDeferredChanges = true;
     }
 
     public static void deferBlendFunc(int srcRgb, int dstRgb, int srcAlpha, int dstAlpha) {
+        if (vanillaBlend.getSrcRgb() == srcRgb && vanillaBlend.getDstRgb() == dstRgb && vanillaBlend.getSrcAlpha() == srcAlpha && vanillaBlend.getDstAlpha() == dstAlpha) {
+            return;
+        }
         vanillaBlend.setAll(srcRgb, dstRgb, srcAlpha, dstAlpha);
         hasDeferredChanges = true;
     }

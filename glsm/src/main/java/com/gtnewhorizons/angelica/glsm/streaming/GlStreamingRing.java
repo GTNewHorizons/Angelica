@@ -3,7 +3,8 @@ package com.gtnewhorizons.angelica.glsm.streaming;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import it.unimi.dsi.fastutil.objects.ObjectArrayFIFOQueue;
+import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL44;
@@ -11,7 +12,6 @@ import org.lwjgl.opengl.GL44;
 import java.nio.ByteBuffer;
 
 import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
-import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
 
 /**
  * Persistent-mapped fence-reclaimed ring over any buffer target. Callers reserve a range and
@@ -28,7 +28,8 @@ final class GlStreamingRing {
     private static final long SYNC_WAIT_SLICE_NANOS = 10_000_000L;
     private static final long SYNC_WAIT_TOTAL_NANOS = 5_000_000_000L;
 
-    private final ObjectArrayFIFOQueue<FencedRegion> fenceQueue = new ObjectArrayFIFOQueue<>();
+    private final LongArrayFIFOQueue fenceIds = new LongArrayFIFOQueue();
+    private final IntArrayFIFOQueue fenceBytes = new IntArrayFIFOQueue();
     private int writePos;
     private int remaining;
     private int pendingBytes;
@@ -51,13 +52,13 @@ final class GlStreamingRing {
 
     static GlStreamingRing create(int target, int capacity, boolean forceOrphan) {
         if (forceOrphan || !RenderSystem.supportsBufferStorage()) return null;
-        final int id = RENDER_BACKEND.genBuffers();
-        RENDER_BACKEND.bindBuffer(target, id);
+        final int id = GLStateManager.glGenBuffers();
+        GLStateManager.glBindBuffer(target, id);
         final int storageFlags = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT | GL44.GL_CLIENT_STORAGE_BIT;
         RenderSystem.bufferStorage(target, capacity, storageFlags);
         final int mapFlags = GL44.GL_MAP_PERSISTENT_BIT | GL30.GL_MAP_WRITE_BIT | GL44.GL_MAP_COHERENT_BIT;
-        final ByteBuffer mapped = RENDER_BACKEND.mapBufferRange(target, 0, capacity, mapFlags);
-        RENDER_BACKEND.bindBuffer(target, 0);
+        final ByteBuffer mapped = GLStateManager.glMapBufferRange(target, 0, capacity, mapFlags);
+        GLStateManager.glBindBuffer(target, 0);
         if (mapped == null) {
             GLStateManager.glDeleteBuffers(id);
             GLStateManager.LOGGER.warn("Persistent map failed for streaming ring (target=0x{}, {} bytes)", Integer.toHexString(target), capacity);
@@ -92,7 +93,7 @@ final class GlStreamingRing {
 
     private boolean ensureRemaining(int needed) {
         while (remaining < needed) {
-            if (fenceQueue.isEmpty()) {
+            if (fenceIds.isEmpty()) {
                 if (pendingBytes == 0) return false;
                 fence();
             }
@@ -103,7 +104,8 @@ final class GlStreamingRing {
 
     private void fence() {
         if (pendingBytes > 0) {
-            fenceQueue.enqueue(new FencedRegion(RENDER_BACKEND.fenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0), pendingBytes));
+            fenceIds.enqueue(GLStateManager.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
+            fenceBytes.enqueue(pendingBytes);
             pendingBytes = 0;
             fencesIssued++;
         }
@@ -114,30 +116,32 @@ final class GlStreamingRing {
     }
 
     private void reclaim() {
-        while (!fenceQueue.isEmpty()) {
-            final FencedRegion region = fenceQueue.first();
-            if (!signaled(RENDER_BACKEND.clientWaitSync(region.fenceId, 0, 0L))) break;
-            GLStateManager.glDeleteSync(region.fenceId);
-            fenceQueue.dequeue();
-            remaining += region.bytes;
+        while (!fenceIds.isEmpty()) {
+            final long fenceId = fenceIds.firstLong();
+            if (!signaled(GLStateManager.glClientWaitSync(fenceId, 0, 0L))) break;
+            GLStateManager.glDeleteSync(fenceId);
+            fenceIds.dequeueLong();
+            remaining += fenceBytes.dequeueInt();
         }
     }
 
     private void syncOldest() {
-        final FencedRegion region = fenceQueue.dequeue();
+        final long fenceId = fenceIds.dequeueLong();
+        final int bytes = fenceBytes.dequeueInt();
         forcedReclaims++;
         final long deadline = System.nanoTime() + SYNC_WAIT_TOTAL_NANOS;
         long remainingNanos = SYNC_WAIT_TOTAL_NANOS;
         int status;
         do {
-            status = RENDER_BACKEND.clientWaitSync(region.fenceId, GL32.GL_SYNC_FLUSH_COMMANDS_BIT, Math.min(SYNC_WAIT_SLICE_NANOS, remainingNanos));
+            status = GLStateManager.glClientWaitSync(fenceId, GL32.GL_SYNC_FLUSH_COMMANDS_BIT,
+                Math.min(SYNC_WAIT_SLICE_NANOS, remainingNanos));
             remainingNanos = deadline - System.nanoTime();
         } while (status == GL32.GL_TIMEOUT_EXPIRED && remainingNanos > 0);
         if (!signaled(status)) {
             GLStateManager.LOGGER.warn("Streaming ring fence wait did not signal (status=0x{}); reclaiming anyway", Integer.toHexString(status));
         }
-        GLStateManager.glDeleteSync(region.fenceId);
-        remaining += region.bytes;
+        GLStateManager.glDeleteSync(fenceId);
+        remaining += bytes;
         reclaim();
     }
 
@@ -156,17 +160,16 @@ final class GlStreamingRing {
     int forcedReclaims() { return forcedReclaims; }
 
     void destroy() {
-        while (!fenceQueue.isEmpty()) {
-            GLStateManager.glDeleteSync(fenceQueue.dequeue().fenceId);
+        while (!fenceIds.isEmpty()) {
+            GLStateManager.glDeleteSync(fenceIds.dequeueLong());
         }
+        fenceBytes.clear();
         if (bufferId != 0) {
-            RENDER_BACKEND.bindBuffer(target, bufferId);
-            RENDER_BACKEND.unmapBuffer(target);
-            RENDER_BACKEND.bindBuffer(target, 0);
+            GLStateManager.glBindBuffer(target, bufferId);
+            GLStateManager.glUnmapBuffer(target);
+            GLStateManager.glBindBuffer(target, 0);
             GLStateManager.glDeleteBuffers(bufferId);
             bufferId = 0;
         }
     }
-
-    private record FencedRegion(long fenceId, int bytes) {}
 }

@@ -1,5 +1,6 @@
 package me.jellysquid.mods.sodium.client.gui.options.control;
 
+import me.jellysquid.mods.sodium.client.gui.FrameRateOptions;
 import net.minecraft.client.resources.I18n;
 
 import java.util.Locale;
@@ -10,7 +11,7 @@ public interface ControlValueFormatter {
     }
 
     static ControlValueFormatter fpsLimit() {
-        return (v) -> (v == 260) ? I18n.format("options.framerateLimit.max") : I18n.format("options.framerate", v);
+        return (v) -> (v == FrameRateOptions.MAX_FRAMERATE) ? I18n.format("options.framerateLimit.max") : I18n.format("options.framerate", v);
     }
     static ControlValueFormatter droppedItemLimitLimit() {
         return (v) -> (v == 2048) ? I18n.format("options.droppedItems.max") : I18n.format("options.droppedItems", v);

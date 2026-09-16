@@ -12,7 +12,7 @@ import static org.joml.Math.clamp;
 public final class MipmapGenerator {
 
     private static final float CUTOUT_ALPHA_REF = 0.5f;
-    private static final float STRICT_COVERAGE_TARGET = 0.35f;
+    private static final float STRICT_CUTOUT_ALPHA_REF = 0.3f;
     private static final float ALPHA_BIAS = 0.025f;
 
     private MipmapGenerator() {
@@ -137,14 +137,14 @@ public final class MipmapGenerator {
      * Estimates the fraction of the image that survives, with bilinear filtering modeled by
      * supersampling each texel quad on a 4x4 interior grid.
      */
-    static float alphaTestCoverage(int[] image, int width, float alphaRef, float alphaScale, int border) {
+    static float alphaTestCoverage(int[] image, int width, float alphaRef, float alphaScale) {
         final int height = image.length / width;
         final float alphaFactor = alphaScale / 255.0f;
         float total = 0.0f;
         int quads = 0;
 
-        for (int y = border; y < height - border - 1; y++) {
-            for (int x = border; x < width - border - 1; x++) {
+        for (int y = 0; y < height - 1; y++) {
+            for (int x = 0; x < width - 1; x++) {
                 final int i = x + y * width;
                 final float a00 = scaledAlpha(image[i], alphaFactor);
                 final float a10 = scaledAlpha(image[i + 1], alphaFactor);
@@ -190,7 +190,7 @@ public final class MipmapGenerator {
         return clamp(0.0f, 1.0f, ColorARGB.unpackAlpha(color) * alphaFactor);
     }
 
-    static void scaleAlphaToCoverage(int[] image, int width, float desiredCoverage, float alphaRef, int border) {
+    static void scaleAlphaToCoverage(int[] image, int width, float desiredCoverage, float alphaRef) {
         float min = 0.0f;
         float max = 4.0f;
         float scale = 1.0f;
@@ -198,7 +198,7 @@ public final class MipmapGenerator {
         float bestError = Float.POSITIVE_INFINITY;
 
         for (int i = 0; i < 5; i++) {
-            final float coverage = alphaTestCoverage(image, width, alphaRef, scale, border);
+            final float coverage = alphaTestCoverage(image, width, alphaRef, scale);
             final float error = Math.abs(coverage - desiredCoverage);
             if (error < bestError) {
                 bestError = error;
@@ -225,7 +225,7 @@ public final class MipmapGenerator {
     }
 
     public static int[][] generateMipLevels(int mipLevel, int width, int[][] currentMips,
-                                            MipmapStrategy strategy, boolean hasTransparentPixel, int border) {
+                                            MipmapStrategy strategy, boolean hasTransparentPixel) {
 
         final MipmapStrategy resolved = resolve(strategy, hasTransparentPixel);
         final boolean isCutout = isCutoutStrategy(strategy, hasTransparentPixel);
@@ -247,16 +247,8 @@ public final class MipmapGenerator {
             return result;
         }
 
-        final boolean autoResolved = strategy == null || strategy == MipmapStrategy.AUTO;
-        final boolean strictCoverage = resolved == MipmapStrategy.STRICT_CUTOUT;
-        final float alphaRef = CUTOUT_ALPHA_REF;
-        float originalCoverage = 0.0f;
-        if (isCutout) {
-            originalCoverage = alphaTestCoverage(base, width, alphaRef, 1.0f, border);
-            if (strictCoverage || (autoResolved && originalCoverage < STRICT_COVERAGE_TARGET)) {
-                originalCoverage = Math.max(originalCoverage, STRICT_COVERAGE_TARGET);
-            }
-        }
+        final float cutoutRef = resolved == MipmapStrategy.STRICT_CUTOUT ? STRICT_CUTOUT_ALPHA_REF : CUTOUT_ALPHA_REF;
+        final float originalCoverage = isCutout ? alphaTestCoverage(base, width, cutoutRef, 1.0f) : 0.0f;
 
         for (int level = 1; level <= mipLevel; level++) {
             final int levelWidth = width >> level;
@@ -283,7 +275,7 @@ public final class MipmapGenerator {
             }
 
             if (isCutout) {
-                scaleAlphaToCoverage(result[level], levelWidth, originalCoverage, alphaRef, border >> level);
+                scaleAlphaToCoverage(result[level], levelWidth, originalCoverage, cutoutRef);
             }
         }
 

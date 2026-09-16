@@ -54,6 +54,7 @@ import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
+import com.gtnewhorizons.angelica.rendering.particles.ParticleInstancer;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
@@ -168,6 +169,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         ShadowRenderer.globalTileEntities.clear();
         TesrBatchRenderer.INSTANCE.clearRetained();
         ModelPartBatcher.INSTANCE.clear();
+        ParticleInstancer.clear();
         GpuCulling.onWorldUnload();
         FfpExtendedAttribs.reset();
         BopFogBlend.invalidate();
@@ -248,12 +250,19 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     @Override
     protected void renderBlockEntityList(List<TileEntity> list, TileEntityRenderContext context) {
-        for (int i = 0; i < list.size(); i++) {
-            final TileEntity te = list.get(i);
+        collectVisibleBlockEntities(list);
+    }
+
+    private int collectVisibleBlockEntities(List<TileEntity> blockEntities) {
+        int count = 0;
+        for (int i = 0; i < blockEntities.size(); i++) {
+            final TileEntity te = blockEntities.get(i);
             if (isTileEntityVisible(te)) {
                 frameTEs.add(te);
+                count++;
             }
         }
+        return count;
     }
 
     private CameraState lastMainCameraState;
@@ -290,7 +299,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 collectTileEntitiesForShadow();
             }
         } else if (IrisShaderProviderHolder.isActive()) {
-            IrisShaderProviderHolder.getProvider().preSubmitShadowGraph(frame, spectator);
+            IrisShaderProviderHolder.getProvider().preSubmitShadowGraph(frame);
         }
     }
 
@@ -393,7 +402,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             teRenderContext.set(partialTicks, pass);
             final Viewport viewport = this.currentViewport;
             this.teTransform = viewport != null ? viewport.getTransform() : null;
-            this.teFrustum = viewport != null && ClientProxy.options().performance.sectionGatedTesrCulling && viewport.getFrustum() instanceof SimpleFrustum simpleFrustum ? simpleFrustum.frustumIntersection() : null;
+            this.teFrustum = viewport != null && ClientProxy.options().performance.sectionGatedTesrCulling && viewport.getFrustum() instanceof SimpleFrustum simpleFrustum ? simpleFrustum.getFrustumIntersection() : null;
             this.teCullEpoch++;
             this.teCamX = TileEntityRendererDispatcher.staticPlayerX;
             this.teCamY = TileEntityRendererDispatcher.staticPlayerY;
@@ -470,15 +479,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
                 }
             }
 
-            int count = 0;
-            for (int i = 0; i < blockEntities.size(); i++) {
-                final TileEntity te = blockEntities.get(i);
-                if (isTileEntityVisible(te)) {
-                    frameTEs.add(te);
-                    count++;
-                }
-            }
-            return count;
+            return collectVisibleBlockEntities(blockEntities);
         }
 
         int count = 0;

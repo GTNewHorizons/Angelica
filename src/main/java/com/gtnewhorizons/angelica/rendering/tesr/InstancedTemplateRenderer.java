@@ -4,12 +4,15 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.ffp.CubeInstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.ffp.UnitCubeMesh;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
-import com.gtnewhorizons.angelica.glsm.streaming.OrphanStreamingBuffer;
-import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
-import it.unimi.dsi.fastutil.floats.FloatArrayList;
+import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.InstanceColumns;
+import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.TexRun;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
@@ -26,8 +29,6 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.CO
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.NORMAL_INDEX;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.TEX_X_INDEX;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutFloat;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memPutInt;
 
 final class InstancedTemplateRenderer {
 
@@ -35,6 +36,8 @@ final class InstancedTemplateRenderer {
 
     private static final int TEMPLATE_STRIDE = VERTEX_SIZE * 4;
     private static final int TEMPLATE_FLAGS = VertexFlags.COLOR_BIT | VertexFlags.TEXTURE_BIT | VertexFlags.NORMAL_BIT;
+
+    private static long bucketEpochSource;
 
     private static final class TemplateMesh {
         int vao;
@@ -51,69 +54,58 @@ final class InstancedTemplateRenderer {
     }
 
     private final Reference2ObjectOpenHashMap<TemplateBuffer, TemplateMesh> meshes = new Reference2ObjectOpenHashMap<>();
-    private final Reference2ObjectOpenHashMap<TemplateBuffer, Bucket> buckets = new Reference2ObjectOpenHashMap<>();
     private final ObjectArrayList<Bucket> bucketPool = new ObjectArrayList<>();
     private final ObjectArrayList<Bucket> liveBuckets = new ObjectArrayList<>();
-    private final float[] matScratch = new float[16];
 
-    private PersistentStreamingBuffer persistentRing;
-    private OrphanStreamingBuffer orphanRing;
-    private boolean ringInitialized;
-    private boolean ringUsedThisFrame;
-    private int uploadBufferId;
+    private final InstanceRing ring;
     private ByteBuffer staging;
 
-    int drawGroup(ObjectArrayList<TemplateBuffer> templates, FloatArrayList matrices, IntArrayList lights, IntArrayList colors, int count, long nowMs) {
-        for (int i = 0; i < count; i++) {
-            final TemplateBuffer template = templates.get(i);
-            Bucket bucket = buckets.get(template);
-            if (bucket == null) {
-                bucket = bucketPool.isEmpty() ? new Bucket() : bucketPool.pop();
-                bucket.mesh = meshFor(template, nowMs);
-                buckets.put(template, bucket);
-                liveBuckets.add(bucket);
+    InstancedTemplateRenderer(InstanceRing ring) {
+        this.ring = ring;
+    }
+
+    int drawTemplates(InstanceColumns cols, TexRun run, long nowMs) {
+        final long epoch = ++bucketEpochSource;
+        for (TexRun seg = run; seg != null; seg = seg.next) {
+            for (int i = seg.start, end = seg.end; i < end; i++) {
+                final TemplateBuffer template = cols.templates.get(i);
+                final Bucket bucket;
+                if (template.bucketEpoch == epoch) {
+                    bucket = liveBuckets.get(template.bucketIndex);
+                } else {
+                    bucket = bucketPool.isEmpty() ? new Bucket() : bucketPool.pop();
+                    bucket.mesh = meshFor(template, nowMs);
+                    template.bucketEpoch = epoch;
+                    template.bucketIndex = liveBuckets.size();
+                    liveBuckets.add(bucket);
+                }
+                bucket.indices.add(i);
             }
-            bucket.indices.add(i);
         }
 
-        staging = MeshBuffer.ensureCapacity(staging, count * InstancedAttribs.STRIDE, false);
+        staging = MeshBuffer.ensureCapacity(staging, run.parts * InstancedAttribs.STRIDE, false);
         final long base = memAddress0(staging);
         long ptr = base;
         for (int b = 0, n = liveBuckets.size(); b < n; b++) {
             final IntArrayList indices = liveBuckets.get(b).indices;
             for (int j = 0, m = indices.size(); j < m; j++) {
                 final int i = indices.getInt(j);
-                matrices.getElements(i * 16, matScratch, 0, 16);
-                for (int k = 0; k < 16; k++) {
-                    memPutFloat(ptr + k * 4L, matScratch[k]);
-                }
-                memPutInt(ptr + InstancedAttribs.OFFSET_COLOR, colors.getInt(i));
-                final int light = lights.getInt(i);
-                memPutFloat(ptr + InstancedAttribs.OFFSET_LIGHTMAP, light & 0xFFFF);
-                memPutFloat(ptr + InstancedAttribs.OFFSET_LIGHTMAP + 4, (light >>> 16) & 0xFFFF);
+                InstancedAttribs.writeHead(ptr, cols.matrices, i * 16, cols.colors.getInt(i), cols.overlays.getInt(i), cols.infos.getLong(i));
+                InstancedAttribs.writeLightmap(ptr + InstancedAttribs.OFFSET_LIGHTMAP, cols.lights.getInt(i));
                 ptr += InstancedAttribs.STRIDE;
             }
         }
-        staging.position(0);
-        staging.limit((int) (ptr - base));
-        final long ringBase = uploadInstances(staging);
-        staging.clear();
+        final long ringBase = uploadStaging(base, ptr, InstancedAttribs.STRIDE);
 
         int draws = 0;
         long recordOffset = ringBase;
-        final int ringId = uploadBufferId;
-        final ImmediateExtendedAttribHandler extHandler = GLSMHooks.immediateExtendedHandler;
-        if (extHandler != null && extHandler.wantsExtended()) {
-            FfpExtendedAttribs.setNeutralCurrentValues();
-        }
-        GLStateManager.instancedFfpDrawActive = true;
+        neutralizeExtendedAttribs();
+        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
         for (int b = 0, n = liveBuckets.size(); b < n; b++) {
             final Bucket bucket = liveBuckets.get(b);
             final TemplateMesh mesh = bucket.mesh;
-            GLStateManager.glBindVertexArray(mesh.vao);
-            VAOManager.setCurrentVertexFlags(TEMPLATE_FLAGS);
-            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ringId);
-            pointInstanceAttribs(recordOffset);
+            bindRingTo(mesh.vao, TEMPLATE_FLAGS);
+            InstancedAttribs.pointTemplate(recordOffset);
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
             GLStateManager.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, bucket.indices.size());
             draws++;
@@ -122,41 +114,66 @@ final class InstancedTemplateRenderer {
             bucket.mesh = null;
             bucketPool.add(bucket);
         }
-        GLStateManager.instancedFfpDrawActive = false;
+        GLStateManager.ffpInstancing = Instancing.NONE;
         GLStateManager.glBindVertexArray(0);
         liveBuckets.clear();
-        buckets.clear();
         return draws;
     }
 
-    private static void pointInstanceAttribs(long base) {
-        for (int c = 0; c < 4; c++) {
-            GLStateManager.glVertexAttribPointer(InstancedAttribs.LOC_MATRIX_COL0 + c, 4, GL11.GL_FLOAT, false,
-                InstancedAttribs.STRIDE, base + c * 16L);
-        }
-        GLStateManager.glVertexAttribPointer(InstancedAttribs.LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true,
-            InstancedAttribs.STRIDE, base + InstancedAttribs.OFFSET_COLOR);
-        GLStateManager.glVertexAttribPointer(InstancedAttribs.LOC_LIGHTMAP, 2, GL11.GL_FLOAT, false,
-            InstancedAttribs.STRIDE, base + InstancedAttribs.OFFSET_LIGHTMAP);
-    }
-
-    private long uploadInstances(ByteBuffer data) {
-        if (!ringInitialized) {
-            ringInitialized = true;
-            persistentRing = PersistentStreamingBuffer.createOrNull(PersistentStreamingBuffer.DEFAULT_CAPACITY);
-        }
-        ringUsedThisFrame = true;
-        if (persistentRing != null) {
-            final int index = persistentRing.upload(data, InstancedAttribs.STRIDE);
-            if (index >= 0) {
-                uploadBufferId = persistentRing.getBufferId();
-                return (long) index * InstancedAttribs.STRIDE;
+    void drawCubes(InstanceColumns cols, TexRun run) {
+        staging = MeshBuffer.ensureCapacity(staging, run.instances * CubeInstancedAttribs.STRIDE, false);
+        final long base = memAddress0(staging);
+        long ptr = base;
+        for (TexRun seg = run; seg != null; seg = seg.next) {
+            for (int i = seg.start, end = seg.end; i < end; i++) {
+                final int off = i * 16;
+                final CubeParams[] partCubes = cols.cubes.get(i);
+                final float scale = cols.scales.getFloat(i);
+                final int color = cols.colors.getInt(i);
+                final int light = cols.lights.getInt(i);
+                final int overlay = cols.overlays.getInt(i);
+                final long info = cols.infos.getLong(i);
+                for (int p = 0, n = partCubes.length; p < n; p++) {
+                    final CubeParams cube = partCubes[p];
+                    cube.writeRows(ptr, cols.matrices, off, scale);
+                    InstancedAttribs.writeTail(ptr, color, overlay, info);
+                    InstancedAttribs.writeLightmap(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE, light);
+                    cube.writeTexture(ptr);
+                    ptr += CubeInstancedAttribs.STRIDE;
+                }
             }
         }
-        if (orphanRing == null) orphanRing = new OrphanStreamingBuffer();
-        orphanRing.upload(data);
-        uploadBufferId = orphanRing.getBufferId();
-        return 0;
+        final long ringBase = uploadStaging(base, ptr, CubeInstancedAttribs.STRIDE);
+
+        neutralizeExtendedAttribs();
+        bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
+        CubeInstancedAttribs.pointInstanceAttribs(ringBase);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        GLStateManager.ffpInstancing = Instancing.CUBE;
+        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
+        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.glBindVertexArray(0);
+    }
+
+    private long uploadStaging(long base, long end, int stride) {
+        staging.position(0);
+        staging.limit((int) (end - base));
+        final long ringBase = ring.upload(staging, stride);
+        staging.clear();
+        return ringBase;
+    }
+
+    private void bindRingTo(int vao, int vertexFlags) {
+        GLStateManager.glBindVertexArray(vao);
+        VAOManager.setCurrentVertexFlags(vertexFlags);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring.bufferId());
+    }
+
+    private static void neutralizeExtendedAttribs() {
+        final ImmediateExtendedAttribHandler extHandler = GLSMHooks.immediateExtendedHandler;
+        if (extHandler != null && extHandler.wantsExtended()) {
+            FfpExtendedAttribs.setNeutralCurrentValues();
+        }
     }
 
     private TemplateMesh meshFor(TemplateBuffer template, long nowMs) {
@@ -196,10 +213,7 @@ final class InstancedTemplateRenderer {
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         }
 
-        for (int loc = InstancedAttribs.LOC_MATRIX_COL0; loc <= InstancedAttribs.LOC_LIGHTMAP; loc++) {
-            GLStateManager.glEnableVertexAttribArray(loc);
-            GLStateManager.glVertexAttribDivisor(loc, 1);
-        }
+        InstancedAttribs.enableHeadArrays();
         VAOManager.setCurrentVertexFlags(TEMPLATE_FLAGS);
         GLStateManager.glBindVertexArray(0);
         return mesh;
@@ -225,10 +239,7 @@ final class InstancedTemplateRenderer {
     }
 
     void endFrame() {
-        if (ringUsedThisFrame && persistentRing != null) {
-            persistentRing.postDraw();
-        }
-        ringUsedThisFrame = false;
+        ring.postDraw();
     }
 
     void sweep(long now) {
@@ -247,6 +258,10 @@ final class InstancedTemplateRenderer {
             delete(mesh);
         }
         meshes.clear();
+        liveBuckets.clear();
+        bucketPool.clear();
+        staging = null;
+        UnitCubeMesh.delete();
     }
 
     private static void delete(TemplateMesh mesh) {

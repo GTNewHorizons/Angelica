@@ -6,22 +6,15 @@ import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkMeshFormats;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexEncoder;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 
-/**
- * VANILLA_LIKE (28 bytes) + Iris extensions (20 bytes) = 48 bytes total.
- *
- * Iris extensions:
- *   mc_midTexCoord  ushort[2]  - quad center UV (average of 4 vertices)
- *   at_tangent      byte[4]    - tangent vector, normalized
- *   iris_Normal     byte[3]+1  - face normal, normalized
- *   mc_Entity       uint       - packed as ((blockId + 1) << 1) | (renderType & 1)
- *   at_midBlock     byte[4]    - (xyz offset from block center, lightValue)
- */
+import java.util.stream.Collectors;
+
 public class IrisExtendedChunkVertexType implements ChunkVertexType {
     public static final ChunkVertexType BASE_TYPE = ChunkMeshFormats.VANILLA_LIKE;
     public static final int STRIDE = 48;
 
     public static final GlVertexFormat VERTEX_FORMAT = GlVertexFormat.builder(STRIDE)
-        .addAllElements(BASE_TYPE.getVertexFormat())
+        .addElements(BASE_TYPE.getVertexFormat().getAttributes().stream()
+            .filter(a -> !a.getName().equals("a_RdhFactor")).collect(Collectors.toList()))
         .addElement("mc_midTexCoord", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.UNSIGNED_SHORT, 2, false, false)
         .addElement("at_tangent", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.BYTE, 4, true, false)
         .addElement("iris_Normal", GlVertexFormat.NEXT_ALIGNED_POINTER, GlVertexAttributeFormat.BYTE, 3, true, false)

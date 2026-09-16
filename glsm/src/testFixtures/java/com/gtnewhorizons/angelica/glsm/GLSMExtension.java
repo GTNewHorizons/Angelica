@@ -69,6 +69,9 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             displayMode = new DisplayMode(800, 600);
             final GLSMInitConfig config = GLSMInitConfig.builder()
                 .displaySize(displayMode.getWidth(), displayMode.getHeight())
+                .directDrawer(t -> {})
+                .streamingDrawerDestroy(() -> {})
+                .enableDSA(false)
                 .build();
             setMainThread(Thread.currentThread());
 

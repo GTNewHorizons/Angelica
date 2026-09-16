@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -452,6 +453,47 @@ class PipelineCacheVertexInputTest {
         assertTrue(c.markInputDirtyIfLivenessChanged(store, 42, 9), "live -> dead must invalidate the cached input layout");
         assertTrue(c.markInputDirtyIfLivenessChanged(store, 9, 42), "dead -> live must invalidate the cached input layout");
         assertFalse(c.markInputDirtyIfLivenessChanged(store, 42, 7), "swapping two live buffers must not force an input rehash");
+    }
+
+    @Test
+    void programInputSignatureChangeInvalidatesInputHash() {
+        final int[] vecSizesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizesA[0] = 3;
+        final int[] baseTypesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypesA[0] = Spvc.SPVC_BASETYPE_FP32;
+        final String[] namesA = new String[ContextState.MAX_VERTEX_ATTRIBS];
+        namesA[0] = "a_Pos";
+        final PipelineCache c = cache(0x1, vecSizesA, baseTypesA);
+        c.shaderInputName = namesA;
+
+        final ContextState cs = new ContextState();
+        enableFloatAttrib(cs, 0, 3, 12);
+
+        final long keyA = Reflect.invoke(c, "currentKey", new Class<?>[] { PipelineStore.class, ContextState.class }, store, cs);
+        final boolean dirtyAfterKeyA = Reflect.get(c, "inputDirty");
+        assertFalse(dirtyAfterKeyA, "currentKey must clear the dirty flag once recomputed");
+
+        c.setVertexInputs(0x1, vecSizesA, baseTypesA, namesA);
+        final boolean dirtyAfterSameSignature = Reflect.get(c, "inputDirty");
+        assertFalse(dirtyAfterSameSignature, "an identical signature must not force a rehash");
+
+        c.setVertexInputs(0x1, vecSizesA.clone(), baseTypesA.clone(), namesA.clone());
+        final boolean dirtyAfterEqualCopies = Reflect.get(c, "inputDirty");
+        assertFalse(dirtyAfterEqualCopies, "another program with an equal signature must not force a rehash");
+
+        final int[] vecSizesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizesB[0] = 3; vecSizesB[1] = 4;
+        final int[] baseTypesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypesB[0] = Spvc.SPVC_BASETYPE_FP32; baseTypesB[1] = Spvc.SPVC_BASETYPE_FP32;
+        final String[] namesB = new String[ContextState.MAX_VERTEX_ATTRIBS];
+        namesB[0] = "a_Pos"; namesB[1] = "a_Extra";
+
+        c.setVertexInputs(0x3, vecSizesB, baseTypesB, namesB);
+        final boolean dirtyAfterChangedSignature = Reflect.get(c, "inputDirty");
+        assertTrue(dirtyAfterChangedSignature, "a changed vertex-input signature must invalidate the cached input hash");
+
+        final long keyB = Reflect.invoke(c, "currentKey", new Class<?>[] { PipelineStore.class, ContextState.class }, store, cs);
+        assertTrue(keyA != keyB, "currentKey must reflect the new signature, not a stale cached input hash");
     }
 
     @Test

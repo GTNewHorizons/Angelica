@@ -12,7 +12,7 @@ import org.lwjgl.opengl.GL13;
  * Packed-long fragment shader permutation key for FFP emulation.
  *
  * Layout:
- *   long[0]: global bits (13) + unit 0 (47 bits at offset 13)
+ *   long[0]: global bits (14) + unit 0 (47 bits at offset 14)
  *   long[1..3]: unit 1..3 (47 bits each, low-aligned)
  * Only max(1, nrEnabledUnits) longs are significant.
  *
@@ -63,7 +63,7 @@ public final class FragmentKey {
     public static final int FOG_EXP    = 2;
     public static final int FOG_EXP2   = 3;
 
-    private static final int GLOBAL_BITS = 13;
+    private static final int GLOBAL_BITS = 14;
     private static final int BIT_FOG_MODE          = 0;  // 2 bits
     private static final int BIT_ALPHA_TEST        = 2;  // 1 bit
     private static final int BIT_ALPHA_FUNC        = 3;  // 3 bits
@@ -72,6 +72,7 @@ public final class FragmentKey {
     private static final int BIT_OVERLAY_ENABLED   = 10; // 1 bit
     private static final int BIT_LINE_STIPPLE      = 11; // 1 bit
     private static final int BIT_COLOR_SUM         = 12; // 1 bit
+    private static final int BIT_OVERLAY_INSTANCED = 13;
 
     private static final int U_ENABLED         = 0;
     private static final int U_MODE            = 1;   // 3 bits
@@ -123,7 +124,9 @@ public final class FragmentKey {
         }
 
         // Damage overlay
-        if (GLStateManager.getOverlayA() != 0.0f) {
+        if (GLStateManager.ffpInstancing.hasInstanceHead()) {
+            global |= (1L << BIT_OVERLAY_INSTANCED);
+        } else if (GLStateManager.getOverlayA() != 0.0f) {
             global |= (1L << BIT_OVERLAY_ENABLED);
         }
 
@@ -245,6 +248,7 @@ public final class FragmentKey {
     public boolean lineStipple()      { return ((packed[0] >> BIT_LINE_STIPPLE) & 1) != 0; }
     public int nrEnabledUnits()       { return (int) ((packed[0] >> BIT_NR_ENABLED_UNITS) & 0x7); }
     public boolean overlayEnabled()   { return ((packed[0] >> BIT_OVERLAY_ENABLED) & 1) != 0; }
+    public boolean overlayInstanced() { return ((packed[0] >> BIT_OVERLAY_INSTANCED) & 1) != 0; }
 
     private long unitBits(int i) {
         return (i == 0) ? (packed[0] >>> GLOBAL_BITS) : packed[i];
@@ -378,10 +382,7 @@ public final class FragmentKey {
             default -> "?";
         };
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b colorSum=%b overlay=%b units=%d",
-            fogName, alphaTestEnabled(),
-            alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-",
-            separateSpecular(), colorSum(), overlayEnabled(), nrEnabledUnits()));
+        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b colorSum=%b overlay=%b units=%d", fogName, alphaTestEnabled(), alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-", separateSpecular(), colorSum(), overlayEnabled() || overlayInstanced(), nrEnabledUnits()));
         for (int i = 0; i < nrEnabledUnits(); i++) {
             if (!unitEnabled(i)) {
                 sb.append(String.format(" u%d=OFF", i));

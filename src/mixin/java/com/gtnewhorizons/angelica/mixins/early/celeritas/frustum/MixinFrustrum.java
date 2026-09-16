@@ -24,9 +24,19 @@ public abstract class MixinFrustrum implements ViewportProvider {
 
     @Unique private final FrustumIntersection celeritas$snapshot = new FrustumIntersection();
 
-    @Inject(method = "<init>", at = @At("RETURN"))
-    private void celeritas$snapshotFrustum(CallbackInfo ci) {
+    @Unique
+    private void celeritas$snapshotFrustum() {
         this.celeritas$snapshot.set(((ClippingHelperExt) this.clippingHelper).celeritas$getCombinedMatrix(), false);
+    }
+
+    @Inject(method = "<init>", at = @At("RETURN"))
+    private void celeritas$snapshotOnInit(CallbackInfo ci) {
+        this.celeritas$snapshotFrustum();
+    }
+
+    @Inject(method = "setPosition", at = @At("RETURN"))
+    private void celeritas$snapshotOnSetPosition(double x, double y, double z, CallbackInfo ci) {
+        this.celeritas$snapshotFrustum();
     }
 
     @Override

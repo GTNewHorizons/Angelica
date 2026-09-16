@@ -1,0 +1,139 @@
+# Summons are relative to the flight start; start facing south (yaw 0).
+
+# gamerules
+difficulty 1
+gamerule doMobSpawning false
+gamerule doFireTick false
+gamerule mobGriefing false
+
+# hurt-flash + glint zombies, x=-5 leg
+summon Zombie ~-5 ~ ~10 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~14 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~18 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~22 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~26 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~30 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~34 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon Zombie ~-5 ~ ~38 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000},{Id:10b,Amplifier:1b,Duration:1000000}],Equipment:[{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},{id:313s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:312s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:311s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:310s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+
+# pigzombies, x=6 leg
+summon PigZombie ~6 ~ ~10 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~14 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~18 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~22 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~26 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~30 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~34 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+summon PigZombie ~6 ~ ~38 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],Equipment:[{id:283s,Count:1b},{id:317s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:316s,Count:1b},{id:315s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}},{id:314s,Count:1b,tag:{ench:[{id:0s,lvl:1s}]}}],ForgeData:{flyby:1b}}
+
+# passive mobs, grouped by species
+summon Cow ~-5 ~ ~44 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Cow ~-5 ~ ~48 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Cow ~-5 ~ ~52 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Cow ~-5 ~ ~56 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Cow ~-5 ~ ~60 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Cow ~-5 ~ ~64 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Pig ~6 ~ ~44 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Pig ~6 ~ ~48 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Pig ~6 ~ ~52 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Pig ~6 ~ ~56 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Pig ~6 ~ ~60 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Pig ~6 ~ ~64 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Sheep ~-9 ~ ~44 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Sheep ~-9 ~ ~48 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Sheep ~-9 ~ ~52 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Sheep ~-9 ~ ~56 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Sheep ~-9 ~ ~60 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Sheep ~-9 ~ ~64 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Chicken ~10 ~ ~44 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Chicken ~10 ~ ~48 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Chicken ~10 ~ ~52 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Chicken ~10 ~ ~56 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Chicken ~10 ~ ~60 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Chicken ~10 ~ ~64 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+
+# villagers
+summon Villager ~-5 ~ ~70 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Villager ~-5 ~ ~74 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Villager ~-5 ~ ~78 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Villager ~-5 ~ ~82 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Villager ~-5 ~ ~86 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Villager ~-5 ~ ~90 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+
+# dropped items, x=2 leg, 12 item types cycled twice
+summon Item ~2 ~ ~60 {Item:{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~62 {Item:{id:264s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~64 {Item:{id:265s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~66 {Item:{id:261s,Count:1b,tag:{ench:[{id:48s,lvl:1s}]}},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~68 {Item:{id:322s,Count:1b,Damage:1s},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~70 {Item:{id:403s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~72 {Item:{id:373s,Count:1b,Damage:8193s},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~74 {Item:{id:299s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~76 {Item:{id:1s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~78 {Item:{id:20s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~80 {Item:{id:50s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~82 {Item:{id:4s,Count:64b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~84 {Item:{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~86 {Item:{id:264s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~88 {Item:{id:265s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~90 {Item:{id:261s,Count:1b,tag:{ench:[{id:48s,lvl:1s}]}},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~92 {Item:{id:322s,Count:1b,Damage:1s},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~94 {Item:{id:403s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~96 {Item:{id:373s,Count:1b,Damage:8193s},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~98 {Item:{id:299s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~100 {Item:{id:1s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~102 {Item:{id:20s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~104 {Item:{id:50s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~2 ~ ~106 {Item:{id:4s,Count:64b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+
+# fire strip
+setblock ~4 ~ ~110 minecraft:dispenser 0 replace {CustomName:"flyby"}
+setblock ~4 ~1 ~110 minecraft:fire
+setblock ~-4 ~ ~114 minecraft:dispenser 0 replace {CustomName:"flyby"}
+setblock ~-4 ~1 ~114 minecraft:fire
+setblock ~4 ~ ~118 minecraft:dispenser 0 replace {CustomName:"flyby"}
+setblock ~4 ~1 ~118 minecraft:fire
+setblock ~-4 ~ ~122 minecraft:dispenser 0 replace {CustomName:"flyby"}
+setblock ~-4 ~1 ~122 minecraft:fire
+
+# slowed cows, z=133 leg
+summon Cow ~-10 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-14 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-18 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-22 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-26 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-30 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-34 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-38 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-42 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-46 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-50 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-54 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-58 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-62 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-66 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Cow ~-70 ~ ~133 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:1b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+
+# plain zombies, z=123 leg
+summon Zombie ~-80 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-84 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-88 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-92 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-96 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-100 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-104 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~-108 ~ ~123 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+
+# dropped items, z=126 leg, 12 item types once
+summon Item ~-16 ~ ~126 {Item:{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-20 ~ ~126 {Item:{id:264s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-24 ~ ~126 {Item:{id:265s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-28 ~ ~126 {Item:{id:261s,Count:1b,tag:{ench:[{id:48s,lvl:1s}]}},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-32 ~ ~126 {Item:{id:322s,Count:1b,Damage:1s},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-36 ~ ~126 {Item:{id:403s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-40 ~ ~126 {Item:{id:373s,Count:1b,Damage:8193s},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-44 ~ ~126 {Item:{id:299s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-48 ~ ~126 {Item:{id:1s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-52 ~ ~126 {Item:{id:20s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-56 ~ ~126 {Item:{id:50s,Count:1b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}
+summon Item ~-60 ~ ~126 {Item:{id:4s,Count:64b},Age:-32768s,Lifespan:2147483647,Owner:"flyby",ForgeData:{flyby:1b}}

@@ -150,6 +150,7 @@ public final class SDLGPUGate {
             try {
                 device().claimWindow(ctx.window());
                 engaged = true;
+                SDLGPULWJGLService.bind();
                 BackendManager.RENDER_BACKEND.onPostWindowCreate(ctx.window());
             } catch (Throwable t) {
                 initFailure = t;
@@ -158,9 +159,10 @@ public final class SDLGPUGate {
     }
 
     public static void fallBackToGL() {
-        if (SDLGPULWJGLService.isOfferedAsAvailable()) {
+        if (SDLGPULWJGLService.isConstructed()) {
             throw new IllegalStateException("Celeritas already selected the SDL GPU LWJGL service; falling back to OpenGL would leave it bound to a dead backend");
         }
+        SDLGPULWJGLService.unbind();
         disarmed = true;
         engaged = false;
         deviceReady = false;

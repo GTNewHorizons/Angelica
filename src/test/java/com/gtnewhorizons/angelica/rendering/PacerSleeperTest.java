@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
 
 import java.util.function.LongConsumer;
@@ -64,7 +65,7 @@ class PacerSleeperTest {
 
         for (int i = 0; i < 20; i++) {
             final long deadline = time.now + 13 * MS;
-            final long floor = s.spinFloorNanos();
+            final long floor = Reflect.<Long>get(s, "spinFloorNanos");
             final long woke = s.sleepUntil(deadline, time.now);
             assertTrue(deadline - woke <= floor, "left " + (deadline - woke) + "ns to spin, floor is " + floor);
         }
@@ -95,7 +96,7 @@ class PacerSleeperTest {
         final long woke = s.sleepUntil(10 * MS, 0L);
 
         assertEquals(2, time.parks, "a short park must be followed by another, not by a spin");
-        assertTrue(10 * MS - woke <= s.spinFloorNanos(), "the second park should still land inside the floor");
+        assertTrue(10 * MS - woke <= Reflect.<Long>get(s, "spinFloorNanos"), "the second park should still land inside the floor");
     }
 
     @Test
@@ -111,13 +112,6 @@ class PacerSleeperTest {
             assertEquals(i + 1, time.parks, "every frame must still park exactly once");
             assertTrue(woke >= deadline, "frame " + i + " left " + (deadline - woke) + "ns to busy-wait; a coarse timer must never hand the frame to the spin loop");
         }
-    }
-
-    @Test
-    void aPeriodShorterThanTheWakeUpLagStillParksRatherThanSpinning() {
-        final FakeTime time = new FakeTime();
-        time.granularity = 15_600_000L;
-        final PacerSleeper s = sleeper(time);
 
         for (int i = 0; i < 30; i++) {
             final int before = time.parks;
@@ -175,13 +169,18 @@ class PacerSleeperTest {
     void theSpinLoopFinishesTheFrameAndIsCounted() {
         final long step = 10_000L;
         final long[] clock = { 0L };
-        final PacerSleeper s = new PacerSleeper(() -> clock[0] += step, nanos -> clock[0] += nanos, true);
+        final int[] parks = { 0 };
+        final PacerSleeper s = new PacerSleeper(() -> clock[0] += step, nanos -> {
+            parks[0]++;
+            clock[0] += nanos;
+        }, true);
 
         final long woke = s.sleepUntil(5 * MS, 0L);
+        s.noteFrame(0L, 0L);
 
         assertEquals(5 * MS, woke, "the spin must carry the frame to the deadline");
-        assertEquals(1, s.lastParks);
-        assertEquals(10_000L, s.lastSpinNanos, "the spin covers what the park left short");
+        assertEquals(1, parks[0]);
+        assertEquals(10_000L, s.lastFrameSpinNanos, "the spin covers what the park left short");
     }
 
     @Test
@@ -189,18 +188,25 @@ class PacerSleeperTest {
         final long step = 10_000L;
         final long overshoot = 2 * MS;
         final long[] clock = { 0L };
-        final PacerSleeper s = new PacerSleeper(() -> clock[0] += step, nanos -> clock[0] += nanos + overshoot, true);
+        final int[] parks = { 0 };
+        final PacerSleeper s = new PacerSleeper(() -> clock[0] += step, nanos -> {
+            parks[0]++;
+            clock[0] += nanos + overshoot;
+        }, true);
 
         for (int i = 0; i < PacerSleeper.SLOTS; i++) {
             s.sleepUntil(clock[0] + 13 * MS, clock[0]);
         }
+        s.noteFrame(0L, 0L);
         assertTrue(s.avgOvershootNanos() > MS, "the park estimate must exceed the remaining gap for this branch to be reached");
 
         final long deadline = clock[0] + MS;
+        final int before = parks[0];
         final long woke = s.sleepUntil(deadline, clock[0]);
+        s.noteFrame(0L, 0L);
 
-        assertEquals(0, s.lastParks, "a gap under one park quantum must not park again");
-        assertTrue(s.lastSpinNanos > 0L, "the spin loop has to close a gap far wider than the floor");
+        assertEquals(before, parks[0], "a gap under one park quantum must not park again");
+        assertTrue(s.lastFrameSpinNanos > 0L, "the spin loop has to close a gap far wider than the floor");
         assertTrue(woke >= deadline, "woke " + woke + "ns short of deadline " + deadline);
     }
 
@@ -214,7 +220,7 @@ class PacerSleeperTest {
             s.sleepUntil(time.now + 13 * MS, time.now);
         }
 
-        assertEquals(PacerSleeper.MIN_SPIN_FLOOR_NANOS, s.spinFloorNanos(), "identical overshoots are pure bias, not jitter, so the floor stays at its minimum");
+        assertEquals(PacerSleeper.MIN_SPIN_FLOOR_NANOS, Reflect.<Long>get(s, "spinFloorNanos"), "identical overshoots are pure bias, not jitter, so the floor stays at its minimum");
     }
 
     @Test
@@ -230,7 +236,7 @@ class PacerSleeperTest {
         s.sleepUntil(time.now + 13 * MS, time.now);
 
         assertEquals(140_000L, s.avgOvershootNanos());
-        assertEquals(500_000L - 140_000L, s.spinFloorNanos(), "the floor must cover the spread between the worst park and the mean, not the mean itself");
+        assertEquals(500_000L - 140_000L, Reflect.<Long>get(s, "spinFloorNanos"), "the floor must cover the spread between the worst park and the mean, not the mean itself");
     }
 
     @Test
@@ -242,5 +248,47 @@ class PacerSleeperTest {
 
         assertEquals(0, time.parks);
         assertEquals(0L, woke);
+    }
+
+    @Test
+    void everyWaitInAFrameLandsOnTheOneFrameOfBookkeeping() {
+        final FakeTime time = new FakeTime();
+        final PacerSleeper s = sleeper(time);
+
+        s.sleepUntil(10 * MS, 0L);
+        s.sleepUntil(time.now + 10 * MS, time.now);
+        s.noteFrame(0L, 0L);
+        s.sleepUntil(time.now + 10 * MS, time.now);
+        s.noteFrame(0L, 0L);
+
+        assertEquals(3, time.parks);
+        assertEquals(2L, Reflect.<Long>get(s, "frames"));
+        assertEquals(3L, Reflect.<Long>get(s, "parkTotal"));
+
+        s.sleepUntil(time.now + 10 * MS, time.now);
+        s.resetStats();
+        s.noteFrame(0L, 0L);
+
+        assertEquals(1L, Reflect.<Long>get(s, "frames"));
+        assertEquals(0L, Reflect.<Long>get(s, "parkTotal"));
+    }
+
+    @Test
+    void aWakeInsideTheToleranceIsNotLate() {
+        final FakeTime time = new FakeTime();
+        final PacerSleeper s = sleeper(time);
+
+        s.noteFrame(0L, PacerSleeper.LATE_TOL_NANOS);
+        s.noteFrame(-5 * MS, 0L);
+
+        assertEquals(0L, Reflect.<Long>get(s, "lateFrames"));
+        assertEquals(0L, Reflect.<Long>get(s, "lateMax"));
+
+        s.noteFrame(0L, PacerSleeper.LATE_TOL_NANOS + 1);
+        s.noteFrame(0L, 3 * MS);
+        s.noteFrame(0L, MS);
+
+        assertEquals(3L, Reflect.<Long>get(s, "lateFrames"));
+        assertEquals(3 * MS, Reflect.<Long>get(s, "lateMax"));
     }
 }

@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
@@ -58,6 +59,7 @@ import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
+import it.unimi.dsi.fastutil.ints.IntIterator;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -87,8 +89,14 @@ public final class ShaderManager {
     private static final int PREWARM_CACHE_MAX = 256;
     private static final Object2ObjectLinkedOpenHashMap<PrewarmKey, PrewarmEntry> PREWARM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
 
+    private record TransformKey(String source, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {}
+    private record TransformEntry(String source, Set<String> boolUniforms) {}
+    private static final int TRANSFORM_CACHE_MAX = 256;
+    private static final Object2ObjectLinkedOpenHashMap<TransformKey, TransformEntry> TRANSFORM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
+
     public static void clearPrewarmCache() {
         synchronized (PREWARM_CACHE) { PREWARM_CACHE.clear(); }
+        synchronized (TRANSFORM_CACHE) { TRANSFORM_CACHE.clear(); }
     }
 
     private static PrewarmHit lookupPrewarm(String src, int glShaderType) {
@@ -132,24 +140,35 @@ public final class ShaderManager {
             return;
         }
 
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader, true);
-        obj.boolUniforms = pre != null ? pre.boolUniforms() : Set.of();
-        String src = pre != null ? pre.rewrittenSource() : raw;
-        if (obj.isVertex()) {
-            src = ClipZRemap.injectGLToVulkanClipZ(src);
+        final TransformKey transformKey = new TransformKey(raw, obj.type, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+        TransformEntry transformed;
+        synchronized (TRANSFORM_CACHE) {
+            transformed = TRANSFORM_CACHE.getAndMoveToFirst(transformKey);
         }
-        src = SamplerStripper.stripUnused(src);
-        if (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER) {
-            src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+        if (transformed == null) {
+            final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader, true);
+            String src = pre != null ? pre.rewrittenSource() : raw;
+            if (obj.isVertex()) {
+                src = ClipZRemap.injectGLToVulkanClipZ(src);
+            }
+            src = SamplerStripper.stripUnused(src);
+            if (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER) {
+                src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+            }
+            transformed = new TransformEntry(src, pre != null ? pre.boolUniforms() : Set.of());
+            synchronized (TRANSFORM_CACHE) {
+                TRANSFORM_CACHE.putAndMoveToFirst(transformKey, transformed);
+                while (TRANSFORM_CACHE.size() > TRANSFORM_CACHE_MAX) TRANSFORM_CACHE.removeLast();
+            }
         }
-
-        obj.source = src;
+        obj.boolUniforms = transformed.boolUniforms();
+        obj.source = transformed.source();
 
         final ShaderWorkSubmitter submitter = GLSMHooks.shaderWorkSubmitter;
         if (submitter != null) {
             final int shaderKind = shaderKindFor(obj);
             final int glType = obj.type;
-            final String finalSrc = src;
+            final String finalSrc = obj.source;
             obj.spirvFuture = submitter.submit(() -> {
                 final SpirvCompiler.Result r = SpirvCompiler.compile(finalSrc, shaderKind, "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
                 if (r.spirv() != null && (glType == GL20.GL_VERTEX_SHADER || glType == GL20.GL_FRAGMENT_SHADER)) {
@@ -599,27 +618,82 @@ public final class ShaderManager {
 
     private static int patchAttribLocations(ByteBuffer spirv, StageReflection vs, Object2IntOpenHashMap<String> bindings, int[] outVecSize, int[] outBaseType, String[] outName, Object2IntOpenHashMap<String> resolvedOut) {
         final IntBuffer vsBuf = spirv.asIntBuffer();
-        int mask = 0;
-        if (outName != null) Arrays.fill(outName, null);
-        for (VsInput vi : vs.vsInputs()) {
-            int finalLoc = vi.originalLocation();
-            final int desired = bindings.getInt(vi.name());
-            if (desired != -1 && desired != vi.originalLocation()) {
-                if (vsBuf.get(vi.binaryOffset()) != vi.originalLocation()) {
-                    LOG.error("applyAttribLocations: sanity check failed for '{}' (expected {}, got {})", vi.name(), vi.originalLocation(), vsBuf.get(vi.binaryOffset()));
-                } else {
-                    vsBuf.put(vi.binaryOffset(), desired);
-                    finalLoc = desired;
+        final List<VsInput> inputs = vs.vsInputs();
+        final int count = inputs.size();
+        final int[] finalLoc = new int[count];
+        int taken = 0;
+
+        for (final IntIterator it = bindings.values().iterator(); it.hasNext(); ) {
+            final int bound = it.nextInt();
+            if (bound >= 0 && bound < ContextState.MAX_VERTEX_ATTRIBS) taken |= 1 << bound;
+        }
+        for (int i = 0; i < count; i++) {
+            finalLoc[i] = bindings.getInt(inputs.get(i).name());
+        }
+
+        int movers = 0;
+        for (int i = 0; i < count; i++) {
+            if (finalLoc[i] != -1) continue;
+            final int original = inputs.get(i).originalLocation();
+            if (original >= 0 && original < ContextState.MAX_VERTEX_ATTRIBS && (taken & (1 << original)) == 0) {
+                finalLoc[i] = original;
+                taken |= 1 << original;
+            } else {
+                movers++;
+            }
+        }
+
+        for (int n = 0; n < movers; n++) {
+            int pick = -1;
+            for (int i = 0; i < count; i++) {
+                if (finalLoc[i] == -1 && (pick == -1 || inputs.get(i).originalLocation() < inputs.get(pick).originalLocation())) {
+                    pick = i;
                 }
             }
-            if (resolvedOut != null) resolvedOut.put(vi.name(), finalLoc);
-            if (finalLoc < 0 || finalLoc >= 16) continue;
-            mask |= (1 << finalLoc);
-            outVecSize[finalLoc] = vi.vecSize();
-            outBaseType[finalLoc] = vi.baseType();
-            if (outName != null) outName[finalLoc] = vi.name();
+            final int free = Integer.numberOfTrailingZeros(~taken);
+            if (free >= ContextState.MAX_VERTEX_ATTRIBS) {
+                LOG.error("applyAttribLocations: no free vertex attribute slot for '{}'; leaving it at {}", inputs.get(pick).name(), inputs.get(pick).originalLocation());
+                finalLoc[pick] = inputs.get(pick).originalLocation();
+            } else {
+                finalLoc[pick] = free;
+                taken |= 1 << free;
+            }
+        }
+
+        int mask = 0;
+        int seen = 0;
+        if (outName != null) Arrays.fill(outName, null);
+        for (int i = 0; i < count; i++) {
+            final VsInput vi = inputs.get(i);
+            int loc = finalLoc[i];
+            if (loc != vi.originalLocation()) {
+                if (vsBuf.get(vi.binaryOffset()) != vi.originalLocation()) {
+                    LOG.error("applyAttribLocations: sanity check failed for '{}' (expected {}, got {})", vi.name(), vi.originalLocation(), vsBuf.get(vi.binaryOffset()));
+                    loc = vi.originalLocation();
+                } else {
+                    vsBuf.put(vi.binaryOffset(), loc);
+                }
+            }
+            finalLoc[i] = loc;
+            if (resolvedOut != null) resolvedOut.put(vi.name(), loc);
+            if (loc < 0 || loc >= ContextState.MAX_VERTEX_ATTRIBS) continue;
+            if ((seen & (1 << loc)) != 0) {
+                LOG.error("applyAttribLocations: '{}' and '{}' both resolved to location {}", inputNameAtLocation(inputs, finalLoc, i, loc), vi.name(), loc);
+            }
+            seen |= 1 << loc;
+            mask |= 1 << loc;
+            outVecSize[loc] = vi.vecSize();
+            outBaseType[loc] = vi.baseType();
+            if (outName != null) outName[loc] = vi.name();
         }
         return mask;
+    }
+
+    private static String inputNameAtLocation(List<VsInput> inputs, int[] finalLoc, int limit, int loc) {
+        for (int i = 0; i < limit; i++) {
+            if (finalLoc[i] == loc) return inputs.get(i).name();
+        }
+        return "<unknown>";
     }
 
     public VertexVariant getOrBuildVertexVariant(int program, long key, List<UscaledRetype.Attrib> attribs) {

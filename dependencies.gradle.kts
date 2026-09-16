@@ -52,8 +52,8 @@ configurations.configureEach {
 }
 
 DependencyHandlerScope.of(dependencies).apply {
-    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.187:dev")
-    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.187:dev")
+    compileOnly("com.github.GTNewHorizons:Hodgepodge:2.7.197:dev")
+    runtimeOnlyNonPublishable("com.github.GTNewHorizons:Hodgepodge:2.7.197:dev")
 
     runtimeOnlyNonPublishable(rfg.deobf("curse.maven:biomes-o-plenty-220318:2499612"))
 
@@ -104,7 +104,6 @@ DependencyHandlerScope.of(dependencies).apply {
 
     // Celeritas (isTransitive=false: deps provided by GTNHLib/runtime)
     embedOnly(libs.celeritas.common) { isTransitive = false }
-    embedOnly(libs.celeritas.lwjgl2.service) { isTransitive = false }
 
     // Because who doesn't want NEI
     devOnlyNonPublishable("com.github.GTNewHorizons:NotEnoughItems:2.8.109-GTNH:dev")
@@ -177,7 +176,7 @@ DependencyHandlerScope.of(dependencies).apply {
     compileOnly("com.github.GTNewHorizons:BetterCrashes:1.4.5-GTNH:dev")
 
     // Distant Horizons
-    compileOnly("maven.modrinth:DistantHorizonsApi:5.1.0")
+    compileOnly(libs.distant.horizons.api)
 
     compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 
@@ -208,5 +207,6 @@ afterEvaluate {
 
         testRuntimeOnly(libs.fastutil)
         testRuntimeOnly(libs.joml)
+        testImplementation(libs.distant.horizons.api)
     }
 }

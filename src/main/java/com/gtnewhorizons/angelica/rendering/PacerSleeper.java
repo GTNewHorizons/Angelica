@@ -8,6 +8,7 @@ final class PacerSleeper {
     private static final long MIN_PARK_NANOS = 1_000_000L;
     private static final long MAX_OVERSHOOT_NANOS = 4_000_000L;
     static final int SLOTS = 10;
+    static final long LATE_TOL_NANOS = 250_000L;
 
     static final long MIN_SPIN_FLOOR_NANOS = 20_000L;
     private static final long MAX_SPIN_FLOOR_NANOS = 500_000L;
@@ -20,8 +21,9 @@ final class PacerSleeper {
     private long spinFloorNanos = MIN_SPIN_FLOOR_NANOS;
     private int offset;
 
-    long lastSpinNanos;
-    int lastParks;
+    long lastFrameSpinNanos;
+    private int frameParks;
+    private long frameSpinNanos;
 
     private long frames;
     private long slackSum;
@@ -35,13 +37,8 @@ final class PacerSleeper {
         this.spinWait = spinWait;
     }
 
-    long spinFloorNanos() {
-        return spinFloorNanos;
-    }
 
     long sleepUntil(long deadlineNanos, long now) {
-        resetLastFrame();
-
         long spinFloor = spinFloorNanos;
         while (true) {
             final long remaining = deadlineNanos - now;
@@ -59,7 +56,7 @@ final class PacerSleeper {
             now = clock.getAsLong();
             record(Math.min(Math.max(0L, now - before - request), MAX_OVERSHOOT_NANOS));
             spinFloor = spinFloorNanos;
-            lastParks++;
+            frameParks++;
         }
 
         if (spinWait) {
@@ -69,27 +66,28 @@ final class PacerSleeper {
                 else Thread.onSpinWait();
                 now = clock.getAsLong();
             }
-            lastSpinNanos = now - spinStart;
+            frameSpinNanos += now - spinStart;
         }
         return now;
     }
 
-    void noteFrame(long slackNanos, long wakeLateNanos, boolean slept) {
-        if (!slept) resetLastFrame();
-
+    void noteFrame(long slackNanos, long wakeLateNanos) {
         frames++;
         slackSum += slackNanos;
-        parkTotal += lastParks;
-        if (slackNanos < 0L && -slackNanos > lateMax) lateMax = -slackNanos;
-        if (slackNanos < 0L || wakeLateNanos > 0L) lateFrames++;
-    }
-
-    private void resetLastFrame() {
-        lastSpinNanos = 0L;
-        lastParks = 0;
+        parkTotal += frameParks;
+        frameParks = 0;
+        lastFrameSpinNanos = frameSpinNanos;
+        frameSpinNanos = 0L;
+        if (wakeLateNanos > LATE_TOL_NANOS) {
+            lateFrames++;
+            if (wakeLateNanos > lateMax) lateMax = wakeLateNanos;
+        }
     }
 
     void resetStats() {
+        frameParks = 0;
+        frameSpinNanos = 0L;
+        lastFrameSpinNanos = 0L;
         frames = 0L;
         slackSum = 0L;
         parkTotal = 0L;

@@ -29,6 +29,7 @@ import net.coderbot.iris.samplers.IrisSamplers;
 import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
+import org.lwjgl.opengl.GL11;
 
 public class IrisGLSMBridge {
 
@@ -40,10 +41,6 @@ public class IrisGLSMBridge {
     private static Runnable fogEndListener = null;
     private static Runnable fogDensityListener = null;
     private static Runnable colorModulatorListener = null;
-
-    private static boolean inputsDeferred = false;
-
-    private static boolean blendDeferred = false;
 
     private static boolean programRestoreDeferred = false;
 
@@ -257,6 +254,7 @@ public class IrisGLSMBridge {
 
         GLSMHooks.TEXTURE_UNIT_STATE.addListener(event -> {
             if (!Iris.enabled) return;
+            if (event.cap != GL11.GL_TEXTURE_2D) return;
             boolean updatePipeline = false;
             if (event.unit == IrisSamplers.ALBEDO_TEXTURE_UNIT) {
                 StateTracker.INSTANCE.albedoSampler = event.enabled;
@@ -267,32 +265,19 @@ public class IrisGLSMBridge {
             }
             if (!updatePipeline) return;
 
-            if (GLStateManager.isForeignDraw()) {
-                inputsDeferred = true;
-                return;
+            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+            if (pipeline != null) {
+                pipeline.setInputs(StateTracker.INSTANCE.getInputs());
             }
-            Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
         });
 
         GLSMHooks.VANILLA_BLEND_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
-            if (GLStateManager.isForeignDraw()) {
-                blendDeferred = true;
-                return;
-            }
             refreshBlendCondition();
         });
 
         GLSMHooks.FOREIGN_DRAW_END.addListener(event -> {
             if (!Iris.enabled) return;
-            if (inputsDeferred) {
-                inputsDeferred = false;
-                Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
-            }
-            if (blendDeferred) {
-                blendDeferred = false;
-                refreshBlendCondition();
-            }
             if (programRestoreDeferred) {
                 programRestoreDeferred = false;
                 final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();

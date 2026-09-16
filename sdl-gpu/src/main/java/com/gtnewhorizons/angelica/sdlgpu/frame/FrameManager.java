@@ -1,8 +1,10 @@
 package com.gtnewhorizons.angelica.sdlgpu.frame;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
 import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
@@ -43,6 +45,7 @@ public final class FrameManager {
     private static final Tracy.ZoneId Z_SDL_SUBMIT = Tracy.zoneId("sdlSubmit", Tracy.COLOR_SWAP);
     private static final Tracy.ZoneId Z_SDL_ACQUIRE_WAIT = Tracy.zoneId("sdlAcquireWait", Tracy.COLOR_SWAP);
 
+    private static final Tracy.ZoneId Z_SDL_GPU_WAIT = Tracy.zoneId("sdlGpuWait", Tracy.COLOR_SWAP);
     private final Device device;
     private ResourceManager resourceManager;
 
@@ -83,8 +86,7 @@ public final class FrameManager {
         public int batchBreakSamplerThisFrame;
         public int stateAppliesThisFrame;
         public long acquireWaitNanosThisFrame;
-        public volatile long lastFrameGateNanos;
-        public volatile long lastFrameGateEndNanos;
+        public long gpuWaitNanosThisFrame;
         public int midFrameSubmitsThisFrame;
         public int mipGensThisFrame;
         public int mipGenSubmitsThisFrame;
@@ -597,6 +599,7 @@ public final class FrameManager {
         f.stateAppliesThisFrame = 0;
         f.acquireWaitNanosThisFrame = 0;
         f.mipGensThisFrame = 0;
+        f.gpuWaitNanosThisFrame = 0;
         f.mipGenSubmitsThisFrame = 0;
         f.uploadFlushSubmitsThisFrame = 0;
         f.blitsThisFrame = 0;
@@ -773,7 +776,10 @@ public final class FrameManager {
     }
 
     public int getSwapchainFormat() {
-        return device.getSwapchainTextureFormat();
+        if (device.getClaimedWindow() != 0L) return device.getSwapchainTextureFormat();
+        if (resourceManager == null || !finalTarget.isReady()) return 0;
+        final FboState fbo = resourceManager.getFbo(finalTarget.fboId());
+        return fbo != null ? fbo.getColorFormat() : 0;
     }
 
     public boolean isFrameActive() {
@@ -873,14 +879,6 @@ public final class FrameManager {
         registeredFrames.clear();
     }
 
-    public long lastFrameGateNanos() {
-        return frame().lastFrameGateNanos;
-    }
-
-    public long lastFrameGateEndNanos() {
-        return frame().lastFrameGateEndNanos;
-    }
-
     private volatile Presenter presenter;
 
     public void setPresenter(Presenter presenter) {
@@ -894,6 +892,7 @@ public final class FrameManager {
     }
 
     public void presentFinalTarget() {
+        if (BackendManager.RENDER_BACKEND.isPresentSuppressed()) return;
         if (!finalTarget.hasContent()) return;
         present(finalTarget.colorTexture(), finalTarget.width(), finalTarget.height(), SDL_FLIP_NONE, false);
     }
@@ -916,22 +915,24 @@ public final class FrameManager {
     }
 
     private final AtomicLong windowAcquireWaitNanos = new AtomicLong();
+    private final AtomicLong windowGpuWaitNanos = new AtomicLong();
     private final AtomicInteger windowPresentSkips = new AtomicInteger();
 
     private void drainWindowPresentCounters(FrameState f) {
         if (f == windowFrame) return;
-        final long acquire = windowAcquireWaitNanos.getAndSet(0L);
-        if (acquire != 0L) {
-            f.acquireWaitNanosThisFrame += acquire;
-            f.lastFrameGateNanos = windowFrame.lastFrameGateNanos;
-            f.lastFrameGateEndNanos = windowFrame.lastFrameGateEndNanos;
-        }
+        f.acquireWaitNanosThisFrame += windowAcquireWaitNanos.getAndSet(0L);
+        f.gpuWaitNanosThisFrame += windowGpuWaitNanos.getAndSet(0L);
         f.presentSkipsThisFrame += windowPresentSkips.getAndSet(0);
     }
 
     private void noteAcquireWait(FrameState f, long waitNanos) {
         if (f == windowFrame) windowAcquireWaitNanos.addAndGet(waitNanos);
         else f.acquireWaitNanosThisFrame += waitNanos;
+    }
+
+    private void noteGpuWait(FrameState f, long waitNanos) {
+        if (f == windowFrame) windowGpuWaitNanos.addAndGet(waitNanos);
+        else f.gpuWaitNanosThisFrame += waitNanos;
     }
 
     private void notePresentSkip(FrameState f) {
@@ -962,13 +963,31 @@ public final class FrameManager {
         final int w;
         final int h;
         final boolean callOk;
+        final boolean swapchainReady;
+        Tracy.beginZone(Z_SDL_GPU_WAIT);
+        try {
+            swapchainReady = SDL_WaitForGPUSwapchain(device.getDevice(), window);
+        } finally {
+            Tracy.endZone();
+        }
+        final long t1 = System.nanoTime();
+        BackendManager.RENDER_BACKEND.recordGpuWait(t1 - t0);
+        noteGpuWait(f, t1 - t0);
+
+        if (!swapchainReady) {
+            SDL_CancelGPUCommandBuffer(cb);
+            f.swapchainUnavailable = true;
+            notePresentSkip(f);
+            return false;
+        }
+
         try (var stack = stackPush()) {
             final PointerBuffer pTexture = stack.pointers(0);
             final IntBuffer pWidth = stack.ints(0);
             final IntBuffer pHeight = stack.ints(0);
             Tracy.beginZone(Z_SDL_ACQUIRE_WAIT);
             try {
-                callOk = SDL_WaitAndAcquireGPUSwapchainTexture(cb, window, pTexture, pWidth, pHeight);
+                callOk = SDL_AcquireGPUSwapchainTexture(cb, window, pTexture, pWidth, pHeight);
             } finally {
                 Tracy.endZone();
             }
@@ -981,9 +1000,6 @@ public final class FrameManager {
             throw re;
         }
         final long tEnd = System.nanoTime();
-        f.lastFrameGateNanos = tEnd - t0;
-        f.lastFrameGateEndNanos = tEnd;
-        noteAcquireWait(f, tEnd - t0);
 
         if (!callOk || tex == 0) {
             SDL_CancelGPUCommandBuffer(cb);
@@ -991,6 +1007,9 @@ public final class FrameManager {
             notePresentSkip(f);
             return false;
         }
+
+        BackendManager.RENDER_BACKEND.recordGate(tEnd - t0, tEnd);
+        noteAcquireWait(f, tEnd - t1);
 
         try (MemoryStack stack = stackPush()) {
             final long info = stack.ncalloc(SDL_GPUBlitInfo.ALIGNOF, 1, SDL_GPUBlitInfo.SIZEOF);

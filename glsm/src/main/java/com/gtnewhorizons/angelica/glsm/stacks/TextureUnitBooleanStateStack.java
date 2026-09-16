@@ -44,6 +44,7 @@ public class TextureUnitBooleanStateStack extends BooleanStateStack {
 
             if (GLSMHooks.TEXTURE_UNIT_STATE.hasListeners()) {
                 GLSMHooks.textureUnitStateEvent.unit = unitIndex;
+                GLSMHooks.textureUnitStateEvent.cap = glCap;
                 GLSMHooks.textureUnitStateEvent.enabled = enabled;
                 GLSMHooks.TEXTURE_UNIT_STATE.post(GLSMHooks.textureUnitStateEvent);
             }

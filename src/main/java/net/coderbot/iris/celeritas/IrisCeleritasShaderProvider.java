@@ -67,9 +67,9 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
     }
 
     @Override
-    public void preSubmitShadowGraph(int frame, boolean spectator) {
+    public void preSubmitShadowGraph(int frame) {
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline != null) pipeline.preSubmitShadowGraph(frame, spectator);
+        if (pipeline != null) pipeline.preSubmitShadowGraph(frame);
     }
 
     public void deleteShaders() {

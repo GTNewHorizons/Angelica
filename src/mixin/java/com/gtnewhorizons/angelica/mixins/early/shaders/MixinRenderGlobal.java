@@ -12,8 +12,6 @@ import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
-import net.minecraft.client.renderer.entity.RenderManager;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.player.EntityPlayer;
 import net.minecraft.util.MovingObjectPosition;
 import org.spongepowered.asm.mixin.Mixin;
@@ -134,9 +132,8 @@ public class MixinRenderGlobal {
         GbufferPrograms.endEntityLoop();
     }
 
-    @WrapOperation(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
-    private boolean angelica$renderEntitySimple(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
+    @Inject(method="renderEntities", at=@At(value="INVOKE", target="Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
+    private void angelica$renderEntitySimple(CallbackInfo ci) {
         GbufferPrograms.onEntityRenderBoundary();
-        return original.call(instance, entity, partialTicks);
     }
 }

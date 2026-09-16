@@ -1,13 +1,14 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -60,7 +61,8 @@ public final class TesrBatchRenderer {
 
     private final AngelicaBufferSource bufferSource = new AngelicaBufferSource();
     private final RetainedTesrGroups[] retained = new RetainedTesrGroups[PASS_COUNT];
-    final InstancedTemplateRenderer instancedRenderer = new InstancedTemplateRenderer();
+    final InstanceRing instanceRing = new InstanceRing();
+    final InstancedTemplateRenderer instancedRenderer = new InstancedTemplateRenderer(instanceRing);
     private int activePass = -1;
     private long lastSweepMs;
     private boolean deferredFlushPending;
@@ -94,12 +96,16 @@ public final class TesrBatchRenderer {
         }
     }
 
+    public InstanceRing instanceRing() {
+        return instanceRing;
+    }
+
     static boolean instancedCapable() {
         if (!ShaderManager.getInstance().isEnabled()) return false;
         if (!Iris.enabled) return true;
         final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
         if (pipeline == null || pipeline instanceof FixedFunctionWorldRenderingPipeline) return true;
-        return pipeline instanceof DeferredWorldRenderingPipeline deferred && deferred.supportsTesrInstancing();
+        return pipeline instanceof DeferredWorldRenderingPipeline deferred && deferred.supportsInstancing(Instancing.TEMPLATE);
     }
 
     static DeferredWorldRenderingPipeline deferredPipeline() {
@@ -121,9 +127,18 @@ public final class TesrBatchRenderer {
             retained[i].clear();
         }
         instancedRenderer.clear();
+        instanceRing.delete();
         immediateMesh.delete();
         immediateScratch = null;
         bufferSource.freeBuffers();
+        layers.clear();
+        lastLayerTexture = null;
+        lastLayerMaterial = null;
+        lastLayerPass = null;
+        lastLayer = null;
+        lastImmediateTexture = null;
+        lastImmediateMaterial = null;
+        lastImmediateLayer = null;
         AngelicaTesrMeshCache.INSTANCE.clear();
     }
 
@@ -146,9 +161,10 @@ public final class TesrBatchRenderer {
             final RenderLayer layer = layerFor(texture, material, pass,
                 offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f);
             final int blockEntityId = pass.isEntityPhase()
-                ? Math.max(0, CapturedRenderingState.INSTANCE.getCurrentRenderedEntity())
+                ? CapturedRenderingState.INSTANCE.getCurrentRenderedEntity()
                 : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
-            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, blockEntityId, captureTextureMatrix(), false);
+            final long entityInfo = InstancedAttribs.packEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
+            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, 0, entityInfo, blockEntityId, captureTextureMatrix());
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
         }
@@ -287,10 +303,10 @@ public final class TesrBatchRenderer {
 
     private static int resolveColor(TesrMaterial material) {
         if (material.hasColor()) {
-            return ColorABGR.pack(material.colorRed(), material.colorGreen(), material.colorBlue(), material.colorAlpha());
+            return AngelicaBufferSource.packAbgr(material.colorRed(), material.colorGreen(), material.colorBlue(), material.colorAlpha());
         }
         final Color4 color = GLStateManager.getColor();
-        return ColorABGR.pack(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        return AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
     }
 
     public void flush() {

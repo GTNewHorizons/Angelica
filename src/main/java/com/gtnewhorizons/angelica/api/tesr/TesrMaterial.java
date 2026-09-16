@@ -21,7 +21,7 @@ public final class TesrMaterial {
 
     private static final ConcurrentHashMap<TesrMaterial, TesrMaterial> INTERNED = new ConcurrentHashMap<>();
 
-    public static final TesrMaterial CURRENT_STATE = intern(new TesrMaterial(false, 0, 0, 0, 0, false, 0, 0, false, false, false, false, false, 0, false, Transparency.OPAQUE, SpecialRender.NONE, null));
+    public static final TesrMaterial CURRENT_STATE = intern(new TesrMaterial(false, 0, 0, 0, 0, false, 0, 0, false, false, false, false, false, 0, false, false, Transparency.OPAQUE, SpecialRender.NONE, null));
 
     private static TesrMaterial intern(TesrMaterial material) {
         final TesrMaterial existing = INTERNED.putIfAbsent(material, material);
@@ -39,6 +39,7 @@ public final class TesrMaterial {
     private final boolean isStream;
     private final float cutoutAlpha;
     private final boolean isDepthEqual;
+    private final boolean isUnfilteredAtlas;
     private final Transparency transparency;
     private final SpecialRender special;
     private final TesrShader shader;
@@ -59,6 +60,7 @@ public final class TesrMaterial {
         private boolean stream;
         private float cutoutAlpha;
         private boolean depthEqual;
+        private boolean unfilteredAtlas;
         private Transparency transparency = Transparency.OPAQUE;
         private SpecialRender special = SpecialRender.NONE;
         private TesrShader shader;
@@ -119,6 +121,11 @@ public final class TesrMaterial {
             return this;
         }
 
+        public Builder unfilteredAtlas() {
+            this.unfilteredAtlas = true;
+            return this;
+        }
+
         /** Standard alpha blending (glass, liquids). SRC_ALPHA, ONE_MINUS_SRC_ALPHA */
         public Builder translucent() {
             this.transparency = Transparency.TRANSLUCENT;
@@ -158,7 +165,7 @@ public final class TesrMaterial {
             if (special != SpecialRender.NONE && shader != null) {
                 throw new IllegalStateException("special() and shader() are mutually exclusive");
             }
-            return intern(new TesrMaterial(hasColor, red, green, blue, alpha, hasLightmap, lightmapX, lightmapY, noCull, unlit, noDepthWrite, depthOnly, stream, cutoutAlpha, depthEqual, transparency, special, shader));
+            return intern(new TesrMaterial(hasColor, red, green, blue, alpha, hasLightmap, lightmapX, lightmapY, noCull, unlit, noDepthWrite, depthOnly, stream, cutoutAlpha, depthEqual, unfilteredAtlas, transparency, special, shader));
         }
     }
 }

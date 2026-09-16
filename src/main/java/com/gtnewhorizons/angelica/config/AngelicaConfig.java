@@ -127,10 +127,15 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableTESRChestCache;
 
-    @Config.Comment("Batch and instance living-entity model parts on FFP-managed passes")
+    @Config.Comment("Batch and instance entity model parts, items, and shadows on FFP-managed passes")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableEntityBatching;
+
+    @Config.Comment("Draw cuboid model parts from a shared unit cube (requires entity batching)")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableCubeInstancing;
 
     @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
     @Config.DefaultBoolean(true)
@@ -251,7 +256,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeInWorldItemRendering;
 
-    @Config.Comment("Upper limit for the amount of VBO's to cache for optimized item rendering. Higher number can potentially use more VRAM.")
+    @Config.Comment("Upper limit for the amount of cached item meshes (VBOs and batched item templates) for optimized item rendering. Higher number can potentially use more memory and VRAM.")
     @Config.DefaultInt(512)
     @Config.RangeInt(min = 256, max = 1024)
     public static int itemRendererCacheSize;
@@ -260,11 +265,6 @@ public class AngelicaConfig {
     @Config.DefaultDouble(16D)
     @Config.RangeDouble(min = 16D, max = 64D)
     public static double mobSpawnerRenderDistance;
-
-    @Config.Comment("Switches to an alternate FPS limiter that gives more stable frametimes, in exchange for slightly " +
-        "more latency. Will never introduce more than one frame of latency, and has a lower impact at higher framerates.")
-    @Config.DefaultBoolean(false)
-    public static boolean sleepBeforeSwap;
 
     @Config.Comment("Allows unicode languages to use an odd gui scale")
     @Config.DefaultBoolean(true)
@@ -458,14 +458,18 @@ public class AngelicaConfig {
 
     @Config.Comment("List of block registry names to apply random top-face texture rotation to")
     @Config.DefaultStringList({
-        "minecraft:andesite", "minecraft:dirt", "minecraft:granite", "minecraft:grass", "minecraft:mycelium", "minecraft:sand", "minecraft:soul_sand", "etfuturum:calcite", "etfuturum:coarse_dirt", "etfuturum:cobbled_deepslate", "etfuturum:concrete_powder", "etfuturum:deepslate", "etfuturum:polished_deepslate", "etfuturum:soul_soil", "etfuturum:tuff", "BiomesOPlenty:ash", "BiomesOPlenty:cragRock", "BiomesOPlenty:driedDirt", "BiomesOPlenty:hardDirt", "BiomesOPlenty:hardSand", "BiomesOPlenty:mud", "BiomesOPlenty:newBopDirt", "Botania:dirtPath", "Botania:enchantedSoil", "Botania:livingrock", "Botania:prismarine", "Botania:shimmerrock", "Botany:loam", "Botany:loamNoWeed", "Botany:soil", "Botany:soilNoWeed", "chisel:moss", "chisel:moss_carpet", "DraconicEvolution:earth", "dreamcraft:SandClayMix", "ExtraUtilities:color_hellsand", "ExtraUtilities:cursedearthside", "GalaxySpace:acentauribbgrunt", "GalaxySpace:acentauribbsubgrunt", "GalaxySpace:barnardaCdirt", "GalaxySpace:barnardaEgrunt", "GalaxySpace:barnardaEsubgrunt", "GalaxySpace:barnardaFgrunt", "GalaxySpace:barnardaFsubgrunt", "GalaxySpace:callistoblocks", "GalaxySpace:ceresblocks", "GalaxySpace:deimosblocks", "GalaxySpace:europagrunt", "GalaxySpace:ganymedeblocks", "GalaxySpace:haumeablocks", "GalaxySpace:ioblocks", "GalaxySpace:makemakegrunt", "GalaxySpace:mercuryblocks", "GalaxySpace:mirandablocks", "GalaxySpace:oberonblocks", "GalaxySpace:phobosblocks", "GalaxySpace:proteusblocks", "GalaxySpace:tcetieblocks", "GalaxySpace:titanblocks", "GalaxySpace:tritonblocks", "GalaxySpace:vegabgrunt", "GalaxySpace:vegabsubgrunt", "GalaxySpace:venusblocks", "gregtech:gt.blockgranites", "IC2:blockBasalt", "MagicBees:magicbees.enchantedEarth", "Natura:heatsand", "RandomThings:fertilizedDirt", "TConstruct:CraftedSoil", "TConstruct:SpeedBlock", "thaumicbases:oldCobble", "thaumicbases:oldCobbleMossy", "ToxicEverglades:blockDarkWorldGround2", "VillageNames:concretePowder", "witchery:pitdirt"
+        "minecraft:andesite", "minecraft:dirt", "minecraft:granite", "minecraft:grass", "minecraft:mycelium", "minecraft:sand", "minecraft:soul_sand", "etfuturum:calcite", "etfuturum:coarse_dirt", "etfuturum:concrete_powder", "etfuturum:grass_path", "BiomesOPlenty:ash", "BiomesOPlenty:driedDirt", "BiomesOPlenty:hardDirt", "BiomesOPlenty:hardSand", "BiomesOPlenty:mud", "BiomesOPlenty:newBopDirt", "Botania:dirtPath", "Botania:enchantedSoil", "Botania:livingrock", "Botania:prismarine", "Botania:shimmerrock", "Botany:loam", "Botany:loamNoWeed", "Botany:soil", "Botany:soilNoWeed", "chisel:moss", "chisel:moss_carpet", "ExtraUtilities:color_hellsand", "ExtraUtilities:cursedearthside", "GalaxySpace:acentauribbgrunt", "GalaxySpace:acentauribbsubgrunt", "GalaxySpace:barnardaCdirt", "GalaxySpace:barnardaEgrunt", "GalaxySpace:barnardaEsubgrunt", "GalaxySpace:barnardaFgrunt", "GalaxySpace:barnardaFsubgrunt", "GalaxySpace:callistoblocks", "GalaxySpace:ceresblocks", "GalaxySpace:deimosblocks", "GalaxySpace:europagrunt", "GalaxySpace:ganymedeblocks", "GalaxySpace:haumeablocks", "GalaxySpace:ioblocks", "GalaxySpace:makemakegrunt", "GalaxySpace:mercuryblocks", "GalaxySpace:mirandablocks", "GalaxySpace:oberonblocks", "GalaxySpace:phobosblocks", "GalaxySpace:proteusblocks", "GalaxySpace:tcetieblocks", "GalaxySpace:titanblocks", "GalaxySpace:tritonblocks", "GalaxySpace:vegabgrunt", "GalaxySpace:vegabsubgrunt", "GalaxySpace:venusblocks", "gregtech:gt.blockgranites", "IC2:blockBasalt", "MagicBees:magicbees.enchantedEarth", "RandomThings:fertilizedDirt", "ToxicEverglades:blockDarkWorldGround2", "VillageNames:concretePowder", "witchery:pitdirt"
     })
     public static String[] naturalTextureBlocks = new String[] {
-        "minecraft:andesite", "minecraft:dirt", "minecraft:granite", "minecraft:grass", "minecraft:mycelium", "minecraft:sand", "minecraft:soul_sand", "etfuturum:calcite", "etfuturum:coarse_dirt", "etfuturum:cobbled_deepslate", "etfuturum:concrete_powder", "etfuturum:deepslate", "etfuturum:polished_deepslate", "etfuturum:soul_soil", "etfuturum:tuff", "BiomesOPlenty:ash", "BiomesOPlenty:cragRock", "BiomesOPlenty:driedDirt", "BiomesOPlenty:hardDirt", "BiomesOPlenty:hardSand", "BiomesOPlenty:mud", "BiomesOPlenty:newBopDirt", "Botania:dirtPath", "Botania:enchantedSoil", "Botania:livingrock", "Botania:prismarine", "Botania:shimmerrock", "Botany:loam", "Botany:loamNoWeed", "Botany:soil", "Botany:soilNoWeed", "chisel:moss", "chisel:moss_carpet", "DraconicEvolution:earth", "dreamcraft:SandClayMix", "ExtraUtilities:color_hellsand", "ExtraUtilities:cursedearthside", "GalaxySpace:acentauribbgrunt", "GalaxySpace:acentauribbsubgrunt", "GalaxySpace:barnardaCdirt", "GalaxySpace:barnardaEgrunt", "GalaxySpace:barnardaEsubgrunt", "GalaxySpace:barnardaFgrunt", "GalaxySpace:barnardaFsubgrunt", "GalaxySpace:callistoblocks", "GalaxySpace:ceresblocks", "GalaxySpace:deimosblocks", "GalaxySpace:europagrunt", "GalaxySpace:ganymedeblocks", "GalaxySpace:haumeablocks", "GalaxySpace:ioblocks", "GalaxySpace:makemakegrunt", "GalaxySpace:mercuryblocks", "GalaxySpace:mirandablocks", "GalaxySpace:oberonblocks", "GalaxySpace:phobosblocks", "GalaxySpace:proteusblocks", "GalaxySpace:tcetieblocks", "GalaxySpace:titanblocks", "GalaxySpace:tritonblocks", "GalaxySpace:vegabgrunt", "GalaxySpace:vegabsubgrunt", "GalaxySpace:venusblocks", "gregtech:gt.blockgranites", "IC2:blockBasalt", "MagicBees:magicbees.enchantedEarth", "Natura:heatsand", "RandomThings:fertilizedDirt", "TConstruct:CraftedSoil", "TConstruct:SpeedBlock", "thaumicbases:oldCobble", "thaumicbases:oldCobbleMossy", "ToxicEverglades:blockDarkWorldGround2", "VillageNames:concretePowder", "witchery:pitdirt"
+        "minecraft:andesite", "minecraft:dirt", "minecraft:granite", "minecraft:grass", "minecraft:mycelium", "minecraft:sand", "minecraft:soul_sand", "etfuturum:calcite", "etfuturum:coarse_dirt", "etfuturum:concrete_powder", "etfuturum:grass_path", "BiomesOPlenty:ash", "BiomesOPlenty:driedDirt", "BiomesOPlenty:hardDirt", "BiomesOPlenty:hardSand", "BiomesOPlenty:mud", "BiomesOPlenty:newBopDirt", "Botania:dirtPath", "Botania:enchantedSoil", "Botania:livingrock", "Botania:prismarine", "Botania:shimmerrock", "Botany:loam", "Botany:loamNoWeed", "Botany:soil", "Botany:soilNoWeed", "chisel:moss", "chisel:moss_carpet", "ExtraUtilities:color_hellsand", "ExtraUtilities:cursedearthside", "GalaxySpace:acentauribbgrunt", "GalaxySpace:acentauribbsubgrunt", "GalaxySpace:barnardaCdirt", "GalaxySpace:barnardaEgrunt", "GalaxySpace:barnardaEsubgrunt", "GalaxySpace:barnardaFgrunt", "GalaxySpace:barnardaFsubgrunt", "GalaxySpace:callistoblocks", "GalaxySpace:ceresblocks", "GalaxySpace:deimosblocks", "GalaxySpace:europagrunt", "GalaxySpace:ganymedeblocks", "GalaxySpace:haumeablocks", "GalaxySpace:ioblocks", "GalaxySpace:makemakegrunt", "GalaxySpace:mercuryblocks", "GalaxySpace:mirandablocks", "GalaxySpace:oberonblocks", "GalaxySpace:phobosblocks", "GalaxySpace:proteusblocks", "GalaxySpace:tcetieblocks", "GalaxySpace:titanblocks", "GalaxySpace:tritonblocks", "GalaxySpace:vegabgrunt", "GalaxySpace:vegabsubgrunt", "GalaxySpace:venusblocks", "gregtech:gt.blockgranites", "IC2:blockBasalt", "MagicBees:magicbees.enchantedEarth", "RandomThings:fertilizedDirt", "ToxicEverglades:blockDarkWorldGround2", "VillageNames:concretePowder", "witchery:pitdirt"
     };
 
     public static void applyGpuCullingMode() {
         GpuCulling.setMode(gpuCullingMode == null ? GpuCullingMode.CPU_ONLY : gpuCullingMode);
+    }
+
+    public static boolean cubeInstancingEnabled() {
+        return enableEntityBatching && enableCubeInstancing;
     }
 
     public static GLProfile getEffectiveGlProfile() {

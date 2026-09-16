@@ -1,26 +1,25 @@
 package net.coderbot.iris.pipeline.transform.parameter;
 
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.Patch;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
 
 public class AttributeParameters extends Parameters {
 	public final boolean hasGeometry;
+	public final boolean hasTesselation;
 	public final InputAvailability inputs;
 	public final boolean scrollGlint;
-	public final boolean instanced;
+	public final Instancing instancing;
 	// WARNING: adding new fields requires updating hashCode and equals methods!
 
-	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs, boolean scrollGlint) {
-		this(patch, hasGeometry, inputs, scrollGlint, false);
-	}
-
-	public AttributeParameters(Patch patch, boolean hasGeometry, InputAvailability inputs, boolean scrollGlint, boolean instanced) {
+	public AttributeParameters(Patch patch, boolean hasGeometry, boolean hasTesselation, InputAvailability inputs, boolean scrollGlint, Instancing instancing) {
 		super(patch, null);
 		this.hasGeometry = hasGeometry;
+		this.hasTesselation = hasTesselation;
 		this.inputs = inputs;
 		this.scrollGlint = scrollGlint;
-		this.instanced = instanced;
+		this.instancing = instancing;
 	}
 
 	@Override
@@ -33,8 +32,9 @@ public class AttributeParameters extends Parameters {
 		final int prime = 31;
 		int result = super.hashCode();
 		result = prime * result + (hasGeometry ? 1231 : 1237);
+		result = prime * result + (hasTesselation ? 1231 : 1237);
 		result = prime * result + (scrollGlint ? 1231 : 1237);
-		result = prime * result + (instanced ? 1231 : 1237);
+		result = prime * result + instancing.ordinal();
 		result = prime * result + ((inputs == null) ? 0 : inputs.hashCode());
 		return result;
 	}
@@ -50,9 +50,11 @@ public class AttributeParameters extends Parameters {
 		AttributeParameters other = (AttributeParameters) obj;
 		if (hasGeometry != other.hasGeometry)
 			return false;
+		if (hasTesselation != other.hasTesselation)
+			return false;
 		if (scrollGlint != other.scrollGlint)
 			return false;
-		if (instanced != other.instanced)
+		if (instancing != other.instancing)
 			return false;
 		if (inputs == null) {
 			if (other.inputs != null)

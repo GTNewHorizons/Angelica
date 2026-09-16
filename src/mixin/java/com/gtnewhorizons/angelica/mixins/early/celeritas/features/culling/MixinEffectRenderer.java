@@ -2,12 +2,13 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.features.culling;
 
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.rendering.particles.ParticleCulling;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.particle.EntityFX;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.Entity;
-import net.minecraft.tileentity.TileEntity;
-import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -15,51 +16,42 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-/**
- * EffectRenderer mixin for celeritas particle culling.
- * Culls particles that are outside the view frustum.
- */
 @Mixin(EffectRenderer.class)
 public class MixinEffectRenderer {
 
     @Unique
-    private Viewport cullingViewport;
+    private static final Tracy.ZoneId angelica$Z_PARTICLE_PASS = Tracy.zoneId("particlePass", Tracy.COLOR_CLIENT);
 
     @Unique
-    private void setupCullingViewport() {
+    private CeleritasWorldRenderer cullingRenderer;
+
+    @Unique
+    private boolean particleVisible;
+
+    @Inject(method = {"renderParticles", "renderLitParticles"}, at = @At("HEAD"))
+    private void setupViewport(Entity player, float partialTickTime, CallbackInfo ci) {
         final boolean useCulling = ClientProxy.options().advanced.useParticleCulling;
         if(useCulling) {
-            this.cullingViewport = CeleritasWorldRenderer.getInstance().getLastViewport();
+            this.cullingRenderer = CeleritasWorldRenderer.getInstanceOrNull();
         } else {
-            this.cullingViewport = null;
+            this.cullingRenderer = null;
         }
+        if (Tracy.ENABLED) Tracy.beginZone(angelica$Z_PARTICLE_PASS);
     }
 
-    @Inject(method = "renderParticles", at = @At("HEAD"))
-    private void setupViewport$standard(Entity player, float partialTickTime, CallbackInfo ci) {
-        setupCullingViewport();
+    @Inject(method = {"renderParticles", "renderLitParticles"}, at = @At("RETURN"))
+    private void endParticlePass(Entity player, float partialTickTime, CallbackInfo ci) {
+        if (Tracy.ENABLED) Tracy.endZone();
     }
 
-    @Redirect(method = "renderParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
-    private void renderParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-        if (cullingViewport == null || particle.boundingBox == TileEntity.INFINITE_EXTENT_AABB ||
-            cullingViewport.isBoxVisible(particle.boundingBox.minX, particle.boundingBox.minY, particle.boundingBox.minZ,
-                                         particle.boundingBox.maxX, particle.boundingBox.maxY, particle.boundingBox.maxZ)) {
-            particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
-        }
+    @Redirect(method = {"renderParticles", "renderLitParticles"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;getBrightnessForRender(F)I"))
+    private int cullParticles(EntityFX particle, float partialTicks) {
+        this.particleVisible = ParticleCulling.visible(this.cullingRenderer, particle.posX, particle.posY, particle.posZ);
+        return this.particleVisible ? particle.getBrightnessForRender(partialTicks) : 0;
     }
 
-    @Inject(method = "renderLitParticles", at = @At("HEAD"))
-    private void setupViewport$lit(Entity player, float partialTickTime, CallbackInfo ci) {
-        setupCullingViewport();
-    }
-
-    @Redirect(method = "renderLitParticles", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
-    private void renderLitParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationZ, float rotationYZ, float rotationXY, float rotationXZ) {
-        if (cullingViewport == null || particle.boundingBox == TileEntity.INFINITE_EXTENT_AABB ||
-            cullingViewport.isBoxVisible(particle.boundingBox.minX, particle.boundingBox.minY, particle.boundingBox.minZ,
-                                         particle.boundingBox.maxX, particle.boundingBox.maxY, particle.boundingBox.maxZ)) {
-            particle.renderParticle(tessellator, partialTicks, rotationX, rotationZ, rotationYZ, rotationXY, rotationXZ);
-        }
+    @WrapWithCondition(method = {"renderParticles", "renderLitParticles"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
+    private boolean renderParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
+        return this.particleVisible;
     }
 }

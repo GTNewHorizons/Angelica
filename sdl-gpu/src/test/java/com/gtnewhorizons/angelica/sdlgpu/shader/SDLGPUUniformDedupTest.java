@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -118,13 +119,10 @@ class SDLGPUUniformDedupTest {
     }
 
     @Test
-    void noProgramBound_reuseOrAllocReturnsFresh_putIsNoOp() {
+    void noProgramBound_reuseOrAllocReturnsNull_putIsNoOp() {
         st.boundProgramObj = null;
-        final float[] a = applier.reuseOrAlloc(st, 0, 4);
-        assertEquals(4, a.length);
-        final float[] b = applier.reuseOrAlloc(st, 0, 4);
-        assertNotSame(a, b, "no caching without bound program");
-        applier.putUniform(st, 0, a);
+        assertNull(applier.reuseOrAlloc(st, 0, 4), "no program means nowhere to store");
+        applier.putUniform(st, 0, new float[4]);
     }
 
     @Test

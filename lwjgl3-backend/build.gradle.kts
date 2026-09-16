@@ -61,6 +61,7 @@ dependencies {
     api(project(":glsm"))
 
     compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
+    compileOnly(libs.retrofuturabootstrap) { isTransitive = false }
     compileOnly(libs.celeritas.common) { isTransitive = false }
 
     // LWJGL3

@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.loading.shared.transformers.TileEntityMarkerTr
 import net.minecraft.launchwrapper.IClassTransformer;
 import org.objectweb.asm.ClassReader;
 import org.objectweb.asm.ClassWriter;
+import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.ClassNode;
 
 /** IClassTransformer wrapper for {@link CeleritasBlockTransform} */
@@ -18,7 +19,7 @@ public class CeleritasBlockTransformer implements IClassTransformer {
 
     public CeleritasBlockTransformer() {
         this.inner = new CeleritasBlockTransform(AngelicaClientTweaker.isObfEnv());
-        this.tileEntities = new TileEntityMarkerTransform(AngelicaClientTweaker.isObfEnv());
+        this.tileEntities = new TileEntityMarkerTransform(AngelicaClientTweaker.isObfEnv(), Opcodes.ASM5);
         this.exclusions = inner.getTransformerExclusions();
     }
 

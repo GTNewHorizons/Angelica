@@ -43,6 +43,28 @@ public class GLSM_TextureBindingTargetCache_UnitTest {
     }
 
     @Test
+    void proxyTargetBindIsNeitherForwardedNorCached() {
+        drainErrors();
+        final int t2d = GL11.glGenTextures();
+        try {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE5);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, t2d);
+
+            GLStateManager.glBindTexture(GL11.GL_PROXY_TEXTURE_2D, 0);
+            GLStateManager.glBindTexture(GL12.GL_PROXY_TEXTURE_3D, t2d);
+
+            assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "a proxy target must never reach the driver");
+            assertEquals(t2d, GLStateManager.getBoundTextureForServerState(5), "a proxy bind must not disturb the cache");
+            assertEquals(t2d, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D));
+        } finally {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLStateManager.glDeleteTextures(t2d);
+            drainErrors();
+        }
+    }
+
+    @Test
     void popAttribRestoresRecordedTarget() {
         drainErrors();
         final int t3d = GL11.glGenTextures();

@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.loading.shared.transformers.TileEntityMarkerTr
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassHeaderMetadata;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
+import com.gtnewhorizons.retrofuturabootstrap.api.RetroFuturaBootstrap;
 import com.gtnewhorizons.retrofuturabootstrap.api.RfbClassTransformer;
 import org.intellij.lang.annotations.Pattern;
 import org.jetbrains.annotations.NotNull;
@@ -21,7 +22,7 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
 
     public RFBCeleritasBlockTransformer(boolean isObf) {
         inner = new CeleritasBlockTransform(isObf);
-        tileEntities = new TileEntityMarkerTransform(isObf);
+        tileEntities = new TileEntityMarkerTransform(isObf, RetroFuturaBootstrap.API.newestAsmVersion());
     }
 
     @Pattern("[a-z0-9-]+")

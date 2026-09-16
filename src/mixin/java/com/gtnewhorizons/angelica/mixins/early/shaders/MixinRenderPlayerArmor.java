@@ -8,13 +8,13 @@ import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.entity.AbstractClientPlayer;
-import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelBiped;
 import net.minecraft.client.renderer.entity.RenderPlayer;
-import net.minecraft.item.ItemStack;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 import java.util.Objects;
 
@@ -35,18 +35,12 @@ public class MixinRenderPlayerArmor {
     @Unique
     private static final NamespacedId PLAYER_CAPE = new NamespacedId("minecraft", "player_cape");
 
-    /**
-     * Set item ID when rendering player armor.
-     */
-    @WrapOperation(
+    @Inject(
         method = "shouldRenderPass(Lnet/minecraft/client/entity/AbstractClientPlayer;IF)I",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderPlayer;setRenderPassModel(Lnet/minecraft/client/model/ModelBase;)V")
     )
-    private void iris$setArmorItemId(RenderPlayer instance, ModelBase model, Operation<Void> original, AbstractClientPlayer player, int armorSlot, float partialTicks) {
-        ItemStack itemStack = player.getCurrentArmor(3 - armorSlot);
-        ItemIdManager.setItemId(itemStack);
-
-        original.call(instance, model);
+    private void iris$setArmorItemId(AbstractClientPlayer player, int armorSlot, float partialTicks, CallbackInfoReturnable<Integer> cir) {
+        ItemIdManager.setItemId(player.getCurrentArmor(3 - armorSlot));
     }
 
     /**

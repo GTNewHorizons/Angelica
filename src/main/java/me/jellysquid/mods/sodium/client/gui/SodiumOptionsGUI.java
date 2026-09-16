@@ -61,6 +61,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         this.pages.add(SodiumGameOptionPages.quality());
         this.pages.add(SodiumGameOptionPages.advanced());
         this.pages.add(SodiumGameOptionPages.performance());
+        this.pages.add(SodiumGameOptionPages.fpsReducer());
         this.pages.add(SodiumGameOptionPages.appearance());
         this.pages.add(SodiumGameOptionPages.text());
 

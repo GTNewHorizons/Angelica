@@ -3,7 +3,7 @@ package me.jellysquid.mods.sodium.client.gui;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.function.IntSupplier;
+import java.util.function.BiConsumer;
 import java.util.function.Supplier;
 
 import net.minecraft.client.Minecraft;
@@ -15,6 +15,7 @@ import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.celeritas.MultiDrawModeResolver;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.config.GpuCullingMode;
@@ -38,6 +39,7 @@ import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.ParticleMode;
+import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
 import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import me.jellysquid.mods.sodium.client.gui.options.storage.AngelicaOptionsStorage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.CubicChunksOptionStorage;
@@ -55,6 +57,13 @@ public class SodiumGameOptionPages {
 
     private static final int MIN_RENDER_AHEAD = 0;
     private static final int MAX_RENDER_AHEAD = 9;
+
+    private static <T> BiConsumer<SodiumGameOptions, T> reducerBinding(BiConsumer<SodiumGameOptions, T> setter) {
+        return (opts, value) -> {
+            setter.accept(opts, value);
+            FpsReducer.markConfigChanged();
+        };
+    }
 
     public static OptionPage general() {
         final List<OptionGroup> groups = new ArrayList<>();
@@ -185,7 +194,15 @@ public class SodiumGameOptionPages {
                 .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD, OptionFlag.REQUIRES_RENDERER_RELOAD)
                 .build();
 
-        textureFilterMode.iris$dynamicallyEnable(() -> mipmapLevels.getValue() > 0);
+        final OptionImpl<SodiumGameOptions, TexelSampling> texelSampling =
+            OptionImpl.createBuilder(TexelSampling.class, sodiumOpts)
+                .setName(I18n.format("sodium.options.texel_sampling.name"))
+                .setTooltip(I18n.format("sodium.options.texel_sampling.tooltip"))
+                .setControl(option -> new CyclingControl<>(option, TexelSampling.class))
+                .setBinding((opts, value) -> opts.quality.texelSampling = value,
+                    opts -> opts.quality.texelSampling)
+                .setImpact(OptionImpact.LOW)
+                .build();
 
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
@@ -241,7 +258,8 @@ public class SodiumGameOptionPages {
                     .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                     .build())
                 .add(textureFilterMode)
-                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue, mipmapLevels::getValue),
+                .add(texelSampling)
+                .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
                 // TODO
                 /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
@@ -586,8 +604,93 @@ public class SodiumGameOptionPages {
         return new OptionPage(I18n.format("sodium.options.pages.performance"), ImmutableList.copyOf(groups));
     }
 
+    public static OptionPage fpsReducer() {
+        final List<OptionGroup> groups = new ArrayList<>();
+
+        final FrameRateOptions frameRate = FrameRateOptions.create(vanillaOpts, sodiumOpts);
+        groups.add(OptionGroup.createBuilder()
+                .add(frameRate.vsync())
+                .add(frameRate.maxFramerate())
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.fps_reducer_enabled.name"))
+                        .setTooltip(I18n.format("sodium.options.fps_reducer_enabled.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.enabled = value),
+                            options -> options.reducer.enabled)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.unfocused_fps_limit.name"))
+                        .setTooltip(I18n.format("sodium.options.unfocused_fps_limit.tooltip"))
+                        .setControl(option -> new SliderControl(option, FrameRateOptions.MIN_FRAMERATE, FrameRateOptions.MAX_FRAMERATE, 1, ControlValueFormatter.fpsLimit()))
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.unfocusedFpsLimit = value),
+                            options -> options.reducer.unfocusedFpsLimit)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.unfocused_volume.name"))
+                        .setTooltip(I18n.format("sodium.options.unfocused_volume.tooltip"))
+                        .setControl(option -> new SliderControl(option, 0, 100, 1, ControlValueFormatter.percentage()))
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.unfocusedVolume = value),
+                            options -> options.reducer.unfocusedVolume)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.minimized_volume.name"))
+                        .setTooltip(I18n.format("sodium.options.minimized_volume.tooltip"))
+                        .setControl(option -> new SliderControl(option, 0, 100, 1, ControlValueFormatter.percentage()))
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.minimizedVolume = value),
+                            options -> options.reducer.minimizedVolume)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.idle_timeout.name"))
+                        .setTooltip(I18n.format("sodium.options.idle_timeout.tooltip"))
+                        .setControl(option -> new SliderControl(option, 0, 30, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.idle_timeout.value", "sodium.options.idle_timeout.off")))
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.idleTimeoutMinutes = value),
+                            options -> options.reducer.idleTimeoutMinutes)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.idle_fps_limit.name"))
+                        .setTooltip(I18n.format("sodium.options.idle_fps_limit.tooltip"))
+                        .setControl(option -> new SliderControl(option, FrameRateOptions.MIN_FRAMERATE, FrameRateOptions.MAX_FRAMERATE, 1, ControlValueFormatter.fpsLimit()))
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.idleFpsLimit = value),
+                            options -> options.reducer.idleFpsLimit)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.idle_volume.name"))
+                        .setTooltip(I18n.format("sodium.options.idle_volume.tooltip"))
+                        .setControl(option -> new SliderControl(option, 0, 100, 1, ControlValueFormatter.percentage()))
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.idleVolume = value),
+                            options -> options.reducer.idleVolume)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, sodiumOpts)
+                        .setName(I18n.format("sodium.options.limit_menu_fps.name"))
+                        .setTooltip(I18n.format("sodium.options.limit_menu_fps.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding(reducerBinding((opts, value) -> opts.reducer.limitMenuFrameRate = value),
+                            options -> options.reducer.limitMenuFrameRate)
+                        .setImpact(OptionImpact.LOW)
+                        .build())
+                .build());
+
+        return new OptionPage(I18n.format("sodium.options.pages.fps_reducer"), ImmutableList.copyOf(groups));
+    }
+
     public static OptionImpl<GameSettings, Integer> anisotropicFilteringSlider(MinecraftOptionsStorage storage,
-        Supplier<TextureFilterMode> mode, IntSupplier mipmapLevels) {
+        Supplier<TextureFilterMode> mode) {
         final int min = SodiumGameOptions.minAnisotropyLevel();
         final int max = Math.max(SodiumGameOptions.maxAnisotropyLevel(), min + 1);
         final OptionImpl<GameSettings, Integer> option = OptionImpl.createBuilder(int.class, storage)
@@ -601,8 +704,7 @@ public class SodiumGameOptionPages {
             .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
             .build();
 
-        option.iris$dynamicallyEnable(() -> mipmapLevels.getAsInt() > 0 && mode.get().usesAnisotropy()
-            && SodiumGameOptions.hasAnisotropyRange());
+        option.iris$dynamicallyEnable(() -> mode.get().usesAnisotropy() && SodiumGameOptions.hasAnisotropyRange());
 
         return option;
     }

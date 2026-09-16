@@ -9,6 +9,7 @@ import net.minecraft.util.AxisAlignedBB;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.embeddedt.embeddium.impl.render.viewport.frustum.Frustum;
+import org.embeddedt.embeddium.impl.render.viewport.frustum.ShadowSearchFrustum;
 import org.joml.Math;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -37,7 +38,7 @@ import org.joml.Vector4f;
  * cost of slightly more computations.</p>
  */
 @Optional.Interface(modid = "distanthorizons", iface = "com.seibel.distanthorizons.api.interfaces.override.rendering.IDhApiShadowCullingFrustum")
-public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportProvider, Frustum, IDhApiShadowCullingFrustum {
+public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportProvider, Frustum, ShadowSearchFrustum, IDhApiShadowCullingFrustum {
 	private static final int MAX_CLIPPING_PLANES = 13;
 
 	/**
@@ -280,8 +281,44 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 	}
 
 	@Override
+	public int intersectAab(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		if (boxCuller != null && boxCuller.isCulledViewRelative(minX, minY, minZ, maxX, maxY, maxZ)) {
+			return OUTSIDE;
+		}
+
+		final int result = intersectCorners(minX, minY, minZ, maxX, maxY, maxZ);
+
+		if (result == FULLY_INSIDE && boxCuller != null
+				&& !boxCuller.isFullyInsideViewRelative(minX, minY, minZ, maxX, maxY, maxZ)) {
+			return PARTIALLY_INSIDE;
+		}
+
+		return result;
+	}
+
+	@Override
 	public Viewport sodium$createViewport() {
 		return new Viewport(this, position.set(xPosition, yPosition, zPosition));
+	}
+
+	@Override
+	public boolean supportsOcclusionSearch() {
+		return true;
+	}
+
+	@Override
+	public float shadowLightX() {
+		return this.shadowLightVectorFromOrigin.x();
+	}
+
+	@Override
+	public float shadowLightY() {
+		return this.shadowLightVectorFromOrigin.y();
+	}
+
+	@Override
+	public float shadowLightZ() {
+		return this.shadowLightVectorFromOrigin.z();
 	}
 
 	protected boolean isVisible(double minX, double minY, double minZ, double maxX, double maxY, double maxZ) {
@@ -304,6 +341,29 @@ public class AdvancedShadowCullingFrustum extends Frustrum implements ViewportPr
 		}
 
 		return true;
+	}
+
+	protected int intersectCorners(float minX, float minY, float minZ, float maxX, float maxY, float maxZ) {
+		boolean inside = true;
+
+		for (int i = 0; i < planeCount; ++i) {
+			final Vector4f plane = this.planes[i];
+
+			final float px = plane.x();
+			final float py = plane.y();
+			final float pz = plane.z();
+			final float pw = plane.w();
+
+			if (Math.fma(px, px < 0 ? minX : maxX, Math.fma(py, py < 0 ? minY : maxY, pz * (pz < 0 ? minZ : maxZ))) < -pw) {
+				return OUTSIDE;
+			}
+
+			if (Math.fma(px, px < 0 ? maxX : minX, Math.fma(py, py < 0 ? maxY : minY, pz * (pz < 0 ? maxZ : minZ))) < -pw) {
+				inside = false;
+			}
+		}
+
+		return inside ? FULLY_INSIDE : PARTIALLY_INSIDE;
 	}
 
 	@Optional.Method(modid = "distanthorizons")

@@ -196,10 +196,13 @@ public class TexturePackAPI {
         }
         path = path.replace(File.separatorChar, '/');
         if (path.startsWith(ASSETS)) {
-            path = path.substring(ASSETS.length());
-            int slash = path.indexOf('/');
-            if (slash > 0 && slash + 1 < path.length()) {
-                return new ResourceLocation(path.substring(0, slash), path.substring(slash + 1));
+            int namespaceStart = ASSETS.length();
+            int slash = path.indexOf('/', namespaceStart);
+
+            if (slash > namespaceStart && slash + 1 < path.length()) {
+                return new ResourceLocation(
+                    path.substring(namespaceStart, slash),
+                    path.substring(slash + 1));
             }
         }
         return null;

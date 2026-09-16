@@ -238,7 +238,7 @@ public class Iris {
             try {
                 submitTracked(() -> {
                     TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
-                    TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, new InputAvailability(true, true));
+                    TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, InputAvailability.of(true, true));
                 }).get();
             } catch (Exception e) {
                 logger.warn("Warmup failed", e);
@@ -828,6 +828,7 @@ public class Iris {
         currentPack = null;
 
         getPipelineManager().destroyPipeline();
+        PBRTextureManager.INSTANCE.clear();
 
         // Close the zip filesystem that the shaderpack was loaded from
         //
