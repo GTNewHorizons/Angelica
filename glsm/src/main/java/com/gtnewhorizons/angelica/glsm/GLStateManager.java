@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -3577,8 +3578,7 @@ public class GLStateManager {
 
     public static void updateDisplay(boolean processMessages) throws LWJGLException {
         if (Thread.currentThread() != MainThread) {
-            swapBuffers();
-            if (processMessages) pumpDisplayMessages();
+            RENDER_BACKEND.updateDisplayFromWorkerThread(processMessages);
             return;
         }
         if (processMessages) pumpDisplayMessages();
