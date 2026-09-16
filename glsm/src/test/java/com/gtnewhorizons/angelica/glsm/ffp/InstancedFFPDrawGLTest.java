@@ -162,7 +162,7 @@ class InstancedFFPDrawGLTest {
 
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "parity draws must not raise a GL error");
 
-        CubeParityFixture.assertPixelParity(reference, instanced, PARITY_SIZE, 0, pixel -> "0x" + Integer.toHexString(pixel));
+        CubeParityFixture.assertPixelParity(reference, instanced, PARITY_SIZE, 0xFF000000, pixel -> "0x" + Integer.toHexString(pixel));
     }
 
     @Test
@@ -186,7 +186,7 @@ class InstancedFFPDrawGLTest {
         final int[] instanced = FfpFixture.readRegion(PARITY_SIZE);
 
         assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "parity draws must not raise a GL error");
-        ParticleParityFixture.assertPixelParity(reference, instanced, PARITY_SIZE, 0, pixel -> "0x" + Integer.toHexString(pixel));
+        ParticleParityFixture.assertPixelParity(reference, instanced, PARITY_SIZE, 0xFF000000, pixel -> "0x" + Integer.toHexString(pixel));
     }
 
     @Test

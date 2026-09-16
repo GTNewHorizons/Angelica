@@ -42,7 +42,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class RetainedTesrGroupsGLTest {
 
     private static final int SIZE = 256;
-    private static final int BACKGROUND = 0;
+    private static final int BACKGROUND = 0xFF000000;
     private static final float CUBE_SCALE = 0.1f;
     private static final int COLOR_ABGR = 0xFF0000FF;
     private static final float[] TRIANGLE = { -0.1f, -0.1f, 0f, 0.1f, -0.1f, 0f, 0f, 0.15f, 0f };

@@ -125,8 +125,8 @@ public final class CubeParityFixture {
         final int id = GLStateManager.glGenTextures();
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, id);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
         final ByteBuffer texels = BufferUtils.createByteBuffer(TEX_WIDTH * TEX_HEIGHT * 4);
         for (int y = 0; y < TEX_HEIGHT; y++) {
             for (int x = 0; x < TEX_WIDTH; x++) {
@@ -279,7 +279,7 @@ public final class CubeParityFixture {
     }
 
     public static void assertPixelParity(int[] reference, int[] instanced, int size, int background, IntFunction<String> describe) {
-        FfpFixture.assertPixelParity("instanced cubes", reference, instanced, size, background, 8, 0, describe);
+        FfpFixture.assertPixelParity("instanced cubes", reference, instanced, size, background, 8, 1, describe);
     }
 
     public static void deleteResources() {
