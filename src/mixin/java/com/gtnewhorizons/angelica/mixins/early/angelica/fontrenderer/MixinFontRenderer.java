@@ -7,6 +7,7 @@ import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_LEN
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
 
 import com.gtnewhorizons.angelica.client.font.ColorCodeUtils;
+import com.gtnewhorizons.angelica.client.font.FontEffectRegistry;
 import com.gtnewhorizons.angelica.compat.GTNHLibCompat;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -236,6 +237,8 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
 
     @Unique private static final StringBuilder EXTRACT_STYLES = new StringBuilder();
     @Unique private static final StringBuilder EXTRACT_EFFECTS = new StringBuilder();
+    /** Kept apart from the effects above: a colour code clears these without clearing wave or dinnerbone. */
+    @Unique private static final StringBuilder EXTRACT_CUSTOM = new StringBuilder();
     @Unique private static final StringBuilder EXTRACT_COLOR = new StringBuilder();
     @Unique private static final StringBuilder EXTRACT_RESULT = new StringBuilder();
 
@@ -248,6 +251,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
         String lastColor = "";
         final StringBuilder styles = EXTRACT_STYLES; styles.setLength(0);
         final StringBuilder effects = EXTRACT_EFFECTS; effects.setLength(0);
+        final StringBuilder custom = EXTRACT_CUSTOM; custom.setLength(0);
 
         for (int i = 0; i < len - 1; i++) {
             if (text.charAt(i) != FORMATTING_CHAR) continue;
@@ -259,6 +263,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 lastColor = cb.toString();
                 styles.setLength(0);
                 effects.setLength(0);
+                custom.setLength(0);
                 i += GRADIENT_LENGTH - 1;
                 continue;
             }
@@ -269,6 +274,7 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 lastColor = cb.toString();
                 styles.setLength(0);
                 effects.setLength(0);
+                custom.setLength(0);
                 i += SECTION_X_LENGTH - 1;
                 continue;
             }
@@ -277,11 +283,13 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                 lastColor = ColorCodeUtils.sectionPrefix(code);
                 styles.setLength(0);
                 effects.setLength(0);
+                custom.setLength(0);
                 i++;
             } else if (code == 'r') {
                 lastColor = "";
                 styles.setLength(0);
                 effects.setLength(0);
+                custom.setLength(0);
                 i++;
             } else if (code >= 'k' && code <= 'o') {
                 styles.append(ColorCodeUtils.sectionPrefix(code));
@@ -297,17 +305,25 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
                     effects.append(ColorCodeUtils.sectionPrefix(code));
                     i++;
                 }
-            } else if (code == 'q' || code == 'z' || code == 'v') {
+            } else if (code == 'q') {
                 effects.append(ColorCodeUtils.sectionPrefix(code));
+                custom.setLength(0);
+                i++;
+            } else if (code == 'z' || code == 'v') {
+                effects.append(ColorCodeUtils.sectionPrefix(code));
+                i++;
+            } else if (FontEffectRegistry.isRegistered(code)) {
+                // Every occurrence, so a pair that toggled off stays off on the next line.
+                custom.append(ColorCodeUtils.sectionPrefix(code));
                 i++;
             } else {
                 i++;
             }
         }
 
-        if (styles.length() == 0 && effects.length() == 0) return lastColor;
+        if (styles.length() == 0 && effects.length() == 0 && custom.length() == 0) return lastColor;
         final StringBuilder result = EXTRACT_RESULT; result.setLength(0);
-        result.append(lastColor).append(styles).append(effects);
+        result.append(lastColor).append(styles).append(effects).append(custom);
         return result.toString();
     }
 
