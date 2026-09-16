@@ -15,8 +15,12 @@ public final class EntityMaterials {
     static final TesrMaterial TRANSLUCENT_DEPTH_WRITE = TesrMaterial.builder().translucent().cutout(1f / 255f).stream().build();
     static final TesrMaterial ADDITIVE = TesrMaterial.builder().additive().stream().build();
     static final TesrMaterial ADDITIVE_NO_DEPTH_WRITE = TesrMaterial.builder().additive().noDepthWrite().stream().build();
+    static final TesrMaterial ADDITIVE_CUTOUT = TesrMaterial.builder().additive().cutout(0.1f).stream().build();
+    static final TesrMaterial ADDITIVE_CUTOUT_NO_DEPTH_WRITE = TesrMaterial.builder().additive().cutout(0.1f).noDepthWrite().stream().build();
     static final TesrMaterial ADDITIVE_ALPHA = TesrMaterial.builder().additiveAlpha().stream().build();
     static final TesrMaterial ADDITIVE_ALPHA_NO_DEPTH_WRITE = TesrMaterial.builder().additiveAlpha().noDepthWrite().stream().build();
+    static final TesrMaterial ADDITIVE_ALPHA_CUTOUT = TesrMaterial.builder().additiveAlpha().cutout(0.1f).stream().build();
+    static final TesrMaterial ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE = TesrMaterial.builder().additiveAlpha().cutout(0.1f).noDepthWrite().stream().build();
     static final TesrMaterial SHADOW = TesrMaterial.builder().translucent().cutout(0.1f).noDepthWrite().unlit().stream().build();
     public static final TesrMaterial DROPPED_ITEM_CUTOUT = TesrMaterial.builder().cutout(0.1f).stream().unfilteredAtlas().build();
     public static final TesrMaterial DROPPED_ITEM_TRANSLUCENT = TesrMaterial.builder().translucent().cutout(0.1f).unfilteredAtlas().stream().build();
@@ -72,12 +76,7 @@ public final class EntityMaterials {
                 return GLINT;
             }
             if (blend && (depthFunc == GL11.GL_LEQUAL || depthFunc == GL11.GL_LESS)) {
-                if (srcRgb == GL11.GL_ONE && dstRgb == GL11.GL_ONE) {
-                    return depthMask ? ADDITIVE : ADDITIVE_NO_DEPTH_WRITE;
-                }
-                if (srcRgb == GL11.GL_SRC_ALPHA && dstRgb == GL11.GL_ONE) {
-                    return depthMask ? ADDITIVE_ALPHA : ADDITIVE_ALPHA_NO_DEPTH_WRITE;
-                }
+                return additiveFromState(srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthMask);
             }
             return null;
         }
@@ -93,10 +92,24 @@ public final class EntityMaterials {
         if (srcRgb == GL11.GL_SRC_ALPHA && dstRgb == GL11.GL_ONE_MINUS_SRC_ALPHA) {
             return depthMask ? TRANSLUCENT_DEPTH_WRITE : TRANSLUCENT;
         }
+        return additiveFromState(srcRgb, dstRgb, alphaTest, alphaFunc, alphaRef, depthMask);
+    }
+
+    private static TesrMaterial additiveFromState(int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, boolean depthMask) {
+        final boolean cutout;
+        if (!alphaTest) {
+            cutout = false;
+        } else if (alphaFunc == GL11.GL_GREATER && Math.abs(alphaRef - 0.1f) < 1e-4f) {
+            cutout = true;
+        } else {
+            return null;
+        }
         if (srcRgb == GL11.GL_ONE && dstRgb == GL11.GL_ONE) {
+            if (cutout) return depthMask ? ADDITIVE_CUTOUT : ADDITIVE_CUTOUT_NO_DEPTH_WRITE;
             return depthMask ? ADDITIVE : ADDITIVE_NO_DEPTH_WRITE;
         }
         if (srcRgb == GL11.GL_SRC_ALPHA && dstRgb == GL11.GL_ONE) {
+            if (cutout) return depthMask ? ADDITIVE_ALPHA_CUTOUT : ADDITIVE_ALPHA_CUTOUT_NO_DEPTH_WRITE;
             return depthMask ? ADDITIVE_ALPHA : ADDITIVE_ALPHA_NO_DEPTH_WRITE;
         }
         return null;
