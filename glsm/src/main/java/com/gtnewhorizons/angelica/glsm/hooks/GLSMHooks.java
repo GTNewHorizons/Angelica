@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.hooks;
 
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.hooks.events.*;
 import net.minecraftforge.eventbus.api.bus.EventBus;
 
@@ -14,6 +15,12 @@ public final class GLSMHooks {
     public static ShaderTransformPostProcessor postTransformProcessor;
     public static PerFrameUniformBlock perFrameUniformBlock;
     public static PerFrameUniformBlock perPassUniformBlock;
+    public static PendingProgramSelection pendingProgramSelection;
+
+    public static void resolvePendingProgram() {
+        final PendingProgramSelection p = pendingProgramSelection;
+        if (p != null && !DisplayListManager.isRecording()) p.resolvePendingProgram();
+    }
 
     // EventBus instances
     public static final EventBus<TextureBindEvent> TEXTURE_BIND = EventBus.create(TextureBindEvent.class);

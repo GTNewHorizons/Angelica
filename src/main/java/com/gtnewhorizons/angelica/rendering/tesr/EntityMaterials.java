@@ -1,8 +1,8 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import org.lwjgl.opengl.GL11;
 
@@ -17,21 +17,43 @@ public final class EntityMaterials {
     static final TesrMaterial ADDITIVE_NO_DEPTH_WRITE = TesrMaterial.builder().additive().noDepthWrite().stream().build();
     static final TesrMaterial ADDITIVE_ALPHA = TesrMaterial.builder().additiveAlpha().stream().build();
     static final TesrMaterial ADDITIVE_ALPHA_NO_DEPTH_WRITE = TesrMaterial.builder().additiveAlpha().noDepthWrite().stream().build();
+    static final TesrMaterial SHADOW = TesrMaterial.builder().translucent().cutout(0.1f).noDepthWrite().unlit().stream().build();
+    public static final TesrMaterial DROPPED_ITEM_CUTOUT = TesrMaterial.builder().cutout(0.1f).stream().unfilteredAtlas().build();
+    public static final TesrMaterial DROPPED_ITEM_TRANSLUCENT = TesrMaterial.builder().translucent().cutout(0.1f).unfilteredAtlas().stream().build();
+    public static final TesrMaterial HELD_BLOCK_CUTOUT = TesrMaterial.builder().cutout(0.1f).stream().build();
+    public static final TesrMaterial HELD_BLOCK_TRANSLUCENT = TesrMaterial.builder().translucent().cutout(0.1f).stream().build();
     static final TesrMaterial OVERLAY = TesrMaterial.builder().translucent().depthEqual().stream().build();
-    static final TesrMaterial GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream()
+    public static final TesrMaterial GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream()
         .special(TesrMaterial.SpecialRender.GLINT).build();
+
+    private static final BlendState effectiveBlend = new BlendState();
+    private static final AlphaState effectiveAlpha = new AlphaState();
 
     private EntityMaterials() {}
 
-    static TesrMaterial fromCurrentState() {
+    static TesrMaterial fromCurrentState(boolean texIdentity) {
         final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
-        final boolean texAnimated = textured && !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0));
-        final BlendState blend = GLStateManager.getBlendState();
-        return fromState(textured, texAnimated,
-            GLStateManager.getBlendMode().isEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
-            GLStateManager.getAlphaTest().isEnabled(),
-            GLStateManager.getAlphaState().getFunction(), GLStateManager.getAlphaState().getReference(),
-            GLStateManager.getDepthState().getFunc(), GLStateManager.getDepthState().isEnabled());
+        final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
+        final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
+        return fromState(textured, textured && !texIdentity, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(), GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),GLStateManager.isEffectiveDepthMaskEnabled());
+    }
+
+    public static TesrMaterial itemFromCurrentState(boolean unfilteredAtlas) {
+        final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
+        final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
+        return itemFromState(unfilteredAtlas, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(), GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),GLStateManager.isEffectiveDepthMaskEnabled());
+    }
+
+    static TesrMaterial itemFromState(boolean unfilteredAtlas, boolean blend, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {
+        if (depthFunc != GL11.GL_LEQUAL && depthFunc != GL11.GL_LESS) return null;
+        if (!depthMask) return null;
+        if (!alphaTest) return null;
+        if (alphaFunc != GL11.GL_GREATER || Math.abs(alphaRef - 0.1f) > 1.0e-4f) return null;
+        if (blend) {
+            if (srcRgb != GL11.GL_SRC_ALPHA || dstRgb != GL11.GL_ONE_MINUS_SRC_ALPHA) return null;
+            return unfilteredAtlas ? DROPPED_ITEM_TRANSLUCENT : HELD_BLOCK_TRANSLUCENT;
+        }
+        return unfilteredAtlas ? DROPPED_ITEM_CUTOUT : HELD_BLOCK_CUTOUT;
     }
 
     static TesrMaterial fromState(boolean textured, boolean blend, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {

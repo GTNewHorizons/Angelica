@@ -88,6 +88,7 @@ public class CeleritasDebugScreenHandler {
                 addIfPresent(lines, RenderClassTimings.SHADOW_ENTITY.debugLine());
                 addIfPresent(lines, BailClassCounts.MATERIAL.debugLine());
                 addIfPresent(lines, BailClassCounts.TEMPLATE.debugLine());
+                addIfPresent(lines, BailClassCounts.PARTICLE_SPILL.debugLine());
             }
         }
         lines.add("");

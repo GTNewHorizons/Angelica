@@ -103,6 +103,11 @@ repositories {
     mavenLocal()
 }
 
+val spirvTestRuntime by configurations.creating {
+    isCanBeConsumed = false
+    isCanBeResolved = true
+}
+
 dependencies {
     // MC compile stubs
     compileOnly(sourceSets["stubs"].output)
@@ -133,6 +138,7 @@ dependencies {
     testRuntimeOnly(libs.lwjgl3.spvc) { artifact { classifier = lwjglNatives } }
     testRuntimeOnly(libs.lwjgl3)
     testRuntimeOnly(libs.lwjgl3) { artifact { classifier = lwjglNatives } }
+    spirvTestRuntime(libs.lwjgl3.opengl)
     // @Lwjgl3Aware annotation
     compileOnly(libs.lwjgl3ify) { artifact { classifier = "dev" }; isTransitive = false }
     compileOnly(libs.retrofuturabootstrap) { isTransitive = false }
@@ -309,7 +315,7 @@ val spirvTest by tasks.registering(Test::class) {
     classpath = sourceSets["test"].runtimeClasspath.filter { file ->
         // Strip the LWJGL2 jars - they collide with LWJGL3's sealed org.lwjgl package.
         !file.name.startsWith("lwjgl-2.") && !file.name.startsWith("lwjgl_util-") && !file.name.startsWith("lwjgl-platform-")
-    }
+    }.plus(spirvTestRuntime)
 
     filter {
         includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")

@@ -80,9 +80,9 @@ public class BlockRenderListManager {
     }
 
 
-    private static final class BlockMeta {
-        private Block block;
-        private int meta;
+    static final class BlockMeta {
+        Block block;
+        int meta;
 
         public BlockMeta() {
 

@@ -13,6 +13,6 @@ public class StateTracker {
 	public boolean lightmapSampler;
 
 	public InputAvailability getInputs() {
-		return new InputAvailability(albedoSampler, lightmapSampler);
+		return InputAvailability.of(albedoSampler, lightmapSampler);
 	}
 }

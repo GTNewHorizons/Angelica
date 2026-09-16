@@ -329,12 +329,20 @@ public class GbufferPrograms {
 
 	public static void setupSpecialRenderCondition(SpecialCondition override) {
 		currentSpecial = override;
-		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(override));
+		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+
+		if (pipeline != null) {
+			pipeline.setSpecialCondition(override);
+		}
 	}
 
 	public static void teardownSpecialRenderCondition() {
 		currentSpecial = null;
-		Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setSpecialCondition(null));
+		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+
+		if (pipeline != null) {
+			pipeline.setSpecialCondition(null);
+		}
 	}
 
 	public static void runPhaseChangeNotifier() {

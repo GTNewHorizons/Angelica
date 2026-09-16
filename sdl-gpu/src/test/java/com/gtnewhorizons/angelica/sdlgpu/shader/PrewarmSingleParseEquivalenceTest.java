@@ -23,22 +23,9 @@ class PrewarmSingleParseEquivalenceTest {
         GLSMHooks.perPassUniformBlock = null;
     }
 
-    private static String legacy(String source, int glShaderType) {
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, "test", true);
-        String src = pre != null ? pre.rewrittenSource() : source;
-        if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            src = ClipZRemap.injectGLToVulkanClipZ(src);
-        }
-        src = SamplerStripper.stripUnused(src);
-        if (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
-        }
-        return src;
-    }
-
     private static void assertEquivalent(String label, String source, int glShaderType) {
         GlslVulkanPreprocess.clearCache();
-        final String legacyOut = legacy(source, glShaderType);
+        final String legacyOut = ShaderTransformChain.run(source, glShaderType);
         GlslVulkanPreprocess.clearCache();
         final String parseOnceOut = ShaderManager.applyPrewarmTransforms(source, glShaderType);
         assertEquals(legacyOut, parseOnceOut, "single-parse vs chained pipeline diverged for " + label);
@@ -46,7 +33,7 @@ class PrewarmSingleParseEquivalenceTest {
 
     private static void assertEquivalentIgnoringWhitespace(String label, String source, int glShaderType) {
         GlslVulkanPreprocess.clearCache();
-        final String legacyOut = legacy(source, glShaderType);
+        final String legacyOut = ShaderTransformChain.run(source, glShaderType);
         GlslVulkanPreprocess.clearCache();
         final String parseOnceOut = ShaderManager.applyPrewarmTransforms(source, glShaderType);
         assertEquals(legacyOut.replaceAll("\\s+", " "), parseOnceOut.replaceAll("\\s+", " "), "single-parse vs chained pipeline diverged beyond whitespace for " + label);

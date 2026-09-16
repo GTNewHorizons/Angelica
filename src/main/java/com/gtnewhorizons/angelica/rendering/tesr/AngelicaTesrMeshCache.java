@@ -8,9 +8,11 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMeshProvider;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
+import com.gtnewhorizons.angelica.rendering.particles.BopParticleDescriptors;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
-import com.gtnewhorizons.angelica.rendering.tesr.VertexTransform;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -22,13 +24,10 @@ import net.minecraftforge.client.event.TextureStitchEvent;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
-import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.function.LongSupplier;
 
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memAddress0;
-import static com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities.memFree;
 
 public final class AngelicaTesrMeshCache {
 
@@ -192,6 +191,9 @@ public final class AngelicaTesrMeshCache {
         @SubscribeEvent
         public void onTextureStitchPost(TextureStitchEvent.Post event) {
             INSTANCE.clear();
+            DroppedItemInstancer.clear();
+            BopParticleDescriptors.invalidate();
+            ShaderGlint.invalidate();
         }
     }
 
@@ -228,7 +230,7 @@ public final class AngelicaTesrMeshCache {
         return entries.containsKey(key);
     }
 
-    static final class GtnhMeshBackend implements MeshBackend {
+    public static final class GtnhMeshBackend implements MeshBackend {
         private DirectTessellator direct;
 
         @Override
@@ -241,20 +243,10 @@ public final class AngelicaTesrMeshCache {
 
         @Override
         public TemplateBuffer endCaptureToTemplate() {
-            final int vertexCount = direct.getVertexCount();
-            if (vertexCount == 0) {
-                TessellatorManager.stopCapturingDirect();
-                direct = null;
-                return null;
-            }
-            final int drawMode = direct.getDrawMode();
-            final VertexFormat format = direct.getVertexFormat();
-            final ByteBuffer copy = direct.allocateBufferCopy();
-            final int[] data = VertexTransform.decode(memAddress0(copy), format, vertexCount, drawMode);
-            memFree(copy);
+            final TemplateBuffer template = TemplateCapture.toTemplate(direct);
             TessellatorManager.stopCapturingDirect();
             direct = null;
-            return new TemplateBuffer(data, vertexCount, drawMode);
+            return template;
         }
     }
 }

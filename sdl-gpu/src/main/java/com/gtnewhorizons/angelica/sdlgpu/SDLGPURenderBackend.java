@@ -1011,6 +1011,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public void drawArrays(int mode, int first, int count) {
+        if (count <= 0) return;
         final FrameState f = frameManager.frame();
         if (!f.frameActive) { f.droppedDrawsThisFrame++; return; }
         final ContextState st = s();
@@ -3969,6 +3970,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override
     public void drawArraysInstanced(int mode, int first, int count, int primcount) {
+        if (count <= 0 || primcount <= 0) return;
         if (!frameManager.isFrameActive()) return;
         final ContextState st = s();
         drawDispatch.setPrimitiveTypeForDraw(st, FormatMap.mapPrimitiveType(mode));

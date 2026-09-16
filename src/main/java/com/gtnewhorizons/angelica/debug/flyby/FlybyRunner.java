@@ -32,8 +32,6 @@ import java.util.concurrent.atomic.AtomicReference;
 
 /** Flies a deterministic camera path */
 public final class FlybyRunner {
-    public static final FlybyRunner INSTANCE = new FlybyRunner();
-
     private static final Logger LOGGER = LogManager.getLogger("Angelica/Flyby");
     private static final long[] NO_FRAMES = new long[0];
     private static final double[] NO_PATH = new double[0];
@@ -41,6 +39,8 @@ public final class FlybyRunner {
     private static final byte[] NO_PHASE = new byte[0];
     private static final String[] NO_COMMANDS = new String[0];
     private static final int MAX_RECORDED_FRAMES = 200_000;
+
+    public static final FlybyRunner INSTANCE = new FlybyRunner();
 
     private enum State { IDLE, WAITING, PREPARING, WARMUP, RUNNING, SETTLE, EXITING, DONE }
 
