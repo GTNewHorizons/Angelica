@@ -135,7 +135,8 @@ public abstract class MixinFontRenderer implements FontRendererAccessor, IFontPa
      * Batched font renderer is not compatible with display lists, and won't really
      * help performance when display lists are already being used anyway.
      */
-    @Inject(method = "drawString(Ljava/lang/String;IIIZ)I", at = @At("HEAD"), cancellable = true)
+    @Inject(method = "drawString(Ljava/lang/String;IIIZ)I", at = @At(value = "INVOKE",
+        target = "Lnet/minecraft/client/gui/FontRenderer;enableAlpha()V", shift = At.Shift.AFTER, remap = false), cancellable = true)
     public void angelica$BatchedFontRendererDrawString(String text, int x, int y, int argb, boolean dropShadow, CallbackInfoReturnable<Integer> cir)
     {
         if (GLStateManager.getListMode() == 0) {
