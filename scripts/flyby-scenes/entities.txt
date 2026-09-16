@@ -1,4 +1,4 @@
-# Summons are relative to the player; start facing south (yaw 0).
+# Summons are relative to the flight start; start facing south (yaw 0).
 
 # gamerules
 difficulty 1

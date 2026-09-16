@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
@@ -88,8 +89,14 @@ public final class ShaderManager {
     private static final int PREWARM_CACHE_MAX = 256;
     private static final Object2ObjectLinkedOpenHashMap<PrewarmKey, PrewarmEntry> PREWARM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
 
+    private record TransformKey(String source, int glShaderType, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {}
+    private record TransformEntry(String source, Set<String> boolUniforms) {}
+    private static final int TRANSFORM_CACHE_MAX = 256;
+    private static final Object2ObjectLinkedOpenHashMap<TransformKey, TransformEntry> TRANSFORM_CACHE = new Object2ObjectLinkedOpenHashMap<>();
+
     public static void clearPrewarmCache() {
         synchronized (PREWARM_CACHE) { PREWARM_CACHE.clear(); }
+        synchronized (TRANSFORM_CACHE) { TRANSFORM_CACHE.clear(); }
     }
 
     private static PrewarmHit lookupPrewarm(String src, int glShaderType) {
@@ -133,24 +140,35 @@ public final class ShaderManager {
             return;
         }
 
-        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader, true);
-        obj.boolUniforms = pre != null ? pre.boolUniforms() : Set.of();
-        String src = pre != null ? pre.rewrittenSource() : raw;
-        if (obj.isVertex()) {
-            src = ClipZRemap.injectGLToVulkanClipZ(src);
+        final TransformKey transformKey = new TransformKey(raw, obj.type, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+        TransformEntry transformed;
+        synchronized (TRANSFORM_CACHE) {
+            transformed = TRANSFORM_CACHE.getAndMoveToFirst(transformKey);
         }
-        src = SamplerStripper.stripUnused(src);
-        if (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER) {
-            src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+        if (transformed == null) {
+            final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, obj.type, "shader" + shader, true);
+            String src = pre != null ? pre.rewrittenSource() : raw;
+            if (obj.isVertex()) {
+                src = ClipZRemap.injectGLToVulkanClipZ(src);
+            }
+            src = SamplerStripper.stripUnused(src);
+            if (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER) {
+                src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+            }
+            transformed = new TransformEntry(src, pre != null ? pre.boolUniforms() : Set.of());
+            synchronized (TRANSFORM_CACHE) {
+                TRANSFORM_CACHE.putAndMoveToFirst(transformKey, transformed);
+                while (TRANSFORM_CACHE.size() > TRANSFORM_CACHE_MAX) TRANSFORM_CACHE.removeLast();
+            }
         }
-
-        obj.source = src;
+        obj.boolUniforms = transformed.boolUniforms();
+        obj.source = transformed.source();
 
         final ShaderWorkSubmitter submitter = GLSMHooks.shaderWorkSubmitter;
         if (submitter != null) {
             final int shaderKind = shaderKindFor(obj);
             final int glType = obj.type;
-            final String finalSrc = src;
+            final String finalSrc = obj.source;
             obj.spirvFuture = submitter.submit(() -> {
                 final SpirvCompiler.Result r = SpirvCompiler.compile(finalSrc, shaderKind, "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
                 if (r.spirv() != null && (glType == GL20.GL_VERTEX_SHADER || glType == GL20.GL_FRAGMENT_SHADER)) {

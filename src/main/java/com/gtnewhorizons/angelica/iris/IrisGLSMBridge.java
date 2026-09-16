@@ -42,10 +42,6 @@ public class IrisGLSMBridge {
     private static Runnable fogDensityListener = null;
     private static Runnable colorModulatorListener = null;
 
-    private static boolean inputsDeferred = false;
-
-    private static boolean blendDeferred = false;
-
     private static boolean programRestoreDeferred = false;
 
     private static final Int2IntOpenHashMap programLastUpdatedFrame = new Int2IntOpenHashMap();
@@ -269,32 +265,19 @@ public class IrisGLSMBridge {
             }
             if (!updatePipeline) return;
 
-            if (GLStateManager.isForeignDraw()) {
-                inputsDeferred = true;
-                return;
+            final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+            if (pipeline != null) {
+                pipeline.setInputs(StateTracker.INSTANCE.getInputs());
             }
-            Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
         });
 
         GLSMHooks.VANILLA_BLEND_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
-            if (GLStateManager.isForeignDraw()) {
-                blendDeferred = true;
-                return;
-            }
             refreshBlendCondition();
         });
 
         GLSMHooks.FOREIGN_DRAW_END.addListener(event -> {
             if (!Iris.enabled) return;
-            if (inputsDeferred) {
-                inputsDeferred = false;
-                Iris.getPipelineManager().getPipeline().ifPresent(p -> p.setInputs(StateTracker.INSTANCE.getInputs()));
-            }
-            if (blendDeferred) {
-                blendDeferred = false;
-                refreshBlendCondition();
-            }
             if (programRestoreDeferred) {
                 programRestoreDeferred = false;
                 final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();

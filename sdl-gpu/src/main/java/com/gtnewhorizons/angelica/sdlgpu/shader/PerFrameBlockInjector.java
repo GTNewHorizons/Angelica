@@ -31,6 +31,8 @@ public final class PerFrameBlockInjector {
     private PerFrameBlockInjector() {}
 
     public static String inject(String source, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        if (normalize(perFrame) == null && normalize(perPass) == null) return source;
+
         final GLSLParser.Translation_unitContext root;
         try {
             root = GlslTransformUtils.parseFullQuiet(source);

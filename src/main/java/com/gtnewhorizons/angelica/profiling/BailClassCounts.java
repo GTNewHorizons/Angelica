@@ -10,6 +10,7 @@ import net.minecraft.client.Minecraft;
 public final class BailClassCounts {
     public static final BailClassCounts MATERIAL = new BailClassCounts("tesr.bailCls.mat.", "BailMat");
     public static final BailClassCounts TEMPLATE = new BailClassCounts("tesr.bailCls.tmpl.", "BailTmpl");
+    public static final BailClassCounts PARTICLE_SPILL = new BailClassCounts("particles.spillCls.", "PartSpill");
 
     private final String plotPrefix;
     private final String label;

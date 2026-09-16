@@ -2,8 +2,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.pipeline.FixedFunctionWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -32,6 +31,7 @@ public class MixinRendererLivingEntity_OverlayTint {
     @Unique private boolean angelica$skipReRender;
     @Unique private boolean angelica$ffpOverlayActive;
     @Unique private boolean angelica$shaderEntityColorActive;
+    @Unique private boolean angelica$untint;
 
     @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
@@ -78,10 +78,7 @@ public class MixinRendererLivingEntity_OverlayTint {
         }
     }
 
-    /**
-     * Skip the vanilla re-render block.
-     */
-    @WrapOperation(
+    @WrapWithCondition(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V"),
@@ -92,16 +89,11 @@ public class MixinRendererLivingEntity_OverlayTint {
         ),
         require = 1, expect = 1
     )
-    private void angelica$skipOverlayReRender(ModelBase model, Entity entity,
-            float p1, float p2, float p3, float p4, float p5, float p6, Operation<Void> original) {
-        if (angelica$skipReRender) return;
-        original.call(model, entity, p1, p2, p3, p4, p5, p6);
+    private boolean angelica$skipOverlayReRender(ModelBase model, Entity entity, float p1, float p2, float p3, float p4, float p5, float p6) {
+        return !angelica$skipReRender;
     }
 
-    /**
-     * Skip the overlay on additive passes (emissive eyes, enchantment glint).
-     */
-    @WrapOperation(
+    @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V"),
@@ -113,22 +105,38 @@ public class MixinRendererLivingEntity_OverlayTint {
         ),
         require = 1, expect = 1
     )
-    private void angelica$untintAdditivePass(ModelBase model, Entity entity,
-            float p1, float p2, float p3, float p4, float p5, float p6, Operation<Void> original) {
-        if (!angelica$skipReRender || !angelica$isAdditivePass()) {
-            original.call(model, entity, p1, p2, p3, p4, p5, p6);
-            return;
-        }
+    private void angelica$untintAdditivePass(CallbackInfo ci) {
+        angelica$untint = false;
+        if (!angelica$skipReRender || !angelica$isAdditivePass()) return;
         if (angelica$ffpOverlayActive) {
             GLStateManager.setOverlayColor(0.0F, 0.0F, 0.0F, 0.0F);
-            original.call(model, entity, p1, p2, p3, p4, p5, p6);
-            GLStateManager.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
+            angelica$untint = true;
         } else if (angelica$shaderEntityColorActive) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(0.0F, 0.0F, 0.0F, 0.0F);
-            original.call(model, entity, p1, p2, p3, p4, p5, p6);
+            angelica$untint = true;
+        }
+    }
+
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V",
+            shift = At.Shift.AFTER),
+        slice = @Slice(
+            from = @At(value = "INVOKE",
+                target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"),
+            to = @At(value = "INVOKE",
+                target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
+        ),
+        require = 1, expect = 1
+    )
+    private void angelica$retintAfterAdditivePass(CallbackInfo ci) {
+        if (!angelica$untint) return;
+        angelica$untint = false;
+        if (angelica$ffpOverlayActive) {
+            GLStateManager.setOverlayColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
+        } else if (angelica$shaderEntityColorActive) {
             CapturedRenderingState.INSTANCE.setCurrentEntityColor(1.0F, 0.0F, 0.0F, ANGELICA$RED_MIX);
-        } else {
-            original.call(model, entity, p1, p2, p3, p4, p5, p6);
         }
     }
 
@@ -146,6 +154,7 @@ public class MixinRendererLivingEntity_OverlayTint {
             angelica$shaderEntityColorActive = false;
         }
         angelica$skipReRender = false;
+        angelica$untint = false;
     }
 
     @Unique

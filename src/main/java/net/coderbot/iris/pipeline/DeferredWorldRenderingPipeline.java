@@ -13,8 +13,13 @@ import org.joml.Matrix4fc;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.PendingProgramSelection;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
+import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrInstancingPipeline;
 import it.unimi.dsi.fastutil.ints.Int2ObjectArrayMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.Iris;
@@ -111,6 +116,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -127,7 +133,7 @@ import java.util.function.Supplier;
 /**
  * Encapsulates the compiled shader program objects for the currently loaded shaderpack.
  */
-public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, RenderTargetStateListener  {
+public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, RenderTargetStateListener, TesrInstancingPipeline, PendingProgramSelection {
 	private final RenderTargets renderTargets;
 
 	@Nullable
@@ -178,8 +184,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private final ShaderStorageBufferHolder ssboHolder;
 
 	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> attributeTransforms;
-	private final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> instancedAttributeTransforms;
-	private boolean supportsTesrInstancing = true;
+	private final EnumMap<Instancing, Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>>> instancedAttributeTransforms = new EnumMap<>(Instancing.class);
+	private final boolean[] supportsInstancing = initialInstancingSupport();
 	private final ParityFlipState parityState = new ParityFlipState(AngelicaConfig.shaderParityFlip);
 	private final Supplier<ImmutableSet<Integer>> flippedGbuffers;
 	private final Supplier<ImmutableSet<Integer>> flippedShadowGbuffers;
@@ -214,7 +220,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private boolean worldGroupActive = false;
 	private boolean isBeforeTranslucent;
 	private boolean isRenderingShadow = false;
-	private InputAvailability inputs = new InputAvailability(false, false);
+	private InputAvailability inputs = InputAvailability.of(false, false);
 	private SpecialCondition special = null;
 
 	private boolean shouldBindPBR;
@@ -254,8 +260,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				.orElse(null);
 
 		resolver = new ProgramFallbackResolver(programs);
-		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver, ProgramId.values(), false);
-		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> instancedTransformFutures = submitAttributeTransforms(resolver, INSTANCED_PROGRAM_IDS, true);
+		final Map<String, Boolean> mvBuiltinsMemo = new ConcurrentHashMap<>();
+		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> attributeTransformFutures = submitAttributeTransforms(resolver, attributeProgramIds(Instancing.NONE), Instancing.NONE, mvBuiltinsMemo);
+		final EnumMap<Instancing, Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>> instancedTransformFutures = new EnumMap<>(Instancing.class);
+		for (Instancing kind : Instancing.VALUES) {
+			if (kind != Instancing.NONE) {
+				instancedTransformFutures.put(kind, submitAttributeTransforms(resolver, attributeProgramIds(kind), kind, mvBuiltinsMemo));
+			}
+		}
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
 		final Optional<ProgramSource> terrainSolidOverride = programs.getGbuffersTerrainSolid();
@@ -506,17 +518,21 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		Iris.logger.info("[Load #{}] DWRP phase=attribute-join elapsed_ms={}", Iris.getShaderPackLoadId(), String.format("%.1f", (System.nanoTime() - _tLast) / 1_000_000.0));
 		_tLast = System.nanoTime();
 
-		this.instancedAttributeTransforms = new HashMap<>();
-		for (Map.Entry<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> entry : instancedTransformFutures.entrySet()) {
-			try {
-				final Map<PatchShaderType, String> transformed = entry.getValue().join();
-				if (transformed == null) continue;
-				this.instancedAttributeTransforms.put(entry.getKey(), transformed);
-			} catch (Exception e) {
-				Iris.logger.warn("Instanced transform failed for {}; disabling TESR instancing", entry.getKey().getLeft(), e);
-				supportsTesrInstancing = false;
-				instancedAttributeTransforms.clear();
-				break;
+		for (Map.Entry<Instancing, Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>> kindEntry : instancedTransformFutures.entrySet()) {
+			final Instancing kind = kindEntry.getKey();
+			final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> joined = new HashMap<>();
+			this.instancedAttributeTransforms.put(kind, joined);
+			for (Map.Entry<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> entry : kindEntry.getValue().entrySet()) {
+				try {
+					final Map<PatchShaderType, String> transformed = entry.getValue().join();
+					if (transformed == null) continue;
+					joined.put(entry.getKey(), transformed);
+				} catch (Exception e) {
+					Iris.logger.warn("{} instanced transform failed for {}; disabling it", kind, entry.getKey().getLeft(), e);
+					supportsInstancing[kind.ordinal()] = false;
+					joined.clear();
+					break;
+				}
 			}
 		}
 
@@ -594,10 +610,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				this.shadowRenderer = new ShadowRenderer(programs.getShadow().orElse(null),
 					programs.getPackDirectives(), shadowRenderTargets, shadowCompositeRenderer,
 					() -> usesSampler(IrisSamplers.USAGE_SHADOWTEX1));
-				Program shadowProgram = table.match(RenderCondition.SHADOW, new InputAvailability(true, true)).getProgram();
-				Program shadowWaterProgram = table.match(RenderCondition.SHADOW_TRANSLUCENT, new InputAvailability(true, true)).getProgram();
-				shadowRenderer.setUsesImages((shadowProgram != null && shadowProgram.getActiveImages() > 0)
-					|| (shadowWaterProgram != null && shadowWaterProgram.getActiveImages() > 0));
+				Program shadowProgram = table.match(RenderCondition.SHADOW, InputAvailability.of(true, true)).getProgram();
+				Program shadowWaterProgram = table.match(RenderCondition.SHADOW_TRANSLUCENT, InputAvailability.of(true, true)).getProgram();
+				shadowRenderer.setUsesImages((shadowProgram != null && shadowProgram.getActiveImages() > 0) || (shadowWaterProgram != null && shadowWaterProgram.getActiveImages() > 0));
 				shadowRenderer.setPlayerReflectionCaptureEnabled((shadowProgram != null && GLStateManager.glGetUniformLocation(shadowProgram.getProgramId(), "playerAtlas_img") != -1) || (shadowWaterProgram != null && GLStateManager.glGetUniformLocation(shadowWaterProgram.getProgramId(), "playerAtlas_img") != -1));
 			} else {
 				shadowRenderer = null;
@@ -644,7 +659,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureManager.getCustomTextureIdMap(TextureStage.GBUFFERS_AND_SHADOW));
 
 			IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
-			IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(true, true));
+			IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, InputAvailability.of(true, true));
 			recordSamplerUsage(IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets));
 			IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
@@ -679,7 +694,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			ProgramSamplers.CustomTextureSamplerInterceptor customTextureSamplerInterceptor = ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureManager.getCustomTextureIdMap(TextureStage.GBUFFERS_AND_SHADOW));
 
 			IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flippedAfterPrepareResolved, renderTargets, false, this);
-			IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(true, true));
+			IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, InputAvailability.of(true, true));
 			IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
 			// Bind custom images as samplers (for texture() access to voxel_sampler, floodfill_sampler, etc.)
@@ -926,6 +941,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 		current = null;
 		currentCondition = null;
+		clearPendingSelection();
 	}
 
 	public void restorePassAfterModProgram(int newProgram) {
@@ -966,7 +982,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 		matchingBlend = true;
 		try {
-			matchPass();
+			requestMatch();
 		} finally {
 			matchingBlend = false;
 		}
@@ -974,7 +990,30 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private boolean matchingBlend;
 
+	private void requestMatch() {
+		if (GLStateManager.isForeignDraw() || BatchEligibility.batchingAllowed()) {
+			GLSMHooks.pendingProgramSelection = this;
+			return;
+		}
+		matchPass();
+	}
+
+	@Override
+	public void resolvePendingProgram() {
+		if (GLSMHooks.pendingProgramSelection == this && !GLStateManager.isForeignDraw()) {
+			matchPass();
+		}
+	}
+
+	private void clearPendingSelection() {
+		if (GLSMHooks.pendingProgramSelection == this) {
+			GLSMHooks.pendingProgramSelection = null;
+		}
+	}
+
 	private void matchPass() {
+		clearPendingSelection();
+
 		if (!shouldOverrideShaders()) {
 			return;
 		}
@@ -989,6 +1028,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void onEntityRenderBoundary() {
+		GLSMHooks.resolvePendingProgram();
+
 		if (!shouldOverrideShaders()) {
 			return;
 		}
@@ -1026,6 +1067,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void rebindCurrentPass() {
+		GLSMHooks.resolvePendingProgram();
 		final Pass pass = this.current;
 		if (pass == null) {
 			if (GLStateManager.getActiveProgram() == 0) {
@@ -1147,11 +1189,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			framebufferAfterTranslucents = renderTargets.createGbufferFramebuffer(flippedAfterTranslucent, programDirectives.getDrawBuffers());
 		}
 
-		builder.bindAttributeLocation(11, "mc_Entity");
-		builder.bindAttributeLocation(12, "mc_midTexCoord");
-		builder.bindAttributeLocation(13, "at_tangent");
-		builder.bindAttributeLocation(14, "at_midBlock");
-
 		AlphaTestOverride alphaTestOverride = programDirectives.getAlphaTestOverride()
 			.orElse(id.getDefaultAlphaTestOverride());
 
@@ -1186,7 +1223,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			shouldBindPBR = IrisSamplers.hasPBRSamplers(customTextureSamplerInterceptor);
 		}
 
-		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(hasTexture, hasLightmap));
+		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, InputAvailability.of(hasTexture, hasLightmap));
 		if (!isShadowPass) {
 			recordSamplerUsage(IrisSamplers.addWorldDepthSamplers(customTextureSamplerInterceptor, renderTargets));
 		}
@@ -1301,8 +1338,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		private String instancingSourceName;
 		private InputAvailability instancingAvailability;
 		private boolean instancingShadow;
-		@Nullable private Program instancedVariant;
-		private boolean instancedVariantAttempted;
+		private final Program[] instancedVariants = new Program[Instancing.VALUES.length];
+		private final boolean[] instancedVariantAttempted = new boolean[Instancing.VALUES.length];
 
 		private Pass(@Nullable Program program, GlFramebuffer framebufferBeforeTranslucents, GlFramebuffer framebufferAfterTranslucents,
 					 @Nullable AlphaTestOverride alphaTestOverride, @Nullable BlendModeOverride blendModeOverride, @Nullable List<BufferBlendOverride> bufferBlendOverrides, boolean shadowViewport) {
@@ -1382,64 +1419,77 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		@Nullable
-		Program getInstancedVariant() {
-			if (!instancedVariantAttempted) {
-				instancedVariantAttempted = true;
-				if (instancingSourceName != null && supportsTesrInstancing) {
-					instancedVariant = buildInstancedVariant(instancingSourceName, instancingAvailability, instancingShadow);
+		Program instancedVariant(Instancing kind) {
+			final int i = kind.ordinal();
+			if (!instancedVariantAttempted[i]) {
+				instancedVariantAttempted[i] = true;
+				if (instancingSourceName != null && supportsInstancing[i]) {
+					instancedVariants[i] = buildInstancedVariant(instancingSourceName, instancingAvailability, instancingShadow, kind);
 				}
 			}
-			return instancedVariant;
+			return instancedVariants[i];
 		}
 
 		public void destroy() {
 			if (this.program != null) {
 				this.program.destroy();
 			}
-			if (this.instancedVariant != null) {
-				this.instancedVariant.destroy();
-				this.instancedVariant = null;
+			for (int i = 0; i < instancedVariants.length; i++) {
+				if (instancedVariants[i] != null) {
+					instancedVariants[i].destroy();
+					instancedVariants[i] = null;
+				}
 			}
 		}
 	}
 
 	@Nullable
-	private Program buildInstancedVariant(String sourceName, InputAvailability availability, boolean shadow) {
-		final Map<PatchShaderType, String> transformed = instancedAttributeTransforms.get(Pair.of(sourceName, availability));
+	private Program buildInstancedVariant(String sourceName, InputAvailability availability, boolean shadow, Instancing kind) {
+		final Map<Pair<String, InputAvailability>, Map<PatchShaderType, String>> transforms = instancedAttributeTransforms.get(kind);
+		final Map<PatchShaderType, String> transformed = transforms != null ? transforms.get(Pair.of(sourceName, availability)) : null;
 		if (transformed == null) {
 			return null;
 		}
 		try {
-			final ProgramBuilder builder = beginBuilder(sourceName + "_instanced", transformed);
+			final ProgramBuilder builder = beginBuilder(sourceName + kind.variantSuffix, transformed);
 			wireGbufferProgram(builder, availability, shadow);
 			final Program variant = builder.build();
 			this.customUniforms.mapholderToPass(builder, variant);
 			return variant;
 		} catch (Exception e) {
-			Iris.logger.warn("TESR instanced variant link failed for {}; disabling TESR instancing", sourceName, e);
-			supportsTesrInstancing = false;
+			Iris.logger.warn("{} instanced variant link failed for {}; disabling it", kind, sourceName, e);
+			supportsInstancing[kind.ordinal()] = false;
 			return null;
 		}
 	}
 
-	public boolean supportsTesrInstancing() {
-		return supportsTesrInstancing;
+	static boolean[] initialInstancingSupport() {
+		final boolean[] out = new boolean[Instancing.VALUES.length];
+		out[Instancing.TEMPLATE.ordinal()] = true;
+		out[Instancing.CUBE.ordinal()] = AngelicaConfig.cubeInstancingEnabled();
+		out[Instancing.PARTICLE.ordinal()] = true;
+		return out;
 	}
 
-	public boolean hasTesrInstancedVariant() {
-		final Pass pass = current;
-		return pass != null && pass.getInstancedVariant() != null;
+	public boolean supportsInstancing(Instancing kind) {
+		return supportsInstancing[kind.ordinal()];
 	}
 
-	public void bindTesrInstancedVariant() {
-		final Pass pass = current;
-		final Program variant = pass.getInstancedVariant();
+	@Override
+	public boolean hasInstancedVariant(Instancing kind) {
+		return current != null && current.instancedVariant(kind) != null;
+	}
+
+	@Override
+	public void bindInstancedVariant(Instancing kind) {
+		final Program variant = current.instancedVariant(kind);
 		variant.use();
 		this.customUniforms.push(variant);
 	}
 
 	@Override
 	public void destroy() {
+		clearPendingSelection();
 		DepthColorStorage.unlockDepthColor();
 		BlendModeOverride.restore();
 		AlphaTestOverride.restore();
@@ -1683,7 +1733,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			ProgramSamplers.customTextureSamplerInterceptor(builder, customTextureManager.getCustomTextureIdMap(textureStage));
 		IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
 		IrisImages.addRenderTargetImages(builder, flipped, renderTargets);
-		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(true, true));
+		IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, InputAvailability.of(true, true));
 		IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 		IrisSamplers.addCustomImages(customTextureSamplerInterceptor, customImages);
 		IrisSamplers.addCustomTextures(customTextureSamplerInterceptor, customTextureManager.getIrisCustomTextures());
@@ -1761,7 +1811,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				IrisSamplers.addRenderTargetSamplers(customTextureSamplerInterceptor, flipped, renderTargets, false, this);
 				IrisImages.addRenderTargetImages(builder, flipped, renderTargets);
 
-				IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, new InputAvailability(true, true));
+				IrisSamplers.addLevelSamplers(customTextureSamplerInterceptor, this, whitePixel, InputAvailability.of(true, true));
 
 				IrisSamplers.addNoiseSampler(customTextureSamplerInterceptor, customTextureManager.getNoiseTexture());
 
@@ -2141,7 +2191,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void setOverridePhase(WorldRenderingPhase phase) {
 		this.overridePhase = phase;
 		syncPhaseDebugGroup();
-		matchPass();
+		requestMatch();
 		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
@@ -2149,7 +2199,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	public void setPhase(WorldRenderingPhase phase) {
 		this.phase = phase;
 		syncPhaseDebugGroup();
-		matchPass();
+		requestMatch();
 		GbufferPrograms.runPhaseChangeNotifier();
 	}
 
@@ -2179,19 +2229,19 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	@Override
 	public void setInputs(InputAvailability availability) {
 		this.inputs = availability;
-		matchPass();
+		requestMatch();
 	}
 
 	@Override
 	public void setSpecialCondition(SpecialCondition special) {
 		this.special = special;
-		matchPass();
+		requestMatch();
 	}
 
 	@Override
 	public void setDeclaredTranslucency(@Nullable Boolean translucent) {
 		this.declaredTranslucent = translucent;
-		matchPass();
+		requestMatch();
 	}
 
 	@Nullable
@@ -2229,12 +2279,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
-	private static final InputAvailability INPUT_NONE = new InputAvailability(false, false);
-	private static final InputAvailability INPUT_LIGHTMAP_ONLY = new InputAvailability(false, true);
-	private static final InputAvailability INPUT_TEXTURE = new InputAvailability(true, false);
-	private static final InputAvailability INPUT_TEXTURE_LIGHTMAP = new InputAvailability(true, true);
-	private static final InputAvailability[] INPUT_AVAILABILITIES = { INPUT_NONE, INPUT_LIGHTMAP_ONLY, INPUT_TEXTURE, INPUT_TEXTURE_LIGHTMAP };
-
 	private static CompletableFuture<Map<PatchShaderType, String>> submitCompositeTransform(ProgramSource source, TextureStage stage,
 		Object2ObjectMap<Tri<String, TextureType, TextureStage>, String> textureMap) {
 		return Iris.ShaderTransformExecutor.submitTracked(() -> TransformPatcher.patchComposite(
@@ -2264,10 +2308,14 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private static Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>>
-			submitAttributeTransforms(ProgramFallbackResolver resolver, ProgramId[] ids, boolean instanced) {
+			submitAttributeTransforms(ProgramFallbackResolver resolver, ProgramId[] ids, Instancing instancing, Map<String, Boolean> mvBuiltinsMemo) {
+		if (instancing == Instancing.CUBE && !AngelicaConfig.cubeInstancingEnabled()) {
+			return Collections.emptyMap();
+		}
+		final boolean instanced = instancing != Instancing.NONE;
+		final boolean matrixInstanced = instancing.hasInstanceHead();
 		final Map<Pair<String, InputAvailability>, CompletableFuture<Map<PatchShaderType, String>>> futures = new HashMap<>();
 		final Set<String> processedSourceNames = new HashSet<>();
-		final Map<String, Boolean> mvBuiltinsMemo = new ConcurrentHashMap<>();
 		for (ProgramId id : ids) {
 			if (id.getGroup() == ProgramGroup.Dh) continue;
 			final ProgramSource source = resolver.resolveNullable(id);
@@ -2276,9 +2324,9 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 			final String vertexSource = source.getVertexSource().orElse(null);
 			final boolean scrollGlint = GlintScrollInjector.shouldInject(id, source);
-			for (InputAvailability avail : INPUT_AVAILABILITIES) {
+			for (InputAvailability avail : InputAvailability.VALUES) {
 				futures.put(Pair.of(source.getName(), avail), Iris.ShaderTransformExecutor.submitTracked(() -> {
-					if (instanced && mvBuiltinsMemo.computeIfAbsent(source.getName(), k -> {
+					if (matrixInstanced && mvBuiltinsMemo.computeIfAbsent(source.getName(), k -> {
 						final boolean references = referencesMvBuiltinsOutsideVertex(source);
 						if (references) {
 							Iris.logger.info("TESR instancing: {} references MV builtins outside the vertex stage, keeping CPU path", k);
@@ -2291,7 +2339,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 					final String tessControl = source.getTessControlSource().orElse(null);
 					final String tessEval = source.getTessEvalSource().orElse(null);
 					final String fragment = source.getFragmentSource().orElse(null);
-					return instanced ? TransformPatcher.patchAttributesInstanced(vertexSource, geometry, tessControl, tessEval, fragment, avail, scrollGlint)
+					return instanced ? TransformPatcher.patchAttributesInstanced(vertexSource, geometry, tessControl, tessEval, fragment, avail, scrollGlint, instancing)
 						: TransformPatcher.patchAttributes(vertexSource, geometry, tessControl, tessEval, fragment, avail, scrollGlint);
 				}));
 			}
@@ -2301,8 +2349,20 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	private static final ProgramId[] INSTANCED_PROGRAM_IDS = {
 		ProgramId.Block, ProgramId.BlockTrans, ProgramId.Entities, ProgramId.EntitiesTrans,
-		ProgramId.Shadow, ProgramId.ShadowWater
+		ProgramId.Shadow, ProgramId.ShadowWater, ProgramId.ArmorGlint
 	};
+
+	private static final ProgramId[] PARTICLE_PROGRAM_IDS = {
+		ProgramId.Particles, ProgramId.ParticlesTrans
+	};
+
+	private static ProgramId[] attributeProgramIds(Instancing kind) {
+		return switch (kind) {
+			case NONE -> ProgramId.values();
+			case TEMPLATE, CUBE -> INSTANCED_PROGRAM_IDS;
+			case PARTICLE -> PARTICLE_PROGRAM_IDS;
+		};
+	}
 
 	private static final String[] MV_BUILTINS = {
 		"gl_ModelViewMatrix", "gl_ModelViewMatrixInverse",
@@ -2371,8 +2431,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			.ifPresent(source -> submitCompositeTransform(source, TextureStage.COMPOSITE_AND_FINAL, tm));
 
 		final ProgramFallbackResolver resolver = new ProgramFallbackResolver(programs);
-		submitAttributeTransforms(resolver, ProgramId.values(), false);
-		submitAttributeTransforms(resolver, INSTANCED_PROGRAM_IDS, true);
+		final Map<String, Boolean> mvBuiltinsMemo = new ConcurrentHashMap<>();
+		for (Instancing kind : Instancing.VALUES) {
+			submitAttributeTransforms(resolver, attributeProgramIds(kind), kind, mvBuiltinsMemo);
+		}
 
 		final Optional<ProgramSource> terrainSource = first(programs.getGbuffersTerrain(), programs.getGbuffersTexturedLit(), programs.getGbuffersTextured(), programs.getGbuffersBasic());
 		final Optional<ProgramSource> translucentSource = first(programs.getGbuffersWater(), terrainSource);

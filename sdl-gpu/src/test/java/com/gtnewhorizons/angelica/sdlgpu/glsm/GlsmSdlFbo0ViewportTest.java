@@ -62,6 +62,13 @@ class GlsmSdlFbo0ViewportTest {
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
+    private static void bindFbo0WithFullViewport() {
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLStateManager.glViewport(0, 0, FBO0_W, FBO0_H);
+        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+    }
+
     private static int createCopyTarget() {
         final int id = GLStateManager.glGenTextures();
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
@@ -86,6 +93,33 @@ class GlsmSdlFbo0ViewportTest {
 
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(0, 0, VIEW, VIEW), RED, "inside the viewport");
         GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(0, FBO0_H - VIEW, VIEW, VIEW), BLUE, "above the viewport");
+    }
+
+    @Test
+    void scissorLargerThanFbo0StillCoversTheWholeTarget() {
+        bindFbo0WithFullViewport();
+        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+        try {
+            GLStateManager.glScissor(0, 0, FBO0_W + 16, FBO0_H + 16);
+            GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(0, 0, FBO0_W, FBO0_H), RED, "inside an oversize scissor");
+        } finally {
+            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        }
+    }
+
+    @Test
+    void scissorRunningPastTheRightEdgeClipsToTheTarget() {
+        bindFbo0WithFullViewport();
+        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+        try {
+            GLStateManager.glScissor(FBO0_W - 8, 0, 32, FBO0_H);
+            GlsmSdlHeadlessRig.solidQuad(1.0f, 0.0f, 0.0f);
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(FBO0_W - 8, 0, 8, FBO0_H), RED, "inside the clipped scissor");
+            GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(0, 0, FBO0_W - 8, FBO0_H), BLUE, "left of the scissor");
+        } finally {
+            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        }
     }
 
     @Test
