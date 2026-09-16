@@ -8,6 +8,7 @@ import org.objectweb.asm.Opcodes;
 import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InsnList;
+import org.objectweb.asm.tree.InsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
@@ -55,7 +56,7 @@ public class DarkModeFontTransform {
      * @param calledMethod
      */
     public record FlagAtCallSitesTarget(MethodInfo callingMethod, MethodInfo calledMethod) {}
-    public static final FlagAtCallSitesTarget[] targets = {
+    public static final FlagAtCallSitesTarget[] flagTargets = {
         // Vanilla methods. Many mods use these; several draw text in the "background" layer...
         new FlagAtCallSitesTarget(
             new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer", "drawScreen", "func_73863_a", "(IIF)V"),
@@ -81,21 +82,37 @@ public class DarkModeFontTransform {
             new MethodInfo("binnie.core.craftgui.minecraft.Window", "render", null, "()V")
         ),
     };
-    public static final HashSet<String> targetClasses = new HashSet<>(targets.length);
+    public static final MethodInfo[] ignoreTargets = {
+        new MethodInfo("net.minecraft.client.renderer.entity.RenderItem", "renderItemOverlayIntoGUI", "func_94148_a", "(Lnet/minecraft/client/gui/FontRenderer;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V"),
+        new MethodInfo("appeng.client.render.StackSizeRenderer", "drawStackSize", null, "(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V"),
+    };
+    public static final HashSet<String> classesToTransform = new HashSet<>(flagTargets.length);
     static {
-        for (FlagAtCallSitesTarget target : targets) {
-            targetClasses.add(target.callingMethod.className);
+        for (FlagAtCallSitesTarget target : flagTargets) {
+            classesToTransform.add(target.callingMethod.className);
+        }
+        for (MethodInfo target : ignoreTargets) {
+            classesToTransform.add(target.className);
         }
     }
 
     public boolean transformClassNode(ClassNode cn, String className, boolean isObf) {
         boolean changed = false;
-        for (FlagAtCallSitesTarget tg : targets) {
+        // TODO consider refactoring
+        for (FlagAtCallSitesTarget tg : flagTargets) {
             if (!className.equals(tg.callingMethod.className)) { continue; }
             for (MethodNode mn : cn.methods) {
                 if (!mn.name.equals(tg.callingMethod.getName(isObf))) { continue; }
                 if (!mn.desc.equals(tg.callingMethod.desc)) { continue; }
                 changed = flagMethodAtCallSites(mn, tg.calledMethod, isObf) || changed;
+            }
+        }
+        for (MethodInfo tg : ignoreTargets) {
+            if (!className.equals(tg.className)) { continue; }
+            for (MethodNode mn : cn.methods) {
+                if (!mn.name.equals(tg.getName(isObf))) { continue; }
+                if (!mn.desc.equals(tg.desc)) { continue; }
+                changed = excludeFromRecolor(mn, tg) || changed;
             }
         }
         return changed;
@@ -111,7 +128,8 @@ public class DarkModeFontTransform {
                 if (!min.desc.equals(calledMethod.desc)) { continue; }
                 int maxLocals = mn.maxLocals;
 
-                insnList.insertBefore(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "()Z", false));
+                insnList.insertBefore(min, new InsnNode(Opcodes.ICONST_1));
+                insnList.insertBefore(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
                 insnList.insertBefore(min, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
                 insnList.insert(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
@@ -122,5 +140,29 @@ public class DarkModeFontTransform {
             }
         }
         return changed;
+    }
+
+    private boolean excludeFromRecolor(MethodNode mn, MethodInfo target) {
+        InsnList insnList = mn.instructions;
+        AbstractInsnNode firstInsn = insnList.getFirst();
+        AbstractInsnNode lastReturn = null;
+        for (AbstractInsnNode insn = insnList.getLast(); insn != null; insn = insn.getPrevious()) {
+            if (insn.getOpcode() == Opcodes.RETURN) {
+                lastReturn = insn;
+                break;
+            }
+        }
+        if (lastReturn == null) { return false; }
+        int maxLocals = mn.maxLocals;
+
+        insnList.insertBefore(firstInsn, new InsnNode(Opcodes.ICONST_0));
+        insnList.insertBefore(firstInsn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
+        insnList.insertBefore(firstInsn, new VarInsnNode(Opcodes.ISTORE, maxLocals));
+
+        insnList.insertBefore(lastReturn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
+        insnList.insertBefore(lastReturn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
+
+        LOGGER.info("Excluded {}", target.toString());
+        return true;
     }
 }

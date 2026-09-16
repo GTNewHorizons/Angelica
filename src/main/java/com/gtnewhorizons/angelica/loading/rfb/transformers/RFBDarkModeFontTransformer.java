@@ -34,7 +34,7 @@ public class RFBDarkModeFontTransformer implements RfbClassTransformer {
             return false;
         }
 
-        for (String targetClass : DarkModeFontTransform.targetClasses) {
+        for (String targetClass : DarkModeFontTransform.classesToTransform) {
             if (className.equals(targetClass)) {
                 return true;
             }
@@ -49,6 +49,7 @@ public class RFBDarkModeFontTransformer implements RfbClassTransformer {
         final boolean changed = inner.transformClassNode(classNode.getNode(), className, this.isObf);
         if (changed) {
             classNode.computeMaxs();
+            classNode.computeFrames();
             AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }
         return changed;

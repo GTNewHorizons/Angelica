@@ -1164,9 +1164,9 @@ public class BatchingFontRenderer {
     }
 
     public static boolean darkModeRecolorEnabled = false;
-    public static boolean enterRecolorSection() {
+    public static boolean enterRecolorSection(boolean enable) {
         boolean prev = darkModeRecolorEnabled;
-        darkModeRecolorEnabled = true;
+        darkModeRecolorEnabled = enable;
         return prev;
     }
     public static void exitRecolorSection(boolean prev) {
