@@ -3,6 +3,7 @@ package net.coderbot.batchedentityrendering.impl;
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.model.quad.ModelQuad;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import net.coderbot.batchedentityrendering.impl.SegmentedBufferBuilderTest.TestLayer;
+import org.joml.Vector4f;
 import org.junit.jupiter.api.Test;
 
 import java.util.List;
@@ -86,6 +87,14 @@ class AngelicaBufferSourceTest {
         final List<RenderLayer> remaining = source.prepare();
         assertEquals(1, remaining.size());
         assertSame(translucent, remaining.get(0));
+    }
+
+    @Test
+    void packAbgrPacksRedGreenBlueAlpha() {
+        assertEquals(0xFF0000FF, AngelicaBufferSource.packEntityColor(new Vector4f(1f, 0f, 0f, 1f)));
+        final int packed = AngelicaBufferSource.packEntityColor(new Vector4f(0f, 0.5f, 0f, 0f));
+        assertEquals(0, packed & 0xFF0000FF, "red, blue and alpha bytes must be zero");
+        assertTrue((packed & 0x0000FF00) != 0, "green byte must be nonzero");
     }
 
     @Test

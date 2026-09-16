@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.testutil;
 
 import com.gtnewhorizon.gtnhlib.reflect.Fields;
 import com.gtnewhorizon.gtnhlib.reflect.Fields.LookupType;
+import sun.misc.Unsafe;
 
 import java.lang.reflect.Constructor;
 import java.lang.reflect.Field;
@@ -94,6 +95,17 @@ public final class Reflect {
             final Constructor<?> ctor = owner.getDeclaredConstructor();
             ctor.setAccessible(true);
             return (T) ctor.newInstance();
+        } catch (ReflectiveOperationException e) {
+            throw new AssertionError(e);
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    public static <T> T allocate(Class<T> type) {
+        try {
+            final Field f = Unsafe.class.getDeclaredField("theUnsafe");
+            f.setAccessible(true);
+            return (T) ((Unsafe) f.get(null)).allocateInstance(type);
         } catch (ReflectiveOperationException e) {
             throw new AssertionError(e);
         }

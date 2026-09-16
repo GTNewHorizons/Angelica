@@ -127,10 +127,15 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableTESRChestCache;
 
-    @Config.Comment("Batch and instance living-entity model parts on FFP-managed passes")
+    @Config.Comment("Batch and instance entity model parts, items, and shadows on FFP-managed passes")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
     public static boolean enableEntityBatching;
+
+    @Config.Comment("Draw cuboid model parts from a shared unit cube (requires entity batching)")
+    @Config.DefaultBoolean(true)
+    @Config.RequiresMcRestart
+    public static boolean enableCubeInstancing;
 
     @Config.Comment("Skip the end-of-frame shader buffer copy by ping-ponging buffers. Disable if a shader pack misrenders.")
     @Config.DefaultBoolean(true)
@@ -251,7 +256,7 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean optimizeInWorldItemRendering;
 
-    @Config.Comment("Upper limit for the amount of VBO's to cache for optimized item rendering. Higher number can potentially use more VRAM.")
+    @Config.Comment("Upper limit for the amount of cached item meshes (VBOs and batched item templates) for optimized item rendering. Higher number can potentially use more memory and VRAM.")
     @Config.DefaultInt(512)
     @Config.RangeInt(min = 256, max = 1024)
     public static int itemRendererCacheSize;
@@ -461,6 +466,10 @@ public class AngelicaConfig {
 
     public static void applyGpuCullingMode() {
         GpuCulling.setMode(gpuCullingMode == null ? GpuCullingMode.CPU_ONLY : gpuCullingMode);
+    }
+
+    public static boolean cubeInstancingEnabled() {
+        return enableEntityBatching && enableCubeInstancing;
     }
 
     public static GLProfile getEffectiveGlProfile() {

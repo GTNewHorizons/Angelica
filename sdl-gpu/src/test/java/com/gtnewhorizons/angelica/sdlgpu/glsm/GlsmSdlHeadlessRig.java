@@ -122,6 +122,12 @@ public final class GlsmSdlHeadlessRig {
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 
+    public static void beginFrameAndClear() {
+        beginFrame();
+        bindTarget();
+        clearTo(0.0f, 0.0f, 0.0f, 1.0f);
+    }
+
     public static void beginFrameAndReset() {
         beginFrame();
         resetState();

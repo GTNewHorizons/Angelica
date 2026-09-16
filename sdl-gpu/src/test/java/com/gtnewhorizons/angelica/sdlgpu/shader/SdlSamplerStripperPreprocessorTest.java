@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SdlSamplerStripperPreprocessorTest {
@@ -102,6 +103,16 @@ class SdlSamplerStripperPreprocessorTest {
             + "}\n";
         final String out = SamplerStripper.stripUnused(src);
         assertFalse(out.contains("uniform sampler2D u_S"), "a comment mention must not keep the decl; output:\n" + out);
+    }
+
+    @Test
+    void sourceWithoutSamplersReturnsTheSourceInstance() {
+        final String src = "#version 460 core\n"
+            + "in vec3 v_Position;\n"
+            + "void main() {\n"
+            + "    gl_Position = vec4(v_Position, 1.0);\n"
+            + "}\n";
+        assertSame(src, SamplerStripper.stripUnused(src));
     }
 
     @Test

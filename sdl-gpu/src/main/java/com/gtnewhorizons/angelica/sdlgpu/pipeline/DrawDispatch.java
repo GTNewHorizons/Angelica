@@ -109,6 +109,7 @@ public final class DrawDispatch {
     }
 
     public void issueIndexedDraw(ContextState st, long rp, int ebo, int indexType, int count, int instances, int firstIndex, int baseVertex) {
+        if (count <= 0 || instances <= 0) return;
         final EBOSplitScanner.EboSplit[] full;
         if (st.primitiveRestartEnabled) {
             full = resourceManager.getOrScanSplits(ebo, indexType, st.primitiveRestartSentinel);

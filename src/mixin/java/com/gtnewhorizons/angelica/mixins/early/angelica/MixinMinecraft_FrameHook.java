@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica;
 
 import com.gtnewhorizons.angelica.glsm.hooks.FrameHooks;
+import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import net.minecraft.client.Minecraft;
 import org.spongepowered.asm.mixin.Mixin;
@@ -23,6 +24,11 @@ public class MixinMinecraft_FrameHook {
     @Inject(method = "runGameLoop", at = @At("HEAD"))
     private void angelica$bootstrapFirstFrame(CallbackInfo ci) {
         FrameHooks.bootstrapFirstFrame();
+    }
+
+    @Inject(method = "runGameLoop", at = @At("HEAD"))
+    private void angelica$beginGlintFrame(CallbackInfo ci) {
+        GlintClock.beginFrame(Minecraft.getSystemTime());
     }
 
     @Inject(method = "func_147120_f"/*resetSize*/, at = @At("HEAD"))

@@ -4,12 +4,14 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.batchedentityrendering.impl.ordering.SimpleRenderOrderManager;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import org.joml.Vector4fc;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
@@ -37,6 +39,7 @@ public class AngelicaBufferSource implements Groupable {
     private final SegmentedBufferBuilder[] builders = new SegmentedBufferBuilder[NUM_BUFFERS];
     private final Object2IntLinkedOpenHashMap<RenderLayer> affinities = new Object2IntLinkedOpenHashMap<>(NUM_BUFFERS);
     private final Map<RenderLayer, List<BufferSegment>> typeToSegment = new Object2ObjectOpenHashMap<>();
+    private final ObjectArrayList<List<BufferSegment>> segmentLists = new ObjectArrayList<>();
 
     private boolean prepared;
     private final List<RenderLayer> order = new ArrayList<>();
@@ -86,7 +89,13 @@ public class AngelicaBufferSource implements Groupable {
             final List<BufferSegment> builderSegments = builder.getSegments();
             for (int i = 0, n = builderSegments.size(); i < n; i++) {
                 final BufferSegment segment = builderSegments.get(i);
-                typeToSegment.computeIfAbsent(segment.getRenderType(), t -> new ArrayList<>()).add(segment);
+                List<BufferSegment> segments = typeToSegment.get(segment.getRenderType());
+                if (segments == null) {
+                    segments = new ArrayList<>();
+                    typeToSegment.put(segment.getRenderType(), segments);
+                    segmentLists.add(segments);
+                }
+                segments.add(segment);
             }
         }
         order.clear();
@@ -168,7 +177,7 @@ public class AngelicaBufferSource implements Groupable {
         anyIdSet = false;
     }
 
-    private GroupIdKind effectiveIdKind() {
+    public GroupIdKind effectiveIdKind() {
         return GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.ENTITIES ? GroupIdKind.ENTITY : idKind;
     }
 
@@ -223,8 +232,8 @@ public class AngelicaBufferSource implements Groupable {
     }
 
     private void clearSegmentLists() {
-        for (List<BufferSegment> segments : typeToSegment.values()) {
-            segments.clear();
+        for (int i = 0, n = segmentLists.size(); i < n; i++) {
+            segmentLists.get(i).clear();
         }
     }
 
@@ -245,6 +254,7 @@ public class AngelicaBufferSource implements Groupable {
             builder.freeAll();
         }
         typeToSegment.clear();
+        segmentLists.clear();
         order.clear();
         affinities.clear();
         renderOrderManager.reset();
@@ -283,19 +293,20 @@ public class AngelicaBufferSource implements Groupable {
         }
     }
 
-    public void applyIdNoRebind(int id) {
-        anyIdSet = true;
-        if (effectiveIdKind() == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
-        } else {
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(id);
-        }
+    public static int packEntityColor(Vector4fc c) {
+        return packAbgr(c.x(), c.y(), c.z(), c.w());
     }
 
-    public static void setEntityColor(int packed) {
-        CapturedRenderingState.INSTANCE.setCurrentEntityColor(
-            ((packed >>> 16) & 0xFF) / 255f, ((packed >>> 8) & 0xFF) / 255f,
-            (packed & 0xFF) / 255f, (packed >>> 24) / 255f);
+    public static int packAbgr(float r, float g, float b, float a) {
+        return (unit(a) << 24) | (unit(b) << 16) | (unit(g) << 8) | unit(r);
+    }
+
+    private static int unit(float v) {
+        return (int) (Math.clamp(v, 0f, 1f) * 255f + 0.5f);
+    }
+
+    public static void setEntityColor(int abgr) {
+        CapturedRenderingState.INSTANCE.setCurrentEntityColor((abgr & 0xFF) / 255f, ((abgr >>> 8) & 0xFF) / 255f, ((abgr >>> 16) & 0xFF) / 255f, (abgr >>> 24) / 255f);
     }
 
     public static void setBlockEntityAndRebind(int blockEntityId) {

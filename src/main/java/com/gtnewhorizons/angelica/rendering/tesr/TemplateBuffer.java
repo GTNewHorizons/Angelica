@@ -6,6 +6,8 @@ public final class TemplateBuffer {
     final int[] work;
     public final int vertexCount;
     public final int drawMode;
+    long bucketEpoch;
+    int bucketIndex;
 
     public TemplateBuffer(int[] data, int vertexCount, int drawMode) {
         this.data = data;

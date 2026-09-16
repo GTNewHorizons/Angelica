@@ -69,7 +69,10 @@ public final class PipelineApplier {
     private final IntOpenHashSet dummyVboZeroWarned        = new IntOpenHashSet();
     private final IntOpenHashSet staleFboWarned            = new IntOpenHashSet();
     private final LongOpenHashSet bogusScissorWarned       = new LongOpenHashSet();
+    private final LongOpenHashSet clampedScissorWarned     = new LongOpenHashSet();
     private final IntOpenHashSet pushUniformsNullCbWarned  = new IntOpenHashSet();
+
+    private final int[] scissorRect = new int[4];
 
     public PipelineApplier(FrameManager frameManager, ResourceManager resourceManager, ShaderManager shaderManager, PipelineStore pipelineStore, FBOClearTracker fboClearTracker, PersistentBufferSync persistentSync, SamplerBinder samplerBinder, StorageTextureBinder storageTextureBinder, StorageBufferBinder storageBufferBinder) {
         this.frameManager = frameManager;
@@ -461,27 +464,40 @@ public final class PipelineApplier {
         }
 
         if (st.scissorDirty) {
-            final long addr = st.cachedScissor.address();
             final int sx, sy, sw, sh;
             if (st.scissorEnabled) {
                 sx = st.scissorX;
                 sy = renderingToFbo ? st.scissorY : (fbo0Height(st) - st.scissorY - st.scissorH);
                 sw = st.scissorW;
                 sh = st.scissorH;
-                MemoryAccess.putInt(addr + SDL_Rect.X, sx);
-                MemoryAccess.putInt(addr + SDL_Rect.Y, sy);
-                MemoryAccess.putInt(addr + SDL_Rect.W, sw);
-                MemoryAccess.putInt(addr + SDL_Rect.H, sh);
                 if ((sw <= 0 || sh <= 0) && bogusScissorWarned.add(Hashing.packHiLo(sw, sh))) {
                     LOG.warn("applyPipelineAndState: scissor degenerate (x={} y={} w={} h={}) - all fragments clipped; boundProgram={} boundFbo={} scissorEn={} src=[{},{},{},{}]", sx, sy, sw, sh, st.boundProgram, st.boundFboId, st.scissorEnabled, st.scissorX, st.scissorY, st.scissorW, st.scissorH);
                 }
             } else {
-                final int rectY = renderingToFbo ? (int) st.viewportY : (int) (fbo0Height(st) - st.viewportY - st.viewportH);
-                MemoryAccess.putInt(addr + SDL_Rect.X, (int) st.viewportX);
-                MemoryAccess.putInt(addr + SDL_Rect.Y, rectY);
-                MemoryAccess.putInt(addr + SDL_Rect.W, (int) st.viewportW);
-                MemoryAccess.putInt(addr + SDL_Rect.H, (int) st.viewportH);
+                sx = (int) st.viewportX;
+                sy = renderingToFbo ? (int) st.viewportY : (int) (fbo0Height(st) - st.viewportY - st.viewportH);
+                sw = (int) st.viewportW;
+                sh = (int) st.viewportH;
             }
+
+            final boolean haveFboSize = renderingToFbo && fboState != null;
+            final int targetW = haveFboSize ? fboState.width : frameManager.getFbo0Width();
+            final int targetH = haveFboSize ? fboState.height : frameManager.getFbo0Height();
+            final boolean nonEmpty = ScissorClamp.clamp(sx, sy, sw, sh, targetW, targetH, scissorRect);
+            final int cx = scissorRect[ScissorClamp.X];
+            final int cy = scissorRect[ScissorClamp.Y];
+            final int cw = scissorRect[ScissorClamp.W];
+            final int ch = scissorRect[ScissorClamp.H];
+            if ((cx != sx || cy != sy || cw != sw || ch != sh) && clampedScissorWarned.add(Hashing.packHiLo(st.boundProgram, st.boundFboId))) {
+                LOG.warn("applyPipelineAndState: scissor (x={} y={} w={} h={}) is outside the {}x{} target - clamped to (x={} y={} w={} h={}); boundProgram={} boundFbo={} scissorEn={}", sx, sy, sw, sh, targetW, targetH, cx, cy, cw, ch, st.boundProgram, st.boundFboId, st.scissorEnabled);
+            }
+            if (!nonEmpty) return false;
+
+            final long addr = st.cachedScissor.address();
+            MemoryAccess.putInt(addr + SDL_Rect.X, cx);
+            MemoryAccess.putInt(addr + SDL_Rect.Y, cy);
+            MemoryAccess.putInt(addr + SDL_Rect.W, cw);
+            MemoryAccess.putInt(addr + SDL_Rect.H, ch);
             SDL_SetGPUScissor(rp, st.cachedScissor);
             st.scissorDirty = false;
         }
@@ -535,7 +551,7 @@ public final class PipelineApplier {
                 final long elemAddr = st.vboBindingsAddr + (long) i * bindingSize;
                 if (vboHandle != 0) {
                     MemoryAccess.putAddress(elemAddr + SDL_GPUBufferBinding.BUFFER, vboHandle);
-                    MemoryAccess.putInt(elemAddr + SDL_GPUBufferBinding.OFFSET, (int) vao.bindingOffset[b]);
+                    MemoryAccess.putInt(elemAddr + SDL_GPUBufferBinding.OFFSET, PipelineCache.vertexOffsetBase(vao.bindingOffset[b]));
                 } else {
                     MemoryAccess.putAddress(elemAddr + SDL_GPUBufferBinding.BUFFER, dummyVBO);
                     MemoryAccess.putInt(elemAddr + SDL_GPUBufferBinding.OFFSET, i * 16);

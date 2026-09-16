@@ -15,19 +15,23 @@ import net.minecraft.client.gui.GuiMainMenu;
 import net.minecraft.entity.player.EntityPlayerMP;
 import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
+import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.MathHelper;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.WorldServer;
+import net.minecraft.world.chunk.Chunk;
+import net.minecraft.world.chunk.IChunkProvider;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.opengl.Display;
 
 import java.util.Arrays;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.atomic.AtomicReference;
 
 /** Flies a deterministic camera path */
 public final class FlybyRunner {
-    public static final FlybyRunner INSTANCE = new FlybyRunner();
-
     private static final Logger LOGGER = LogManager.getLogger("Angelica/Flyby");
     private static final long[] NO_FRAMES = new long[0];
     private static final double[] NO_PATH = new double[0];
@@ -36,7 +40,9 @@ public final class FlybyRunner {
     private static final String[] NO_COMMANDS = new String[0];
     private static final int MAX_RECORDED_FRAMES = 200_000;
 
-    private enum State { IDLE, WAITING, WARMUP, RUNNING, SETTLE, EXITING, DONE }
+    public static final FlybyRunner INSTANCE = new FlybyRunner();
+
+    private enum State { IDLE, WAITING, PREPARING, WARMUP, RUNNING, SETTLE, EXITING, DONE }
 
     private static final int EXIT_TICKS = 20;
     private static final int SETTLE_TICKS = 40;
@@ -52,10 +58,9 @@ public final class FlybyRunner {
     private boolean waitForFocus;
     private boolean exitWhenDone;
     private boolean startedFromProperties;
-    private volatile boolean freezeRequested;
+    private final AtomicReference<FlybyRequest> pendingRequest = new AtomicReference<>();
+    private FlybyRequest activeRequest;
     private String[] sceneCommands = NO_COMMANDS;
-    private String scenePlayerName;
-    private volatile boolean sceneRequested;
     private volatile boolean sceneClearRequested;
     private int sceneSpawnTotal;
     private boolean pauseOnLostFocusSaved;
@@ -65,8 +70,13 @@ public final class FlybyRunner {
     private static volatile boolean sceneGuarded;
     private static volatile boolean worldChangesDiscarded;
 
-    private double originX, originY, originZ;
-    private float originYaw, originPitch;
+    private double parkedX, parkedY, parkedZ;
+    private float parkedYaw, parkedPitch;
+    private double originX, originZ;
+    private float originYaw;
+    private FlybyOrigin fixedOrigin;
+    private float eyeOffset;
+    private double flightY;
 
     private double[] pathX = NO_PATH;
     private double[] pathZ = NO_PATH;
@@ -111,8 +121,17 @@ public final class FlybyRunner {
             return;
         }
 
+        final FlybyOrigin origin;
+        try {
+            origin = FlybyOrigin.parse(SystemProperties.FLYBY_ORIGIN);
+        } catch (IllegalArgumentException e) {
+            LOGGER.error("Invalid flyby origin '{}', expected x,z[,yaw]", SystemProperties.FLYBY_ORIGIN);
+            return;
+        }
+
         this.startedFromProperties = true;
         this.start(configured, SystemProperties.FLYBY_LENGTH, SystemProperties.FLYBY_WARMUP_TICKS, SystemProperties.FLYBY_SPEED);
+        this.fixedOrigin = origin;
         this.waitForTracy = SystemProperties.FLYBY_WAIT_FOR_TRACY;
         this.waitForFocus = SystemProperties.FLYBY_WAIT_FOR_FOCUS;
         this.exitWhenDone = SystemProperties.FLYBY_EXIT_WHEN_DONE;
@@ -137,6 +156,7 @@ public final class FlybyRunner {
         this.waitForTracy = false;
         this.waitForFocus = false;
         this.exitWhenDone = false;
+        this.fixedOrigin = null;
         sceneGuarded = false;
         this.state = State.WAITING;
     }
@@ -160,7 +180,7 @@ public final class FlybyRunner {
         }
         if (this.state == State.IDLE || this.state == State.DONE) return;
 
-        if (mc.theWorld == null && (this.state == State.WARMUP || this.state == State.RUNNING || this.state == State.SETTLE)) {
+        if (mc.theWorld == null && (this.state == State.PREPARING || this.state == State.WARMUP || this.state == State.RUNNING || this.state == State.SETTLE)) {
             this.cancel();
             return;
         }
@@ -181,6 +201,12 @@ public final class FlybyRunner {
                 if (this.waitForTracy && !Tracy.isConnected()) return;
                 if (this.waitForFocus && !Display.isActive()) return;
                 this.begin(mc, player);
+            }
+            case PREPARING -> {
+                final Double feetY = this.activeRequest.feetY().getNow(null);
+                if (feetY == null) return;
+                this.flightY = feetY + this.eyeOffset;
+                this.startRun(mc);
             }
             case WARMUP -> {
                 this.applyPosition(player, 0);
@@ -231,25 +257,49 @@ public final class FlybyRunner {
             mc.gameSettings.pauseOnLostFocus = false;
         }
 
-        this.originX = player.posX;
-        this.originY = player.posY;
-        this.originZ = player.posZ;
-        this.originPitch = player.rotationPitch;
+        this.parkedX = player.posX;
+        this.parkedY = player.posY;
+        this.parkedZ = player.posZ;
+        this.parkedYaw = player.rotationYaw;
+        this.parkedPitch = player.rotationPitch;
+        this.eyeOffset = player.yOffset;
 
-        this.originYaw = Math.round(player.rotationYaw / 90.0F) * 90.0F;
-        if (this.originYaw != player.rotationYaw) {
-            LOGGER.info("Flyby snapped heading {} -> {}", player.rotationYaw, this.originYaw);
+        final boolean creative = player.capabilities.isCreativeMode;
+        if (!creative) {
+            LOGGER.warn("Flyby: player is not in creative mode, flying at the player height{}", this.fixedOrigin != null ? " and ignoring the pinned origin" : "");
+        }
+
+        if (creative && this.fixedOrigin != null) {
+            this.originX = this.fixedOrigin.x();
+            this.originZ = this.fixedOrigin.z();
+            this.originYaw = this.fixedOrigin.yaw();
+        } else {
+            this.originX = player.posX;
+            this.originZ = player.posZ;
+            this.originYaw = Math.round(player.rotationYaw / 90.0F) * 90.0F;
+            if (this.originYaw != player.rotationYaw) {
+                LOGGER.info("Flyby snapped heading {} -> {}", player.rotationYaw, this.originYaw);
+            }
         }
 
         this.buildPath();
-        this.freezeTimeAndWeather(mc);
-        if (this.sceneCommands.length > 0 && mc.getIntegratedServer() != null) {
-            this.scenePlayerName = player.getCommandSenderName();
-            this.sceneRequested = true;
-        }
-
         this.suppressPacing();
 
+        this.tick = 0;
+        if (mc.getIntegratedServer() != null) {
+            final FlybyRequest request = new FlybyRequest(this.pathX, this.pathZ, this.originX, this.originZ, player.posY - this.eyeOffset, player.getCommandSenderName(), creative, this.sceneCommands.length > 0, new CompletableFuture<>());
+            this.activeRequest = request;
+            sceneGuarded = true;
+            this.pendingRequest.set(request);
+            this.state = State.PREPARING;
+        } else {
+            LOGGER.warn("Flyby: not singleplayer, cannot freeze time/weather or sample terrain - flying at the player height, results may not be comparable");
+            this.flightY = player.posY;
+            this.startRun(mc);
+        }
+    }
+
+    private void startRun(Minecraft mc) {
         this.tick = 0;
         if (this.warmupTicks > 0) {
             this.state = State.WARMUP;
@@ -258,8 +308,7 @@ public final class FlybyRunner {
             this.beginMeasuring(mc);
         }
 
-        LOGGER.info("Flyby {} starting at {} {} {} yaw {}", this.route.id(),
-            this.originX, this.originY, this.originZ, this.originYaw);
+        LOGGER.info("Flyby {} starting at {} {} {} yaw {}", this.route.id(), this.originX, this.flightY, this.originZ, this.originYaw);
     }
 
     private void suppressPacing() {
@@ -393,12 +442,12 @@ public final class FlybyRunner {
         player.ySize = 0.0F;
 
         player.prevPosX = player.lastTickPosX = this.pathX[last];
-        player.prevPosY = player.lastTickPosY = this.originY;
+        player.prevPosY = player.lastTickPosY = this.flightY;
         player.prevPosZ = player.lastTickPosZ = this.pathZ[last];
         player.prevRotationYaw = player.rotationYaw = this.pathYaw[last];
         player.prevRotationYawHead = player.rotationYawHead = this.pathYaw[last];
-        player.prevRotationPitch = player.rotationPitch = this.originPitch;
-        player.setPosition(this.pathX[last], this.originY, this.pathZ[last]);
+        player.prevRotationPitch = player.rotationPitch = this.parkedPitch;
+        player.setPosition(this.pathX[last], this.flightY, this.pathZ[last]);
     }
 
     private void applyPosition(EntityClientPlayerMP player, int index) {
@@ -418,37 +467,23 @@ public final class FlybyRunner {
         player.ySize = 0.0F;
 
         player.prevPosX = player.lastTickPosX = prevX;
-        player.prevPosY = player.lastTickPosY = this.originY;
+        player.prevPosY = player.lastTickPosY = this.flightY;
         player.prevPosZ = player.lastTickPosZ = prevZ;
 
         player.prevRotationYaw = prevYaw;
         player.rotationYaw = yaw;
         player.prevRotationYawHead = prevYaw;
         player.rotationYawHead = yaw;
-        player.prevRotationPitch = player.rotationPitch = this.originPitch;
+        player.prevRotationPitch = player.rotationPitch = this.parkedPitch;
 
-        player.setPosition(x, this.originY, z);
-    }
-
-    /** Requests the freeze; the write happens on the server thread in {@link #onServerTick}. */
-    private void freezeTimeAndWeather(Minecraft mc) {
-        final MinecraftServer server = mc.getIntegratedServer();
-        if (server == null) {
-            LOGGER.warn("Flyby: not singleplayer, cannot freeze time/weather - results may not be comparable");
-            return;
-        }
-
-        sceneGuarded = true;
-        this.freezeRequested = true;
+        player.setPosition(x, this.flightY, z);
     }
 
     @SubscribeEvent
     public void onServerTick(TickEvent.ServerTickEvent event) {
         if (event.phase != TickEvent.Phase.END) return;
         final boolean clear = this.sceneClearRequested;
-        final boolean freeze = this.freezeRequested;
-        final boolean scene = this.sceneRequested;
-        if (!clear && !freeze && !scene) return;
+        if (!clear && this.pendingRequest.get() == null) return;
 
         final MinecraftServer server = MinecraftServer.getServer();
         if (server == null) return;
@@ -457,16 +492,16 @@ public final class FlybyRunner {
             this.sceneClearRequested = false;
             this.clearScene(server);
         }
-        if (freeze || scene) {
-            this.discardWorldChanges(server);
-        }
-        if (freeze) {
-            this.freezeRequested = false;
-            this.applyFreeze(server);
-        }
-        if (scene) {
-            this.sceneRequested = false;
-            this.runScene(server);
+
+        final FlybyRequest request = this.pendingRequest.getAndSet(null);
+        if (request == null) return;
+
+        this.discardWorldChanges(server);
+        final double feetY = this.flightFeetY(server, request);
+        request.feetY().complete(feetY);
+        this.applyFreeze(server);
+        if (request.scene()) {
+            this.runScene(server, request, feetY);
         }
     }
 
@@ -511,16 +546,52 @@ public final class FlybyRunner {
         }
     }
 
-    private void runScene(MinecraftServer server) {
-        final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(this.scenePlayerName);
+    private double flightFeetY(MinecraftServer server, FlybyRequest request) {
+        if (!request.sampleTerrain()) return request.parkedFeetY();
+
+        final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(request.playerName());
         if (player == null) {
-            LOGGER.warn("Flyby scene: no server player named '{}', skipping scene", this.scenePlayerName);
+            LOGGER.warn("Flyby terrain: no server player named '{}', flying at the parked feet Y {}", request.playerName(), request.parkedFeetY());
+            return request.parkedFeetY();
+        }
+
+        final WorldServer world = player.getServerForPlayer();
+        if (world.provider.hasNoSky) {
+            LOGGER.info("Flyby terrain: dimension has a ceiling, flying at the parked feet Y {}", request.parkedFeetY());
+            return request.parkedFeetY();
+        }
+
+        final IChunkProvider chunks = world.getChunkProvider();
+        final int floor = FlybyTerrain.routeFloor(request.pathX(), request.pathZ(), FlybyTerrain.CORRIDOR_RADIUS, (x, z) -> precipitationHeight(chunks, x, z));
+        if (floor < 1) {
+            LOGGER.info("Flyby terrain: no ground within {} blocks of the path, flying at the parked feet Y {}", FlybyTerrain.CORRIDOR_RADIUS, request.parkedFeetY());
+            return request.parkedFeetY();
+        }
+
+        final double feetY = floor + FlybyTerrain.HOVER_BLOCKS;
+        LOGGER.info("Flyby terrain: route floor {} within {} blocks of the path, flight feet Y {}", floor, FlybyTerrain.CORRIDOR_RADIUS, feetY);
+        if (Tracy.ENABLED) Tracy.message("flyby terrain floor=" + floor + " radius=" + FlybyTerrain.CORRIDOR_RADIUS + " feetY=" + feetY);
+        return feetY;
+    }
+
+    private static int precipitationHeight(IChunkProvider chunks, int x, int z) {
+        final int chunkX = x >> 4;
+        final int chunkZ = z >> 4;
+        Chunk chunk = chunks.loadChunk(chunkX, chunkZ);
+        if (chunk == null) chunk = chunks.provideChunk(chunkX, chunkZ);
+        return chunk == null ? Integer.MIN_VALUE : chunk.getPrecipitationHeight(x & 15, z & 15);
+    }
+
+    private void runScene(MinecraftServer server, FlybyRequest request, double feetY) {
+        final EntityPlayerMP player = server.getConfigurationManager().func_152612_a(request.playerName());
+        if (player == null) {
+            LOGGER.warn("Flyby scene: no server player named '{}', skipping scene", request.playerName());
             return;
         }
 
         this.clearScene(server);
 
-        final FlybyCommandSender sender = new FlybyCommandSender(player);
+        final FlybyCommandSender sender = new FlybyCommandSender(player, new ChunkCoordinates(MathHelper.floor_double(request.originX()), MathHelper.floor_double(feetY + 0.5D), MathHelper.floor_double(request.originZ())));
         for (String line : this.sceneCommands) {
             if (server.getCommandManager().executeCommand(sender, line) == 0) {
                 LOGGER.warn("flyby scene command did not execute: {}", line);
@@ -603,11 +674,11 @@ public final class FlybyRunner {
         player.motionY = 0.0D;
         player.motionZ = 0.0D;
         player.ySize = 0.0F;
-        player.setPositionAndRotation(this.originX, this.originY, this.originZ, this.originYaw, this.originPitch);
-        player.lastTickPosX = this.originX;
-        player.lastTickPosY = this.originY;
-        player.lastTickPosZ = this.originZ;
-        LOGGER.info("Flyby returned to origin {} {} {}", this.originX, this.originY, this.originZ);
+        player.setPositionAndRotation(this.parkedX, this.parkedY, this.parkedZ, this.parkedYaw, this.parkedPitch);
+        player.lastTickPosX = this.parkedX;
+        player.lastTickPosY = this.parkedY;
+        player.lastTickPosZ = this.parkedZ;
+        LOGGER.info("Flyby returned to {} {} {}", this.parkedX, this.parkedY, this.parkedZ);
     }
 
     private String summarise(long elapsedNs, EntityClientPlayerMP player) {
@@ -656,8 +727,8 @@ public final class FlybyRunner {
             FramePacer.endStats();
             final Minecraft mc = Minecraft.getMinecraft();
             this.restorePauseOnLostFocus(mc);
-            this.freezeRequested = false;
-            this.sceneRequested = false;
+            this.pendingRequest.set(null);
+            this.activeRequest = null;
             sceneGuarded = false;
             this.sceneClearRequested = this.sceneCommands.length > 0;
             this.restorePacing(mc);
@@ -667,4 +738,6 @@ public final class FlybyRunner {
     public boolean startedFromProperties() {
         return this.startedFromProperties;
     }
+
+    private record FlybyRequest(double[] pathX, double[] pathZ, double originX, double originZ, double parkedFeetY, String playerName, boolean sampleTerrain, boolean scene, CompletableFuture<Double> feetY) {}
 }

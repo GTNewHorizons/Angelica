@@ -14,6 +14,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.lwjgl.system.MemoryUtil.memFree;
 
@@ -78,6 +79,13 @@ class PerFrameBlockInjectorTest {
     void emptyMemberListIsANoOp() {
         final String src = "#version 330 core\nvoid main() {}\n";
         assertEquals(src, PerFrameBlockInjector.inject(src, new PerFrameUniformBlock(List.of()), null));
+    }
+
+    @Test
+    void noBlocksReturnsTheSourceInstance() {
+        final String src = "#version 330 core\nuniform float frameTimeCounter;\nvoid main() {}\n";
+        assertSame(src, PerFrameBlockInjector.inject(src, null, null));
+        assertSame(src, PerFrameBlockInjector.inject(src, new PerFrameUniformBlock(List.of()), new PerFrameUniformBlock(List.of())));
     }
 
     @Test

@@ -1,6 +1,8 @@
 package net.coderbot.iris.pipeline.transform;
 
-import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedGlslHelpers;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import org.taumc.glsl.Transformer;
 
 import java.util.HashMap;
@@ -16,24 +18,37 @@ class CoreTransformHelper {
      * Handles: ModelView, ModelViewInverse, Projection, ProjectionInverse, NormalMatrix, ModelViewProjectionMatrix, TextureMatrix[0..1], and LightmapTextureMatrix.
      */
     static void injectMatrixUniforms(Transformer transformer) {
-        injectMatrixUniforms(transformer, false);
+        injectMatrixUniforms(transformer, Instancing.NONE);
     }
 
-    static void injectMatrixUniforms(Transformer transformer, boolean instancedVertex) {
-        if (instancedVertex) {
-            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL0 + ") in vec4 iris_InstMat0;");
-            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL1 + ") in vec4 iris_InstMat1;");
-            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL2 + ") in vec4 iris_InstMat2;");
-            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_MATRIX_COL3 + ") in vec4 iris_InstMat3;");
-            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_COLOR + ") in vec4 iris_InstColor;");
-            transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_LIGHTMAP + ") in vec2 iris_InstLightmap;");
-            transformer.injectVariable("mat4 iris_ModelViewMatrix;");
-            transformer.injectVariable("mat4 iris_ModelViewMatrixInverse;");
-            transformer.injectVariable("mat3 iris_NormalMatrix;");
-        } else {
-            transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
-            transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
-            transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
+    static void injectMatrixUniforms(Transformer transformer, Instancing instancing) {
+        switch (instancing) {
+            case PARTICLE -> {
+                transformer.injectVariable("layout(location = " + VertexFormatElement.Usage.POSITION.getAttributeLocation() + ") in vec3 iris_ParticleOffset;");
+                transformer.injectVariable("layout(location = " + VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation() + ") in vec2 iris_ParticleCorner;");
+                injectAttributeDecls(transformer, instancing);
+                transformer.injectVariable("vec4 iris_Vertex;");
+                transformer.injectVariable("vec4 iris_Color;");
+                transformer.injectVariable("vec4 iris_MultiTexCoord0;");
+                transformer.injectVariable("vec4 iris_MultiTexCoord1;");
+                transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
+                transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
+                transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
+            }
+            case TEMPLATE, CUBE -> {
+                injectAttributeDecls(transformer, instancing);
+                transformer.injectVariable("mat4 iris_ModelViewMatrix;");
+                transformer.injectVariable("mat4 iris_ModelViewMatrixInverse;");
+                transformer.injectVariable("mat3 iris_NormalMatrix;");
+                if (!declaresInvariantPosition(transformer)) {
+                    transformer.injectVariable("invariant gl_Position;");
+                }
+            }
+            case NONE -> {
+                transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
+                transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
+                transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
+            }
         }
         transformer.injectVariable("uniform mat4 iris_ProjectionMatrix;");
         transformer.injectVariable("uniform mat4 iris_ProjectionMatrixInverse;");
@@ -56,6 +71,25 @@ class CoreTransformHelper {
 
         // Catch any remaining gl_TextureMatrix references (e.g. [2]-[7])
         transformer.replaceExpression("gl_TextureMatrix", "mat4[8](iris_TextureMatrix, iris_LightmapTextureMatrix, mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0), mat4(1.0))");
+    }
+
+    private static void injectAttributeDecls(Transformer transformer, Instancing instancing) {
+        for (String decl : InstancedGlslHelpers.attributeDecls("iris_", instancing)) {
+            transformer.injectVariable(decl);
+        }
+    }
+
+    private static boolean declaresInvariantPosition(Transformer transformer) {
+        final boolean[] found = new boolean[1];
+        transformer.mutateTree(root -> {
+            for (int i = 0; i < root.getChildCount(); i++) {
+                if ("invariantgl_Position;".equals(root.getChild(i).getText())) {
+                    found[0] = true;
+                    return;
+                }
+            }
+        });
+        return found[0];
     }
 
     /**
