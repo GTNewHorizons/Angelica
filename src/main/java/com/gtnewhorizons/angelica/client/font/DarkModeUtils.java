@@ -6,6 +6,8 @@ import java.io.InputStreamReader;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.Map;
 
 import net.minecraft.client.resources.IResourcePack;
 
@@ -186,7 +188,7 @@ public class DarkModeUtils {
     // Every mod jar shows up as its own resource pack (FMLFileResourcePack), all sharing one class that doesn't
     // have this method at all. Caching by class avoids repeating the same failing reflection walk hundreds of
     // times per reload in a large modpack - a plain HashMap that runs only ever on the client thread.
-    private static final java.util.Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new java.util.HashMap<>();
+    private static final Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new HashMap<>();
 
     private static Method findGetInputStreamByName(Class<?> type) {
         if (INPUT_STREAM_METHOD_CACHE.containsKey(type)) {
