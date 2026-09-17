@@ -36,6 +36,7 @@ import biomesoplenty.api.content.BOPCBlocks;
 import com.google.common.base.Objects;
 import com.gtnewhorizon.gtnhlib.client.model.loading.ModelRegistry;
 import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
+import com.gtnewhorizons.angelica.client.font.DarkModeUtils;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
@@ -151,6 +152,7 @@ public final class ClientProxy extends CommonProxy {
             HUDCaching.init();
         }
         CeleritasSetup.ensureInitialized();
+        DarkModeUtils.init();
         final SodiumGameOptions opts = options();
         if (opts.advanced.vsyncMode == null) {
             opts.advanced.vsyncMode = FrameRateOptions.defaultMode();

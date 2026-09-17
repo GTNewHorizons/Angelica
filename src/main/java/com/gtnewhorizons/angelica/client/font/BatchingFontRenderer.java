@@ -1499,10 +1499,12 @@ public class BatchingFontRenderer {
                 }
 
                 if (darkModeRecolorEnabled) {
-                    float time = HUDCaching.renderingCacheOverride ? 0f : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * WAVE_TIME_SCALE);
-                    curColor = 0xFFFF0000 + (int)(Math.round(0x00007F80 * (Math.sin(2 * time) + 1)) & 0x0000FFFF);
-                } else {
-                    curColor &= 0xFFFFFFFF;
+                    DarkModeUtils.GuiFontRecolor recolor = DarkModeUtils.computeGuiFontRecolor(curColor);
+                    if (recolor != null) {
+                        curColor = recolor.color();
+                        curShadowColor = (curShadowColor & 0xFF000000) | recolor.shadowRgb();
+                        curShadow = recolor.shadow();
+                    }
                 }
 
                 final boolean drawShadow = enableShadow || curShadow;
