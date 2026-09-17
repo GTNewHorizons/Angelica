@@ -31,13 +31,13 @@ public class DarkModeUtils {
 
     private static final String ROOT_KEY = "dark_mode_utils";
     private static final int SUPPORTED_SCHEMA = 1;
-    /** Special {@code output} value: instead of a fixed color, pulse the old debug rainbow so matched text is easy to spot. */
-    private static final String RAINBOW_OUTPUT = "rainbow";
-    private static final double RAINBOW_TIME_SCALE = 5e-9;
+    /** Special {@code output} value: instead of a fixed color, pulse the debug rainbow pulse, so matched text is easy to spot. */
+    private static final String DEBUG_PULSE = "debug_pulse";
+    private static final double DEBUG_PULSE_TIME_SCALE = 5e-9;
 
-    private static volatile FontRecolorRule guiFontRule = null;
+    private static FontRecolorRule guiFontRule = null;
     // TODO: parsed but not applied anywhere yet - button text recoloring
-    private static volatile ButtonFontRules buttonFontRules = null;
+    private static ButtonFontRules buttonFontRules = null;
 
     static {
         TexturePackChangeHandler.register(new TexturePackChangeHandler("Angelica Dark Mode Utils", 1) {
@@ -142,10 +142,10 @@ public class DarkModeUtils {
             int minimum = parseHexColor(input.get("minimum").getAsString());
             int maximum = parseHexColor(input.get("maximum").getAsString());
             String outputValue = obj.get("output").getAsString().trim();
-            boolean rainbow = RAINBOW_OUTPUT.equalsIgnoreCase(outputValue);
-            int output = rainbow ? 0 : parseHexColor(outputValue);
+            boolean debugPulse = DEBUG_PULSE.equalsIgnoreCase(outputValue);
+            int output = debugPulse ? 0 : parseHexColor(outputValue);
             boolean shadow = obj.has("shadow") && obj.get("shadow").getAsBoolean();
-            return new FontRecolorRule(minimum, maximum, output, rainbow, shadow);
+            return new FontRecolorRule(minimum, maximum, output, debugPulse, shadow);
         } catch (RuntimeException e) {
             LOGGER.warn("Invalid dark_mode_utils {} rule in pack {}: {}", context, packName, e.toString());
             return null;
@@ -185,7 +185,7 @@ public class DarkModeUtils {
     private static final String[] INPUT_STREAM_METHOD_NAMES = { "getInputStreamByName", "func_110591_a" };
     // Every mod jar shows up as its own resource pack (FMLFileResourcePack), all sharing one class that doesn't
     // have this method at all. Caching by class avoids repeating the same failing reflection walk hundreds of
-    // times per reload in a large modpack - a plain HashMapthat runs only ever on the client thread.
+    // times per reload in a large modpack - a plain HashMap that runs only ever on the client thread.
     private static final java.util.Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new java.util.HashMap<>();
 
     private static Method findGetInputStreamByName(Class<?> type) {
@@ -221,9 +221,9 @@ public class DarkModeUtils {
         return rule.tryRecolor(argbColor);
     }
 
-    private static int computeRainbowRgb() {
+    private static int computeDebugPulseRgb() {
         final float time = HUDCaching.renderingCacheOverride ? 0f
-            : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * RAINBOW_TIME_SCALE);
+            : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * DEBUG_PULSE_TIME_SCALE);
         final int animated = (int) (Math.round(0x00007F80 * (Math.sin(2 * time) + 1)) & 0x0000FFFF);
         return 0x00FF0000 | animated;
     }
@@ -246,10 +246,10 @@ public class DarkModeUtils {
         final int minR, minG, minB;
         final int maxR, maxG, maxB;
         final int output;
-        final boolean rainbow;
+        final boolean debugPulse;
         final boolean shadow;
 
-        FontRecolorRule(int minimum, int maximum, int output, boolean rainbow, boolean shadow) {
+        FontRecolorRule(int minimum, int maximum, int output, boolean debugPulse, boolean shadow) {
             this.minR = (minimum >> 16) & 0xFF;
             this.minG = (minimum >> 8) & 0xFF;
             this.minB = minimum & 0xFF;
@@ -257,7 +257,7 @@ public class DarkModeUtils {
             this.maxG = (maximum >> 8) & 0xFF;
             this.maxB = maximum & 0xFF;
             this.output = output;
-            this.rainbow = rainbow;
+            this.debugPulse = debugPulse;
             this.shadow = shadow;
         }
 
@@ -272,7 +272,7 @@ public class DarkModeUtils {
                 return null;
             }
 
-            final int outputRgb = rainbow ? computeRainbowRgb() : output;
+            final int outputRgb = debugPulse ? computeDebugPulseRgb() : output;
             final int newColor = (argbColor & 0xFF000000) | outputRgb;
             final int shadowRgb = (outputRgb & 0xFCFCFC) >> 2;
             return new GuiFontRecolor(newColor, shadowRgb, shadow);

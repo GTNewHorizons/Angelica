@@ -22,7 +22,7 @@
           "minimum": "0x505050",
           "maximum": "0xE0E0E0"
         },
-        "output": "rainbow",
+        "output": "debug_pulse",
         "shadow": true
       },
       "button_font": {
