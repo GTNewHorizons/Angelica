@@ -25,8 +25,10 @@ public class ProgramCreator {
 		int program = GLStateManager.glCreateProgram();
 
 		// TODO: This is *really* hardcoded, we need to refactor this to support external calls to glBindAttribLocation
+		RenderSystem.bindAttributeLocation(program, MC_ENTITY, "iris_Entity");
 		RenderSystem.bindAttributeLocation(program, MC_ENTITY, "mc_Entity");
 		RenderSystem.bindAttributeLocation(program, MC_MID_TEX_COORD, "mc_midTexCoord");
+		RenderSystem.bindAttributeLocation(program, AT_TANGENT, "iris_CubeTangent");
 		RenderSystem.bindAttributeLocation(program, AT_TANGENT, "at_tangent");
 		RenderSystem.bindAttributeLocation(program, AT_MIDBLOCK, "at_midBlock");
 

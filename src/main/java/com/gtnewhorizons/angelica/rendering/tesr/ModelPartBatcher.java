@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
-import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.ColorABGR;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.api.tesr.ModelPartMeshBuilder;
@@ -11,12 +10,17 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
+import com.gtnewhorizons.angelica.mixins.interfaces.ModelBoxData;
 import com.gtnewhorizons.angelica.profiling.BailClassCounts;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -31,7 +35,9 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.model.ModelBox;
 import net.minecraft.client.model.ModelRenderer;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.entity.Entity;
 import net.minecraft.util.ResourceLocation;
+import net.minecraft.world.World;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
@@ -50,7 +56,6 @@ public final class ModelPartBatcher {
         MATERIAL("tesr.bail.material"),
         TEXTURE("tesr.bail.texture"),
         TEMPLATE("tesr.bail.template"),
-        HURT_FLASH("tesr.bail.hurtFlash"),
         FOREIGN_PROGRAM("tesr.bail.foreignProgram"),
         MIXED_RENDERER("tesr.bail.mixedRenderer");
 
@@ -64,7 +69,10 @@ public final class ModelPartBatcher {
 
     private static final long SWEEP_INTERVAL_MS = 5_000L;
 
+    private static final Tracy.ZoneId Z_ENTITY_LAYER_LOOP = Tracy.zoneId("entityLayerLoop", Tracy.COLOR_CLIENT);
+
     private final AngelicaBufferSource bufferSource = new AngelicaBufferSource();
+    private final EntityShadowBatcher shadows = new EntityShadowBatcher();
     private final RetainedTesrGroups groups = new RetainedTesrGroups(bufferSource);
     private final RetainedTesrGroups shadowGroups = new RetainedTesrGroups(bufferSource);
     private RetainedTesrGroups activeGroups = groups;
@@ -75,6 +83,9 @@ public final class ModelPartBatcher {
     private final Matrix4f texMatrixScratch = new Matrix4f();
     private int lastMvGeneration;
     private boolean mvCaptured;
+    private int texGeneration;
+    private boolean texCaptured;
+    private boolean texIdentity;
     private boolean active;
     private Mode mode = Mode.BLOCK_ENTITIES;
     private boolean instancedThisCycle;
@@ -88,7 +99,13 @@ public final class ModelPartBatcher {
 
     public long statParts() { return parts; }
     public long statLiveFallbacks() { return liveFallbacks; }
+    public long statInstancedDraws() { return groups.instancedDraws + shadowGroups.instancedDraws; }
+    public long statInstancedInstances() { return groups.instancedInstances + shadowGroups.instancedInstances; }
+    public long statCubeInstances() { return groups.cubeInstances + shadowGroups.cubeInstances; }
+    public long statTexMatrixRuns() { return groups.texMatrixRuns + shadowGroups.texMatrixRuns; }
     public long statBail(BailReason reason) { return bails[reason.ordinal()]; }
+    public long statShadowQuads() { return shadows.statQuads(); }
+    public long statShadowDraws() { return shadows.statDraws(); }
 
     private void bail(BailReason reason) {
         bails[reason.ordinal()]++;
@@ -96,10 +113,10 @@ public final class ModelPartBatcher {
 
     private static final class PartTemplate {
         TemplateBuffer template;
+        CubeParams[] cubes;
         float scale;
         long lastUsedMs;
         boolean emptyVanillaPart;
-        boolean forceStream;
     }
 
     private final Reference2ObjectOpenHashMap<ModelRenderer, PartTemplate> templates = new Reference2ObjectOpenHashMap<>();
@@ -110,13 +127,15 @@ public final class ModelPartBatcher {
         PassOverride pass;
         float offsetFactor;
         float offsetUnits;
+        int glintSlot;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
+        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
             this.texture = texture;
             this.material = material;
             this.pass = pass;
             this.offsetFactor = offsetFactor;
             this.offsetUnits = offsetUnits;
+            this.glintSlot = glintSlot;
             return this;
         }
 
@@ -126,7 +145,8 @@ public final class ModelPartBatcher {
             return Objects.equals(texture, other.texture) && Objects.equals(material, other.material)
                 && Objects.equals(pass, other.pass)
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
-                && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits);
+                && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
+                && glintSlot == other.glintSlot;
         }
 
         @Override
@@ -134,6 +154,7 @@ public final class ModelPartBatcher {
             int h = (Objects.hashCode(texture) * 31 + Objects.hashCode(material)) * 31 + Objects.hashCode(pass);
             h = h * 31 + Float.floatToIntBits(offsetFactor);
             h = h * 31 + Float.floatToIntBits(offsetUnits);
+            h = h * 31 + glintSlot;
             return h;
         }
     }
@@ -145,16 +166,24 @@ public final class ModelPartBatcher {
     private PassOverride lastLayerPass;
     private float lastLayerOffsetFactor;
     private float lastLayerOffsetUnits;
+    private int lastLayerGlintSlot;
     private RenderLayer lastLayer;
 
     private static ResourceLocation lastBoundLocation;
     private static int lastBoundGlId = -1;
+    private static int lastBoundGlintSlot = ShaderGlint.NO_TINT;
 
     private ModelPartBatcher() {}
+
+    public static void onTextureSwap(int glId, int glintSlot) {
+        lastBoundGlId = glId;
+        lastBoundGlintSlot = glintSlot;
+    }
 
     public static void onTextureBind(ResourceLocation location, int glId) {
         lastBoundLocation = location;
         lastBoundGlId = glId;
+        lastBoundGlintSlot = ShaderGlint.NO_TINT;
     }
 
     public void begin(Mode mode) {
@@ -172,16 +201,17 @@ public final class ModelPartBatcher {
             return;
         }
         active = true;
+        final long nowMs = System.currentTimeMillis();
         mvCaptured = false;
+        texCaptured = false;
         activeGroups = shadow ? shadowGroups : groups;
         bufferSource.setIdKind(mode == Mode.ENTITIES ? AngelicaBufferSource.GroupIdKind.ENTITY : AngelicaBufferSource.GroupIdKind.BLOCK_ENTITY);
         activeGroups.beginPass(identity, 0, 0, 0, instancedThisCycle ? TesrBatchRenderer.INSTANCE.instancedRenderer : null, shaderPipeline);
-        final long now = System.currentTimeMillis();
-        if (now - lastSweepMs >= SWEEP_INTERVAL_MS) {
-            lastSweepMs = now;
-            groups.sweep(now);
-            shadowGroups.sweep(now);
-            sweepTemplates(now);
+        if (nowMs - lastSweepMs >= SWEEP_INTERVAL_MS) {
+            lastSweepMs = nowMs;
+            groups.sweep(nowMs);
+            shadowGroups.sweep(nowMs);
+            sweepTemplates(nowMs);
         }
     }
 
@@ -189,25 +219,18 @@ public final class ModelPartBatcher {
         if (!active) return;
         active = false;
         if (shadow) {
-            bufferSource.endBatchWithType(TransparencyType.OPAQUE, activeGroups);
-            bufferSource.endBatch(activeGroups);
-            if (instancedThisCycle) {
-                TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
+            drawBatches();
+        } else {
+            final boolean inEntityLoop = mode == Mode.ENTITIES && Iris.enabled && GbufferPrograms.isEntityLoopActive();
+            final boolean wrapEntities = mode == Mode.ENTITIES && Iris.enabled && !inEntityLoop;
+            if (wrapEntities) GbufferPrograms.beginEntities();
+            else if (inEntityLoop) GbufferPrograms.onEntityRenderBoundary();
+            try {
+                shadows.flush(bufferSource);
+                drawBatches();
+            } finally {
+                if (wrapEntities) GbufferPrograms.endEntities();
             }
-            if (!TesrBatchRenderer.INSTANCE.hasPendingGeometry()) {
-                BatchingFontRenderer.flushDeferredText();
-            }
-            return;
-        }
-        final boolean inEntityLoop = mode == Mode.ENTITIES && Iris.enabled && GbufferPrograms.isEntityLoopActive();
-        final boolean wrapEntities = mode == Mode.ENTITIES && Iris.enabled && !inEntityLoop;
-        if (wrapEntities) GbufferPrograms.beginEntities();
-        else if (inEntityLoop) GbufferPrograms.onEntityRenderBoundary();
-        try {
-            bufferSource.endBatchWithType(TransparencyType.OPAQUE, activeGroups);
-            bufferSource.endBatch(activeGroups);
-        } finally {
-            if (wrapEntities) GbufferPrograms.endEntities();
         }
         if (instancedThisCycle) {
             TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
@@ -217,8 +240,30 @@ public final class ModelPartBatcher {
         }
     }
 
+    private void drawBatches() {
+        if (Tracy.ENABLED) Tracy.beginZone(Z_ENTITY_LAYER_LOOP);
+        try {
+            bufferSource.endBatchWithType(TransparencyType.OPAQUE, activeGroups);
+            bufferSource.endBatch(activeGroups);
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
     public boolean isActive() {
         return active;
+    }
+
+    public boolean entityPassActive() {
+        return active && mode == Mode.ENTITIES && !shadow;
+    }
+
+    public boolean isShadowPass() {
+        return active && shadow;
+    }
+
+    public static boolean recordShadow(World world, Entity entity, double x, double y, double z, float shadowAlpha, float partialTicks, float shadowSize) {
+        return INSTANCE.shadows.record(world, entity, x, y, z, shadowAlpha, partialTicks, shadowSize);
     }
 
     public static boolean partDraw(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {
@@ -244,15 +289,6 @@ public final class ModelPartBatcher {
     }
 
     private boolean queuePart(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {
-        if (shaderPipeline != null) {
-            if (GLStateManager.getActiveProgram() != shaderPipeline.getActivePassProgramId()) {
-                bail(BailReason.FOREIGN_PROGRAM);
-                return false;
-            }
-        } else if (GLStateManager.getOverlayA() != 0.0f) {
-            bail(BailReason.HURT_FLASH);
-            return false;
-        }
         final PartTemplate entry = templateFor(part, scale, builder);
         if (entry.emptyVanillaPart) {
             return true;
@@ -260,7 +296,19 @@ public final class ModelPartBatcher {
         if (shadow && isDepthEqualDecalState()) {
             return true;
         }
-        final TesrMaterial material = EntityMaterials.fromCurrentState();
+        return queueTemplate(entry.template, entry.cubes, scale, null);
+    }
+
+    public boolean queueTemplate(TemplateBuffer template, TesrMaterial material) {
+        return queueTemplate(template, null, 1.0f, material);
+    }
+
+    private boolean queueTemplate(TemplateBuffer template, CubeParams[] cubes, float scale, TesrMaterial explicitMaterial) {
+        if (shaderPipeline != null && GLStateManager.getActiveProgram() != shaderPipeline.getActivePassProgramId()) {
+            bail(BailReason.FOREIGN_PROGRAM);
+            return false;
+        }
+        final TesrMaterial material = explicitMaterial != null ? explicitMaterial : EntityMaterials.fromCurrentState(unitTexIdentity());
         if (material == null) {
             bail(BailReason.MATERIAL);
             if (Tracy.ENABLED) {
@@ -283,35 +331,26 @@ public final class ModelPartBatcher {
                 return false;
             }
         }
-        final TemplateBuffer template = entry.template;
         if (template == null) {
             bail(BailReason.TEMPLATE);
             if (Tracy.ENABLED) BailClassCounts.TEMPLATE.add(TesrAttribution.currentRenderable);
             return false;
         }
 
-        Matrix4f texMatrix = null;
-        if (texture != null) {
-            final Matrix4f unitMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
-            if (!MatrixHelper.isIdentity(unitMatrix)) {
-                texMatrix = texMatrixScratch.set(unitMatrix);
-                if (material.isDepthEqual()) {
-                    entry.forceStream = true;
-                }
-            }
-        }
+        final Matrix4f texMatrix = texture != null && !unitTexIdentity() ? texMatrixScratch : null;
         final PassOverride pass = shaderPipeline != null ? PassOverride.capture() : PassOverride.NONE;
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
         final float offsetFactor = offset ? polygon.getOffsetFactor() : 0.0f;
         final float offsetUnits = offset ? polygon.getOffsetUnits() : 0.0f;
-        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits);
+        final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
+        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot);
         // Entities nested inside a TESR (mob spawner, OpenBlocks trophy) run in the block entity pass but carry an entity id
-        final int entityId = mode == Mode.ENTITIES || pass.isEntityPhase()
-            ? Math.max(0, CapturedRenderingState.INSTANCE.getCurrentRenderedEntity())
-            : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
+        final int entityId = groupId(shaderPipeline != null, mode == Mode.ENTITIES || pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
         final Color4 color = GLStateManager.getColor();
-        final int colorABGR = ColorABGR.pack(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        final int colorABGR = AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        final int overlayABGR = shaderPipeline != null ? AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor()) : AngelicaBufferSource.packAbgr(GLStateManager.getOverlayR(), GLStateManager.getOverlayG(), GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
+        final long entityInfo = shaderPipeline != null ? InstancedAttribs.packEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedItem()) : 0L;
         final int packedLight = GLSMConfig.packedLastBrightness();
         final int mvGen = GLStateManager.getMvGeneration();
         if (!mvCaptured || mvGen != lastMvGeneration) {
@@ -319,29 +358,43 @@ public final class ModelPartBatcher {
             lastMvGeneration = mvGen;
             mvCaptured = true;
         }
-        activeGroups.queue(template, layer, material, modelView, packedLight, colorABGR, entityId, texMatrix, entry.forceStream);
+        activeGroups.queue(template, cubes, scale, layer, material, modelView, packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix);
         parts++;
         return true;
     }
 
     private final ReferenceOpenHashSet<Class<?>> loggedMaterialBails = new ReferenceOpenHashSet<>();
+    private final BlendState bailBlend = new BlendState();
+    private final AlphaState bailAlpha = new AlphaState();
 
     private void logMaterialBail() {
         final Class<?> cls = TesrAttribution.currentRenderable;
         if (cls == null || !loggedMaterialBails.add(cls)) return;
         final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
-        final BlendState blendState = GLStateManager.getBlendState();
-        AngelicaMod.LOGGER.info("TESR MATERIAL bail: cls={} shadow={} textured={} texAnimated={} blend={} src={} dst={} alphaTest={} alphaFunc={} alphaRef={} depthFunc={} depthMask={}",
-            cls.getName(), shadow, textured,
-            textured && !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0)),
-            GLStateManager.getBlendMode().isEnabled(), blendState.getSrcRgb(), blendState.getDstRgb(),
-            GLStateManager.getAlphaTest().isEnabled(),
-            GLStateManager.getAlphaState().getFunction(), GLStateManager.getAlphaState().getReference(),
-            GLStateManager.getDepthState().getFunc(), GLStateManager.getDepthState().isEnabled());
+        final BlendState blendState = GLStateManager.getEffectiveBlendState(bailBlend);
+        final AlphaState alphaState = GLStateManager.getEffectiveAlphaState(bailAlpha);
+        AngelicaMod.LOGGER.info("TESR MATERIAL bail: cls={} shadow={} textured={} texAnimated={} blend={} src={} dst={} alphaTest={} alphaFunc={} alphaRef={} depthFunc={} depthMask={}", cls.getName(), shadow, textured, textured && !unitTexIdentity(), GLStateManager.isEffectiveBlendEnabled(), blendState.getSrcRgb(), blendState.getDstRgb(), GLStateManager.isEffectiveAlphaTestEnabled(), alphaState.getFunction(), alphaState.getReference(), GLStateManager.getDepthState().getFunc(),GLStateManager.isEffectiveDepthMaskEnabled());
+    }
+
+    static int groupId(boolean piped, boolean entityPhase, int entityId, int blockEntityId) {
+        if (!piped) return 0;
+        return entityPhase ? entityId : blockEntityId;
+    }
+
+    private boolean unitTexIdentity() {
+        final int generation = GLStateManager.getTexMatrixGeneration();
+        if (!texCaptured || generation != texGeneration) {
+            final Matrix4f unitMatrix = GLStateManager.getTextures().getTextureUnitMatrix(0);
+            texIdentity = MatrixHelper.isIdentity(unitMatrix);
+            if (!texIdentity) texMatrixScratch.set(unitMatrix);
+            texGeneration = generation;
+            texCaptured = true;
+        }
+        return texIdentity;
     }
 
     private static boolean isDepthEqualDecalState() {
-        return GLStateManager.getDepthState().getFunc() == GL11.GL_EQUAL && !GLStateManager.getDepthState().isEnabled();
+        return GLStateManager.getDepthState().getFunc() == GL11.GL_EQUAL && !GLStateManager.isEffectiveDepthMaskEnabled();
     }
 
     private PartTemplate templateFor(ModelRenderer part, float scale, ModelPartMeshBuilder builder) {
@@ -357,6 +410,7 @@ public final class ModelPartBatcher {
         final PartTemplate entry = reuse != null ? reuse : new PartTemplate();
         entry.scale = scale;
         entry.template = null;
+        entry.cubes = null;
         entry.emptyVanillaPart = false;
         final List<ModelBox> boxes = part.cubeList;
         if (builder != null) {
@@ -372,6 +426,7 @@ public final class ModelPartBatcher {
                 boxes.get(i).render(tess, scale);
             }
             entry.template = captureBackend.endCaptureToTemplate();
+            captureCubes(entry, boxes);
         } else {
             entry.emptyVanillaPart = part.getClass() == ModelRenderer.class;
         }
@@ -379,21 +434,35 @@ public final class ModelPartBatcher {
         return entry;
     }
 
-    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
+    private static void captureCubes(PartTemplate entry, List<ModelBox> boxes) {
+        final int n = boxes.size();
+        CubeParams[] cubes = null;
+        for (int i = 0; i < n; i++) {
+            if (!(boxes.get(i) instanceof ModelBoxData data)) return;
+            final CubeParams params = data.angelica$cubeParams();
+            if (params == null) return;
+            if (cubes == null) cubes = new CubeParams[n];
+            cubes[i] = params;
+        }
+        entry.cubes = cubes;
+    }
+
+    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
         if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
-            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits) {
+            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && glintSlot == lastLayerGlintSlot) {
             return lastLayer;
         }
-        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits));
+        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot));
         if (layer == null) {
-            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits);
-            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits), layer);
+            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot);
+            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot), layer);
         }
         lastLayerTexture = texture;
         lastLayerMaterial = material;
         lastLayerPass = pass;
         lastLayerOffsetFactor = offsetFactor;
         lastLayerOffsetUnits = offsetUnits;
+        lastLayerGlintSlot = glintSlot;
         lastLayer = layer;
         return layer;
     }
@@ -409,11 +478,21 @@ public final class ModelPartBatcher {
     }
 
     public void clear() {
+        shadows.reset();
         groups.clear();
         shadowGroups.clear();
         templates.clear();
         bufferSource.freeBuffers();
         active = false;
+        shaderPipeline = null;
+        layers.clear();
+        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT);
+        lastLayerTexture = null;
+        lastLayerMaterial = null;
+        lastLayerPass = null;
+        lastLayer = null;
+        loggedMaterialBails.clear();
+        lastBoundLocation = null;
     }
 
     public String getDebugString() {

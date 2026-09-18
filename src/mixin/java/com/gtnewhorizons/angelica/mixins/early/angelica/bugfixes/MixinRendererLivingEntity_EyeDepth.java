@@ -1,26 +1,19 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.entity.RenderDragon;
-import net.minecraft.client.renderer.entity.RenderEnderman;
-import net.minecraft.client.renderer.entity.RenderSpider;
+import com.gtnewhorizons.angelica.helpers.RendererLivingEntityHelper;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
-import net.minecraft.entity.Entity;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Slice;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(RendererLivingEntity.class)
 public class MixinRendererLivingEntity_EyeDepth {
 
-    /**
-     * Push the eye out just a tad towards the camera. Fixes Z-Fighting on the eyes.
-     */
-    @WrapOperation(
+    @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V"),
         slice = @Slice(
@@ -28,14 +21,22 @@ public class MixinRendererLivingEntity_EyeDepth {
             to = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
         )
     )
-    private void angelica$eyePassPolygonOffset(ModelBase instance, Entity entity, float a, float b, float c, float d, float e, float f, Operation<Void> original) {
-        if (!((Object) this instanceof RenderSpider) && !((Object) this instanceof RenderEnderman) && !((Object) this instanceof RenderDragon)) {
-            original.call(instance, entity, a, b, c, d, e, f);
-            return;
-        }
+    private void angelica$eyePassPolygonOffset(CallbackInfo ci) {
+        if (!RendererLivingEntityHelper.hasEyePass(this)) return;
         GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
         GLStateManager.glPolygonOffset(-1.0f, -1.0f);
-        original.call(instance, entity, a, b, c, d, e, f);
+    }
+
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", shift = At.Shift.AFTER),
+        slice = @Slice(
+            from = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"),
+            to = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
+        )
+    )
+    private void angelica$eyePassPolygonOffsetEnd(CallbackInfo ci) {
+        if (!RendererLivingEntityHelper.hasEyePass(this)) return;
         GLStateManager.glDisable(GL11.GL_POLYGON_OFFSET_FILL);
         GLStateManager.glPolygonOffset(0.0f, 0.0f);
     }

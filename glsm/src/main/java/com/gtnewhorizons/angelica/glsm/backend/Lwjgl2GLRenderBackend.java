@@ -135,6 +135,12 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void updateDisplayFromWorkerThread(boolean processMessages) {
+        if (processMessages) pumpDisplayMessages();
+        Display.update(false);
+    }
+
+    @Override
     public void flush() {GL11.glFlush();}
 
     @Override

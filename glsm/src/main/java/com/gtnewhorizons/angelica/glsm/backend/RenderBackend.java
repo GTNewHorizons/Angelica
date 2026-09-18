@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm.backend;
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
 import org.lwjgl.opengl.GL20;
 
@@ -250,6 +251,13 @@ public abstract class RenderBackend {
     public boolean handleReleaseContext(Object drawable) { return false; }
     public boolean handleSwapBuffers() { return false; }
     public void onRenderThreadReleased(Thread thread) {}
+
+    public void updateDisplayFromWorkerThread(boolean processMessages) throws LWJGLException {
+        GLStateManager.swapBuffers();
+        if (processMessages) {
+            pumpDisplayMessages();
+        }
+    }
 
     public String getTransferDebugInfo() { return null; }
 

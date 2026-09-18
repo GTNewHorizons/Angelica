@@ -1,8 +1,12 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.Arguments;
+import org.junit.jupiter.params.provider.MethodSource;
 import org.lwjgl.PointerBuffer;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
@@ -12,6 +16,7 @@ import org.lwjgl.util.spvc.SpvcReflectedResource;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -31,6 +36,47 @@ class FFPUniformBlockSpirvLayoutTest {
     void fragmentStageBlockMatchesJavaLayout() {
         final FragmentKey fk = FragmentKey.fromPacked(new long[]{0L}, 1);
         assertBlockLayout(FragmentShaderGenerator.generate(fk), Shaderc.shaderc_fragment_shader);
+    }
+
+    static Stream<Arguments> instancedKeys() {
+        return Stream.of(
+            Arguments.of("cube-lightmap-texmat", cubeKey(true, true, false)),
+            Arguments.of("cube-texgen", cubeKey(false, false, true)),
+            Arguments.of("particle-fog-texmat", particleFogTexMatKey())
+        );
+    }
+
+    @ParameterizedTest(name = "{0}")
+    @MethodSource("instancedKeys")
+    void instancedVariantCompilesToSpirv(String label, VertexKey key) {
+        final String glsl = VertexShaderGenerator.generate(key);
+        final SpirvCompiler.Result result = SpirvCompiler.compile(glsl, Shaderc.shaderc_vertex_shader, label, SpirvCompiler.Options.vulkanForced460Core());
+        assertNotNull(result.spirv(), () -> "SPIR-V compile failed: " + result.error() + "\n" + glsl);
+        MemoryUtil.memFree(result.spirv());
+    }
+
+    private static VertexKey cubeKey(boolean lightmapUnit, boolean unit0TextureMatrix, boolean texGen) {
+        long bits = bit("BIT_HAS_VERTEX_COLOR") | bit("BIT_HAS_VERTEX_NORMAL") | bit("BIT_HAS_VERTEX_TEX") | bit("BIT_UNIT_TEX_BASE");
+        if (lightmapUnit) bits |= 1L << (position("BIT_UNIT_TEX_BASE") + 1);
+        if (unit0TextureMatrix || texGen) bits |= bit("BIT_UNIT_TEXMAT_BASE");
+        if (texGen) {
+            bits |= (long) VertexKey.TG_OBJ_LINEAR << position("BIT_TEXGEN_S");
+            bits |= (long) VertexKey.TG_OBJ_LINEAR << position("BIT_TEXGEN_T");
+        }
+        return VertexKey.fromPacked(VertexKey.withInstancing(bits, Instancing.CUBE));
+    }
+
+    private static VertexKey particleFogTexMatKey() {
+        final long bits = bit("BIT_UNIT_TEX_BASE") | 1L << (position("BIT_UNIT_TEX_BASE") + 1) | bit("BIT_UNIT_TEXMAT_BASE") | bit("BIT_FOG");
+        return VertexKey.fromPacked(VertexKey.withInstancing(bits, Instancing.PARTICLE));
+    }
+
+    private static long bit(String name) {
+        return 1L << position(name);
+    }
+
+    private static int position(String name) {
+        return Reflect.getStatic(VertexKey.class, name);
     }
 
     private static void assertBlockLayout(String glsl, int shaderKind) {

@@ -5,6 +5,7 @@ import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
@@ -406,18 +407,30 @@ public abstract class RenderPhase {
         private final Optional<ResourceLocation> id;
         protected boolean bilinear;
         protected boolean mipmap;
+        protected boolean unfilteredAtlas;
 
         public Texture(ResourceLocation id, boolean bilinear, boolean mipmap) {
+            this(id, bilinear, mipmap, false);
+        }
+
+        public Texture(ResourceLocation id, boolean bilinear, boolean mipmap, boolean unfilteredAtlas) {
             super("texture", () -> {
                 GLStateManager.enableTexture();
                 TextureManager lv = Minecraft.getMinecraft().getTextureManager();
                 lv.bindTexture(id);
                 //GLStateManager.setFilter(bilinear, mipmap); // breaks textures. TODO find out why
+                if (unfilteredAtlas) {
+                    TextureUtil.func_152777_a(false, false, 1.0F);
+                }
             }, () -> {
+                if (unfilteredAtlas) {
+                    TextureUtil.func_147945_b();
+                }
             });
             this.id = Optional.of(id);
             this.bilinear = bilinear;
             this.mipmap = mipmap;
+            this.unfilteredAtlas = unfilteredAtlas;
         }
 
         public Texture() {
@@ -425,6 +438,7 @@ public abstract class RenderPhase {
             this.id = Optional.empty();
             this.bilinear = false;
             this.mipmap = false;
+            this.unfilteredAtlas = false;
         }
 
         @Override
@@ -433,7 +447,7 @@ public abstract class RenderPhase {
                 return true;
             } else if (object != null && this.getClass() == object.getClass()) {
                 Texture lv = (Texture)object;
-                return this.id.equals(lv.id) && this.bilinear == lv.bilinear && this.mipmap == lv.mipmap;
+                return this.id.equals(lv.id) && this.bilinear == lv.bilinear && this.mipmap == lv.mipmap && this.unfilteredAtlas == lv.unfilteredAtlas;
             } else {
                 return false;
             }
@@ -446,7 +460,7 @@ public abstract class RenderPhase {
 
         @Override
         public String toString() {
-            return this.name + '[' + this.id + "(blur=" + this.bilinear + ", mipmap=" + this.mipmap + ")]";
+            return this.name + '[' + this.id + "(blur=" + this.bilinear + ", mipmap=" + this.mipmap + ", unfilteredAtlas=" + this.unfilteredAtlas + ")]";
         }
 
         protected Optional<ResourceLocation> getId() {

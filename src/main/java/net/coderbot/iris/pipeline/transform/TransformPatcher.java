@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.CompatShaderTransformer;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.util.EnumMap;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
@@ -138,11 +139,11 @@ public class TransformPatcher {
     }
 
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint) {
-        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs, scrollGlint));
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, scrollGlint, Instancing.NONE));
     }
 
-    public static Map<PatchShaderType, String> patchAttributesInstanced(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint) {
-        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, inputs, scrollGlint, true));
+    public static Map<PatchShaderType, String> patchAttributesInstanced(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs, boolean scrollGlint, Instancing instancing) {
+        return transform(vertex, geometry, tessControl, tessEval, fragment, new AttributeParameters(Patch.ATTRIBUTES, geometry != null, tessControl != null, inputs, scrollGlint, instancing));
     }
 
     public static Map<PatchShaderType, String> patchAttributes(String vertex, String geometry, String tessControl, String tessEval, String fragment, InputAvailability inputs) {

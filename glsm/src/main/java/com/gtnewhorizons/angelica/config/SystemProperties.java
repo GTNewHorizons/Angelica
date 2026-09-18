@@ -54,6 +54,7 @@ public final class SystemProperties {
     public static final boolean FLYBY_EXIT_WHEN_DONE = Boolean.getBoolean("angelica.flyby.exitWhenDone");
     public static final long FLYBY_TIME_OF_DAY = Math.floorMod(Long.getLong("angelica.flyby.timeOfDay", 6000L), 24000L);
     public static final String FLYBY_COMMANDS = System.getProperty("angelica.flyby.commands", "");
+    public static final String FLYBY_ORIGIN = System.getProperty("angelica.flyby.origin", "");
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
 
     // Debug

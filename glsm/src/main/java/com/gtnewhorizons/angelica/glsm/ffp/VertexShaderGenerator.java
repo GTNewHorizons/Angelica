@@ -55,29 +55,41 @@ public final class VertexShaderGenerator {
     }
 
     private static void emitAttributes(StringBuilder sb, VertexKey key) {
+        final Instancing kind = key.instancing();
         sb.append("// Vertex attributes\n");
         sb.append("layout(location = ").append(VertexFormatElement.Usage.POSITION.getAttributeLocation()).append(") in vec3 a_Position;\n");
-        if (key.hasVertexColor()) {
-            sb.append("layout(location = ").append(VertexFormatElement.Usage.COLOR.getAttributeLocation()).append(") in vec4 a_Color;\n");
-        }
-        if (key.hasVertexTexCoord()) {
+        if (kind == Instancing.PARTICLE) {
             sb.append("layout(location = ").append(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord0;\n");
+        } else {
+            if (key.hasVertexColor()) {
+                sb.append("layout(location = ").append(VertexFormatElement.Usage.COLOR.getAttributeLocation()).append(") in vec4 a_Color;\n");
+            }
+            if (kind != Instancing.CUBE) {
+                if (key.hasVertexTexCoord()) {
+                    sb.append("layout(location = ").append(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord0;\n");
+                }
+                if (key.hasVertexLightmap()) {
+                    sb.append("layout(location = ").append(VertexFormatElement.Usage.SECONDARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord1;\n");
+                }
+            }
+            if (key.hasVertexNormal() || kind == Instancing.CUBE) {
+                sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
+            }
         }
-        if (key.hasVertexLightmap()) {
-            sb.append("layout(location = ").append(VertexFormatElement.Usage.SECONDARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord1;\n");
-        }
-        if (key.hasVertexNormal()) {
-            sb.append("layout(location = ").append(VertexFormatElement.Usage.NORMAL.getAttributeLocation()).append(") in vec3 a_Normal;\n");
-        }
-        if (key.instancedDraw()) {
-            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL0).append(") in vec4 a_InstCol0;\n");
-            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL1).append(") in vec4 a_InstCol1;\n");
-            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL2).append(") in vec4 a_InstCol2;\n");
-            sb.append("layout(location = ").append(InstancedAttribs.LOC_MATRIX_COL3).append(") in vec4 a_InstCol3;\n");
-            sb.append("layout(location = ").append(InstancedAttribs.LOC_COLOR).append(") in vec4 a_InstColor;\n");
-            sb.append("layout(location = ").append(InstancedAttribs.LOC_LIGHTMAP).append(") in vec2 a_InstLightmap;\n");
+        for (String d : InstancedGlslHelpers.attributeDecls("a_", kind)) {
+            sb.append(d).append('\n');
         }
         sb.append('\n');
+    }
+
+    private static final String PARTICLE_UV = InstancedGlslHelpers.particleUv("a_InstUv", "a_TexCoord0");
+
+    private static String unit0Source(VertexKey key) {
+        return switch (key.instancing()) {
+            case CUBE -> "cubeUv";
+            case PARTICLE -> PARTICLE_UV;
+            case NONE, TEMPLATE -> key.hasVertexTexCoord() ? "vec4(a_TexCoord0, 0.0, 1.0)" : "u_CurrentTexCoord0";
+        };
     }
 
     private static void emitLineStart(StringBuilder sb) {
@@ -93,6 +105,10 @@ public final class VertexShaderGenerator {
     private static void emitOutputs(StringBuilder sb, VertexKey key) {
         sb.append("// Outputs\n");
         sb.append("out vec4 v_Color;\n");
+        if (key.instancing().hasInstanceHead()) {
+            sb.append("out vec4 v_Overlay;\n");
+            sb.append("invariant gl_Position;\n");
+        }
         if (key.lineStipple()) {
             sb.append("flat out vec2 v_LineStart;\n");
         }
@@ -116,11 +132,16 @@ public final class VertexShaderGenerator {
 
     private static void emitPositionTransform(StringBuilder sb, VertexKey key) {
         sb.append("  // Position transform\n");
-        sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
-        if (key.instancedDraw()) {
-            sb.append("  mat4 instMV = mat4(a_InstCol0, a_InstCol1, a_InstCol2, a_InstCol3);\n");
+        if (key.instancing() == Instancing.PARTICLE) {
+            sb.append("  vec4 pos4 = ").append(InstancedGlslHelpers.particlePos("a_InstCenterHalf", "a_Position")).append(";\n");
+        } else {
+            sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
+        }
+        if (key.instancing().hasInstanceHead()) {
+            sb.append("  mat4 instMV = ").append(InstancedGlslHelpers.mat4FromRows("a_InstRow0", "a_InstRow1", "a_InstRow2")).append(";\n");
             sb.append("  vec4 eyePos = instMV * pos4;\n");
             sb.append("  gl_Position = u_ProjectionMatrix * eyePos;\n");
+            sb.append("  v_Overlay = a_InstOverlay;\n");
         } else {
             sb.append("  gl_Position = u_MVPMatrix * pos4;\n");
 
@@ -134,8 +155,8 @@ public final class VertexShaderGenerator {
 
     private static void emitNormalTransform(StringBuilder sb, VertexKey key) {
         sb.append("  // Normal transform\n");
-        final String srcNormal = key.hasVertexNormal() ? "a_Normal" : "u_CurrentNormal";
-        if (key.instancedDraw()) {
+        final String srcNormal = key.hasVertexNormal() && key.instancing() != Instancing.PARTICLE ? "a_Normal" : "u_CurrentNormal";
+        if (key.instancing().hasInstanceHead()) {
             sb.append("  vec3 normal = normalize(mat3(instMV) * ").append(srcNormal).append(");\n");
             sb.append('\n');
             return;
@@ -156,9 +177,13 @@ public final class VertexShaderGenerator {
         if (key.colorMaterialEnabled()) {
             // Color material: vertex color replaces specific material properties per glColorMaterial mode (Mesa ffvertex_prog.c get_material() bitmask approach)
             sb.append("  vec4 matColor = ");
-            sb.append(key.hasVertexColor() ? "a_Color" : "u_CurrentColor");
-            if (key.instancedDraw()) {
-                sb.append(" * a_InstColor");
+            if (key.instancing() == Instancing.PARTICLE) {
+                sb.append("a_InstColor");
+            } else {
+                sb.append(key.hasVertexColor() ? "a_Color" : "u_CurrentColor");
+                if (key.instancing().hasInstanceHead()) {
+                    sb.append(" * a_InstColor");
+                }
             }
             sb.append(";\n");
 
@@ -255,22 +280,27 @@ public final class VertexShaderGenerator {
     private static void emitColorPassthrough(StringBuilder sb, VertexKey key) {
         sb.append("  // Color passthrough (no lighting)\n");
         final String src = key.hasVertexColor() ? "a_Color" : "u_CurrentColor";
-        if (key.instancedDraw()) {
-            sb.append("  v_Color = ").append(src).append(" * a_InstColor;\n");
-        } else {
-            sb.append("  v_Color = ").append(src).append(";\n");
+        switch (key.instancing()) {
+            case PARTICLE -> sb.append("  v_Color = a_InstColor;\n");
+            case TEMPLATE, CUBE -> sb.append("  v_Color = ").append(src).append(" * a_InstColor;\n");
+            case NONE -> sb.append("  v_Color = ").append(src).append(";\n");
         }
         sb.append('\n');
     }
 
     private static void emitTexCoordPassthrough(StringBuilder sb, VertexKey key) {
+        final boolean cube = key.instancing() == Instancing.CUBE;
+        final boolean unit0FromCube = cube && key.unitTexCoordEnabled(0) && !key.texGenEnabled();
+        final boolean unit23FromCube = cube && key.unit23UvFromUnit0() && (key.unitTexCoordEnabled(2) || key.unitTexCoordEnabled(3));
+        if (unit0FromCube || unit23FromCube) {
+            emitCubeTexCoord(sb);
+        }
+
         if (key.texGenEnabled()) {
             emitTexGenCoordGeneration(sb, key);
         } else if (key.unitTexCoordEnabled(0)) {
             sb.append("  // Texture coordinates - unit 0\n");
-            final String src = key.hasVertexTexCoord()
-                ? "vec4(a_TexCoord0, 0.0, 1.0)"
-                : "u_CurrentTexCoord0";
+            final String src = unit0Source(key);
             if (key.unitTexMatEnabled(0)) {
                 sb.append("  v_TexCoord0 = u_TextureMatrix0 * ").append(src).append(";\n");
             } else {
@@ -279,26 +309,29 @@ public final class VertexShaderGenerator {
         }
 
         if (key.lightmapEnabled()) {
-            if (key.instancedDraw()) {
-                sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(a_InstLightmap, 0.0, 1.0);\n");
-            } else if (key.hasVertexLightmap()) {
-                sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(a_TexCoord1, 0.0, 1.0);\n");
-            } else {
-                sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(u_CurrentLightmapCoord, 0.0, 1.0);\n");
-            }
+            final String lightmap = switch (key.instancing()) {
+                case PARTICLE, TEMPLATE -> "a_InstLightmap";
+                case CUBE -> "a_InstLightmapScale.xy";
+                case NONE -> key.hasVertexLightmap() ? "a_TexCoord1" : "u_CurrentLightmapCoord";
+            };
+            sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(").append(lightmap).append(", 0.0, 1.0);\n");
         }
 
         for (int i = 2; i < VertexKey.MAX_UNITS; i++) {
             if (!key.unitTexCoordEnabled(i)) continue;
-            final String src = key.unit23UvFromUnit0()
-                ? "vec4(a_TexCoord0, 0.0, 1.0)"
-                : "u_CurrentTexCoord" + i;
+            final String src = key.unit23UvFromUnit0() ? unit0Source(key) : "u_CurrentTexCoord" + i;
             if (!key.unit23UvFromUnit0() && key.unitTexMatEnabled(i)) {
                 sb.append("  v_TexCoord").append(i).append(" = u_TextureMatrix").append(i).append(" * ").append(src).append(";\n");
             } else {
                 sb.append("  v_TexCoord").append(i).append(" = ").append(src).append(";\n");
             }
         }
+    }
+
+    private static void emitCubeTexCoord(StringBuilder sb) {
+        sb.append("  // Cube texture net\n");
+        sb.append("  ").append(InstancedGlslHelpers.cubePrelude("", "a_CubeMid", "a_CubeDelta", "a_Normal", "a_CubeTex", "\n  ")).append('\n');
+        sb.append("  vec4 cubeUv = ").append(InstancedGlslHelpers.cubeUv("a_CubeTex", "a_InstLightmapScale", "cubeU.x", "cubeU.y", "cubeV.x", "cubeV.y")).append(";\n\n");
     }
 
     /**

@@ -5,7 +5,6 @@ import com.gtnewhorizon.gtnhlib.client.renderer.DirectTessellator;
 import com.gtnewhorizon.gtnhlib.client.renderer.ITessellatorInstance;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.renderer.Tessellator;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -28,8 +27,7 @@ class DeferredBatchTessellator extends DirectTessellator {
     record DrawRange(long stateKey, int byteOffset, int byteLength, int vertexCount, int drawMode, int flags) {}
 
     private final List<DrawRange> ranges = new ArrayList<>();
-    private final Matrix4f defaultModelview = new Matrix4f();
-    private final Matrix4f defaultModelviewInverse = new Matrix4f();
+    private final ModelViewDelta modelViewDelta = new ModelViewDelta();
     private final Matrix4f deltaMatrix = new Matrix4f(); // reusable scratch
     private final Vector3f scratch = new Vector3f();
     private Matrix4fc currentTransform;
@@ -68,22 +66,14 @@ class DeferredBatchTessellator extends DirectTessellator {
 
     /** Snapshot the current modelview as the "default" for this bracket. */
     void snapshotDefaultModelview() {
-        defaultModelview.set(GLStateManager.getModelViewMatrix());
-        defaultModelview.invert(defaultModelviewInverse);
+        modelViewDelta.snapshot();
     }
 
     @Override
     protected int interceptDraw(Tessellator tess) {
         inIntercept = true;
         try {
-            // Compute delta: if current MV differs from default, pre-transform vertices
-            final Matrix4f currentMV = GLStateManager.getModelViewMatrix();
-            if (!currentMV.equals(defaultModelview)) {
-                defaultModelviewInverse.mul(currentMV, deltaMatrix);
-                this.currentTransform = deltaMatrix;
-            } else {
-                this.currentTransform = null;
-            }
+            this.currentTransform = modelViewDelta.deltaOrNull(deltaMatrix);
 
             final int byteOffsetBefore = bufferLimit();
             final int vertCount = tess.vertexCount;

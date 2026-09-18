@@ -14,6 +14,7 @@ import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.util.ResourceLocation;
@@ -69,9 +70,9 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         return TRANSLUCENT;
     }
 
-    private static MultiPhaseParameters.Builder tesrMaterialPhases(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
+    private static MultiPhaseParameters.Builder tesrMaterialPhases(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
         final MultiPhaseParameters.Builder b = MultiPhaseParameters.builder();
-        b.texture(texture != null ? new RenderPhase.Texture(texture, false, false) : NO_TEXTURE);
+        b.texture(texture != null ? new RenderPhase.Texture(texture, false, false, material.isUnfilteredAtlas()) : NO_TEXTURE);
         if (material.isNoCull()) {
             b.cull(DISABLE_CULLING);
         }
@@ -95,7 +96,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         }
         boolean shaderPhaseTaken = true;
         switch (material.special()) {
-            case GLINT -> b.shader(SPECIAL_GLINT);
+            case GLINT -> b.shader(glintShader(glintSlot));
             case BEACON_BEAM -> b.shader(SPECIAL_BEACON_BEAM);
             case NONE -> {
                 final TesrShader shader = material.shader();
@@ -113,19 +114,35 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
         return b;
     }
 
-    private static final RenderPhase.Shader SPECIAL_GLINT = new RenderPhase.Shader("angelica_special_glint",
-        () -> GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT),
-        GbufferPrograms::teardownSpecialRenderCondition);
+    private static final RenderPhase.Shader[] GLINT_SHADERS = new RenderPhase.Shader[ShaderGlint.TINT_SLOTS + 1];
+
+    private static RenderPhase.Shader glintShader(int slot) {
+        RenderPhase.Shader shader = GLINT_SHADERS[slot + 1];
+        if (shader == null) {
+            shader = new RenderPhase.Shader("angelica_special_glint_" + slot,
+                () -> {
+                    GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+                    ShaderGlint.bindTintedGlint(slot);
+                },
+                GbufferPrograms::teardownSpecialRenderCondition);
+            GLINT_SHADERS[slot + 1] = shader;
+        }
+        return shader;
+    }
     private static final RenderPhase.Shader SPECIAL_BEACON_BEAM = new RenderPhase.Shader("angelica_special_beacon_beam",
         () -> GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM),
         GbufferPrograms::teardownSpecialRenderCondition);
 
     public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material) {
-        return tesr(texture, material, PassOverride.NONE, 0.0f, 0.0f);
+        return tesr(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT);
     }
 
     public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
-        final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material, pass, offsetFactor, offsetUnits).shadeModel(SMOOTH_SHADE_MODEL);
+        return tesr(texture, material, pass, offsetFactor, offsetUnits, ShaderGlint.NO_TINT);
+    }
+
+    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
+        final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material, pass, offsetFactor, offsetUnits, glintSlot).shadeModel(SMOOTH_SHADE_MODEL);
         final boolean sortsTranslucent = material.transparency() != TesrMaterial.Transparency.OPAQUE;
         return of("angelica_tesr_" + material.transparency().name().toLowerCase(Locale.ROOT) + pass.nameSuffix()
                 + (offsetFactor == 0.0f && offsetUnits == 0.0f ? "" : "_offset" + offsetFactor + "_" + offsetUnits),
@@ -135,7 +152,7 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
     public static RenderLayer tesrNoPass(ResourceLocation texture, TesrMaterial material) {
         return of("angelica_tesr_nopass_" + material.transparency().name().toLowerCase(Locale.ROOT),
             BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, false,
-            tesrMaterialPhases(texture, material, PassOverride.NONE, 0.0f, 0.0f).build(false));
+            tesrMaterialPhases(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT).build(false));
     }
 
     public static RenderLayer getOutline(ResourceLocation texture, RenderPhase.Cull cull) {

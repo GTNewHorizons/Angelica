@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 
 /** Excludes renderers that mix batched model parts with their own draws, which reorders their geometry. */
 public final class BatchEligibility {
@@ -13,6 +14,10 @@ public final class BatchEligibility {
     private static boolean allowed;
     private static long drawsAtStart;
     private static long expectedDraws;
+    private static long foreignDraws;
+    private static long bracketDrawsAtStart;
+    private static long bracketExpectedAtStart;
+    private static int bracketDepth;
     private static int parts;
 
     private BatchEligibility() {}
@@ -21,6 +26,7 @@ public final class BatchEligibility {
         if (depth++ > 0) return allowed;
         drawsAtStart = drawCount;
         expectedDraws = 0L;
+        foreignDraws = 0L;
         parts = 0;
         allowed = state == SAFE;
         return allowed;
@@ -29,9 +35,13 @@ public final class BatchEligibility {
     public static byte end(byte state, long drawCount) {
         if (--depth > 0) return state;
         allowed = false;
+        GLSMHooks.resolvePendingProgram();
         if (parts == 0) return state;
         final long foreign = (drawCount - drawsAtStart) - expectedDraws;
-        if (foreign > 0L) return DENIED;
+        if (foreign > 0L) {
+            foreignDraws = foreign;
+            return DENIED;
+        }
         return state == UNKNOWN ? SAFE : state;
     }
 
@@ -50,9 +60,21 @@ public final class BatchEligibility {
         }
     }
 
+    public static void beginExpectedDraws(long drawCount) {
+        if (bracketDepth++ > 0) return;
+        bracketDrawsAtStart = drawCount;
+        bracketExpectedAtStart = expectedDraws;
+    }
+
+    public static void endExpectedDraws(long drawCount) {
+        if (--bracketDepth > 0) return;
+        final long alreadyExpected = expectedDraws - bracketExpectedAtStart;
+        expectedDraws += (drawCount - bracketDrawsAtStart) - alreadyExpected;
+    }
+
     public static void onStateChange(Object renderer, byte state) {
         if (state != DENIED) return;
         final String name = renderer.getClass().getName();
-        GLStateManager.warnOnce("tesr-mixed:" + name, "{} draws its own geometry alongside model parts - excluding it from model part batching", name);
+        GLStateManager.warnOnce("tesr-mixed:" + name, "{} draws its own geometry alongside model parts ({} foreign draws) - excluding it from model part batching", name, foreignDraws);
     }
 }
