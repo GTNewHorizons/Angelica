@@ -60,13 +60,28 @@ vec2 texelsPerPixelOf(vec2 du, vec2 dv, vec2 texelSize) {
     return sqrt(du * du + dv * dv) / texelSize;
 }
 
+#ifdef USE_ANISOTROPIC
+float footprintScale(vec2 du, vec2 dv, vec2 texelSize, float limitTexels) {
+    float footprint = max(length(du / texelSize), length(dv / texelSize));
+    return min(1.0, limitTexels / max(footprint, 1e-8));
+}
+#endif
+
+vec4 sampleTexelSnapped(sampler2D tex, vec2 uv, vec2 texelSize, vec2 du, vec2 dv, vec2 texelsPerPixel) {
+    float gradientScale = exp2(v_MaterialMipBias);
+#ifdef USE_ANISOTROPIC
+    gradientScale *= footprintScale(du * gradientScale, dv * gradientScale, texelSize, TERRAIN_GUTTER);
+#endif
+
+    return textureGrad(tex, snapToTexelCentre(uv, texelSize, texelsPerPixel),
+        du * gradientScale, dv * gradientScale);
+}
+
 vec4 sampleTexelSnapped(sampler2D tex, vec2 uv, vec2 texelSize) {
     vec2 du = dFdx(uv);
     vec2 dv = dFdy(uv);
 
-    float gradientScale = exp2(v_MaterialMipBias);
-    return textureGrad(tex, snapToTexelCentre(uv, texelSize, texelsPerPixelOf(du, dv, texelSize)),
-        du * gradientScale, dv * gradientScale);
+    return sampleTexelSnapped(tex, uv, texelSize, du, dv, texelsPerPixelOf(du, dv, texelSize));
 }
 
 #ifdef USE_RGSS
@@ -83,23 +98,56 @@ const vec2 RGSS_OFFSETS[4] = vec2[4](
     vec2(-0.375,  0.125)
 );
 
+#ifdef USE_ANISOTROPIC
+const float RGSS_FOOTPRINT_LIMIT = 0.75 * TERRAIN_GUTTER;
+#endif
+
 vec4 sampleRGSS(sampler2D tex, vec2 uv, vec2 texelSize) {
     vec2 du = dFdx(uv);
     vec2 dv = dFdy(uv);
 
-    vec2 snapped = snapToTexelCentre(uv, texelSize, texelsPerPixelOf(du, dv, texelSize));
+    vec2 texelsPerPixel = texelsPerPixelOf(du, dv, texelSize);
+    float rgssFactor = smoothstep(1.0, 2.0, max(texelsPerPixel.x, texelsPerPixel.y));
 
-    float gradientScale = exp2(v_MaterialMipBias + RGSS_MIP_BIAS);
-    vec2 gradU = du * gradientScale;
-    vec2 gradV = dv * gradientScale;
+#ifdef USE_ANISOTROPIC
+    float footprint = max(length(du / texelSize), length(dv / texelSize));
+    rgssFactor *= 1.0 - smoothstep(RGSS_FOOTPRINT_LIMIT, TERRAIN_GUTTER, footprint);
+#endif
 
-    vec4 color = vec4(0.0);
-    for (int i = 0; i < 4; i++) {
-        vec2 tap = RGSS_OFFSETS[i].x * du + RGSS_OFFSETS[i].y * dv;
-        color += textureGrad(tex, snapped + tap, gradU, gradV);
+    if (rgssFactor <= 0.0) {
+        return sampleTexelSnapped(tex, uv, texelSize, du, dv, texelsPerPixel);
     }
 
-    return color * 0.25;
+    vec4 rgss = vec4(0.0);
+#ifdef USE_ANISOTROPIC
+    float fit = footprintScale(du, dv, texelSize, RGSS_FOOTPRINT_LIMIT);
+    vec2 spreadU = du * fit;
+    vec2 spreadV = dv * fit;
+
+    // The taps span the footprint; the gradients are one mip sharper, which is what four of them buy.
+    float gradientScale = exp2(v_MaterialMipBias + RGSS_MIP_BIAS);
+    vec2 gradU = spreadU * gradientScale;
+    vec2 gradV = spreadV * gradientScale;
+
+    for (int i = 0; i < 4; i++) {
+        rgss += textureGrad(tex, uv + RGSS_OFFSETS[i].x * spreadU + RGSS_OFFSETS[i].y * spreadV, gradU, gradV);
+    }
+#else
+    float duLength = length(du / texelSize);
+    float dvLength = length(dv / texelSize);
+    float lod = max(0.0, 0.5 * log2(duLength * dvLength) + v_MaterialMipBias + RGSS_MIP_BIAS);
+
+    for (int i = 0; i < 4; i++) {
+        rgss += textureLod(tex, uv + RGSS_OFFSETS[i] * texelSize, lod);
+    }
+#endif
+    rgss *= 0.25;
+
+    if (rgssFactor >= 1.0) {
+        return rgss;
+    }
+
+    return mix(sampleTexelSnapped(tex, uv, texelSize, du, dv, texelsPerPixel), rgss, rgssFactor);
 }
 #endif
 

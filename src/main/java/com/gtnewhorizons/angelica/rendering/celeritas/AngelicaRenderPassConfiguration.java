@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
@@ -31,6 +32,11 @@ public class AngelicaRenderPassConfiguration {
 
         if (rgssEnabled) {
             builder.extraDefine("USE_RGSS", "");
+        }
+        if (SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy()) {
+            builder.extraDefine("USE_ANISOTROPIC", "");
+            builder.extraDefine("TERRAIN_GUTTER",
+                SpritePadding.gutterFor(SodiumGameOptions.terrainMipmapLevels(), true) + ".0");
         }
 
         return builder;
