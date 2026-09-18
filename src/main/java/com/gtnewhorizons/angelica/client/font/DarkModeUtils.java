@@ -37,6 +37,15 @@ public class DarkModeUtils {
     private static final String DEBUG_PULSE = "debug_pulse";
     private static final double DEBUG_PULSE_TIME_SCALE = 5e-9;
 
+    // "getInputStreamByName" is the MCP name; "func_110591_a" is its SRG name, needed because this particular
+    // method isn't remapped to MCP at runtime in this environment even though public IResourcePack methods are
+    // (GTNHLib's PackMcmetaReader hits the same gap and falls back the same way).
+    private static final String[] INPUT_STREAM_METHOD_NAMES = { "getInputStreamByName", "func_110591_a" };
+    // Every mod jar shows up as its own resource pack (FMLFileResourcePack), all sharing one class that doesn't
+    // have this method at all. Caching by class avoids repeating the same failing reflection walk hundreds of
+    // times per reload in a large modpack - a plain HashMap that runs only ever on the client thread.
+    private static final Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new HashMap<>();
+
     private static FontRecolorRule guiFontRule = null;
     // TODO: parsed but not applied anywhere yet - button text recoloring
     private static ButtonFontRules buttonFontRules = null;
@@ -180,15 +189,6 @@ public class DarkModeUtils {
             return null;
         }
     }
-
-    // "getInputStreamByName" is the MCP name; "func_110591_a" is its SRG name, needed because this particular
-    // method isn't remapped to MCP at runtime in this environment even though public IResourcePack methods are
-    // (GTNHLib's PackMcmetaReader hits the same gap and falls back the same way).
-    private static final String[] INPUT_STREAM_METHOD_NAMES = { "getInputStreamByName", "func_110591_a" };
-    // Every mod jar shows up as its own resource pack (FMLFileResourcePack), all sharing one class that doesn't
-    // have this method at all. Caching by class avoids repeating the same failing reflection walk hundreds of
-    // times per reload in a large modpack - a plain HashMap that runs only ever on the client thread.
-    private static final Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new HashMap<>();
 
     private static Method findGetInputStreamByName(Class<?> type) {
         if (INPUT_STREAM_METHOD_CACHE.containsKey(type)) {
