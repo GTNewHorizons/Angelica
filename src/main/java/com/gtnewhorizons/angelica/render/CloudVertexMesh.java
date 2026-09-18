@@ -19,6 +19,7 @@ import static com.gtnewhorizons.angelica.render.CloudDisc.ALWAYS_DRAWN_CELLS;
 import static com.gtnewhorizons.angelica.render.CloudDisc.SCROLL_SPEED;
 import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGE_COUNT;
 import static com.gtnewhorizons.angelica.render.CloudDisc.wedgeOf;
+import static org.joml.Math.clamp;
 
 /**
  * Plates and walls as vertices.
@@ -54,10 +55,17 @@ final class CloudVertexMesh {
     private static final long WALL_SORT_INDEX_MASK = (1L << WALL_SORT_INDEX_BITS) - 1;
     private static final int WALL_SORT_MAX_RUNS = 1 << WALL_SORT_INDEX_BITS;
     private static final int WALL_SORT_MAX_DISTANCE = (1 << WALL_SORT_DISTANCE_BITS) - 1;
+    private static final int RADIX_BITS = 10;
+    private static final int RADIX_SIZE = 1 << RADIX_BITS;
+    private static final int RADIX_MASK = RADIX_SIZE - 1;
     private static final Tracy.ZoneId Z_STAMP_PLATES = Tracy.zoneId("cloudVertexStampPlates", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_PLATE_COVER = Tracy.zoneId("cloudPlateCover", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_STAMP_WALLS = Tracy.zoneId("cloudVertexStampWalls", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_UPLOAD = Tracy.zoneId("cloudVertexUpload", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_GEOMETRY = Tracy.zoneId("cloudVertexGeometry", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_REORDER = Tracy.zoneId("cloudVertexReorder", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_WALL_SORT = Tracy.zoneId("cloudVertexWallSort", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_REORDER_UPLOAD = Tracy.zoneId("cloudVertexReorderUpload", Tracy.COLOR_CLIENT);
 
     static {
         FACE_SHADE_PACKED = new int[4];
@@ -71,6 +79,10 @@ final class CloudVertexMesh {
     private final int[] faceWedgeCursor = new int[FACE_WEDGE_BUCKETS];
     private final int[] wallStart = new int[WEDGE_COUNT + 1];
     private final int[] plateStart = new int[WEDGE_COUNT + 1];
+    private final int[] wallStartScratch = new int[WEDGE_COUNT + 1];
+    private final int[] plateStartScratch = new int[WEDGE_COUNT + 1];
+    private int orderPendingQuads;
+    private int orderPendingAnchorX, orderPendingAnchorZ;
     private final CloudPlateCover plates = new CloudPlateCover();
     private IVertexArrayObject vao;
     private int vertexCount;
@@ -106,8 +118,20 @@ final class CloudVertexMesh {
     private int[] wallRunBucket = new int[4096];
     private int[] wallRunDistance = new int[4096];
     private long[] wallSortKey = new long[4096];
+    private long[] wallSortScratch = new long[4096];
+    private final int[] radixCounts = new int[RADIX_SIZE];
     private boolean forPackShader;
     private int wallCutCells = Integer.MAX_VALUE;
+    private int wallClipRadiusSq;
+    private ByteBuffer pendingUpload;
+    private int pendingVertices = -1;
+    private int vboCapacityVertices;
+    private int uploadCursorBytes = -1;
+    private int uploadTotalBytes;
+    private int uploadVertices;
+    private static final Tracy.ZoneId Z_EBO = Tracy.zoneId("cloudVertexEbo", Tracy.COLOR_CLIENT);
+    private static IntBuffer sharedSequentialIndices;
+    private static int sharedSequentialQuads;
 
     private static int packNormal(byte nx, byte ny, byte nz) {
         final int x = nx & 0xFF, y = ny & 0xFF, z = nz & 0xFF;
@@ -136,8 +160,8 @@ final class CloudVertexMesh {
         return wallStart;
     }
 
-    void buildFast(int radiusCells, float scrollX, float scrollZ, boolean untextured, boolean forPackShader) {
-        beginBuild(untextured, forPackShader);
+    void buildFast(int radiusCells, float scrollX, float scrollZ, boolean forPackShader) {
+        beginBuild(false, forPackShader);
 
         nextQuadDir = DIR_NONE;
         nextQuadGroup = GROUP_PLATE_ALWAYS;
@@ -154,7 +178,7 @@ final class CloudVertexMesh {
         emitQuad(minCell, 0.0, minCell, uWest, vNorth, maxCell, 0.0, minCell, uEast, vNorth,
             maxCell, 0.0, maxCell, uEast, vSouth, minCell, 0.0, maxCell, uWest, vSouth, FACE_UP, NORMAL_POS_Y);
 
-        finishBuild();
+        finishGeometry();
     }
 
     void build(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq,
@@ -176,21 +200,28 @@ final class CloudVertexMesh {
             if (Tracy.FINE_ZONES) Tracy.endZone();
         }
 
-        if (emitUnderside && emitTopSurface) {
-            addInteriorFaces(shape, anchorX, anchorZ, deckTopY, scrollX, scrollZ);
-        }
-
         if (Tracy.FINE_ZONES) Tracy.beginZone(Z_STAMP_WALLS);
         addWalls(shape, anchorX, anchorZ, radiusCells, radiusCellsSq, deckTopY, scrollX, scrollZ);
         if (Tracy.FINE_ZONES) Tracy.endZone();
 
-        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_UPLOAD);
-        finishBuild();
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_GEOMETRY);
+        finishGeometry();
         if (Tracy.FINE_ZONES) Tracy.endZone();
+    }
+
+    void buildInterior(CloudShape shape, int anchorX, int anchorZ, double deckTopY,
+                       float scrollX, float scrollZ, boolean untextured, boolean forPack) {
+        beginBuild(untextured, forPack);
+        addInteriorFaces(shape, anchorX, anchorZ, deckTopY, scrollX, scrollZ);
+        finishGeometry();
     }
 
     private void beginBuild(boolean untextured, boolean forPack) {
         forPackShader = forPack;
+        if (!forPack && quadCell.length < quadFace.length) {
+            quadCell = new int[quadFace.length];
+            quadGroupBits = new short[quadFace.length];
+        }
         final boolean withUv = !untextured;
         vertexStride = withUv ? STRIDE_WITH_UV : STRIDE_NO_UV;
         normalOffset = withUv ? NORMAL_OFFSET_WITH_UV : NORMAL_OFFSET_NO_UV;
@@ -203,7 +234,18 @@ final class CloudVertexMesh {
         final int bytesPerRect = (emitUnderside ? quadBytes : 0) + (emitTopSurface ? quadBytes : 0);
         if (bytesPerRect == 0) return;
 
-        plates.build(shape, anchorX, anchorZ, radiusCells, radiusCellsSq, plateLodCells);
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_PLATE_COVER);
+        plates.build(shape, anchorX, anchorZ, radiusCells, radiusCellsSq, plateLodCells, !forPackShader);
+        if (Tracy.FINE_ZONES) Tracy.endZone();
+
+        if (forPackShader) {
+            nextQuadDir = DIR_NONE;
+            nextQuadGroup = GROUP_PLATE_ALWAYS;
+            nextQuadWedge = 0;
+            if (emitUnderside) emitPlatePass(true, false, plateTopY, scrollX, scrollZ);
+            if (emitTopSurface) emitPlatePass(false, true, plateTopY, scrollX, scrollZ);
+            return;
+        }
 
         for (int i = 0; i < plates.count(); i++) {
             final int rect = plates.orderedRect(i);
@@ -218,28 +260,38 @@ final class CloudVertexMesh {
         }
     }
 
+    private void emitPlatePass(boolean emitUnderside, boolean emitTopSurface, double plateTopY, float scrollX, float scrollZ) {
+        for (int rect = 0; rect < plates.count(); rect++) {
+            nextQuadCellX = plates.minX(rect);
+            nextQuadCellZ = plates.minZ(rect);
+            emitPlateRect(plates.minX(rect), plates.minZ(rect), plates.maxX(rect) + 1, plates.maxZ(rect) + 1,
+                emitUnderside, emitTopSurface, plateTopY, scrollX, scrollZ, quadBytes);
+        }
+    }
+
     private void addWalls(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq,
                           double deckTopY, float scrollX, float scrollZ) {
         final int texW = shape.width;
         final int texH = shape.height;
 
         final int bandsPerWedge = radiusCells + 1;
+        final long cutCellsSq = (long) wallCutCells * wallCutCells;
+        wallClipRadiusSq = forPackShader && cutCellsSq < radiusCellsSq ? (int) cutCellsSq : radiusCellsSq;
         wallRunCount = 0;
-        collectWallRuns(shape.westRuns, DIR_WEST, anchorX, anchorZ, texW, texH, radiusCells, radiusCellsSq, bandsPerWedge);
-        collectWallRuns(shape.eastRuns, DIR_EAST, anchorX, anchorZ, texW, texH, radiusCells, radiusCellsSq, bandsPerWedge);
-        collectWallRuns(shape.northRuns, DIR_NORTH, anchorX, anchorZ, texW, texH, radiusCells, radiusCellsSq, bandsPerWedge);
-        collectWallRuns(shape.southRuns, DIR_SOUTH, anchorX, anchorZ, texW, texH, radiusCells, radiusCellsSq, bandsPerWedge);
+        collectWallRuns(shape.westRuns, DIR_WEST, anchorX, anchorZ, texW, texH, bandsPerWedge);
+        collectWallRuns(shape.eastRuns, DIR_EAST, anchorX, anchorZ, texW, texH, bandsPerWedge);
+        collectWallRuns(shape.northRuns, DIR_NORTH, anchorX, anchorZ, texW, texH, bandsPerWedge);
+        collectWallRuns(shape.southRuns, DIR_SOUTH, anchorX, anchorZ, texW, texH, bandsPerWedge);
         final int found = wallRunCount;
 
         if (found == 0) return;
 
         if (forPackShader) {
+            nextQuadGroup = GROUP_ALWAYS_DRAWN;
+            nextQuadWedge = 0;
             for (int i = 0; i < found; i++) {
                 final int run = i * 4;
-                final int bucket = wallRunBucket[i];
                 nextQuadDir = wallRuns[run];
-                nextQuadGroup = bucket == 0 ? GROUP_ALWAYS_DRAWN : GROUP_WALL_WEDGE;
-                nextQuadWedge = bucket == 0 ? 0 : (bucket - 1) / bandsPerWedge;
                 nextQuadCellX = wallRuns[run + 1];
                 nextQuadCellZ = wallRuns[run + 2];
                 emitWallRun(wallRuns[run], wallRuns[run + 1], wallRuns[run + 2], wallRuns[run + 3], deckTopY, scrollX, scrollZ);
@@ -253,7 +305,9 @@ final class CloudVertexMesh {
                 | ((long) wallRunDistance[i] << WALL_SORT_INDEX_BITS)
                 | i;
         }
-        Arrays.sort(wallSortKey, 0, found);
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_WALL_SORT);
+        radixSortWallKeys(found);
+        if (Tracy.FINE_ZONES) Tracy.endZone();
 
         for (int i = 0; i < found; i++) {
             final long key = wallSortKey[i];
@@ -269,10 +323,11 @@ final class CloudVertexMesh {
         }
     }
 
-    private void collectWallRuns(int[] runs, int dir, int anchorX, int anchorZ, int texW, int texH, int radiusCells, int radiusCellsSq, int bandsPerWedge) {
+    private void collectWallRuns(int[] runs, int dir, int anchorX, int anchorZ, int texW, int texH, int bandsPerWedge) {
         final boolean alongZ = dir == DIR_WEST || dir == DIR_EAST;
-        final int minCell = -radiusCells;
-        final int maxCell = radiusCells;
+        final int clipRadiusCells = (int) Math.sqrt(wallClipRadiusSq);
+        final int minCell = -clipRadiusCells;
+        final int maxCell = clipRadiusCells;
 
         for (int r = 0; r < runs.length; r += 3) {
             final int len = runs[r + 2];
@@ -286,8 +341,8 @@ final class CloudVertexMesh {
 
                     final int startX, startZ, span;
                     if (alongZ) {
-                        if (runX < minCell || runX > maxCell) continue;
-                        final int halfSpan = (int) Math.sqrt(radiusCellsSq - runX * runX);
+                        if (runX * runX > wallClipRadiusSq) continue;
+                        final int halfSpan = (int) Math.sqrt(wallClipRadiusSq - runX * runX);
                         final int z0 = Math.max(runZ, -halfSpan);
                         final int z1 = Math.min(runZ + len - 1, halfSpan);
                         if (z0 > z1) continue;
@@ -295,14 +350,19 @@ final class CloudVertexMesh {
                         startZ = z0;
                         span = z1 - z0 + 1;
                     } else {
-                        if (runZ < minCell || runZ > maxCell) continue;
-                        final int halfSpan = (int) Math.sqrt(radiusCellsSq - runZ * runZ);
+                        if (runZ * runZ > wallClipRadiusSq) continue;
+                        final int halfSpan = (int) Math.sqrt(wallClipRadiusSq - runZ * runZ);
                         final int x0 = Math.max(runX, -halfSpan);
                         final int x1 = Math.min(runX + len - 1, halfSpan);
                         if (x0 > x1) continue;
                         startX = x0;
                         startZ = runZ;
                         span = x1 - x0 + 1;
+                    }
+
+                    if (forPackShader) {
+                        recordWallRun(dir, startX, startZ, span, 0, 0);
+                        continue;
                     }
 
                     int pieceStart = 0;
@@ -338,6 +398,37 @@ final class CloudVertexMesh {
                 }
             }
         }
+    }
+
+    private void radixSortWallKeys(int count) {
+        if (count < 2) return;
+        if (wallSortScratch.length < count) wallSortScratch = new long[count];
+
+        long[] src = wallSortKey;
+        long[] dst = wallSortScratch;
+        final int[] counts = radixCounts;
+
+        for (int shift = WALL_SORT_INDEX_BITS; shift < Long.SIZE; shift += RADIX_BITS) {
+            Arrays.fill(counts, 0);
+            for (int i = 0; i < count; i++) counts[(int) ((src[i] >>> shift) & RADIX_MASK)]++;
+
+            boolean uniform = false;
+            int acc = 0;
+            for (int d = 0; d < RADIX_SIZE; d++) {
+                final int c = counts[d];
+                if (c == count) uniform = true;
+                counts[d] = acc;
+                acc += c;
+            }
+            if (uniform) continue;
+
+            for (int i = 0; i < count; i++) dst[counts[(int) ((src[i] >>> shift) & RADIX_MASK)]++] = src[i];
+            final long[] swap = src;
+            src = dst;
+            dst = swap;
+        }
+
+        if (src != wallSortKey) System.arraycopy(src, 0, wallSortKey, 0, count);
     }
 
     private void recordWallRun(int dir, int relX, int relZ, int span, int bucket, int distance256ths) {
@@ -442,43 +533,109 @@ final class CloudVertexMesh {
         emitQuad(x0, yTop, z1, uLeft, vCentre, x1, yTop, z1, uRight, vCentre, x1, yBottom, z1, uRight, vCentre, x0, yBottom, z1, uLeft, vCentre, FACE_SIDE_Z, NORMAL_NEG_Z);
     }
 
-    private void finishBuild() {
+    private void finishGeometry() {
         final int totalBytes = (int) (writeAddr - emitBufferAddr);
         final int vertices = totalBytes / vertexStride;
+        pendingVertices = vertices;
         if (vertices == 0) {
+            pendingUpload = null;
+            return;
+        }
+        if (forPackShader) {
+            pendingUpload = sortQuadsByFace(totalBytes);
+        } else {
+            emitBuffer.position(0).limit(totalBytes);
+            pendingUpload = emitBuffer;
+        }
+    }
+
+    void discardPendingUpload() {
+        pendingVertices = -1;
+        pendingUpload = null;
+        uploadCursorBytes = -1;
+    }
+
+    void uploadBuilt() {
+        if (beginUpload()) uploadSlice(Integer.MAX_VALUE);
+    }
+
+    boolean beginUpload() {
+        final int vertices = pendingVertices;
+        pendingVertices = -1;
+        if (vertices <= 0) {
+            pendingUpload = null;
             if (vao != null) {
                 vao.delete();
                 vao = null;
             }
+            vboCapacityVertices = 0;
             vertexCount = 0;
-            return;
+            return false;
         }
 
-        final ByteBuffer upload;
-        if (forPackShader) {
-            sortQuadsByFace();
-            upload = sortedBuffer;
-        } else {
-            emitBuffer.position(0).limit(totalBytes);
-            upload = emitBuffer;
-        }
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_UPLOAD);
+        try {
+            final boolean wantUv = vertexStride == STRIDE_WITH_UV;
+            if (vao != null && vaoHasUv != wantUv) {
+                vao.delete();
+                vao = null;
+                vboCapacityVertices = 0;
+            }
 
-        final boolean wantUv = vertexStride == STRIDE_WITH_UV;
-        if (vao != null && vaoHasUv != wantUv) {
-            vao.delete();
-            vao = null;
+            uploadVertices = vertices;
+            uploadTotalBytes = vertices * vertexStride;
+
+            if (vao != null && vertices <= vboCapacityVertices) {
+                uploadCursorBytes = 0;
+                return true;
+            }
+
+            final ByteBuffer source = pendingUpload;
+            final int roomyVertices = clamp(vertices, vertices + (vertices >> 1), source.capacity() / vertexStride);
+            source.position(0).limit(roomyVertices * vertexStride);
+            if (vao == null) {
+                vao = VertexBufferType.MUTABLE_RESIZABLE.allocate(
+                    wantUv ? DefaultVertexFormat.POSITION_TEXTURE_NORMAL : DefaultVertexFormat.POSITION_NORMAL,
+                    GL11.GL_TRIANGLES, source, roomyVertices);
+                vaoHasUv = wantUv;
+                setupShadeAttrib();
+            } else {
+                vao.getVBO().allocate(source, roomyVertices);
+            }
+            vboCapacityVertices = roomyVertices;
+            uploadCursorBytes = uploadTotalBytes;
+            return true;
+        } finally {
+            if (Tracy.FINE_ZONES) Tracy.endZone();
         }
-        if (vao == null) {
-            vao = VertexBufferType.MUTABLE_RESIZABLE.allocate(
-                wantUv ? DefaultVertexFormat.POSITION_TEXTURE_NORMAL : DefaultVertexFormat.POSITION_NORMAL,
-                GL11.GL_TRIANGLES, upload, vertices);
-            vaoHasUv = wantUv;
-            setupShadeAttrib();
-        } else {
-            vao.getVBO().allocate(upload, vertices);
+    }
+
+    boolean uploadSlice(int maxBytes) {
+        if (uploadCursorBytes < 0) return true;
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_UPLOAD);
+        try {
+            if (uploadCursorBytes < uploadTotalBytes) {
+                final int sliceBytes = Math.min(maxBytes, uploadTotalBytes - uploadCursorBytes);
+                final ByteBuffer source = pendingUpload;
+                source.position(uploadCursorBytes).limit(uploadCursorBytes + sliceBytes);
+                vao.getVBO().update(source, uploadCursorBytes);
+                uploadCursorBytes += sliceBytes;
+                if (uploadCursorBytes < uploadTotalBytes) return false;
+            }
+            finishUpload();
+            return true;
+        } finally {
+            if (Tracy.FINE_ZONES) Tracy.endZone();
         }
-        vertexCount = vertices;
-        ensureEbo(vertices / 4);
+    }
+
+    private void finishUpload() {
+        uploadCursorBytes = -1;
+        pendingUpload = null;
+        vertexCount = uploadVertices;
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_EBO);
+        ensureEbo(uploadVertices / 4);
+        if (Tracy.FINE_ZONES) Tracy.endZone();
         orderAnchorX = Integer.MIN_VALUE;
         orderAnchorZ = Integer.MIN_VALUE;
     }
@@ -496,9 +653,14 @@ final class CloudVertexMesh {
         return anchorX != orderAnchorX || anchorZ != orderAnchorZ;
     }
 
+    boolean orderPublished() {
+        return orderAnchorX != Integer.MIN_VALUE;
+    }
+
     void reorder(int anchorX, int anchorZ) {
         final int quads = vertexCount / 4;
         if (quads == 0) return;
+        if (quads > quadCell.length) return;
         if (Tracy.FINE_ZONES) Tracy.beginZone(Z_REORDER);
 
         final int dx = anchorX - buildAnchorX;
@@ -549,10 +711,10 @@ final class CloudVertexMesh {
         }
         orderBucketCount[bucketCount] = acc;
 
-        for (int w = 0; w < WEDGE_COUNT; w++) plateStart[w] = orderBucketCount[(1 + w) * bands];
-        plateStart[WEDGE_COUNT] = orderBucketCount[(1 + WEDGE_COUNT) * bands];
-        for (int w = 0; w < WEDGE_COUNT; w++) wallStart[w] = orderBucketCount[(2 + WEDGE_COUNT + w) * bands];
-        wallStart[WEDGE_COUNT] = orderBucketCount[(2 + 2 * WEDGE_COUNT) * bands];
+        for (int w = 0; w < WEDGE_COUNT; w++) plateStartScratch[w] = orderBucketCount[(1 + w) * bands];
+        plateStartScratch[WEDGE_COUNT] = orderBucketCount[(1 + WEDGE_COUNT) * bands];
+        for (int w = 0; w < WEDGE_COUNT; w++) wallStartScratch[w] = orderBucketCount[(2 + WEDGE_COUNT + w) * bands];
+        wallStartScratch[WEDGE_COUNT] = orderBucketCount[(2 + 2 * WEDGE_COUNT) * bands];
 
         final int needed = quads * 6;
         if (orderIndexBuffer == null || orderIndexBuffer.capacity() < needed) {
@@ -578,15 +740,31 @@ final class CloudVertexMesh {
         indices.put(out, 0, needed);
         indices.flip();
 
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_DYNAMIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
-        eboQuadCapacity = quads;
-        eboIsSequential = false;
-        orderAnchorX = anchorX;
-        orderAnchorZ = anchorZ;
+        orderPendingQuads = quads;
+        orderPendingAnchorX = anchorX;
+        orderPendingAnchorZ = anchorZ;
 
         if (Tracy.FINE_ZONES) Tracy.endZone();
+    }
+
+    void reorderUpload() {
+        if (orderPendingQuads <= 0) return;
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_REORDER_UPLOAD);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, orderIndexBuffer, GL15.GL_DYNAMIC_DRAW);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        System.arraycopy(plateStartScratch, 0, plateStart, 0, plateStart.length);
+        System.arraycopy(wallStartScratch, 0, wallStart, 0, wallStart.length);
+        eboQuadCapacity = orderPendingQuads;
+        eboIsSequential = false;
+        orderAnchorX = orderPendingAnchorX;
+        orderAnchorZ = orderPendingAnchorZ;
+        orderPendingQuads = 0;
+        if (Tracy.FINE_ZONES) Tracy.endZone();
+    }
+
+    void discardPendingReorder() {
+        orderPendingQuads = 0;
     }
 
     private void ensureEbo(int quads) {
@@ -596,6 +774,18 @@ final class CloudVertexMesh {
 
         if (quads <= eboQuadCapacity && eboIsSequential) return;
         eboIsSequential = true;
+        final int capacity = Math.max(quads + (quads >> 1), 4096);
+        final IntBuffer indices = sequentialIndices(capacity);
+        indices.position(0).limit(capacity * 6);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
+        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
+        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
+        eboQuadCapacity = capacity;
+    }
+
+    private static IntBuffer sequentialIndices(int quads) {
+        if (sharedSequentialIndices != null && sharedSequentialQuads >= quads) return sharedSequentialIndices;
+
         final IntBuffer indices = BufferUtils.createIntBuffer(quads * 6);
         for (int q = 0; q < quads; q++) {
             final int v = q * 4;
@@ -603,10 +793,9 @@ final class CloudVertexMesh {
             indices.put(v).put(v + 2).put(v + 3);
         }
         indices.flip();
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, eboId);
-        GLStateManager.glBufferData(GL15.GL_ELEMENT_ARRAY_BUFFER, indices, GL15.GL_STATIC_DRAW);
-        GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, 0);
-        eboQuadCapacity = quads;
+        sharedSequentialIndices = indices;
+        sharedSequentialQuads = quads;
+        return indices;
     }
 
     void deleteEbo() {
@@ -622,6 +811,7 @@ final class CloudVertexMesh {
             vao.delete();
             vao = null;
         }
+        vboCapacityVertices = 0;
         vertexCount = 0;
     }
 
@@ -649,12 +839,9 @@ final class CloudVertexMesh {
         return faceWedgeStart[base + WEDGE_BUCKETS] == faceWedgeStart[base];
     }
 
-    int drawFace(int face) {
+    void drawFace(int face) {
         final int base = face * WEDGE_BUCKETS;
-        final int start = faceWedgeStart[base];
-        final int end = faceWedgeStart[base + WEDGE_BUCKETS];
-        drawRange(start, end);
-        return Math.max(0, end - start);
+        drawRange(faceWedgeStart[base], faceWedgeStart[base + WEDGE_BUCKETS]);
     }
 
     private void prepareEmitBuffer() {
@@ -690,11 +877,15 @@ final class CloudVertexMesh {
     private void emitQuad(double x0, double y0, double z0, float u0, float v0, double x1, double y1, double z1, float u1, float v1, double x2, double y2, double z2, float u2, float v2, double x3, double y3, double z3, float u3, float v3, byte face, int packedNormal) {
         if (quadCount == quadFace.length) {
             quadFace = Arrays.copyOf(quadFace, quadFace.length * 2);
-            quadCell = Arrays.copyOf(quadCell, quadCell.length * 2);
-            quadGroupBits = Arrays.copyOf(quadGroupBits, quadGroupBits.length * 2);
+            if (!forPackShader) {
+                quadCell = Arrays.copyOf(quadCell, quadCell.length * 2);
+                quadGroupBits = Arrays.copyOf(quadGroupBits, quadGroupBits.length * 2);
+            }
         }
-        quadCell[quadCount] = (nextQuadCellX << 16) | (nextQuadCellZ & 0xFFFF);
-        quadGroupBits[quadCount] = (short) ((nextQuadDir << 7) | (nextQuadGroup << 5) | nextQuadWedge);
+        if (!forPackShader) {
+            quadCell[quadCount] = (nextQuadCellX << 16) | (nextQuadCellZ & 0xFFFF);
+            quadGroupBits[quadCount] = (short) ((nextQuadDir << 7) | (nextQuadGroup << 5) | nextQuadWedge);
+        }
         quadFace[quadCount++] = face;
 
         final int normalAndShade = packedNormal | FACE_SHADE_PACKED[face];
@@ -718,17 +909,18 @@ final class CloudVertexMesh {
         return addr + vertexStride;
     }
 
-    private void sortQuadsByFace() {
+    private ByteBuffer sortQuadsByFace(int emittedBytes) {
         final int quadTotal = quadCount;
         Arrays.fill(faceWedgeStart, 0);
 
         if (quadSortKey.length < quadTotal) quadSortKey = new int[quadTotal];
         final byte[] faces = quadFace;
+        boolean alreadyGrouped = true;
+        int previousKey = 0;
         for (int q = 0; q < quadTotal; q++) {
-            final int groupBits = quadGroupBits[q];
-            final int group = (groupBits >> 5) & 3;
-            final int wedgeBucket = (group == GROUP_PLATE_WEDGE || group == GROUP_WALL_WEDGE) ? 1 + (groupBits & 31) : 0;
-            final int key = faces[q] * WEDGE_BUCKETS + wedgeBucket;
+            final int key = faces[q] * WEDGE_BUCKETS;
+            if (key < previousKey) alreadyGrouped = false;
+            previousKey = key;
             quadSortKey[q] = key;
             faceWedgeStart[key]++;
         }
@@ -741,6 +933,11 @@ final class CloudVertexMesh {
             acc += count;
         }
         faceWedgeStart[FACE_WEDGE_BUCKETS] = acc;
+
+        if (alreadyGrouped) {
+            emitBuffer.position(0).limit(emittedBytes);
+            return emitBuffer;
+        }
 
         final int totalBytes = quadTotal * quadBytes;
         if (sortedBuffer == null || sortedBufferCapacity < totalBytes) {
@@ -767,5 +964,6 @@ final class CloudVertexMesh {
         }
 
         sortedBuffer.position(0).limit(totalBytes);
+        return sortedBuffer;
     }
 }

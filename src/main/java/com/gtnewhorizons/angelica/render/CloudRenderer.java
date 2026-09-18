@@ -53,6 +53,9 @@ import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
 import java.nio.ByteBuffer;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executor;
+import java.util.concurrent.Executors;
 
 import static com.gtnewhorizons.angelica.render.CloudDisc.CELLS_PER_CHUNK;
 import static com.gtnewhorizons.angelica.render.CloudDisc.MARGIN_CELLS;
@@ -68,14 +71,17 @@ import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGES_PER_RADIAN;
  * <li>Reduce the texture to cells, plate rectangles and wall runs into {@link CloudShape}.
  * <li>Convert the camera position to cell space: the anchor cell, the fraction across it, and how far the
  *     cloud base sits above the camera.
- * <li>Figure out what plates a player can see.
+ * <li>Work out which faces the view needs: the underside, the top surface, or both when the camera is
+ *     inside the deck.
  * <li>Get the two detail distances from {@link CloudDisc}: where walls stop being built, and where
  *     {@link CloudPlateCover} switches to coarse plate rectangles.
  * <li>Choose the mesher: {@link CloudFaceMesh} inside the deck, {@link CloudVertexMesh} elsewhere and
  *     always for shader packs.
- * <li>Rebuild through {@link #rebuildGeometry} when the cache is stale.
- * <li>Reorder near-to-far with {@link CloudVertexMesh#reorder} on every cell crossed.
- * <li>Upload matrices and fog into {@link CloudUniforms}, then {@link #drawVisibleWedges}.
+ * <li>Pick the matching program depending on whether every solid texel is plain white.
+ * <li>Rebuild when the cache is stale. {@link CloudVertexMesh} builds on a worker thread.
+ * <li>Reorder near-to-far on every cell crossed, and keep the cell the camera sits in up to date.
+ * <li>Upload matrices, fog and the texture scroll into {@link CloudUniforms}, then
+ *     {@link #drawVisibleWedges}.
  * </ol>
  */
 public class CloudRenderer implements IResourceManagerReloadListener {
@@ -83,14 +89,37 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private static final int MODE_FAST = 1;
     private static final int MODE_FANCY = 2;
     private static final float MAX_FAR_PLANE_DISTANCE = 65536.0f;
+    private static final int UPLOAD_SLICE_BYTES = 256 * 1024;
 
+    private static final Tracy.ZoneId Z_RENDER = Tracy.zoneId("cloudRender", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_SUBMIT = Tracy.zoneId("cloudSubmit", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_DRAW = Tracy.zoneId("cloudDraw", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_ASYNC_BUILD = Tracy.zoneId("cloudAsyncBuild", Tracy.COLOR_CLIENT);
+    private static final Executor BUILD_THREAD = Executors.newSingleThreadExecutor(task -> {
+        final Thread thread = new Thread(task, "Angelica Cloud Builder");
+        thread.setDaemon(true);
+        thread.setPriority(Thread.NORM_PRIORITY - 1);
+        return thread;
+    });
     private static CloudRenderer instance;
     private final Minecraft mc = Minecraft.getMinecraft();
     private final ResourceLocation texture = new ResourceLocation("textures/environment/clouds.png");
     private final CloudFaceMesh faceMesh = new CloudFaceMesh();
-    private final CloudVertexMesh vertexMesh = new CloudVertexMesh();
+    private CloudVertexMesh vertexMesh = new CloudVertexMesh();
+    private CloudVertexMesh spareMesh = new CloudVertexMesh();
+    private final CloudVertexMesh interiorMesh = new CloudVertexMesh();
+    private int interiorAnchorX = Integer.MIN_VALUE, interiorAnchorZ = Integer.MIN_VALUE;
+    private int interiorShapeGeneration = Integer.MIN_VALUE;
+    private float interiorCellHeight = Float.NaN;
+    private boolean interiorShadersActive, interiorActive;
+    private float interiorDriftX, interiorDriftZ;
+    private CompletableFuture<Void> buildInFlight;
+    private CompletableFuture<Void> reorderInFlight;
+    private CloudVertexMesh reorderMesh;
+    private BuildParams buildParams;
+    private BuildParams uploadParams;
     private final Matrix4f mvpScratch = new Matrix4f();
+    private final Matrix4f mvpInteriorScratch = new Matrix4f();
     private final Matrix4f modelViewScratch = new Matrix4f();
     private CloudShape shape;
     private int shapeGeneration;
@@ -110,12 +139,15 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private boolean geometryBuilt;
     private int wallCutCells = Integer.MAX_VALUE;
     private int plateLodCells = Integer.MAX_VALUE;
+    private int cachedFovDisplayHeight = -1;
+    private float cachedFovDegrees = Float.NaN;
+    private double cachedPixelsPerRadian;
     private int cloudMode = -1, renderDistance = -1, cloudElevation = -1, scaleMult = -1;
     private boolean enabled;
     private double driftCells;
     private int arcFrom, arcTo;
-    private int drawnQuads, drawCalls;
-    private boolean programUntextured;
+    private int drawCalls;
+    private boolean programUntextured, programFacesUntextured;
     private GlProgram<CloudUniforms> program;
     private GlProgram<CloudUniforms> programVertex, programFaces;
 
@@ -195,17 +227,28 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         cachedRenderRadiusChunks = -1;
         cachedShapeGeneration = Integer.MIN_VALUE;
         cachedCellHeightBlocks = Float.NaN;
+        cancelAsyncBuild();
         vertexMesh.clear();
+        spareMesh.clear();
+        interiorMesh.clear();
+        interiorAnchorX = Integer.MIN_VALUE;
+        interiorAnchorZ = Integer.MIN_VALUE;
+        interiorActive = false;
         faceMesh.clear();
         geometryBuilt = false;
     }
 
     private void initProgram(boolean useFaceMesh) {
+        final boolean untextured = untextured();
+        if (programFaces != null && programFacesUntextured != untextured) {
+            programFaces.delete();
+            programFaces = null;
+        }
         if (programFaces == null) {
-            programFaces = buildProgram(true, true);
+            programFaces = buildProgram(true, untextured);
+            programFacesUntextured = untextured;
         }
 
-        final boolean untextured = untextured();
         if (programVertex != null && programUntextured != untextured) {
             programVertex.delete();
             programVertex = null;
@@ -247,8 +290,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         return built;
     }
 
-    private void uploadFogUniforms(float fogStart, float fogEnd) {
-        final CloudUniforms uniforms = program.getInterface();
+    private void uploadFogUniforms(CloudUniforms uniforms, float fogStart, float fogEnd) {
         final boolean fogEnabled = GLStateManager.getFogMode().isEnabled();
         uniforms.setFogEnabled(fogEnabled);
         if (!fogEnabled) return;
@@ -266,6 +308,16 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     public boolean render(int cloudTicks, float partialTicks) {
+        if (!Tracy.ENABLED) return renderInner(cloudTicks, partialTicks);
+        Tracy.beginZone(Z_RENDER);
+        try {
+            return renderInner(cloudTicks, partialTicks);
+        } finally {
+            Tracy.endZone();
+        }
+    }
+
+    private boolean renderInner(int cloudTicks, float partialTicks) {
         if (mc.theWorld == null || mc.renderViewEntity == null) return false;
         if (!enabled || scaleMult <= 0) return false;
 
@@ -288,7 +340,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
 
         final float cameraY = (float) (viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks);
         double cameraCellX = (viewEntity.prevPosX + (viewEntity.posX - viewEntity.prevPosX) * partialTicks + cloudTick * 0.03D) / cellWidthBlocks;
-        double cameraCellZ = (viewEntity.prevPosZ + (viewEntity.posZ - viewEntity.prevPosZ) * partialTicks) / cellWidthBlocks;
+        double cameraCellZ = (viewEntity.prevPosZ + (viewEntity.posZ - viewEntity.prevPosZ) * partialTicks) / cellWidthBlocks
+            + 0.33000001311302185D;
         cameraCellX -= MathHelper.floor_double(cameraCellX / 2048.0D) * 2048;
         cameraCellZ -= MathHelper.floor_double(cameraCellZ / 2048.0D) * 2048;
 
@@ -308,8 +361,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         final boolean shadersActive = IrisApi.getInstance().isShaderPackInUse();
         final boolean backFaceCulling = cullBackFaces();
 
-        final double pixelsPerRadian = CloudDisc.pixelsPerRadian(
-            mc.displayHeight, mc.gameSettings == null ? 70.0f : mc.gameSettings.fovSetting);
+        final float fovDegrees = mc.gameSettings == null ? 70.0f : mc.gameSettings.fovSetting;
+        if (mc.displayHeight != cachedFovDisplayHeight || fovDegrees != cachedFovDegrees) {
+            cachedPixelsPerRadian = CloudDisc.pixelsPerRadian(mc.displayHeight, fovDegrees);
+            cachedFovDisplayHeight = mc.displayHeight;
+            cachedFovDegrees = fovDegrees;
+        }
+        final double pixelsPerRadian = cachedPixelsPerRadian;
         wallCutCells = CloudDisc.wallCutCells(pixelsPerRadian, !(backFaceCulling && insideDeck));
         plateLodCells = CloudDisc.plateLodCells(pixelsPerRadian, cloudBaseRelativeY, cellWidthBlocks,
             shape.coarsePlateRects != null && shape.opaqueTexelsAllWhite);
@@ -317,16 +375,14 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         final int marginChunks = (MARGIN_CELLS + CELLS_PER_CHUNK - 1) / CELLS_PER_CHUNK;
         final int radiusChunks = renderRadiusChunks + marginChunks;
         final int radiusCells = radiusChunks * CELLS_PER_CHUNK;
-        faceMeshActive = !shadersActive && untextured() && insideDeck && radiusCells <= CloudFaceMesh.CELL_LIMIT;
+        faceMeshActive = !shadersActive && insideDeck && radiusCells <= CloudFaceMesh.CELL_LIMIT;
 
         initProgram(faceMeshActive);
         if (program == null) return false;
 
         final boolean anchorInRange = geometryBuilt
-            && (insideDeck
-            ? anchorX == anchorCellX && anchorZ == anchorCellZ
-            : withinMargin(anchorX - anchorCellX, anchorZ - anchorCellZ));
-        final boolean geomCacheValid = anchorInRange
+            && withinMargin(anchorX - anchorCellX, anchorZ - anchorCellZ);
+        final boolean settingsUnchanged = geometryBuilt
             && cachedShapeGeneration == shapeGeneration
             && cachedEmitUnderside == emitUnderside
             && cachedEmitTopSurface == emitTopSurface
@@ -335,32 +391,68 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             && cachedShadersActive == shadersActive
             && cachedWallCutCells == wallCutCells
             && (faceMeshActive || cachedPlateLodCells == plateLodCells);
+        final boolean geomCacheValid = anchorInRange && settingsUnchanged;
 
-        if (!geomCacheValid) {
-            rebuildGeometry(anchorX, anchorZ, radiusCells, cellHeightBlocks, emitUnderside, emitTopSurface, shadersActive, backFaceCulling);
-            anchorCellX = anchorX;
-            anchorCellZ = anchorZ;
-            cachedShapeGeneration = shapeGeneration;
-            cachedEmitUnderside = emitUnderside;
-            cachedEmitTopSurface = emitTopSurface;
-            cachedRenderRadiusChunks = renderRadiusChunks;
-            cachedCellHeightBlocks = cellHeightBlocks;
-            cachedShadersActive = shadersActive;
-            cachedWallCutCells = wallCutCells;
-            cachedPlateLodCells = plateLodCells;
-            geometryBuilt = true;
+        final boolean canBuildAsync = settingsUnchanged && !faceMeshActive && vertexMesh.built();
+
+        final boolean builderBusy = buildInFlight != null || uploadParams != null;
+        if (!geomCacheValid && !(canBuildAsync && builderBusy)) {
+            final BuildParams params = captureBuildParams(anchorX, anchorZ, radiusCells, renderRadiusChunks,
+                cellHeightBlocks, emitUnderside, emitTopSurface, shadersActive, backFaceCulling);
+            if (canBuildAsync) {
+                startAsyncBuild(params);
+            } else {
+                cancelAsyncBuild();
+                if (faceMeshActive) {
+                    faceMesh.build(shape, anchorX, anchorZ, radiusCells, radiusCells * radiusCells, wallCutCells);
+                } else {
+                    buildVertexMesh(vertexMesh, params);
+                    vertexMesh.uploadBuilt();
+                }
+                markGeometryCached(params);
+            }
         }
 
+        collectFinishedBuild();
+
+        final boolean wantInterior = insideDeck && cloudMode == MODE_FANCY && !faceMeshActive;
+        if (wantInterior && (interiorAnchorX != anchorX || interiorAnchorZ != anchorZ
+            || interiorShapeGeneration != shapeGeneration || interiorCellHeight != cellHeightBlocks
+            || interiorShadersActive != shadersActive)) {
+            interiorMesh.buildInterior(shape, anchorX, anchorZ, cellHeightBlocks,
+                anchorX * SCROLL_SPEED, anchorZ * SCROLL_SPEED, untextured() && !shadersActive, shadersActive);
+            interiorMesh.uploadBuilt();
+            interiorAnchorX = anchorX;
+            interiorAnchorZ = anchorZ;
+            interiorShapeGeneration = shapeGeneration;
+            interiorCellHeight = cellHeightBlocks;
+            interiorShadersActive = shadersActive;
+        }
+        interiorActive = wantInterior && interiorMesh.built();
+
         if (faceMeshActive) {
-            if (faceMesh.uploadedCount() == 0) return true;
+            if (faceMesh.orderStale(anchorX, anchorZ)) faceMesh.reorder(anchorX, anchorZ);
+            if (faceMesh.uploadedCount() == 0 && faceMesh.interiorCount() == 0) return true;
         } else if (!vertexMesh.built()) {
             return true;
         }
 
-        if (!faceMeshActive && !shadersActive && cloudMode == MODE_FANCY && vertexMesh.orderStale(anchorX, anchorZ)) {
-            vertexMesh.reorder(anchorX, anchorZ);
+        if (!faceMeshActive && !shadersActive && cloudMode == MODE_FANCY) {
+            if (reorderInFlight != null && reorderInFlight.isDone()) {
+                final boolean usable = !reorderInFlight.isCompletedExceptionally() && reorderMesh == vertexMesh;
+                reorderInFlight = null;
+                reorderMesh = null;
+                if (usable) vertexMesh.reorderUpload();
+                else vertexMesh.discardPendingReorder();
+            }
+            if (reorderInFlight == null && vertexMesh.orderStale(anchorX, anchorZ)) {
+                final CloudVertexMesh target = vertexMesh;
+                reorderMesh = target;
+                reorderInFlight = CompletableFuture.runAsync(() -> target.reorder(anchorX, anchorZ), BUILD_THREAD);
+            }
         }
 
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_SUBMIT);
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         if (cloudTexId != -1 && !textureSetupDone) {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, cloudTexId);
@@ -402,20 +494,32 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         final float anchorDriftZ = (float) (anchorZ - anchorCellZ);
         driftCells = Math.sqrt(anchorDriftX * anchorDriftX + anchorDriftZ * anchorDriftZ);
 
+        interiorDriftX = anchorDriftX;
+        interiorDriftZ = anchorDriftZ;
+
         if (!shadersActive) {
             program.bind();
             final CloudUniforms uniforms = program.getInterface();
             final Matrix4fStack modelView = GLStateManager.getModelViewMatrix();
             modelView.pushMatrix();
             modelView.scale(cellWidthBlocks, 1.0f, cellWidthBlocks);
+            if (interiorActive) {
+                modelView.pushMatrix();
+                modelView.translate(-cellFractionX, cloudBaseRelativeY, -cellFractionZ);
+                GLStateManager.getProjectionMatrix().mul(modelView, mvpInteriorScratch);
+                modelView.popMatrix();
+            }
             modelView.translate(-(cellFractionX + anchorDriftX), cloudBaseRelativeY, -(cellFractionZ + anchorDriftZ));
             modelViewScratch.set(modelView);
             GLStateManager.getProjectionMatrix().mul(modelView, mvpScratch);
             modelView.popMatrix();
             uniforms.mvp.set(mvpScratch);
             uniforms.modelView.set(modelViewScratch);
-            if (faceMeshActive) uniforms.setCellHeight(cellHeightBlocks);
-            uploadFogUniforms(fogStart, fogEnd);
+            if (faceMeshActive) {
+                uniforms.setCellHeight(cellHeightBlocks);
+                uniforms.setScroll(faceMesh.buildAnchorX() * SCROLL_SPEED, faceMesh.buildAnchorZ() * SCROLL_SPEED);
+            }
+            uploadFogUniforms(uniforms, fogStart, fogEnd);
             drawClouds(r, g, b, false);
             program.unbind();
         } else {
@@ -430,30 +534,119 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             GLStateManager.glFogf(GL11.GL_FOG_START, origFogStart);
             GLStateManager.glFogf(GL11.GL_FOG_END, origFogEnd);
         }
+        if (Tracy.FINE_ZONES) Tracy.endZone();
         return true;
     }
 
-    private void rebuildGeometry(int anchorX, int anchorZ, int radiusCells, float cellHeightBlocks,
-                                 boolean emitUnderside, boolean emitTopSurface, boolean shadersActive, boolean backFaceCulling) {
-        final float scrollX = anchorX * SCROLL_SPEED;
-        final float scrollZ = anchorZ * SCROLL_SPEED;
+    private record BuildParams(CloudShape shape, boolean fancy, int anchorX, int anchorZ, int radiusCells,
+                               float cellHeightBlocks, boolean emitUnderside, boolean emitTopSurface, boolean emitPlates,
+                               boolean shadersActive, int wallCutCells, int plateLodCells, boolean untextured,
+                               int shapeGeneration, int renderRadiusChunks) {}
 
-        if (cloudMode != MODE_FANCY) {
-            vertexMesh.buildFast(radiusCells, scrollX, scrollZ, false, shadersActive);
+    private BuildParams captureBuildParams(int anchorX, int anchorZ, int radiusCells, int renderRadiusChunks,
+                                           float cellHeightBlocks, boolean emitUnderside, boolean emitTopSurface,
+                                           boolean shadersActive, boolean backFaceCulling) {
+        return new BuildParams(shape, cloudMode == MODE_FANCY, anchorX, anchorZ, radiusCells, cellHeightBlocks,
+            emitUnderside, emitTopSurface, !(backFaceCulling && emitUnderside && emitTopSurface), shadersActive,
+            wallCutCells, plateLodCells, untextured() && !shadersActive, shapeGeneration, renderRadiusChunks);
+    }
+
+    private static void buildVertexMesh(CloudVertexMesh mesh, BuildParams p) {
+        final float scrollX = p.anchorX() * SCROLL_SPEED;
+        final float scrollZ = p.anchorZ() * SCROLL_SPEED;
+
+        if (!p.fancy()) {
+            mesh.buildFast(p.radiusCells(), scrollX, scrollZ, p.shadersActive());
             return;
         }
 
-        final boolean emitPlates = !(backFaceCulling && emitUnderside && emitTopSurface);
-        final int radiusCellsSq = radiusCells * radiusCells;
+        mesh.build(p.shape(), p.anchorX(), p.anchorZ(), p.radiusCells(), p.radiusCells() * p.radiusCells(),
+            p.cellHeightBlocks(), scrollX, scrollZ, p.emitUnderside(), p.emitTopSurface(), p.emitPlates(),
+            p.wallCutCells(), p.plateLodCells(), p.untextured(), p.shadersActive());
+    }
 
-        if (faceMeshActive) {
-            faceMesh.build(shape, anchorX, anchorZ, radiusCells, radiusCellsSq, wallCutCells);
-            return;
+    private void markGeometryCached(BuildParams p) {
+        anchorCellX = p.anchorX();
+        anchorCellZ = p.anchorZ();
+        cachedShapeGeneration = p.shapeGeneration();
+        cachedEmitUnderside = p.emitUnderside();
+        cachedEmitTopSurface = p.emitTopSurface();
+        cachedRenderRadiusChunks = p.renderRadiusChunks();
+        cachedCellHeightBlocks = p.cellHeightBlocks();
+        cachedShadersActive = p.shadersActive();
+        cachedWallCutCells = p.wallCutCells();
+        cachedPlateLodCells = p.plateLodCells();
+        geometryBuilt = true;
+    }
+
+    private void startAsyncBuild(BuildParams p) {
+        if (buildInFlight != null || uploadParams != null) return;
+        final CloudVertexMesh target = spareMesh;
+        buildParams = p;
+        buildInFlight = CompletableFuture.runAsync(() -> {
+            if (Tracy.ENABLED) Tracy.beginZone(Z_ASYNC_BUILD);
+            try {
+                buildVertexMesh(target, p);
+            } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
+            }
+        }, BUILD_THREAD);
+    }
+
+    private void collectFinishedBuild() {
+        if (buildInFlight != null) {
+            if (!buildInFlight.isDone()) return;
+
+            final boolean usable = !buildInFlight.isCompletedExceptionally()
+                && buildParams.shapeGeneration() == shapeGeneration;
+            buildInFlight = null;
+            if (!usable) {
+                spareMesh.discardPendingUpload();
+                buildParams = null;
+                return;
+            }
+            uploadParams = buildParams;
+            buildParams = null;
+            if (!spareMesh.beginUpload()) {
+                swapMeshes();
+                return;
+            }
         }
 
-        vertexMesh.build(shape, anchorX, anchorZ, radiusCells, radiusCellsSq, cellHeightBlocks,
-            scrollX, scrollZ, emitUnderside, emitTopSurface, emitPlates,
-            wallCutCells, plateLodCells, untextured() && !shadersActive, shadersActive);
+        if (uploadParams == null) return;
+        if (!spareMesh.uploadSlice(UPLOAD_SLICE_BYTES)) return;
+        swapMeshes();
+    }
+
+    private void swapMeshes() {
+        discardReorder();
+        final CloudVertexMesh finished = spareMesh;
+        spareMesh = vertexMesh;
+        vertexMesh = finished;
+        markGeometryCached(uploadParams);
+        uploadParams = null;
+    }
+
+    private void discardReorder() {
+        if (reorderInFlight != null) {
+            reorderInFlight.join();
+            reorderInFlight = null;
+        }
+        if (reorderMesh != null) {
+            reorderMesh.discardPendingReorder();
+            reorderMesh = null;
+        }
+    }
+
+    private void cancelAsyncBuild() {
+        discardReorder();
+        if (buildInFlight != null) {
+            buildInFlight.join();
+            buildInFlight = null;
+        }
+        buildParams = null;
+        uploadParams = null;
+        spareMesh.discardPendingUpload();
     }
 
     private void drawClouds(float r, float g, float b, boolean shadersActive) {
@@ -466,18 +659,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private void drawCloudsInner(float r, float g, float b, boolean shadersActive) {
-        drawnQuads = 0;
         drawCalls = 0;
 
         if (faceMeshActive) {
             drawFaces(r, g, b);
         } else {
             drawVertices(r, g, b, shadersActive);
-        }
-
-        if (Tracy.ENABLED) {
-            Tracy.plotInt("clouds.drawnQuads", drawnQuads);
-            Tracy.plotInt("clouds.drawCalls", drawCalls);
         }
     }
 
@@ -491,6 +678,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         program.getInterface().setColorMult(r, g, b);
 
         faceMesh.bind();
+        final int interiorFaces = faceMesh.interiorCount();
+        if (interiorFaces > 0) {
+            faceMesh.drawInterior();
+            drawCalls++;
+        }
         drawVisibleWedges(faceMesh.plateStarts(), faceMesh.wallStarts(), faceMesh.uploadedCount(), true);
         faceMesh.unbind();
 
@@ -515,8 +707,17 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             GLStateManager.glColorMask(false, false, false, false);
             GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, CloudUniforms.ALPHA);
             vertexMesh.drawAll();
-            drawnQuads += totalQuads;
             drawCalls++;
+            if (interiorActive) {
+                vertexMesh.unbind();
+                pushInteriorTransform(true);
+                interiorMesh.bind();
+                interiorMesh.drawAll();
+                interiorMesh.unbind();
+                popInteriorTransform(true);
+                vertexMesh.bind();
+                drawCalls++;
+            }
         }
 
         applyAnaglyphColorMask();
@@ -529,12 +730,12 @@ public class CloudRenderer implements IResourceManagerReloadListener {
                 if (vertexMesh.faceEmpty(face)) continue;
                 final float shade = CloudVertexMesh.FACE_SHADE[face];
                 GLStateManager.glColor4f(shade * r, shade * g, shade * b, CloudUniforms.ALPHA);
-                drawnQuads += vertexMesh.drawFace(face);
+                vertexMesh.drawFace(face);
                 drawCalls++;
             }
         } else {
             program.getInterface().setColorMult(r, g, b);
-            if (cloudMode == MODE_FANCY) {
+            if (cloudMode == MODE_FANCY && vertexMesh.orderPublished()) {
                 drawVisibleWedges(vertexMesh.plateStarts(), vertexMesh.wallStarts(), totalQuads, false);
             } else {
                 drawRange(0, totalQuads, false);
@@ -542,10 +743,47 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         }
 
         vertexMesh.unbind();
+
+        if (interiorActive) {
+            pushInteriorTransform(depthPrepass);
+            interiorMesh.bind();
+            if (depthPrepass) {
+                for (int face = 0; face < 4; face++) {
+                    if (interiorMesh.faceEmpty(face)) continue;
+                    final float shade = CloudVertexMesh.FACE_SHADE[face];
+                    GLStateManager.glColor4f(shade * r, shade * g, shade * b, CloudUniforms.ALPHA);
+                    interiorMesh.drawFace(face);
+                    drawCalls++;
+                }
+            } else {
+                drawCalls++;
+                interiorMesh.drawRange(0, interiorMesh.quadCount());
+            }
+            interiorMesh.unbind();
+            popInteriorTransform(depthPrepass);
+        }
+
         GLStateManager.enableCull();
         GLStateManager.glDepthMask(true);
         GLStateManager.glColor4f(1.0f, 1.0f, 1.0f, 1.0f);
         GLStateManager.disableBlend();
+    }
+
+    private void pushInteriorTransform(boolean shadersActive) {
+        if (shadersActive) {
+            GLStateManager.glPushMatrix();
+            GLStateManager.glTranslatef(interiorDriftX, 0.0f, interiorDriftZ);
+        } else {
+            program.getInterface().mvp.set(mvpInteriorScratch);
+        }
+    }
+
+    private void popInteriorTransform(boolean shadersActive) {
+        if (shadersActive) {
+            GLStateManager.glPopMatrix();
+        } else {
+            program.getInterface().mvp.set(mvpScratch);
+        }
     }
 
     private boolean cullBackFaces() {
@@ -558,6 +796,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             drawRange(0, total, fromFaceMesh);
             return;
         }
+        final int callsBefore = drawCalls;
 
         drawRange(0, plateStarts[0], fromFaceMesh);
 
@@ -577,12 +816,15 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             drawRange(wallStarts[arcFrom], wallStarts[WEDGE_COUNT], fromFaceMesh);
             drawRange(wallStarts[0], wallStarts[arcTo + 1], fromFaceMesh);
         }
+
+        if (drawCalls == callsBefore && total > 0) {
+            drawRange(0, total, fromFaceMesh);
+        }
     }
 
     private void drawRange(int start, int end, boolean fromFaceMesh) {
         final int count = end - start;
         if (count <= 0) return;
-        drawnQuads += count;
         drawCalls++;
         if (fromFaceMesh) {
             faceMesh.drawRange(start, end);
@@ -598,7 +840,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         final double halfFov = m00 > 0.0f ? Math.atan(1.0 / m00) : Math.PI;
 
         final double halfSpan = (halfFov + CloudDisc.driftAngle(driftCells)) * WEDGES_PER_RADIAN + 0.25;
-        if (halfSpan * 2.0 >= WEDGE_COUNT) return false;
+        if (halfSpan * 2.0 + 1.0 >= WEDGE_COUNT) return false;
 
         final double centre = (facing + Math.PI) * WEDGES_PER_RADIAN;
         arcFrom = Math.floorMod((int) Math.floor(centre - halfSpan), WEDGE_COUNT);
@@ -657,9 +899,13 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (mc.renderEngine == null) return;
         mc.renderEngine.bindTexture(texture);
         extractCloudShape();
+        invalidateGeometry();
         vertexMesh.deleteVao();
         vertexMesh.deleteEbo();
-        invalidateGeometry();
+        spareMesh.deleteVao();
+        spareMesh.deleteEbo();
+        interiorMesh.deleteVao();
+        interiorMesh.deleteEbo();
         mipmappedTexId = -1;
         cloudTexId = -1;
     }

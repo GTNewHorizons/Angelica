@@ -20,7 +20,9 @@ final class CloudUniforms {
     final GlUniformInt fogEnabled;
     final GlUniformInt textureUnit;
     final GlUniformFloat cellHeight;
+    final GlUniformFloat4v scroll;
     private final float[] vec4Buf = new float[4];
+    private float lastScrollX = Float.NaN, lastScrollZ = Float.NaN;
     private int lastFogEnabled = -1;
     private float lastFogR = Float.NaN, lastFogG = Float.NaN, lastFogB = Float.NaN;
     private float lastColorR = Float.NaN, lastColorG = Float.NaN, lastColorB = Float.NaN;
@@ -36,6 +38,18 @@ final class CloudUniforms {
         fogEnabled = context.bindUniform("u_FogEnabled", GlUniformInt::new);
         textureUnit = context.bindUniformIfPresent("u_Tex", GlUniformInt::new);
         cellHeight = context.bindUniformIfPresent("u_CellHeight", GlUniformFloat::new);
+        scroll = context.bindUniformIfPresent("u_Scroll", GlUniformFloat4v::new);
+    }
+
+    void setScroll(float x, float z) {
+        if (scroll == null || (x == lastScrollX && z == lastScrollZ)) return;
+        lastScrollX = x;
+        lastScrollZ = z;
+        vec4Buf[0] = x;
+        vec4Buf[1] = z;
+        vec4Buf[2] = 0.0f;
+        vec4Buf[3] = 0.0f;
+        scroll.set(vec4Buf);
     }
 
     void setCellHeight(float blocks) {

@@ -11,6 +11,7 @@ import java.nio.IntBuffer;
 import java.util.Arrays;
 
 import static com.gtnewhorizons.angelica.render.CloudDisc.ALWAYS_DRAWN_CELLS;
+import static com.gtnewhorizons.angelica.render.CloudDisc.MARGIN_CELLS;
 import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGE_COUNT;
 import static com.gtnewhorizons.angelica.render.CloudDisc.wedgeOf;
 
@@ -23,12 +24,16 @@ final class CloudFaceMesh {
     static final int CELL_LIMIT = 511;
     private static final int FLAG_INSIDE = 1;
     private static final int FACE_ATTRIB = 0;
+    /** cellX 10b | cellZ 10b | dir 3b | flags 2b. */
+    private static final int FACE_BYTES = 4;
+    private static final int INTERIOR_FACES = 6;
     private static final int BUCKET_COUNT = WEDGE_COUNT + 1;
     private static final int BUCKET_ALWAYS_DRAWN = 0;
     private static final int BUCKET_WALL_WEDGE = 1;
 
     private static final Tracy.ZoneId Z_STAMP_WALLS = Tracy.zoneId("cloudFaceStampWalls", Tracy.COLOR_CLIENT);
     private static final Tracy.ZoneId Z_UPLOAD = Tracy.zoneId("cloudFaceUpload", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_REORDER = Tracy.zoneId("cloudFaceReorder", Tracy.COLOR_CLIENT);
     private final int[] wallStart = new int[WEDGE_COUNT + 1];
     private final int[] plateStart = new int[WEDGE_COUNT + 1];
     private int vao = -1;
@@ -37,23 +42,45 @@ final class CloudFaceMesh {
     private int vboCapacityBytes;
     private int uploadedCount;
     private int stampedCount;
-    private int[] faceData = new int[8192];
+    private int interiorCount;
+    private int[] faceData = new int[4096];
     private int[] faceSortKey = new int[4096];
     private int[] sortKeyStart = new int[0];
     private int ringsPerBucket = 1;
+    private int buildAnchorX = Integer.MIN_VALUE, buildAnchorZ = Integer.MIN_VALUE;
+    private int orderAnchorX = Integer.MIN_VALUE, orderAnchorZ = Integer.MIN_VALUE;
+    private CloudShape shape;
     private ByteBuffer uploadBuffer;
 
     int uploadedCount() {
         return uploadedCount;
     }
 
+    int interiorCount() {
+        return interiorCount;
+    }
+
+    int buildAnchorX() {
+        return buildAnchorX;
+    }
+
+    int buildAnchorZ() {
+        return buildAnchorZ;
+    }
+
     void clear() {
         uploadedCount = 0;
+        interiorCount = 0;
     }
 
     void build(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq, int wallCutCells) {
         stampedCount = 0;
-        ringsPerBucket = 2 * radiusCells + 1;
+        this.shape = shape;
+        ringsPerBucket = 2 * (radiusCells + MARGIN_CELLS) + 1;
+        buildAnchorX = anchorX;
+        buildAnchorZ = anchorZ;
+        orderAnchorX = anchorX;
+        orderAnchorZ = anchorZ;
 
         if (Tracy.FINE_ZONES) Tracy.beginZone(Z_STAMP_WALLS);
         addWalls(shape, anchorX, anchorZ, radiusCells, radiusCellsSq, wallCutCells);
@@ -64,18 +91,33 @@ final class CloudFaceMesh {
         if (Tracy.FINE_ZONES) Tracy.endZone();
     }
 
-    private void addFace(int cellX, int cellZ, int dir, int flags, int width, int height, int bucket, int ring) {
-        if (stampedCount == faceSortKey.length) {
-            faceSortKey = Arrays.copyOf(faceSortKey, faceSortKey.length * 2);
-            faceData = Arrays.copyOf(faceData, faceData.length * 2);
-        }
-        faceData[stampedCount * 2] = ((cellX + 512) & 0x3FF)
+    private static int packFace(int cellX, int cellZ, int dir, int flags) {
+        return ((cellX + 512) & 0x3FF)
             | (((cellZ + 512) & 0x3FF) << 10)
             | (dir << 20)
             | (flags << 23);
-        faceData[stampedCount * 2 + 1] = (width & 0xFFFF) | (height << 16);
+    }
+
+    private void addFace(int cellX, int cellZ, int dir, int bucket, int ring) {
+        if (stampedCount + INTERIOR_FACES == faceSortKey.length) {
+            faceSortKey = Arrays.copyOf(faceSortKey, faceSortKey.length * 2);
+            faceData = Arrays.copyOf(faceData, faceData.length * 2);
+        }
+        faceData[stampedCount] = packFace(cellX, cellZ, dir, 0);
         faceSortKey[stampedCount] = bucket * ringsPerBucket + ring;
         stampedCount++;
+    }
+
+    private void stampInterior(int anchorX, int anchorZ) {
+        interiorCount = 0;
+        if (shape == null || (shape.cellFlagsAt(anchorX, anchorZ) & CloudShape.OPAQUE) == 0) return;
+
+        final int driftX = anchorX - buildAnchorX;
+        final int driftZ = anchorZ - buildAnchorZ;
+        for (int dir = DIR_DOWN; dir <= DIR_EAST; dir++) {
+            faceData[uploadedCount + dir] = packFace(driftX, driftZ, dir, FLAG_INSIDE);
+        }
+        interiorCount = INTERIOR_FACES;
     }
 
     private void addWalls(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq, int wallCutCells) {
@@ -83,16 +125,6 @@ final class CloudFaceMesh {
         stampWallRuns(shape, shape.eastRuns, DIR_EAST, true, anchorX, anchorZ, radiusCells, radiusCellsSq, wallCutCells);
         stampWallRuns(shape, shape.northRuns, DIR_NORTH, false, anchorX, anchorZ, radiusCells, radiusCellsSq, wallCutCells);
         stampWallRuns(shape, shape.southRuns, DIR_SOUTH, false, anchorX, anchorZ, radiusCells, radiusCellsSq, wallCutCells);
-
-        for (int offsetZ = -1; offsetZ <= 1; offsetZ++) {
-            for (int offsetX = -1; offsetX <= 1; offsetX++) {
-                if ((shape.cellFlagsAt(anchorX + offsetX, anchorZ + offsetZ) & CloudShape.OPAQUE) == 0) continue;
-                final int ring = Math.abs(offsetX) + Math.abs(offsetZ);
-                for (int dir = DIR_DOWN; dir <= DIR_EAST; dir++) {
-                    addFace(offsetX, offsetZ, dir, FLAG_INSIDE, 1, 1, BUCKET_ALWAYS_DRAWN, ring);
-                }
-            }
-        }
     }
 
     private void stampWallRuns(CloudShape shape, int[] runs, int dir, boolean alongZ, int anchorX, int anchorZ,
@@ -118,7 +150,10 @@ final class CloudFaceMesh {
                         final int cellX = alongZ ? runX : runX + step;
                         final int cellZ = alongZ ? runZ + step : runZ;
 
-                        if (dir == DIR_WEST ? cellX < 1 : dir == DIR_EAST ? cellX > -1 : dir == DIR_NORTH ? cellZ < 1 : cellZ > -1) {
+                        if (dir == DIR_WEST ? cellX < 1 - MARGIN_CELLS
+                            : dir == DIR_EAST ? cellX > MARGIN_CELLS - 1
+                            : dir == DIR_NORTH ? cellZ < 1 - MARGIN_CELLS
+                            : cellZ > MARGIN_CELLS - 1) {
                             continue;
                         }
 
@@ -128,20 +163,49 @@ final class CloudFaceMesh {
                         if (!near && distSq > wallCutSq) continue;
 
                         final int bucket = near ? BUCKET_ALWAYS_DRAWN : BUCKET_WALL_WEDGE + wedgeOf(cellX, cellZ);
-                        addFace(cellX, cellZ, dir, 0, 1, 1, bucket, Math.abs(cellX) + Math.abs(cellZ));
+                        addFace(cellX, cellZ, dir, bucket, Math.abs(cellX) + Math.abs(cellZ));
                     }
                 }
             }
         }
     }
 
+    boolean orderStale(int anchorX, int anchorZ) {
+        return anchorX != orderAnchorX || anchorZ != orderAnchorZ;
+    }
+
+    void reorder(int anchorX, int anchorZ) {
+        if (Tracy.FINE_ZONES) Tracy.beginZone(Z_REORDER);
+        try {
+            final int driftX = anchorX - buildAnchorX;
+            final int driftZ = anchorZ - buildAnchorZ;
+            final int nearAlwaysSq = ALWAYS_DRAWN_CELLS * ALWAYS_DRAWN_CELLS;
+            for (int i = 0; i < uploadedCount; i++) {
+                final int packed = faceData[i];
+                final int cellX = (packed & 0x3FF) - 512 - driftX;
+                final int cellZ = ((packed >> 10) & 0x3FF) - 512 - driftZ;
+                final int distSq = cellX * cellX + cellZ * cellZ;
+                final int bucket = distSq <= nearAlwaysSq ? BUCKET_ALWAYS_DRAWN : BUCKET_WALL_WEDGE + wedgeOf(cellX, cellZ);
+                final int ring = Math.min(Math.abs(cellX) + Math.abs(cellZ), ringsPerBucket - 1);
+                faceSortKey[i] = bucket * ringsPerBucket + ring;
+            }
+            stampInterior(anchorX, anchorZ);
+            sortAndUpload();
+            orderAnchorX = anchorX;
+            orderAnchorZ = anchorZ;
+        } finally {
+            if (Tracy.FINE_ZONES) Tracy.endZone();
+        }
+    }
+
     private void finishBuild() {
         uploadedCount = stampedCount;
-        if (uploadedCount == 0) {
-            Arrays.fill(wallStart, 0);
-            return;
-        }
+        stampInterior(buildAnchorX, buildAnchorZ);
+        if (uploadedCount == 0) Arrays.fill(wallStart, 0);
+        sortAndUpload();
+    }
 
+    private void sortAndUpload() {
         final int sortKeyCount = BUCKET_COUNT * ringsPerBucket;
         if (sortKeyStart.length < sortKeyCount + 1) sortKeyStart = new int[sortKeyCount + 1];
         else Arrays.fill(sortKeyStart, 0, sortKeyCount + 1, 0);
@@ -158,16 +222,20 @@ final class CloudFaceMesh {
         for (int w = 0; w < WEDGE_COUNT; w++) wallStart[w] = sortKeyStart[(BUCKET_WALL_WEDGE + w) * ringsPerBucket];
         wallStart[WEDGE_COUNT] = uploadedCount;
 
-        final int uploadBytes = uploadedCount * 8;
+        final int totalFaces = uploadedCount + interiorCount;
+        if (totalFaces == 0) return;
+
+        final int uploadBytes = totalFaces * FACE_BYTES;
         if (uploadBuffer == null || uploadBuffer.capacity() < uploadBytes) {
             uploadBuffer = BufferUtils.createByteBuffer(Math.max(uploadBytes, 8192));
         }
         uploadBuffer.clear();
         final IntBuffer ints = uploadBuffer.asIntBuffer();
         for (int i = 0; i < uploadedCount; i++) {
-            final int slot = sortKeyStart[faceSortKey[i]]++;
-            ints.put(slot * 2, faceData[i * 2]);
-            ints.put(slot * 2 + 1, faceData[i * 2 + 1]);
+            ints.put(sortKeyStart[faceSortKey[i]]++, faceData[i]);
+        }
+        for (int i = 0; i < interiorCount; i++) {
+            ints.put(uploadedCount + i, faceData[uploadedCount + i]);
         }
         uploadBuffer.position(0).limit(uploadBytes);
 
@@ -187,7 +255,7 @@ final class CloudFaceMesh {
             GLStateManager.glBindVertexArray(vao);
             GLStateManager.glEnableVertexAttribArray(FACE_ATTRIB);
             GLStateManager.glVertexAttribDivisor(FACE_ATTRIB, 1);
-            GLStateManager.glVertexAttribIPointer(FACE_ATTRIB, 2, GL11.GL_INT, 8, 0L);
+            GLStateManager.glVertexAttribIPointer(FACE_ATTRIB, 1, GL11.GL_INT, FACE_BYTES, 0L);
             GLStateManager.glBindBuffer(GL15.GL_ELEMENT_ARRAY_BUFFER, ebo);
             GLStateManager.glBindVertexArray(0);
         }
@@ -218,8 +286,12 @@ final class CloudFaceMesh {
     void drawRange(int startFace, int endFace) {
         final int faces = endFace - startFace;
         if (faces <= 0) return;
-        GLStateManager.glVertexAttribIPointer(FACE_ATTRIB, 2, GL11.GL_INT, 8, (long) startFace * 8L);
+        GLStateManager.glVertexAttribIPointer(FACE_ATTRIB, 1, GL11.GL_INT, FACE_BYTES, (long) startFace * FACE_BYTES);
         GLStateManager.glDrawElementsInstanced(GL11.GL_TRIANGLES, 6, GL11.GL_UNSIGNED_INT, 0L, faces);
+    }
+
+    void drawInterior() {
+        drawRange(uploadedCount, uploadedCount + interiorCount);
     }
 
     int[] plateStarts() {

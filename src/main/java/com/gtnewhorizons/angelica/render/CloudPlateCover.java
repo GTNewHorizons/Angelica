@@ -16,6 +16,7 @@ final class CloudPlateCover {
     private int[] rectWedgeBucket = new int[4096];
     private int[] orderedRects = new int[4096];
     private int count;
+    private boolean groupByWedge = true;
 
     int count() {
         return count;
@@ -45,8 +46,9 @@ final class CloudPlateCover {
         return rectWedgeBucket[rect];
     }
 
-    void build(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq, int lodCells) {
+    void build(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq, int lodCells, boolean groupByWedge) {
         count = 0;
+        this.groupByWedge = groupByWedge;
         Arrays.fill(wedgeBucketCount, 0);
 
         final int texW = shape.width;
@@ -64,7 +66,7 @@ final class CloudPlateCover {
             stampRects(coarseRects, anchorX, anchorZ, texW, texH, radiusCells, radiusCellsSq, fineX0, fineZ0, fineX1, fineZ1, true);
         }
 
-        orderByWedge();
+        if (groupByWedge) orderByWedge();
     }
 
     private void stampRects(int[] sourceRects, int anchorX, int anchorZ, int texW, int texH, int radiusCells, int radiusCellsSq,
@@ -88,8 +90,13 @@ final class CloudPlateCover {
                     final int cellX1 = Math.min(baseX + kx * texW + rectW - 1, maxCell);
                     if (cellX0 > cellX1) continue;
 
+                    final boolean touchesFineBox = fineX1 >= fineX0
+                        && cellX1 >= fineX0 && cellX0 <= fineX1 && cellZ1 >= fineZ0 && cellZ0 <= fineZ1;
+
                     if (fineX1 < fineX0) {
                         clipToDisc(cellX0, cellZ0, cellX1, cellZ1, radiusCellsSq);
+                    } else if (!touchesFineBox) {
+                        if (outsideFineBox) clipToDisc(cellX0, cellZ0, cellX1, cellZ1, radiusCellsSq);
                     } else if (!outsideFineBox) {
                         clipToDisc(Math.max(cellX0, fineX0), Math.max(cellZ0, fineZ0),
                             Math.min(cellX1, fineX1), Math.min(cellZ1, fineZ1), radiusCellsSq);
@@ -130,15 +137,18 @@ final class CloudPlateCover {
     }
 
     private void addRect(int cellX0, int cellZ0, int cellX1, int cellZ1) {
-        final int nearestX = (cellX0 <= 0 && cellX1 >= 0) ? 0 : Math.min(Math.abs(cellX0), Math.abs(cellX1));
-        final int nearestZ = (cellZ0 <= 0 && cellZ1 >= 0) ? 0 : Math.min(Math.abs(cellZ0), Math.abs(cellZ1));
-        final boolean near = nearestX * nearestX + nearestZ * nearestZ <= ALWAYS_DRAWN_CELLS * ALWAYS_DRAWN_CELLS;
+        int bucket = 0;
+        if (groupByWedge) {
+            final int nearestX = (cellX0 <= 0 && cellX1 >= 0) ? 0 : Math.min(Math.abs(cellX0), Math.abs(cellX1));
+            final int nearestZ = (cellZ0 <= 0 && cellZ1 >= 0) ? 0 : Math.min(Math.abs(cellZ0), Math.abs(cellZ1));
+            final boolean near = nearestX * nearestX + nearestZ * nearestZ <= ALWAYS_DRAWN_CELLS * ALWAYS_DRAWN_CELLS;
 
-        final int wedge = wedgeOf(cellX0, cellZ0);
-        final int bucket = !near
-            && wedge == wedgeOf(cellX1 + 1, cellZ0) && wedge == wedgeOf(cellX0, cellZ1 + 1) && wedge == wedgeOf(cellX1 + 1, cellZ1 + 1)
-            ? wedge + 1
-            : 0;
+            final int wedge = wedgeOf(cellX0, cellZ0);
+            if (!near
+                && wedge == wedgeOf(cellX1 + 1, cellZ0) && wedge == wedgeOf(cellX0, cellZ1 + 1) && wedge == wedgeOf(cellX1 + 1, cellZ1 + 1)) {
+                bucket = wedge + 1;
+            }
+        }
 
         if (count * 4 + 4 > rects.length) {
             rects = Arrays.copyOf(rects, rects.length * 2);
