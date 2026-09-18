@@ -637,6 +637,11 @@ public class RenderSystem {
         GLStateManager.glSamplerParameteri(sampler, pname, param);
     }
 
+    public static void samplerParameterf(int sampler, int pname, float param) {
+        if (!supportsSamplerObjects || sampler == 0) return;
+        GLStateManager.glSamplerParameterf(sampler, pname, param);
+    }
+
     public static void bindSamplerToUnit(int unit, int sampler) {
         if (!supportsSamplerObjects) return;
         GLStateManager.glBindSampler(unit, sampler);

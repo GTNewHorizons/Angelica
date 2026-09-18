@@ -46,31 +46,25 @@ public final class SpritePadding {
             final int levelWidth = width >> level;
             final int levelHeight = height >> level;
             final int levelGutter = gutter >> level;
-            final int size = (levelWidth + 2 * levelGutter) * (levelHeight + 2 * levelGutter);
+            final int stride = levelWidth + 2 * levelGutter;
+            final int size = stride * (levelHeight + 2 * levelGutter);
 
             int[] target = padded[level];
             if (target == null || target.length < size) {
                 target = new int[size];
                 padded[level] = target;
             }
-            System.arraycopy(levelData, 0, target, 0, Math.min(levelData.length, levelWidth * levelHeight));
-            padClampToEdge(target, levelWidth, levelHeight, levelGutter);
+
+            int remaining = Math.min(levelData.length, levelWidth * levelHeight);
+            for (int y = 0; y < levelHeight && remaining > 0; y++) {
+                final int run = Math.min(levelWidth, remaining);
+                System.arraycopy(levelData, y * levelWidth, target,
+                    (y + levelGutter) * stride + levelGutter, run);
+                remaining -= run;
+            }
+            clampBorderToEdge(target, stride, levelHeight + 2 * levelGutter, levelGutter);
         }
         return padded;
-    }
-
-    private static void padClampToEdge(int[] data, int width, int height, int border) {
-        if (border <= 0 || width <= 0 || height <= 0) {
-            return;
-        }
-
-        final int stride = width + 2 * border;
-
-        for (int y = height - 1; y >= 0; y--) {
-            System.arraycopy(data, y * width, data, border + (y + border) * stride, width);
-        }
-
-        clampBorderToEdge(data, stride, height + 2 * border, border);
     }
 
     private static void clampBorderToEdge(int[] image, int paddedWidth, int paddedHeight, int border) {

@@ -150,12 +150,11 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     }
 
     /**
-     * Vanilla's anisotropic path inflates width/height by 16 and insets the UVs by 8, which is the number
-     * mods subtract to unpad. The gutter goes in the stitcher slot instead, so this always reads false and
-     * the sprite keeps its real dims.
+     * Vanilla's anisotropic path inflates width/height by 16 and insets the UVs by 8. The custom atlas path uses
+     * the selected filter mode's gutter in the stitcher slot instead.
      */
     @ModifyVariable(method = "loadSprite", at = @At("HEAD"), argsOnly = true)
-    private boolean angelica$neverInflateSprite(boolean useAnisotropicFiltering) {
+    private boolean angelica$disableVanillaAnisotropicPadding(boolean useAnisotropicFiltering) {
         return false;
     }
 

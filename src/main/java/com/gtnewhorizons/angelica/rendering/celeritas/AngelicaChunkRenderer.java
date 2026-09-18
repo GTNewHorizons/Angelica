@@ -259,8 +259,8 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         RenderSystem.samplerParameteri(sampler, GL11.GL_TEXTURE_MAG_FILTER,
             nearest ? GL11.GL_NEAREST : GL11.GL_LINEAR);
         if (SodiumGameOptions.anisotropySupported()) {
-            RenderSystem.samplerParameteri(sampler,
-                EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, anisotropy);
+            RenderSystem.samplerParameterf(sampler,
+                EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT, (float) anisotropy);
         }
     }
 
