@@ -125,7 +125,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
             while (hasNext()) {
                 TileOverride override = next();
                 int worldRenderPass = RenderPassHelper.getWorldRenderPass();
-                if(!(override.getRenderPass() == -1 || override.getRenderPass() == worldRenderPass)) {
+                if(override.canRenderInPass(worldRenderPass)) {
                     continue;
                 }
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
@@ -170,7 +170,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
                     if (candidateOverride.isDisabled()) {
                         continue;
                     }
-                    if (candidateOverride.getRenderPass() != -1 && candidateOverride.getRenderPass() != worldRenderPass) {
+                    if (candidateOverride.canRenderInPass(worldRenderPass)) {
                         continue;
                     }
                     if (!renderBlockState.match(candidate)) {
