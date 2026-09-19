@@ -189,6 +189,25 @@ public class DarkModeFontTransform {
         RecolorTarget.excludeMethod(
             new MethodInfo("appeng.client.render.StackSizeRenderer drawStackSize(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V")
         ),
+            // GregTech
+        RecolorTarget.excludeMethodCall(
+            new MethodInfo("gregtech.common.render.FluidDisplayStackRenderer renderItem(Lnet/minecraftforge/client/IItemRenderer$ItemRenderType;Lnet/minecraft/item/ItemStack;[Ljava/lang/Object;)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
+        ),
+            // GT NEI Ore Plugin
+        RecolorTarget.excludeMethodCall(
+            new MethodInfo("gtneioreplugin.plugin.renderer.ItemDimensionDisplayRenderer renderItem(Lnet/minecraftforge/client/IItemRenderer$ItemRenderType;Lnet/minecraft/item/ItemStack;[Ljava/lang/Object;)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
+        ),
+            // NEI Custom Diagram
+        RecolorTarget.excludeMethod(
+            new MethodInfo("com.github.dcysteine.neicustomdiagram.api.draw.Draw drawStackSize(ILcom/github/dcysteine/neicustomdiagram/api/draw/Point;)V")
+        ),
+            // Harvestcraft
+        RecolorTarget.excludeMethodCall(
+            new MethodInfo("com.pam.harvestcraft.TrapRecipeHandler drawExtras(I)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawString(Ljava/lang/String;III)V")
+        ),
             // Thaumcraft
         RecolorTarget.excludeMethod(
             new MethodInfo("thaumcraft.client.gui.GuiResearchTable drawAspects(II)V")
