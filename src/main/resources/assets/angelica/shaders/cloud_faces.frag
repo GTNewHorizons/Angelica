@@ -2,15 +2,14 @@
 
 #import <angelica:include/cloud_fog.glsl>
 
-#ifndef UNTEXTURED
-in vec2 v_UV;
-#endif
 in vec3 v_EyePos;
-in float v_Shade;
+flat in float v_Shade;
 
 #ifndef UNTEXTURED
+in vec2 v_UV;
 uniform sampler2D u_Tex;
 #endif
+
 uniform vec4 u_ColorMult;
 
 out vec4 fragColor;
