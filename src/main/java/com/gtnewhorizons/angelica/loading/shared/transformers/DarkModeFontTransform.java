@@ -243,6 +243,16 @@ public class DarkModeFontTransform {
             new MethodInfo("codechicken.nei.config.DataDumper drawButton(IILcodechicken/lib/vec/Rectangle4i;Ljava/lang/String;)V"),
             new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V")
         ),
+            // BuildCraft
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("buildcraft.core.lib.gui.buttons.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            new MethodInfo("buildcraft.core.lib.gui.buttons.GuiBetterButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
+        ),
+            // Minecraft-Backpack-Mod
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("de.eydamos.guiadvanced.form.Button func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            new MethodInfo("de.eydamos.guiadvanced.form.Button func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
+        ),
     };
 
     public static final Map<String, List<RecolorTarget>> classesToTransform = new HashMap<>();
