@@ -21,29 +21,16 @@ import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
-/**
- * Reads the optional {@code dark_mode_utils} block from an active resource pack's {@code pack.mcmeta}, letting
- * pack authors opt in to having their GUI text recolored when it would otherwise be unreadable against Angelica's
- * dark mode. Reloaded whenever resource packs are (re)loaded, mirroring the other {@link TexturePackChangeHandler}
- * subsystems in this codebase (see {@link com.prupe.mcpatcher.hd.FontUtils}).
- */
 public class DarkModeUtils {
 
     private static final Logger LOGGER = LogManager.getLogger("DarkModeUtils");
 
     private static final String ROOT_KEY = "dark_mode_utils";
     private static final int SUPPORTED_SCHEMA = 1;
-    /** Special {@code output} value: instead of a fixed color, pulse the debug rainbow pulse, so matched text is easy to spot. */
     private static final String DEBUG_PULSE = "debug_pulse";
     private static final double DEBUG_PULSE_TIME_SCALE = 5e-9;
 
-    // "getInputStreamByName" is the MCP name; "func_110591_a" is its SRG name, needed because this particular
-    // method isn't remapped to MCP at runtime in this environment even though public IResourcePack methods are
-    // (GTNHLib's PackMcmetaReader hits the same gap and falls back the same way).
     private static final String[] INPUT_STREAM_METHOD_NAMES = { "getInputStreamByName", "func_110591_a" };
-    // Every mod jar shows up as its own resource pack (FMLFileResourcePack), all sharing one class that doesn't
-    // have this method at all. Caching by class avoids repeating the same failing reflection walk hundreds of
-    // times per reload in a large modpack - a plain HashMap that runs only ever on the client thread.
     private static final Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new HashMap<>();
 
     private static FontRecolorRule guiFontRule = null;
@@ -85,6 +72,7 @@ public class DarkModeUtils {
         buttonFontRules = buttonFont;
     }
 
+    // Mechanism similar to GTNHLib's PackMcmetaReader. Will be refactored into one common implementation if a third use case arises.
     private static PackDarkModeRules readPackRules(IResourcePack pack) {
         try (InputStream stream = openPackMcmeta(pack)) {
             if (stream == null) {
@@ -172,12 +160,6 @@ public class DarkModeUtils {
         return Integer.decode(value.trim()) & 0x00FFFFFF;
     }
 
-    /**
-     * {@code pack.mcmeta} isn't addressed via a namespaced {@link net.minecraft.util.ResourceLocation}, so
-     * {@link IResourcePack} doesn't expose a way to read it directly; the actual method lives as a protected
-     * method on {@link net.minecraft.client.resources.AbstractResourcePack} (not every pack implementation
-     * extends it, e.g. the built-in default pack, hence the null check on the caller side).
-     */
     private static InputStream openPackMcmeta(IResourcePack pack) throws IOException {
         Method method = findGetInputStreamByName(pack.getClass());
         if (method == null) {
@@ -214,12 +196,6 @@ public class DarkModeUtils {
         return found;
     }
 
-    /**
-     * Checks whether {@code argbColor} is "too dim/gray" or "too bright/white" per the active pack's gui_font rule,
-     * comparing each color channel independently so saturated colors (red, yellow, etc.) never get caught by a
-     * brightness threshold meant for grayscale text. Returns {@code null} when no rule is loaded or the color
-     * doesn't need adjusting, in which case the caller should leave the original color untouched.
-     */
     public static GuiFontRecolor computeGuiFontRecolor(int argbColor) {
         FontRecolorRule rule = guiFontRule;
         if (rule == null) {
@@ -262,12 +238,10 @@ public class DarkModeUtils {
 
     private record PackDarkModeRules(FontRecolorRule guiFont, ButtonFontRules buttonFont) {}
 
-    /** Parsed target.button_font colors, one per state (vanilla's own: enabled 0xE0E0E0, hovered 0xFFFFA0, disabled 0xA0A0A0). */
     private record ButtonFontRules(ButtonColorRule enabled, ButtonColorRule hovered, ButtonColorRule disabled) {}
 
     private record ButtonColorRule(int output, boolean debugPulse) {}
 
-    /** The gui_font rule: input thresholds, output color and shadow flag. */
     private static final class FontRecolorRule {
 
         final int minR, minG, minB;
