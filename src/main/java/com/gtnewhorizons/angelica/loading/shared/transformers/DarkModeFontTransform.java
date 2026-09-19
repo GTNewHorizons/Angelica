@@ -99,11 +99,20 @@ public class DarkModeFontTransform {
             return new RecolorTarget(callingMethod, calledMethod, true, new ButtonColors(enabledColor, hoveredColor, disabledColor));
         }
 
+        public static RecolorTarget includeButtonMethod(MethodInfo method) {
+            return new RecolorTarget(method, null, true, ButtonColors.VANILLA);
+        }
+        public static RecolorTarget includeButtonMethodCall(MethodInfo callingMethod, MethodInfo calledMethod) {
+            return new RecolorTarget(callingMethod, calledMethod, true, ButtonColors.VANILLA);
+        }
+
         public boolean targetsCall() { return calledMethod != null; }
     }
 
-    /** The colors a button draws its text in for each of its three states. */
-    public record ButtonColors(int enabled, int hovered, int disabled) {}
+    /** The colors a button draws its text in for each of its three states. VANILLA is what vanilla buttons use. */
+    public record ButtonColors(int enabled, int hovered, int disabled) {
+        public static final ButtonColors VANILLA = new ButtonColors(0xE0E0E0, 0xFFFFA0, 0xA0A0A0);
+    }
 
     // A target method must contain the obf name if it's
     // a) a vanilla method
@@ -192,13 +201,11 @@ public class DarkModeFontTransform {
             // Vanilla
         RecolorTarget.includeButtonMethodCall(
             new MethodInfo("net.minecraft.client.gui.GuiButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
-            new MethodInfo("net.minecraft.client.gui.GuiButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString"),
-            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+            new MethodInfo("net.minecraft.client.gui.GuiButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
         ),
             // CodeChickenCore
         RecolorTarget.includeButtonMethod(
-            new MethodInfo("codechicken.core.gui.GuiCCButton drawText(II)V"),
-            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+            new MethodInfo("codechicken.core.gui.GuiCCButton drawText(II)V")
         ),
             // NotEnoughItems
         RecolorTarget.includeButtonMethodCall(
@@ -207,18 +214,15 @@ public class DarkModeFontTransform {
             0xE0E0E0, 0xFFFFA0, 0x601010
         ),
         RecolorTarget.includeButtonMethod(
-            new MethodInfo("codechicken.nei.GuiNEIButton drawContent(Lnet/minecraft/client/Minecraft;IIZ)V"),
-            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+            new MethodInfo("codechicken.nei.GuiNEIButton drawContent(Lnet/minecraft/client/Minecraft;IIZ)V")
         ),
         RecolorTarget.includeButtonMethodCall(
             new MethodInfo("codechicken.nei.config.OptionButton drawButton(II)V"),
-            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V"),
-            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V")
         ),
         RecolorTarget.includeButtonMethodCall(
             new MethodInfo("codechicken.nei.config.DataDumper drawButton(IILcodechicken/lib/vec/Rectangle4i;Ljava/lang/String;)V"),
-            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V"),
-            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V")
         ),
     };
 
