@@ -165,6 +165,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final short originalBlockId = blockRenderContext.blockId;
 
         int stateIdx = 0;
+        int facesAtBaseMaterial = 0;
         boolean hasCachedMaterial = false;
         TextureAtlasSprite lastSprite = null;
         Material lastMaterial = null;
@@ -255,14 +256,22 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             // Apply RGB block light tint from provider
             applyBlockLightTint(worldX, worldY, worldZ, vertices);
 
+            final int faceBit = 1 << facing.ordinal();
             final Material correctMaterial;
-            if (hasCachedMaterial && sprite == lastSprite) {
-                correctMaterial = lastMaterial;
+            if ((facesAtBaseMaterial & faceBit) != 0) {
+                correctMaterial = material;
             } else {
-                correctMaterial = selectMaterial(material, sprite, isShaderPackOverride, useRenderPassOptimization);
-                lastSprite = sprite;
-                lastMaterial = correctMaterial;
-                hasCachedMaterial = true;
+                if (hasCachedMaterial && sprite == lastSprite) {
+                    correctMaterial = lastMaterial;
+                } else {
+                    correctMaterial = selectMaterial(material, sprite, isShaderPackOverride, useRenderPassOptimization);
+                    lastSprite = sprite;
+                    lastMaterial = correctMaterial;
+                    hasCachedMaterial = true;
+                }
+                if (correctMaterial == material) {
+                    facesAtBaseMaterial |= faceBit;
+                }
             }
             final var builder = buffers.get(correctMaterial);
 

@@ -1,19 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.helpers.RendererLivingEntityHelper;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
-import net.minecraft.client.model.ModelBase;
-import net.minecraft.client.renderer.entity.RenderDragon;
-import net.minecraft.client.renderer.entity.RenderEnderman;
 import net.minecraft.client.renderer.entity.RenderPlayer;
-import net.minecraft.client.renderer.entity.RenderSpider;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
-import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -78,24 +72,29 @@ public abstract class MixinRendererLivingEntity {
         return j;
     }
 
-    /**
-     * Handle special render conditions for entity eyes (spiders, endermen, ender dragon).
-     */
-    @WrapOperation(
+    @Inject(
         method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0),
         slice = @Slice(
             from = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I")
         )
     )
-    private void iris$specialRenderConditionEntityEyes(ModelBase instance, Entity entity, float p_78088_2_, float p_78088_3_, float p_78088_4_, float p_78088_5_, float p_78088_6_, float p_78088_7_, Operation<Void> original) {
-        RendererLivingEntity self = (RendererLivingEntity) (Object) this;
-        if (self instanceof RenderSpider || self instanceof RenderDragon || self instanceof RenderEnderman) {
+    private void iris$specialRenderConditionEntityEyes(CallbackInfo ci) {
+        if (RendererLivingEntityHelper.hasEyePass(this)) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.ENTITY_EYES);
-            original.call(instance, entity, p_78088_2_, p_78088_3_, p_78088_4_, p_78088_5_, p_78088_6_, p_78088_7_);
+        }
+    }
+
+    @Inject(
+        method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0, shift = At.Shift.AFTER),
+        slice = @Slice(
+            from = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I")
+        )
+    )
+    private void iris$specialRenderConditionEntityEyesEnd(CallbackInfo ci) {
+        if (RendererLivingEntityHelper.hasEyePass(this)) {
             GbufferPrograms.teardownSpecialRenderCondition();
-        } else {
-            original.call(instance, entity, p_78088_2_, p_78088_3_, p_78088_4_, p_78088_5_, p_78088_6_, p_78088_7_);
         }
     }
 

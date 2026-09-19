@@ -26,6 +26,8 @@ public final class SamplerStripper {
     private SamplerStripper() {}
 
     public static String stripUnused(String source) {
+        if (!source.contains("sampler")) return source;
+
         final GLSLParser.Translation_unitContext root;
         try {
             root = GlslTransformUtils.parseFullQuiet(source);

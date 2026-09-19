@@ -2,10 +2,10 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
-import me.jellysquid.mods.sodium.client.gui.options.named.TextureFilterMode;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.compile.sorting.QuadPrimitiveType;
 import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
@@ -30,15 +30,27 @@ public class AngelicaRenderPassConfiguration {
             .vertexType(vertexType)
             .primitiveType(QuadPrimitiveType.TRIANGULATED);
 
+        final int mipmapLevels = SodiumGameOptions.terrainMipmapLevels();
+
         if (rgssEnabled) {
             builder.extraDefine("USE_RGSS", "");
+        }
+        if (SodiumGameOptions.usesTerrainTexelSnap()) {
+            builder.extraDefine("USE_TEXEL_SNAP", "");
+        }
+        if (SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy()) {
+            builder.extraDefine("USE_ANISOTROPIC", "");
+            builder.extraDefine("TERRAIN_GUTTER", SpritePadding.gutterFor(mipmapLevels, true) + ".0");
+        }
+        if (mipmapLevels <= 0) {
+            builder.extraDefine("TERRAIN_NO_MIPS", "");
         }
 
         return builder;
     }
 
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {
-        rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode() == TextureFilterMode.RGSS;
+        rgssEnabled = SodiumGameOptions.effectiveTextureFilterMode().usesRgss();
 
         SOLID_PASS = builderForRenderType(0, true, vertexType)
             .name("solid")

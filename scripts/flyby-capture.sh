@@ -12,6 +12,7 @@
 #
 #   FLYBY_SPEED     - blocks per tick. (0.5 ~= creative flight).
 #   FLYBY_PACING    - UNCAPPED | CONFIGURED. Passed through when set.
+#   FLYBY_ORIGIN    - x,z[,yaw] flight start. Unset or empty starts where the player is.
 #   QUICKPLAY_WORLD - save to auto-load (default: latest).
 #   FLYBY_SCENE     - server command file run at flyby start.
 #   SDLGPU=0|1      - force OpenGL (0) or SDL-GPU (1); unset uses the build default.
@@ -42,6 +43,9 @@ elif [ "${SDLGPU:-}" = "0" ]; then
 fi
 if [ -n "${FLYBY_PACING:-}" ]; then
     BACKEND_ARGS+=(-Dangelica.flyby.pacing="$FLYBY_PACING")
+fi
+if [ -n "${FLYBY_ORIGIN:-}" ]; then
+    BACKEND_ARGS+=(-Dangelica.flyby.origin="$FLYBY_ORIGIN")
 fi
 
 SCENE_ABS=""

@@ -10,8 +10,10 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager.RecordMode;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
+import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
@@ -426,11 +428,7 @@ public class GLStateManager {
     public static boolean wideLineEmulationActive = false;
     public static boolean lineStippleActive = false;
 
-    public static boolean instancedFfpDrawActive = false;
-
-
-
-
+    public static Instancing ffpInstancing = Instancing.NONE;
 
     private static final MethodHandle MAT4_STACK_CURR_DEPTH;
 
@@ -1428,8 +1426,11 @@ public class GLStateManager {
     }
 
     public static void endForeignDraw() {
-        if (foreignDrawDepth > 0 && --foreignDrawDepth == 0 && GLSMHooks.FOREIGN_DRAW_END.hasListeners()) {
-            GLSMHooks.FOREIGN_DRAW_END.post(GLSMHooks.foreignDrawEndEvent);
+        if (foreignDrawDepth > 0 && --foreignDrawDepth == 0) {
+            GLSMHooks.resolvePendingProgram();
+            if (GLSMHooks.FOREIGN_DRAW_END.hasListeners()) {
+                GLSMHooks.FOREIGN_DRAW_END.post(GLSMHooks.foreignDrawEndEvent);
+            }
         }
     }
 
@@ -3577,8 +3578,7 @@ public class GLStateManager {
 
     public static void updateDisplay(boolean processMessages) throws LWJGLException {
         if (Thread.currentThread() != MainThread) {
-            swapBuffers();
-            if (processMessages) pumpDisplayMessages();
+            RENDER_BACKEND.updateDisplayFromWorkerThread(processMessages);
             return;
         }
         if (processMessages) pumpDisplayMessages();
@@ -4059,6 +4059,14 @@ public class GLStateManager {
             glCtx.modelViewMatrix.set(m);
             glCtx.mvGeneration++;
             glCtx.mvLinearGeneration++;
+        }
+    }
+
+    public static void setTextureMatrix(int unit, Matrix4fc m) {
+        if (isCachingEnabled()) {
+            final GLContextState glCtx = ctx();
+            glCtx.textures.getTextureUnitMatrix(unit).set(m);
+            glCtx.texMatrixGeneration++;
         }
     }
 
@@ -5388,6 +5396,11 @@ public class GLStateManager {
         if (!RENDER_BACKEND.hasContext()) return 0;
         if (initConfig.isNoErrorChecks()) return 0;
         return RENDER_BACKEND.getError();
+    }
+
+    public static void checkGLError() {
+        final int error = glGetError();
+        if (error != GL11.GL_NO_ERROR) GLErrorReporter.reportError(error);
     }
 
     public static String glGetString(int pname) {

@@ -378,6 +378,7 @@ public final class PipelineCache {
                     | (((long) vao.attribType[i] & 0xFFFFL) << 16)
                     | ((vao.attribNormalized[i] ? 1L : 0L) << 32)
                     | ((vao.attribIsInteger[i] ? 1L : 0L) << 33)
+                    | (((long) vertexOffsetMisalign(vao.bindingOffset[b]) & 3L) << 34)
                     | (((long) b & 0xFF) << 40)
                     | (((long) vao.attribStride[i] & 0xFFFFL) << 48);
                 final long w1 =
@@ -662,6 +663,16 @@ public final class PipelineCache {
 
     private static final int GL_TYPE_BASE = GL11.GL_BYTE;
     static final int INVALID_FMT = -1;
+
+    public static final int VERTEX_BUFFER_OFFSET_ALIGN = 4;
+
+    public static int vertexOffsetBase(long bindingOffset) {
+        return (int) (bindingOffset & ~(VERTEX_BUFFER_OFFSET_ALIGN - 1));
+    }
+
+    public static int vertexOffsetMisalign(long bindingOffset) {
+        return (int) (bindingOffset & (VERTEX_BUFFER_OFFSET_ALIGN - 1));
+    }
     private static final int[][] VTX_FMT = buildVertexFormatTable();
 
     private static int[] fmtSame(int s1, int s2, int s3, int s4) {
@@ -839,7 +850,7 @@ public final class PipelineCache {
                 final int boundStride = vao.bindingStride[b];
                 final int stride = boundStride != 0 ? boundStride : (vao.attribStride[i] != 0 ? vao.attribStride[i] : vao.attribSize[i] * GLTypes.sizeBytes(vao.attribType[i]));
                 final int divisor = vao.bindingDivisor[b];
-                final int relOff = vao.attribRelativeOffset[i];
+                final int relOff = vao.attribRelativeOffset[i] + vertexOffsetMisalign(vao.bindingOffset[b]);
                 final int attribAlign = GLTypes.sizeBytes(vao.attribType[i]);
                 if (attribAlign > 0 && (stride % attribAlign) != 0) {
                     LOG.warn("[PipelineCache] unaligned vertex stride: location={} stride={} type=0x{} size={} -- attribAddress will not satisfy format alignment; fix producer", i, stride, Integer.toHexString(vao.attribType[i]), vao.attribSize[i]);

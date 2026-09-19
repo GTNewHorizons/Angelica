@@ -14,6 +14,8 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.celeritas.TerrainDrawStats;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.rendering.voxelization.SdlShadowVoxelizationSink;
+import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
+import com.gtnewhorizons.angelica.rendering.particles.ParticleInstancer;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
@@ -24,31 +26,21 @@ import org.embeddedt.embeddium.impl.render.chunk.SharedQuadIndexBuffer;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegionManager;
 
 public final class TracyFramePlots {
-    private static long lastChunkUpdates;
-    private static long lastDrawCalls, lastTexBindMisses, lastProgramSwitches, lastListPlaybacks;
-    private static long lastStreamedBytes, lastStreamDraws, lastOrphanFallbacks, lastStreamContiguous;
-    private static long lastRingWraps, lastVariantSwitches;
-    private static long lastTesrRebuilds, lastTesrRetainedDraws, lastTesrInstDraws, lastTesrInstInstances;
-    private static long lastTesrStreamedInstances, lastTesrPromotions, lastTesrCacheHits, lastTesrCacheMisses;
-    private static long lastBatcherParts, lastBatcherLiveFallbacks;
-    private static final long[] lastBails = new long[ModelPartBatcher.BailReason.VALUES.length];
-    private static long lastSectionsUploaded, lastBytesUploaded, lastIndexBufferGrowths;
-
     private static final long P_ALLOC_RATE = Tracy.plotHandle("allocRate", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long P_HEAP_USED = Tracy.plotHandle("heapUsed", TracyBackend.PLOT_FORMAT_MEMORY);
-    private static final long P_CHUNK_UPDATES = Tracy.plotHandle("chunkUpdates");
+    private static final PlotDelta P_CHUNK_UPDATES = new PlotDelta("chunkUpdates");
     private static final long P_ENTITIES_RENDERED = Tracy.plotHandle("entitiesRendered");
     private static final long P_ENTITIES_TOTAL = Tracy.plotHandle("entitiesTotal");
 
-    private static final long P_GL_DRAW_CALLS = Tracy.plotHandle("gl.drawCalls");
-    private static final long P_GL_TEX_BIND_MISSES = Tracy.plotHandle("gl.texBindMisses");
-    private static final long P_GL_PROGRAM_SWITCHES = Tracy.plotHandle("gl.programSwitches");
-    private static final long P_GL_LIST_PLAYBACKS = Tracy.plotHandle("gl.listPlaybacks");
-    private static final long P_GL_STREAMED_BYTES = Tracy.plotHandle("gl.streamedBytes", TracyBackend.PLOT_FORMAT_MEMORY);
-    private static final long P_GL_STREAM_DRAWS = Tracy.plotHandle("gl.streamDraws");
-    private static final long P_GL_ORPHAN_FALLBACKS = Tracy.plotHandle("gl.orphanFallbacks");
-    private static final long P_GL_STREAM_CONTIGUOUS = Tracy.plotHandle("gl.streamContiguous");
-    private static final long P_GL_RING_WRAPS = Tracy.plotHandle("gl.ringWraps");
+    private static final PlotDelta P_GL_DRAW_CALLS = new PlotDelta("gl.drawCalls");
+    private static final PlotDelta P_GL_TEX_BIND_MISSES = new PlotDelta("gl.texBindMisses");
+    private static final PlotDelta P_GL_PROGRAM_SWITCHES = new PlotDelta("gl.programSwitches");
+    private static final PlotDelta P_GL_LIST_PLAYBACKS = new PlotDelta("gl.listPlaybacks");
+    private static final PlotDelta P_GL_STREAMED_BYTES = new PlotDelta("gl.streamedBytes", TracyBackend.PLOT_FORMAT_MEMORY);
+    private static final PlotDelta P_GL_STREAM_DRAWS = new PlotDelta("gl.streamDraws");
+    private static final PlotDelta P_GL_ORPHAN_FALLBACKS = new PlotDelta("gl.orphanFallbacks");
+    private static final PlotDelta P_GL_STREAM_CONTIGUOUS = new PlotDelta("gl.streamContiguous");
+    private static final PlotDelta P_GL_RING_WRAPS = new PlotDelta("gl.ringWraps");
     private static final long P_GL_SECTION_META_BYTES = Tracy.plotHandle("gl.sectionMetaBytes", TracyBackend.PLOT_FORMAT_MEMORY);
 
     private static final long P_SHADOW_RELAY_FRAMES = Tracy.plotHandle("shadow.relayFrames");
@@ -59,7 +51,7 @@ public final class TracyFramePlots {
     private static final long P_VOX_DISPATCHES = Tracy.plotHandle("voxelization.dispatches");
     private static final long P_VOX_REGIONS = Tracy.plotHandle("voxelization.regions");
     private static final long P_DRAW_BATCH_REBUILDS = Tracy.plotHandle("draw.batchRebuilds");
-    private static final long P_DRAW_INDEX_BUFFER_GROWTHS = Tracy.plotHandle("draw.indexBufferGrowths");
+    private static final PlotDelta P_DRAW_INDEX_BUFFER_GROWTHS = new PlotDelta("draw.indexBufferGrowths");
 
     private static final long P_CULL_COMMANDS_SUBMITTED = Tracy.plotHandle("cull.commandsSubmitted");
     private static final long P_CULL_REGIONS_DRAWN = Tracy.plotHandle("cull.regionsDrawn");
@@ -79,24 +71,37 @@ public final class TracyFramePlots {
     private static final long P_FFP_STAGED_CLIP_PLANES = Tracy.plotHandle("ffp.stagedClipPlanes");
     private static final long P_FFP_STAGED_MISC = Tracy.plotHandle("ffp.stagedMisc");
     private static final long P_FFP_PROGRAMS = Tracy.plotHandle("ffp.programs");
-    private static final long P_FFP_VARIANT_SWITCHES = Tracy.plotHandle("ffp.variantSwitches");
+    private static final PlotDelta P_FFP_VARIANT_SWITCHES = new PlotDelta("ffp.variantSwitches");
 
-    private static final long P_TESR_REBUILDS = Tracy.plotHandle("tesr.rebuilds");
-    private static final long P_TESR_RETAINED_DRAWS = Tracy.plotHandle("tesr.retainedDraws");
-    private static final long P_TESR_INSTANCED_DRAWS = Tracy.plotHandle("tesr.instancedDraws");
-    private static final long P_TESR_INSTANCED_INSTANCES = Tracy.plotHandle("tesr.instancedInstances");
-    private static final long P_TESR_STREAMED_INSTANCES = Tracy.plotHandle("tesr.streamedInstances");
-    private static final long P_TESR_VOLATILE_PROMOTIONS = Tracy.plotHandle("tesr.volatilePromotions");
+    private static final PlotDelta P_TESR_REBUILDS = new PlotDelta("tesr.rebuilds");
+    private static final PlotDelta P_TESR_RETAINED_DRAWS = new PlotDelta("tesr.retainedDraws");
+    private static final PlotDelta P_TESR_INSTANCED_DRAWS = new PlotDelta("tesr.instancedDraws");
+    private static final PlotDelta P_TESR_INSTANCED_INSTANCES = new PlotDelta("tesr.instancedInstances");
+    private static final PlotDelta P_TESR_CUBE_INSTANCES = new PlotDelta("tesr.cubeInstances");
+    private static final PlotDelta P_TESR_TEXMAT_RUNS = new PlotDelta("tesr.texMatrixRuns");
+    private static final PlotDelta P_TESR_STREAMED_INSTANCES = new PlotDelta("tesr.streamedInstances");
+    private static final PlotDelta P_TESR_VOLATILE_PROMOTIONS = new PlotDelta("tesr.volatilePromotions");
     private static final long P_TESR_RETAINED_BYTES = Tracy.plotHandle("tesr.retainedBytes", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long P_TESR_BUFFER_SOURCE_BYTES = Tracy.plotHandle("tesr.bufferSourceBytes", TracyBackend.PLOT_FORMAT_MEMORY);
-    private static final long P_TESR_CACHE_HITS = Tracy.plotHandle("tesr.cacheHits");
-    private static final long P_TESR_CACHE_MISSES = Tracy.plotHandle("tesr.cacheMisses");
-    private static final long P_TESR_MODEL_PARTS = Tracy.plotHandle("tesr.modelParts");
-    private static final long P_TESR_LIVE_FALLBACKS = Tracy.plotHandle("tesr.liveFallbacks");
-    private static final long[] P_TESR_BAILS = bailHandles();
+    private static final PlotDelta P_TESR_CACHE_HITS = new PlotDelta("tesr.cacheHits");
+    private static final PlotDelta P_TESR_CACHE_MISSES = new PlotDelta("tesr.cacheMisses");
+    private static final PlotDelta P_TESR_MODEL_PARTS = new PlotDelta("tesr.modelParts");
+    private static final PlotDelta P_TESR_LIVE_FALLBACKS = new PlotDelta("tesr.liveFallbacks");
+    private static final PlotDelta P_ITEMS_INSTANCED = new PlotDelta("items.instanced");
+    private static final PlotDelta P_ITEMS_FALLBACK = new PlotDelta("items.fallback");
+    private static final PlotDelta P_ITEMS_GLINT_INSTANCED = new PlotDelta("items.glintInstanced");
+    private static final PlotDelta P_PARTICLES_DIRECT = new PlotDelta("particles.direct");
+    private static final PlotDelta P_PARTICLES_CAPTURED = new PlotDelta("particles.captured");
+    private static final PlotDelta P_PARTICLES_SPILLED = new PlotDelta("particles.spilled");
+    private static final PlotDelta P_PARTICLES_UNDECODABLE = new PlotDelta("particles.undecodable");
+    private static final PlotDelta P_PARTICLES_DRAWS = new PlotDelta("particles.draws");
+    private static final PlotDelta[] TESR_BAILS = bailHandles();
+    private static final PlotDelta[] ITEM_BAILS = itemBailHandles();
+    private static final PlotDelta P_ENTITY_SHADOW_QUADS = new PlotDelta("entity.shadowQuads");
+    private static final PlotDelta P_ENTITY_SHADOW_DRAWS = new PlotDelta("entity.shadowDraws");
 
-    private static final long P_MESH_UPLOADED_SECTIONS = Tracy.plotHandle("mesh.uploadedSections");
-    private static final long P_MESH_UPLOADED_BYTES = Tracy.plotHandle("mesh.uploadedBytes", TracyBackend.PLOT_FORMAT_MEMORY);
+    private static final PlotDelta P_MESH_UPLOADED_SECTIONS = new PlotDelta("mesh.uploadedSections");
+    private static final PlotDelta P_MESH_UPLOADED_BYTES = new PlotDelta("mesh.uploadedBytes", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long P_MESH_META_SLOTS = Tracy.plotHandle("mesh.metaSlots");
     private static final long P_MT_QUEUE_DEPTH = Tracy.plotHandle("mtQueue.depth");
     private static final long P_MT_QUEUE_TASKS = Tracy.plotHandle("mtQueue.tasksRan");
@@ -110,10 +115,17 @@ public final class TracyFramePlots {
     private static final long P_DYN_UPDATES = Tracy.plotHandle("dyn.updates");
     private static final long P_DYN_PENDING_REBUILDS = Tracy.plotHandle("dyn.pendingRebuilds");
 
-    private static long[] bailHandles() {
+    private static PlotDelta[] bailHandles() {
         final ModelPartBatcher.BailReason[] reasons = ModelPartBatcher.BailReason.VALUES;
-        final long[] out = new long[reasons.length];
-        for (int i = 0; i < reasons.length; i++) out[i] = Tracy.plotHandle(reasons[i].plotName);
+        final PlotDelta[] out = new PlotDelta[reasons.length];
+        for (int i = 0; i < reasons.length; i++) out[i] = new PlotDelta(reasons[i].plotName);
+        return out;
+    }
+
+    private static PlotDelta[] itemBailHandles() {
+        final DroppedItemInstancer.BailReason[] reasons = DroppedItemInstancer.BailReason.VALUES;
+        final PlotDelta[] out = new PlotDelta[reasons.length];
+        for (int i = 0; i < reasons.length; i++) out[i] = new PlotDelta(reasons[i].plotName);
         return out;
     }
 
@@ -153,9 +165,7 @@ public final class TracyFramePlots {
         Tracy.plotInt(P_PACER_LOCKED, FramePacer.locked() ? 1 : 0);
         Tracy.plotInt(P_PACER_PROBING, FramePacer.probing() ? 1 : 0);
 
-        final int chunksUpdated = WorldRenderer.chunksUpdated;
-        Tracy.plotInt(P_CHUNK_UPDATES, chunksUpdated - lastChunkUpdates);
-        lastChunkUpdates = chunksUpdated;
+        P_CHUNK_UPDATES.plot(WorldRenderer.chunksUpdated);
         if (mc.renderGlobal != null) {
             Tracy.plotInt(P_ENTITIES_RENDERED, mc.renderGlobal.countEntitiesRendered);
         }
@@ -163,15 +173,15 @@ public final class TracyFramePlots {
             Tracy.plotInt(P_ENTITIES_TOTAL, mc.theWorld.loadedEntityList.size());
         }
 
-        lastDrawCalls = delta(P_GL_DRAW_CALLS, GLStateManager.drawCalls, lastDrawCalls);
-        lastTexBindMisses = delta(P_GL_TEX_BIND_MISSES, GLStateManager.texBindMisses, lastTexBindMisses);
-        lastProgramSwitches = delta(P_GL_PROGRAM_SWITCHES, GLStateManager.programSwitches, lastProgramSwitches);
-        lastListPlaybacks = delta(P_GL_LIST_PLAYBACKS, DisplayListManager.listPlaybacks, lastListPlaybacks);
-        lastStreamedBytes = delta(P_GL_STREAMED_BYTES, TessellatorStreamingDrawer.streamedBytes, lastStreamedBytes);
-        lastStreamDraws = delta(P_GL_STREAM_DRAWS, TessellatorStreamingDrawer.streamDraws, lastStreamDraws);
-        lastOrphanFallbacks = delta(P_GL_ORPHAN_FALLBACKS, TessellatorStreamingDrawer.orphanFallbacks, lastOrphanFallbacks);
-        lastStreamContiguous = delta(P_GL_STREAM_CONTIGUOUS, TessellatorStreamingDrawer.streamContiguous, lastStreamContiguous);
-        lastRingWraps = delta(P_GL_RING_WRAPS, TessellatorStreamingDrawer.ringWraps(), lastRingWraps);
+        P_GL_DRAW_CALLS.plot(GLStateManager.drawCalls);
+        P_GL_TEX_BIND_MISSES.plot(GLStateManager.texBindMisses);
+        P_GL_PROGRAM_SWITCHES.plot(GLStateManager.programSwitches);
+        P_GL_LIST_PLAYBACKS.plot(DisplayListManager.listPlaybacks);
+        P_GL_STREAMED_BYTES.plot(TessellatorStreamingDrawer.streamedBytes);
+        P_GL_STREAM_DRAWS.plot(TessellatorStreamingDrawer.streamDraws);
+        P_GL_ORPHAN_FALLBACKS.plot(TessellatorStreamingDrawer.orphanFallbacks);
+        P_GL_STREAM_CONTIGUOUS.plot(TessellatorStreamingDrawer.streamContiguous);
+        P_GL_RING_WRAPS.plot(TessellatorStreamingDrawer.ringWraps());
         Tracy.plotInt(P_GL_SECTION_META_BYTES, TerrainDrawStats.takeSectionMetaBytes());
         Tracy.plotInt(P_SHADOW_RELAY_FRAMES, ShadowRenderer.SHADOW_TERRAIN_RELAID ? 1 : 0);
         Tracy.plotInt(P_TERRAIN_DRAW_COMMANDS, TerrainDrawStats.takeCommandsSubmitted());
@@ -199,33 +209,47 @@ public final class TracyFramePlots {
         Tracy.plotInt(P_FFP_STAGED_CLIP_PLANES, ffp.statLastFrameStagedClipPlanes());
         Tracy.plotInt(P_FFP_STAGED_MISC, ffp.statLastFrameStagedMisc());
         Tracy.plotInt(P_FFP_PROGRAMS, ffp.statProgramCount());
-        lastVariantSwitches = delta(P_FFP_VARIANT_SWITCHES, ShaderManager.variantSwitches, lastVariantSwitches);
+        P_FFP_VARIANT_SWITCHES.plot(ShaderManager.variantSwitches);
 
         final TesrBatchRenderer tesr = TesrBatchRenderer.INSTANCE;
         final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
 
-        lastTesrRebuilds = delta(P_TESR_REBUILDS, tesr.statRebuilds(), lastTesrRebuilds);
-        lastTesrRetainedDraws = delta(P_TESR_RETAINED_DRAWS, tesr.statRetainedDraws(), lastTesrRetainedDraws);
-        lastTesrInstDraws = delta(P_TESR_INSTANCED_DRAWS, tesr.statInstancedDraws(), lastTesrInstDraws);
-        lastTesrInstInstances = delta(P_TESR_INSTANCED_INSTANCES, tesr.statInstancedInstances(), lastTesrInstInstances);
-        lastTesrStreamedInstances = delta(P_TESR_STREAMED_INSTANCES, tesr.statStreamedInstances(), lastTesrStreamedInstances);
-        lastTesrPromotions = delta(P_TESR_VOLATILE_PROMOTIONS, tesr.statVolatilePromotions(), lastTesrPromotions);
+        P_TESR_REBUILDS.plot(tesr.statRebuilds());
+        P_TESR_RETAINED_DRAWS.plot(tesr.statRetainedDraws());
+        P_TESR_INSTANCED_DRAWS.plot(tesr.statInstancedDraws() + batcher.statInstancedDraws());
+        P_TESR_INSTANCED_INSTANCES.plot(tesr.statInstancedInstances() + batcher.statInstancedInstances());
+        P_TESR_CUBE_INSTANCES.plot(batcher.statCubeInstances());
+        P_TESR_TEXMAT_RUNS.plot(batcher.statTexMatrixRuns());
+        P_TESR_STREAMED_INSTANCES.plot(tesr.statStreamedInstances());
+        P_TESR_VOLATILE_PROMOTIONS.plot(tesr.statVolatilePromotions());
         if (plots) {
             Tracy.plotInt(P_TESR_RETAINED_BYTES, tesr.statRetainedBytes());
             Tracy.plotInt(P_TESR_BUFFER_SOURCE_BYTES, tesr.statBufferSourceBytes());
         }
-        lastTesrCacheHits = delta(P_TESR_CACHE_HITS, AngelicaTesrMeshCache.cacheHits, lastTesrCacheHits);
-        lastTesrCacheMisses = delta(P_TESR_CACHE_MISSES, AngelicaTesrMeshCache.cacheMisses, lastTesrCacheMisses);
-        lastBatcherParts = delta(P_TESR_MODEL_PARTS, batcher.statParts(), lastBatcherParts);
-        lastBatcherLiveFallbacks = delta(P_TESR_LIVE_FALLBACKS, batcher.statLiveFallbacks(), lastBatcherLiveFallbacks);
+        P_TESR_CACHE_HITS.plot(AngelicaTesrMeshCache.cacheHits);
+        P_TESR_CACHE_MISSES.plot(AngelicaTesrMeshCache.cacheMisses);
+        P_TESR_MODEL_PARTS.plot(batcher.statParts());
+        P_TESR_LIVE_FALLBACKS.plot(batcher.statLiveFallbacks());
+        P_ITEMS_INSTANCED.plot(DroppedItemInstancer.statInstanced());
+        P_ITEMS_FALLBACK.plot(DroppedItemInstancer.statFallback());
+        P_ITEMS_GLINT_INSTANCED.plot(DroppedItemInstancer.statGlintInstanced());
+        for (final DroppedItemInstancer.BailReason reason : DroppedItemInstancer.BailReason.VALUES) {
+            ITEM_BAILS[reason.ordinal()].plot(DroppedItemInstancer.statBail(reason));
+        }
+        P_PARTICLES_DIRECT.plot(ParticleInstancer.getDirect());
+        P_PARTICLES_CAPTURED.plot(ParticleInstancer.getCaptured());
+        P_PARTICLES_SPILLED.plot(ParticleInstancer.getSpilled());
+        P_PARTICLES_UNDECODABLE.plot(ParticleInstancer.getUndecodable());
+        P_PARTICLES_DRAWS.plot(ParticleInstancer.getDraws());
+        P_ENTITY_SHADOW_QUADS.plot(batcher.statShadowQuads());
+        P_ENTITY_SHADOW_DRAWS.plot(batcher.statShadowDraws());
         for (final ModelPartBatcher.BailReason reason : ModelPartBatcher.BailReason.VALUES) {
-            final int i = reason.ordinal();
-            lastBails[i] = delta(P_TESR_BAILS[i], batcher.statBail(reason), lastBails[i]);
+            TESR_BAILS[reason.ordinal()].plot(batcher.statBail(reason));
         }
 
-        lastSectionsUploaded = delta(P_MESH_UPLOADED_SECTIONS, RenderRegionManager.getSectionsUploaded(), lastSectionsUploaded);
-        lastBytesUploaded = delta(P_MESH_UPLOADED_BYTES, RenderRegionManager.getBytesUploaded(), lastBytesUploaded);
-        lastIndexBufferGrowths = delta(P_DRAW_INDEX_BUFFER_GROWTHS, SharedQuadIndexBuffer.getGrowths(), lastIndexBufferGrowths);
+        P_MESH_UPLOADED_SECTIONS.plot(RenderRegionManager.getSectionsUploaded());
+        P_MESH_UPLOADED_BYTES.plot(RenderRegionManager.getBytesUploaded());
+        P_DRAW_INDEX_BUFFER_GROWTHS.plot(SharedQuadIndexBuffer.getGrowths());
         Tracy.plotInt(P_MESH_META_SLOTS, GpuCulling.sectionMeta().getHighWaterMark());
         Tracy.plotInt(P_MT_QUEUE_DEPTH, AngelicaRenderQueue.getQueueDepth());
         Tracy.plotInt(P_MT_QUEUE_TASKS, AngelicaRenderQueue.getLastFrameTasksRan());
@@ -253,10 +277,24 @@ public final class TracyFramePlots {
         RenderClassTimings.TESR.flushFrame(plots);
         BailClassCounts.MATERIAL.flushFrame(plots);
         BailClassCounts.TEMPLATE.flushFrame(plots);
+        BailClassCounts.PARTICLE_SPILL.flushFrame(plots);
     }
 
-    private static long delta(long handle, long now, long last) {
-        Tracy.plotInt(handle, now - last);
-        return now;
+    private static final class PlotDelta {
+        private final long handle;
+        private long last;
+
+        PlotDelta(String name) {
+            this(name, TracyBackend.PLOT_FORMAT_NUMBER);
+        }
+
+        PlotDelta(String name, int format) {
+            handle = Tracy.plotHandle(name, format);
+        }
+
+        void plot(long now) {
+            Tracy.plotInt(handle, now - last);
+            last = now;
+        }
     }
 }

@@ -1,9 +1,10 @@
 package jss.notfine.render;
 
+import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
+import com.gtnewhorizons.angelica.utils.SpritePadding;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureUtil;
 
 /**
  * Originally created by ganymedes01 for Et Futurum.
@@ -58,7 +59,8 @@ public class InterpolatedIcon extends TextureAtlasSprite {
 					}
 			}
 
-			TextureUtil.uploadTextureMipmap(interpolatedFrameData, width, height, originX, originY, false, false);
+			SpritePadding.uploadPadded(interpolatedFrameData, width, height, originX, originY,
+				((SpriteExtension) this).angelica$getGutterWidth(), false, false);
 		}
 	}
 }

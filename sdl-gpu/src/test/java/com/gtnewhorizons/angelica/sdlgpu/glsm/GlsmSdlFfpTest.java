@@ -1,6 +1,11 @@
 package com.gtnewhorizons.angelica.sdlgpu.glsm;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.CubeParityFixture;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.ffp.ParticleParityFixture;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -38,6 +43,14 @@ class GlsmSdlFfpTest {
         baseTexture = GlsmSdlHeadlessRig.createSolidTexture(TEXEL);
         lightmapTexture = createLightmapTexture();
         GlsmSdlHeadlessRig.endFrame();
+    }
+
+    @AfterEach
+    void cleanupInstancing() {
+        GLStateManager.ffpInstancing = Instancing.NONE;
+        CubeParityFixture.deleteResources();
+        ParticleParityFixture.deleteResources();
+        FfpFixture.IntegerInstances.delete();
     }
 
     private static int createLightmapTexture() {
@@ -146,9 +159,7 @@ class GlsmSdlFfpTest {
         GLStateManager.glCallList(list);
         assertTexelEverywhere("two units, glCallList");
 
-        GlsmSdlHeadlessRig.beginFrame();
-        GlsmSdlHeadlessRig.bindTarget();
-        GlsmSdlHeadlessRig.clearTo(0.0f, 0.0f, 0.0f, 1.0f);
+        GlsmSdlHeadlessRig.beginFrameAndClear();
 
         final IntBuffer lists = BufferUtils.createIntBuffer(1);
         lists.put(0, list);
@@ -170,6 +181,54 @@ class GlsmSdlFfpTest {
         assertEquals(255, (center >>> 24) & 0xFF, () -> "lit quad alpha: " + describe(center));
         assertTrue(red > 100, () -> "lit quad red: " + describe(center));
         assertTrue(red < ((TEXEL >> 16) & 0xFF), () -> "lit quad is not attenuated: " + describe(center));
+    }
+
+    @Test
+    void unitCubeMatchesBakedQuadsWithLightmap() {
+        CubeParityFixture.setupScene(true, false);
+
+        final CubeParityFixture.Spec[] specs = CubeParityFixture.specs();
+
+        CubeParityFixture.drawReference(specs, true);
+        final int[] reference = GlsmSdlHeadlessRig.readTarget();
+
+        GlsmSdlHeadlessRig.beginFrameAndClear();
+        CubeParityFixture.drawInstanced(specs);
+        final int[] instanced = GlsmSdlHeadlessRig.readTarget();
+
+        CubeParityFixture.assertPixelParity(reference, instanced, SIZE, 0xFF000000, GlsmSdlHeadlessRig::describe);
+    }
+
+    @Test
+    void particleFirstPersonRotationMatchesReference() {
+        final ParticleParityFixture.Rotation rot = ParticleParityFixture.Rotation.of(35f, -12f, false);
+        ParticleParityFixture.setupScene(false);
+
+        final ParticleParityFixture.Particle[] particles = ParticleParityFixture.particles();
+
+        ParticleParityFixture.drawReference(particles, rot.x(), rot.xz(), rot.z(), rot.yz(), rot.xy());
+        final int[] reference = GlsmSdlHeadlessRig.readTarget();
+
+        GlsmSdlHeadlessRig.beginFrameAndClear();
+        ParticleParityFixture.drawInstanced(particles, rot.x(), rot.xz(), rot.z(), rot.yz(), rot.xy());
+        final int[] instanced = GlsmSdlHeadlessRig.readTarget();
+
+        ParticleParityFixture.assertPixelParity(reference, instanced, SIZE, 0xFF000000, GlsmSdlHeadlessRig::describe);
+    }
+
+    @Test
+    void entityAttribSelectsColorPerInstance() {
+        FfpFixture.IntegerInstances.build(0.6f);
+
+        GlsmSdlHeadlessRig.beginFrameAndClear();
+
+        FfpFixture.IntegerInstances.draw();
+
+        final int[] pixels = GlsmSdlHeadlessRig.readTarget();
+
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 13, SIZE / 2, 0xFFFF0000, "entity -1 must render red");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 32, SIZE / 2, 0xFF00FF00, "entity 7 must render green");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 51, SIZE / 2, 0xFF0000FF, "entity 42 must render blue");
     }
 
     private static void enableGuiStandardItemLighting() {

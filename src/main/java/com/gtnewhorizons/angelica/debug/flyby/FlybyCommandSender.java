@@ -15,9 +15,11 @@ final class FlybyCommandSender implements ICommandSender {
     private static final String NAME = "Flyby";
 
     private final EntityPlayerMP player;
+    private final ChunkCoordinates anchor;
 
-    FlybyCommandSender(EntityPlayerMP player) {
+    FlybyCommandSender(EntityPlayerMP player, ChunkCoordinates anchor) {
         this.player = player;
+        this.anchor = anchor;
     }
 
     @Override
@@ -42,7 +44,7 @@ final class FlybyCommandSender implements ICommandSender {
 
     @Override
     public ChunkCoordinates getPlayerCoordinates() {
-        return this.player.getPlayerCoordinates();
+        return this.anchor;
     }
 
     @Override

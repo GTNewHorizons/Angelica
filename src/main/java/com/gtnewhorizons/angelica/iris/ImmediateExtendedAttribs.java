@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.iris;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
@@ -81,6 +82,7 @@ public final class ImmediateExtendedAttribs implements ImmediateExtendedAttribHa
 
     @Override
     public boolean wantsExtended() {
+        GLSMHooks.resolvePendingProgram();
         return Iris.enabled && currentProgramWants != 0 && GLStateManager.getActiveProgram() != 0;
     }
 

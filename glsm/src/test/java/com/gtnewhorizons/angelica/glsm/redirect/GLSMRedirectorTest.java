@@ -277,6 +277,11 @@ class GLSMRedirectorTest {
     }
 
     @Test
+    void utilCheckGLErrorIsRedirected() throws Exception {
+        assertRedirectedToDeclaredTarget(new String[][]{{"org/lwjgl/opengl/Util", "checkGLError", "()V"}});
+    }
+
+    @Test
     void indexedGettersHaveRealTargets() throws Exception {
         final Class<?> glsm = Class.forName(GLSM.replace('/', '.'), false, getClass().getClassLoader());
         assertDoesNotThrow(() -> glsm.getDeclaredMethod("glGetInteger", int.class, int.class), "LWJGL2 GL30.glGetInteger(pname, index) redirects here");

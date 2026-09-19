@@ -513,7 +513,7 @@ public final class ResourceManager {
         final int newUsage = reconcileUsageAndWarn(glId, meta.usage | requiredUsage);
         if ((meta.usage & newUsage) == newUsage) return oldHandle;
 
-        final long newHandle = createTexture(glId, meta.glTarget, meta.glFormat, meta.width, meta.height, meta.depth, meta.levels, newUsage);
+        final long newHandle = createTextureWithSdlFormat(glId, meta.glTarget, meta.sdlFormat, meta.glFormat, meta.width, meta.height, meta.depth, meta.levels, newUsage);
         if (newHandle == 0) return oldHandle;
         if (oldHandle != 0 && !copyAllMips(oldHandle, newHandle, meta.glTarget, meta.width, meta.height, meta.depth, meta.levels)) {
             LOG.warn("[ResourceManager] texture {} usage promote 0x{} -> 0x{} had no copy pass available; restoring the populated texture and skipping the promote. Image load/store on it will not work this frame.", glId, Integer.toHexString(meta.usage), Integer.toHexString(newUsage));
@@ -528,6 +528,41 @@ public final class ResourceManager {
         LOG.debug("Recreated texture {} with usage 0x{} -> 0x{} ({}x{})", glId,
             Integer.toHexString(meta.usage), Integer.toHexString(newUsage), meta.width, meta.height);
         return newHandle;
+    }
+
+    public boolean ensureTextureLevels(int glId, int levels) {
+        final TextureMeta meta;
+        final long oldHandle;
+        if (fastRead()) {
+            meta = textureMetas.get(glId);
+            if (meta == null) return false;
+            if (meta.levels >= levels) return true;
+            oldHandle = textureHandles.get(glId);
+        } else {
+            rLock.lock();
+            try {
+                meta = textureMetas.get(glId);
+                if (meta == null) return false;
+                if (meta.levels >= levels) return true;
+                oldHandle = textureHandles.get(glId);
+            } finally {
+                rLock.unlock();
+            }
+        }
+
+        final long newHandle = createTextureWithSdlFormat(glId, meta.glTarget, meta.sdlFormat, meta.glFormat, meta.width, meta.height, meta.depth, levels, meta.usage);
+        if (newHandle == 0) return false;
+        if (oldHandle != 0 && !copyAllMips(oldHandle, newHandle, meta.glTarget, meta.width, meta.height, meta.depth, meta.levels)) {
+            LOG.warn("[ResourceManager] texture {} mip grow {} -> {} had no copy pass available; keeping the populated texture. Levels past {} stay undefined this frame.", glId, meta.levels, levels, meta.levels - 1);
+            releaseTextureDeferred(newHandle);
+            restoreTextureHandle(glId, oldHandle, meta);
+            return false;
+        }
+
+        releaseTextureDeferred(oldHandle);
+        refreshTextureReferences(glId);
+        LOG.debug("Recreated texture {} with levels {} -> {} ({}x{})", glId, meta.levels, levels, meta.width, meta.height);
+        return true;
     }
 
     private boolean copyAllMips(long srcTex, long dstTex, int glTarget, int width, int height, int depth, int levels) {

@@ -49,6 +49,10 @@ public final class ParticleRunSplitter {
         }
     }
 
+    public static boolean currentRunTranslucent() {
+        return runTranslucent;
+    }
+
     public static boolean isTranslucent(EntityFX particle) {
         if (particle.particleIcon instanceof TextureAtlasSprite sprite) {
             return ((SpriteExtension) sprite).celeritas$getTransparencyLevel() == SpriteTransparencyLevel.TRANSLUCENT;

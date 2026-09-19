@@ -810,6 +810,8 @@ public class GLSMRedirector {
             .add("gluBuild2DMipmaps")
             .add("gluErrorString")
         );
+        // Must honor disableErrorChecks like glGetError, or it throws on errors those checks left latched
+        methodRedirects.put("org/lwjgl/opengl/Util", RedirectMap.newMap().add("checkGLError"));
 
         // Quadric type replacements
         typeRedirects.put("org/lwjgl/util/glu/Sphere", "com/gtnewhorizons/angelica/glsm/compat/lwjgl/AngelicaSphere");

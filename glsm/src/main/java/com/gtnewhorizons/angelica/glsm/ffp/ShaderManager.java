@@ -97,6 +97,8 @@ public final class ShaderManager {
             final long vkPacked = VertexKey.packFromState(true, true, true, true, fragMask);
             final VertexKey vk = VertexKey.fromPacked(vkPacked);
             VertexShaderGenerator.generate(vk);
+            VertexShaderGenerator.generate(VertexKey.fromPacked(VertexKey.withInstancing(vkPacked, Instancing.CUBE)));
+            VertexShaderGenerator.generate(VertexKey.fromPacked(VertexKey.withInstancing(vkPacked, Instancing.PARTICLE)));
             FragmentShaderGenerator.generate(FragmentKey.fromPacked(fkScratch, fkLen));
             GeometryShaderGenerator.generate(vk);
             final Class<?>[] touched = { Program.class, ShaderCache.class, TessellatorStreamingDrawer.class, QuadConverter.class };
@@ -127,6 +129,7 @@ public final class ShaderManager {
     }
 
     public void preDraw() {
+        GLSMHooks.resolvePendingProgram();
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
