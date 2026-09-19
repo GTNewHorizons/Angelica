@@ -47,7 +47,6 @@ public class DarkModeUtils {
     private static final Map<Class<?>, Method> INPUT_STREAM_METHOD_CACHE = new HashMap<>();
 
     private static FontRecolorRule guiFontRule = null;
-    // TODO: parsed but not applied anywhere yet - button text recoloring
     private static ButtonFontRules buttonFontRules = null;
 
     static {
@@ -129,22 +128,28 @@ public class DarkModeUtils {
             return null;
         }
     }
-
     private static ButtonFontRules parseButtonFontRules(JsonObject buttonFont, String packName) {
-        FontRecolorRule enabled = parseButtonState(buttonFont, "enabled", packName);
-        FontRecolorRule hovered = parseButtonState(buttonFont, "hovered", packName);
-        FontRecolorRule disabled = parseButtonState(buttonFont, "disabled", packName);
+        ButtonColorRule enabled = parseButtonState(buttonFont, "enabled", packName);
+        ButtonColorRule hovered = parseButtonState(buttonFont, "hovered", packName);
+        ButtonColorRule disabled = parseButtonState(buttonFont, "disabled", packName);
         if (enabled == null && hovered == null && disabled == null) {
             return null;
         }
         return new ButtonFontRules(enabled, hovered, disabled);
     }
 
-    private static FontRecolorRule parseButtonState(JsonObject buttonFont, String state, String packName) {
+    private static ButtonColorRule parseButtonState(JsonObject buttonFont, String state, String packName) {
         if (!buttonFont.has(state) || !buttonFont.get(state).isJsonObject()) {
             return null;
         }
-        return parseFontRecolorRule(buttonFont.getAsJsonObject(state), packName, "button_font." + state);
+        try {
+            String outputValue = buttonFont.getAsJsonObject(state).get("output").getAsString().trim();
+            boolean debugPulse = DEBUG_PULSE.equalsIgnoreCase(outputValue);
+            return new ButtonColorRule(debugPulse ? 0 : parseHexColor(outputValue), debugPulse);
+        } catch (RuntimeException e) {
+            LOGGER.warn("Invalid dark_mode_utils button_font.{} rule in pack {}: {}", state, packName, e.toString());
+            return null;
+        }
     }
 
     private static FontRecolorRule parseFontRecolorRule(JsonObject obj, String packName, String context) {
@@ -223,6 +228,29 @@ public class DarkModeUtils {
         return rule.tryRecolor(argbColor);
     }
 
+    /**
+     * Inside a button section, swaps text drawn in one of the button's own three colors for the matching button_font
+     * color. Pure white also counts as the enabled color, since it's the most likely override of it. Any other color
+     * is returned untouched.
+     */
+    public static int recolorButtonText(int argbColor, int enabledColor, int hoveredColor, int disabledColor) {
+        final ButtonFontRules rules = buttonFontRules;
+        if (rules == null) {
+            return argbColor;
+        }
+        final int rgb = argbColor & 0x00FFFFFF;
+        final ButtonColorRule rule;
+        if (rgb == enabledColor || rgb == 0xFFFFFF) { rule = rules.enabled(); }
+        else if (rgb == hoveredColor) { rule = rules.hovered(); }
+        else if (rgb == disabledColor) { rule = rules.disabled(); }
+        else { return argbColor; }
+
+        if (rule == null) {
+            return argbColor;
+        }
+        return (argbColor & 0xFF000000) | (rule.debugPulse() ? computeDebugPulseRgb() : rule.output());
+    }
+
     private static int computeDebugPulseRgb() {
         final float time = HUDCaching.renderingCacheOverride ? 0f
             : (float) ((System.nanoTime() & 0xFFFFFFFFFFFFL) * DEBUG_PULSE_TIME_SCALE);
@@ -234,15 +262,12 @@ public class DarkModeUtils {
 
     private record PackDarkModeRules(FontRecolorRule guiFont, ButtonFontRules buttonFont) {}
 
-    /** Parsed target.button_font rules, keyed by button state. Not applied anywhere yet, see the TODO above. 
-        * Practically:
-        * disabled -> 0xA0A0A0 (gray)
-        * hovered -> 0xFFFFA0 (yellowish)
-        * normal enabled -> 0xFFFFFF (white)
-    */
-    private record ButtonFontRules(FontRecolorRule enabled, FontRecolorRule hovered, FontRecolorRule disabled) {}
+    /** Parsed target.button_font colors, one per state (vanilla's own: enabled 0xE0E0E0, hovered 0xFFFFA0, disabled 0xA0A0A0). */
+    private record ButtonFontRules(ButtonColorRule enabled, ButtonColorRule hovered, ButtonColorRule disabled) {}
 
-    /** One input-threshold/output/shadow rule, shared by gui_font and each button_font state - they're the same shape. */
+    private record ButtonColorRule(int output, boolean debugPulse) {}
+
+    /** The gui_font rule: input thresholds, output color and shadow flag. */
     private static final class FontRecolorRule {
 
         final int minR, minG, minB;
