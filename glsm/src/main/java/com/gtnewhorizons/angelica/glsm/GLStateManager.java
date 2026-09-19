@@ -5398,6 +5398,11 @@ public class GLStateManager {
         return RENDER_BACKEND.getError();
     }
 
+    public static void checkGLError() {
+        final int error = glGetError();
+        if (error != GL11.GL_NO_ERROR) throw new org.lwjgl.opengl.OpenGLException(error);
+    }
+
     public static String glGetString(int pname) {
         if (!RENDER_BACKEND.hasContext()) return "no valid GL/render context";
         return RENDER_BACKEND.getString(pname);
