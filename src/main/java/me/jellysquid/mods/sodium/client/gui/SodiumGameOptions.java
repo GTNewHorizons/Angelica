@@ -80,6 +80,11 @@ public class SodiumGameOptions {
         return resolveFilterMode(ClientProxy.options().quality.textureFilterMode);
     }
 
+    public static boolean usesTerrainTexelSnap() {
+        return effectiveTextureFilterMode() != TextureFilterMode.NONE
+            || !ClientProxy.options().quality.texelSampling.isNearest();
+    }
+
     public static TextureFilterMode resolveFilterMode(TextureFilterMode mode) {
         if (mode == null) {
             mode = TextureFilterMode.RGSS_ANISOTROPIC;

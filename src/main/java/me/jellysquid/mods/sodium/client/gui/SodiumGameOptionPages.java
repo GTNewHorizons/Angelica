@@ -2,6 +2,7 @@ package me.jellysquid.mods.sodium.client.gui;
 
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.EnumSet;
 import java.util.List;
 import java.util.function.BiConsumer;
 import java.util.function.Supplier;
@@ -202,6 +203,10 @@ public class SodiumGameOptionPages {
                 .setBinding((opts, value) -> opts.quality.texelSampling = value,
                     opts -> opts.quality.texelSampling)
                 .setImpact(OptionImpact.LOW)
+                // Only this mode needs a rerender
+                .setFlags(() -> textureFilterMode.getValue() == TextureFilterMode.NONE
+                    ? EnumSet.of(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                    : EnumSet.noneOf(OptionFlag.class))
                 .build();
 
         groups.add(OptionGroup.createBuilder()
