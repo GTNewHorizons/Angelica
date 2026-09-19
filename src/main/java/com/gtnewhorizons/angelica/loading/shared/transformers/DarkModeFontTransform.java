@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.loading.shared.transformers;
 
+import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
+import com.gtnewhorizons.angelica.client.font.DarkModeUtils;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.jetbrains.annotations.NotNull;
@@ -13,7 +15,10 @@ import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
 
-import java.util.HashSet;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class DarkModeFontTransform {
 
@@ -27,6 +32,30 @@ public class DarkModeFontTransform {
         private final String name;
         private final String obfName;
         public final String desc;
+
+        // Accepts an AT entry, examples:
+        // net.minecraft.client.gui.inventory.GuiContainer func_73863_a(IIF)V # drawScreen
+        // vswe.stevescarts.Interfaces.GuiNEIKiller drawScreen(IIF)V
+        public MethodInfo(@NotNull String atEntry) {
+            int firstSpace = atEntry.indexOf(' ');
+            int descStart = atEntry.indexOf('(');
+            int hashIndex = atEntry.indexOf('#');
+
+            String className = atEntry.substring(0, firstSpace);
+            String identifierBeforeDesc = atEntry.substring(firstSpace, descStart).trim();
+            String name, obfName, desc;
+            if (hashIndex != -1) {
+                obfName = identifierBeforeDesc;
+                desc = atEntry.substring(descStart, hashIndex).trim();
+                name = atEntry.substring(hashIndex + 1).trim();
+            } else {
+                name = identifierBeforeDesc;
+                desc = atEntry.substring(descStart);
+                obfName = null;
+            }
+
+            this(className, name, obfName, desc);
+        }
 
         public MethodInfo(@NotNull String className, @NotNull String name, @Nullable String obfName, @NotNull String desc) {
             this.className = className;
@@ -49,76 +78,88 @@ public class DarkModeFontTransform {
     }
 
     /**
-     * A marker to surround every {@code calledMethod} call in {@code callingMethod} with calls that inform
-     * the {@link com.gtnewhorizons.angelica.client.font.BatchingFontRenderer} it's inside a GUI and should
-     * recolor text according to the rules in {@link com.gtnewhorizons.angelica.client.font.DarkModeUtils}.
-     * @param callingMethod
-     * @param calledMethod
+     * Data used to tell the transformer that it should use some calls
+     * ({@link BatchingFontRenderer#enterRecolorSection(boolean)}, {@link BatchingFontRenderer#exitRecolorSection(boolean)})
+     * to mark areas where text should be recolored according to the rules in {@link DarkModeUtils}.
+     * Can either apply to an entire method (placing markers in it) or a specific method call in some method (wrapping the call).
      */
-    public record FlagAtCallSitesTarget(MethodInfo callingMethod, MethodInfo calledMethod) {}
-    public static final FlagAtCallSitesTarget[] flagTargets = {
+    public record RecolorTarget(@NotNull MethodInfo method, @Nullable MethodInfo calledMethod, boolean recolorEnabled) {
+        public static RecolorTarget includeMethod(MethodInfo method) { return new RecolorTarget(method, null, true); }
+        public static RecolorTarget excludeMethod(MethodInfo method) { return new RecolorTarget(method, null, false); }
+        public static RecolorTarget includeMethodCall(MethodInfo callingMethod, MethodInfo calledMethod) { return new RecolorTarget(callingMethod, calledMethod, true); }
+        public static RecolorTarget excludeMethodCall(MethodInfo callingMethod, MethodInfo calledMethod) { return new RecolorTarget(callingMethod, calledMethod, false); }
+
+        public boolean targetsCall() { return calledMethod != null; }
+    }
+
+    // A target method must contain the obf name if it's
+    // a) a vanilla method
+    // or b) a modded method belonging to a class that extends (or is) a vanilla class that declares said method (so, an override).
+    // Notably, "GuiNEIKiller" does not override drawGuiContainerForegroundLayer because it doesn't inherit GuiContainer.
+    public static final RecolorTarget[] recolorTargets = {
         // Vanilla methods. Many mods use these; several draw text in the "background" layer...
-        new FlagAtCallSitesTarget(
-            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer", "drawScreen", "func_73863_a", "(IIF)V"),
-            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer", "drawGuiContainerForegroundLayer", "func_146979_b", "(II)V")
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer func_146979_b(II)V # drawGuiContainerForegroundLayer")
         ),
-        new FlagAtCallSitesTarget(
-            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer", "drawScreen", "func_73863_a", "(IIF)V"),
-            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer", "drawGuiContainerBackgroundLayer", "func_146976_a", "(FII)V")
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer func_146976_a(FII)V # drawGuiContainerBackgroundLayer")
         ),
-        // Avaritiaddons infinity chest
-        new FlagAtCallSitesTarget(
-            new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest", "drawScreen", null, "(IIF)V"),
-            new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest", "drawGuiContainerForegroundLayer", null, "(II)V")
+        RecolorTarget.excludeMethod(
+            new MethodInfo("net.minecraft.client.renderer.entity.RenderItem func_94148_a(Lnet/minecraft/client/gui/FontRenderer;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V # renderItemOverlayIntoGUI")
         ),
-        // SC2
-        new FlagAtCallSitesTarget(
-            new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller", "drawScreen", null, "(IIF)V"),
-            new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller", "drawGuiContainerForegroundLayer", null, "(II)V")
+        // Modded stuff. Some mods copy-paste vanilla code.
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest func_146979_b(II)V # drawGuiContainerForegroundLayer")
         ),
-        // Binnie
-        new FlagAtCallSitesTarget(
-            new MethodInfo("binnie.core.craftgui.minecraft.GuiCraftGUI", "drawScreen", null, "(IIF)V"),
-            new MethodInfo("binnie.core.craftgui.minecraft.Window", "render", null, "()V")
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller drawGuiContainerForegroundLayer(II)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("binnie.core.craftgui.minecraft.GuiCraftGUI func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("binnie.core.craftgui.minecraft.Window render()V")
+        ),
+        RecolorTarget.excludeMethod(
+            new MethodInfo("appeng.client.render.StackSizeRenderer drawStackSize(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V")
+        ),
+        RecolorTarget.excludeMethod(
+            new MethodInfo("thaumcraft.client.gui.GuiResearchTable drawAspects(II)V")
+        ),
+        RecolorTarget.excludeMethod(
+            new MethodInfo("vswe.stevescarts.Interfaces.GuiBase drawMouseOver(Ljava/lang/String;II)V")
         ),
     };
-    public static final MethodInfo[] ignoreTargets = {
-        new MethodInfo("net.minecraft.client.renderer.entity.RenderItem", "renderItemOverlayIntoGUI", "func_94148_a", "(Lnet/minecraft/client/gui/FontRenderer;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V"),
-        new MethodInfo("appeng.client.render.StackSizeRenderer", "drawStackSize", null, "(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V"),
-    };
-    public static final HashSet<String> classesToTransform = new HashSet<>(flagTargets.length);
+    public static final Map<String, List<RecolorTarget>> classesToTransform = new HashMap<>();
     static {
-        for (FlagAtCallSitesTarget target : flagTargets) {
-            classesToTransform.add(target.callingMethod.className);
-        }
-        for (MethodInfo target : ignoreTargets) {
-            classesToTransform.add(target.className);
+        for (RecolorTarget target : recolorTargets) {
+            classesToTransform.computeIfAbsent(target.method.className, _ -> new ArrayList<>()).add(target);
         }
     }
 
     public boolean transformClassNode(ClassNode cn, String className, boolean isObf) {
         boolean changed = false;
-        // TODO consider refactoring
-        for (FlagAtCallSitesTarget tg : flagTargets) {
-            if (!className.equals(tg.callingMethod.className)) { continue; }
+
+        List<RecolorTarget> targets = classesToTransform.get(className);
+        if (targets == null) { return false; }
+        for (RecolorTarget target : targets) {
             for (MethodNode mn : cn.methods) {
-                if (!mn.name.equals(tg.callingMethod.getName(isObf))) { continue; }
-                if (!mn.desc.equals(tg.callingMethod.desc)) { continue; }
-                changed = flagMethodAtCallSites(mn, tg.calledMethod, isObf) || changed;
+                if (!mn.name.equals(target.method.getName(isObf))) { continue; }
+                if (!mn.desc.equals(target.method.desc)) { continue; }
+                if (target.targetsCall()) {
+                    changed = markRecolorCallScoped(mn, target.calledMethod, isObf, target.recolorEnabled) || changed;
+                } else {
+                    changed = markRecolorMethodScoped(mn, target.method, target.recolorEnabled) || changed;
+                }
             }
         }
-        for (MethodInfo tg : ignoreTargets) {
-            if (!className.equals(tg.className)) { continue; }
-            for (MethodNode mn : cn.methods) {
-                if (!mn.name.equals(tg.getName(isObf))) { continue; }
-                if (!mn.desc.equals(tg.desc)) { continue; }
-                changed = excludeFromRecolor(mn, tg) || changed;
-            }
-        }
+
         return changed;
     }
 
-    private boolean flagMethodAtCallSites(MethodNode mn, MethodInfo calledMethod, boolean isObf) {
+    private boolean markRecolorCallScoped(MethodNode mn, MethodInfo calledMethod, boolean isObf, boolean recolorEnabled) {
         boolean changed = false;
         InsnList insnList = mn.instructions;
         for (AbstractInsnNode insn = insnList.getFirst(); insn != null; insn = insn.getNext()) {
@@ -128,21 +169,21 @@ public class DarkModeFontTransform {
                 if (!min.desc.equals(calledMethod.desc)) { continue; }
                 int maxLocals = mn.maxLocals;
 
-                insnList.insertBefore(min, new InsnNode(Opcodes.ICONST_1));
+                insnList.insertBefore(min, new InsnNode(recolorEnabled ? Opcodes.ICONST_1 : Opcodes.ICONST_0));
                 insnList.insertBefore(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
                 insnList.insertBefore(min, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
                 insnList.insert(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
                 insnList.insert(min, new VarInsnNode(Opcodes.ILOAD, maxLocals));
 
-                LOGGER.info("Added flags at call site of {}", calledMethod.toString());
+                LOGGER.info("Added {}-recolor flags at call site of {}", recolorEnabled ? "enable" : "disable", calledMethod.toString());
                 changed = true;
             }
         }
         return changed;
     }
 
-    private boolean excludeFromRecolor(MethodNode mn, MethodInfo target) {
+    private boolean markRecolorMethodScoped(MethodNode mn, MethodInfo method, boolean recolorEnabled) {
         InsnList insnList = mn.instructions;
         AbstractInsnNode firstInsn = insnList.getFirst();
         AbstractInsnNode lastReturn = null;
@@ -155,14 +196,14 @@ public class DarkModeFontTransform {
         if (lastReturn == null) { return false; }
         int maxLocals = mn.maxLocals;
 
-        insnList.insertBefore(firstInsn, new InsnNode(Opcodes.ICONST_0));
+        insnList.insertBefore(firstInsn, new InsnNode(recolorEnabled ? Opcodes.ICONST_1 : Opcodes.ICONST_0));
         insnList.insertBefore(firstInsn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
         insnList.insertBefore(firstInsn, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
         insnList.insertBefore(lastReturn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
         insnList.insertBefore(lastReturn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
 
-        LOGGER.info("Excluded {}", target.toString());
+        LOGGER.info("Added {}-recolor flags in {}", recolorEnabled ? "enable" : "disable", method.toString());
         return true;
     }
 }

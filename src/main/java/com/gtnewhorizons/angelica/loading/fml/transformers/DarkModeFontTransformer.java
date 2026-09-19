@@ -14,7 +14,7 @@ public class DarkModeFontTransformer implements IClassTransformer {
 
     @Override
     public byte[] transform(String name, String transformedName, byte[] basicClass) {
-        for (String targetClass : DarkModeFontTransform.classesToTransform) {
+        for (String targetClass : DarkModeFontTransform.classesToTransform.keySet()) {
             if (name.equals(targetClass)) {
                 final ClassReader cr = new ClassReader(basicClass);
                 final ClassNode cn = new ClassNode();
