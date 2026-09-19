@@ -110,27 +110,68 @@ public class DarkModeFontTransform {
             new MethodInfo("net.minecraft.client.renderer.entity.RenderItem func_94148_a(Lnet/minecraft/client/gui/FontRenderer;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/item/ItemStack;IILjava/lang/String;)V # renderItemOverlayIntoGUI")
         ),
         // Modded stuff. Some mods copy-paste vanilla code.
+            // Avaritia Addons
         RecolorTarget.includeMethodCall(
             new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest func_146979_b(II)V # drawGuiContainerForegroundLayer")
         ),
+            // Steve's Carts 2
         RecolorTarget.includeMethodCall(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller drawGuiContainerForegroundLayer(II)V")
         ),
+            // Binnie 
         RecolorTarget.includeMethodCall(
             new MethodInfo("binnie.core.craftgui.minecraft.GuiCraftGUI func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("binnie.core.craftgui.minecraft.Window render()V")
         ),
-        RecolorTarget.includeMethod(
-            new MethodInfo("com.brandon3055.draconicevolution.client.gui.GUIFlowGate func_73863_a(IIF)V # drawScreen")
+            // Malisis Core (Malisis' Doors)
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("net.malisis.core.client.gui.MalisisGui func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.malisis.core.client.gui.GuiRenderer drawScreen(Lnet/malisis/core/client/gui/component/container/UIContainer;IIF)V")
         ),
+            // Nuclear Control
+        RecolorTarget.includeMethod(
+            new MethodInfo("shedar.mods.ic2.nuclearcontrol.gui.controls.GuiHowlerAlarmSlider func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
+        ),
+        RecolorTarget.includeMethod(
+            new MethodInfo("shedar.mods.ic2.nuclearcontrol.gui.controls.GuiHowlerAlarmListBox func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
+        ),
+        RecolorTarget.includeMethod(
+            new MethodInfo("shedar.mods.ic2.nuclearcontrol.gui.GuiScreenColor func_73863_a(IIF)V # drawScreen")
+        ),
+            // Draconic Evolution
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.brandon3055.draconicevolution.client.gui.GUIFlowGate func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.brandon3055.draconicevolution.client.gui.GUIParticleGenerator func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("com.brandon3055.draconicevolution.client.gui.GUIParticleGenerator$IProperty drawLabel(Lnet/minecraft/client/gui/FontRenderer;II)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.brandon3055.draconicevolution.client.gui.GUIParticleGenerator func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78279_b(Ljava/lang/String;IIII)V # drawSplitString")
+        ),
+            // Logistics Pipes
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("logisticspipes.utils.gui.SubGuiScreen func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("logisticspipes.utils.gui.SubGuiScreen drawGuiContainerForegroundLayer(II)V")
+        ),
+            // Minecraft-Backpack-Mod
+        RecolorTarget.includeMethod(
+            new MethodInfo("de.eydamos.guiadvanced.form.Label draw(Lnet/minecraft/client/Minecraft;IIF)V")
+        ),
+        // Additional exclusions
+            // Applied Energistics 2 
         RecolorTarget.excludeMethod(
             new MethodInfo("appeng.client.render.StackSizeRenderer drawStackSize(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V")
         ),
+            // Thaumcraft
         RecolorTarget.excludeMethod(
             new MethodInfo("thaumcraft.client.gui.GuiResearchTable drawAspects(II)V")
         ),
+            // Steve's Carts 2
         RecolorTarget.excludeMethod(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiBase drawMouseOver(Ljava/lang/String;II)V")
         ),
