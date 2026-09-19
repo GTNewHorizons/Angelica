@@ -92,6 +92,10 @@ public class DarkModeFontTransform {
         public boolean targetsCall() { return calledMethod != null; }
     }
 
+    // A target method must contain the obf name if it's
+    // a) a vanilla method
+    // or b) a modded method belonging to a class that extends (or is) a vanilla class that declares said method (so, an override).
+    // Notably, "GuiNEIKiller" does not override drawGuiContainerForegroundLayer because it doesn't inherit GuiContainer.
     public static final RecolorTarget[] recolorTargets = {
         // Vanilla methods. Many mods use these; several draw text in the "background" layer...
         RecolorTarget.includeMethodCall(
@@ -172,7 +176,7 @@ public class DarkModeFontTransform {
                 insnList.insert(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
                 insnList.insert(min, new VarInsnNode(Opcodes.ILOAD, maxLocals));
 
-                LOGGER.info("Added {}-recolor flags at call site of {}", calledMethod.toString(), recolorEnabled ? "enable" : "disable");
+                LOGGER.info("Added {}-recolor flags at call site of {}", recolorEnabled ? "enable" : "disable", calledMethod.toString());
                 changed = true;
             }
         }
@@ -199,7 +203,7 @@ public class DarkModeFontTransform {
         insnList.insertBefore(lastReturn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
         insnList.insertBefore(lastReturn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
 
-        LOGGER.info("Added {}-recolor flags in {}", method.toString(), recolorEnabled ? "enable" : "disable");
+        LOGGER.info("Added {}-recolor flags in {}", recolorEnabled ? "enable" : "disable", method.toString());
         return true;
     }
 }
