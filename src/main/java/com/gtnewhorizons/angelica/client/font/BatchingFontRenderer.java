@@ -1174,6 +1174,7 @@ public class BatchingFontRenderer {
     }
 
     // Inside a button section, text drawn in one of the button's own three colors is swapped for button_font's color.
+    // Button sections can't be nested: only the on/off flag is restored on exit, not the colors.
     private static boolean buttonSectionActive = false;
     private static int buttonEnabledColor, buttonHoveredColor, buttonDisabledColor;
     public static boolean enterButtonSection(int enabledColor, int hoveredColor, int disabledColor) {

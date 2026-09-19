@@ -128,17 +128,6 @@ public class DarkModeUtils {
             return null;
         }
     }
-//       "button_font": {
-//       "enabled": {
-//         "output": "debug_pulse"
-//       },
-//       "hovered": {
-//         "output": "0xFFFF00"
-//       },
-//       "disabled": {
-//         "output": "0xFF0000"
-//       }
- //     }
     private static ButtonFontRules parseButtonFontRules(JsonObject buttonFont, String packName) {
         ButtonColorRule enabled = parseButtonState(buttonFont, "enabled", packName);
         ButtonColorRule hovered = parseButtonState(buttonFont, "hovered", packName);
