@@ -16,6 +16,7 @@ import java.util.EnumSet;
 import java.util.function.BiConsumer;
 import java.util.function.BooleanSupplier;
 import java.util.function.Function;
+import java.util.function.Supplier;
 
 public class OptionImpl<S, T> implements OptionExtended<T> {
     private final OptionStorage<S> storage;
@@ -23,7 +24,7 @@ public class OptionImpl<S, T> implements OptionExtended<T> {
     private final OptionBinding<S, T> binding;
     private final Control<T> control;
 
-    private final EnumSet<OptionFlag> flags;
+    private final Supplier<EnumSet<OptionFlag>> flags;
 
     private final String name;
     private final String tooltip;
@@ -41,7 +42,7 @@ public class OptionImpl<S, T> implements OptionExtended<T> {
                        String tooltip,
                        OptionBinding<S, T> binding,
                        Function<OptionImpl<S, T>, Control<T>> control,
-                       EnumSet<OptionFlag> flags,
+                       Supplier<EnumSet<OptionFlag>> flags,
                        OptionImpact impact,
                        boolean enabled) {
         this.storage = storage;
@@ -121,7 +122,7 @@ public class OptionImpl<S, T> implements OptionExtended<T> {
 
     @Override
     public Collection<OptionFlag> getFlags() {
-        return this.flags;
+        return this.flags.get();
     }
 
     public static <S, T> OptionImpl.Builder<S, T> createBuilder(Class<T> type, OptionStorage<S> storage) {
@@ -136,6 +137,7 @@ public class OptionImpl<S, T> implements OptionExtended<T> {
         private Function<OptionImpl<S, T>, Control<T>> control;
         private OptionImpact impact;
         private final EnumSet<OptionFlag> flags = EnumSet.noneOf(OptionFlag.class);
+        private Supplier<EnumSet<OptionFlag>> flagsSupplier = () -> this.flags;
         private boolean enabled = true;
 
         private Builder(OptionStorage<S> storage) {
@@ -202,13 +204,21 @@ public class OptionImpl<S, T> implements OptionExtended<T> {
             return this;
         }
 
+        public Builder<S, T> setFlags(Supplier<EnumSet<OptionFlag>> flags) {
+            Validate.notNull(flags, "Flags supplier must not be null");
+
+            this.flagsSupplier = flags;
+
+            return this;
+        }
+
         public OptionImpl<S, T> build() {
             Validate.notNull(this.name, "Name must be specified");
             Validate.notNull(this.tooltip, "Tooltip must be specified");
             Validate.notNull(this.binding, "Option binding must be specified");
             Validate.notNull(this.control, "Control must be specified");
 
-            return new OptionImpl<>(this.storage, this.name, this.tooltip, this.binding, this.control, this.flags, this.impact, this.enabled);
+            return new OptionImpl<>(this.storage, this.name, this.tooltip, this.binding, this.control, this.flagsSupplier, this.impact, this.enabled);
         }
     }
 

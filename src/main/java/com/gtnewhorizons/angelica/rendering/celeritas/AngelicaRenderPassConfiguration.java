@@ -30,13 +30,20 @@ public class AngelicaRenderPassConfiguration {
             .vertexType(vertexType)
             .primitiveType(QuadPrimitiveType.TRIANGULATED);
 
+        final int mipmapLevels = SodiumGameOptions.terrainMipmapLevels();
+
         if (rgssEnabled) {
             builder.extraDefine("USE_RGSS", "");
         }
+        if (SodiumGameOptions.usesTerrainTexelSnap()) {
+            builder.extraDefine("USE_TEXEL_SNAP", "");
+        }
         if (SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy()) {
             builder.extraDefine("USE_ANISOTROPIC", "");
-            builder.extraDefine("TERRAIN_GUTTER",
-                SpritePadding.gutterFor(SodiumGameOptions.terrainMipmapLevels(), true) + ".0");
+            builder.extraDefine("TERRAIN_GUTTER", SpritePadding.gutterFor(mipmapLevels, true) + ".0");
+        }
+        if (mipmapLevels <= 0) {
+            builder.extraDefine("TERRAIN_NO_MIPS", "");
         }
 
         return builder;

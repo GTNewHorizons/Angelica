@@ -68,13 +68,18 @@ float footprintScale(vec2 du, vec2 dv, vec2 texelSize, float limitTexels) {
 #endif
 
 vec4 sampleTexelSnapped(sampler2D tex, vec2 uv, vec2 texelSize, vec2 du, vec2 dv, vec2 texelsPerPixel) {
+    vec2 snapped = snapToTexelCentre(uv, texelSize, texelsPerPixel);
+
+#if defined(TERRAIN_NO_MIPS) && !defined(USE_ANISOTROPIC)
+    return textureLod(tex, snapped, 0.0);
+#else
     float gradientScale = exp2(v_MaterialMipBias);
 #ifdef USE_ANISOTROPIC
     gradientScale *= footprintScale(du * gradientScale, dv * gradientScale, texelSize, TERRAIN_GUTTER);
 #endif
 
-    return textureGrad(tex, snapToTexelCentre(uv, texelSize, texelsPerPixel),
-        du * gradientScale, dv * gradientScale);
+    return textureGrad(tex, snapped, du * gradientScale, dv * gradientScale);
+#endif
 }
 
 vec4 sampleTexelSnapped(sampler2D tex, vec2 uv, vec2 texelSize) {
@@ -132,6 +137,12 @@ vec4 sampleRGSS(sampler2D tex, vec2 uv, vec2 texelSize) {
     for (int i = 0; i < 4; i++) {
         rgss += textureGrad(tex, uv + RGSS_OFFSETS[i].x * spreadU + RGSS_OFFSETS[i].y * spreadV, gradU, gradV);
     }
+#elif defined(TERRAIN_NO_MIPS)
+    const float lod = 0.0;
+
+    for (int i = 0; i < 4; i++) {
+        rgss += textureLod(tex, uv + RGSS_OFFSETS[i] * texelSize, lod);
+    }
 #else
     float duLength = length(du / texelSize);
     float dvLength = length(dv / texelSize);
@@ -152,11 +163,15 @@ vec4 sampleRGSS(sampler2D tex, vec2 uv, vec2 texelSize) {
 #endif
 
 void main() {
+#ifdef USE_TEXEL_SNAP
     vec2 texelSize = 1.0 / vec2(textureSize(u_BlockTex, 0));
 #ifdef USE_RGSS
     vec4 diffuseColor = sampleRGSS(u_BlockTex, v_TexCoord, texelSize);
 #else
     vec4 diffuseColor = sampleTexelSnapped(u_BlockTex, v_TexCoord, texelSize);
+#endif
+#else
+    vec4 diffuseColor = texture(u_BlockTex, v_TexCoord, v_MaterialMipBias);
 #endif
 
 #ifdef USE_FRAGMENT_DISCARD

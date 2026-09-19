@@ -5400,7 +5400,7 @@ public class GLStateManager {
 
     public static void checkGLError() {
         final int error = glGetError();
-        if (error != GL11.GL_NO_ERROR) throw new org.lwjgl.opengl.OpenGLException(error);
+        if (error != GL11.GL_NO_ERROR) GLErrorReporter.reportError(error);
     }
 
     public static String glGetString(int pname) {
