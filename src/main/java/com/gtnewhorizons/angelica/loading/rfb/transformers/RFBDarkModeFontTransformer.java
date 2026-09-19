@@ -34,7 +34,7 @@ public class RFBDarkModeFontTransformer implements RfbClassTransformer {
             return false;
         }
 
-        for (String targetClass : DarkModeFontTransform.classesToTransform) {
+        for (String targetClass : DarkModeFontTransform.classesToTransform.keySet()) {
             if (className.equals(targetClass)) {
                 return true;
             }
