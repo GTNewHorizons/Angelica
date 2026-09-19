@@ -1173,6 +1173,21 @@ public class BatchingFontRenderer {
         darkModeRecolorEnabled = prev;
     }
 
+    // Inside a button section, text drawn in one of the button's own three colors is swapped for button_font's color.
+    private static boolean buttonSectionActive = false;
+    private static int buttonEnabledColor, buttonHoveredColor, buttonDisabledColor;
+    public static boolean enterButtonSection(int enabledColor, int hoveredColor, int disabledColor) {
+        boolean prev = buttonSectionActive;
+        buttonSectionActive = true;
+        buttonEnabledColor = enabledColor;
+        buttonHoveredColor = hoveredColor;
+        buttonDisabledColor = disabledColor;
+        return prev;
+    }
+    public static void exitButtonSection(boolean prev) {
+        buttonSectionActive = prev;
+    }
+
     // === Actual text mesh generation
 
     public static boolean charInRange(char what, char fromInclusive, char toInclusive) {
@@ -1256,12 +1271,15 @@ public class BatchingFontRenderer {
     private static final double WAVE_TIME_SCALE = 5e-9;
     private static final float WAVE_FREQUENCY = 0.5f;
 
-    public float drawString(final float anchorX, final float anchorY, final int color, final boolean enableShadow,
+    public float drawString(final float anchorX, final float anchorY, final int inputColor, final boolean enableShadow,
                             final boolean unicodeFlag, final CharSequence string, int stringOffset, int stringLength) {
         // noinspection SizeReplaceableByIsEmpty
         if (string == null || string.length() == 0) {
             return anchorX + (enableShadow ? 1.0f : 0.0f);
         }
+        final int color = buttonSectionActive
+            ? DarkModeUtils.recolorButtonText(inputColor, buttonEnabledColor, buttonHoveredColor, buttonDisabledColor)
+            : inputColor;
         final int shadowColor = (color & 0xfcfcfc) >> 2 | color & 0xff000000;
 
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;

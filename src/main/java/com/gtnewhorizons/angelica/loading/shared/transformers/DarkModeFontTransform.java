@@ -11,6 +11,7 @@ import org.objectweb.asm.tree.AbstractInsnNode;
 import org.objectweb.asm.tree.ClassNode;
 import org.objectweb.asm.tree.InsnList;
 import org.objectweb.asm.tree.InsnNode;
+import org.objectweb.asm.tree.LdcInsnNode;
 import org.objectweb.asm.tree.MethodInsnNode;
 import org.objectweb.asm.tree.MethodNode;
 import org.objectweb.asm.tree.VarInsnNode;
@@ -82,15 +83,27 @@ public class DarkModeFontTransform {
      * ({@link BatchingFontRenderer#enterRecolorSection(boolean)}, {@link BatchingFontRenderer#exitRecolorSection(boolean)})
      * to mark areas where text should be recolored according to the rules in {@link DarkModeUtils}.
      * Can either apply to an entire method (placing markers in it) or a specific method call in some method (wrapping the call).
+     * A button target wraps the same way, but with a button section that also carries the button's three text colors.
      */
-    public record RecolorTarget(@NotNull MethodInfo method, @Nullable MethodInfo calledMethod, boolean recolorEnabled) {
+    public record RecolorTarget(@NotNull MethodInfo method, @Nullable MethodInfo calledMethod, boolean recolorEnabled, @Nullable ButtonColors buttonColors) {
+        public RecolorTarget(MethodInfo method, MethodInfo calledMethod, boolean recolorEnabled) { this(method, calledMethod, recolorEnabled, null); }
         public static RecolorTarget includeMethod(MethodInfo method) { return new RecolorTarget(method, null, true); }
         public static RecolorTarget excludeMethod(MethodInfo method) { return new RecolorTarget(method, null, false); }
         public static RecolorTarget includeMethodCall(MethodInfo callingMethod, MethodInfo calledMethod) { return new RecolorTarget(callingMethod, calledMethod, true); }
         public static RecolorTarget excludeMethodCall(MethodInfo callingMethod, MethodInfo calledMethod) { return new RecolorTarget(callingMethod, calledMethod, false); }
 
+        public static RecolorTarget includeButtonMethod(MethodInfo method, int enabledColor, int hoveredColor, int disabledColor) {
+            return new RecolorTarget(method, null, true, new ButtonColors(enabledColor, hoveredColor, disabledColor));
+        }
+        public static RecolorTarget includeButtonMethodCall(MethodInfo callingMethod, MethodInfo calledMethod, int enabledColor, int hoveredColor, int disabledColor) {
+            return new RecolorTarget(callingMethod, calledMethod, true, new ButtonColors(enabledColor, hoveredColor, disabledColor));
+        }
+
         public boolean targetsCall() { return calledMethod != null; }
     }
+
+    /** The colors a button draws its text in for each of its three states. */
+    public record ButtonColors(int enabled, int hovered, int disabled) {}
 
     // A target method must contain the obf name if it's
     // a) a vanilla method
@@ -175,7 +188,40 @@ public class DarkModeFontTransform {
         RecolorTarget.excludeMethod(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiBase drawMouseOver(Ljava/lang/String;II)V")
         ),
+        // Buttons. The three colors are the button's own: enabled, hovered, disabled.
+            // Vanilla
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("net.minecraft.client.gui.GuiButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            new MethodInfo("net.minecraft.client.gui.GuiButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString"),
+            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+        ),
+            // CodeChickenCore
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("codechicken.core.gui.GuiCCButton drawText(II)V"),
+            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+        ),
+            // NotEnoughItems
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("codechicken.nei.LayoutStyleMinecraft drawButton(Lcodechicken/nei/Button;II)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;III)V"),
+            0xE0E0E0, 0xFFFFA0, 0x601010
+        ),
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("codechicken.nei.GuiNEIButton drawContent(Lnet/minecraft/client/Minecraft;IIZ)V"),
+            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+        ),
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("codechicken.nei.config.OptionButton drawButton(II)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V"),
+            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+        ),
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("codechicken.nei.config.DataDumper drawButton(IILcodechicken/lib/vec/Rectangle4i;Ljava/lang/String;)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V"),
+            0xE0E0E0, 0xFFFFA0, 0xA0A0A0
+        ),
     };
+
     public static final Map<String, List<RecolorTarget>> classesToTransform = new HashMap<>();
     static {
         for (RecolorTarget target : recolorTargets) {
@@ -193,9 +239,9 @@ public class DarkModeFontTransform {
                 if (!mn.name.equals(target.method.getName(isObf))) { continue; }
                 if (!mn.desc.equals(target.method.desc)) { continue; }
                 if (target.targetsCall()) {
-                    changed = markRecolorCallScoped(mn, target.calledMethod, isObf, target.recolorEnabled) || changed;
+                    changed = markRecolorCallScoped(mn, target.calledMethod, isObf, target.recolorEnabled, target.buttonColors) || changed;
                 } else {
-                    changed = markRecolorMethodScoped(mn, target.method, target.recolorEnabled) || changed;
+                    changed = markRecolorMethodScoped(mn, target.method, target.recolorEnabled, target.buttonColors) || changed;
                 }
             }
         }
@@ -203,7 +249,23 @@ public class DarkModeFontTransform {
         return changed;
     }
 
-    private boolean markRecolorCallScoped(MethodNode mn, MethodInfo calledMethod, boolean isObf, boolean recolorEnabled) {
+    private static void insertEnterSection(InsnList insnList, AbstractInsnNode before, boolean recolorEnabled, @Nullable ButtonColors buttonColors) {
+        if (buttonColors == null) {
+            insnList.insertBefore(before, new InsnNode(recolorEnabled ? Opcodes.ICONST_1 : Opcodes.ICONST_0));
+            insnList.insertBefore(before, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
+        } else {
+            insnList.insertBefore(before, new LdcInsnNode(buttonColors.enabled()));
+            insnList.insertBefore(before, new LdcInsnNode(buttonColors.hovered()));
+            insnList.insertBefore(before, new LdcInsnNode(buttonColors.disabled()));
+            insnList.insertBefore(before, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterButtonSection", "(III)Z", false));
+        }
+    }
+
+    private static MethodInsnNode exitSectionCall(@Nullable ButtonColors buttonColors) {
+        return new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, buttonColors == null ? "exitRecolorSection" : "exitButtonSection", "(Z)V", false);
+    }
+
+    private boolean markRecolorCallScoped(MethodNode mn, MethodInfo calledMethod, boolean isObf, boolean recolorEnabled, @Nullable ButtonColors buttonColors) {
         boolean changed = false;
         InsnList insnList = mn.instructions;
         for (AbstractInsnNode insn = insnList.getFirst(); insn != null; insn = insn.getNext()) {
@@ -213,11 +275,10 @@ public class DarkModeFontTransform {
                 if (!min.desc.equals(calledMethod.desc)) { continue; }
                 int maxLocals = mn.maxLocals;
 
-                insnList.insertBefore(min, new InsnNode(recolorEnabled ? Opcodes.ICONST_1 : Opcodes.ICONST_0));
-                insnList.insertBefore(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
+                insertEnterSection(insnList, min, recolorEnabled, buttonColors);
                 insnList.insertBefore(min, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
-                insnList.insert(min, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
+                insnList.insert(min, exitSectionCall(buttonColors));
                 insnList.insert(min, new VarInsnNode(Opcodes.ILOAD, maxLocals));
 
                 LOGGER.info("Added {}-recolor flags at call site of {}", recolorEnabled ? "enable" : "disable", calledMethod.toString());
@@ -227,7 +288,7 @@ public class DarkModeFontTransform {
         return changed;
     }
 
-    private boolean markRecolorMethodScoped(MethodNode mn, MethodInfo method, boolean recolorEnabled) {
+    private boolean markRecolorMethodScoped(MethodNode mn, MethodInfo method, boolean recolorEnabled, @Nullable ButtonColors buttonColors) {
         InsnList insnList = mn.instructions;
         AbstractInsnNode firstInsn = insnList.getFirst();
         AbstractInsnNode lastReturn = null;
@@ -240,12 +301,11 @@ public class DarkModeFontTransform {
         if (lastReturn == null) { return false; }
         int maxLocals = mn.maxLocals;
 
-        insnList.insertBefore(firstInsn, new InsnNode(recolorEnabled ? Opcodes.ICONST_1 : Opcodes.ICONST_0));
-        insnList.insertBefore(firstInsn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "enterRecolorSection", "(Z)Z", false));
+        insertEnterSection(insnList, firstInsn, recolorEnabled, buttonColors);
         insnList.insertBefore(firstInsn, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
         insnList.insertBefore(lastReturn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
-        insnList.insertBefore(lastReturn, new MethodInsnNode(Opcodes.INVOKESTATIC, BATCHINGFONTRENDERER, "exitRecolorSection", "(Z)V", false));
+        insnList.insertBefore(lastReturn, exitSectionCall(buttonColors));
 
         LOGGER.info("Added {}-recolor flags in {}", recolorEnabled ? "enable" : "disable", method.toString());
         return true;
