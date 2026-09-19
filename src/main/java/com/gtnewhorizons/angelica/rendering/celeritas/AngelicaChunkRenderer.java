@@ -202,6 +202,10 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     }
 
     private void bindTerrainSampler() {
+        if (!SodiumGameOptions.usesTerrainTexelSnap()) {
+            return;
+        }
+
         final int anisotropy = SodiumGameOptions.resolvedAnisotropicFiltering();
         final boolean nearest = ClientProxy.options().quality.texelSampling.isNearest();
 
