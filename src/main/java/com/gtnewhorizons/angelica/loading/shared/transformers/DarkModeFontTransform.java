@@ -122,6 +122,9 @@ public class DarkModeFontTransform {
             new MethodInfo("binnie.core.craftgui.minecraft.GuiCraftGUI func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("binnie.core.craftgui.minecraft.Window render()V")
         ),
+        RecolorTarget.includeMethod(
+            new MethodInfo("com.brandon3055.draconicevolution.client.gui.GUIFlowGate func_73863_a(IIF)V # drawScreen")
+        ),
         RecolorTarget.excludeMethod(
             new MethodInfo("appeng.client.render.StackSizeRenderer drawStackSize(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V")
         ),
