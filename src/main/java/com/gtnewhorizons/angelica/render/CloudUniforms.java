@@ -23,6 +23,7 @@ final class CloudUniforms {
     final GlUniformFloat4v scroll;
     private final float[] vec4Buf = new float[4];
     private float lastScrollX = Float.NaN, lastScrollZ = Float.NaN;
+    private float lastTextureScaleX = Float.NaN, lastTextureScaleZ = Float.NaN;
     private int lastFogEnabled = -1;
     private float lastFogR = Float.NaN, lastFogG = Float.NaN, lastFogB = Float.NaN;
     private float lastColorR = Float.NaN, lastColorG = Float.NaN, lastColorB = Float.NaN;
@@ -41,14 +42,16 @@ final class CloudUniforms {
         scroll = context.bindUniformIfPresent("u_Scroll", GlUniformFloat4v::new);
     }
 
-    void setScroll(float x, float z) {
-        if (scroll == null || (x == lastScrollX && z == lastScrollZ)) return;
+    void setScroll(float x, float z, float textureScaleX, float textureScaleZ) {
+        if (scroll == null || (x == lastScrollX && z == lastScrollZ && textureScaleX == lastTextureScaleX && textureScaleZ == lastTextureScaleZ)) return;
         lastScrollX = x;
         lastScrollZ = z;
+        lastTextureScaleX = textureScaleX;
+        lastTextureScaleZ = textureScaleZ;
         vec4Buf[0] = x;
         vec4Buf[1] = z;
-        vec4Buf[2] = 0.0f;
-        vec4Buf[3] = 0.0f;
+        vec4Buf[2] = textureScaleX;
+        vec4Buf[3] = textureScaleZ;
         scroll.set(vec4Buf);
     }
 

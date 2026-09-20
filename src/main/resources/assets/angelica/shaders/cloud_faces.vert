@@ -12,7 +12,6 @@ flat out float v_Shade;
 #ifndef UNTEXTURED
 uniform vec4 u_Scroll;
 out vec2 v_UV;
-const float SCROLL_SPEED = 1.0 / 256.0;
 const int DIR_NORTH = 2;
 const int DIR_WEST = 4;
 #endif
@@ -50,7 +49,7 @@ void main() {
     vec2 uvCell = vec2(float(cellX), float(cellZ)) + unit.xz;
     if (dir >= DIR_WEST) uvCell.x = float(cellX) + 0.5;
     else if (dir >= DIR_NORTH) uvCell.y = float(cellZ) + 0.5;
-    v_UV = uvCell * SCROLL_SPEED + u_Scroll.xy;
+    v_UV = uvCell * u_Scroll.zw + u_Scroll.xy;
 #endif
 
     gl_Position = u_MVPMatrix * vec4(pos, 1.0);
