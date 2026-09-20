@@ -119,6 +119,7 @@ public class DarkModeFontTransform {
     // or b) a modded method belonging to a class that extends (or is) a vanilla class that declares said method (so, an override).
     // Notably, "GuiNEIKiller" does not override drawGuiContainerForegroundLayer because it doesn't inherit GuiContainer.
     public static final RecolorTarget[] recolorTargets = {
+    //region Include Methods
         // Vanilla methods. Many mods use these; several draw text in the "background" layer...
         RecolorTarget.includeMethodCall(
             new MethodInfo("net.minecraft.client.gui.inventory.GuiContainer func_73863_a(IIF)V # drawScreen"),
@@ -184,7 +185,8 @@ public class DarkModeFontTransform {
         RecolorTarget.includeMethod(
             new MethodInfo("de.eydamos.guiadvanced.form.Label draw(Lnet/minecraft/client/Minecraft;IIF)V")
         ),
-        // Additional exclusions
+    //endregion
+    //region Exclude Methods
             // Applied Energistics 2 
         RecolorTarget.excludeMethod(
             new MethodInfo("appeng.client.render.StackSizeRenderer drawStackSize(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V")
@@ -216,6 +218,8 @@ public class DarkModeFontTransform {
         RecolorTarget.excludeMethod(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiBase drawMouseOver(Ljava/lang/String;II)V")
         ),
+    //endregion
+    //region Buttons
         // Buttons. The three colors are the button's own: enabled, hovered, disabled.
             // Vanilla
         RecolorTarget.includeButtonMethodCall(
@@ -243,6 +247,28 @@ public class DarkModeFontTransform {
             new MethodInfo("codechicken.nei.config.DataDumper drawButton(IILcodechicken/lib/vec/Rectangle4i;Ljava/lang/String;)V"),
             new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;IIIII)V")
         ),
+            // Malisis Core (Malisis' Doors)
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("net.malisis.core.client.gui.component.interaction.UIButton drawForeground(Lnet/malisis/core/client/gui/GuiRenderer;IIF)V"),
+            new MethodInfo("net.malisis.core.client.gui.GuiRenderer drawText(Lnet/malisis/core/renderer/font/MalisisFont;Ljava/lang/String;FFFLnet/malisis/core/renderer/font/FontRenderOptions;)V"),
+            0xFFFFFF, 0xFFFFA0, 0xA0A0A0
+        ),
+            // LittleTiles (CreativeCore)
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("com.creativemd.creativecore.common.gui.controls.GuiButton drawControl(Lnet/minecraft/client/gui/FontRenderer;)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78261_a(Ljava/lang/String;III)I # drawStringWithShadow")
+        ),
+            // Logistics Pipes
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("logisticspipes.utils.gui.SmallGuiButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            new MethodInfo("logisticspipes.utils.gui.SmallGuiButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
+        ),
+            // Nuclear Control
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("shedar.mods.ic2.nuclearcontrol.gui.controls.CompactButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString"),
+            0x303030, 0x303030, 0x303030
+        ),
             // BuildCraft
         RecolorTarget.includeButtonMethodCall(
             new MethodInfo("buildcraft.core.lib.gui.buttons.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
@@ -253,6 +279,7 @@ public class DarkModeFontTransform {
             new MethodInfo("de.eydamos.guiadvanced.form.Button func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
             new MethodInfo("de.eydamos.guiadvanced.form.Button func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
         ),
+    //endregion
     };
 
     public static final Map<String, List<RecolorTarget>> classesToTransform = new HashMap<>();
