@@ -43,8 +43,7 @@ final class CloudUniforms {
     }
 
     void setScroll(float x, float z, float textureScaleX, float textureScaleZ) {
-        if (scroll == null || (x == lastScrollX && z == lastScrollZ
-            && textureScaleX == lastTextureScaleX && textureScaleZ == lastTextureScaleZ)) return;
+        if (scroll == null || (x == lastScrollX && z == lastScrollZ && textureScaleX == lastTextureScaleX && textureScaleZ == lastTextureScaleZ)) return;
         lastScrollX = x;
         lastScrollZ = z;
         lastTextureScaleX = textureScaleX;
