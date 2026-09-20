@@ -407,8 +407,8 @@ public abstract class TileOverride implements Comparable<TileOverride> {
         return renderPass < 0 ? renderPass : (renderPass == 0 ? 0 : 1);
     }
 
-    final public boolean canRenderInPass(int worldPass) {
-        return renderPass < 0 ? worldPass == 0 : renderPass == worldPass; 
+    final public boolean canRenderInPass(int worldPass, int blockPass) {
+        return getRenderPass() < 0 ? worldPass == 0 : getRenderPass() == worldPass; 
     }
 
     final public int getRenderLayer() {

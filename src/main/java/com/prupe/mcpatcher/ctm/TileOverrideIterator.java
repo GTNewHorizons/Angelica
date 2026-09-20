@@ -125,7 +125,8 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
             while (hasNext()) {
                 TileOverride override = next();
                 int worldRenderPass = RenderPassHelper.getWorldRenderPass();
-                if(override.canRenderInPass(worldRenderPass)) {
+                int blockPass = renderBlockState.getBlock().getRenderBlockPass();
+                if(!override.canRenderInPass(worldRenderPass, blockPass)) {
                     continue;
                 }
                 IIcon newIcon = getTile(override, renderBlockState, origIcon);
@@ -154,8 +155,9 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
         RenderBlockState renderBlockState, IIcon origIcon, int worldRenderPass) {
         Int2ObjectSortedMap<TileOverrideImpl.CTMCompact> layers = new Int2ObjectAVLTreeMap<>();
         layers.putIfAbsent(primary.getRenderLayer(), primary);
+        Block baseBlock = renderBlockState.getBlock();
         BlockStateMatcher primaryFilter = renderBlockState.getFilter();
-        Int2ObjectMap<List<BlockStateMatcher>> layeredCandidates = CTMUtils.getCompactLayers(renderBlockState.getBlock());
+        Int2ObjectMap<List<BlockStateMatcher>> layeredCandidates = CTMUtils.getCompactLayers(baseBlock);
         if(layeredCandidates==null) {
             return new TileOverrideImpl.CTMCompact[] {primary};
         }
@@ -170,7 +172,7 @@ abstract public class TileOverrideIterator implements Iterator<TileOverride> {
                     if (candidateOverride.isDisabled()) {
                         continue;
                     }
-                    if (candidateOverride.canRenderInPass(worldRenderPass)) {
+                    if (!candidateOverride.canRenderInPass(worldRenderPass, baseBlock.getRenderBlockPass())) {
                         continue;
                     }
                     if (!renderBlockState.match(candidate)) {
