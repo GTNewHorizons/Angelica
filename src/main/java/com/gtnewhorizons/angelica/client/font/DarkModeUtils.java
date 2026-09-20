@@ -51,7 +51,7 @@ public class DarkModeUtils {
 
     private DarkModeUtils() {}
 
-    public static void init() { /* see static block*/ }
+    public static void init() { /* see static block */ }
 
     private static void reload() {
         FontRecolorRule guiFont = null;
