@@ -28,19 +28,18 @@ public class RFBDarkModeFontTransformer implements RfbClassTransformer {
     }
 
     @Override
+    public @NotNull String @Nullable [] sortAfter() {
+        return new String[] {"*", "mixin:mixin"};
+    }
+
+    @Override
     public boolean shouldTransformClass(@NotNull ExtensibleClassLoader classLoader, @NotNull RfbClassTransformer.Context context,
                                         @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
         if (!classNode.isPresent()) {
             return false;
         }
 
-        for (String targetClass : DarkModeFontTransform.classesToTransform.keySet()) {
-            if (className.equals(targetClass)) {
-                return true;
-            }
-        }
-
-        return false;
+        return DarkModeFontTransform.classesToTransform.containsKey(className);
     }
 
     @Override
@@ -48,7 +47,6 @@ public class RFBDarkModeFontTransformer implements RfbClassTransformer {
                                           @Nullable Manifest manifest, @NotNull String className, @NotNull ClassNodeHandle classNode) {
         final boolean changed = inner.transformClassNode(classNode.getNode(), className, this.isObf);
         if (changed) {
-            classNode.computeMaxs();
             classNode.computeFrames();
             AngelicaClassDump.dumpRFBClass(className, classNode, this);
         }

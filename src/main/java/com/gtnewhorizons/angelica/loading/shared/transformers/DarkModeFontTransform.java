@@ -259,9 +259,8 @@ public class DarkModeFontTransform {
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78261_a(Ljava/lang/String;III)I # drawStringWithShadow")
         ),
             // Logistics Pipes
-        RecolorTarget.includeButtonMethodCall(
-            new MethodInfo("logisticspipes.utils.gui.SmallGuiButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
-            new MethodInfo("logisticspipes.utils.gui.SmallGuiButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("logisticspipes.utils.gui.SmallGuiButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
         ),
             // Nuclear Control
         RecolorTarget.includeButtonMethodCall(
@@ -270,9 +269,8 @@ public class DarkModeFontTransform {
             0x303030, 0x303030, 0x303030
         ),
             // BuildCraft
-        RecolorTarget.includeButtonMethodCall(
-            new MethodInfo("buildcraft.core.lib.gui.buttons.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
-            new MethodInfo("buildcraft.core.lib.gui.buttons.GuiBetterButton func_73732_a(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;III)V # drawCenteredString")
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("buildcraft.core.lib.gui.buttons.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
         ),
             // Minecraft-Backpack-Mod
         RecolorTarget.includeButtonMethodCall(
@@ -351,21 +349,17 @@ public class DarkModeFontTransform {
     private boolean markRecolorMethodScoped(MethodNode mn, MethodInfo method, boolean recolorEnabled, @Nullable ButtonColors buttonColors) {
         InsnList insnList = mn.instructions;
         AbstractInsnNode firstInsn = insnList.getFirst();
-        AbstractInsnNode lastReturn = null;
-        for (AbstractInsnNode insn = insnList.getLast(); insn != null; insn = insn.getPrevious()) {
-            if (insn.getOpcode() == Opcodes.RETURN) {
-                lastReturn = insn;
-                break;
-            }
-        }
-        if (lastReturn == null) { return false; }
         int maxLocals = mn.maxLocals;
 
         insertEnterSection(insnList, firstInsn, recolorEnabled, buttonColors);
         insnList.insertBefore(firstInsn, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
-        insnList.insertBefore(lastReturn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
-        insnList.insertBefore(lastReturn, exitSectionCall(buttonColors));
+        for (AbstractInsnNode insn = firstInsn; insn != null; insn = insn.getNext()) {
+            if (insn.getOpcode() == Opcodes.RETURN) {
+                insnList.insertBefore(insn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
+                insnList.insertBefore(insn, exitSectionCall(buttonColors));
+            }
+        }
 
         LOGGER.info("Added {}-recolor flags in {}", recolorEnabled ? "enable" : "disable", method.toString());
         return true;
