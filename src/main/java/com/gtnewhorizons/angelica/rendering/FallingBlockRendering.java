@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectMap;
 import net.coderbot.iris.block_rendering.BlockMaterialMapping;
@@ -25,13 +26,17 @@ public final class FallingBlockRendering {
     }
 
     public static void setEntityAttribute(Block block, int metadata) {
+        IrisDisplayListState.recordBlockEntityAttribute(block, metadata);
         if (!shadersActive()) return;
-        GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) blockMaterialId(block, metadata), (short) 0);
+        IrisDisplayListState.runUnrecorded(() ->
+            GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) blockMaterialId(block, metadata), (short) 0));
     }
 
     public static void resetEntityAttribute() {
+        IrisDisplayListState.recordBlockEntityAttribute(null, 0);
         if (!shadersActive()) return;
-        GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) -1, (short) -1);
+        IrisDisplayListState.runUnrecorded(() ->
+            GLStateManager.glVertexAttrib2s(ProgramCreator.MC_ENTITY, (short) -1, (short) -1));
     }
 
     private static int blockMaterialId(Block block, int metadata) {

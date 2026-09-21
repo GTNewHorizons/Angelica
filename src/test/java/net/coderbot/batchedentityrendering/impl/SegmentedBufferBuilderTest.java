@@ -20,6 +20,44 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SegmentedBufferBuilderTest {
 
+    @Test
+    void segmentsSnapshotAllIdsAndTintAtQueueTime() {
+        final var state = net.coderbot.iris.uniforms.CapturedRenderingState.INSTANCE;
+        state.pushCurrentEntityAndItem();
+        state.pushCurrentBlockEntity();
+        state.pushCurrentEntityColor();
+        try {
+            final SegmentedBufferBuilder builder = new SegmentedBufferBuilder();
+            final TestLayer layer = new TestLayer("snapshot", TransparencyType.OPAQUE);
+            for (int i = 0; i < 3; i++) {
+                state.setCurrentEntityAndItem(11 + i, 13);
+                state.setCurrentBlockEntity(12);
+                state.setCurrentEntityColor(i / 2f, 0, 0, 1);
+                builder.begin(layer, 12);
+                builder.addQuad(quad());
+                builder.begin(layer, 12);
+                builder.addQuad(quad());
+            }
+            state.setCurrentEntityAndItem(90, 91);
+            state.setCurrentBlockEntity(92);
+            state.setCurrentEntityColor(0, 1, 0, 0);
+            final var segments = builder.getSegments();
+            assertEquals(3, segments.size(), "adjacent equal states still merge");
+            for (int i = 0; i < 3; i++) {
+                final var segment = segments.get(i);
+                assertEquals(11 + i, segment.getEntityId());
+                assertEquals(12, segment.getRenderedBlockEntityId());
+                assertEquals(13, segment.getItemId());
+                assertEquals(AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1), segment.getEntityColor());
+                assertEquals(8, segment.getVertexCount());
+            }
+        } finally {
+            state.popCurrentEntityColor();
+            state.popCurrentBlockEntity();
+            state.popCurrentEntityAndItem();
+        }
+    }
+
     static final class TestLayer extends RenderLayer implements BlendingStateHolder {
         private final TransparencyType transparencyType;
 

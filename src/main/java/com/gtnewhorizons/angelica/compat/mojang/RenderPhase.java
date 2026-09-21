@@ -1,6 +1,9 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.AlphaState;
+import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
+import it.unimi.dsi.fastutil.ints.IntArrayList;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureManager;
@@ -10,6 +13,7 @@ import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
+import java.util.Arrays;
 import java.util.Map;
 import java.util.Objects;
 import java.util.concurrent.ConcurrentHashMap;
@@ -274,16 +278,24 @@ public abstract class RenderPhase {
         private final int func;
 
         public DepthTest(String string, int i) {
+            this(string, i, new BooleanArrayList(), new IntArrayList());
+        }
+
+        private DepthTest(String string, int i, BooleanArrayList savedEnabled, IntArrayList savedFunction) {
             super("depth_test", () -> {
                 if (i != GL11.GL_ALWAYS) {
+                    savedEnabled.push(GLStateManager.getDepthTest().isEnabled());
+                    savedFunction.push(GLStateManager.getDepthState().getFunc());
                     GLStateManager.enableDepthTest();
                     GLStateManager.glDepthFunc(i);
                 }
 
             }, () -> {
                 if (i != GL11.GL_ALWAYS) {
-                    GLStateManager.disableDepthTest();
-                    GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+                    // The next renderer inherits this state, including item glint's GL_EQUAL test.
+                    GLStateManager.glDepthFunc(savedFunction.popInt());
+                    if (savedEnabled.popBoolean()) GLStateManager.enableDepthTest();
+                    else GLStateManager.disableDepthTest();
                 }
 
             });
@@ -317,16 +329,17 @@ public abstract class RenderPhase {
 
     public static class Cull extends Toggleable {
         public Cull(boolean culling) {
+            this(culling, new BooleanArrayList());
+        }
+
+        private Cull(boolean culling, BooleanArrayList saved) {
             super("cull", () -> {
-                if (!culling) {
-                    GLStateManager.disableCull();
-                }
-
+                saved.push(GLStateManager.getCullState().isEnabled());
+                if (culling) GLStateManager.enableCull();
+                else GLStateManager.disableCull();
             }, () -> {
-                if (!culling) {
-                    GLStateManager.enableCull();
-                }
-
+                if (saved.popBoolean()) GLStateManager.enableCull();
+                else GLStateManager.disableCull();
             }, culling);
         }
     }
@@ -506,8 +519,53 @@ public abstract class RenderPhase {
     public static class Alpha extends RenderPhase {
         private final float alpha;
 
+        // Save vanilla's effective state, including values deferred by shader overrides.
+        // Invalid alpha functions fall back to cutout defaults rather than becoming GL_NEVER.
+        private static final int DEFAULT_FUNC = GL11.GL_GREATER;
+        private static final float DEFAULT_REF = 0.1F;
+
+        private static boolean[] savedEnabled = new boolean[4];
+        private static int[] savedFunc = new int[4];
+        private static float[] savedRef = new float[4];
+        private static int savedDepth;
+        private static final AlphaState savedScratch = new AlphaState();
+
+        private static void pushAlpha() {
+            if (savedDepth == savedEnabled.length) {
+                final int grown = savedDepth * 2;
+                savedEnabled = Arrays.copyOf(savedEnabled, grown);
+                savedFunc = Arrays.copyOf(savedFunc, grown);
+                savedRef = Arrays.copyOf(savedRef, grown);
+            }
+            final AlphaState previous = GLStateManager.getEffectiveAlphaState(savedScratch);
+            final int func = previous.getFunction();
+            savedEnabled[savedDepth] = GLStateManager.isEffectiveAlphaTestEnabled();
+            savedFunc[savedDepth] = isAlphaFunc(func) ? func : DEFAULT_FUNC;
+            savedRef[savedDepth] = isAlphaFunc(func) ? previous.getReference() : DEFAULT_REF;
+            savedDepth++;
+        }
+
+        private static boolean isAlphaFunc(int func) {
+            return func >= GL11.GL_NEVER && func <= GL11.GL_ALWAYS;
+        }
+
+        private static void popAlpha() {
+            if (savedDepth == 0) {
+                return;
+            }
+            savedDepth--;
+            if (savedEnabled[savedDepth]) {
+                GLStateManager.enableAlphaTest();
+            } else {
+                GLStateManager.disableAlphaTest();
+            }
+            GLStateManager.glAlphaFunc(savedFunc[savedDepth], savedRef[savedDepth]);
+        }
+
         public Alpha(float alpha) {
             super("alpha", () -> {
+                pushAlpha();
+
                 if (alpha > 0.0F) {
 
                     GLStateManager.enableAlphaTest();
@@ -516,10 +574,7 @@ public abstract class RenderPhase {
                     GLStateManager.disableAlphaTest();
                 }
 
-            }, () -> {
-                GLStateManager.disableAlphaTest();
-                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
-            });
+            }, Alpha::popAlpha);
             this.alpha = alpha;
         }
 

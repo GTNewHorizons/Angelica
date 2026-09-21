@@ -30,7 +30,7 @@ public abstract class MixinTextureMap extends AbstractTexture {
     @Overwrite
     public void updateAnimations() {
         final boolean renderVisible = ClientProxy.options().performance.animateOnlyVisibleTextures;
-        
+
         Minecraft.getMinecraft().mcProfiler.startSection("updateAnimations");
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, this.getGlTextureId());
 
@@ -40,11 +40,11 @@ public abstract class MixinTextureMap extends AbstractTexture {
             final IPatchedTextureAtlasSprite patched = (IPatchedTextureAtlasSprite) sprite;
 
             // needsAnimationUpdate() is one-shot: returns true if marked, then auto-resets
-            if (!renderVisible || patched.needsAnimationUpdate()) {
+            if (!renderVisible || patched.angelica$needsAnimationUpdate()) {
                 sprite.updateAnimation();
             } else {
                 // Keep frame counters in sync for sprites not being updated
-                patched.updateAnimationsDryRun();
+                patched.angelica$updateAnimationsDryRun();
             }
         }
         Minecraft.getMinecraft().mcProfiler.endSection();

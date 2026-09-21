@@ -74,13 +74,26 @@ public class SegmentedBufferBuilder {
     private LayerBuffer current;
     private RenderLayer currentType;
     private int currentBlockEntityId;
+    private int currentItemId;
+    private int currentEntityId;
+    private int currentRenderedBlockEntityId;
     private int currentEntityColor;
     private int segmentStartVertex;
     private long allocatedBytes;
 
     public void begin(RenderLayer type, int blockEntityId) {
+        begin(type, blockEntityId, false);
+    }
+
+    public void begin(RenderLayer type, int blockEntityId, boolean entityKind) {
+        final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
+        final int entityId = entityKind ? blockEntityId : state.getCurrentRenderedEntity();
+        final int renderedBlockEntityId = entityKind ? state.getCurrentRenderedBlockEntity() : blockEntityId;
         final int entityColor = AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor());
-        if (type == currentType && blockEntityId == currentBlockEntityId && entityColor == currentEntityColor && current != null) {
+        final int itemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        if (type == currentType && blockEntityId == currentBlockEntityId && entityId == currentEntityId
+            && renderedBlockEntityId == currentRenderedBlockEntityId && itemId == currentItemId
+            && entityColor == currentEntityColor && current != null) {
             return;
         }
         endSegment();
@@ -94,6 +107,9 @@ public class SegmentedBufferBuilder {
         current = buffer;
         currentType = type;
         currentBlockEntityId = blockEntityId;
+        currentItemId = itemId;
+        currentEntityId = entityId;
+        currentRenderedBlockEntityId = renderedBlockEntityId;
         currentEntityColor = entityColor;
         segmentStartVertex = current.vertexCount;
     }
@@ -142,7 +158,7 @@ public class SegmentedBufferBuilder {
 
     private void endSegment() {
         if (current != null && current.vertexCount > segmentStartVertex) {
-            segments.add(new BufferSegment(currentType, currentBlockEntityId, currentEntityColor, segmentStartVertex,
+            segments.add(new BufferSegment(currentType, currentBlockEntityId, currentEntityId, currentRenderedBlockEntityId, currentItemId, currentEntityColor, segmentStartVertex,
                 current.vertexCount - segmentStartVertex, current));
         }
         segmentStartVertex = current == null ? 0 : current.vertexCount;

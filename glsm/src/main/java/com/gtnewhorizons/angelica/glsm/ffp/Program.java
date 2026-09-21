@@ -102,7 +102,11 @@ public class Program {
             for (int i = 0; i < 4; i++) {
                 if (ffpProgram.locSampler[i] != -1) backend.uniform1i(ffpProgram.locSampler[i], i);
             }
-            backend.useProgram(previousProgram);
+            if (previousProgram != 0) {
+                backend.useProgram(previousProgram);
+            } else {
+                ShaderManager.getInstance().invalidateBoundProgram();
+            }
 
             return ffpProgram;
         } catch (RuntimeException e) {

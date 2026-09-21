@@ -14,6 +14,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
+import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.block.Block;
@@ -193,6 +194,7 @@ public final class DroppedItemInstancer {
                 return;
             }
             if (ModelPartBatcher.INSTANCE.queueTemplate(mesh.template(), material)) {
+                mesh.sprites().markUsed();
                 instanced++;
                 BatchEligibility.onPartQueued();
                 return;
@@ -267,6 +269,7 @@ public final class DroppedItemInstancer {
             blockBackend = new BakedTransformCapture(CAPTURE_BYTES);
         }
         final TemplateBuffer template;
+        final AnimationsRenderUtils.SpriteCapture sprites = AnimationsRenderUtils.captureSprites();
         GLStateManager.glPushMatrix();
         try {
             blockBackend.begin();
@@ -277,9 +280,10 @@ public final class DroppedItemInstancer {
             }
         } finally {
             GLStateManager.glPopMatrix();
+            sprites.close();
         }
         final Color4 color = GLStateManager.getColor();
-        final BlockMesh mesh = new BlockMesh(template, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        final BlockMesh mesh = new BlockMesh(template, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha(), sprites);
         blocks.put(new BlockMeta(block, meta), mesh);
         return mesh;
     }
@@ -300,5 +304,6 @@ public final class DroppedItemInstancer {
         TemplateBuffer template;
     }
 
-    private record BlockMesh(TemplateBuffer template, float red, float green, float blue, float alpha) {}
+    private record BlockMesh(TemplateBuffer template, float red, float green, float blue, float alpha,
+                             AnimationsRenderUtils.SpriteCapture sprites) {}
 }

@@ -30,16 +30,17 @@ public final class FfpFixture {
             layout(location = 5) in vec4 a_InstRow0;
             layout(location = 6) in vec4 a_InstRow1;
             layout(location = 7) in vec4 a_InstRow2;
-            layout(location = 11) in ivec4 iris_Entity;
+            layout(location = 11) in uvec4 iris_Entity;
             flat out vec3 v_Color;
             void main() {
             """;
 
         private static final String VS_TAIL = """
               gl_Position = instMV * vec4(a_Position, 1.0);
-              if (iris_Entity.x == -1) { v_Color = vec3(1.0, 0.0, 0.0); }
-              else if (iris_Entity.x == 7) { v_Color = vec3(0.0, 1.0, 0.0); }
-              else { v_Color = vec3(0.0, 0.0, 1.0); }
+              if (iris_Entity.x == 65535u) { v_Color = vec3(1.0, 0.0, 0.0); }
+              else if (iris_Entity.x == 7u) { v_Color = vec3(0.0, 1.0, 0.0); }
+              else if (iris_Entity.x == 50020u) { v_Color = vec3(0.0, 0.0, 1.0); }
+              else { v_Color = vec3(1.0, 0.0, 1.0); }
             }
             """;
 
@@ -64,7 +65,7 @@ public final class FfpFixture {
             GLStateManager.glUseProgram(program);
 
             buildTemplate();
-            buildInstances(new float[] { -spacing, 0.0f, spacing }, new int[] { -1, 7, 42 });
+            buildInstances(new float[] { -spacing, 0.0f, spacing }, new int[] { -1, 7, 50020 });
         }
 
         public static void draw() {

@@ -1,7 +1,5 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.entity.Render;
@@ -23,15 +21,13 @@ public class MixinRenderEntityFlame {
     // This runs after the initial entity has finished being rendered.
     // The flame is not a real entity but from the shader's perspective, it is.
     private void iris$setFlame(Entity entity, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-        if (entityIdMap != null) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(entityIdMap.applyAsInt(flameId), 0);
-        }
+        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+        CapturedRenderingState.INSTANCE.setCurrentNamedEntity(flameId);
     }
 
     @Inject(method = "renderEntityOnFire", at = @At("RETURN"))
     private void iris$resetFlame(Entity entity, double x, double y, double z, float partialTicks, CallbackInfo ci) {
-        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(0, 0);
+        CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
     }
 
 }

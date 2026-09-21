@@ -8,7 +8,7 @@ import org.joml.Vector4fc;
 import java.util.function.Supplier;
 
 public class Vector4Uniform extends Uniform {
-	private final Runnable updateListener = this::updateValue;
+	private final Runnable updateListener = uploadWhileBound(this::updateValue);
 	private final Vector4f cachedValue;
 	private final Supplier<Vector4fc> value;
 
@@ -35,7 +35,8 @@ public class Vector4Uniform extends Uniform {
 	private void updateValue() {
 		Vector4fc newValue = value.get();
 
-		if (!newValue.equals(cachedValue)) {
+		if (dirty || !newValue.equals(cachedValue)) {
+			dirty = false;
 			cachedValue.set(newValue.x(), newValue.y(), newValue.z(), newValue.w());
 			RenderSystem.uniform4f(location, cachedValue.x(), cachedValue.y(), cachedValue.z(), cachedValue.w());
 		}

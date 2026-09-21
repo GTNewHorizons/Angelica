@@ -228,7 +228,7 @@ class GlsmSdlFfpTest {
 
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 13, SIZE / 2, 0xFFFF0000, "entity -1 must render red");
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 32, SIZE / 2, 0xFF00FF00, "entity 7 must render green");
-        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 51, SIZE / 2, 0xFF0000FF, "entity 42 must render blue");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 51, SIZE / 2, 0xFF0000FF, "entity 50020 must render blue");
     }
 
     private static void enableGuiStandardItemLighting() {

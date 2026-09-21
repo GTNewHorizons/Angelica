@@ -24,9 +24,9 @@ public final class GLCommand {
     public static final int USE_PROGRAM = 11;        // [cmd:4][program:4]
     public static final int PUSH_ATTRIB = 12;        // [cmd:4][mask:4]
     public static final int POP_ATTRIB = 13;         // [cmd:4][unused:4]
-    public static final int LOAD_IDENTITY = 14;      // [cmd:4][matrixMode:4]
-    public static final int PUSH_MATRIX = 15;        // [cmd:4][matrixMode:4]
-    public static final int POP_MATRIX = 16;         // [cmd:4][matrixMode:4]
+    public static final int LOAD_IDENTITY = 14;      // [cmd:4]
+    public static final int PUSH_MATRIX = 15;        // [cmd:4]
+    public static final int POP_MATRIX = 16;         // [cmd:4]
     public static final int STENCIL_MASK = 17;       // [cmd:4][mask:4]
     public static final int DEPTH_MASK = 18;         // [cmd:4][flag:4] (0 or 1)
     public static final int FRONT_FACE = 19;         // [cmd:4][mode:4]
@@ -62,6 +62,7 @@ public final class GLCommand {
     public static final int CLEAR_COLOR = 55;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
     public static final int BLEND_COLOR = 56;        // [cmd:4][r:4f][g:4f][b:4f][a:4f]
     public static final int SECONDARY_COLOR = 57;    // [cmd:4][r:4f][g:4f][b:4f]
+    public static final int VERTEX_ATTRIB = 58;      // [cmd:4][index:4][x:4f][y:4f][z:4f][w:4f]
 
     // === Mixed int+float commands ===
     public static final int ALPHA_FUNC = 60;         // [cmd:4][func:4][ref:4f]
@@ -73,14 +74,13 @@ public final class GLCommand {
     public static final int MATERIALF = 66;          // [cmd:4][face:4][pname:4][param:4f]
     public static final int TEX_PARAMETERF = 67;     // [cmd:4][target:4][pname:4][param:4f]
 
-    // === Double commands ===
-    public static final int TRANSLATE = 70;          // [cmd:4][mode:4][x:8d][y:8d][z:8d] = 32 bytes
-    public static final int SCALE = 72;              // [cmd:4][mode:4][x:8d][y:8d][z:8d] = 32 bytes
+    public static final int TRANSLATE = 70;          // [cmd:4][x:4f][y:4f][z:4f] = 16 bytes
+    public static final int SCALE = 72;              // [cmd:4][x:4f][y:4f][z:4f] = 16 bytes
     public static final int CLEAR_DEPTH = 75;        // [cmd:4][depth:8d] = 12 bytes
 
-    // === Matrix commands (72 bytes) ===
-    public static final int MULT_MATRIX = 80;        // [cmd:4][mode:4][m00-m33:64f] = 72 bytes
-    public static final int LOAD_MATRIX = 81;        // [cmd:4][mode:4][m00-m33:64f] = 72 bytes
+    // === Matrix commands (68 bytes) ===
+    public static final int MULT_MATRIX = 80;        // [cmd:4][m00-m33:64f] = 68 bytes
+    public static final int LOAD_MATRIX = 81;        // [cmd:4][m00-m33:64f] = 68 bytes
 
     // === Buffer commands (inline 4 floats max) ===
     public static final int FOG = 90;                // [cmd:4][pname:4][count:4][params:16f] = 28 bytes
@@ -157,6 +157,7 @@ public final class GLCommand {
             case CLEAR_COLOR -> "CLEAR_COLOR";
             case BLEND_COLOR -> "BLEND_COLOR";
             case SECONDARY_COLOR -> "SECONDARY_COLOR";
+            case VERTEX_ATTRIB -> "VERTEX_ATTRIB";
             case ALPHA_FUNC -> "ALPHA_FUNC";
             case FOGF -> "FOGF";
             case LIGHTF -> "LIGHTF";
@@ -220,6 +221,8 @@ public final class GLCommand {
                  GLCommand.STENCIL_FUNC_SEPARATE, GLCommand.STENCIL_OP_SEPARATE,
                  GLCommand.SCISSOR,
                  GLCommand.COLOR, GLCommand.CLEAR_COLOR, GLCommand.BLEND_COLOR -> 20;
+
+            case GLCommand.VERTEX_ATTRIB -> 24;
 
             // DRAW_RANGE_RESTORE: 28 bytes
             case GLCommand.DRAW_RANGE_RESTORE -> 28;

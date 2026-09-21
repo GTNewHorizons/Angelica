@@ -142,7 +142,17 @@ public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris
     }
 
     public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
+        return tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, null);
+    }
+
+    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, boolean culling) {
+        return tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot,
+            culling && !material.isNoCull() ? ENABLE_CULLING : DISABLE_CULLING);
+    }
+
+    private static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, RenderPhase.Cull cull) {
         final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material, pass, offsetFactor, offsetUnits, glintSlot).shadeModel(SMOOTH_SHADE_MODEL);
+        if (cull != null) b.cull(cull);
         final boolean sortsTranslucent = material.transparency() != TesrMaterial.Transparency.OPAQUE;
         return of("angelica_tesr_" + material.transparency().name().toLowerCase(Locale.ROOT) + pass.nameSuffix()
                 + (offsetFactor == 0.0f && offsetUnits == 0.0f ? "" : "_offset" + offsetFactor + "_" + offsetUnits),

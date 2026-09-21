@@ -12,6 +12,7 @@ import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
 import net.coderbot.batchedentityrendering.impl.BufferSegment;
 import net.coderbot.batchedentityrendering.impl.BufferSourceProbe;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -47,6 +48,120 @@ class RetainedTesrGroupsTest {
         source = new AngelicaBufferSource();
         groups = new RetainedTesrGroups(source);
         layer = new TestLayer();
+    }
+
+    @Test
+    void fallbackKeepsHighMaterialIdsAndTheUnmappedSentinel() {
+        for (int id : new int[] { -1, 0, 32767, 32768, 45020, 50020, 50072, 65534 }) {
+            final long info = InstancedAttribs.packEntityInfo(id, id, id);
+            assertEquals(id, RetainedTesrGroups.entityFromInfo(info));
+            assertEquals(id, RetainedTesrGroups.blockEntityFromInfo(info));
+            assertEquals(id, RetainedTesrGroups.itemFromInfo(info));
+        }
+    }
+
+    @Test
+    void retainedGroupsKeepDifferentItemIdsSeparateAcrossFrames() {
+        int previous = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        try {
+            final TemplateBuffer template = template();
+            RetainedTesrGroups.Group first = null;
+            for (int frame = 0; frame < 2; frame++) {
+                groups.beginPass(new Matrix4f(), 0, 0, 0);
+                for (int item : new int[] {42, 43, 42}) {
+                    CapturedRenderingState.INSTANCE.setCurrentRenderedItem(item);
+                    groups.queue(template, layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 0, 0L, 5, null);
+                }
+                final Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<RetainedTesrGroups.Group>> byLayer = Reflect.get(groups, "byLayer");
+                final ObjectArrayList<RetainedTesrGroups.Group> entries = byLayer.get(layer);
+                assertEquals(2, entries.size());
+                assertEquals(42, entries.get(0).itemId);
+                assertEquals(2, entries.get(0).templateColumns.size);
+                assertEquals(43, entries.get(1).itemId);
+                assertEquals(1, entries.get(1).templateColumns.size);
+                if (first != null) assertSame(first, entries.get(0), "stable groups must be reused across frames");
+                first = entries.get(0);
+            }
+        } finally {
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(previous);
+        }
+    }
+
+    @Test
+    void instancedGroupsKeepItemIdsPerInstanceWithoutSplitting() {
+        int previous = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        try {
+            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new CountingPipeline(true, true));
+            for (int item : new int[] {42, 43}) {
+                CapturedRenderingState.INSTANCE.setCurrentRenderedItem(item);
+                long info = InstancedAttribs.packEntityInfo(-1, 5, item);
+                groups.queue(template(), layer, STREAM, new Matrix4f(), 0, -1, 0, info, 5, null);
+            }
+            final RetainedTesrGroups.Group group = onlyGroup(groups);
+            assertEquals(2, group.templateColumns.size);
+            assertEquals(42, RetainedTesrGroups.itemFromInfo(group.templateColumns.infos.getLong(0)));
+            assertEquals(43, RetainedTesrGroups.itemFromInfo(group.templateColumns.infos.getLong(1)));
+        } finally {
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(previous);
+        }
+    }
+
+    @Test
+    void retainedGroupsSeparateTheFullIdTupleAndTintAndReuseStableKeys() {
+        final var state = CapturedRenderingState.INSTANCE;
+        state.pushCurrentEntityAndItem();
+        state.pushCurrentBlockEntity();
+        state.pushCurrentEntityColor();
+        try {
+            for (int frame = 0; frame < 2; frame++) {
+                groups.beginPass(new Matrix4f(), 0, 0, 0);
+                for (int entity : new int[] {11, 12}) {
+                    state.setCurrentEntityAndItem(entity, 13);
+                    for (int block : new int[] {21, 22}) {
+                        state.setCurrentBlockEntity(block);
+                        for (float red : new float[] {0, 1}) {
+                            state.setCurrentEntityColor(red, 0, 0, 0.5f);
+                            groups.queue(template(), layer, TesrMaterial.CURRENT_STATE, new Matrix4f(), 0, -1, 0, 0L, block, null);
+                        }
+                    }
+                }
+                assertEquals(8, groups.groupCount(), "only distinct ID/tint combinations allocate groups, including across frames");
+            }
+        } finally {
+            state.popCurrentEntityColor();
+            state.popCurrentBlockEntity();
+            state.popCurrentEntityAndItem();
+        }
+    }
+
+    @Test
+    void instancedGroupsKeepFullIdsAndTintPerInstanceWithoutSplitting() {
+        final var state = CapturedRenderingState.INSTANCE;
+        state.pushCurrentEntityAndItem();
+        state.pushCurrentBlockEntity();
+        state.pushCurrentEntityColor();
+        try {
+            groups.beginPass(new Matrix4f(), 0, 0, 0, new InstancedTemplateRenderer(ring), new CountingPipeline(true, true));
+            for (int i = 0; i < 100; i++) {
+                state.setCurrentEntityAndItem(i, i + 200);
+                state.setCurrentBlockEntity(i + 100);
+                state.setCurrentEntityColor(i / 100f, 0, 0, 1);
+                final long info = InstancedAttribs.packEntityInfo(i, i + 100, i + 200);
+                final int overlay = AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor());
+                groups.queue(template(), layer, STREAM, new Matrix4f(), 0, -1, overlay, info, i + 100, null);
+            }
+            final var group = onlyGroup(groups);
+            assertEquals(100, group.templateColumns.size);
+            assertEquals(1, group.templateColumns.runs.size());
+            for (int i = 0; i < 100; i++) {
+                assertEquals(InstancedAttribs.packEntityInfo(i, i + 100, i + 200), group.templateColumns.infos.getLong(i));
+                assertEquals(AngelicaBufferSource.packAbgr(i / 100f, 0, 0, 1), group.templateColumns.overlays.getInt(i));
+            }
+        } finally {
+            state.popCurrentEntityColor();
+            state.popCurrentBlockEntity();
+            state.popCurrentEntityAndItem();
+        }
     }
 
     @Test

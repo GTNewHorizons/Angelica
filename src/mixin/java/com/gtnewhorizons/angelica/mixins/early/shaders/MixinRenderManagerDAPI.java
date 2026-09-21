@@ -24,11 +24,11 @@ public class MixinRenderManagerDAPI {
         require = 1 // Require this if DAPI is present, which should be the case when this mixin is applied.
     )
     private void iris$wrapDoRenderDragonAPI(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
-        final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+        CapturedRenderingState.INSTANCE.pushCurrentEntityColor();
         final Class<?> prevRenderable = TesrAttribution.currentRenderable;
 
-        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(EntityIdHelper.getEntityId(entity), 0);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedEntity(entity);
         TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
@@ -43,7 +43,8 @@ public class MixinRenderManagerDAPI {
             if (lightning) {
                 GbufferPrograms.teardownSpecialRenderCondition();
             }
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
+            CapturedRenderingState.INSTANCE.popCurrentEntityColor();
+            CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
             TesrAttribution.currentRenderable = prevRenderable;
         }
     }

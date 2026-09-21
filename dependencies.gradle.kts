@@ -161,6 +161,7 @@ DependencyHandlerScope.of(dependencies).apply {
     compileOnly(rfg.deobf("curse.maven:security-craft-64760:2818228"))
     compileOnly("ganymedes01.etfuturum:Et-Futurum-Requiem:2.6.49-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:OpenBlocks:1.12.19-GTNH:dev")
+    compileOnly("com.github.GTNewHorizons:Draconic-Evolution:1.5.30-GTNH:dev")
     compileOnly("com.github.GTNewHorizons:Chisel:2.17.31-GTNH:dev")
     compileOnly(rfg.deobf("curse.maven:biomes-o-plenty-220318:2499612"))
 

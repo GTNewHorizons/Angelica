@@ -22,7 +22,7 @@ public class MixinRenderLiquidCell {
     @Inject(at = @At(ordinal = 0, shift = Shift.AFTER, target = "Lorg/lwjgl/opengl/GL11;glColor3ub(BBB)V", value = "INVOKE"), locals = LocalCapture.CAPTURE_FAILSOFT, method = "renderItem", remap = false)
     private void angelica$markNeedsAnimationUpdate(ItemRenderType type, ItemStack item, Object[] data, CallbackInfo ci, ItemFluidCell cell, IIcon icon, FluidStack fs, IIcon windowIcon, IIcon fluidicon) {
         if (fluidicon instanceof TextureAtlasSprite) {
-            ((IPatchedTextureAtlasSprite) fluidicon).markNeedsAnimationUpdate();
+            ((IPatchedTextureAtlasSprite) fluidicon).angelica$markNeedsAnimationUpdate();
         }
     }
 

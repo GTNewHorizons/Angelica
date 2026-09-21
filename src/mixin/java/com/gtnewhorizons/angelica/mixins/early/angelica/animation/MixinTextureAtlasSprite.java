@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.animation;
 
 import com.gtnewhorizons.angelica.mixins.interfaces.IPatchedTextureAtlasSprite;
+import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.resources.data.AnimationMetadataSection;
 import org.spongepowered.asm.mixin.Mixin;
@@ -21,12 +22,13 @@ public abstract class MixinTextureAtlasSprite implements IPatchedTextureAtlasSpr
     @Unique private boolean angelica$isActive = false;
 
     @Override
-    public void markNeedsAnimationUpdate() {
+    public void angelica$markNeedsAnimationUpdate() {
         this.angelica$isActive = true;
+        AnimationsRenderUtils.recordSpriteUsage(this);
     }
 
     @Override
-    public boolean needsAnimationUpdate() {
+    public boolean angelica$needsAnimationUpdate() {
         if (this.angelica$isActive) {
             this.angelica$isActive = false;
             return true;
@@ -35,12 +37,12 @@ public abstract class MixinTextureAtlasSprite implements IPatchedTextureAtlasSpr
     }
 
     @Override
-    public void unmarkNeedsAnimationUpdate() {
+    public void angelica$unmarkNeedsAnimationUpdate() {
         this.angelica$isActive = false;
     }
 
     @Override
-    public void updateAnimationsDryRun() {
+    public void angelica$updateAnimationsDryRun() {
         if (animationMetadata == null || framesTextureData == null) return;
 
         tickCounter++;

@@ -22,6 +22,7 @@ import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -334,12 +335,15 @@ public class IrisGLSMBridge {
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
             if (!event.postBind) return;
+            if (Program.isManagedBind(event.newProgram)) return;
             WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (pipeline instanceof DeferredWorldRenderingPipeline drp) {
                 DeferredWorldRenderingPipeline.Pass activePass = drp.getActivePassProgram();
                 if (activePass != null && activePass.getProgram() != null && activePass.getProgram().getProgramId() == event.newProgram) {
                     final int frame = SystemTimeUniforms.COUNTER.getAsInt();
-                    if (programLastUpdatedFrame.get(event.newProgram) != frame) {
+                    if (programLastUpdatedFrame.get(event.newProgram) != frame
+                        || !ProgramUniforms.isActiveProgramBound()
+                        || ProgramUniforms.activeHasDeferredUploads()) {
                         activePass.getProgram().getUniforms().update();
                         programLastUpdatedFrame.put(event.newProgram, frame);
                     }

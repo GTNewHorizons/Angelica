@@ -2,14 +2,18 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.compat.mojang.RenderPhase;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
+import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
+import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.layer.PassOverride;
+import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -71,8 +75,158 @@ class TesrLayerStateTest {
         return RenderLayer.tesr(null, material);
     }
 
+    @Test
+    void depthPhasesRestoreCallerEnableAndFunction() {
+        for (boolean enabled : new boolean[] { true, false }) {
+            for (int function : new int[] { GL11.GL_LEQUAL, GL11.GL_EQUAL }) {
+                GLStateManager.getDepthTest().setEnabled(enabled);
+                GLStateManager.glDepthFunc(GL11.GL_GREATER);
+                final RenderPhase.DepthTest phase = new RenderPhase.DepthTest("test", function);
+                phase.startDrawing();
+                assertDepth(true, function);
+                phase.endDrawing();
+                assertDepth(enabled, GL11.GL_GREATER);
+            }
+        }
+    }
+
+    @Test
+    void nestedDepthPhasesRestoreOuterAndCallerState() {
+        GLStateManager.disableDepthTest();
+        GLStateManager.glDepthFunc(GL11.GL_GREATER);
+        final RenderPhase.DepthTest base = new RenderPhase.DepthTest("base", GL11.GL_LEQUAL);
+        final RenderPhase.DepthTest glint = new RenderPhase.DepthTest("glint", GL11.GL_EQUAL);
+        base.startDrawing();
+        base.startDrawing();
+        glint.startDrawing();
+        assertDepth(true, GL11.GL_EQUAL);
+        glint.endDrawing();
+        assertDepth(true, GL11.GL_LEQUAL);
+        base.endDrawing();
+        assertDepth(true, GL11.GL_LEQUAL);
+        base.endDrawing();
+        assertDepth(false, GL11.GL_GREATER);
+    }
+
+    private static void assertDepth(boolean enabled, int function) {
+        assertEquals(enabled, GLStateManager.getDepthTest().isEnabled(), "cached depth enable");
+        assertEquals(enabled, GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth enable");
+        assertEquals(function, GLStateManager.getDepthState().getFunc(), "cached depth function");
+        assertEquals(function, GL11.glGetInteger(GL11.GL_DEPTH_FUNC), "driver depth function");
+    }
+
+    @Test
+    void entityBatchRestoresDepthBeforeBlockEntities() {
+        final AngelicaBufferSource source = new AngelicaBufferSource();
+        final RenderLayer entityLayer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
+            @Override
+            public boolean hasDraws(RenderLayer layer) {
+                return layer == entityLayer;
+            }
+
+            @Override
+            public void drawLayer(RenderLayer layer) {
+                assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "entity draw depth test");
+            }
+        };
+        try {
+            source.declareUse(entityLayer);
+            source.endBatchWithType(TransparencyType.OPAQUE, hook);
+            source.endBatch(hook);
+            assertTrue(GLStateManager.getDepthTest().isEnabled(), "cached depth before block entities");
+            assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth before block entities");
+        } finally {
+            source.discard();
+            source.freeBuffers();
+        }
+    }
+
     private static RenderLayer glint(int slot) {
         return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot);
+    }
+
+    static RenderLayer capturedLayer(TesrMaterial material) {
+        return Reflect.invoke(ModelPartBatcher.INSTANCE, "layerFor",
+            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class },
+            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT);
+    }
+
+    @Test
+    void queuedCullingSplitsBothLayerCachesAndRestoresTheDrawCaller() {
+        for (TesrMaterial material : new TesrMaterial[] { EntityMaterials.DROPPED_ITEM_CUTOUT, EntityMaterials.GLINT }) {
+            GLStateManager.disableCull();
+            final RenderLayer twoSided = capturedLayer(material);
+            GLStateManager.enableCull();
+            final RenderLayer culled = capturedLayer(material);
+            assertNotSame(twoSided, culled, "the last-layer shortcut must include culling");
+            GLStateManager.disableCull();
+            assertSame(twoSided, capturedLayer(material), "the layer map must retain both states");
+        }
+
+        GLStateManager.disableCull();
+        final RenderLayer twoSided = capturedLayer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        GLStateManager.enableCull();
+        final RenderLayer culled = capturedLayer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        twoSided.startDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST));
+        assertTrue(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
+        twoSided.endDrawing();
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+
+        GLStateManager.disableCull();
+        culled.startDrawing();
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        culled.endDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+    }
+
+    @Test
+    void queuedTemplateCullingSurvivesCacheHitsAndRestoresTheCaller() {
+        final TesrBatchRenderer renderer = TesrBatchRenderer.INSTANCE;
+        final Class<?>[] signature = { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class };
+        final TesrMaterial material = TesrMaterial.CURRENT_STATE;
+        GLStateManager.disableCull();
+        final RenderLayer twoSided = Reflect.invoke(renderer, "layerFor", signature, null, material, PassOverride.NONE, 0f, 0f);
+        GLStateManager.enableCull();
+        final RenderLayer culled = Reflect.invoke(renderer, "layerFor", signature, null, material, PassOverride.NONE, 0f, 0f);
+        assertNotSame(twoSided, culled);
+        GLStateManager.disableCull();
+        assertSame(twoSided, Reflect.invoke(renderer, "layerFor", signature, null, material, PassOverride.NONE, 0f, 0f));
+        culled.startDrawing();
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        culled.endDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        GLStateManager.enableCull();
+        twoSided.startDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        twoSided.endDrawing();
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+
+        final TesrMaterial noCull = TesrMaterial.builder().noCull().build();
+        final RenderLayer forcedTwoSided = Reflect.invoke(renderer, "layerFor", signature, null, noCull, PassOverride.NONE, 0f, 0f);
+        forcedTwoSided.startDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        forcedTwoSided.endDrawing();
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+    }
+
+    @Test
+    void nestedCullScopesRestoreDisabledCallers() {
+        final RenderPhase.Cull twoSided = new RenderPhase.Cull(false);
+        final RenderPhase.Cull culled = new RenderPhase.Cull(true);
+        GLStateManager.disableCull();
+        twoSided.startDrawing();
+        culled.startDrawing();
+        twoSided.startDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        twoSided.endDrawing();
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        culled.endDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
+        twoSided.endDrawing();
+        assertFalse(GL11.glIsEnabled(GL11.GL_CULL_FACE));
     }
 
     @Test

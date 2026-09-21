@@ -97,7 +97,8 @@ public final class CommandBufferExecutor {
                     ptr += 4;
                 }
                 case GLCommand.USE_PROGRAM -> {
-                    GLStateManager.glUseProgram(memGetInt(ptr));
+                    final int recordedProgram = memGetInt(ptr);
+                    GLStateManager.glUseProgram(compiledDisplayList.resolveProgram(recordedProgram));
                     ptr += 4;
                 }
                 case GLCommand.PUSH_ATTRIB -> {
@@ -252,6 +253,11 @@ public final class CommandBufferExecutor {
                 }
 
                 // === Float commands ===
+                case GLCommand.VERTEX_ATTRIB -> {
+                    GLStateManager.glVertexAttrib4f(memGetInt(ptr), memGetFloat(ptr + 4), memGetFloat(ptr + 8),
+                        memGetFloat(ptr + 12), memGetFloat(ptr + 16));
+                    ptr += 20;
+                }
                 case GLCommand.POINT_SIZE -> {
                     GLStateManager.glPointSize(memGetFloat(ptr));
                     ptr += 4;

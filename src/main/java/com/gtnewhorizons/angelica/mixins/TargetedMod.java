@@ -16,6 +16,7 @@ public enum TargetedMod implements ITargetMod {
     DYNAMIC_SURROUNDINGS_MIST("org.blockartistry.mod.DynSurround.mixinplugin.DynamicSurroundingsEarlyMixins", "dsurround"),
     DYNAMIC_SURROUNDINGS_ORIGINAL("org.blockartistry.mod.DynSurround.asm.TransformLoader", "dsurround"),
     DRAGON_API("Reika.DragonAPI.Auxiliary.DragonAPIASMHandler", "DragonAPI"),
+    DRACONIC_EVOLUTION(null, "DraconicEvolution"),
     ET_FUTURUM_REQUIEM(null, "etfuturum"),
     EXTRAUTILS(null, "ExtraUtilities"),
     FARSEEK("farseek.core.FarseekCoreMod", "farseek"),

@@ -41,11 +41,11 @@ public class MixinRenderManager {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/Render;doRender(Lnet/minecraft/entity/Entity;DDDFF)V")
     )
     private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
-        final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
+        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+        CapturedRenderingState.INSTANCE.pushCurrentEntityColor();
         final Class<?> prevRenderable = TesrAttribution.currentRenderable;
 
-        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(EntityIdHelper.getEntityId(entity), 0);
+        CapturedRenderingState.INSTANCE.setCurrentRenderedEntity(entity);
         TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
         final boolean lightning = EntityIdHelper.isLightningBolt(entity);
         if (lightning) {
@@ -60,7 +60,8 @@ public class MixinRenderManager {
             if (lightning) {
                 GbufferPrograms.teardownSpecialRenderCondition();
             }
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
+            CapturedRenderingState.INSTANCE.popCurrentEntityColor();
+            CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
             TesrAttribution.currentRenderable = prevRenderable;
         }
     }

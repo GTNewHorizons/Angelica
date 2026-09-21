@@ -788,6 +788,11 @@ public enum Mixins implements IMixins {
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.etfuturum.MixinTileEntityNewBeaconRenderer")
     ),
+    DRACONIC_PLACED_ITEM_RENDERER(new MixinBuilder("Keep custom placed-item renderers live")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.DRACONIC_EVOLUTION)
+        .addClientMixins("client.draconicevolution.MixinRenderTilePlacedItem")
+    ),
     OPENBLOCKS_TROPHY_ENTITY_GBUFFER(new MixinBuilder("Render OpenBlocks trophies with the entity gbuffer programs")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.OPENBLOCKS)

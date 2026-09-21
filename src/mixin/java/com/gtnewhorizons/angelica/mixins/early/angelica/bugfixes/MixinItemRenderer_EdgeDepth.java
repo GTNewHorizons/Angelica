@@ -91,11 +91,11 @@ public class MixinItemRenderer_EdgeDepth {
         remap = false
     )
     private void angelica$glintEnd(int func) {
+        angelica$glintMode = false;
         if (ShadowRenderer.ACTIVE) {
             GLStateManager.glDepthFunc(func);
             return;
         }
-        angelica$glintMode = false;
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         GLStateManager.glDepthMask(true);
         GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
@@ -107,7 +107,8 @@ public class MixinItemRenderer_EdgeDepth {
     @WrapMethod(method = "renderItemIn2D")
     private static void angelica$glintPrepass(Tessellator tess, float minU, float minV, float maxU, float maxV,
                                                int w, int h, float thickness, Operation<Void> original) {
-        if (ShadowRenderer.ACTIVE || !angelica$glintMode || angelica$inPrepass) {
+        if (ShadowRenderer.ACTIVE || !angelica$glintMode || angelica$inPrepass
+            || GLStateManager.isRecordingDisplayList()) {
             original.call(tess, minU, minV, maxU, maxV, w, h, thickness);
             return;
         }

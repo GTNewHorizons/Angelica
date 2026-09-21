@@ -5,7 +5,6 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
-import net.coderbot.iris.uniforms.ItemMaterialHelper;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.client.model.ModelRenderer;
@@ -80,9 +79,9 @@ public abstract class MixinRenderHorse {
         }
 
         Item armorItem = angelica$getArmorItem(horse, armorIndex);
+        ItemIdManager.pushItemId();
         if (armorItem != null) {
-            int id = ItemMaterialHelper.getMaterialId(armorItem, 0);
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(id);
+            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(armorItem, 0);
         }
 
         // Copy animation state from the base model to the armor model
@@ -91,9 +90,11 @@ public abstract class MixinRenderHorse {
         ResourceLocation armorTexture = angelica$armorTextureCache.computeIfAbsent(armorTexturePath, ResourceLocation::new);
         Minecraft.getMinecraft().getTextureManager().bindTexture(armorTexture);
 
-        angelica$armorModel.render(horse, p1, p2, p3, p4, p5, p6);
-
-        ItemIdManager.resetItemId();
+        try {
+            angelica$armorModel.render(horse, p1, p2, p3, p4, p5, p6);
+        } finally {
+            ItemIdManager.popItemId();
+        }
     }
 
     // Copy rotation angles and positions from one model's renderers to another's

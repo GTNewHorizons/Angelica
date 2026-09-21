@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.recording;
 
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.recording.commands.IndexedDrawBatch;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -35,6 +36,24 @@ public final class CompiledDisplayList {
     private final DisplayListCommand[] complexObjects;      // Complex commands (TexImage2D, etc.)
     private final DisplayListVBO ownedVbos;     // GPU resources referenced by index
     private final List<IndexedDrawBatch> indexedBatches; // Shared VAO/VBO/EBO triples per layout group
+    private Int2IntMap replayPrograms;
+    private long programLifetimeGeneration = -1;
+
+    int resolveProgram(int program) {
+        if (program == 0) return 0;
+        final long generation = GLStateManager.getProgramLifetimeGeneration();
+        if (replayPrograms == null) replayPrograms = new Int2IntOpenHashMap();
+        if (programLifetimeGeneration != generation) {
+            replayPrograms.clear();
+            programLifetimeGeneration = generation;
+        }
+        if (replayPrograms.containsKey(program)) return replayPrograms.get(program);
+        final boolean valid = GLStateManager.glIsProgram(program);
+        if (!valid || !GLStateManager.isProgramPendingDeletion(program)) {
+            replayPrograms.put(program, valid ? program : 0);
+        }
+        return valid ? program : 0;
+    }
 
     public CompiledDisplayList(ByteBuffer commandBuffer, DisplayListCommand[] complexObjects, DisplayListVBO ownedVbos, List<IndexedDrawBatch> indexedBatches) {
         this.commandBuffer = commandBuffer;

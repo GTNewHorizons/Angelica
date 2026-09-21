@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
@@ -128,14 +129,16 @@ public final class ModelPartBatcher {
         float offsetFactor;
         float offsetUnits;
         int glintSlot;
+        boolean culling;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
+        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, boolean culling) {
             this.texture = texture;
             this.material = material;
             this.pass = pass;
             this.offsetFactor = offsetFactor;
             this.offsetUnits = offsetUnits;
             this.glintSlot = glintSlot;
+            this.culling = culling;
             return this;
         }
 
@@ -146,7 +149,7 @@ public final class ModelPartBatcher {
                 && Objects.equals(pass, other.pass)
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
                 && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
-                && glintSlot == other.glintSlot;
+                && glintSlot == other.glintSlot && culling == other.culling;
         }
 
         @Override
@@ -155,7 +158,7 @@ public final class ModelPartBatcher {
             h = h * 31 + Float.floatToIntBits(offsetFactor);
             h = h * 31 + Float.floatToIntBits(offsetUnits);
             h = h * 31 + glintSlot;
-            return h;
+            return h * 31 + (culling ? 1 : 0);
         }
     }
 
@@ -167,6 +170,7 @@ public final class ModelPartBatcher {
     private float lastLayerOffsetFactor;
     private float lastLayerOffsetUnits;
     private int lastLayerGlintSlot;
+    private boolean lastLayerCulling;
     private RenderLayer lastLayer;
 
     private static ResourceLocation lastBoundLocation;
@@ -191,6 +195,7 @@ public final class ModelPartBatcher {
     }
 
     public void begin(Mode mode, boolean shadow) {
+        BatchStateFallback.install();
         this.mode = mode;
         this.shadow = shadow;
         instancedThisCycle = TesrBatchRenderer.instancedCapable();
@@ -216,6 +221,15 @@ public final class ModelPartBatcher {
     }
 
     public void flush() {
+        BatchStateGuard.suspend();
+        try {
+            flushNow();
+        } finally {
+            BatchStateGuard.resume();
+        }
+    }
+
+    private void flushNow() {
         if (!active) return;
         active = false;
         if (shadow) {
@@ -252,6 +266,10 @@ public final class ModelPartBatcher {
 
     public boolean isActive() {
         return active;
+    }
+
+    boolean hasQueuedGeometry() {
+        return active && (bufferSource.hasPendingLayers() || shadows.hasPendingGeometry());
     }
 
     public boolean entityPassActive() {
@@ -304,6 +322,10 @@ public final class ModelPartBatcher {
     }
 
     private boolean queueTemplate(TemplateBuffer template, CubeParams[] cubes, float scale, TesrMaterial explicitMaterial) {
+        if (!active) {
+            bail(BailReason.INACTIVE);
+            return false;
+        }
         if (shaderPipeline != null && GLStateManager.getActiveProgram() != shaderPipeline.getActivePassProgramId()) {
             bail(BailReason.FOREIGN_PROGRAM);
             return false;
@@ -448,14 +470,16 @@ public final class ModelPartBatcher {
     }
 
     private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
+        final boolean culling = !material.isNoCull() && GLStateManager.getCullState().isEnabled();
         if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
-            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && glintSlot == lastLayerGlintSlot) {
+            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && glintSlot == lastLayerGlintSlot
+            && culling == lastLayerCulling) {
             return lastLayer;
         }
-        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot));
+        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, culling));
         if (layer == null) {
-            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot);
-            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot), layer);
+            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, culling);
+            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, culling), layer);
         }
         lastLayerTexture = texture;
         lastLayerMaterial = material;
@@ -463,6 +487,7 @@ public final class ModelPartBatcher {
         lastLayerOffsetFactor = offsetFactor;
         lastLayerOffsetUnits = offsetUnits;
         lastLayerGlintSlot = glintSlot;
+        lastLayerCulling = culling;
         lastLayer = layer;
         return layer;
     }
@@ -486,7 +511,7 @@ public final class ModelPartBatcher {
         active = false;
         shaderPipeline = null;
         layers.clear();
-        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT);
+        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT, false);
         lastLayerTexture = null;
         lastLayerMaterial = null;
         lastLayerPass = null;

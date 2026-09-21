@@ -55,19 +55,10 @@ public final class EntityIdHelper {
      * @return The entity ID, or -1 if no mapping exists
      */
     public static int getEntityId(Entity entity) {
-        Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
+        if (entity == null) return -1;
+        final Object2IntFunction<NamespacedId> entityIdMap = currentEntityIds();
         if (entityIdMap == null) {
             return -1;
-        }
-
-        // Invalidate caches if the map changed (shader reload)
-        if (entityIdMap != cachedEntityIdMap) {
-            entityIdCache.clear();
-            entityNameCache.clear();
-            entityNbtCache.clear();
-            cachedEntityIdMap = entityIdMap;
-            cachedCurrentPlayerId = entityIdMap.applyAsInt(CURRENT_PLAYER);
-            cachedConvertingVillagerId = entityIdMap.applyAsInt(CONVERTING_VILLAGER);
         }
 
         // Check NBT-conditional match first
@@ -100,7 +91,7 @@ public final class EntityIdHelper {
         }
 
         // Normal entity type lookup
-        final int normalId = getNormalEntityId(entity, entityIdMap);
+        final int normalId = getNormalEntityId(entity.getClass(), getCachedEntityName(entity), entityIdMap);
 
         // Check for special entity type overrides
         final int specialId = getSpecialEntityId(entity);
@@ -109,6 +100,52 @@ public final class EntityIdHelper {
         }
 
         return normalId;
+    }
+
+    /** A display list retains the entity's material identity without retaining its world. */
+    public record EntityIdentity(Class<?> type, NamespacedId registeredName, boolean currentPlayer,
+                                 boolean convertingVillager, NBTTagCompound nbt) {
+        public int resolve() {
+            final Object2IntFunction<NamespacedId> ids = currentEntityIds();
+            if (ids == null) return -1;
+            final NbtConditionalIdMap<NamespacedId> conditions = BlockRenderingSettings.INSTANCE.getEntityNbtMap();
+            if (nbt != null && registeredName != null && conditions != null && !conditions.isEmpty()
+                && conditions.hasConditions(registeredName)) {
+                final int conditional = conditions.resolve(registeredName, nbt);
+                if (conditional != -1) return conditional;
+            }
+            final int special = currentPlayer ? cachedCurrentPlayerId
+                : convertingVillager ? cachedConvertingVillagerId : -1;
+            return special != -1 ? special : getNormalEntityId(type, registeredName, ids);
+        }
+    }
+
+    public static EntityIdentity snapshot(Entity entity) {
+        if (entity == null) return null;
+        NBTTagCompound nbt = null;
+        if (entity.worldObj != null) {
+            nbt = new NBTTagCompound();
+            entity.writeToNBT(nbt);
+            // Entity serializers can attach live item tags to the output compound.
+            nbt = (NBTTagCompound) nbt.copy();
+        }
+        final String registeredName = EntityList.getEntityString(entity);
+        return new EntityIdentity(entity.getClass(), registeredName == null ? null : new NamespacedId(registeredName),
+            entity instanceof EntityPlayer && entity == Minecraft.getMinecraft().renderViewEntity,
+            entity instanceof EntityZombie zombie && zombie.isConverting(), nbt);
+    }
+
+    private static Object2IntFunction<NamespacedId> currentEntityIds() {
+        final Object2IntFunction<NamespacedId> ids = BlockRenderingSettings.INSTANCE.getEntityIds();
+        if (ids != cachedEntityIdMap) {
+            entityIdCache.clear();
+            entityNameCache.clear();
+            entityNbtCache.clear();
+            cachedEntityIdMap = ids;
+            cachedCurrentPlayerId = ids == null ? -1 : ids.applyAsInt(CURRENT_PLAYER);
+            cachedConvertingVillagerId = ids == null ? -1 : ids.applyAsInt(CONVERTING_VILLAGER);
+        }
+        return ids;
     }
 
     /**
@@ -134,10 +171,7 @@ public final class EntityIdHelper {
      * Get the normal entity ID based on entity type, with caching.
      * Uses Class<?> as cache key for fast reference-equality lookups.
      */
-    private static int getNormalEntityId(Entity entity, Object2IntFunction<NamespacedId> entityIdMap) {
-        // Use entity class as cache key
-        Class<?> entityClass = entity.getClass();
-
+    private static int getNormalEntityId(Class<?> entityClass, NamespacedId entityName, Object2IntFunction<NamespacedId> entityIdMap) {
         // Check cache first
         int cached = entityIdCache.getInt(entityClass);
         if (cached != Integer.MIN_VALUE) {
@@ -145,7 +179,7 @@ public final class EntityIdHelper {
         }
 
         // Cache miss, store for next lookup
-        int resolvedId = resolveEntityId(entity, entityClass, entityIdMap);
+        int resolvedId = resolveEntityId(entityClass, entityName, entityIdMap);
         entityIdCache.put(entityClass, resolvedId);
 
         return resolvedId;
@@ -158,11 +192,10 @@ public final class EntityIdHelper {
      * 3. Fully qualified class name    (e.g., "net.minecraft.entity.effect.EntityLightningBolt")
      * 4. Special hardcoded cases       (e.g., "minecraft:lightning_bolt")
      */
-    private static int resolveEntityId(Entity entity, Class<?> entityClass, Object2IntFunction<NamespacedId> entityIdMap) {
+    private static int resolveEntityId(Class<?> entityClass, NamespacedId entityType, Object2IntFunction<NamespacedId> entityIdMap) {
         // Try registered entity name first (most common)
-        String entityType = EntityList.getEntityString(entity);
         if (entityType != null) {
-            return entityIdMap.applyAsInt(new NamespacedId(entityType));
+            return entityIdMap.applyAsInt(entityType);
         }
 
         String simpleClassName = entityClass.getSimpleName();
@@ -173,7 +206,7 @@ public final class EntityIdHelper {
             id = entityIdMap.applyAsInt(new NamespacedId(className));
         }
 
-        if (id == -1 && entity instanceof EntityLightningBolt) {
+        if (id == -1 && EntityLightningBolt.class.isAssignableFrom(entityClass)) {
             // Shaderpacks use "minecraft:lightning_bolt" so we should continue to provide it here
             // Even if we can just use EntityLightningBolt
             id = entityIdMap.applyAsInt(LIGHTNING_BOLT_ID);
@@ -188,12 +221,13 @@ public final class EntityIdHelper {
     private static NamespacedId getCachedEntityName(Entity entity) {
         Class<?> entityClass = entity.getClass();
         NamespacedId cached = entityNameCache.get(entityClass);
-        if (cached != null) {
+        if (cached != null || entityNameCache.containsKey(entityClass)) {
             return cached;
         }
 
         String entityType = EntityList.getEntityString(entity);
         if (entityType == null) {
+            entityNameCache.put(entityClass, null);
             return null;
         }
 

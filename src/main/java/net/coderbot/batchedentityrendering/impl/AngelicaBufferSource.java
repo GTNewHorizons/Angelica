@@ -44,7 +44,7 @@ public class AngelicaBufferSource implements Groupable {
     private boolean prepared;
     private final List<RenderLayer> order = new ArrayList<>();
     private boolean stateSaved;
-    private boolean anyIdSet;
+    private boolean irisStateSaved;
     private GroupIdKind idKind = GroupIdKind.BLOCK_ENTITY;
 
     public AngelicaBufferSource() {
@@ -66,12 +66,16 @@ public class AngelicaBufferSource implements Groupable {
             affinities.put(type, affinity);
         }
         final SegmentedBufferBuilder builder = builders[affinity];
-        builder.begin(type, blockEntityId);
+        builder.begin(type, blockEntityId, effectiveIdKind() == GroupIdKind.ENTITY);
         return builder;
     }
 
     public void declareUse(RenderLayer type) {
         renderOrderManager.begin(type);
+    }
+
+    public boolean hasPendingLayers() {
+        return prepared ? !order.isEmpty() : !renderOrderManager.getRenderOrder().isEmpty();
     }
 
     public boolean isEmpty() {
@@ -114,7 +118,7 @@ public class AngelicaBufferSource implements Groupable {
         }
         affinities.clear();
         stateSaved = false;
-        anyIdSet = false;
+        irisStateSaved = false;
     }
 
     List<RenderLayer> prepare() {
@@ -153,7 +157,7 @@ public class AngelicaBufferSource implements Groupable {
 
     public void pauseBatch() {
         releaseAttribState();
-        clearCurrentId();
+        restoreIrisState();
     }
 
     public void discard() {
@@ -168,13 +172,20 @@ public class AngelicaBufferSource implements Groupable {
         }
     }
 
-    private void clearCurrentId() {
-        if (!anyIdSet) return;
-        // A pass can set either kind: nested entities inside a TESR write the entity id during a block entity pass
-        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(-1, 0);
-        CapturedRenderingState.INSTANCE.setCurrentEntityColor(0f, 0f, 0f, 0f);
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-        anyIdSet = false;
+    private void restoreIrisState() {
+        if (!irisStateSaved) return;
+        CapturedRenderingState.INSTANCE.popCurrentEntityColor();
+        CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
+        CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
+        irisStateSaved = false;
+    }
+
+    private void saveIrisState() {
+        if (irisStateSaved) return;
+        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+        CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
+        CapturedRenderingState.INSTANCE.pushCurrentEntityColor();
+        irisStateSaved = true;
     }
 
     public GroupIdKind effectiveIdKind() {
@@ -191,26 +202,30 @@ public class AngelicaBufferSource implements Groupable {
             GLStateManager.glPushAttrib(SAVED_STATE_BITS);
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
         }
+        saveIrisState();
         layer.startDrawing();
         if (hasDynamic) {
-            anyIdSet = true;
             GLStateManager.glPushMatrix();
             GLStateManager.glLoadIdentity();
             SegmentedBufferBuilder.LayerBuffer bound = null;
-            final boolean entityKind = effectiveIdKind() == GroupIdKind.ENTITY;
-            int currentId = Integer.MIN_VALUE;
+            int currentEntity = Integer.MIN_VALUE;
+            int currentBlock = Integer.MIN_VALUE;
+            int currentItem = Integer.MIN_VALUE;
             int currentColor = 0;
             boolean colorSet = false;
             for (int i = 0, n = segments.size(); i < n; i++) {
                 final BufferSegment segment = segments.get(i);
-                if (entityKind && (!colorSet || segment.getEntityColor() != currentColor)) {
+                if (!colorSet || segment.getEntityColor() != currentColor) {
                     colorSet = true;
                     currentColor = segment.getEntityColor();
                     setEntityColor(currentColor);
                 }
-                if (segment.getBlockEntityId() != currentId) {
-                    currentId = segment.getBlockEntityId();
-                    applyIdAndRebind(currentId);
+                if (segment.getEntityId() != currentEntity || segment.getRenderedBlockEntityId() != currentBlock
+                    || segment.getItemId() != currentItem) {
+                    currentEntity = segment.getEntityId();
+                    currentBlock = segment.getRenderedBlockEntityId();
+                    currentItem = segment.getItemId();
+                    applyIdsAndRebind(currentEntity, currentBlock, currentItem);
                 }
                 final SegmentedBufferBuilder.LayerBuffer owner = segment.getOwner();
                 if (owner != bound) {
@@ -225,7 +240,6 @@ public class AngelicaBufferSource implements Groupable {
             GLStateManager.glPopMatrix();
         }
         if (hasRetained) {
-            anyIdSet = true;
             hook.drawLayer(layer);
         }
         layer.endDrawing();
@@ -239,7 +253,7 @@ public class AngelicaBufferSource implements Groupable {
 
     private void finish() {
         releaseAttribState();
-        clearCurrentId();
+        restoreIrisState();
         clearSegmentLists();
         final long now = System.currentTimeMillis();
         final long maxIdle = getTargetClearTime();
@@ -250,6 +264,8 @@ public class AngelicaBufferSource implements Groupable {
     }
 
     public void freeBuffers() {
+        releaseAttribState();
+        restoreIrisState();
         for (SegmentedBufferBuilder builder : builders) {
             builder.freeAll();
         }
@@ -283,14 +299,11 @@ public class AngelicaBufferSource implements Groupable {
         this.idKind = kind;
     }
 
-    public void applyIdAndRebind(int id) {
-        anyIdSet = true;
-        if (effectiveIdKind() == GroupIdKind.ENTITY) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(id, 0);
-            rebindPass();
-        } else {
-            setBlockEntityAndRebind(id);
-        }
+    public void applyIdsAndRebind(int entityId, int blockEntityId, int itemId) {
+        saveIrisState();
+        CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(entityId, itemId);
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(blockEntityId);
+        rebindPass();
     }
 
     public static int packEntityColor(Vector4fc c) {
@@ -307,11 +320,6 @@ public class AngelicaBufferSource implements Groupable {
 
     public static void setEntityColor(int abgr) {
         CapturedRenderingState.INSTANCE.setCurrentEntityColor((abgr & 0xFF) / 255f, ((abgr >>> 8) & 0xFF) / 255f, ((abgr >>> 16) & 0xFF) / 255f, (abgr >>> 24) / 255f);
-    }
-
-    public static void setBlockEntityAndRebind(int blockEntityId) {
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(blockEntityId);
-        rebindPass();
     }
 
     public static void rebindPass() {

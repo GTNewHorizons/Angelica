@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
@@ -15,8 +14,6 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-
-import java.util.Objects;
 
 /**
  * Mixin to set currentRenderedItem ID when rendering armor and equipment on players.
@@ -51,18 +48,15 @@ public class MixinRenderPlayerArmor {
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBiped;renderCloak(F)V")
     )
     private void iris$setCapeItemId(ModelBiped modelBiped, float scale, Operation<Void> original) {
-        if (BlockRenderingSettings.INSTANCE.getItemIds() != null) {
-            assert BlockRenderingSettings.INSTANCE.getItemIds() != null;
-            int capeId = Objects.requireNonNull(BlockRenderingSettings.INSTANCE.getItemIds()).applyAsInt(PLAYER_CAPE);
-            CapturedRenderingState.INSTANCE.setCurrentRenderedItem(capeId);
-        }
+        ItemIdManager.pushItemId();
+        CapturedRenderingState.INSTANCE.setCurrentNamedItem(PLAYER_CAPE);
 
         final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(Boolean.FALSE);
         try {
             original.call(modelBiped, scale);
         } finally {
             GbufferPrograms.endTranslucencyDeclaration(previous);
+            ItemIdManager.popItemId();
         }
-        ItemIdManager.resetItemId();
     }
 }

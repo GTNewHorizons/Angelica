@@ -496,10 +496,12 @@ public class RenderSystem {
     }
 
     public static void bindTextureToUnit(int unit, int texture) {
+        if (unit != 0 && GLStateManager.getBoundTextureForServerState(unit) != texture) GLStateManager.beforeUncapturedStateChange();
         dsaState.bindTextureToUnit(unit, texture);
     }
 
     public static void bindTextureToUnit(int target, int unit, int texture) {
+        if (unit != 0 && GLStateManager.getBoundTextureForServerState(unit) != texture) GLStateManager.beforeUncapturedStateChange();
         dsaState.bindTextureToUnit(target, unit, texture);
     }
 
