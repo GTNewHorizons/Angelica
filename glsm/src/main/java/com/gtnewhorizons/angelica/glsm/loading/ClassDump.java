@@ -21,6 +21,7 @@ public final class ClassDump {
 
     public void dumpRFBClass(String className, ClassNodeHandle classNode, Object transformer) {
         if (!enabled) return;
+        classNode.markDirty();
         dumpClass(className, classNode.getOriginalBytes(), classNode.computeBytes(), transformer);
     }
 }
