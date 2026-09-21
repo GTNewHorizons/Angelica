@@ -138,6 +138,25 @@ public class DarkModeFontTransform {
             new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("wanion.avaritiaddons.block.chest.infinity.GuiInfinityChest func_146979_b(II)V # drawGuiContainerForegroundLayer")
         ),
+            // Better Achievements
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("betterachievements.gui.GuiBetterAchievements func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
+        ),
+            // ModularUI 1
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.gtnewhorizons.modularui.common.internal.wrapper.ModularGui func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("com.gtnewhorizons.modularui.common.internal.wrapper.ModularGui func_146976_a(FII)V # drawGuiContainerBackgroundLayer")
+        ),
+            // Nutrition
+        RecolorTarget.includeMethod(
+            new MethodInfo("ca.wescook.nutrition.gui.GuiLabelNutrition drawLabel(Lnet/minecraft/client/Minecraft;II)V")
+        ),
+            // Steve's Factory Manager
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawString(Ljava/lang/String;IIFI)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
+        ),
             // Steve's Carts 2
         RecolorTarget.includeMethodCall(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller func_73863_a(IIF)V # drawScreen"),
@@ -253,6 +272,11 @@ public class DarkModeFontTransform {
             new MethodInfo("net.malisis.core.client.gui.GuiRenderer drawText(Lnet/malisis/core/renderer/font/MalisisFont;Ljava/lang/String;FFFLnet/malisis/core/renderer/font/FontRenderOptions;)V"),
             0xFFFFFF, 0xFFFFA0, 0xA0A0A0
         ),
+            // MrTJPCore (ProjectRed)
+        RecolorTarget.includeButtonMethodCall(
+            new MethodInfo("mrtjp.core.gui.TButtonText$class drawButton(Lmrtjp/core/gui/TButtonText;Z)V"),
+            new MethodInfo("codechicken.lib.gui.GuiDraw drawStringC(Ljava/lang/String;III)V")
+        ),
             // LittleTiles (CreativeCore)
         RecolorTarget.includeButtonMethodCall(
             new MethodInfo("com.creativemd.creativecore.common.gui.controls.GuiButton drawControl(Lnet/minecraft/client/gui/FontRenderer;)V"),
@@ -267,6 +291,14 @@ public class DarkModeFontTransform {
             new MethodInfo("shedar.mods.ic2.nuclearcontrol.gui.controls.CompactButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString"),
             0x303030, 0x303030, 0x303030
+        ),
+            // Tinkers Mechworks
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("tmechworks.client.gui.AdvDrawbridgeButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
+        ),
+            // RemoteIO
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("remoteio.client.gui.button.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
         ),
             // BuildCraft
         RecolorTarget.includeButtonMethod(
