@@ -1,7 +1,9 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
+import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizons.angelica.client.rendering.DeferredDrawBatcher;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ParticleInstancedAttribs;
@@ -43,7 +45,7 @@ public final class ParticleInstancer {
     private static final ParticleCaptureTessellator CAPTURE = new ParticleCaptureTessellator();
     private static final ParticleParams SCRATCH = new ParticleParams();
     private static final ParticleRenderState STATE = new ParticleRenderState();
-    private static final ParticleRenderState RESTORE = new ParticleRenderState();
+    private static int restoreDepth = -1;
     private static final Matrix4f LAYER_MV = new Matrix4f();
     private static final Object[] ORIGINAL_ARGS = new Object[8];
 
@@ -61,6 +63,7 @@ public final class ParticleInstancer {
     private static DeferredWorldRenderingPipeline unavailableFor;
     private static DeferredWorldRenderingPipeline deferred;
     private static Tessellator run;
+    private static boolean ringUsedThisLayer;
 
     private static float rotX;
     private static float rotXZ;
@@ -175,33 +178,63 @@ public final class ParticleInstancer {
     }
 
     public static void endLayer() {
-        layerStarted = false;
         if (!layerActive) {
+            layerStarted = false;
             if (DeferredDrawBatcher.isActive()) DeferredDrawBatcher.exitAndFlush();
             return;
         }
         layerActive = false;
-
-        if (groupCount > 0) {
-            RESTORE.sample();
-            for (int i = 0; i < groupCount; i++) {
-                final Group group = GROUP_POOL.get(i);
-                if (!group.translucent) flush(group);
+        Throwable failure = null;
+        ringUsedThisLayer = false;
+        try {
+            if (groupCount > 0) {
+                restoreDepth = GLStateManager.pushState(StateSet.BATCH);
+                for (int i = 0; i < groupCount; i++) {
+                    final Group group = GROUP_POOL.get(i);
+                    if (!group.translucent) flush(group);
+                }
+                for (int i = 0; i < groupCount; i++) {
+                    final Group group = GROUP_POOL.get(i);
+                    if (group.translucent) flush(group);
+                }
+            }
+        } catch (Throwable t) {
+            failure = t;
+        } finally {
+            if (restoreDepth >= 0) {
+                try {
+                    GLStateManager.popStateTo(restoreDepth);
+                } catch (Throwable t) {
+                    failure = RenderFailures.suppress(failure, t);
+                } finally {
+                    restoreDepth = -1;
+                }
+                if (deferred != null) {
+                    try {
+                        GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
+                    } catch (Throwable t) {
+                        failure = RenderFailures.suppress(failure, t);
+                    }
+                }
+            }
+            if (ringUsedThisLayer) {
+                try {
+                    ring().postDraw();
+                } catch (Throwable t) {
+                    failure = RenderFailures.suppress(failure, t);
+                }
             }
             for (int i = 0; i < groupCount; i++) {
-                final Group group = GROUP_POOL.get(i);
-                if (group.translucent) flush(group);
+                final ByteBuffer list = GROUP_POOL.get(i).list;
+                if (list != null) list.clear();
             }
-            RESTORE.apply();
-            if (deferred != null) {
-                GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
-            }
-            ring().postDraw();
             groupCount = 0;
+            deferred = null;
+            run = null;
+            layerStarted = false;
+            ringUsedThisLayer = false;
         }
-
-        deferred = null;
-        run = null;
+        RenderFailures.rethrowWrapped(failure);
     }
 
     private static Group groupFor(ParticleRenderState state, boolean translucent) {
@@ -225,6 +258,7 @@ public final class ParticleInstancer {
         run = null;
         unavailableFor = null;
         groupCount = 0;
+        ringUsedThisLayer = false;
         for (int i = 0; i < GROUP_POOL.size(); i++) {
             GROUP_POOL.get(i).list = null;
         }
@@ -286,6 +320,7 @@ public final class ParticleInstancer {
             }
         }
 
+        ringUsedThisLayer = true;
         final long base = ring().upload(list, STRIDE);
         list.clear();
 
@@ -309,19 +344,23 @@ public final class ParticleInstancer {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, ring().bufferId());
         ParticleInstancedAttribs.pointInstanceAttribs(base);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        if (ffp) GLStateManager.ffpInstancing = Instancing.PARTICLE;
-        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
-        GLStateManager.ffpInstancing = Instancing.NONE;
-        GLStateManager.glBindVertexArray(0);
-        draws++;
+        try {
+            if (ffp) GLStateManager.ffpInstancing = Instancing.PARTICLE;
+            GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
+            draws++;
+        } finally {
+            GLStateManager.ffpInstancing = Instancing.NONE;
+            GLStateManager.glBindVertexArray(0);
+        }
     }
 
     private static void drawInstancesCpu(ParticleRenderState state, ByteBuffer list, int count, boolean listTranslucent) {
         final Tessellator t = run;
-        RESTORE.apply();
+        GLStateManager.popStateTo(restoreDepth);
         GbufferPrograms.setTranslucencyDeclaration(ParticleRunSplitter.currentRunTranslucent());
         t.draw();
         t.startDrawingQuads();
+        restoreDepth = GLStateManager.pushState(StateSet.BATCH);
         GbufferPrograms.setTranslucencyDeclaration(listTranslucent);
         state.apply();
         for (int i = 0; i < count; i++) {

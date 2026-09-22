@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.google.common.collect.ImmutableListMultimap;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.utils.SpritePadding;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
@@ -95,8 +96,7 @@ public class AngelicaRenderPassConfiguration {
     private static final class AngelicaPipelineState implements TerrainRenderPass.PipelineState {
         private final int pass;
         private final boolean disableAlphaTest;
-        private int savedAlphaFunction;
-        private float savedAlphaReference;
+        private int alphaStateDepth = -1;
 
         private AngelicaPipelineState(int pass, boolean disableAlphaTest) {
             this.pass = pass;
@@ -108,9 +108,11 @@ public class AngelicaRenderPassConfiguration {
             GLStateManager.glDepthMask(true);
 
             if (pass == 0) {
-                final var alphaState = GLStateManager.getAlphaState();
-                savedAlphaFunction = alphaState.getFunction();
-                savedAlphaReference = alphaState.getReference();
+                if (alphaStateDepth >= 0) {
+                    GLStateManager.popStateTo(alphaStateDepth);
+                    alphaStateDepth = -1;
+                }
+                alphaStateDepth = GLStateManager.pushState(StateSet.ALPHA);
                 GLStateManager.glAlphaFunc(GL11.GL_GREATER, AlphaCutoffParameter.HALF.cutoff());
             }
             if (disableAlphaTest) {
@@ -120,8 +122,9 @@ public class AngelicaRenderPassConfiguration {
 
         @Override
         public void clear() {
-            if (pass == 0) {
-                GLStateManager.glAlphaFunc(savedAlphaFunction, savedAlphaReference);
+            if (alphaStateDepth >= 0) {
+                GLStateManager.popStateTo(alphaStateDepth);
+                alphaStateDepth = -1;
             }
             if (disableAlphaTest) {
                 GLStateManager.enableAlphaTest();

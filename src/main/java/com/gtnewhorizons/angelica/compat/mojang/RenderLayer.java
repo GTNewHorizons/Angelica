@@ -1,434 +1,284 @@
 package com.gtnewhorizons.angelica.compat.mojang;
 
-import com.google.common.collect.ImmutableList;
-
-import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
-
+import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShader;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.tesr.DrawState;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import lombok.Getter;
 import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
 import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
-import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.layer.PassOverride;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.TextureUtil;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
 import javax.annotation.Nullable;
 import java.util.Locale;
 import java.util.Objects;
-import java.util.Optional;
 
-public abstract class RenderLayer extends RenderPhase { // Aka: RenderType (Iris)
-    private static final RenderLayer SOLID = of("solid", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 2097152, true, false, RenderLayer.MultiPhaseParameters.builder().shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP).texture(MIPMAP_BLOCK_ATLAS_TEXTURE).build(true));
-    private static final RenderLayer CUTOUT = of("cutout", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 131072, true, false, RenderLayer.MultiPhaseParameters.builder().shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP).texture(BLOCK_ATLAS_TEXTURE).alpha(HALF_ALPHA).build(true));
-    private static final RenderLayer TRANSLUCENT = of("translucent", DefaultVertexFormat.POSITION_COLOR_TEXTURE_LIGHT_NORMAL, 7, 262144, true, true, createTranslucentPhaseData());
+public final class RenderLayer implements BlendingStateHolder {
 
-    @Getter
-    private final VertexFormat vertexFormat;
-    @Getter
-    private final int drawMode;
-    @Getter
-    private final int expectedBufferSize;
+    private static final int TESR_BUFFER_SIZE = 65536;
 
-    public RenderLayer(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, Runnable startAction, Runnable endAction) {
-        super(name, startAction, endAction);
+    private static final ObjectOpenCustomHashSet<RenderLayer> CACHE = new ObjectOpenCustomHashSet<>(HashStrategy.INSTANCE);
+
+    static final class Hook {
+        final Runnable begin;
+        final Runnable end;
+
+        Hook(Runnable begin, Runnable end) {
+            this.begin = begin;
+            this.end = end;
+        }
+    }
+
+    private static final Hook[] GLINT_HOOKS = new Hook[ShaderGlint.TINT_SLOTS + 1];
+    private static final Hook BEACON_BEAM_HOOK = new Hook(
+        () -> GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM),
+        GbufferPrograms::teardownSpecialRenderCondition);
+    private static final Reference2ObjectOpenHashMap<TesrShader, Hook> SHADER_HOOKS = new Reference2ObjectOpenHashMap<>();
+    private static final Reference2ObjectOpenHashMap<PassOverride, Hook> PASS_HOOKS = new Reference2ObjectOpenHashMap<>();
+
+    private String name;
+    @Getter private final VertexFormat vertexFormat;
+    @Getter private final int drawMode;
+    @Getter private final int expectedBufferSize;
+    @Getter private final DrawState state;
+    @Getter private final ResourceLocation textureId;
+    @Getter private final boolean unfilteredAtlas;
+    private final TransparencyType transparencyType;
+    private final Hook hook;
+    private final boolean noPass;
+    private final int hash;
+
+    private RenderLayer(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, DrawState state,
+        ResourceLocation textureId, boolean unfilteredAtlas, TransparencyType transparencyType, Hook hook,
+        boolean noPass) {
+        this.name = name;
         this.vertexFormat = vertexFormat;
         this.drawMode = drawMode;
         this.expectedBufferSize = expectedBufferSize;
+        this.state = state;
+        this.textureId = textureId;
+        this.unfilteredAtlas = unfilteredAtlas;
+        this.transparencyType = transparencyType;
+        this.hook = hook;
+        this.noPass = noPass;
+        int h = System.identityHashCode(vertexFormat);
+        h = h * 31 + drawMode;
+        h = h * 31 + expectedBufferSize;
+        h = h * 31 + System.identityHashCode(state);
+        h = h * 31 + Objects.hashCode(textureId);
+        h = h * 31 + (unfilteredAtlas ? 1 : 0);
+        h = h * 31 + transparencyType.ordinal();
+        h = h * 31 + System.identityHashCode(hook);
+        h = h * 31 + (noPass ? 1 : 0);
+        this.hash = h;
     }
 
-
-    public static MultiPhase of(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, MultiPhaseParameters phaseData) {
-        return of(name, vertexFormat, drawMode, expectedBufferSize, false, false, phaseData);
+    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit) {
+        return build(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cull, lit, false);
     }
 
-    public static MultiPhase of(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, MultiPhaseParameters phases) {
-        return RenderLayer.MultiPhase.of(name, vertexFormat, drawMode, expectedBufferSize, hasCrumbling, translucent, phases);
+    public static RenderLayer tesrNoPass(ResourceLocation texture, TesrMaterial material, int cull, boolean lit) {
+        return build(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT, cull, lit, true);
     }
 
-
-    public static RenderLayer solid() {
-        return SOLID;
-    }
-
-    public static RenderLayer cutout() {
-        return CUTOUT;
-    }
-
-    private static MultiPhaseParameters createTranslucentPhaseData() {
-        return RenderLayer.MultiPhaseParameters.builder().shadeModel(SMOOTH_SHADE_MODEL).lightmap(ENABLE_LIGHTMAP).texture(MIPMAP_BLOCK_ATLAS_TEXTURE).transparency(TRANSLUCENT_TRANSPARENCY).target(TRANSLUCENT_TARGET).build(true);
-    }
-
-    public static RenderLayer translucent() {
-        return TRANSLUCENT;
-    }
-
-    private static MultiPhaseParameters.Builder tesrMaterialPhases(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
-        final MultiPhaseParameters.Builder b = MultiPhaseParameters.builder();
-        b.texture(texture != null ? new RenderPhase.Texture(texture, false, false, material.isUnfilteredAtlas()) : NO_TEXTURE);
-        if (material.isNoCull()) {
-            b.cull(DISABLE_CULLING);
+    private static RenderLayer build(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean noPass) {
+        final DrawState state = DrawState.forMaterial(material, cull, lit, offsetFactor, offsetUnits);
+        final Hook hook = hookFor(material, noPass ? PassOverride.NONE : pass, glintSlot);
+        final TransparencyType transparency = transparencyFor(state.getBlend());
+        final RenderLayer candidate = new RenderLayer(null, BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL,
+            GL11.GL_QUADS, TESR_BUFFER_SIZE, state, texture, material.isUnfilteredAtlas(), transparency, hook,
+            noPass);
+        final RenderLayer retained = intern(candidate);
+        if (retained == candidate) {
+            retained.name = "angelica_tesr_" + (noPass ? "nopass_" : "")
+                + material.transparency().name().toLowerCase(Locale.ROOT) + (noPass ? "" : pass.nameSuffix())
+                + (offsetFactor == 0.0f && offsetUnits == 0.0f ? "" : "_offset" + offsetFactor + "_" + offsetUnits)
+                + "_cull" + state.getCull() + (state.isLit() ? "_lit" : "")
+                + (glintSlot == ShaderGlint.NO_TINT ? "" : "_tint" + glintSlot);
         }
-        if (material.isUnlit()) {
-            b.texturing(NO_FFP_LIGHTING);
+        return retained;
+    }
+
+    private static RenderLayer intern(RenderLayer layer) {
+        return CACHE.addOrGet(layer);
+    }
+
+    public static void clearInterningAndHooks() {
+        CACHE.clear();
+        SHADER_HOOKS.clear();
+        PASS_HOOKS.clear();
+        for (int i = 0; i < GLINT_HOOKS.length; i++) {
+            GLINT_HOOKS[i] = null;
         }
-        if (material.isNoDepthWrite()) {
-            b.writeMaskState(COLOR_MASK);
-        }
-        if (material.isDepthOnly()) {
-            b.writeMaskState(DEPTH_MASK);
-        }
-        b.alpha(material.cutoutAlpha() > 0 ? new RenderPhase.Alpha(material.cutoutAlpha()) : ZERO_ALPHA);
-        b.depthTest(material.isDepthEqual() ? EQUAL_DEPTH_TEST : LEQUAL_DEPTH_TEST);
-        switch (material.transparency()) {
-            case TRANSLUCENT -> b.transparency(TRANSLUCENT_TRANSPARENCY);
-            case ADDITIVE -> b.transparency(ADDITIVE_TRANSPARENCY);
-            case ADDITIVE_ALPHA -> b.transparency(LIGHTNING_TRANSPARENCY);
-            case GLINT -> b.transparency(GLINT_TRANSPARENCY);
-            case OPAQUE -> b.transparency(NO_TRANSPARENCY);
-        }
-        boolean shaderPhaseTaken = true;
+    }
+
+    public static int cacheSize() {
+        return CACHE.size();
+    }
+
+    private static TransparencyType transparencyFor(int blend) {
+        return switch (blend) {
+            case DrawState.OPAQUE -> TransparencyType.OPAQUE;
+            case DrawState.GLINT -> TransparencyType.DECAL;
+            default -> TransparencyType.GENERAL_TRANSPARENT;
+        };
+    }
+
+    private static Hook hookFor(TesrMaterial material, PassOverride pass, int glintSlot) {
         switch (material.special()) {
-            case GLINT -> b.shader(glintShader(glintSlot));
-            case BEACON_BEAM -> b.shader(SPECIAL_BEACON_BEAM);
+            case GLINT -> {
+                return glintHook(glintSlot);
+            }
+            case BEACON_BEAM -> {
+                return BEACON_BEAM_HOOK;
+            }
             case NONE -> {
                 final TesrShader shader = material.shader();
                 if (shader != null) {
-                    b.shader(new RenderPhase.Shader("angelica_tesr_shader_" + shader.name(), shader.bind(), shader.release()));
-                } else {
-                    shaderPhaseTaken = false;
+                    return shaderHook(shader);
                 }
             }
         }
-        if (!shaderPhaseTaken && pass != PassOverride.NONE) {
-            b.shader(new RenderPhase.Shader("angelica_tesr_pass" + pass.nameSuffix(), pass::apply, pass::clear));
+        return pass == PassOverride.NONE ? null : passHook(pass);
+    }
+
+    private static Hook glintHook(int slot) {
+        Hook hook = GLINT_HOOKS[slot + 1];
+        if (hook == null) {
+            hook = new Hook(() -> {
+                GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+                ShaderGlint.bindTintedGlint(slot);
+            }, GbufferPrograms::teardownSpecialRenderCondition);
+            GLINT_HOOKS[slot + 1] = hook;
         }
-        b.layering(polygonOffset(offsetFactor, offsetUnits));
-        return b;
+        return hook;
     }
 
-    private static final RenderPhase.Shader[] GLINT_SHADERS = new RenderPhase.Shader[ShaderGlint.TINT_SLOTS + 1];
-
-    private static RenderPhase.Shader glintShader(int slot) {
-        RenderPhase.Shader shader = GLINT_SHADERS[slot + 1];
-        if (shader == null) {
-            shader = new RenderPhase.Shader("angelica_special_glint_" + slot,
-                () -> {
-                    GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
-                    ShaderGlint.bindTintedGlint(slot);
-                },
-                GbufferPrograms::teardownSpecialRenderCondition);
-            GLINT_SHADERS[slot + 1] = shader;
+    private static Hook shaderHook(TesrShader shader) {
+        Hook hook = SHADER_HOOKS.get(shader);
+        if (hook == null) {
+            hook = new Hook(shader.bind(), shader.release());
+            SHADER_HOOKS.put(shader, hook);
         }
-        return shader;
-    }
-    private static final RenderPhase.Shader SPECIAL_BEACON_BEAM = new RenderPhase.Shader("angelica_special_beacon_beam",
-        () -> GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM),
-        GbufferPrograms::teardownSpecialRenderCondition);
-
-    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material) {
-        return tesr(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT);
+        return hook;
     }
 
-    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits) {
-        return tesr(texture, material, pass, offsetFactor, offsetUnits, ShaderGlint.NO_TINT);
-    }
-
-    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
-        final MultiPhaseParameters.Builder b = tesrMaterialPhases(texture, material, pass, offsetFactor, offsetUnits, glintSlot).shadeModel(SMOOTH_SHADE_MODEL);
-        final boolean sortsTranslucent = material.transparency() != TesrMaterial.Transparency.OPAQUE;
-        return of("angelica_tesr_" + material.transparency().name().toLowerCase(Locale.ROOT) + pass.nameSuffix()
-                + (offsetFactor == 0.0f && offsetUnits == 0.0f ? "" : "_offset" + offsetFactor + "_" + offsetUnits),
-            BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, sortsTranslucent, b.build(false));
-    }
-
-    public static RenderLayer tesrNoPass(ResourceLocation texture, TesrMaterial material) {
-        return of("angelica_tesr_nopass_" + material.transparency().name().toLowerCase(Locale.ROOT),
-            BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 65536, true, false,
-            tesrMaterialPhases(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT).build(false));
-    }
-
-    public static RenderLayer getOutline(ResourceLocation texture, RenderPhase.Cull cull) {
-        return of("outline", DefaultVertexFormat.POSITION_COLOR_TEXTURE, 7, 256, RenderLayer.MultiPhaseParameters.builder().texture(new RenderPhase.Texture(texture, false, false)).cull(cull).depthTest(ALWAYS_DEPTH_TEST).alpha(ONE_TENTH_ALPHA).fog(NO_FOG).target(OUTLINE_TARGET).build(RenderLayer.OutlineMode.IS_OUTLINE));
-    }
-
-    public int mode() {
-        return this.drawMode;
-    }
-
-    public ResourceLocation getTextureId() {
-        return null;
-    }
-
-    static final class MultiPhase extends RenderLayer implements BlendingStateHolder {
-        private static final ObjectOpenCustomHashSet<MultiPhase> CACHE;
-        private final MultiPhaseParameters phases;
-        private final int hash;
-        private final Optional<RenderLayer> affectedOutline;
-
-        @Override
-        public TransparencyType getTransparencyType() {
-            return phases.transparency == null ? TransparencyType.OPAQUE : phases.transparency.getTransparencyType();
+    private static Hook passHook(PassOverride pass) {
+        Hook hook = PASS_HOOKS.get(pass);
+        if (hook == null) {
+            hook = new Hook(pass::apply, pass::clear);
+            PASS_HOOKS.put(pass, hook);
         }
+        return hook;
+    }
 
-        private MultiPhase(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent, MultiPhaseParameters phases) {
-            super(name, vertexFormat, drawMode, expectedBufferSize, () -> {
-                final ImmutableList<RenderPhase> p = phases.phases;
-                for (int i = 0, n = p.size(); i < n; i++) {
-                    p.get(i).startDrawing();
+    @Override
+    public TransparencyType getTransparencyType() {
+        return transparencyType;
+    }
+
+    public void startDrawing() {
+        boolean filtering = false;
+        boolean hookActive = false;
+        try {
+            state.apply();
+            if (textureId != null) {
+                GLStateManager.enableTexture();
+                Minecraft.getMinecraft().getTextureManager().bindTexture(textureId);
+                if (unfilteredAtlas) {
+                    filtering = true;
+                    TextureUtil.func_152777_a(false, false, 1.0F);
                 }
-            }, () -> {
-                final ImmutableList<RenderPhase> p = phases.phases;
-                for (int i = 0, n = p.size(); i < n; i++) {
-                    p.get(i).endDrawing();
-                }
-            });
-            this.phases = phases;
-            this.affectedOutline = phases.outlineMode == RenderLayer.OutlineMode.AFFECTS_OUTLINE && phases.texture != null ? phases.texture.getId().map((arg2) -> {
-                return getOutline(arg2, phases.cull);
-            }) : Optional.empty();
-            this.hash = Objects.hash(new Object[]{super.hashCode(), phases});
-        }
-
-        public static MultiPhase of(String name, VertexFormat vertexFormat, int drawMode, int expectedBufferSize, boolean hasCrumbling, boolean translucent,
-            MultiPhaseParameters phases) {
-            return (MultiPhase)CACHE.addOrGet(new MultiPhase(name, vertexFormat, drawMode, expectedBufferSize, hasCrumbling, translucent, phases));
-        }
-
-        public Optional<RenderLayer> getAffectedOutline() {
-            return this.affectedOutline;
-        }
-
-        @Override
-        public ResourceLocation getTextureId() {
-            return phases.texture == null ? null : phases.texture.getId().orElse(null);
-        }
-
-        @Override
-        public boolean equals(@Nullable Object object) {
-            return this == object;
-        }
-
-        @Override
-        public int hashCode() {
-            return this.hash;
-        }
-
-        @Override
-        public String toString() {
-            return "RenderType[" + this.phases + ']';
-        }
-
-        static {
-            CACHE = new ObjectOpenCustomHashSet<>(RenderLayer.MultiPhase.HashStrategy.INSTANCE);
-        }
-
-        static enum HashStrategy implements Hash.Strategy<MultiPhase> {
-            INSTANCE;
-
-            private HashStrategy() {
-            }
-
-            public int hashCode(@Nullable MultiPhase arg) {
-                return arg == null ? 0 : arg.hash;
-            }
-
-            public boolean equals(@Nullable MultiPhase arg, @Nullable MultiPhase arg2) {
-                if (arg == arg2) {
-                    return true;
-                } else {
-                    return arg != null && arg2 != null && arg.name.equals(arg2.name)
-                        && arg.getVertexFormat() == arg2.getVertexFormat() && arg.getDrawMode() == arg2.getDrawMode()
-                        && Objects.equals(arg.phases, arg2.phases);
-                }
-            }
-        }
-    }
-
-    public static final class MultiPhaseParameters {
-        private final RenderPhase.Texture texture;
-        private final RenderPhase.Transparency transparency;
-        private final RenderPhase.DiffuseLighting diffuseLighting;
-        private final RenderPhase.ShadeModel shadeModel;
-        private final RenderPhase.Alpha alpha;
-        private final RenderPhase.DepthTest depthTest;
-        private final RenderPhase.Cull cull;
-        private final RenderPhase.Lightmap lightmap;
-        private final RenderPhase.Fog fog;
-        private final RenderPhase.Layering layering;
-        private final RenderPhase.Target target;
-        private final RenderPhase.Texturing texturing;
-        private final RenderPhase.WriteMaskState writeMaskState;
-        private final RenderPhase.Shader shader;
-        private final OutlineMode outlineMode;
-        private final ImmutableList<RenderPhase> phases;
-
-        private MultiPhaseParameters(RenderPhase.Texture texture, RenderPhase.Transparency transparency, RenderPhase.DiffuseLighting diffuseLighting, RenderPhase.ShadeModel shadeModel, RenderPhase.Alpha alpha, RenderPhase.DepthTest depthTest, RenderPhase.Cull cull, RenderPhase.Lightmap lightmap, RenderPhase.Fog fog, RenderPhase.Layering layering, RenderPhase.Target target, RenderPhase.Texturing texturing, RenderPhase.WriteMaskState writeMaskState, RenderPhase.Shader shader, OutlineMode outlineMode) {
-            this.texture = texture;
-            this.transparency = transparency;
-            this.diffuseLighting = diffuseLighting;
-            this.shadeModel = shadeModel;
-            this.alpha = alpha;
-            this.depthTest = depthTest;
-            this.cull = cull;
-            this.lightmap = lightmap;
-            this.fog = fog;
-            this.layering = layering;
-            this.target = target;
-            this.texturing = texturing;
-            this.writeMaskState = writeMaskState;
-            this.shader = shader;
-            this.outlineMode = outlineMode;
-            final ImmutableList.Builder<RenderPhase> declared = ImmutableList.builder();
-            for (RenderPhase phase : new RenderPhase[] { this.texture, this.transparency, this.diffuseLighting,
-                this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering,
-                this.target, this.texturing, this.writeMaskState, this.shader }) {
-                if (phase != null) declared.add(phase);
-            }
-            this.phases = declared.build();
-        }
-
-        @Override
-        public boolean equals(Object object) {
-            if (this == object) {
-                return true;
-            } else if (object != null && this.getClass() == object.getClass()) {
-                MultiPhaseParameters rendertype$state = (MultiPhaseParameters)object;
-                return this.outlineMode == rendertype$state.outlineMode && this.phases.equals(rendertype$state.phases);
             } else {
-                return false;
+                GLStateManager.disableTexture();
             }
-        }
-
-        @Override
-        public int hashCode() {
-            return Objects.hash(new Object[]{this.phases, this.outlineMode});
-        }
-
-        @Override
-        public String toString() {
-            return "CompositeState[" + this.phases + ", outlineProperty=" + this.outlineMode + ']';
-        }
-
-        public static Builder builder() {
-            return new Builder();
-        }
-
-        public static class Builder {
-            private RenderPhase.Texture texture;
-            private RenderPhase.Transparency transparency;
-            private RenderPhase.DiffuseLighting diffuseLighting;
-            private RenderPhase.ShadeModel shadeModel;
-            private RenderPhase.Alpha alpha;
-            private RenderPhase.DepthTest depthTest;
-            private RenderPhase.Cull cull;
-            private RenderPhase.Lightmap lightmap;
-            private RenderPhase.Fog fog;
-            private RenderPhase.Layering layering;
-            private RenderPhase.Target target;
-            private RenderPhase.Texturing texturing;
-            private RenderPhase.WriteMaskState writeMaskState;
-            private RenderPhase.Shader shader;
-
-            private Builder() {}
-
-            public Builder texture(RenderPhase.Texture texture) {
-                this.texture = texture;
-                return this;
+            if (hook != null) {
+                hookActive = true;
+                hook.begin.run();
             }
-
-            public Builder transparency(RenderPhase.Transparency transparency) {
-                this.transparency = transparency;
-                return this;
+        } catch (Throwable failure) {
+            if (hookActive) {
+                try {
+                    hook.end.run();
+                } catch (Throwable cleanup) {
+                    RenderFailures.suppress(failure, cleanup);
+                }
             }
-
-            public void layering(Layering layering) {
-                this.layering = layering;
+            if (filtering) {
+                try {
+                    TextureUtil.func_147945_b();
+                } catch (Throwable cleanup) {
+                    RenderFailures.suppress(failure, cleanup);
+                }
             }
-
-            public Builder shadeModel(RenderPhase.ShadeModel shadeModel) {
-                this.shadeModel = shadeModel;
-                return this;
-            }
-
-            public Builder alpha(RenderPhase.Alpha alpha) {
-                this.alpha = alpha;
-                return this;
-            }
-
-            public Builder depthTest(RenderPhase.DepthTest depthTest) {
-                this.depthTest = depthTest;
-                return this;
-            }
-
-            public Builder cull(RenderPhase.Cull cull) {
-                this.cull = cull;
-                return this;
-            }
-
-            public Builder lightmap(RenderPhase.Lightmap lightmap) {
-                this.lightmap = lightmap;
-                return this;
-            }
-
-            public Builder fog(RenderPhase.Fog fog) {
-                this.fog = fog;
-                return this;
-            }
-
-            public Builder target(RenderPhase.Target target) {
-                this.target = target;
-                return this;
-            }
-
-            public Builder texturing(RenderPhase.Texturing texturing) {
-                this.texturing = texturing;
-                return this;
-            }
-
-            public Builder writeMaskState(RenderPhase.WriteMaskState writeMaskState) {
-                this.writeMaskState = writeMaskState;
-                return this;
-            }
-
-            public Builder shader(RenderPhase.Shader shader) {
-                this.shader = shader;
-                return this;
-            }
-
-            public MultiPhaseParameters build(boolean affectsOutline) {
-                return this.build(affectsOutline ? RenderLayer.OutlineMode.AFFECTS_OUTLINE : RenderLayer.OutlineMode.NONE);
-            }
-
-            public MultiPhaseParameters build(OutlineMode outlineMode) {
-                return new MultiPhaseParameters(this.texture, this.transparency, this.diffuseLighting, this.shadeModel, this.alpha, this.depthTest, this.cull, this.lightmap, this.fog, this.layering, this.target, this.texturing, this.writeMaskState, this.shader, outlineMode);
-            }
+            throw failure;
         }
     }
 
-    enum OutlineMode {
-        NONE("none"),
-        IS_OUTLINE("is_outline"),
-        AFFECTS_OUTLINE("affects_outline");
-
-        private final String name;
-
-        OutlineMode(String name) {
-            this.name = name;
+    public void endDrawing() {
+        Throwable failure = null;
+        try {
+            if (hook != null) hook.end.run();
+        } catch (Throwable t) {
+            failure = t;
+        } finally {
+            if (textureId != null && unfilteredAtlas) {
+                try {
+                    TextureUtil.func_147945_b();
+                } catch (Throwable cleanup) {
+                    failure = RenderFailures.suppress(failure, cleanup);
+                }
+            }
         }
+        if (failure != null) RenderFailures.rethrow(failure);
+    }
 
-        @Override
-        public String toString() {
-            return this.name;
-        }
+    @Override
+    public boolean equals(@Nullable Object object) {
+        return this == object;
+    }
+
+    @Override
+    public int hashCode() {
+        return hash;
+    }
+
+    @Override
+    public String toString() {
+        return "RenderLayer[" + name + ", " + state + ", texture=" + textureId + ']';
     }
 
 
+    private enum HashStrategy implements Hash.Strategy<RenderLayer> {
+        INSTANCE;
+
+        @Override
+        public int hashCode(@Nullable RenderLayer layer) {
+            return layer == null ? 0 : layer.hash;
+        }
+
+        @Override
+        public boolean equals(@Nullable RenderLayer a, @Nullable RenderLayer b) {
+            if (a == b) return true;
+            if (a == null || b == null) return false;
+            return a.vertexFormat == b.vertexFormat && a.drawMode == b.drawMode
+                && a.expectedBufferSize == b.expectedBufferSize && a.state == b.state
+                && Objects.equals(a.textureId, b.textureId) && a.unfilteredAtlas == b.unfilteredAtlas
+                && a.transparencyType == b.transparencyType && a.hook == b.hook
+                && a.noPass == b.noPass;
+        }
+    }
 }

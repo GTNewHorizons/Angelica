@@ -2,6 +2,9 @@ package com.gtnewhorizons.angelica.debug.flyby;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.config.SystemProperties.FlybyPacing;
+import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
+import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder.StopResult;
+import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder.StopStatus;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -58,6 +61,10 @@ public final class FlybyRunner {
     private boolean waitForFocus;
     private boolean exitWhenDone;
     private boolean startedFromProperties;
+    private boolean armed;
+    private int waitTicks;
+    private boolean jfr;
+    private long recordingId;
     private final AtomicReference<FlybyRequest> pendingRequest = new AtomicReference<>();
     private FlybyRequest activeRequest;
     private String[] sceneCommands = NO_COMMANDS;
@@ -133,15 +140,20 @@ public final class FlybyRunner {
         this.start(configured, SystemProperties.FLYBY_LENGTH, SystemProperties.FLYBY_WARMUP_TICKS, SystemProperties.FLYBY_SPEED);
         this.fixedOrigin = origin;
         this.waitForTracy = SystemProperties.FLYBY_WAIT_FOR_TRACY;
+        if (this.waitForTracy && !Tracy.ENABLED) {
+            LOGGER.warn("Flyby: waitForTracy requested but Tracy is disabled in this build");
+            this.waitForTracy = false;
+        }
         this.waitForFocus = SystemProperties.FLYBY_WAIT_FOR_FOCUS;
         this.exitWhenDone = SystemProperties.FLYBY_EXIT_WHEN_DONE;
+        this.jfr = SystemProperties.FLYBY_JFR;
         if (!SystemProperties.FLYBY_COMMANDS.isEmpty()) {
             this.sceneCommands = FlybyScene.load(SystemProperties.FLYBY_COMMANDS);
             LOGGER.info("Flyby scene '{}': {} commands", SystemProperties.FLYBY_COMMANDS, this.sceneCommands.length);
         }
-        LOGGER.info("Flyby started from properties: route={} warmup={} length={} {} ({} ticks) waitForTracy={} waitForFocus={} exitWhenDone={}",
+        LOGGER.info("Flyby started from properties: route={} warmup={} length={} {} ({} ticks) waitForTracy={} waitForFocus={} exitWhenDone={} jfr={}",
             configured.id(), this.warmupTicks, this.runLength, configured.lengthUnit(), this.runTicks,
-            this.waitForTracy, this.waitForFocus, this.exitWhenDone);
+            this.waitForTracy, this.waitForFocus, this.exitWhenDone, this.jfr);
     }
 
     public void start(FlybyRoute route, int length, int warmupTicks, double speed) {
@@ -156,6 +168,8 @@ public final class FlybyRunner {
         this.waitForTracy = false;
         this.waitForFocus = false;
         this.exitWhenDone = false;
+        this.jfr = false;
+        this.armed = false;
         this.fixedOrigin = null;
         sceneGuarded = false;
         this.state = State.WAITING;
@@ -185,6 +199,11 @@ public final class FlybyRunner {
             return;
         }
 
+        if (mc.theWorld == null && this.armed) {
+            this.restorePauseOnLostFocus(mc);
+            this.armed = false;
+        }
+
         if (this.state == State.EXITING) {
             if (++this.tick >= EXIT_TICKS) {
                 this.state = State.DONE;
@@ -198,8 +217,21 @@ public final class FlybyRunner {
 
         switch (this.state) {
             case WAITING -> {
-                if (this.waitForTracy && !Tracy.isConnected()) return;
-                if (this.waitForFocus && !Display.isActive()) return;
+                if (!this.armed) {
+                    this.armed = true;
+                    this.waitTicks = 0;
+                    this.overridePauseOnLostFocus(mc);
+                }
+                if (mc.currentScreen != null) mc.displayGuiScreen(null);
+
+                if (this.waitForTracy && !Tracy.isConnected()) {
+                    if (this.waitTicks++ % 100 == 0) LOGGER.info("Flyby waiting for Tracy connection");
+                    return;
+                }
+                if (this.waitForFocus && !Display.isActive()) {
+                    if (this.waitTicks++ % 100 == 0) LOGGER.info("Flyby waiting for window focus");
+                    return;
+                }
                 this.begin(mc, player);
             }
             case PREPARING -> {
@@ -210,6 +242,17 @@ public final class FlybyRunner {
             }
             case WARMUP -> {
                 this.applyPosition(player, 0);
+                if (this.jfr && this.tick == Math.max(0, this.warmupTicks - 40)) {
+                    final String error;
+                    synchronized (AsprofRecorder.class) {
+                        error = AsprofRecorder.start(this.route.id(), SystemProperties.PROFILE_OPTS);
+                        if (error == null) this.recordingId = AsprofRecorder.recordingId();
+                    }
+                    if (error != null) {
+                        LOGGER.warn("Flyby: failed to start async-profiler: {}", error);
+                        player.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] Flyby: failed to start async-profiler: " + error));
+                    }
+                }
                 if (++this.tick >= this.warmupTicks) {
                     this.tick = 0;
                     this.beginMeasuring(mc);
@@ -247,15 +290,18 @@ public final class FlybyRunner {
         this.lastFrameNs = now;
     }
 
+    private void overridePauseOnLostFocus(Minecraft mc) {
+        if (this.pauseOnLostFocusOverridden) return;
+        this.pauseOnLostFocusSaved = mc.gameSettings.pauseOnLostFocus;
+        this.pauseOnLostFocusOverridden = true;
+        mc.gameSettings.pauseOnLostFocus = false;
+    }
+
     private void begin(Minecraft mc, EntityClientPlayerMP player) {
         if (mc.currentScreen != null) {
             mc.displayGuiScreen(null);
         }
-        if (!this.pauseOnLostFocusOverridden) {
-            this.pauseOnLostFocusSaved = mc.gameSettings.pauseOnLostFocus;
-            this.pauseOnLostFocusOverridden = true;
-            mc.gameSettings.pauseOnLostFocus = false;
-        }
+        this.overridePauseOnLostFocus(mc);
 
         this.parkedX = player.posX;
         this.parkedY = player.posY;
@@ -638,6 +684,24 @@ public final class FlybyRunner {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + summary));
         }
 
+        this.stopRecording(mc);
+    }
+
+    private void stopRecording(Minecraft mc) {
+        final long ownedId = this.recordingId;
+        this.recordingId = 0;
+        final StopResult result = AsprofRecorder.stopIfRecording(ownedId);
+        if (result.status() == StopStatus.NO_MATCH) return;
+        final boolean failed = result.status() == StopStatus.FAILED;
+        final String message = failed ? "Flyby: failed to stop async-profiler: " + result.error()
+            : "Flyby: profile written to " + result.path();
+        if (failed) LOGGER.warn(message);
+        else LOGGER.info(message);
+        if (mc.thePlayer != null) {
+            mc.thePlayer.addChatMessage(new ChatComponentText((failed ? EnumChatFormatting.RED : EnumChatFormatting.AQUA)
+                + "[Angelica] " + message));
+        }
+        if (Tracy.ENABLED) Tracy.message(message);
     }
 
     private void teardown(Minecraft mc, EntityClientPlayerMP player) {
@@ -645,6 +709,7 @@ public final class FlybyRunner {
 
         this.returnToOrigin(player);
         this.restorePauseOnLostFocus(mc);
+        this.armed = false;
         sceneGuarded = false;
         this.sceneClearRequested = this.sceneCommands.length > 0;
         this.restorePacing(mc);
@@ -654,6 +719,7 @@ public final class FlybyRunner {
     }
 
     private void exitGame(Minecraft mc) {
+        this.stopRecording(mc);
         LOGGER.info("Flyby complete, shutting down.");
         if (mc.theWorld != null) {
             mc.theWorld.sendQuittingDisconnectingPacket();
@@ -727,6 +793,8 @@ public final class FlybyRunner {
             FramePacer.endStats();
             final Minecraft mc = Minecraft.getMinecraft();
             this.restorePauseOnLostFocus(mc);
+            this.armed = false;
+            this.stopRecording(mc);
             this.pendingRequest.set(null);
             this.activeRequest = null;
             sceneGuarded = false;

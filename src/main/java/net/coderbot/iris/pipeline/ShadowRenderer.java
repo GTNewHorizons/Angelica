@@ -681,16 +681,10 @@ public class ShadowRenderer {
     /** Flushes deferred shadow-pass geometry while GL_POLYGON_OFFSET_FILL is still enabled. */
     private static void flushShadowModelParts() {
         if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_MODEL_PARTS);
-        final boolean alphaEnabled = GLStateManager.getAlphaTest().isEnabled();
-        final int alphaFunc = GLStateManager.getAlphaState().getFunction();
-        final float alphaRef = GLStateManager.getAlphaState().getReference();
         try {
             ModelPartBatcher.INSTANCE.flush();
             PlayerReflectionCapture.flush();
         } finally {
-            if (alphaEnabled) GLStateManager.enableAlphaTest();
-            else GLStateManager.disableAlphaTest();
-            GLStateManager.glAlphaFunc(alphaFunc, alphaRef);
             if (Tracy.ENABLED) Tracy.endZone();
         }
     }

@@ -1,49 +1,51 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
 import lombok.Setter;
 
-public class DepthStateStack extends DepthState implements IStateStack<DepthStateStack> {
+public final class DepthStateStack extends DepthState implements CowStateStack<DepthStateStack> {
 
     protected final DepthState[] stack;
-
-    protected int pointer;
+    private final CowDepths cow = new CowDepths(StateSet.R_DEPTH);
 
     @Setter private VanillaStateLayer<DepthState> vanillaLayer;
 
     private final DepthState effective = new DepthState();
 
-    public DepthStateStack() {
+    public DepthStateStack(int id) {
+        cow.id = id;
         stack = new DepthState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
         for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new DepthState();
         }
     }
 
-    public DepthStateStack push() {
-        if(pointer == stack.length) {
-            throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
-        }
-
-        VanillaStateLayer.capture(vanillaLayer, stack[pointer++].set(this));
-        return this;
+    @Override
+    public CowDepths cowDepths() {
+        return cow;
     }
 
-    public DepthStateStack pop() {
-        if(pointer == 0) {
-            throw new IllegalStateException("Stack underflow");
-        }
+    @Override
+    public void captureSlot(int s) {
+        VanillaStateLayer.capture(vanillaLayer, stack[s].set(this));
+    }
 
-        final DepthState saved = stack[--pointer];
+    @Override
+    public void restoreSlot(int s) {
+        final DepthState saved = stack[s];
         if (VanillaStateLayer.restore(vanillaLayer, saved)) {
             setExceptMask(saved);
         } else {
             set(saved);
         }
-        return this;
+    }
+
+    @Override
+    public boolean topSlotChanged() {
+        return !cow.isEmpty() && !sameAs(stack[cow.top()]);
     }
 
     public boolean isEffectiveMaskEnabled() {
@@ -52,11 +54,8 @@ public class DepthStateStack extends DepthState implements IStateStack<DepthStat
         return effective.isEnabled();
     }
 
-    public boolean isEmpty() {
-        return pointer == 0;
-    }
-
-    public boolean topChanged() {
-        return pointer > 0 && !sameAs(stack[pointer - 1]);
+    @Override
+    public int stackId() {
+        return cow.id;
     }
 }

@@ -74,6 +74,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.threading.DefaultChunkTask
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ThreadedChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager;
 import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
@@ -253,6 +254,7 @@ public final class ClientProxy extends CommonProxy {
         Tracy.sectionLeave(this.worldSection);
         this.worldSection = 0L;
         DynamicLights.get().removeAllLightSources();
+        TesrLifecycle.reset();
         GpuCulling.onWorldUnload();
     }
 

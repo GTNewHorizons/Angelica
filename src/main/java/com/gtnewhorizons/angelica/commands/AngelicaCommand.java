@@ -6,11 +6,14 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.ChunkDebugMinimap;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRoute;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
+import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import net.minecraft.client.Minecraft;
 import net.minecraft.command.CommandBase;
 import net.minecraft.command.ICommand;
 import net.minecraft.command.ICommandSender;
+import net.minecraft.server.integrated.IntegratedServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
@@ -20,7 +23,7 @@ import java.util.List;
 
 public class AngelicaCommand extends CommandBase {
 
-    private static final List<String> SUBCOMMANDS = Arrays.asList("wireframe", "fog", "minimap", "flyby", "help");
+    private static final List<String> SUBCOMMANDS = Arrays.asList("wireframe", "fog", "minimap", "flyby", "profile", "help");
 
     @Override
     public String getCommandName() {
@@ -29,12 +32,29 @@ public class AngelicaCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/angelica <wireframe|fog|minimap|flyby|help>";
+        return "/angelica <wireframe|fog|minimap|flyby|profile|help>";
     }
 
     @Override
     public int getRequiredPermissionLevel() {
-        return 2; // op
+        return 0;
+    }
+
+    @Override
+    public boolean canCommandSenderUseCommand(ICommandSender sender) {
+        return true;
+    }
+
+    static boolean requiresCheats(String subcommand) {
+        return "wireframe".equals(subcommand) || "flyby".equals(subcommand);
+    }
+
+    private static boolean cheatsAllowed() {
+        if (SystemProperties.debugTooling()) return true;
+        final Minecraft mc = Minecraft.getMinecraft();
+        final IntegratedServer server = mc.getIntegratedServer();
+        if (server == null || mc.thePlayer == null) return false;
+        return server.getConfigurationManager().func_152596_g(mc.thePlayer.getGameProfile());
     }
 
     @Override
@@ -50,6 +70,9 @@ public class AngelicaCommand extends CommandBase {
             options.add("cancel");
             return getListOfStringsMatchingLastWord(args, options.toArray(new String[0]));
         }
+        if (args.length == 2 && "profile".equalsIgnoreCase(args[0])) {
+            return getListOfStringsMatchingLastWord(args, new String[] { "start", "stop", "status" });
+        }
         return new ArrayList<>();
     }
 
@@ -60,11 +83,18 @@ public class AngelicaCommand extends CommandBase {
             return;
         }
 
-        switch (args[0].toLowerCase()) {
+        final String subcommand = args[0].toLowerCase();
+        if (requiresCheats(subcommand) && !cheatsAllowed()) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] " + subcommand + " needs cheats enabled on a world you host"));
+            return;
+        }
+
+        switch (subcommand) {
             case "wireframe" -> handleWireframe(sender);
             case "fog"       -> handleFog(sender);
             case "minimap"   -> handleMinimap(sender);
             case "flyby"     -> handleFlyby(sender, args);
+            case "profile"   -> handleProfile(sender, args);
             default          -> sendHelp(sender);
         }
     }
@@ -139,12 +169,58 @@ public class AngelicaCommand extends CommandBase {
             + " (" + route.toTicks(used, speed) + " ticks)"));
     }
 
+    private void handleProfile(ICommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica profile <start|stop|status>"));
+            return;
+        }
+
+        switch (args[1].toLowerCase()) {
+            case "start" -> {
+                final String opts;
+                if (args.length > 2) {
+                    final StringBuilder sb = new StringBuilder();
+                    for (int i = 2; i < args.length; i++) {
+                        if (i > 2) sb.append(',');
+                        sb.append(args[i]);
+                    }
+                    opts = sb.toString();
+                } else {
+                    opts = SystemProperties.PROFILE_OPTS;
+                }
+                final String error = AsprofRecorder.start("manual", opts);
+                if (error != null) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] " + error));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Profiling started: " + AsprofRecorder.outputPath()));
+                }
+            }
+            case "stop" -> {
+                final String path = AsprofRecorder.outputPath();
+                final String error = AsprofRecorder.stop();
+                if (error != null) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] " + error));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Profile written to " + path));
+                }
+            }
+            case "status" -> {
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + AsprofRecorder.status()));
+                if (AsprofRecorder.isRecording()) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  " + AsprofRecorder.outputPath()));
+                }
+            }
+            default -> sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica profile <start|stop|status>"));
+        }
+    }
+
     private void sendHelp(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] Debug Commands:"));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica wireframe" + EnumChatFormatting.WHITE + " - Toggle wireframe rendering"));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica fog" + EnumChatFormatting.WHITE + " - Toggle fog debug on F3"));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica minimap" + EnumChatFormatting.WHITE + " - Toggle chunk debug overlay"));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica flyby <" + FlybyRoute.ids() + ">" + EnumChatFormatting.WHITE + " - Run a deterministic benchmark route"));
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica profile <start|stop|status>" + EnumChatFormatting.WHITE + " - Control async-profiler (JFR) recording"));
     }
 
     @Override
