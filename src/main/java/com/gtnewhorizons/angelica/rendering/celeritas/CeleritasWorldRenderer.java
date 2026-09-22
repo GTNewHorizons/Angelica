@@ -53,6 +53,7 @@ import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
+import com.gtnewhorizons.angelica.render.WeatherRenderer;
 import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
@@ -168,6 +169,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         ShadowRenderer.visibleTileEntities.clear();
         ShadowRenderer.globalTileEntities.clear();
         TesrLifecycle.reset();
+        WeatherRenderer.clear();
         GpuCulling.onWorldUnload();
         FfpExtendedAttribs.reset();
         FogBiomeCache.invalidate();

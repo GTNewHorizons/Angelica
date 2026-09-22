@@ -47,7 +47,8 @@ public final class PerFrameUniformBlockHarvester {
     private static final Set<String> LIVE_STATE_UNIFORMS = Set.of(
         "gbufferModelView", "gbufferModelViewInverse", "gbufferPreviousModelView",
         "gbufferProjection", "gbufferProjectionInverse", "gbufferPreviousProjection",
-        "fogColor", "iris_FogColor", "iris_FogStart", "iris_FogEnd", "iris_FogDensity");
+        "fogColor", "iris_FogColor", "iris_FogStart", "iris_FogEnd", "iris_FogDensity",
+        "iris_WeatherParams0", "iris_WeatherParams1", "iris_WeatherParams2");
 
     /**
      * @param primary   manifest whose entry order defines the block layout

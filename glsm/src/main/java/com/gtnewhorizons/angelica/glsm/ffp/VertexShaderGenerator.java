@@ -21,6 +21,10 @@ public final class VertexShaderGenerator {
         emitOutputs(sb, key);
 
         sb.append("void main() {\n");
+        if (key.instancing() == Instancing.WEATHER) {
+            sb.append("  ").append(InstancedGlslHelpers.weatherPrologue("u_", "a_", "a_TexCoord0",
+                "vec4 weatherVertex", "vec4 weatherColor", "vec4 weatherTex0", "vec4 weatherTex1", "\n  ")).append('\n');
+        }
         emitPositionTransform(sb, key);
         if (key.lightingEnabled()) {
             emitNormalTransform(sb, key);
@@ -58,7 +62,7 @@ public final class VertexShaderGenerator {
         final Instancing kind = key.instancing();
         sb.append("// Vertex attributes\n");
         sb.append("layout(location = ").append(VertexFormatElement.Usage.POSITION.getAttributeLocation()).append(") in vec3 a_Position;\n");
-        if (kind == Instancing.PARTICLE) {
+        if (kind == Instancing.PARTICLE || kind == Instancing.WEATHER) {
             sb.append("layout(location = ").append(VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation()).append(") in vec2 a_TexCoord0;\n");
         } else {
             if (key.hasVertexColor()) {
@@ -88,6 +92,7 @@ public final class VertexShaderGenerator {
         return switch (key.instancing()) {
             case CUBE -> "cubeUv";
             case PARTICLE -> PARTICLE_UV;
+            case WEATHER -> "weatherTex0";
             case NONE, TEMPLATE -> key.hasVertexTexCoord() ? "vec4(a_TexCoord0, 0.0, 1.0)" : "u_CurrentTexCoord0";
         };
     }
@@ -134,6 +139,8 @@ public final class VertexShaderGenerator {
         sb.append("  // Position transform\n");
         if (key.instancing() == Instancing.PARTICLE) {
             sb.append("  vec4 pos4 = ").append(InstancedGlslHelpers.particlePos("a_InstCenterHalf", "a_Position")).append(";\n");
+        } else if (key.instancing() == Instancing.WEATHER) {
+            sb.append("  vec4 pos4 = weatherVertex;\n");
         } else {
             sb.append("  vec4 pos4 = vec4(a_Position, 1.0);\n");
         }
@@ -282,6 +289,7 @@ public final class VertexShaderGenerator {
         final String src = key.hasVertexColor() ? "a_Color" : "u_CurrentColor";
         switch (key.instancing()) {
             case PARTICLE -> sb.append("  v_Color = a_InstColor;\n");
+            case WEATHER -> sb.append("  v_Color = weatherColor;\n");
             case TEMPLATE, CUBE -> sb.append("  v_Color = ").append(src).append(" * a_InstColor;\n");
             case NONE -> sb.append("  v_Color = ").append(src).append(";\n");
         }
@@ -312,6 +320,7 @@ public final class VertexShaderGenerator {
             final String lightmap = switch (key.instancing()) {
                 case PARTICLE, TEMPLATE -> "a_InstLightmap";
                 case CUBE -> "a_InstLightmapScale.xy";
+                case WEATHER -> "weatherTex1.xy";
                 case NONE -> key.hasVertexLightmap() ? "a_TexCoord1" : "u_CurrentLightmapCoord";
             };
             sb.append("  v_TexCoord1 = u_LightmapTextureMatrix * vec4(").append(lightmap).append(", 0.0, 1.0);\n");

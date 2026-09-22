@@ -22,6 +22,7 @@ import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.EnumChatFormatting;
 import net.minecraft.util.MathHelper;
 import net.minecraft.world.MinecraftException;
+import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
 import net.minecraft.world.chunk.Chunk;
 import net.minecraft.world.chunk.IChunkProvider;
@@ -214,6 +215,8 @@ public final class FlybyRunner {
 
         final EntityClientPlayerMP player = mc.thePlayer;
         if (player == null || mc.theWorld == null) return;
+
+        pinClientWeather(mc.theWorld);
 
         switch (this.state) {
             case WAITING -> {
@@ -569,6 +572,13 @@ public final class FlybyRunner {
         server.getConfigurationManager().sendChatMsg(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Flyby: world saving is off until you leave this world"));
     }
 
+
+    private static void pinClientWeather(World world) {
+        final SystemProperties.FlybyWeather weather = SystemProperties.FLYBY_WEATHER;
+        world.rainingStrength = world.prevRainingStrength = weather.isRaining() ? 1.0f : 0.0f;
+        world.thunderingStrength = world.prevThunderingStrength = weather.isThundering() ? 1.0f : 0.0f;
+    }
+
     private void applyFreeze(MinecraftServer server) {
         for (WorldServer world : server.worldServers) {
             if (world == null) continue;
@@ -577,13 +587,17 @@ public final class FlybyRunner {
                 world.getGameRules().setOrCreateGameRule("doDaylightCycle", "false");
                 LOGGER.warn("Flyby: doDaylightCycle was on, disabled it");
             }
-            if (world.getWorldInfo().isRaining() || world.getWorldInfo().isThundering()) {
-                LOGGER.warn("Flyby: weather was active, clearing it");
-                world.getWorldInfo().setRaining(false);
-                world.getWorldInfo().setThundering(false);
+            final SystemProperties.FlybyWeather weather = SystemProperties.FLYBY_WEATHER;
+            if (world.getWorldInfo().isRaining() != weather.isRaining()
+                || world.getWorldInfo().isThundering() != weather.isThundering()) {
+                LOGGER.warn("Flyby: forcing weather to {}", weather);
+                world.getWorldInfo().setRaining(weather.isRaining());
+                world.getWorldInfo().setThundering(weather.isThundering());
             }
             world.getWorldInfo().setRainTime(Integer.MAX_VALUE);
             world.getWorldInfo().setThunderTime(Integer.MAX_VALUE);
+            world.rainingStrength = world.prevRainingStrength = weather.isRaining() ? 1.0f : 0.0f;
+            world.thunderingStrength = world.prevThunderingStrength = weather.isThundering() ? 1.0f : 0.0f;
 
             if (world.getWorldTime() % 24000L != SystemProperties.FLYBY_TIME_OF_DAY) {
                 LOGGER.info("Flyby: freezing time at {}", SystemProperties.FLYBY_TIME_OF_DAY);

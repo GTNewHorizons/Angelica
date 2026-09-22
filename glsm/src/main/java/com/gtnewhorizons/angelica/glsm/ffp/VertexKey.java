@@ -51,6 +51,13 @@ public final class VertexKey {
     private static final int BIT_UNIT23_UV_FROM_UNIT0 = BIT_UNIT_TEXMAT_BASE + MAX_UNITS;
     private static final int BIT_LINE_STIPPLE        = BIT_UNIT23_UV_FROM_UNIT0 + 1;
     private static final int BIT_INSTANCING          = BIT_LINE_STIPPLE + 1;
+    private static final long INSTANCING_MASK        = 0x7L;
+
+    static {
+        if (Instancing.VALUES.length > INSTANCING_MASK + 1) {
+            throw new IllegalStateException("Instancing has outgrown the VertexKey field; widen INSTANCING_MASK");
+        }
+    }
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -98,7 +105,7 @@ public final class VertexKey {
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
-    public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & 0x3)]; }
+    public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & INSTANCING_MASK)]; }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -245,7 +252,7 @@ public final class VertexKey {
     }
 
     static long withInstancing(long packed, Instancing kind) {
-        return (packed & ~(0x3L << BIT_INSTANCING)) | ((long) kind.ordinal() << BIT_INSTANCING);
+        return (packed & ~(INSTANCING_MASK << BIT_INSTANCING)) | ((long) kind.ordinal() << BIT_INSTANCING);
     }
 
     public static VertexKey fromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {

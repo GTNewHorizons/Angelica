@@ -49,6 +49,7 @@ public class Uniforms {
     private float lightmapX = Float.NaN, lightmapY = Float.NaN, lineWidth = Float.NaN;
     private int viewportX = Integer.MIN_VALUE, viewportY = Integer.MIN_VALUE, viewportWidth = -1, viewportHeight = -1;
     private int lineStipple = -1;
+    private int weatherGen = -1;
 
     int blockWrites;
     int blockSkips;
@@ -189,6 +190,12 @@ public class Uniforms {
             viewportY = vp.y;
             viewportWidth = vp.width;
             viewportHeight = vp.height;
+            stagedMisc++;
+            dirty = true;
+        }
+        if (WeatherParams.generation != weatherGen) {
+            stageWeatherParams();
+            weatherGen = WeatherParams.generation;
             stagedMisc++;
             dirty = true;
         }
@@ -377,6 +384,15 @@ public class Uniforms {
         putVec3(offset, m.m00(), m.m01(), m.m02());
         putVec3(offset + 16, m.m10(), m.m11(), m.m12());
         putVec3(offset + 32, m.m20(), m.m21(), m.m22());
+    }
+
+    private void stageWeatherParams() {
+        putVec4(FFPUniformBlock.WEATHER_PARAMS_0, WeatherParams.translateX, WeatherParams.translateY,
+            WeatherParams.translateZ, WeatherParams.invRadius);
+        putVec4(FFPUniformBlock.WEATHER_PARAMS_1, WeatherParams.cameraFracX, WeatherParams.cameraFracZ,
+            WeatherParams.partialTicks, WeatherParams.age);
+        putVec4(FFPUniformBlock.WEATHER_PARAMS_2, WeatherParams.rainScroll, WeatherParams.snowScroll,
+            WeatherParams.rainStrength, 0.0f);
     }
 
     private void putVec4(int offset, Vector4f v) {
