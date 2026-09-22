@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.mixins.late.client.biomesoplenty;
 
 import biomesoplenty.client.fog.FogHandler;
 import com.gtnewhorizons.angelica.compat.bop.BopFogBlend;
-import com.gtnewhorizons.angelica.compat.bop.BopFogColorSource;
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.settings.GameSettings;
@@ -38,7 +37,7 @@ public class MixinFogHandlerBiomeCache {
 
     /**
      * @author Angelica
-     * @reason Cache the interior sum and walk only the border strips
+     * @reason Read per-cell fog colors from FogColourGrid
      */
     @Overwrite
     private static Vec3 getFogBlendColour(World world, EntityLivingBase playerEntity, int playerX, int playerY, int playerZ, float defR, float defG, float defB, double renderPartialTicks) {
@@ -50,9 +49,7 @@ public class MixinFogHandlerBiomeCache {
         }
 
         final float[] sums = angelica$sums;
-        BopFogBlend.accumulate(world, FogBiomeCache.generation(), BopFogColorSource.INSTANCE.forWorld(world),
-            playerEntity.posX, playerEntity.posZ, playerX, playerY, playerZ, distance, sums);
-        BopFogColorSource.INSTANCE.freeWorld();
+        BopFogBlend.accumulate(world, playerEntity.posX, playerEntity.posZ, playerX, playerY, playerZ, distance, sums);
 
         float rBiomeFog = sums[0];
         float gBiomeFog = sums[1];

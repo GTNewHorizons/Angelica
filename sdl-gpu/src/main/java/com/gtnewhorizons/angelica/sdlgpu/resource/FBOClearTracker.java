@@ -134,7 +134,7 @@ public final class FBOClearTracker {
     }
 
     private void materializeFlush(ContextState st, LongArrayList colorHandles, IntArrayList colorGlIds, LongArrayList depthHandles, IntArrayList depthGlIds) {
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
 
         final int n = colorHandles.size();
         boolean[] consumed = null;
@@ -185,7 +185,7 @@ public final class FBOClearTracker {
                 }
                 frameManager.noteClearPass();
                 frameManager.beginRenderPass(targets, null);
-                frameManager.endRenderPassIfActive();
+                frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
             }
         }
 
@@ -215,7 +215,7 @@ public final class FBOClearTracker {
             frameManager.noteClearPass();
             if (materialized) frameManager.noteMaterializedClearPass();
             frameManager.beginRenderPass(null, dt);
-            frameManager.endRenderPassIfActive();
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
         }
         if (clearDepth) {
             st.pendingDepthValues.remove(handle);
@@ -253,14 +253,14 @@ public final class FBOClearTracker {
         final boolean depthPending = st.pendingDepthTextures.remove(handle);
         final boolean stencilPending = st.pendingStencilTextures.remove(handle);
         if (depthPending || stencilPending) {
-            frameManager.endRenderPassIfActive();
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
             emitDepthStencilClearPass(st, handle, depthPending, stencilPending, true);
             st.pendingMutationGen++;
             return;
         }
         if (st.pendingColorTextures.remove(handle)) {
             final float[] color = st.pendingColorValues.remove(handle);
-            frameManager.endRenderPassIfActive();
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
             try (var stack = MemoryStack.stackPush()) {
                 final SDL_GPUColorTargetInfo.Buffer targets = SDL_GPUColorTargetInfo.calloc(1, stack);
                 final long addr = targets.get(0).address();
@@ -275,7 +275,7 @@ public final class FBOClearTracker {
                 frameManager.noteClearPass();
                 frameManager.noteMaterializedClearPass();
                 frameManager.beginRenderPass(targets, null);
-                frameManager.endRenderPassIfActive();
+                frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
                 st.clearedTexturesThisFrame.add(handle);
                 resourceManager.markTextureContentDefined(handle);
             }

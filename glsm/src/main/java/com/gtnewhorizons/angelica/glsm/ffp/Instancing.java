@@ -4,7 +4,8 @@ public enum Instancing {
     NONE(""),
     TEMPLATE("_instanced"),
     CUBE("_cubeinstanced"),
-    PARTICLE("_particleinstanced");
+    PARTICLE("_particleinstanced"),
+    WEATHER("_weatherinstanced");
 
     public static final Instancing[] VALUES = values();
 

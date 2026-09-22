@@ -3,18 +3,13 @@ package com.gtnewhorizons.angelica.glsm;
 import com.google.common.collect.ImmutableSet;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
-import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.CowStateStack;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.List;
-import java.util.Map;
 import java.util.Set;
 
 public class Feature {
@@ -23,52 +18,49 @@ public class Feature {
         GL13.GL_MULTISAMPLE_BIT, GL11.GL_PIXEL_MODE_BIT, GL11.GL_POINT_BIT, GL11.GL_POLYGON_BIT, GL11.GL_POLYGON_STIPPLE_BIT, GL11.GL_SCISSOR_BIT,
         GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_TEXTURE_BIT, GL11.GL_TRANSFORM_BIT, GL11.GL_VIEWPORT_BIT };
 
-    static final Int2ObjectMap<List<IStateStack<?>>> maskToFeaturesMap = new Int2ObjectOpenHashMap<>();
-    static final Int2ObjectMap<IStateStack<?>[]> maskToNonBooleanStacksMap = new Int2ObjectOpenHashMap<>();
+    private static final long[] NO_MEMBERS = new long[0];
 
-    static List<IStateStack<?>> maskToFeatures(int mask) {
-        if(maskToFeaturesMap.containsKey(mask)) {
-            return maskToFeaturesMap.get(mask);
-        }
+    private static final Int2ObjectMap<long[]> maskToMembersMap = new Int2ObjectOpenHashMap<>();
 
-        final Set<IStateStack<?>> features = new HashSet<>();
-
-        for(int attrib : Feature.supportedAttribs) {
-            if((mask & attrib) == attrib) {
-                features.addAll(getFeatures(attrib));
-            }
-        }
-
-        final List<IStateStack<?>> asList = new ArrayList<>(features);
-
-        maskToFeaturesMap.put(mask, asList);
-        return asList;
-    }
-
-    /**
-     * Returns only non-BooleanStateStack instances for the given mask.
-     * These use traditional push/pop without global depth tracking.
-     */
-    static IStateStack<?>[] maskToNonBooleanStacks(int mask) {
-        IStateStack<?>[] cached = maskToNonBooleanStacksMap.get(mask);
+    static long[] maskToMembers(int mask) {
+        final long[] cached = maskToMembersMap.get(mask);
         if (cached != null) {
             return cached;
         }
 
-        final List<IStateStack<?>> all = maskToFeatures(mask);
-        final List<IStateStack<?>> nonBooleans = new ArrayList<>();
-        for (int i = 0; i < all.size(); i++) {
-            final IStateStack<?> stack = all.get(i);
-            if (!(stack instanceof BooleanStateStack)) {
-                nonBooleans.add(stack);
+        long[] result = NO_MEMBERS;
+        for (int attrib : Feature.supportedAttribs) {
+            if ((mask & attrib) == attrib) {
+                result = union(result, attribToMembers.get(attrib));
             }
         }
-        cached = nonBooleans.toArray(new IStateStack<?>[0]);
-        maskToNonBooleanStacksMap.put(mask, cached);
-        return cached;
+
+        maskToMembersMap.put(mask, result);
+        return result;
     }
 
-    private static final Map<Integer, Set<IStateStack<?>>> attribToFeatures = new HashMap<>();
+    private static long[] union(long[] a, long[] b) {
+        if (b == null || b.length == 0) return a;
+        if (a.length == 0) return b.clone();
+        final long[] result = new long[Math.max(a.length, b.length)];
+        System.arraycopy(a, 0, result, 0, a.length);
+        for (int i = 0; i < b.length; i++) result[i] |= b[i];
+        return result;
+    }
+
+    private static long[] toMembers(Set<IStateStack<?>> stacks) {
+        if (stacks.isEmpty()) return NO_MEMBERS;
+        int max = 0;
+        for (IStateStack<?> s : stacks) max = Math.max(max, ((CowStateStack<?>) s).stackId());
+        final long[] bits = new long[(max >> 6) + 1];
+        for (IStateStack<?> s : stacks) {
+            final int id = ((CowStateStack<?>) s).stackId();
+            bits[id >> 6] |= 1L << id;
+        }
+        return bits;
+    }
+
+    private static final Int2ObjectMap<long[]> attribToMembers = new Int2ObjectOpenHashMap<>();
 
     /**
      * Helper method to add all texture gen states (S, T, R, Q) for all texture units to a collection.
@@ -84,6 +76,8 @@ public class Feature {
     }
 
     static {
+        final Int2ObjectMap<Set<IStateStack<?>>> attribToFeatures = new Int2ObjectOpenHashMap<>();
+
         attribToFeatures.put(GL11.GL_COLOR_BUFFER_BIT, ImmutableSet.of(
               GLStateManager.getAlphaTest()
             , GLStateManager.getAlphaState()
@@ -191,11 +185,25 @@ public class Feature {
 
         attribToFeatures.put(GL11.GL_ENABLE_BIT, enableBits);
         attribToFeatures.put(GL11.GL_EVAL_BIT, ImmutableSet.of(
-            // GL_MAP1_x enable bits, where x is a map type
-            // GL_MAP2_x enable bits, where x is a map type
-            // 1D grid endpoints and divisions
-            // 2D grid endpoints and divisions
-            // GL_AUTO_NORMAL enable bit
+              GLStateManager.getAutoNormalState()
+            , GLStateManager.getMap1Color4State()
+            , GLStateManager.getMap1IndexState()
+            , GLStateManager.getMap1NormalState()
+            , GLStateManager.getMap1TextureCoord1State()
+            , GLStateManager.getMap1TextureCoord2State()
+            , GLStateManager.getMap1TextureCoord3State()
+            , GLStateManager.getMap1TextureCoord4State()
+            , GLStateManager.getMap1Vertex3State()
+            , GLStateManager.getMap1Vertex4State()
+            , GLStateManager.getMap2Color4State()
+            , GLStateManager.getMap2IndexState()
+            , GLStateManager.getMap2NormalState()
+            , GLStateManager.getMap2TextureCoord1State()
+            , GLStateManager.getMap2TextureCoord2State()
+            , GLStateManager.getMap2TextureCoord3State()
+            , GLStateManager.getMap2TextureCoord4State()
+            , GLStateManager.getMap2Vertex3State()
+            , GLStateManager.getMap2Vertex4State()
         ));
         attribToFeatures.put(GL11.GL_FOG_BIT, ImmutableSet.of(
               GLStateManager.getFogMode()
@@ -258,10 +266,10 @@ public class Feature {
             // GL_LIST_BASE setting
         ));
         attribToFeatures.put(GL13.GL_MULTISAMPLE_BIT, ImmutableSet.of(
-            // GL_MULTISAMPLE enable bit
-            // GL_SAMPLE_ALPHA_TO_COVERAGE flag
-            // GL_SAMPLE_ALPHA_TO_ONE flag
-            // GL_SAMPLE_COVERAGE flag
+              GLStateManager.getMultisampleState()
+            , GLStateManager.getSampleAlphaToCoverageState()
+            , GLStateManager.getSampleAlphaToOneState()
+            , GLStateManager.getSampleCoverageState()
             // GL_SAMPLE_COVERAGE_VALUE value
             // GL_SAMPLE_COVERAGE_INVERT value
         ));
@@ -327,22 +335,24 @@ public class Feature {
 
         attribToFeatures.put(GL11.GL_TEXTURE_BIT, textureAttribs);
 
-        attribToFeatures.put(GL11.GL_TRANSFORM_BIT, ImmutableSet.of(
+        final Set<IStateStack<?>> transformAttribs = new HashSet<>(ImmutableSet.of(
             // Coefficients of the six clipping planes
-            
+
               GLStateManager.getMatrixMode()
             , GLStateManager.getNormalizeState()
             , GLStateManager.getRescaleNormalState()
         ));
+        for(int i = 0; i < GLStateManager.getClipPlaneStates().length; i++) {
+            transformAttribs.add(GLStateManager.getClipPlaneStates()[i]);
+        }
+        attribToFeatures.put(GL11.GL_TRANSFORM_BIT, transformAttribs);
         attribToFeatures.put(GL11.GL_VIEWPORT_BIT, ImmutableSet.of(
-            
+
             GLStateManager.getViewportState()
         ));
+
+        for (Int2ObjectMap.Entry<Set<IStateStack<?>>> entry : attribToFeatures.int2ObjectEntrySet()) {
+            attribToMembers.put(entry.getIntKey(), toMembers(entry.getValue()));
+        }
     }
-
-    public static Set<IStateStack<?>> getFeatures(int attrib) {
-        return attribToFeatures.getOrDefault(attrib, Collections.emptySet());
-    }
-
-
 }

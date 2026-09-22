@@ -43,7 +43,7 @@ public final class GlsmSdlHeadlessRig {
         Reflect.setStatic(SDLGPUGate.class, "engaged", true);
 
         final RenderBackend backend = BackendManager.RENDER_BACKEND;
-        assumeTrue(backend instanceof SDLGPURenderBackend, () -> "selected backend is " + backend.getName());
+        assertTrue(backend instanceof SDLGPURenderBackend, () -> "selected backend is " + backend.getName());
 
         backend.onPostWindowCreate(0L);
         Reflect.setStaticFinal(GLStateManager.class, "MainThread", Thread.class, Thread.currentThread());

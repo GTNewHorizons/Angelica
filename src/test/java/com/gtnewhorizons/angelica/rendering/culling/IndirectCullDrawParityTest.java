@@ -46,6 +46,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -414,6 +415,26 @@ class IndirectCullDrawParityTest {
         }
     }
 
+    private static Object reflectPassState(GpuTerrainCuller gpu, String fieldName) {
+        try {
+            final Field field = GpuTerrainCuller.class.getDeclaredField(fieldName);
+            field.setAccessible(true);
+            return field.get(gpu);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
+    private static boolean reflectDispatched(Object passState) {
+        try {
+            final Field field = passState.getClass().getDeclaredField("dispatched");
+            field.setAccessible(true);
+            return field.getBoolean(passState);
+        } catch (ReflectiveOperationException e) {
+            throw new IllegalStateException(e);
+        }
+    }
+
     private static ByteBuffer frustumUbo(int indexPointerMask) {
         final ByteBuffer ubo = FrustumExtractor.allocateUboByteBuffer();
         final Matrix4f identity = new Matrix4f();
@@ -463,6 +484,19 @@ class IndirectCullDrawParityTest {
             } finally {
                 batch.delete();
             }
+        }
+    }
+
+    private static void renderDirectPass(GlVertexArrayTessellation tessellation, int indexPointerMask, List<Section> sections) {
+        final MultiDrawBatch batch = new DirectMultiDrawBatch(MultiDrawBatch.MAX_COMMAND_COUNT);
+        try {
+            for (Section section : sections) {
+                pushSectionCommands(batch, section.srdAddress(), section.sliceMask, indexPointerMask);
+            }
+            batch.upload(commandList);
+            batch.execute(commandList, tessellation, GlPrimitiveType.TRIANGLES);
+        } finally {
+            batch.delete();
         }
     }
 
@@ -667,6 +701,93 @@ class IndirectCullDrawParityTest {
                     renderCpuBatches(scene, directFbo.id, rig.tessNonSorted, rig.tessSorted, direct);
                     renderGpu(scene, gpuFbo.id, rig.tessNonSorted, rig.tessSorted, gpu, region1, region2, "frame 3 (after section mesh update)");
                     assertDepthParity(directFbo.id, gpuFbo.id, "frame 3 (GPU-culled indirect emitter)");
+                }
+            } finally {
+                gpu.delete();
+                meta.shutdown();
+                culler.shutdown();
+                for (Section section : scene.all()) MemoryUtilities.memFree(section.srd);
+            }
+        } finally {
+            GpuCulling.setMode(GpuCullingMode.CPU_ONLY);
+        }
+    }
+
+    @Test
+    void cutoutAndTranslucentShareOneChainedDispatchWithoutSolid() {
+        unsortedAndTranslucentShareOneChainedDispatch(true);
+    }
+
+    private void unsortedAndTranslucentShareOneChainedDispatch(boolean cutout) {
+        assumeTrue(RenderSystem.supportsCompute() && RenderSystem.supportsMultiDrawIndirect(),
+            "compute-driven indirect culling unsupported");
+
+        GpuCulling.setMode(GpuCullingMode.COMPUTE);
+        try {
+            final Scene scene = buildScene();
+            final List<Section> unsorted = cutout ? scene.cutout : scene.solid;
+            final GpuDrivenChunkCuller culler = new GpuDrivenChunkCuller();
+            final SectionMetaBuffer meta = new SectionMetaBuffer();
+            final GpuTerrainCuller gpu;
+            try {
+                assertTrue(culler.ensureReady(), "chunk_cull.csh failed to load on a real driver");
+                gpu = new GpuTerrainCuller(culler, meta);
+            } catch (RuntimeException | Error e) {
+                meta.shutdown();
+                culler.shutdown();
+                throw e;
+            }
+
+            final RenderRegion solidRegion = RenderRegionKeys.create(0, 0, 0, 0);
+            final RenderRegion sortedRegion = RenderRegionKeys.create(0, 0, 0, 1);
+
+            try {
+                try (SceneRig rig = new SceneRig(scene);
+                     Fbo directFbo = new Fbo();
+                     Fbo gpuFbo = new Fbo()) {
+
+                    int local = 0;
+                    for (Section section : unsorted) metaUpdate(meta, section, local++);
+                    local = 0;
+                    for (Section section : scene.sorted) metaUpdate(meta, section, local++);
+
+                    beginDrawing(directFbo.id);
+                    renderDirectPass(rig.tessNonSorted, 0, unsorted);
+                    renderDirectPass(rig.tessSorted, 0xFFFFFFFF, scene.sorted);
+
+                    beginDrawing(gpuFbo.id);
+
+                    gpu.beginCullPass(0);
+                    assertTrue(gpu.isComputeActiveThisPass(), "compute path unexpectedly inactive");
+                    setFrustumUbo(gpu, frustumUbo(0));
+                    gpu.syncSectionMetaIfDirty();
+                    final int afterSolid = walkSections(unsorted, gpu, solidRegion, 0, new ArrayList<>(), 0);
+
+                    gpu.startSortedPass(0xFFFFFFFF);
+                    setFrustumUbo(gpu, frustumUbo(0xFFFFFFFF));
+                    gpu.syncSectionMetaIfDirty();
+                    walkSections(scene.sorted, gpu, sortedRegion, afterSolid, new ArrayList<>(), 0xFFFFFFFF);
+                    gpu.finishSortedPass();
+
+                    final Object primaryPass = reflectPassState(gpu, "primaryPass");
+                    final Object sortedPass = reflectPassState(gpu, "sortedPass");
+                    assertFalse(reflectDispatched(primaryPass), "solid group dispatched before any draw was issued");
+                    assertFalse(reflectDispatched(sortedPass), "sorted group dispatched before any draw was issued");
+
+                    executeRegion(gpu, solidRegion, rig.tessNonSorted);
+                    gpu.endPass();
+
+                    assertTrue(reflectDispatched(primaryPass), "solid group was not dispatched by the first draw call");
+                    assertTrue(reflectDispatched(sortedPass), "sorted group was not dispatched together with the solid group; the chained prepare did not share one dispatch batch");
+
+                    assertTrue(gpu.selectPreparedSortedPass(), "prepared sorted pass was not selectable after prepare");
+                    executeRegion(gpu, sortedRegion, rig.tessSorted);
+                    gpu.endPass();
+
+                    assertTrue(reflectDispatched(primaryPass), "solid group dispatch flag regressed after drawing the sorted pass");
+                    assertTrue(reflectDispatched(sortedPass), "sorted group dispatch flag regressed after drawing the sorted pass");
+
+                    assertDepthParity(directFbo.id, gpuFbo.id, cutout ? "chained cutout+translucent prepare" : "chained solid+translucent prepare");
                 }
             } finally {
                 gpu.delete();

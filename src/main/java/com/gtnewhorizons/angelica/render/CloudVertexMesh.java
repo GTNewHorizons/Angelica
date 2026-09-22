@@ -16,7 +16,6 @@ import java.nio.IntBuffer;
 import java.util.Arrays;
 
 import static com.gtnewhorizons.angelica.render.CloudDisc.ALWAYS_DRAWN_CELLS;
-import static com.gtnewhorizons.angelica.render.CloudDisc.SCROLL_SPEED;
 import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGE_COUNT;
 import static com.gtnewhorizons.angelica.render.CloudDisc.wedgeOf;
 import static org.joml.Math.clamp;
@@ -120,6 +119,7 @@ final class CloudVertexMesh {
     private long[] wallSortKey = new long[4096];
     private long[] wallSortScratch = new long[4096];
     private final int[] radixCounts = new int[RADIX_SIZE];
+    private float textureScaleX, textureScaleZ;
     private boolean forPackShader;
     private int wallCutCells = Integer.MAX_VALUE;
     private int wallClipRadiusSq;
@@ -160,8 +160,8 @@ final class CloudVertexMesh {
         return wallStart;
     }
 
-    void buildFast(int radiusCells, float scrollX, float scrollZ, boolean forPackShader) {
-        beginBuild(false, forPackShader);
+    void buildFast(CloudShape shape, int radiusCells, float scrollX, float scrollZ, boolean forPackShader) {
+        beginBuild(shape, false, forPackShader);
 
         nextQuadDir = DIR_NONE;
         nextQuadGroup = GROUP_PLATE_ALWAYS;
@@ -170,10 +170,10 @@ final class CloudVertexMesh {
         nextQuadCellZ = 0;
         final double minCell = -radiusCells;
         final double maxCell = radiusCells;
-        final float uWest = -radiusCells * SCROLL_SPEED + scrollX;
-        final float uEast = radiusCells * SCROLL_SPEED + scrollX;
-        final float vNorth = -radiusCells * SCROLL_SPEED + scrollZ;
-        final float vSouth = radiusCells * SCROLL_SPEED + scrollZ;
+        final float uWest = -radiusCells * textureScaleX + scrollX;
+        final float uEast = radiusCells * textureScaleX + scrollX;
+        final float vNorth = -radiusCells * textureScaleZ + scrollZ;
+        final float vSouth = radiusCells * textureScaleZ + scrollZ;
         ensureEmitCapacity(quadBytes);
         emitQuad(minCell, 0.0, minCell, uWest, vNorth, maxCell, 0.0, minCell, uEast, vNorth,
             maxCell, 0.0, maxCell, uEast, vSouth, minCell, 0.0, maxCell, uWest, vSouth, FACE_UP, NORMAL_POS_Y);
@@ -185,7 +185,7 @@ final class CloudVertexMesh {
                double cellHeightBlocks, float scrollX, float scrollZ,
                boolean emitUnderside, boolean emitTopSurface, boolean emitPlates,
                int wallCut, int plateLodCells, boolean untextured, boolean forPack) {
-        beginBuild(untextured, forPack);
+        beginBuild(shape, untextured, forPack);
         this.wallCutCells = wallCut;
         buildAnchorX = anchorX;
         buildAnchorZ = anchorZ;
@@ -211,12 +211,14 @@ final class CloudVertexMesh {
 
     void buildInterior(CloudShape shape, int anchorX, int anchorZ, double deckTopY,
                        float scrollX, float scrollZ, boolean untextured, boolean forPack) {
-        beginBuild(untextured, forPack);
+        beginBuild(shape, untextured, forPack);
         addInteriorFaces(shape, anchorX, anchorZ, deckTopY, scrollX, scrollZ);
         finishGeometry();
     }
 
-    private void beginBuild(boolean untextured, boolean forPack) {
+    private void beginBuild(CloudShape shape, boolean untextured, boolean forPack) {
+        textureScaleX = 1.0f / shape.width;
+        textureScaleZ = 1.0f / shape.height;
         forPackShader = forPack;
         if (!forPack && quadCell.length < quadFace.length) {
             quadCell = new int[quadFace.length];
@@ -455,9 +457,9 @@ final class CloudVertexMesh {
 
         if (dir == DIR_WEST || dir == DIR_EAST) {
             final double z1 = relZ + span;
-            final float uCentre = (relX + 0.5F) * SCROLL_SPEED + scrollX;
-            final float vNorth = relZ * SCROLL_SPEED + scrollZ;
-            final float vSouth = (relZ + span) * SCROLL_SPEED + scrollZ;
+            final float uCentre = (relX + 0.5F) * textureScaleX + scrollX;
+            final float vNorth = relZ * textureScaleZ + scrollZ;
+            final float vSouth = (relZ + span) * textureScaleZ + scrollZ;
             if (dir == DIR_WEST) {
                 emitQuad(x0, 0.0, z1, uCentre, vSouth, x0, deckTopY, z1, uCentre, vSouth,
                     x0, deckTopY, z0, uCentre, vNorth, x0, 0.0, z0, uCentre, vNorth, FACE_SIDE_X, NORMAL_NEG_X);
@@ -468,9 +470,9 @@ final class CloudVertexMesh {
             }
         } else {
             final double x1 = relX + span;
-            final float uLeft = relX * SCROLL_SPEED + scrollX;
-            final float uRight = (relX + span) * SCROLL_SPEED + scrollX;
-            final float vCentre = (relZ + 0.5F) * SCROLL_SPEED + scrollZ;
+            final float uLeft = relX * textureScaleX + scrollX;
+            final float uRight = (relX + span) * textureScaleX + scrollX;
+            final float vCentre = (relZ + 0.5F) * textureScaleZ + scrollZ;
             if (dir == DIR_NORTH) {
                 emitQuad(x0, deckTopY, z0, uLeft, vCentre, x1, deckTopY, z0, uRight, vCentre,
                     x1, 0.0, z0, uRight, vCentre, x0, 0.0, z0, uLeft, vCentre, FACE_SIDE_Z, NORMAL_NEG_Z);
@@ -485,10 +487,10 @@ final class CloudVertexMesh {
     private void emitPlateRect(int relX0, int relZ0, int relX1, int relZ1, boolean emitUnderside, boolean emitTopSurface,
                                double plateTopY, float scrollX, float scrollZ, int bytesPerRect) {
         final double x0 = relX0, x1 = relX1, z0 = relZ0, z1 = relZ1;
-        final float uLeft = relX0 * SCROLL_SPEED + scrollX;
-        final float uRight = relX1 * SCROLL_SPEED + scrollX;
-        final float vNorth = relZ0 * SCROLL_SPEED + scrollZ;
-        final float vSouth = relZ1 * SCROLL_SPEED + scrollZ;
+        final float uLeft = relX0 * textureScaleX + scrollX;
+        final float uRight = relX1 * textureScaleX + scrollX;
+        final float vNorth = relZ0 * textureScaleZ + scrollZ;
+        final float vSouth = relZ1 * textureScaleZ + scrollZ;
 
         ensureEmitCapacity(bytesPerRect);
         if (emitUnderside) {
@@ -511,11 +513,11 @@ final class CloudVertexMesh {
         nextQuadCellZ = 0;
 
         final float uLeft = scrollX;
-        final float uRight = SCROLL_SPEED + scrollX;
-        final float uCentre = 0.5F * SCROLL_SPEED + scrollX;
+        final float uRight = textureScaleX + scrollX;
+        final float uCentre = 0.5F * textureScaleX + scrollX;
         final float vNorth = scrollZ;
-        final float vSouth = SCROLL_SPEED + scrollZ;
-        final float vCentre = 0.5F * SCROLL_SPEED + scrollZ;
+        final float vSouth = textureScaleZ + scrollZ;
+        final float vCentre = 0.5F * textureScaleZ + scrollZ;
 
         final double x0 = 0.0;
         final double x1 = 1.0;
@@ -689,7 +691,7 @@ final class CloudVertexMesh {
                 default -> false;
             };
 
-            int band = (int) (Math.sqrt(cx * cx + cz * cz) * ORDER_BANDS_PER_CELL);
+            int band = (int) (Math.sqrt((double) cx * cx + (double) cz * cz) * ORDER_BANDS_PER_CELL);
             if (band >= bands) band = bands - 1;
 
             final int groupSlot = facingAway ? 2 + 2 * WEDGE_COUNT : switch (group) {

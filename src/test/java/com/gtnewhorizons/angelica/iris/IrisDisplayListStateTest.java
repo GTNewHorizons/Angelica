@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.iris;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.recording.GLCommand;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.Iris;
@@ -101,14 +102,16 @@ class IrisDisplayListStateTest {
                 GLStateManager.glActiveTexture(GL13.GL_TEXTURE3);
                 final int list = newList();
                 GLStateManager.glNewList(list, mode);
-                final long outer = GbufferPrograms.pushCutoutDefaults();
-                final long inner = GbufferPrograms.pushCutoutDefaults();
+                final int outer = GLStateManager.pushState(StateSet.CUTOUT);
+                GbufferPrograms.setCutoutDefaults();
+                final int inner = GLStateManager.pushState(StateSet.CUTOUT);
+                GbufferPrograms.setCutoutDefaults();
                 GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
                 GLStateManager.disableTexture();
                 GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
-                GbufferPrograms.popCutoutDefaults(inner);
+                GLStateManager.popStateTo(inner);
                 DisplayListManager.recordStateCommand(() -> assertTrue(GLStateManager.getTextures().getTextureUnitStates(1).isEnabled()));
-                GbufferPrograms.popCutoutDefaults(outer);
+                GLStateManager.popStateTo(outer);
                 GLStateManager.glEndList();
 
                 for (boolean lightmap : new boolean[] {true, false}) {
@@ -139,21 +142,21 @@ class IrisDisplayListStateTest {
                 GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
                 final int child = newList();
                 GLStateManager.glNewList(child, mode);
-                final int scope = GbufferPrograms.pushBlendState();
+                final int scope = GLStateManager.pushState(StateSet.BLEND);
                 GLStateManager.disableBlend();
                 GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
-                GbufferPrograms.popBlendState(scope);
+                GLStateManager.popStateTo(scope);
                 GLStateManager.glEndList();
                 final int parent = newList();
                 GLStateManager.glNewList(parent, mode);
-                GbufferPrograms.pushBlendState();
+                final int parentScope = GLStateManager.pushState(StateSet.BLEND);
                 GLStateManager.glCallList(child);
-                GbufferPrograms.popBlendStateTop();
+                GLStateManager.popStateTo(parentScope);
                 GLStateManager.glEndList();
 
                 GLStateManager.enableBlend();
                 GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ZERO, GL11.GL_ONE);
-                final int caller = GbufferPrograms.pushBlendState();
+                final int caller = GLStateManager.pushState(StateSet.BLEND);
                 try {
                     GLStateManager.glCallList(parent);
                     assertTrue(GLStateManager.isEffectiveBlendEnabled());
@@ -162,9 +165,9 @@ class IrisDisplayListStateTest {
                     assertEquals(GL11.GL_ONE_MINUS_SRC_ALPHA, blend.getDstRgb());
                     assertEquals(GL11.GL_ZERO, blend.getSrcAlpha());
                     assertEquals(GL11.GL_ONE, blend.getDstAlpha());
-                    assertEquals(caller + 1, Reflect.<Integer>getStatic(GbufferPrograms.class, "blendDepth"));
+                    assertEquals(caller + 1, GLStateManager.getAttribDepth());
                 } finally {
-                    GbufferPrograms.popBlendState(caller);
+                    GLStateManager.popStateTo(caller);
                 }
             }
         } finally {

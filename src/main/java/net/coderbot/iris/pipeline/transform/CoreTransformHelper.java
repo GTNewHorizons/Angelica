@@ -35,6 +35,20 @@ class CoreTransformHelper {
                 transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
                 transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
             }
+            case WEATHER -> {
+                transformer.injectVariable("layout(location = " + VertexFormatElement.Usage.PRIMARY_UV.getAttributeLocation() + ") in vec2 iris_WeatherCorner;");
+                injectAttributeDecls(transformer, instancing);
+                transformer.injectVariable("uniform vec4 iris_WeatherParams0;");
+                transformer.injectVariable("uniform vec4 iris_WeatherParams1;");
+                transformer.injectVariable("uniform vec4 iris_WeatherParams2;");
+                transformer.injectVariable("vec4 iris_Vertex;");
+                transformer.injectVariable("vec4 iris_Color;");
+                transformer.injectVariable("vec4 iris_MultiTexCoord0;");
+                transformer.injectVariable("vec4 iris_MultiTexCoord1;");
+                transformer.injectVariable("uniform mat4 iris_ModelViewMatrix;");
+                transformer.injectVariable("uniform mat4 iris_ModelViewMatrixInverse;");
+                transformer.injectVariable("uniform mat3 iris_NormalMatrix;");
+            }
             case TEMPLATE, CUBE -> {
                 injectAttributeDecls(transformer, instancing);
                 transformer.injectVariable("mat4 iris_ModelViewMatrix;");

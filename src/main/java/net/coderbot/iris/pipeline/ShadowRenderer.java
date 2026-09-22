@@ -8,7 +8,6 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
-import com.gtnewhorizons.angelica.glsm.states.AlphaState;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
@@ -82,7 +81,6 @@ public class ShadowRenderer {
 	private static final Tracy.ZoneId Z_SHADOW_FRUSTUM = Tracy.zoneId("shadowFrustum", Tracy.COLOR_IRIS);
 	private static final Tracy.ZoneId Z_SHADOW_VIEWPORT = Tracy.zoneId("shadowViewport", Tracy.COLOR_IRIS);
 	private static final Tracy.ZoneId Z_SHADOW_MODEL_PARTS = Tracy.zoneId("shadowModelParts", Tracy.COLOR_IRIS);
-	private static final AlphaState alphaScratch = new AlphaState();
 
 	public static final Matrix4f MODELVIEW = new Matrix4f();
     public static final FloatBuffer MODELVIEW_BUFFER = BufferUtils.createFloatBuffer(16);
@@ -683,17 +681,10 @@ public class ShadowRenderer {
     /** Flushes deferred shadow-pass geometry while GL_POLYGON_OFFSET_FILL is still enabled. */
     private static void flushShadowModelParts() {
         if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_MODEL_PARTS);
-        final boolean alphaEnabled = GLStateManager.isEffectiveAlphaTestEnabled();
-        final AlphaState savedAlpha = GLStateManager.getEffectiveAlphaState(alphaScratch);
-        final int alphaFunc = savedAlpha.getFunction();
-        final float alphaRef = savedAlpha.getReference();
         try {
             ModelPartBatcher.INSTANCE.flush();
             PlayerReflectionCapture.flush();
         } finally {
-            if (alphaEnabled) GLStateManager.enableAlphaTest();
-            else GLStateManager.disableAlphaTest();
-            GLStateManager.glAlphaFunc(alphaFunc, alphaRef);
             if (Tracy.ENABLED) Tracy.endZone();
         }
     }

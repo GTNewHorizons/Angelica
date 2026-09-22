@@ -49,6 +49,7 @@ public class BooleanState implements ISettableState<BooleanState> {
             GLStateManager.beforeUncapturedCapabilityChange(glCap);
             stateUnknown = false;
             this.enabled = enabled;
+            onEnabledChanged();
             if (!ffpStateOnly) {
                 if (enabled) {
                     RENDER_BACKEND.enable(this.glCap);
@@ -58,6 +59,8 @@ public class BooleanState implements ISettableState<BooleanState> {
             }
         }
     }
+
+    protected void onEnabledChanged() {}
 
     @Override
     public BooleanState set(BooleanState state) {

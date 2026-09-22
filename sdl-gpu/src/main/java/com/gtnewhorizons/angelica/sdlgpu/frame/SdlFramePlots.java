@@ -57,7 +57,16 @@ final class SdlFramePlots {
     private static final long PLOT_BUFFER_POOL_HITS = Tracy.plotHandle("sdl.bufferPoolHits");
     private static final long PLOT_PIPELINE_KEY_RECOMPUTES = Tracy.plotHandle("sdl.pipelineKeyRecomputes");
     private static final long PLOT_PIPELINE_FAST_PATH_HITS = Tracy.plotHandle("sdl.pipelineFastPathHits");
+    private static final long PLOT_INPUT_HASH_LOOPS = Tracy.plotHandle("sdl.inputHashLoops");
+    private static final long PLOT_INPUT_HASH_HITS = Tracy.plotHandle("sdl.inputHash.hits");
     private static final long PLOT_MID_FRAME_SUBMITS = Tracy.plotHandle("sdl.midFrameSubmits");
+    private static final long PLOT_IN_PASS_CLEARS = Tracy.plotHandle("sdl.clears.inPass");
+    private static final long PLOT_PASS_END_CLEAR = Tracy.plotHandle("sdl.passEnd.clear");
+    private static final long PLOT_PASS_END_COMPUTE = Tracy.plotHandle("sdl.passEnd.compute");
+    private static final long PLOT_PASS_END_COPY = Tracy.plotHandle("sdl.passEnd.copy");
+    private static final long PLOT_PASS_END_TARGET = Tracy.plotHandle("sdl.passEnd.target");
+    private static final long PLOT_PASS_END_UNIFORM_BLOCK = Tracy.plotHandle("sdl.passEnd.uniformBlock");
+    private static final long PLOT_PASS_END_FRAME_END = Tracy.plotHandle("sdl.passEnd.frameEnd");
 
     private static final int[] contextCounters = new int[SDLGPURenderBackend.CTR_COUNT];
 
@@ -80,6 +89,8 @@ final class SdlFramePlots {
         Tracy.plotInt(PLOT_BUFFER_POOL_HITS, resourceManager.takeBufferPoolHitCount());
         Tracy.plotInt(PLOT_PIPELINE_KEY_RECOMPUTES, contextCounters[SDLGPURenderBackend.CTR_KEY_RECOMPUTES]);
         Tracy.plotInt(PLOT_PIPELINE_FAST_PATH_HITS, contextCounters[SDLGPURenderBackend.CTR_FAST_PATH_HITS]);
+        Tracy.plotInt(PLOT_INPUT_HASH_LOOPS, contextCounters[SDLGPURenderBackend.CTR_INPUT_HASH_LOOPS]);
+        Tracy.plotInt(PLOT_INPUT_HASH_HITS, contextCounters[SDLGPURenderBackend.CTR_INPUT_HASH_HITS]);
         Tracy.plotInt(PLOT_COMPUTE_PASSES, f.computePassesThisFrame);
         Tracy.plotInt(PLOT_COMPUTE_BATCH_JOINS, f.computeBatchJoinsThisFrame);
         Tracy.plotInt(PLOT_SUBMITS, f.submitsThisFrame);
@@ -111,5 +122,12 @@ final class SdlFramePlots {
         Tracy.plotInt(PLOT_EMPTY_FRAMES, f.emptyFramesThisFrame);
         Tracy.plotInt(PLOT_DROPPED_DRAWS, f.droppedDrawsThisFrame);
         Tracy.plotInt(PLOT_MID_FRAME_SUBMITS, f.midFrameSubmitsThisFrame);
+        Tracy.plotInt(PLOT_IN_PASS_CLEARS, f.inPassClearsThisFrame);
+        Tracy.plotInt(PLOT_PASS_END_CLEAR, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_CLEAR]);
+        Tracy.plotInt(PLOT_PASS_END_COMPUTE, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_COMPUTE]);
+        Tracy.plotInt(PLOT_PASS_END_COPY, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_COPY]);
+        Tracy.plotInt(PLOT_PASS_END_TARGET, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_TARGET]);
+        Tracy.plotInt(PLOT_PASS_END_UNIFORM_BLOCK, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_UNIFORM_BLOCK]);
+        Tracy.plotInt(PLOT_PASS_END_FRAME_END, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_FRAME_END]);
     }
 }

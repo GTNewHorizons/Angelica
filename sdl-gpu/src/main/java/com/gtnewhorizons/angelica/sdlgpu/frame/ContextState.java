@@ -26,6 +26,7 @@ import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 import java.nio.FloatBuffer;
+import java.util.Arrays;
 
 /**
  * Per-thread (per-GL-context) client state for {@link SDLGPURenderBackend}.
@@ -93,6 +94,16 @@ public final class ContextState {
         public final int[] bindingStride = new int[MAX_VERTEX_ATTRIBS];
         public final int[] bindingDivisor = new int[MAX_VERTEX_ATTRIBS];
         public int elementBuffer;
+
+        public static final int INPUT_HASH_SLOTS = 8;
+        public final int[] slotInputSetId = new int[INPUT_HASH_SLOTS];
+        public final int[] slotEnabledMask = new int[INPUT_HASH_SLOTS];
+        public final int[] slotMaxAttribs = new int[INPUT_HASH_SLOTS];
+        public final long[] slotHash = new long[INPUT_HASH_SLOTS];
+        public int slotsLivenessGen;
+        public int slotCursor;
+        public void invalidateInputHash() { Arrays.fill(slotInputSetId, 0); }
+
         public VAOState() { for (int i = 0; i < MAX_VERTEX_ATTRIBS; i++) attribBinding[i] = i; }
     }
 

@@ -16,6 +16,7 @@ glslTransformLib = "0.2.0-33.g3ec381e"
 antlr4Runtime = "4.13.2"
 jcpp = "1.4.14"
 tracy = "0.14.0"
+asyncProfiler = "4.4"
 retroFuturaBootstrap = "1.1.0"
 
 lombok = "1.18.46"
@@ -38,6 +39,7 @@ eventbus = { module = "net.minecraftforge:eventbus", version.ref = "eventbus" }
 glsl-transformation-lib = { module = "org.taumc:glsl-transformation-lib", version.ref = "glslTransformLib" }
 antlr4-runtime = { module = "org.antlr:antlr4-runtime", version.ref = "antlr4Runtime" }
 jcpp = { module = "org.anarres:jcpp", version.ref = "jcpp" }
+async-profiler = { module = "tools.profiler:async-profiler", version.ref = "asyncProfiler" }
 lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
 annotations = { module = "org.jetbrains:annotations", version.ref = "jetbrainsAnnotations" }
 log4j-api = { module = "org.apache.logging.log4j:log4j-api", version.ref = "log4j" }

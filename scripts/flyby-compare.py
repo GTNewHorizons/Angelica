@@ -14,8 +14,9 @@ PLOTS = [
     "items.bail.ineligible", "items.bail.material", "items.bail.isbrh", "items.bail.blockState", "items.bail.notAllowed", "items.bail.template", "items.bail.queue",
     "particles.direct", "particles.captured", "particles.spilled", "particles.undecodable", "particles.draws", "sdl.renderPasses", "sdl.submits", "sdl.gpuWaitUs",
     "sdl.acquireWaitUs",
+    "weather.strength", "weather.quads", "weather.drawCalls", "weather.micros",
 ]
-ZONES = ["entityModelParts", "tesrBatch", "tesrInstanced", "entityLayerLoop", "tesrOpaque", "particlePass"]
+ZONES = ["entityModelParts", "tesrBatch", "tesrInstanced", "entityLayerLoop", "tesrOpaque", "particlePass", "cl:weather"]
 CLOCK = "gl.drawCalls"
 
 

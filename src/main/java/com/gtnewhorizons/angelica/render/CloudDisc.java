@@ -11,7 +11,6 @@ final class CloudDisc {
     static final int WEDGE_COUNT = 32;
     static final double WEDGES_PER_RADIAN = WEDGE_COUNT / (2.0 * Math.PI);
     static final int ALWAYS_DRAWN_CELLS = Math.max(CELLS_PER_CHUNK, 4 * MARGIN_CELLS);
-    static final float SCROLL_SPEED = 1.0f / 256.0f;
     private static final double WALL_CUT_PIXELS = 0.625;
     private static final double PLATE_LOD_PIXELS = 0.35;
     private static final double TAN_11_25_DEG = 0.19891236737965800; // √(4+2√2)−√2−1
@@ -26,6 +25,23 @@ final class CloudDisc {
     }
 
     private CloudDisc() {
+    }
+
+    static double cellCoordinate(double worldPosition, float cellWidthBlocks, double offset) {
+        return worldPosition / cellWidthBlocks + offset;
+    }
+
+    static float textureOffset(int anchor, int textureSize) {
+        return Math.floorMod(anchor, textureSize) * (1.0f / textureSize);
+    }
+
+    static boolean withinMargin(int driftX, int driftZ) {
+        // Reject distant anchors before squaring
+        return driftX >= -MARGIN_CELLS && driftX <= MARGIN_CELLS && driftZ >= -MARGIN_CELLS && driftZ <= MARGIN_CELLS && driftX * driftX + driftZ * driftZ <= MARGIN_CELLS * MARGIN_CELLS;
+    }
+
+    static boolean withinDisc(long driftX, long driftZ, int radiusCells) {
+        return driftX >= -radiusCells && driftX <= radiusCells && driftZ >= -radiusCells && driftZ <= radiusCells && driftX * driftX + driftZ * driftZ <= (long) radiusCells * radiusCells;
     }
 
     static double pixelsPerRadian(int displayHeight, float fovDegrees) {

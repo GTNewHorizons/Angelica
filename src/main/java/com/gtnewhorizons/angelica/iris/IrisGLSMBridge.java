@@ -10,8 +10,6 @@ import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import org.taumc.glsl.grammar.GLSLParser;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
-import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
-import com.gtnewhorizons.angelica.glsm.hooks.VanillaStateLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import net.coderbot.iris.Iris;
@@ -90,44 +88,6 @@ public class IrisGLSMBridge {
         };
     }
 
-    private static VanillaBooleanLayer gated(VanillaBooleanLayer layer) {
-        return new VanillaBooleanLayer() {
-            @Override
-            public boolean isOverrideHeld() {
-                return Iris.enabled && layer.isOverrideHeld();
-            }
-
-            @Override
-            public boolean getVanilla() {
-                return layer.getVanilla();
-            }
-
-            @Override
-            public void setVanilla(boolean enabled) {
-                layer.setVanilla(enabled);
-            }
-        };
-    }
-
-    private static <T> VanillaStateLayer<T> gated(VanillaStateLayer<T> layer) {
-        return new VanillaStateLayer<>() {
-            @Override
-            public boolean isOverrideHeld() {
-                return Iris.enabled && layer.isOverrideHeld();
-            }
-
-            @Override
-            public void readVanilla(T into) {
-                layer.readVanilla(into);
-            }
-
-            @Override
-            public void writeVanilla(T from) {
-                layer.writeVanilla(from);
-            }
-        };
-    }
-
     public static void register() {
         GLSMConfig.expandVertexFormats = Iris.enabled;
         IrisSamplers.initRenderer();
@@ -165,12 +125,12 @@ public class IrisGLSMBridge {
             }
         };
 
-        GLStateManager.getBlendMode().setVanillaLayer(gated(BlendModeStorage.ENABLE_LAYER));
-        GLStateManager.getBlendState().setVanillaLayer(gated(BlendModeStorage.FUNC_LAYER));
-        GLStateManager.getAlphaTest().setVanillaLayer(gated(AlphaTestStorage.ENABLE_LAYER));
-        GLStateManager.getAlphaState().setVanillaLayer(gated(AlphaTestStorage.FUNC_LAYER));
-        GLStateManager.getDepthState().setVanillaLayer(gated(DepthColorStorage.DEPTH_LAYER));
-        GLStateManager.getColorMask().setVanillaLayer(gated(DepthColorStorage.COLOR_LAYER));
+        GLStateManager.getBlendMode().setVanillaLayer(BlendModeStorage.ENABLE_LAYER);
+        GLStateManager.getBlendState().setVanillaLayer(BlendModeStorage.FUNC_LAYER);
+        GLStateManager.getAlphaTest().setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
+        GLStateManager.getAlphaState().setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
+        GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+        GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
 
         GLSMHooks.alphaHandler = new DeferredAlphaHandler() {
             @Override
@@ -179,13 +139,13 @@ public class IrisGLSMBridge {
             }
 
             @Override
-            public void deferAlphaTestToggle(boolean enabled) {
-                AlphaTestStorage.deferAlphaTestToggle(enabled);
+            public boolean deferAlphaTestToggle(boolean enabled) {
+                return AlphaTestStorage.deferAlphaTestToggle(enabled);
             }
 
             @Override
-            public void deferAlphaFunc(int function, float reference) {
-                AlphaTestStorage.deferAlphaFunc(function, reference);
+            public boolean deferAlphaFunc(int function, float reference) {
+                return AlphaTestStorage.deferAlphaFunc(function, reference);
             }
         };
 

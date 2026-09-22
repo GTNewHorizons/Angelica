@@ -10,6 +10,8 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.system.MemoryStack;
 import org.lwjgl.util.spvc.Spvc;
 
+import java.util.Random;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -34,13 +36,33 @@ class PipelineCacheVertexInputTest {
         store = new PipelineStore(null);
     }
 
+    private static int nextTestSetId = 1;
+
     private static PipelineCache cache(int shaderInputMask, int[] vecSizes, int[] baseTypes) {
+        return cache(nextTestSetId++, shaderInputMask, vecSizes, baseTypes);
+    }
+
+    private static PipelineCache cache(int vertexInputSetId, int shaderInputMask, int[] vecSizes, int[] baseTypes) {
         final PipelineCache c = new PipelineCache();
-        c.maxAttribs = ContextState.MAX_VERTEX_ATTRIBS;
-        c.shaderInputMask = shaderInputMask;
-        c.shaderInputVecSize = vecSizes;
-        c.shaderInputBaseType = baseTypes;
+        c.setMaxAttribs(ContextState.MAX_VERTEX_ATTRIBS);
+        c.setVertexInputs(shaderInputMask, vecSizes, baseTypes, new String[ContextState.MAX_VERTEX_ATTRIBS], vertexInputSetId);
         return c;
+    }
+
+    private static void copyVaoState(ContextState.VAOState src, ContextState.VAOState dst) {
+        System.arraycopy(src.attribEnabled, 0, dst.attribEnabled, 0, src.attribEnabled.length);
+        dst.attribEnabledMask = src.attribEnabledMask;
+        System.arraycopy(src.attribSize, 0, dst.attribSize, 0, src.attribSize.length);
+        System.arraycopy(src.attribType, 0, dst.attribType, 0, src.attribType.length);
+        System.arraycopy(src.attribNormalized, 0, dst.attribNormalized, 0, src.attribNormalized.length);
+        System.arraycopy(src.attribIsInteger, 0, dst.attribIsInteger, 0, src.attribIsInteger.length);
+        System.arraycopy(src.attribStride, 0, dst.attribStride, 0, src.attribStride.length);
+        System.arraycopy(src.attribBinding, 0, dst.attribBinding, 0, src.attribBinding.length);
+        System.arraycopy(src.attribRelativeOffset, 0, dst.attribRelativeOffset, 0, src.attribRelativeOffset.length);
+        System.arraycopy(src.bindingBuffer, 0, dst.bindingBuffer, 0, src.bindingBuffer.length);
+        System.arraycopy(src.bindingOffset, 0, dst.bindingOffset, 0, src.bindingOffset.length);
+        System.arraycopy(src.bindingStride, 0, dst.bindingStride, 0, src.bindingStride.length);
+        System.arraycopy(src.bindingDivisor, 0, dst.bindingDivisor, 0, src.bindingDivisor.length);
     }
 
     private static void enableFloatAttrib(ContextState cs, int loc, int size, int stride) {
@@ -440,6 +462,7 @@ class PipelineCacheVertexInputTest {
         store.setBufferHandleResolver(id -> 0xBEEFL); // both live
         final long liveKey = c.computeKey(store, cs);
         store.setBufferHandleResolver(id -> id == 42 ? 0xBEEFL : 0L); // loc 1's buffer dead
+        store.bumpLivenessGen();
         final long deadKey = c.computeKey(store, cs);
 
         assertTrue(liveKey != deadKey, "demotion must produce a distinct pipeline key or a cached per-vertex pipeline would be reused for the constant layout");
@@ -456,15 +479,14 @@ class PipelineCacheVertexInputTest {
     }
 
     @Test
-    void programInputSignatureChangeInvalidatesInputHash() {
+    void vertexInputSetIdChangeInvalidatesInputHash() {
         final int[] vecSizesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
         vecSizesA[0] = 3;
         final int[] baseTypesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
         baseTypesA[0] = Spvc.SPVC_BASETYPE_FP32;
         final String[] namesA = new String[ContextState.MAX_VERTEX_ATTRIBS];
         namesA[0] = "a_Pos";
-        final PipelineCache c = cache(0x1, vecSizesA, baseTypesA);
-        c.shaderInputName = namesA;
+        final PipelineCache c = cache(1, 0x1, vecSizesA, baseTypesA);
 
         final ContextState cs = new ContextState();
         enableFloatAttrib(cs, 0, 3, 12);
@@ -473,13 +495,13 @@ class PipelineCacheVertexInputTest {
         final boolean dirtyAfterKeyA = Reflect.get(c, "inputDirty");
         assertFalse(dirtyAfterKeyA, "currentKey must clear the dirty flag once recomputed");
 
-        c.setVertexInputs(0x1, vecSizesA, baseTypesA, namesA);
-        final boolean dirtyAfterSameSignature = Reflect.get(c, "inputDirty");
-        assertFalse(dirtyAfterSameSignature, "an identical signature must not force a rehash");
+        c.setVertexInputs(0x1, vecSizesA, baseTypesA, namesA, 1);
+        final boolean dirtyAfterSameId = Reflect.get(c, "inputDirty");
+        assertFalse(dirtyAfterSameId, "an identical input-set id must not force a rehash");
 
-        c.setVertexInputs(0x1, vecSizesA.clone(), baseTypesA.clone(), namesA.clone());
-        final boolean dirtyAfterEqualCopies = Reflect.get(c, "inputDirty");
-        assertFalse(dirtyAfterEqualCopies, "another program with an equal signature must not force a rehash");
+        c.setVertexInputs(0x1, vecSizesA.clone(), baseTypesA.clone(), namesA.clone(), 1);
+        final boolean dirtyAfterSameIdDistinctArrays = Reflect.get(c, "inputDirty");
+        assertFalse(dirtyAfterSameIdDistinctArrays, "the same interned id must not force a rehash even with distinct array instances");
 
         final int[] vecSizesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
         vecSizesB[0] = 3; vecSizesB[1] = 4;
@@ -488,9 +510,9 @@ class PipelineCacheVertexInputTest {
         final String[] namesB = new String[ContextState.MAX_VERTEX_ATTRIBS];
         namesB[0] = "a_Pos"; namesB[1] = "a_Extra";
 
-        c.setVertexInputs(0x3, vecSizesB, baseTypesB, namesB);
-        final boolean dirtyAfterChangedSignature = Reflect.get(c, "inputDirty");
-        assertTrue(dirtyAfterChangedSignature, "a changed vertex-input signature must invalidate the cached input hash");
+        c.setVertexInputs(0x3, vecSizesB, baseTypesB, namesB, 2);
+        final boolean dirtyAfterChangedId = Reflect.get(c, "inputDirty");
+        assertTrue(dirtyAfterChangedId, "a changed input-set id must invalidate the cached input hash");
 
         final long keyB = Reflect.invoke(c, "currentKey", new Class<?>[] { PipelineStore.class, ContextState.class }, store, cs);
         assertTrue(keyA != keyB, "currentKey must reflect the new signature, not a stale cached input hash");
@@ -516,6 +538,339 @@ class PipelineCacheVertexInputTest {
             for (int i = 0; i < r.numBuffers(); i++) {
                 assertEquals(i, r.bindings().get(i).slot(), "binding[" + i + "].slot must equal its array index");
             }
+        }
+    }
+
+    @Test
+    void offsetOnlyPointerChange_keepsKeyAndSkipsRecompute() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[0] = 3;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[0] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(0x1, vecSizes, baseTypes);
+
+        final ContextState cs = new ContextState();
+        final VertexAttribs attribs = new VertexAttribs();
+        attribs.applyVertexAttribPointer(store, cs, 0, 3, GL11.GL_FLOAT, false, false, 12, 100L);
+
+        final long keyA = c.computeKey(store, cs);
+        final int runsAfterA = c.inputHashLoopRuns;
+
+        attribs.applyVertexAttribPointer(store, cs, 0, 3, GL11.GL_FLOAT, false, false, 12, 104L);
+        final long keyB = c.computeKey(store, cs);
+
+        assertEquals(keyA, keyB, "an offset change that keeps the alignment class must not change the pipeline key");
+        assertEquals(runsAfterA, c.inputHashLoopRuns, "an offset-only change must not force the input-hash loop to rerun");
+    }
+
+    @Test
+    void identicalReissuedPointer_isNoOp() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[0] = 3;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[0] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(0x1, vecSizes, baseTypes);
+
+        final ContextState cs = new ContextState();
+        final VertexAttribs attribs = new VertexAttribs();
+        attribs.applyVertexAttribPointer(store, cs, 0, 3, GL11.GL_FLOAT, false, false, 12, 100L);
+
+        final long keyA = c.computeKey(store, cs);
+        final int runsAfterA = c.inputHashLoopRuns;
+
+        attribs.applyVertexAttribPointer(store, cs, 0, 3, GL11.GL_FLOAT, false, false, 12, 100L);
+        final long keyB = c.computeKey(store, cs);
+
+        assertEquals(keyA, keyB, "an identical re-issued pointer must not change the key");
+        assertEquals(runsAfterA, c.inputHashLoopRuns, "an identical re-issued pointer must be a no-op and not force a rehash");
+    }
+
+    @Test
+    void twoEqualLayoutVaosShareKey() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[0] = 3; vecSizes[1] = 4;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[0] = Spvc.SPVC_BASETYPE_FP32; baseTypes[1] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(0x3, vecSizes, baseTypes);
+
+        final ContextState csA = new ContextState();
+        enableFloatAttrib(csA, 0, 3, 28);
+        enableFloatAttrib(csA, 1, 4, 28);
+
+        final ContextState csB = new ContextState();
+        enableFloatAttrib(csB, 0, 3, 28);
+        enableFloatAttrib(csB, 1, 4, 28);
+
+        assertEquals(c.computeKey(store, csA), c.computeKey(store, csB), "two VAOs with identical layouts must hash to the same input key");
+    }
+
+    @Test
+    void everyLayoutFieldChangesKey() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[0] = 3;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[0] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(0x1, vecSizes, baseTypes);
+
+        final ContextState base = new ContextState();
+        enableFloatAttrib(base, 0, 3, 16);
+        final long baseKey = c.computeKey(store, base);
+
+        final ContextState sizeVariant = new ContextState();
+        enableFloatAttrib(sizeVariant, 0, 4, 16);
+        assertTrue(baseKey != c.computeKey(store, sizeVariant), "size must affect the input key");
+
+        final ContextState typeVariant = new ContextState();
+        enableAttrib(typeVariant, 0, 3, GL11.GL_UNSIGNED_BYTE, false, false, 16);
+        assertTrue(baseKey != c.computeKey(store, typeVariant), "type must affect the input key");
+
+        final ContextState normalizedVariant = new ContextState();
+        enableAttrib(normalizedVariant, 0, 3, GL11.GL_FLOAT, true, false, 16);
+        assertTrue(baseKey != c.computeKey(store, normalizedVariant), "normalized must affect the input key");
+
+        final ContextState integerVariant = new ContextState();
+        enableAttrib(integerVariant, 0, 3, GL11.GL_FLOAT, false, true, 16);
+        assertTrue(baseKey != c.computeKey(store, integerVariant), "isInteger must affect the input key");
+
+        final ContextState strideVariant = new ContextState();
+        enableFloatAttrib(strideVariant, 0, 3, 20);
+        assertTrue(baseKey != c.computeKey(store, strideVariant), "stride must affect the input key");
+
+        final ContextState bindingStrideVariant = new ContextState();
+        enableFloatAttrib(bindingStrideVariant, 0, 3, 16);
+        bindingStrideVariant.currentVao.bindingStride[0] = 20;
+        assertTrue(baseKey != c.computeKey(store, bindingStrideVariant), "binding stride must affect the input key");
+
+        final ContextState divisorVariant = new ContextState();
+        enableFloatAttrib(divisorVariant, 0, 3, 16);
+        divisorVariant.currentVao.bindingDivisor[0] = 1;
+        assertTrue(baseKey != c.computeKey(store, divisorVariant), "binding divisor must affect the input key");
+
+        final ContextState relativeOffsetVariant = new ContextState();
+        enableFloatAttrib(relativeOffsetVariant, 0, 3, 16);
+        relativeOffsetVariant.currentVao.attribRelativeOffset[0] = 4;
+        assertTrue(baseKey != c.computeKey(store, relativeOffsetVariant), "relative offset must affect the input key");
+
+        final ContextState bindingVariant = new ContextState();
+        enableFloatAttrib(bindingVariant, 0, 3, 16);
+        bindingVariant.currentVao.attribBinding[0] = 1;
+        assertTrue(baseKey != c.computeKey(store, bindingVariant), "binding index must affect the input key");
+
+        final ContextState misalignVariant = new ContextState();
+        enableFloatAttrib(misalignVariant, 0, 3, 16);
+        misalignVariant.currentVao.bindingOffset[0] = 1;
+        assertTrue(baseKey != c.computeKey(store, misalignVariant), "binding offset misalignment must affect the input key");
+
+        final ContextState disabledVariant = new ContextState();
+        assertTrue(baseKey != c.computeKey(store, disabledVariant), "enabled state must affect the input key");
+    }
+
+    @Test
+    void livenessGenBumpForcesRecompute() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[0] = 3;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[0] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(0x1, vecSizes, baseTypes);
+
+        final ContextState cs = new ContextState();
+        enableFloatAttrib(cs, 0, 3, 12);
+
+        c.computeKey(store, cs);
+        final int runsAfterFirst = c.inputHashLoopRuns;
+
+        c.computeKey(store, cs);
+        assertEquals(runsAfterFirst, c.inputHashLoopRuns, "an unchanged VAO must hit the cached input hash");
+
+        store.bumpLivenessGen();
+        c.computeKey(store, cs);
+        assertEquals(runsAfterFirst + 1, c.inputHashLoopRuns, "a liveness generation bump must force the input-hash loop to rerun");
+    }
+
+    @Test
+    void alternatingTwoInputSetsOnOneVao_loopRunsExactlyTwice() {
+        final int[] vecSizesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizesA[0] = 3;
+        final int[] baseTypesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypesA[0] = Spvc.SPVC_BASETYPE_FP32;
+        final int[] vecSizesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizesB[0] = 3; vecSizesB[1] = 4;
+        final int[] baseTypesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypesB[0] = Spvc.SPVC_BASETYPE_FP32; baseTypesB[1] = Spvc.SPVC_BASETYPE_FP32;
+        final String[] names = new String[ContextState.MAX_VERTEX_ATTRIBS];
+
+        final PipelineCache c = new PipelineCache();
+        c.setMaxAttribs(ContextState.MAX_VERTEX_ATTRIBS);
+
+        final ContextState cs = new ContextState();
+        enableFloatAttrib(cs, 0, 3, 12);
+        enableFloatAttrib(cs, 1, 4, 16);
+
+        c.setVertexInputs(0x1, vecSizesA, baseTypesA, names, 1);
+        c.computeKey(store, cs);
+        c.setVertexInputs(0x3, vecSizesB, baseTypesB, names, 2);
+        c.computeKey(store, cs);
+        c.setVertexInputs(0x1, vecSizesA, baseTypesA, names, 1);
+        c.computeKey(store, cs);
+        c.setVertexInputs(0x3, vecSizesB, baseTypesB, names, 2);
+        c.computeKey(store, cs);
+
+        assertEquals(2, c.inputHashLoopRuns, "alternating between two known input sets on one VAO must only recompute twice, then hit the cached slots");
+    }
+
+    @Test
+    void togglingOneAttribEnable_loopRunsExactlyTwice() {
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizes[0] = 3; vecSizes[1] = 4;
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypes[0] = Spvc.SPVC_BASETYPE_FP32; baseTypes[1] = Spvc.SPVC_BASETYPE_FP32;
+        final PipelineCache c = cache(1, 0x3, vecSizes, baseTypes);
+
+        final ContextState cs = new ContextState();
+        enableFloatAttrib(cs, 0, 3, 12);
+        enableFloatAttrib(cs, 1, 4, 16);
+        final ContextState.VAOState vao = cs.currentVao;
+
+        vao.attribEnabled[1] = false;
+        vao.attribEnabledMask &= ~(1 << 1);
+        c.computeKey(store, cs);
+
+        vao.attribEnabled[1] = true;
+        vao.attribEnabledMask |= (1 << 1);
+        c.computeKey(store, cs);
+
+        vao.attribEnabled[1] = false;
+        vao.attribEnabledMask &= ~(1 << 1);
+        c.computeKey(store, cs);
+
+        vao.attribEnabled[1] = true;
+        vao.attribEnabledMask |= (1 << 1);
+        c.computeKey(store, cs);
+
+        assertEquals(2, c.inputHashLoopRuns, "toggling one attrib's enabled state between two known masks must only recompute twice, then hit the cached slots");
+    }
+
+    @Test
+    void nineDistinctInputSets_correctKeysAfterEviction() {
+        final ContextState cs = new ContextState();
+        enableFloatAttrib(cs, 0, 3, 12);
+        final PipelineCache c = new PipelineCache();
+        c.setMaxAttribs(ContextState.MAX_VERTEX_ATTRIBS);
+        final int[] vecSizes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        final int[] baseTypes = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        final String[] names = new String[ContextState.MAX_VERTEX_ATTRIBS];
+
+        for (int mask = 1; mask <= 9; mask++) {
+            c.setVertexInputs(mask, vecSizes, baseTypes, names, mask);
+            c.computeKey(store, cs);
+        }
+
+        for (int mask = 1; mask <= 9; mask++) {
+            c.setVertexInputs(mask, vecSizes, baseTypes, names, mask);
+            final long recomputed = c.computeKey(store, cs);
+
+            final PipelineCache fresh = new PipelineCache();
+            fresh.setMaxAttribs(ContextState.MAX_VERTEX_ATTRIBS);
+            fresh.setVertexInputs(mask, vecSizes, baseTypes, names, mask);
+            final ContextState freshCs = new ContextState();
+            enableFloatAttrib(freshCs, 0, 3, 12);
+            final long reference = fresh.computeKey(store, freshCs);
+
+            assertEquals(reference, recomputed, "key for input set mask=" + mask + " must match a fresh, uncached computation even after 8-slot eviction");
+        }
+    }
+
+    @Test
+    void internVertexInputSet_equalSetsShareId_differentSetsDiffer() {
+        final ShaderManager sm = new ShaderManager(null);
+        final int[] vecSizesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizesA[0] = 3;
+        final int[] baseTypesA = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypesA[0] = Spvc.SPVC_BASETYPE_FP32;
+
+        final int idA1 = Reflect.invoke(sm, "internVertexInputSet", new Class<?>[] { int.class, int[].class, int[].class }, 0x1, vecSizesA, baseTypesA);
+        final int idA2 = Reflect.invoke(sm, "internVertexInputSet", new Class<?>[] { int.class, int[].class, int[].class }, 0x1, vecSizesA.clone(), baseTypesA.clone());
+        assertEquals(idA1, idA2, "two equal input sets, even from distinct array instances, must intern to the same id");
+
+        final int[] vecSizesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        vecSizesB[0] = 3; vecSizesB[1] = 4;
+        final int[] baseTypesB = new int[ContextState.MAX_VERTEX_ATTRIBS];
+        baseTypesB[0] = Spvc.SPVC_BASETYPE_FP32; baseTypesB[1] = Spvc.SPVC_BASETYPE_FP32;
+        final int idB = Reflect.invoke(sm, "internVertexInputSet", new Class<?>[] { int.class, int[].class, int[].class }, 0x3, vecSizesB, baseTypesB);
+        assertTrue(idA1 != idB, "different input sets must never share an id");
+        assertTrue(idA1 >= 1 && idB >= 1, "interned ids start at 1");
+    }
+
+    @Test
+    void randomizedCachedKeyMatchesFreshComputation() {
+        final Random rnd = new Random(12345L);
+
+        final int programCount = 4;
+        final int[] progMasks = { 0x1, 0x3, 0x5, 0x7 };
+        final int[][] progVecSizes = new int[programCount][];
+        final int[][] progBaseTypes = new int[programCount][];
+        for (int p = 0; p < programCount; p++) {
+            progVecSizes[p] = new int[ContextState.MAX_VERTEX_ATTRIBS];
+            progBaseTypes[p] = new int[ContextState.MAX_VERTEX_ATTRIBS];
+            for (int i = 0; i < 3; i++) {
+                progVecSizes[p][i] = 1 + ((p + i) % 4);
+                progBaseTypes[p][i] = (p + i) % 3;
+            }
+        }
+        final String[] names = new String[ContextState.MAX_VERTEX_ATTRIBS];
+
+        final PipelineCache cachedC = new PipelineCache();
+        cachedC.setMaxAttribs(ContextState.MAX_VERTEX_ATTRIBS);
+        final ContextState cachedCs = new ContextState();
+        int currentProgram = 0;
+        cachedC.setVertexInputs(progMasks[0], progVecSizes[0], progBaseTypes[0], names, 1);
+
+        for (int step = 0; step < 300; step++) {
+            final ContextState.VAOState vao = cachedCs.currentVao;
+            final int action = rnd.nextInt(5);
+            switch (action) {
+                case 0 -> {
+                    final int idx = rnd.nextInt(4);
+                    if (vao.attribEnabled[idx]) {
+                        vao.attribEnabled[idx] = false;
+                        vao.attribEnabledMask &= ~(1 << idx);
+                    } else {
+                        vao.attribEnabled[idx] = true;
+                        vao.attribEnabledMask |= (1 << idx);
+                        if (vao.attribType[idx] == 0) vao.attribType[idx] = GL11.GL_FLOAT;
+                    }
+                }
+                case 1 -> {
+                    final int idx = rnd.nextInt(4);
+                    vao.attribSize[idx] = 1 + rnd.nextInt(4);
+                    vao.attribType[idx] = GL11.GL_FLOAT;
+                    vao.attribStride[idx] = 4 + rnd.nextInt(28);
+                    vao.bindingStride[vao.attribBinding[idx]] = vao.attribStride[idx];
+                    vao.invalidateInputHash();
+                }
+                case 2 -> {
+                    final int idx = rnd.nextInt(4);
+                    vao.bindingDivisor[vao.attribBinding[idx]] = rnd.nextInt(2);
+                    vao.invalidateInputHash();
+                }
+                case 3 -> {
+                    currentProgram = rnd.nextInt(programCount);
+                    cachedC.setVertexInputs(progMasks[currentProgram], progVecSizes[currentProgram], progBaseTypes[currentProgram], names, currentProgram + 1);
+                }
+                case 4 -> store.bumpLivenessGen();
+                default -> throw new AssertionError("unreachable");
+            }
+
+            final long cachedKey = cachedC.computeKey(store, cachedCs);
+
+            final PipelineCache freshC = new PipelineCache();
+            freshC.setMaxAttribs(cachedC.maxAttribs());
+            freshC.setVertexInputs(progMasks[currentProgram], progVecSizes[currentProgram], progBaseTypes[currentProgram], names, currentProgram + 1);
+            final ContextState freshCs = new ContextState();
+            copyVaoState(vao, freshCs.currentVao);
+            final long freshKey = freshC.computeKey(store, freshCs);
+
+            assertEquals(freshKey, cachedKey, "step " + step + ": cached key must equal a from-scratch computation");
         }
     }
 }

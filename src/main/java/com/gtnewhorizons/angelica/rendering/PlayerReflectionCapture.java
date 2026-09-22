@@ -5,15 +5,14 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
-import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModelBoxQuads;
 import com.gtnewhorizons.angelica.rendering.tesr.PassRebindGate;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
-import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.image.GlImage;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
@@ -324,28 +323,19 @@ public final class PlayerReflectionCapture {
             if (skin64Valid) GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, skin64Tex);
         }
 
-        final boolean maskable = !DepthColorStorage.isDepthColorLocked();
-        final ColorMask prevColor = GLStateManager.getColorMask();
-        final boolean pr = prevColor.red, pg = prevColor.green, pb = prevColor.blue, pa = prevColor.alpha;
-        final boolean prevDepthWrite = GLStateManager.getDepthState().isEnabled();
-
         final int prevEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
         final int prevItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
         savedModelView.set(GLStateManager.getModelViewMatrix());
 
         CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(pendingEntityId, pendingItemId);
         GLStateManager.setModelViewMatrix(pendingModelView);
-        if (maskable) {
-            GLStateManager.glColorMask(false, false, false, false);
-            GLStateManager.glDepthMask(false);
-        }
+        final int maskStateDepth = GLStateManager.pushState(StateSet.MASKS);
+        GLStateManager.glColorMask(false, false, false, false);
+        GLStateManager.glDepthMask(false);
         try {
             QuadConverter.drawQuadsAsTriangles(0, VERTEX_COUNT);
         } finally {
-            if (maskable) {
-                GLStateManager.glDepthMask(prevDepthWrite);
-                GLStateManager.glColorMask(pr, pg, pb, pa);
-            }
+            GLStateManager.popStateTo(maskStateDepth);
             GLStateManager.setModelViewMatrix(savedModelView);
             CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(prevEntityId, prevItemId);
 

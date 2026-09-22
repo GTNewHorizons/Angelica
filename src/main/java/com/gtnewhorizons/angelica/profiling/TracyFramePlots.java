@@ -35,6 +35,11 @@ public final class TracyFramePlots {
     private static final PlotDelta P_GL_DRAW_CALLS = new PlotDelta("gl.drawCalls");
     private static final PlotDelta P_GL_TEX_BIND_MISSES = new PlotDelta("gl.texBindMisses");
     private static final PlotDelta P_GL_PROGRAM_SWITCHES = new PlotDelta("gl.programSwitches");
+    private static final PlotDelta P_GLSM_BRACKETS = new PlotDelta("glsm.brackets");
+    private static final PlotDelta P_GLSM_COW_SLOTS = new PlotDelta("glsm.cowSlots");
+    private static final PlotDelta P_GLSM_POP_RESTORES = new PlotDelta("glsm.popRestores");
+    private static final PlotDelta P_GLSM_POP_GL_CALLS = new PlotDelta("glsm.popGLCalls");
+    private static final PlotDelta P_GLSM_POP_DISCARDS = new PlotDelta("glsm.popDiscards");
     private static final PlotDelta P_GL_LIST_PLAYBACKS = new PlotDelta("gl.listPlaybacks");
     private static final PlotDelta P_GL_STREAMED_BYTES = new PlotDelta("gl.streamedBytes", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final PlotDelta P_GL_STREAM_DRAWS = new PlotDelta("gl.streamDraws");
@@ -176,6 +181,11 @@ public final class TracyFramePlots {
         P_GL_DRAW_CALLS.plot(GLStateManager.drawCalls);
         P_GL_TEX_BIND_MISSES.plot(GLStateManager.texBindMisses);
         P_GL_PROGRAM_SWITCHES.plot(GLStateManager.programSwitches);
+        P_GLSM_BRACKETS.plot(GLStateManager.attribPushes);
+        P_GLSM_COW_SLOTS.plot(GLStateManager.attribSlotsSaved);
+        P_GLSM_POP_RESTORES.plot(GLStateManager.attribValueRestores);
+        P_GLSM_POP_GL_CALLS.plot(GLStateManager.attribBackendCalls);
+        P_GLSM_POP_DISCARDS.plot(GLStateManager.attribDiscards);
         P_GL_LIST_PLAYBACKS.plot(DisplayListManager.listPlaybacks);
         P_GL_STREAMED_BYTES.plot(TessellatorStreamingDrawer.streamedBytes);
         P_GL_STREAM_DRAWS.plot(TessellatorStreamingDrawer.streamDraws);

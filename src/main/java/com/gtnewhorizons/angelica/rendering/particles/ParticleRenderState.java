@@ -6,7 +6,7 @@ import org.lwjgl.opengl.GL11;
 
 public final class ParticleRenderState {
 
-    private static final BlendState blendScratch = new BlendState();
+    private final BlendState scratch = new BlendState();
 
     public int texture;
     public boolean blend;
@@ -19,11 +19,11 @@ public final class ParticleRenderState {
     public void sample() {
         texture = GLStateManager.getBoundTextureForServerState();
         blend = GLStateManager.isEffectiveBlendEnabled();
-        final BlendState blendState = GLStateManager.getEffectiveBlendState(blendScratch);
-        blendSrc = blendState.getSrcRgb();
-        blendDst = blendState.getDstRgb();
-        blendSrcAlpha = blendState.getSrcAlpha();
-        blendDstAlpha = blendState.getDstAlpha();
+        GLStateManager.getEffectiveBlendState(scratch);
+        blendSrc = scratch.getSrcRgb();
+        blendDst = scratch.getDstRgb();
+        blendSrcAlpha = scratch.getSrcAlpha();
+        blendDstAlpha = scratch.getDstAlpha();
         depthMask = GLStateManager.isEffectiveDepthMaskEnabled();
     }
 

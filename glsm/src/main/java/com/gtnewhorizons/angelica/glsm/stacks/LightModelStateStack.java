@@ -1,40 +1,39 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.LightModelState;
 
-public class LightModelStateStack extends LightModelState implements IStateStack<LightModelStateStack> {
+public final class LightModelStateStack extends LightModelState implements CowStateStack<LightModelStateStack> {
 
     protected final LightModelState[] stack;
+    private final CowDepths cow = new CowDepths();
 
-    protected int pointer;
-
-    public LightModelStateStack() {
+    public LightModelStateStack(int id) {
         super();
+        cow.id = id;
         stack = new LightModelState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
         for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new LightModelState();
         }
     }
 
-    public LightModelStateStack push() {
-        if (pointer == stack.length) {
-            throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
-        }
-
-        stack[pointer++].set(this);
-        return this;
+    @Override
+    public CowDepths cowDepths() {
+        return cow;
     }
 
-    public LightModelStateStack pop() {
-        if (pointer == 0) {
-            throw new IllegalStateException("Stack underflow");
-        }
-
-        set(stack[--pointer]);
-        return this;
+    @Override
+    public void captureSlot(int s) {
+        stack[s].set(this);
     }
 
-    public boolean isEmpty() { return pointer == 0; }
+    @Override
+    public void restoreSlot(int s) {
+        set(stack[s]);
+    }
+
+    @Override
+    public int stackId() {
+        return cow.id;
+    }
 }

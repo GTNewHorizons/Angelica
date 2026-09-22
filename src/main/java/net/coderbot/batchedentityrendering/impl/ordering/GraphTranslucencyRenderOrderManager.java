@@ -7,9 +7,7 @@ import de.odysseus.ithaka.digraph.util.fas.FeedbackArcSet;
 import de.odysseus.ithaka.digraph.util.fas.FeedbackArcSetPolicy;
 import de.odysseus.ithaka.digraph.util.fas.FeedbackArcSetProvider;
 import de.odysseus.ithaka.digraph.util.fas.SimpleFeedbackArcSetProvider;
-import net.coderbot.batchedentityrendering.impl.BlendingStateHolder;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
-import net.coderbot.batchedentityrendering.impl.WrappableRenderType;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 
 import java.util.ArrayList;
@@ -33,21 +31,8 @@ public class GraphTranslucencyRenderOrderManager implements RenderOrderManager {
         }
     }
 
-    private static TransparencyType getTransparencyType(RenderLayer type) {
-        while (type instanceof WrappableRenderType) {
-            type = ((WrappableRenderType) type).unwrap();
-        }
-
-        if (type instanceof BlendingStateHolder blendingState) {
-            return blendingState.getTransparencyType();
-        }
-
-        // Default to "generally transparent" if we can't figure it out.
-        return TransparencyType.GENERAL_TRANSPARENT;
-    }
-
     public void begin(RenderLayer renderType) {
-        TransparencyType transparencyType = getTransparencyType(renderType);
+        TransparencyType transparencyType = renderType.getTransparencyType();
         Digraph<RenderLayer> graph = types.get(transparencyType);
         graph.add(renderType);
 

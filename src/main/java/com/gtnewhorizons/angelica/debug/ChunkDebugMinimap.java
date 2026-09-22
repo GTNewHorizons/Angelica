@@ -87,36 +87,33 @@ public class ChunkDebugMinimap {
         // Save GL state
         GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         GLStateManager.glPushMatrix();
+        try {
+            // Setup rendering
+            GLStateManager.glScaled(2, 2, 1);
+            GLStateManager.glTranslated(32, 32, 0);
 
-        // Setup rendering
-        GLStateManager.glScaled(2, 2, 1);
-        GLStateManager.glTranslated(32, 32, 0);
+            GLStateManager.disableLighting();
+            GLStateManager.disableTexture();
+            GLStateManager.disableDepthTest();
+            GLStateManager.enableBlend();
+            GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
 
-        GLStateManager.disableLighting();
-        GLStateManager.disableTexture();
-        GLStateManager.disableDepthTest();
-        GLStateManager.enableBlend();
-        GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            final Tessellator tess = Tessellator.instance;
+            tess.startDrawingQuads();
 
-        final Tessellator tess = Tessellator.instance;
-        tess.startDrawingQuads();
+            final ChunkProviderClient chunkProvider = (ChunkProviderClient) mc.theWorld.getChunkProvider();
 
-        final ChunkProviderClient chunkProvider = (ChunkProviderClient) mc.theWorld.getChunkProvider();
-
-        for (int x = playerChunkX - RANGE; x < playerChunkX + RANGE; x++) {
-            for (int z = playerChunkZ - RANGE; z < playerChunkZ + RANGE; z++) {
-                drawChunk(tess, x, z, playerChunkX, playerChunkZ, manager, chunkProvider);
+            for (int x = playerChunkX - RANGE; x < playerChunkX + RANGE; x++) {
+                for (int z = playerChunkZ - RANGE; z < playerChunkZ + RANGE; z++) {
+                    drawChunk(tess, x, z, playerChunkX, playerChunkZ, manager, chunkProvider);
+                }
             }
+
+            tess.draw();
+        } finally {
+            GLStateManager.glPopMatrix();
+            GLStateManager.glPopAttrib();
         }
-
-        tess.draw();
-
-        // Restore GL state
-        GLStateManager.enableLighting();
-        GLStateManager.enableDepthTest();
-        GLStateManager.disableBlend();
-        GLStateManager.glPopMatrix();
-        GLStateManager.glPopAttrib();
     }
 
     private void drawChunk(Tessellator tess, int chunkX, int chunkZ, int playerChunkX, int playerChunkZ, AngelicaRenderSectionManager manager, ChunkProviderClient chunkProvider) {

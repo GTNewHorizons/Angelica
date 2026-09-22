@@ -23,6 +23,7 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.Presenter;
 import com.gtnewhorizons.retrofuturabootstrap.MainStartOnFirstThread;
+import com.gtnewhorizons.angelica.sdlgpu.pipeline.AttachmentClear;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.DrawDispatch;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.FFPTrace;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineApplier;
@@ -30,6 +31,7 @@ import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineStore;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.VertexAttribs;
 import com.gtnewhorizons.angelica.sdlgpu.resource.BufferParams;
+import com.gtnewhorizons.angelica.sdlgpu.resource.ByteRegionCopy;
 import com.gtnewhorizons.angelica.sdlgpu.resource.CopyRectClip;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FBOClearTracker;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
@@ -150,6 +152,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             @Override public long nextSeq() { return TransferThread.nextSeq(); }
         });
     private final PipelineApplier pipelineApplier = new PipelineApplier(frameManager, resourceManager, shaderManager, pipelineStore, fboClearTracker, persistentSync, samplerBinder, storageTextureBinder, storageBufferBinder);
+    private final AttachmentClear attachmentClear = new AttachmentClear(frameManager, pipelineStore, shaderManager);
     private final DrawDispatch drawDispatch = new DrawDispatch(device, frameManager, resourceManager, pipelineApplier, this::enqueuePreCopied);
     private final FFPTrace ffpTrace = SystemProperties.FFP_TRACE ? new FFPTrace(resourceManager) : null;
 
@@ -157,6 +160,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     private boolean droppedCopyWarned;
     private boolean droppedSsboWriteWarned;
+    private boolean depthClearSuppressedWarned;
+    private boolean stencilClearSuppressedWarned;
     private final DeferredCopyOp deferredCopyOp = new DeferredCopyOp();
 
     private TransferThread transferThread;
@@ -187,6 +192,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private void markAllPipelineInputDirty() {
+        pipelineStore.bumpLivenessGen();
         for (ContextState st : registeredStates.snapshot()) st.pipeline.markInputDirty();
     }
 
@@ -195,7 +201,9 @@ public class SDLGPURenderBackend extends RenderBackend {
     public static final int CTR_SSBO_BINDS = 2;
     public static final int CTR_KEY_RECOMPUTES = 3;
     public static final int CTR_FAST_PATH_HITS = 4;
-    public static final int CTR_COUNT = 5;
+    public static final int CTR_INPUT_HASH_LOOPS = 5;
+    public static final int CTR_INPUT_HASH_HITS = 6;
+    public static final int CTR_COUNT = 7;
 
     public static void takeContextCounters(int[] out) {
         Arrays.fill(out, 0);
@@ -205,11 +213,15 @@ public class SDLGPURenderBackend extends RenderBackend {
             out[CTR_SSBO_BINDS] += st.ssboBinds;
             out[CTR_KEY_RECOMPUTES] += st.pipeline.keyRecomputes;
             out[CTR_FAST_PATH_HITS] += st.pipeline.fastPathHits;
+            out[CTR_INPUT_HASH_LOOPS] += st.pipeline.inputHashLoopRuns;
+            out[CTR_INPUT_HASH_HITS] += st.pipeline.inputHashHits;
             st.slotWrites = 0;
             st.slotWritesElided = 0;
             st.ssboBinds = 0;
             st.pipeline.keyRecomputes = 0;
             st.pipeline.fastPathHits = 0;
+            st.pipeline.inputHashLoopRuns = 0;
+            st.pipeline.inputHashHits = 0;
         }
     }
 
@@ -486,6 +498,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         registeredStates.clear();
 
         drawDispatch.clearWarnedState();
+        attachmentClear.shutdown();
         pipelineStore.shutdown();
         shaderManager.shutdown();
         resourceManager.shutdown();
@@ -940,8 +953,22 @@ public class SDLGPURenderBackend extends RenderBackend {
         final ContextState cs = s();
         if (!frameManager.isFrameActive()) return;
         final boolean wantColor = (mask & GL11.GL_COLOR_BUFFER_BIT) != 0;
-        final boolean wantDepth = (mask & GL11.GL_DEPTH_BUFFER_BIT) != 0;
-        final boolean wantStencil = (mask & GL11.GL_STENCIL_BUFFER_BIT) != 0;
+        boolean wantDepth = (mask & GL11.GL_DEPTH_BUFFER_BIT) != 0;
+        boolean wantStencil = (mask & GL11.GL_STENCIL_BUFFER_BIT) != 0;
+        if (wantDepth && !cs.pipeline.depthWriteEnabled) {
+            wantDepth = false;
+            if (!depthClearSuppressedWarned) {
+                depthClearSuppressedWarned = true;
+                LOG.warn("clear: GL_DEPTH_BUFFER_BIT requested with glDepthMask(false); clear suppressed per GL semantics");
+            }
+        }
+        if (wantStencil && cs.pipeline.stencilWriteMask == 0) {
+            wantStencil = false;
+            if (!stencilClearSuppressedWarned) {
+                stencilClearSuppressedWarned = true;
+                LOG.warn("clear: GL_STENCIL_BUFFER_BIT requested with a zero glStencilMask; clear suppressed per GL semantics");
+            }
+        }
         if (!wantColor && !wantDepth && !wantStencil) return;
 
         final ContextState st = cs;
@@ -970,6 +997,14 @@ public class SDLGPURenderBackend extends RenderBackend {
         final FboState fbo = resourceManager.getFbo(st.boundFboId);
         if (fbo == null) return;
 
+        if (!wantColor && (wantDepth || wantStencil)) {
+            final FrameState f = frameManager.frame();
+            if (attachmentClear.eligible(st, f, fbo, wantDepth, wantStencil)
+                && attachmentClear.clearInPass(st, f, fbo, wantDepth, wantStencil)) {
+                return;
+            }
+        }
+
         boolean affectsActivePass = false;
         final boolean passActive = frameManager.isRenderPassActive();
         final long activeColor = passActive ? frameManager.getCurrentColorTarget() : 0;
@@ -994,7 +1029,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
 
         if (affectsActivePass) {
-            frameManager.endRenderPassIfActive();
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
         }
     }
 
@@ -1741,14 +1776,14 @@ public class SDLGPURenderBackend extends RenderBackend {
 
         if (buffer == GL11.GL_NONE) {
             if (fbo.drawBuffers.length == 0) return;
-            frameManager.endRenderPassIfActive();
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_TARGET);
             fbo.drawBuffers = EMPTY_DRAW_BUFFERS;
             markDrawBuffersChanged(fbo, true);
             return;
         }
         final int idx = classifyDrawBuffer(buffer);
         if (fbo.drawBuffers.length == 1 && fbo.drawBuffers[0] == idx) return;
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_TARGET);
         if (fbo.drawBuffers.length == 1) {
             fbo.drawBuffers[0] = idx;
         } else {
@@ -1775,7 +1810,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             }
             if (same) return;
         }
-        if (isBound) frameManager.endRenderPassIfActive();
+        if (isBound) frameManager.endRenderPassIfActive(FrameManager.PASS_END_TARGET);
         final int[] indices = (fbo.drawBuffers.length == count) ? fbo.drawBuffers : new int[count];
         for (int i = 0; i < count; i++) {
             indices[i] = classifyDrawBuffer(bufs.get(basePos + i));
@@ -2030,7 +2065,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         cs.pipeline.fragmentShader = prog.sdlFragmentShader;
         cs.pipeline.programId = program;
         cs.pipeline.maxFragOutputLocation = prog.maxFragOutputLocation;
-        cs.pipeline.setVertexInputs(prog.vertexInputMask, prog.vertexInputVecSize, prog.vertexInputBaseType, prog.vertexInputName);
+        cs.pipeline.setVertexInputs(prog.vertexInputMask, prog.vertexInputVecSize, prog.vertexInputBaseType, prog.vertexInputName, prog.vertexInputSetId);
         cs.pipeline.markInputDirty();
         cs.pipeline.markShaderDirty();
     }
@@ -2081,7 +2116,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         cs.pipeline.fragmentShader = prog.sdlFragmentShader;
         cs.pipeline.programId = program;
         cs.pipeline.maxFragOutputLocation = prog.maxFragOutputLocation;
-        cs.pipeline.setVertexInputs(prog.vertexInputMask, prog.vertexInputVecSize, prog.vertexInputBaseType, prog.vertexInputName);
+        cs.pipeline.setVertexInputs(prog.vertexInputMask, prog.vertexInputVecSize, prog.vertexInputBaseType, prog.vertexInputName, prog.vertexInputSetId);
         cs.pipeline.markShaderDirty();
     }
 
@@ -2273,16 +2308,21 @@ public class SDLGPURenderBackend extends RenderBackend {
         final ContextState st = s();
         final ShaderManager.ProgramObject prog = st.boundProgramObj;
         if (prog != null) {
-            final String name = prog.locationToName.get(location);
-            if (name != null && prog.allSamplerNames.contains(name)) {
-                if (prog.samplerTextureUnits.put(name, v0) != v0) prog.samplerUnitsDirty = true;
+            final boolean inBounds = location < prog.locationKind.length;
+            final byte kind = inBounds ? prog.locationKind[location] : ShaderManager.ProgramObject.LOCATION_KIND_PLAIN;
+            if (kind == ShaderManager.ProgramObject.LOCATION_KIND_SAMPLER) {
+                if (prog.locationSamplerUnit[location] != v0) {
+                    prog.locationSamplerUnit[location] = v0;
+                    prog.samplerTextureUnits.put(prog.locationName[location], v0);
+                    prog.samplerUnitsDirty = true;
+                }
                 return;
             }
-            if (name != null && prog.allImageNames.contains(name)) {
-                prog.imageTextureUnits.put(name, v0);
+            if (kind == ShaderManager.ProgramObject.LOCATION_KIND_IMAGE) {
+                prog.imageTextureUnits.put(prog.locationName[location], v0);
                 return;
             }
-            if (debugLabels.isEnabled() && name == null && !prog.allSamplerNames.isEmpty() && v0 >= 0 && v0 <= 31) {
+            if (debugLabels.isEnabled() && !inBounds && !prog.allSamplerNames.isEmpty() && v0 >= 0 && v0 <= 31) {
                 LOG.warn("uniform1i: loc={} val={} prog={} -- location NOT in locationToName (samplers={})", location, v0, st.boundProgram, prog.allSamplerNames);
             }
         } else if (debugLabels.isEnabled() && v0 >= 0 && v0 <= 16) {
@@ -2709,11 +2749,8 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (target == GL31.GL_UNIFORM_BUFFER) {
             final ByteBuffer shadow = resourceManager.getUboShadow(glId);
             if (shadow != null) {
-                final ByteBuffer src = data.duplicate();
-                final int rem = src.remaining();
-                shadow.position((int) offset).limit((int) offset + rem);
-                shadow.put(src);
                 shadow.position(0);
+                ByteRegionCopy.copyByteRegion(data, data.position(), shadow, (int) offset, data.remaining());
             }
             return;
         }
@@ -3027,7 +3064,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private void downloadBufferBlocking(long handle, int offset, int size, ByteBuffer out) {
         flushDeferredUploadsForRead();
         frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
         final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (cb == 0) return;
         resourceManager.downloadFromBuffer(cb, handle, offset, size, out);
@@ -3179,7 +3216,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private void applyVertexAttribPointer(int index, int size, int type, boolean normalized, boolean isInteger, int stride, long pointer) {
-        vertexAttribs.applyVertexAttribPointer(s(), index, size, type, normalized, isInteger, stride, pointer);
+        vertexAttribs.applyVertexAttribPointer(pipelineStore, s(), index, size, type, normalized, isInteger, stride, pointer);
     }
     @Override public void enableVertexAttribArray(int index) {
         final ContextState cs = s();
@@ -3221,6 +3258,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             vao.bindingDivisor[b] = effective;
             st.bumpAttribStateGen();
             cs.pipeline.markInputDirty();
+            vao.invalidateInputHash();
         }
     }
 
@@ -3237,10 +3275,12 @@ public class SDLGPURenderBackend extends RenderBackend {
             if (oldBuffer != buffer) {
                 cs.pipeline.markInputDirtyIfLivenessChanged(pipelineStore, oldBuffer, buffer);
             }
+            vao.invalidateInputHash();
         }
         if (vao.bindingStride[bindingindex] != stride) {
             vao.bindingStride[bindingindex] = stride;
             cs.pipeline.markInputDirty();
+            vao.invalidateInputHash();
         }
     }
     @Override public void vertexAttribFormat(int attribindex, int size, int type, boolean normalized, int relativeoffset) {
@@ -3248,6 +3288,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (attribindex >= ContextState.MAX_VERTEX_ATTRIBS) return;
         final ContextState st = cs;
         final ContextState.VAOState vao = st.currentVao;
+        if (vao.attribSize[attribindex] == size && vao.attribType[attribindex] == type && vao.attribNormalized[attribindex] == normalized
+                && !vao.attribIsInteger[attribindex] && vao.attribRelativeOffset[attribindex] == relativeoffset)
+            return;
         vao.attribSize[attribindex] = size;
         vao.attribType[attribindex] = type;
         vao.attribNormalized[attribindex] = normalized;
@@ -3255,12 +3298,16 @@ public class SDLGPURenderBackend extends RenderBackend {
         vao.attribRelativeOffset[attribindex] = relativeoffset;
         st.bumpAttribStateGen();
         cs.pipeline.markInputDirty();
+        vao.invalidateInputHash();
     }
     @Override public void vertexAttribIFormat(int attribindex, int size, int type, int relativeoffset) {
         final ContextState cs = s();
         if (attribindex >= ContextState.MAX_VERTEX_ATTRIBS) return;
         final ContextState st = cs;
         final ContextState.VAOState vao = st.currentVao;
+        if (vao.attribSize[attribindex] == size && vao.attribType[attribindex] == type && vao.attribIsInteger[attribindex]
+                && vao.attribRelativeOffset[attribindex] == relativeoffset)
+            return;
         vao.attribSize[attribindex] = size;
         vao.attribType[attribindex] = type;
         vao.attribNormalized[attribindex] = false;
@@ -3268,6 +3315,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         vao.attribRelativeOffset[attribindex] = relativeoffset;
         st.bumpAttribStateGen();
         cs.pipeline.markInputDirty();
+        vao.invalidateInputHash();
     }
     @Override public void vertexAttribBinding(int attribindex, int bindingindex) {
         final ContextState cs = s();
@@ -3278,6 +3326,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             vao.attribBinding[attribindex] = bindingindex;
             st.bumpAttribStateGen();
             cs.pipeline.markInputDirty();
+            vao.invalidateInputHash();
         }
     }
 
@@ -3354,7 +3403,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (meta.levels() <= 1) return;
         // SDL asserts if any pass (render or copy) is active when generating mipmaps.
         frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
         frameManager.noteMipGen();
         textureOps.clearPendingMipGen(texture);
         SDL_GenerateMipmapsForGPUTexture(frameManager.getCommandBuffer(), resourceManager.getTextureHandle(texture));

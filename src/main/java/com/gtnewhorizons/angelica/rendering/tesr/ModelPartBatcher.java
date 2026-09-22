@@ -129,16 +129,18 @@ public final class ModelPartBatcher {
         float offsetFactor;
         float offsetUnits;
         int glintSlot;
-        boolean culling;
+        int cull;
+        boolean lit;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, boolean culling) {
+        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit) {
             this.texture = texture;
             this.material = material;
             this.pass = pass;
             this.offsetFactor = offsetFactor;
             this.offsetUnits = offsetUnits;
             this.glintSlot = glintSlot;
-            this.culling = culling;
+            this.cull = cull;
+            this.lit = lit;
             return this;
         }
 
@@ -149,7 +151,7 @@ public final class ModelPartBatcher {
                 && Objects.equals(pass, other.pass)
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
                 && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
-                && glintSlot == other.glintSlot && culling == other.culling;
+                && glintSlot == other.glintSlot && cull == other.cull && lit == other.lit;
         }
 
         @Override
@@ -158,7 +160,9 @@ public final class ModelPartBatcher {
             h = h * 31 + Float.floatToIntBits(offsetFactor);
             h = h * 31 + Float.floatToIntBits(offsetUnits);
             h = h * 31 + glintSlot;
-            return h * 31 + (culling ? 1 : 0);
+            h = h * 31 + cull;
+            h = h * 31 + (lit ? 1 : 0);
+            return h;
         }
     }
 
@@ -170,7 +174,8 @@ public final class ModelPartBatcher {
     private float lastLayerOffsetFactor;
     private float lastLayerOffsetUnits;
     private int lastLayerGlintSlot;
-    private boolean lastLayerCulling;
+    private int lastLayerCull;
+    private boolean lastLayerLit;
     private RenderLayer lastLayer;
 
     private static ResourceLocation lastBoundLocation;
@@ -366,7 +371,9 @@ public final class ModelPartBatcher {
         final float offsetFactor = offset ? polygon.getOffsetFactor() : 0.0f;
         final float offsetUnits = offset ? polygon.getOffsetUnits() : 0.0f;
         final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
-        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot);
+        final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final boolean lit = DrawState.liveLit(material);
+        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit);
         // Entities nested inside a TESR (mob spawner, OpenBlocks trophy) run in the block entity pass but carry an entity id
         final int entityId = groupId(shaderPipeline != null, mode == Mode.ENTITIES || pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
         final Color4 color = GLStateManager.getColor();
@@ -469,17 +476,16 @@ public final class ModelPartBatcher {
         entry.cubes = cubes;
     }
 
-    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot) {
-        final boolean culling = !material.isNoCull() && GLStateManager.getCullState().isEnabled();
+    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit) {
         if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
             && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && glintSlot == lastLayerGlintSlot
-            && culling == lastLayerCulling) {
+            && cullCode == lastLayerCull && lit == lastLayerLit) {
             return lastLayer;
         }
-        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, culling));
+        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit));
         if (layer == null) {
-            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, culling);
-            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, culling), layer);
+            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit);
+            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit), layer);
         }
         lastLayerTexture = texture;
         lastLayerMaterial = material;
@@ -487,7 +493,8 @@ public final class ModelPartBatcher {
         lastLayerOffsetFactor = offsetFactor;
         lastLayerOffsetUnits = offsetUnits;
         lastLayerGlintSlot = glintSlot;
-        lastLayerCulling = culling;
+        lastLayerCull = cullCode;
+        lastLayerLit = lit;
         lastLayer = layer;
         return layer;
     }
@@ -511,10 +518,13 @@ public final class ModelPartBatcher {
         active = false;
         shaderPipeline = null;
         layers.clear();
-        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT, false);
+        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
         lastLayerTexture = null;
         lastLayerMaterial = null;
         lastLayerPass = null;
+        lastLayerGlintSlot = ShaderGlint.NO_TINT;
+        lastLayerCull = DrawState.DISABLED;
+        lastLayerLit = false;
         lastLayer = null;
         loggedMaterialBails.clear();
         lastBoundLocation = null;

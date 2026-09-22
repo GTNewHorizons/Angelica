@@ -49,6 +49,14 @@ public final class FrameManager {
     private final Device device;
     private ResourceManager resourceManager;
 
+    public static final int PASS_END_CLEAR = 0;
+    public static final int PASS_END_COMPUTE = 1;
+    public static final int PASS_END_COPY = 2;
+    public static final int PASS_END_TARGET = 3;
+    public static final int PASS_END_UNIFORM_BLOCK = 4;
+    public static final int PASS_END_FRAME_END = 5;
+    public static final int PASS_END_CAUSE_COUNT = 6;
+
     public static final class FrameState {
         public final Thread owner = Thread.currentThread();
         public long commandBuffer;
@@ -103,6 +111,8 @@ public final class FrameManager {
         public int arenaOverflowFlushesThisFrame;
         public int copyPassesThisFrame;
         public int materializedClearPassesThisFrame;
+        public int inPassClearsThisFrame;
+        public final int[] passEndCauseCountsThisFrame = new int[PASS_END_CAUSE_COUNT];
         public long lastEndFrameNanos;
 
         public long pendingUploadCommandBuffer;
@@ -282,7 +292,7 @@ public final class FrameManager {
     public boolean ensureFbo0RenderPass(FrameState f, ContextState st) {
         final boolean clearColor = st.pendingSwapchainClear;
         if (swapchainClearNeedsPassBreak(st, f)) {
-            endRenderPassIfActive(f);
+            endRenderPassIfActive(f, PASS_END_CLEAR);
         }
         final boolean applied = ensureFbo0RenderPass(f,
             clearColor ? st.pendingSwapchainR : st.clearR,
@@ -305,7 +315,7 @@ public final class FrameManager {
             return false;
         }
 
-        endActiveEncoders(f);
+        endActiveEncoders(f, PASS_END_TARGET);
 
         if (!f.clearedThisFrame) {
             clear = true;
@@ -419,9 +429,11 @@ public final class FrameManager {
 
     public void noteMaterializedClearPass() { frame().materializedClearPassesThisFrame++; }
 
+    public void noteInPassClear() { frame().inPassClearsThisFrame++; }
+
     public long beginRenderPass(SDL_GPUColorTargetInfo.Buffer colorTargets, SDL_GPUDepthStencilTargetInfo depthTarget) {
         final FrameState f = frame();
-        endActiveEncoders(f);
+        endActiveEncoders(f, PASS_END_TARGET);
         if (preRenderPassHook != null) preRenderPassHook.run();
         assertNoEncoderActive(f, "SDL_BeginGPURenderPass");
         f.renderPass = SDL_BeginGPURenderPass(f.commandBuffer, colorTargets, depthTarget);
@@ -436,11 +448,20 @@ public final class FrameManager {
     }
 
     public void endRenderPassIfActive() {
-        endRenderPassIfActive(frame());
+        endRenderPassIfActive(frame(), PASS_END_TARGET);
     }
 
     public void endRenderPassIfActive(FrameState f) {
+        endRenderPassIfActive(f, PASS_END_TARGET);
+    }
+
+    public void endRenderPassIfActive(int cause) {
+        endRenderPassIfActive(frame(), cause);
+    }
+
+    public void endRenderPassIfActive(FrameState f, int cause) {
         if (f.renderPass != 0) {
+            f.passEndCauseCountsThisFrame[cause]++;
             SDL_EndGPURenderPass(f.renderPass);
             f.renderPass = 0;
             f.currentColorTarget = 0;
@@ -449,9 +470,9 @@ public final class FrameManager {
         }
     }
 
-    private void endActiveEncoders(FrameState f) {
+    private void endActiveEncoders(FrameState f, int cause) {
         endCopyPassIfActive(f);
-        endRenderPassIfActive(f);
+        endRenderPassIfActive(f, cause);
     }
 
     /** Dev-only check */
@@ -459,7 +480,7 @@ public final class FrameManager {
         if (!SystemProperties.SDL_ENCODER_ASSERTIONS) return;
         if (f.renderPass != 0 || f.copyPass != 0 || f.computePassOpen) {
             LOG.error("Encoder invariant violated before {}: renderPass={} copyPass={} computePassOpen={} on CB={}", about, f.renderPass, f.copyPass, f.computePassOpen, f.commandBuffer);
-            endActiveEncoders(f);
+            endActiveEncoders(f, PASS_END_TARGET);
             if (SystemProperties.SDL_ENCODER_ASSERTIONS_FATAL) {
                 throw new IllegalStateException("Encoder invariant violated before " + about);
             }
@@ -485,6 +506,10 @@ public final class FrameManager {
     }
 
     public long ensureCopyPass() {
+        return ensureCopyPass(PASS_END_COPY);
+    }
+
+    public long ensureCopyPass(int cause) {
         final FrameState f = frame();
         if (f.copyPass != 0) {
             if (f.commandBuffer == 0 && shouldAutoSubmitPendingUpload(f)) {
@@ -494,7 +519,7 @@ public final class FrameManager {
                 return f.copyPass;
             }
         }
-        endActiveEncoders(f);
+        endActiveEncoders(f, cause);
         final long cb = getCommandBuffer(f);
         if (cb == 0) return 0;
         assertNoEncoderActive(f, "SDL_BeginGPUCopyPass");
@@ -552,7 +577,7 @@ public final class FrameManager {
         if (beforeSubmit != null) beforeSubmit.run();
 
         endCopyPassIfActive(f);
-        endRenderPassIfActive(f);
+        endRenderPassIfActive(f, PASS_END_FRAME_END);
 
         if (f.commandBuffer != 0) {
             Tracy.beginZone(Z_SDL_SUBMIT);
@@ -610,6 +635,8 @@ public final class FrameManager {
         f.arenaOverflowFlushesThisFrame = 0;
         f.copyPassesThisFrame = 0;
         f.materializedClearPassesThisFrame = 0;
+        f.inPassClearsThisFrame = 0;
+        Arrays.fill(f.passEndCauseCountsThisFrame, 0);
         f.presentSkipsThisFrame = 0;
         f.emptyFramesThisFrame = 0;
         f.droppedDrawsThisFrame = 0;
@@ -622,7 +649,7 @@ public final class FrameManager {
         final FrameState f = frame();
         if (f.commandBuffer == 0) return;
         endCopyPassIfActive(f);
-        endRenderPassIfActive(f);
+        endRenderPassIfActive(f, PASS_END_FRAME_END);
         Tracy.beginZone(Z_SDL_SUBMIT);
         try {
             if (f.wantFenceOnNextSubmit) {

@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
+import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager.ProgramObject;
@@ -7,6 +8,7 @@ import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager.UniformMemberInfo;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.util.spvc.Spvc;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -92,5 +94,33 @@ class PerFrameBlockDedupTest {
         final float second = st.uniformBlocks[0].staging(BLOCK_SIZE).get(16 >> 2);
 
         assertNotEquals(first, second, "the new value must be in the staging buffer");
+    }
+
+    @Test
+    void flushUniformBlocksEndsTheCopyPassOnceForTwoDirtyBlocks() throws Exception {
+        final SdlTestRig rig = SdlTestRig.acquireRealDevice();
+        try {
+            rig.frameManager.beginFrame();
+            rig.frameManager.frame().swapchainUnavailable = true;
+
+            final int[] endCount = { 0 };
+            rig.frameManager.setBeforeEndCopyPassCallback(() -> endCount[0]++);
+
+            final PipelineApplier realApplier = new PipelineApplier(rig.frameManager, rig.resourceManager, null, null, null, null, null, null, null);
+            final ContextState cs = new ContextState();
+            cs.boundProgramObj = programWithBlockMemberAt(16, ShaderManager.BLOCK_PER_FRAME);
+            realApplier.putUniform(cs, 0, new float[]{0.5f});
+            cs.boundProgramObj = programWithBlockMemberAt(16, ShaderManager.BLOCK_PER_PASS);
+            realApplier.putUniform(cs, 0, new float[]{0.5f});
+            assertTrue(cs.uniformBlocks[ShaderManager.BLOCK_PER_FRAME].dirty, "setup: per-frame block must be dirty");
+            assertTrue(cs.uniformBlocks[ShaderManager.BLOCK_PER_PASS].dirty, "setup: per-pass block must be dirty");
+
+            realApplier.flushUniformBlocks(cs);
+
+            assertEquals(1, endCount[0], "two dirty blocks must share one copy-pass transition, not one each");
+        } finally {
+            rig.frameManager.endFrame();
+            SdlTestRig.releaseRealDevice();
+        }
     }
 }

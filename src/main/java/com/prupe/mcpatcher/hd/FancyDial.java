@@ -91,7 +91,7 @@ public class FancyDial {
         logger.config("fbo: supported=%s", fboSupported);
         logger.config("GL13: supported=%s, enabled=%s", gl13Supported, useGL13);
 
-        int bits = GL11.GL_VIEWPORT_BIT | GL11.GL_SCISSOR_BIT | GL11.GL_DEPTH_BITS | GL11.GL_LIGHTING_BIT;
+        int bits = GL11.GL_VIEWPORT_BIT | GL11.GL_SCISSOR_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_LIGHTING_BIT;
         if (useGL13) {
             bits |= GL13.GL_MULTISAMPLE_BIT;
         }
@@ -422,8 +422,11 @@ public class FancyDial {
     private void renderToFB(double angle, FBO fbo) {
         if (fbo != null) {
             fbo.bind();
-            renderImpl(angle);
-            fbo.unbind();
+            try {
+                renderImpl(angle);
+            } finally {
+                fbo.unbind();
+            }
         }
     }
 

@@ -30,11 +30,20 @@ public final class DependencyVerifier {
      * @param checks  Dependency checks to run
      */
     public static void verify(Class<?> anchor, List<Check> checks) {
+        final Check missing = firstMissing(anchor, checks);
+        if (missing != null) {
+            throw new RuntimeException(missing.errorMessage());
+        }
+    }
+
+    /** @return the first check whose resource is absent, or null when all pass. */
+    public static Check firstMissing(Class<?> anchor, List<Check> checks) {
         for (Check check : checks) {
             if (anchor.getResource(check.resourcePath()) == null) {
-                throw new RuntimeException(check.errorMessage());
+                return check;
             }
         }
+        return null;
     }
 
     public static List<Check> gtnhLibChecks(String productName) {

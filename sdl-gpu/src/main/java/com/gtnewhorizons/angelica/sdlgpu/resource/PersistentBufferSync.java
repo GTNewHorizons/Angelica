@@ -5,7 +5,6 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
-import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
 import java.util.ArrayList;
@@ -80,7 +79,7 @@ public final class PersistentBufferSync {
     }
 
     public static void mirrorPersistentCopy(ByteBuffer srcStaging, long srcOffset, ByteBuffer dstStaging, long dstOffset, long size) {
-        copyByteRegion(srcStaging, (int) srcOffset, dstStaging, (int) dstOffset, (int) size);
+        ByteRegionCopy.copyByteRegion(srcStaging, (int) srcOffset, dstStaging, (int) dstOffset, (int) size);
     }
 
     public void mirrorEboShadow(int glId, ByteBuffer src, int dstOffset, int len) {
@@ -93,21 +92,9 @@ public final class PersistentBufferSync {
             else growHint = shadow.capacity() * 2;
             shadow = resourceManager.getOrAllocEboShadow(glId, Math.max(requiredCap, growHint));
         }
-        copyByteRegion(src, src.position(), shadow, dstOffset, len);
+        ByteRegionCopy.copyByteRegion(src, src.position(), shadow, dstOffset, len);
         shadow.position(0);
         resourceManager.bumpEboShadowVersion(glId);
         resourceManager.invalidateSplitCacheFor(glId);
-    }
-
-    private static void copyByteRegion(ByteBuffer src, int srcOff, ByteBuffer dst, int dstOff, int len) {
-        if (src.isDirect() && dst.isDirect()) {
-            MemoryUtil.memCopy(MemoryUtil.memAddress(src) + srcOff, MemoryUtil.memAddress(dst) + dstOff, len);
-            return;
-        }
-        final ByteBuffer s = src.duplicate();
-        s.position(srcOff).limit(srcOff + len);
-        final ByteBuffer d = dst.duplicate();
-        d.position(dstOff);
-        d.put(s);
     }
 }

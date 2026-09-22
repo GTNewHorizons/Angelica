@@ -37,12 +37,18 @@ public final class SystemProperties {
     public static final boolean SDL_VERIFY_PER_FRAME_UNIFORM_BLOCK = Boolean.getBoolean("angelica.sdlgpu.verifyPerFrameUniformBlock");
     public static final int SDL_FRAMES_IN_FLIGHT = Integer.getInteger("angelica.sdlgpu.framesInFlight", 2);
     public static final boolean DISABLE_SDL_PRESENTER_THREAD = Boolean.getBoolean("angelica.sdlgpu.disablePresenterThread");
+    public static final boolean SDL_DISABLE_IN_PASS_CLEAR = Boolean.getBoolean("angelica.sdlgpu.disableInPassClear");
 
     // Tracy
     public static final boolean TRACY = Boolean.getBoolean("angelica.tracy");
     public static final boolean TRACY_FINE_ZONES = Boolean.getBoolean("angelica.tracy.fineZones");
     public static final String TRACY_DIR = System.getProperty("angelica.tracy.dir", "angelica" + File.separator + "natives" + File.separator + "tracy");
     public static final int TRACY_MAX_SRC_LOCS = Math.max(16, Integer.getInteger("angelica.tracy.maxSrcLocs", 4096));
+
+    // Profiling
+    public static final String PROFILE_OPTS = System.getProperty("angelica.profile.opts", "event=wall,interval=5ms,alloc=512k,lock=10ms");
+    public static final String PROFILE_DIR = System.getProperty("angelica.profile.dir", "angelica" + File.separator + "profiles");
+    public static final String PROFILE_OUTPUT = System.getProperty("angelica.profile.output", "");
 
     // Flyby
     public static final String FLYBY_ROUTE = System.getProperty("angelica.flyby.route", "");
@@ -56,6 +62,8 @@ public final class SystemProperties {
     public static final String FLYBY_COMMANDS = System.getProperty("angelica.flyby.commands", "");
     public static final String FLYBY_ORIGIN = System.getProperty("angelica.flyby.origin", "");
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
+    public static final FlybyWeather FLYBY_WEATHER = parseEnum("angelica.flyby.weather", FlybyWeather.CLEAR, FlybyWeather.CLEAR, FlybyWeather.class);
+    public static final boolean FLYBY_JFR = Boolean.getBoolean("angelica.flyby.jfr");
 
     // Debug
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");
@@ -70,6 +78,7 @@ public final class SystemProperties {
     public static final boolean FFP_TRACE = Boolean.getBoolean("angelica.debug.ffpTrace");
     public static final boolean LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.debug.displayLists.compilation");
     public static final boolean FORCE_ORPHAN_STREAMING = Boolean.getBoolean("angelica.debug.forceOrphanStreaming");
+    public static final boolean WEATHER_REBUILD_ALWAYS = Boolean.getBoolean("angelica.debug.weatherRebuildAlways");
     public static final String SHADER_DUMP_ROOT = "angelica_dumps";
 
     // Set by us, read by celeritas
@@ -116,6 +125,20 @@ public final class SystemProperties {
     public enum FlybyPacing {
         UNCAPPED,
         CONFIGURED
+    }
+
+    public enum FlybyWeather {
+        CLEAR,
+        RAIN,
+        THUNDER;
+
+        public boolean isRaining() {
+            return this != CLEAR;
+        }
+
+        public boolean isThundering() {
+            return this == THUNDER;
+        }
     }
 
     private static <E extends Enum<E>> E parseEnum(String key, E whenAbsent, E whenInvalid, Class<E> type) {

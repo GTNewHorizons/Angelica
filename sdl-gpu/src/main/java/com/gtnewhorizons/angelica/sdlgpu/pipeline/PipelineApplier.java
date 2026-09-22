@@ -103,11 +103,11 @@ public final class PipelineApplier {
         }
 
         if (!st.deferUploads && f.renderPass != 0 && st.attribDefaultsDirtyMask != 0 && (st.attribDefaultsDirtyMask & ~st.currentVao.attribEnabledMask) != 0) {
-            frameManager.endRenderPassIfActive(f);
+            frameManager.endRenderPassIfActive(f, FrameManager.PASS_END_COPY);
         }
 
         if (f.renderPass != 0 && st.anyUniformBlockDirty()) {
-            frameManager.endRenderPassIfActive(f);
+            frameManager.endRenderPassIfActive(f, FrameManager.PASS_END_UNIFORM_BLOCK);
             if (Tracy.ENABLED) frameManager.notePerFrameBlockPassBreak();
         }
 
@@ -182,7 +182,7 @@ public final class PipelineApplier {
             proposedStencilClear = false;
         }
 
-        frameManager.endRenderPassIfActive(f);
+        frameManager.endRenderPassIfActive(f, FrameManager.PASS_END_TARGET);
 
         final boolean reuse = fbo.cachedTargetsValid && fbo.cachedTargetsLayoutHash == layoutHash && fbo.cachedTargetsCount == totalTargets && fbo.cachedClearOpFlags == proposedClearOps && fbo.cachedDepthClearLast == proposedDepthClear && fbo.cachedStencilClearLast == proposedStencilClear;
 
@@ -503,13 +503,15 @@ public final class PipelineApplier {
         }
 
         if (st.blendColorDirty) {
-            final long addr = st.cachedBlendColor.address();
-            MemoryAccess.putFloat(addr + SDL_FColor.R, st.blendColorR);
-            MemoryAccess.putFloat(addr + SDL_FColor.G, st.blendColorG);
-            MemoryAccess.putFloat(addr + SDL_FColor.B, st.blendColorB);
-            MemoryAccess.putFloat(addr + SDL_FColor.A, st.blendColorA);
-            SDL_SetGPUBlendConstants(rp, st.cachedBlendColor);
-            st.blendColorDirty = false;
+            if (st.pipeline.usesBlendConstants()) {
+                final long addr = st.cachedBlendColor.address();
+                MemoryAccess.putFloat(addr + SDL_FColor.R, st.blendColorR);
+                MemoryAccess.putFloat(addr + SDL_FColor.G, st.blendColorG);
+                MemoryAccess.putFloat(addr + SDL_FColor.B, st.blendColorB);
+                MemoryAccess.putFloat(addr + SDL_FColor.A, st.blendColorA);
+                SDL_SetGPUBlendConstants(rp, st.cachedBlendColor);
+                st.blendColorDirty = false;
+            }
         }
 
         if (st.pipeline.effectiveStencilTestEnabled() && st.stencilRef != st.lastAppliedStencilRef) {
@@ -729,6 +731,7 @@ public final class PipelineApplier {
         for (int b = 0; b < ShaderManager.BLOCK_COUNT; b++) {
             flushUniformBlock(st, b);
         }
+        frameManager.endCopyPassIfActive();
     }
 
     private void flushUniformBlock(ContextState st, int b) {
@@ -752,13 +755,12 @@ public final class PipelineApplier {
         if (bytes == null) return;
         final long handle = resourceManager.getBufferHandle(block.glId);
         if (handle == 0) return;
-        final long copyPass = frameManager.ensureCopyPass();
+        final long copyPass = frameManager.ensureCopyPass(FrameManager.PASS_END_UNIFORM_BLOCK);
         if (copyPass == 0) return;
 
         bytes.position(0).limit(Math.min(size, bytes.capacity()));
 
         resourceManager.uploadToBuffer(copyPass, bytes, handle, 0, true);
-        frameManager.endCopyPassIfActive();
         block.dirty = false;
         block.flushedThisFrame = true;
         if (Tracy.ENABLED) frameManager.noteUniformBlockFlush(b, size);

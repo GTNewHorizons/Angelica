@@ -1,50 +1,55 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
 
-public class Color4Stack extends Color4 implements IStateStack<Color4Stack> {
+public final class Color4Stack extends Color4 implements CowStateStack<Color4Stack> {
 
     protected final Color4[] stack;
+    private CowDepths cow = new CowDepths();
 
-    protected int pointer;
-
-    public Color4Stack() {
+    public Color4Stack(int id) {
+        cow.id = id;
         stack = new Color4[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
         for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
             stack[i] = new Color4();
         }
     }
 
-    public Color4Stack(Color4 color4) {
-        this();
+    public Color4Stack(int id, Color4 color4) {
+        this(id);
         set(color4);
     }
 
-    public Color4Stack push() {
-        if(pointer == stack.length) {
-            throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
-        }
-
-        stack[pointer++].set(this);
+    public Color4Stack restoreBit(int bit) {
+        final int id = cow.id;
+        cow = new CowDepths(bit);
+        cow.id = id;
         return this;
     }
 
-    public Color4Stack pop() {
-        if(pointer == 0) {
-            throw new IllegalStateException("Stack underflow");
-        }
-
-        set(stack[--pointer]);
-        return this;
+    @Override
+    public CowDepths cowDepths() {
+        return cow;
     }
 
-    public boolean isEmpty() {
-        return pointer == 0;
+    @Override
+    public void captureSlot(int s) {
+        stack[s].set(this);
     }
 
-    public boolean topChanged() {
-        return pointer > 0 && !sameAs(stack[pointer - 1]);
+    @Override
+    public void restoreSlot(int s) {
+        set(stack[s]);
+    }
+
+    @Override
+    public boolean topSlotChanged() {
+        return !cow.isEmpty() && !sameAs(stack[cow.top()]);
+    }
+
+    @Override
+    public int stackId() {
+        return cow.id;
     }
 }

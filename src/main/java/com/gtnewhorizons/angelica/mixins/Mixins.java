@@ -71,6 +71,13 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    ANGELICA_WEATHER(new MixinBuilder()
+        .setPhase(Phase.EARLY)
+        .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_MIST)
+        .addExcludedMod(TargetedMod.DYNAMIC_SURROUNDINGS_ORIGINAL)
+        .addClientMixins("angelica.rendering.MixinEntityRenderer_Weather")
+    ),
+
     STARMINER_RENDERER_LIVING_ENTITY_OPTIMIZATION(new MixinBuilder()
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.STARMINER)
@@ -502,6 +509,14 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.DRAGON_API)
         .addClientMixins(
             "dragonapi.MixinShaderRegistry_ParseError"
+        )
+    ),
+
+    DRAGONAPI_SEASONAL_SNOW(new MixinBuilder("Let DragonAPI's Xmas forced-snow event override weather rendering")
+        .setPhase(Phase.EARLY)
+        .addRequiredMod(TargetedMod.DRAGON_API)
+        .addClientMixins(
+            "dragonapi.MixinSpecialDayTracker"
         )
     ),
 

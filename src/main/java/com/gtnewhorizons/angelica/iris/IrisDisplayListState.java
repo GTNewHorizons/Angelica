@@ -8,8 +8,6 @@ import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
-import it.unimi.dsi.fastutil.longs.LongArrayList;
-import it.unimi.dsi.fastutil.ints.IntArrayList;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -65,33 +63,6 @@ public final class IrisDisplayListState {
 
     public static void recordGlintSpan(boolean begin) {
         if (DisplayListManager.isRecording()) record(new GlintSpanCmd(begin));
-    }
-
-    public static void recordCutoutScope(boolean begin) {
-        if (DisplayListManager.isRecording()) record(new CutoutScopeCmd(begin));
-    }
-
-    public static void recordBlendScope(boolean begin) {
-        if (DisplayListManager.isRecording()) record(new BlendScopeCmd(begin));
-    }
-
-    private static final LongArrayList replayCutoutStack = new LongArrayList();
-    private static final IntArrayList replayBlendStack = new IntArrayList();
-
-    private record CutoutScopeCmd(boolean begin) implements DisplayListCommand {
-        @Override
-        public void execute() {
-            if (begin) replayCutoutStack.push(GbufferPrograms.pushCutoutDefaults());
-            else GbufferPrograms.popCutoutDefaults(replayCutoutStack.popLong());
-        }
-    }
-
-    private record BlendScopeCmd(boolean begin) implements DisplayListCommand {
-        @Override
-        public void execute() {
-            if (begin) replayBlendStack.push(GbufferPrograms.pushBlendState());
-            else GbufferPrograms.popBlendState(replayBlendStack.popInt());
-        }
     }
 
     /** Keep nested items on the entity pass, including its depth and TAA behavior. */

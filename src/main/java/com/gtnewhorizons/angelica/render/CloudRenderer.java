@@ -59,9 +59,10 @@ import java.util.concurrent.Executors;
 
 import static com.gtnewhorizons.angelica.render.CloudDisc.CELLS_PER_CHUNK;
 import static com.gtnewhorizons.angelica.render.CloudDisc.MARGIN_CELLS;
-import static com.gtnewhorizons.angelica.render.CloudDisc.SCROLL_SPEED;
 import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGE_COUNT;
 import static com.gtnewhorizons.angelica.render.CloudDisc.WEDGES_PER_RADIAN;
+import static com.gtnewhorizons.angelica.render.CloudDisc.textureOffset;
+import static com.gtnewhorizons.angelica.render.CloudDisc.withinMargin;
 
 /**
  * Draws the cloud layer.
@@ -217,10 +218,6 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         return Math.min(radiusBlocks + verticalSlack, MAX_FAR_PLANE_DISTANCE);
     }
 
-    private static boolean withinMargin(int driftX, int driftZ) {
-        return driftX * driftX + driftZ * driftZ <= MARGIN_CELLS * MARGIN_CELLS;
-    }
-
     private void invalidateGeometry() {
         anchorCellX = Integer.MIN_VALUE;
         anchorCellZ = Integer.MIN_VALUE;
@@ -339,11 +336,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         final double cloudTick = cloudTicks + (double) partialTicks;
 
         final float cameraY = (float) (viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks);
-        double cameraCellX = (viewEntity.prevPosX + (viewEntity.posX - viewEntity.prevPosX) * partialTicks + cloudTick * 0.03D) / cellWidthBlocks;
-        double cameraCellZ = (viewEntity.prevPosZ + (viewEntity.posZ - viewEntity.prevPosZ) * partialTicks) / cellWidthBlocks
-            + 0.33000001311302185D;
-        cameraCellX -= MathHelper.floor_double(cameraCellX / 2048.0D) * 2048;
-        cameraCellZ -= MathHelper.floor_double(cameraCellZ / 2048.0D) * 2048;
+        final double cameraCellX = CloudDisc.cellCoordinate(viewEntity.prevPosX + (viewEntity.posX - viewEntity.prevPosX) * partialTicks + cloudTick * 0.03D, cellWidthBlocks, 0);
+        final double cameraCellZ = CloudDisc.cellCoordinate(viewEntity.prevPosZ + (viewEntity.posZ - viewEntity.prevPosZ) * partialTicks, cellWidthBlocks, 0.33000001311302185D);
 
         final float cloudBaseRelativeY = cloudElevation - cameraY + 0.33F;
         final float cellFractionX = (float) (cameraCellX - MathHelper.floor_double(cameraCellX));
@@ -393,7 +387,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             && (faceMeshActive || cachedPlateLodCells == plateLodCells);
         final boolean geomCacheValid = anchorInRange && settingsUnchanged;
 
-        final boolean canBuildAsync = settingsUnchanged && !faceMeshActive && vertexMesh.built();
+        final boolean canBuildAsync = settingsUnchanged && !faceMeshActive && vertexMesh.built() && CloudDisc.withinDisc((long) anchorX - anchorCellX, (long) anchorZ - anchorCellZ, radiusCells);
 
         final boolean builderBusy = buildInFlight != null || uploadParams != null;
         if (!geomCacheValid && !(canBuildAsync && builderBusy)) {
@@ -419,8 +413,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         if (wantInterior && (interiorAnchorX != anchorX || interiorAnchorZ != anchorZ
             || interiorShapeGeneration != shapeGeneration || interiorCellHeight != cellHeightBlocks
             || interiorShadersActive != shadersActive)) {
-            interiorMesh.buildInterior(shape, anchorX, anchorZ, cellHeightBlocks,
-                anchorX * SCROLL_SPEED, anchorZ * SCROLL_SPEED, untextured() && !shadersActive, shadersActive);
+            interiorMesh.buildInterior(shape, anchorX, anchorZ, cellHeightBlocks, textureOffset(anchorX, shape.width), textureOffset(anchorZ, shape.height), untextured() && !shadersActive, shadersActive);
             interiorMesh.uploadBuilt();
             interiorAnchorX = anchorX;
             interiorAnchorZ = anchorZ;
@@ -517,7 +510,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             uniforms.modelView.set(modelViewScratch);
             if (faceMeshActive) {
                 uniforms.setCellHeight(cellHeightBlocks);
-                uniforms.setScroll(faceMesh.buildAnchorX() * SCROLL_SPEED, faceMesh.buildAnchorZ() * SCROLL_SPEED);
+                uniforms.setScroll(textureOffset(faceMesh.buildAnchorX(), shape.width), textureOffset(faceMesh.buildAnchorZ(), shape.height), 1.0f / shape.width, 1.0f / shape.height);
             }
             uploadFogUniforms(uniforms, fogStart, fogEnd);
             drawClouds(r, g, b, false);
@@ -552,11 +545,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     }
 
     private static void buildVertexMesh(CloudVertexMesh mesh, BuildParams p) {
-        final float scrollX = p.anchorX() * SCROLL_SPEED;
-        final float scrollZ = p.anchorZ() * SCROLL_SPEED;
+        final float scrollX = textureOffset(p.anchorX(), p.shape().width);
+        final float scrollZ = textureOffset(p.anchorZ(), p.shape().height);
 
         if (!p.fancy()) {
-            mesh.buildFast(p.radiusCells(), scrollX, scrollZ, p.shadersActive());
+            mesh.buildFast(p.shape(), p.radiusCells(), scrollX, scrollZ, p.shadersActive());
             return;
         }
 

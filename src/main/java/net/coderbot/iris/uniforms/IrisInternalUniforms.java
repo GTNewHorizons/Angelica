@@ -1,6 +1,7 @@
 package net.coderbot.iris.uniforms;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.WeatherParams;
 import net.coderbot.iris.gl.state.FogMode;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.gl.uniform.DynamicUniformHolder;
@@ -36,6 +37,19 @@ public class IrisInternalUniforms {
         if (!GLStateManager.getAlphaTest().isEnabled()) return 7;
         final int func = GLStateManager.getAlphaState().getFunction();
         return func & 0x7;
+    }
+
+    private static final Vector4f WEATHER_0 = new Vector4f();
+    private static final Vector4f WEATHER_1 = new Vector4f();
+    private static final Vector4f WEATHER_2 = new Vector4f();
+
+    public static void addWeatherUniforms(DynamicUniformHolder uniforms) {
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams0", () -> WEATHER_0.set(
+            WeatherParams.translateX, WeatherParams.translateY, WeatherParams.translateZ, WeatherParams.invRadius));
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams1", () -> WEATHER_1.set(
+            WeatherParams.cameraFracX, WeatherParams.cameraFracZ, WeatherParams.partialTicks, WeatherParams.age));
+        uniforms.uniform4f(PER_FRAME, "iris_WeatherParams2", () -> WEATHER_2.set(
+            WeatherParams.rainScroll, WeatherParams.snowScroll, WeatherParams.rainStrength, 0.0f));
     }
 
     public static void addFogUniforms(DynamicUniformHolder uniforms, FogMode fogMode) {

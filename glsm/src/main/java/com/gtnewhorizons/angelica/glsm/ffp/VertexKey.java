@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
@@ -50,6 +51,13 @@ public final class VertexKey {
     private static final int BIT_UNIT23_UV_FROM_UNIT0 = BIT_UNIT_TEXMAT_BASE + MAX_UNITS;
     private static final int BIT_LINE_STIPPLE        = BIT_UNIT23_UV_FROM_UNIT0 + 1;
     private static final int BIT_INSTANCING          = BIT_LINE_STIPPLE + 1;
+    private static final long INSTANCING_MASK        = 0x7L;
+
+    static {
+        if (Instancing.VALUES.length > INSTANCING_MASK + 1) {
+            throw new IllegalStateException("Instancing has outgrown the VertexKey field; widen INSTANCING_MASK");
+        }
+    }
 
     public static final int TG_NONE                  = 0;
     public static final int TG_OBJ_LINEAR            = 1;
@@ -97,7 +105,7 @@ public final class VertexKey {
     public boolean clipPlanesEnabled()    { return bit(BIT_CLIP_PLANES); }
     public boolean wideLineEmulation()   { return bit(BIT_WIDE_LINE); }
     public boolean lineStipple()          { return bit(BIT_LINE_STIPPLE); }
-    public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & 0x3)]; }
+    public Instancing instancing()         { return Instancing.VALUES[(int) ((packed >> BIT_INSTANCING) & INSTANCING_MASK)]; }
 
     public boolean cmReplacesAmbient()    { final int m = colorMaterialMode(); return m == CM_AMBIENT || m == CM_AMBIENT_AND_DIFFUSE; }
     public boolean cmReplacesDiffuse()    { final int m = colorMaterialMode(); return m == CM_DIFFUSE || m == CM_AMBIENT_AND_DIFFUSE; }
@@ -126,54 +134,66 @@ public final class VertexKey {
     }
 
     public static long packFromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {
+        return packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragUnitMask, GLStateManager.ctx());
+    }
+
+    public static long packFromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask, GLContextState glCtx) {
         long bits = 0;
 
-        final boolean lighting = GLStateManager.getLightingState().isEnabled();
+        final boolean lighting = glCtx.lightingState.isEnabled();
         if (lighting) {
             bits |= (1L << BIT_LIGHTING);
 
             for (int i = 0; i < FFP_LIGHT_COUNT; i++) {
-                if (!GLStateManager.getLightStates()[i].isEnabled()) continue;
+                if (!glCtx.lightStates[i].isEnabled()) continue;
                 bits |= (1L << (BIT_LIGHT_BASE + i));
                 // position.w == 0 means directional
-                if (GLStateManager.getLightDataStates()[i].position.w == 0.0f) {
+                if (glCtx.lightDataStates[i].position.w == 0.0f) {
                     bits |= (1L << (BIT_LIGHT_DIR_BASE + i));
                 }
             }
 
-            if (GLStateManager.getColorMaterial().isEnabled()) {
+            if (glCtx.colorMaterial.isEnabled()) {
                 bits |= (1L << BIT_COLOR_MATERIAL);
-                final int cmMode = encodeColorMaterialMode(GLStateManager.getColorMaterialParameter().getValue());
+                final int cmMode = encodeColorMaterialMode(glCtx.colorMaterialParameter.getValue());
                 bits |= ((long) cmMode & 0x7) << BIT_COLOR_MAT_MODE;
             }
 
-            if (GLStateManager.getLightModel().colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
+            if (glCtx.lightModel.colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
                 bits |= (1L << BIT_SEPARATE_SPECULAR);
             }
         }
 
-        if (GLStateManager.getFogMode().isEnabled()) {
+        if (glCtx.fogMode.isEnabled()) {
             bits |= (1L << BIT_FOG);
-            final int fogDistMode = GLStateManager.getFogState().getFogDistanceMode();
+            final int fogDistMode = glCtx.fogState.getFogDistanceMode();
             bits |= ((long) fogDistMode & 0x3) << BIT_FOG_DIST_MODE;
         }
 
-        if (GLStateManager.getNormalizeState().isEnabled()) {
+        if (glCtx.normalizeState.isEnabled()) {
             bits |= (1L << BIT_NORMALIZE);
         }
-        if (GLStateManager.getRescaleNormalState().isEnabled()) {
+        if (glCtx.rescaleNormalState.isEnabled()) {
             bits |= (1L << BIT_RESCALE_NORMAL);
         }
 
-        final TextureUnitArray texUnit = GLStateManager.getTextures();
+        final TextureUnitArray texUnit = glCtx.textures;
         for (int i = 0; i < MAX_UNITS; i++) {
             if ((fragUnitMask & (1 << i)) != 0) {
                 bits |= (1L << (BIT_UNIT_TEX_BASE + i));
             }
-            if (!MatrixHelper.isIdentity(texUnit.getTextureUnitMatrix(i))) {
-                bits |= (1L << (BIT_UNIT_TEXMAT_BASE + i));
-            }
         }
+        if (texUnit.texMatIdentityGen != glCtx.texMatrixGeneration) {
+            int mask = 0;
+            for (int i = 0; i < MAX_UNITS; i++) {
+                if (!MatrixHelper.isIdentity(texUnit.getTextureUnitMatrix(i))) {
+                    mask |= 1 << i;
+                }
+            }
+            texUnit.texMatIdentityMask = mask;
+            texUnit.texMatIdentityGen = glCtx.texMatrixGeneration;
+        }
+        bits |= ((long) texUnit.texMatIdentityMask) << BIT_UNIT_TEXMAT_BASE;
 
         // TexGen (unit 0 only) - per-coordinate mode if enabled.
         // TODO: per-unit texgen for units 2/3. Deferred - no MC code path uses glTexGen on those.
@@ -210,11 +230,11 @@ public final class VertexKey {
         if (hasTexCoord) bits |= (1L << BIT_HAS_VERTEX_TEX);
         if (hasLightmap) bits |= (1L << BIT_HAS_VERTEX_LIGHTMAP);
 
-        if (GLStateManager.consumeUnit23TexCoordSetDuringDraw() && hasTexCoord) {
+        if (GLStateManager.consumeUnit23TexCoordSetDuringDraw(glCtx) && hasTexCoord) {
             bits |= (1L << BIT_UNIT23_UV_FROM_UNIT0);
         }
 
-        if (GLStateManager.anyClipPlaneEnabled()) {
+        if (GLStateManager.anyClipPlaneEnabled(glCtx)) {
             bits |= (1L << BIT_CLIP_PLANES);
         }
 
@@ -232,7 +252,7 @@ public final class VertexKey {
     }
 
     static long withInstancing(long packed, Instancing kind) {
-        return (packed & ~(0x3L << BIT_INSTANCING)) | ((long) kind.ordinal() << BIT_INSTANCING);
+        return (packed & ~(INSTANCING_MASK << BIT_INSTANCING)) | ((long) kind.ordinal() << BIT_INSTANCING);
     }
 
     public static VertexKey fromState(boolean hasColor, boolean hasNormal, boolean hasTexCoord, boolean hasLightmap, int fragUnitMask) {

@@ -30,6 +30,9 @@ public abstract class MixinEntityRenderer implements EntityRendererAccessor {
     @Accessor("lightmapTexture")
     public abstract DynamicTexture getLightmapTexture();
 
+    @Accessor("rendererUpdateCount")
+    public abstract int getRendererUpdateCount();
+
     @Inject(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ActiveRenderInfo;updateRenderInfo(Lnet/minecraft/entity/player/EntityPlayer;Z)V", shift = At.Shift.AFTER))
     private void angelica$captureCameraMatrix(float partialTicks, long finishTimeNano, CallbackInfo ci) {
         final Minecraft mc = Minecraft.getMinecraft();

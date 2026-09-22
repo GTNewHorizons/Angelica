@@ -63,6 +63,10 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean enableVBOClouds;
 
+    @Config.Comment("Replace rain/snow rendering with a cached, instanced version.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableInstancedWeather;
+
     @Config.Comment("Uses cached attributes for VBO rendering, resulting in less CPU overhead. Disable if you notice any graphical issues.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
-import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.minecraft.client.Minecraft;
@@ -70,7 +70,7 @@ public final class ImmediateExtendedAttribs implements ImmediateExtendedAttribHa
         programWantsExtCache.clear();
         ItemRenderListManager.clearCache();
         FfpExtendedAttribs.reset();
-        TesrBatchRenderer.INSTANCE.clearRetained();
+        TesrLifecycle.reset();
     }
 
     private final Vector3f normal = new Vector3f();

@@ -20,6 +20,7 @@ public final class PipelineStore {
     private final Device device;
     private final Long2LongOpenHashMap map = new Long2LongOpenHashMap();
     private volatile IntToLongFunction bufferHandleResolver;
+    private int livenessGen = 1;
 
     final Set<Long> loggedMismatch = ConcurrentHashMap.newKeySet();
     final Set<Long> loggedTypeZeroAttrib = ConcurrentHashMap.newKeySet();
@@ -35,6 +36,9 @@ public final class PipelineStore {
 
     public void setBufferHandleResolver(IntToLongFunction resolver) { this.bufferHandleResolver = resolver; }
     IntToLongFunction bufferHandleResolver() { return bufferHandleResolver; }
+
+    public void bumpLivenessGen() { livenessGen++; }
+    int livenessGen() { return livenessGen; }
 
     public interface VertexVariantResolver {
         ShaderManager.VertexVariant resolve(int program, long key, List<UscaledRetype.Attrib> attribs);

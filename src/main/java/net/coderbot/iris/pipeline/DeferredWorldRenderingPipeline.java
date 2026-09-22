@@ -1479,6 +1479,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		out[Instancing.TEMPLATE.ordinal()] = true;
 		out[Instancing.CUBE.ordinal()] = AngelicaConfig.cubeInstancingEnabled();
 		out[Instancing.PARTICLE.ordinal()] = true;
+		out[Instancing.WEATHER.ordinal()] = true;
 		return out;
 	}
 
@@ -2367,11 +2368,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		ProgramId.Particles, ProgramId.ParticlesTrans
 	};
 
+	private static final ProgramId[] WEATHER_PROGRAM_IDS = {
+		ProgramId.Weather
+	};
+
 	private static ProgramId[] attributeProgramIds(Instancing kind) {
 		return switch (kind) {
 			case NONE -> ProgramId.values();
 			case TEMPLATE, CUBE -> INSTANCED_PROGRAM_IDS;
 			case PARTICLE -> PARTICLE_PROGRAM_IDS;
+			case WEATHER -> WEATHER_PROGRAM_IDS;
 		};
 	}
 
