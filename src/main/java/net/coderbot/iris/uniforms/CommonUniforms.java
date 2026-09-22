@@ -75,6 +75,7 @@ public final class CommonUniforms {
         IdMapUniforms.addEntityIdMapUniforms(uniforms);
 		FogUniforms.addFogUniforms(uniforms, fogMode);
 		IrisInternalUniforms.addFogUniforms(uniforms, fogMode);
+		IrisInternalUniforms.addWeatherUniforms(uniforms);
 
 		uniforms.uniform2i("atlasSize", () -> {
 			final int glId = GLStateManager.getBoundTextureForServerState(0);

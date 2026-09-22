@@ -56,6 +56,7 @@ public final class SystemProperties {
     public static final String FLYBY_COMMANDS = System.getProperty("angelica.flyby.commands", "");
     public static final String FLYBY_ORIGIN = System.getProperty("angelica.flyby.origin", "");
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
+    public static final FlybyWeather FLYBY_WEATHER = parseEnum("angelica.flyby.weather", FlybyWeather.CLEAR, FlybyWeather.CLEAR, FlybyWeather.class);
 
     // Debug
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");
@@ -70,6 +71,7 @@ public final class SystemProperties {
     public static final boolean FFP_TRACE = Boolean.getBoolean("angelica.debug.ffpTrace");
     public static final boolean LOG_DISPLAY_LIST_COMPILATION = Boolean.getBoolean("angelica.debug.displayLists.compilation");
     public static final boolean FORCE_ORPHAN_STREAMING = Boolean.getBoolean("angelica.debug.forceOrphanStreaming");
+    public static final boolean WEATHER_REBUILD_ALWAYS = Boolean.getBoolean("angelica.debug.weatherRebuildAlways");
     public static final String SHADER_DUMP_ROOT = "angelica_dumps";
 
     // Set by us, read by celeritas
@@ -116,6 +118,20 @@ public final class SystemProperties {
     public enum FlybyPacing {
         UNCAPPED,
         CONFIGURED
+    }
+
+    public enum FlybyWeather {
+        CLEAR,
+        RAIN,
+        THUNDER;
+
+        public boolean isRaining() {
+            return this != CLEAR;
+        }
+
+        public boolean isThundering() {
+            return this == THUNDER;
+        }
     }
 
     private static <E extends Enum<E>> E parseEnum(String key, E whenAbsent, E whenInvalid, Class<E> type) {
