@@ -2,8 +2,10 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import java.util.Arrays;
 
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.TexEnvState;
+import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -104,11 +106,15 @@ public final class FragmentKey {
      * @return number of significant longs (1..4)
      */
     public static int packFromState(long[] out) {
+        return packFromState(out, GLStateManager.ctx());
+    }
+
+    public static int packFromState(long[] out, GLContextState glCtx) {
         long global = 0;
 
         // Fog
-        if (GLStateManager.getFogMode().isEnabled()) {
-            final int fogMode = switch (GLStateManager.getFogState().getFogMode()) {
+        if (glCtx.fogMode.isEnabled()) {
+            final int fogMode = switch (glCtx.fogState.getFogMode()) {
                 case GL11.GL_LINEAR -> FOG_LINEAR;
                 case GL11.GL_EXP    -> FOG_EXP;
                 case GL11.GL_EXP2   -> FOG_EXP2;
@@ -118,15 +124,15 @@ public final class FragmentKey {
         }
 
         // Alpha test
-        if (GLStateManager.getAlphaTest().isEnabled()) {
+        if (glCtx.alphaTest.isEnabled()) {
             global |= (1L << BIT_ALPHA_TEST);
-            global |= ((long) (encodeAlphaFunc(GLStateManager.getAlphaState().getFunction()) & 0x7)) << BIT_ALPHA_FUNC;
+            global |= ((long) (encodeAlphaFunc(glCtx.alphaState.getFunction()) & 0x7)) << BIT_ALPHA_FUNC;
         }
 
         // Damage overlay
         if (GLStateManager.ffpInstancing.hasInstanceHead()) {
             global |= (1L << BIT_OVERLAY_INSTANCED);
-        } else if (GLStateManager.getOverlayA() != 0.0f) {
+        } else if (glCtx.overlayA != 0.0f) {
             global |= (1L << BIT_OVERLAY_ENABLED);
         }
 
@@ -135,22 +141,23 @@ public final class FragmentKey {
         }
 
         // Separate specular / color sum
-        if (GLStateManager.getLightingState().isEnabled()
-            && GLStateManager.getLightModel().colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
+        if (glCtx.lightingState.isEnabled()
+            && glCtx.lightModel.colorControl == GL12.GL_SEPARATE_SPECULAR_COLOR) {
             global |= (1L << BIT_SEPARATE_SPECULAR);
-        } else if (GLStateManager.getColorSumState().isEnabled()) {
+        } else if (glCtx.colorSumState.isEnabled()) {
             global |= (1L << BIT_COLOR_SUM);
         }
 
         // Per-unit state
+        final TextureUnitArray textures = glCtx.textures;
         int highestEnabled = -1;
         long unit0Bits = 0;
         for (int i = 0; i < MAX_UNITS; i++) {
             // Per Mesa - an enabled unit with no complete texture bound counts as disabled.
-            final boolean texEnabled = GLStateManager.getTextures().getTextureUnitStates(i).isEnabled() && GLStateManager.getTextures().getTextureUnitBindings(i).getBinding() != 0;
+            final boolean texEnabled = textures.getTextureUnitStates(i).isEnabled() && textures.getTextureUnitBindings(i).getBinding() != 0;
             if (texEnabled) highestEnabled = i;
 
-            final long unitBits = packUnit(i, texEnabled);
+            final long unitBits = packUnit(i, texEnabled, textures);
             if (i == 0) {
                 unit0Bits = unitBits;
             } else {
@@ -166,10 +173,10 @@ public final class FragmentKey {
         return Math.max(1, nrEnabled);
     }
 
-    private static long packUnit(int unitIndex, boolean texEnabled) {
+    private static long packUnit(int unitIndex, boolean texEnabled, TextureUnitArray textures) {
         if (!texEnabled) return 0;
 
-        final TexEnvState envState = GLStateManager.getTextures().getTexEnvState(unitIndex);
+        final TexEnvState envState = textures.getTexEnvState(unitIndex);
         final int mode = encodeTexEnvMode(envState.mode);
 
         long bits = 1L; // enabled

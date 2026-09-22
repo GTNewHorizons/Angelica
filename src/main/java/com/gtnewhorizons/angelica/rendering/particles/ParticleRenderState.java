@@ -1,10 +1,12 @@
 package com.gtnewhorizons.angelica.rendering.particles;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import org.lwjgl.opengl.GL11;
 
 public final class ParticleRenderState {
+
+    private final BlendState scratch = new BlendState();
 
     public int texture;
     public boolean blend;
@@ -16,13 +18,13 @@ public final class ParticleRenderState {
 
     public void sample() {
         texture = GLStateManager.getBoundTextureForServerState();
-        blend = GLStateManager.getBlendMode().isEnabled();
-        final BlendStateStack blendState = GLStateManager.getBlendState();
-        blendSrc = blendState.getSrcRgb();
-        blendDst = blendState.getDstRgb();
-        blendSrcAlpha = blendState.getSrcAlpha();
-        blendDstAlpha = blendState.getDstAlpha();
-        depthMask = GLStateManager.getDepthState().isEnabled();
+        blend = GLStateManager.isEffectiveBlendEnabled();
+        GLStateManager.getEffectiveBlendState(scratch);
+        blendSrc = scratch.getSrcRgb();
+        blendDst = scratch.getDstRgb();
+        blendSrcAlpha = scratch.getSrcAlpha();
+        blendDstAlpha = scratch.getDstAlpha();
+        depthMask = GLStateManager.isEffectiveDepthMaskEnabled();
     }
 
     public void set(ParticleRenderState other) {

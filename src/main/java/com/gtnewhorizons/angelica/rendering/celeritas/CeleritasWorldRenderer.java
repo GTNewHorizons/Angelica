@@ -6,7 +6,6 @@ import java.util.Comparator;
 import java.util.Iterator;
 import java.util.List;
 
-import com.gtnewhorizons.angelica.compat.bop.BopFogBlend;
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -55,13 +54,14 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import com.gtnewhorizons.angelica.render.WeatherRenderer;
-import com.gtnewhorizons.angelica.rendering.particles.ParticleInstancer;
+import com.gtnewhorizons.angelica.rendering.culling.GpuTerrainCuller;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 
 public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, AngelicaRenderSectionManager, BlockRenderLayer, TileEntity, CeleritasWorldRenderer.TileEntityRenderContext> implements IDynamicLightWorldRenderer {
@@ -168,13 +168,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         this.sortedTileEntities.clear();
         ShadowRenderer.visibleTileEntities.clear();
         ShadowRenderer.globalTileEntities.clear();
-        TesrBatchRenderer.INSTANCE.clearRetained();
-        ModelPartBatcher.INSTANCE.clear();
-        ParticleInstancer.clear();
+        TesrLifecycle.reset();
         WeatherRenderer.clear();
         GpuCulling.onWorldUnload();
         FfpExtendedAttribs.reset();
-        BopFogBlend.invalidate();
         FogBiomeCache.invalidate();
         super.unloadWorld();
     }
@@ -291,6 +288,15 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 
+        if (!renderSectionManager.isInShadowPass()) {
+            final GpuTerrainCuller terrainCuller = GpuTerrainCuller.activeInstance();
+            if (terrainCuller != null) {
+                terrainCuller.prepareAllPasses(createChunkRenderMatrices(), renderSectionManager.getRenderLists(),
+                    viewport.getTransform(), cameraTransform(cameraState.x(), cameraState.y(), cameraState.z()),
+                    IrisShaderProviderHolder.shouldUseFaceCulling());
+            }
+        }
+
         // Process deferred dynamic light chunk rebuilds with frustum culling
         if (DynamicLights.isEnabled() && DynamicLights.FrustumCullingEnabled) {
             DynamicLights.get().processChunkRebuilds(viewport);
@@ -359,6 +365,17 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     private CameraTransform cachedCameraTransform;
     private double cachedCamX, cachedCamY, cachedCamZ;
 
+    private CameraTransform cameraTransform(double x, double y, double z) {
+        CameraTransform camera = cachedCameraTransform;
+        if (camera == null || cachedCamX != x || cachedCamY != y || cachedCamZ != z) {
+            camera = cachedCameraTransform = new CameraTransform(x, y, z);
+            cachedCamX = x;
+            cachedCamY = y;
+            cachedCamZ = z;
+        }
+        return camera;
+    }
+
     @Override
     public void drawChunkLayer(BlockRenderLayer renderLayer, double x, double y, double z) {
         if (DEBUG_WIREFRAME_MODE) {
@@ -368,13 +385,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         final ChunkRenderMatrices matrices = createChunkRenderMatrices();
         final Collection<TerrainRenderPass> passes = this.renderSectionManager.getRenderPassConfiguration().vanillaRenderStages().get(renderLayer);
         if (passes != null && !passes.isEmpty()) {
-            CameraTransform realCamera = cachedCameraTransform;
-            if (realCamera == null || cachedCamX != x || cachedCamY != y || cachedCamZ != z) {
-                realCamera = cachedCameraTransform = new CameraTransform(x, y, z);
-                cachedCamX = x;
-                cachedCamY = y;
-                cachedCamZ = z;
-            }
+            final CameraTransform realCamera = cameraTransform(x, y, z);
             final CameraTransform occlusionCamera = this.getLastViewport().getTransform();
             for (final TerrainRenderPass pass : passes) {
                 this.renderSectionManager.renderLayer(matrices, pass, occlusionCamera, realCamera);

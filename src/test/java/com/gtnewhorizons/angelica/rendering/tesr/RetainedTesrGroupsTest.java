@@ -6,12 +6,13 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
-import net.coderbot.batchedentityrendering.impl.BatchVertexFormats;
 import net.coderbot.batchedentityrendering.impl.BufferSegment;
 import net.coderbot.batchedentityrendering.impl.BufferSourceProbe;
+import net.coderbot.iris.layer.PassOverride;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -34,19 +35,17 @@ class RetainedTesrGroupsTest {
     private final InstanceRing ring = new InstanceRing();
     private AngelicaBufferSource source;
     private RetainedTesrGroups groups;
-    private TestLayer layer;
+    private RenderLayer layer;
 
-    static final class TestLayer extends RenderLayer {
-        TestLayer() {
-            super("test", BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL, GL11.GL_QUADS, 256, () -> {}, () -> {});
-        }
+    static RenderLayer testLayer() {
+        return RenderLayer.tesr(null, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
     }
 
     @BeforeEach
     void freshGroups() {
         source = new AngelicaBufferSource();
         groups = new RetainedTesrGroups(source);
-        layer = new TestLayer();
+        layer = testLayer();
     }
 
     @Test

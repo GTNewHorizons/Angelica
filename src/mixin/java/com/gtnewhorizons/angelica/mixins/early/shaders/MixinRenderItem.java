@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -25,14 +27,15 @@ public class MixinRenderItem {
     @WrapMethod(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
     private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
         final int prevItemId = ItemIdManager.getItemId();
-        final long prevCutout = GbufferPrograms.pushCutoutDefaults();
-
-        ItemIdManager.setItemId(entity.getEntityItem());
+        final int stateDepth = GLStateManager.pushState(StateSet.CUTOUT);
         try {
+            GbufferPrograms.setCutoutDefaults();
+
+            ItemIdManager.setItemId(entity.getEntityItem());
             original.call(entity, x, y, z, entityYaw, partialTicks);
         } finally {
             ItemIdManager.setItemIdRaw(prevItemId);
-            GbufferPrograms.popCutoutDefaults(prevCutout);
+            GLStateManager.popStateTo(stateDepth);
         }
     }
 

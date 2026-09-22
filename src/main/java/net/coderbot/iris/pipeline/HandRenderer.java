@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.compat.mojang.InteractionHand;
 import com.gtnewhorizons.angelica.event.RenderHandEvent;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.mixins.interfaces.ItemRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
@@ -128,40 +129,47 @@ public class HandRenderer {
 
         ACTIVE = true;
 
-        final int blendSave = GbufferPrograms.pushBlendState();
-        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
-        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
-
-        GLStateManager.disableBlend();
-        GLStateManager.defaultBlendFunc();
-
-        pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
-
-        GLStateManager.glPushMatrix();
-        GLStateManager.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
-
-        mc.mcProfiler.startSection("iris_hand");
+        final int stateDepth = GLStateManager.pushState(StateSet.HAND);
         try {
-            setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setCutoutDefaults();
 
-            GbufferPrograms.setBlockEntityDefaults();
+            GLStateManager.disableBlend();
+            GLStateManager.defaultBlendFunc();
 
-            renderingSolid = true;
+            pipeline.setPhase(WorldRenderingPhase.HAND_SOLID);
 
-            mc.entityRenderer.enableLightmap(tickDelta);
-            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-            mc.entityRenderer.disableLightmap(tickDelta);
+            boolean matrixPushed = false;
+            boolean profilerSectionStarted = false;
+            try {
+                GLStateManager.glPushMatrix();
+                matrixPushed = true;
+                GLStateManager.glDepthMask(true); // actually write to the depth buffer, it's normally disabled at this point
+
+                mc.mcProfiler.startSection("iris_hand");
+                profilerSectionStarted = true;
+                try {
+                    setupGlState(gameRenderer, camera, tickDelta);
+
+                    GbufferPrograms.setBlockEntityDefaults();
+
+                    renderingSolid = true;
+
+                    mc.entityRenderer.enableLightmap(tickDelta);
+                    mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+                    mc.entityRenderer.disableLightmap(tickDelta);
+                } finally {
+                    renderingSolid = false;
+
+                    if (profilerSectionStarted) mc.mcProfiler.endSection();
+                }
+            } finally {
+                if (matrixPushed) {
+                    GLStateManager.glPopMatrix();
+                    resetProjectionMatrix();
+                }
+            }
         } finally {
-            renderingSolid = false;
-
-            mc.mcProfiler.endSection();
-
-            GLStateManager.glPopMatrix();
-            resetProjectionMatrix();
-
-            GLStateManager.glDepthMask(depthMaskBefore);
-            GbufferPrograms.popCutoutDefaults(cutoutSave);
-            GbufferPrograms.popBlendState(blendSave);
+            GLStateManager.popStateTo(stateDepth);
 
             pipeline.setPhase(WorldRenderingPhase.NONE);
 
@@ -177,36 +185,43 @@ public class HandRenderer {
 
         ACTIVE = true;
 
-        final int blendSave = GbufferPrograms.pushBlendState();
-        final long cutoutSave = GbufferPrograms.pushCutoutDefaults();
-        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
-
-        GLStateManager.enableBlend();
-        GLStateManager.defaultBlendFunc();
-
-        pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
-
-        GLStateManager.glPushMatrix();
-        GLStateManager.glDepthMask(false);
-
-        mc.mcProfiler.startSection("iris_hand_translucent");
+        final int stateDepth = GLStateManager.pushState(StateSet.HAND);
         try {
-            setupGlState(gameRenderer, camera, tickDelta);
+            GbufferPrograms.setCutoutDefaults();
 
-            GbufferPrograms.setBlockEntityDefaults();
+            GLStateManager.enableBlend();
+            GLStateManager.defaultBlendFunc();
 
-            mc.entityRenderer.enableLightmap(tickDelta);
-            mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
-            mc.entityRenderer.disableLightmap(tickDelta);
+            pipeline.setPhase(WorldRenderingPhase.HAND_TRANSLUCENT);
+
+            boolean matrixPushed = false;
+            boolean profilerSectionStarted = false;
+            try {
+                GLStateManager.glPushMatrix();
+                matrixPushed = true;
+                GLStateManager.glDepthMask(false);
+
+                mc.mcProfiler.startSection("iris_hand_translucent");
+                profilerSectionStarted = true;
+                try {
+                    setupGlState(gameRenderer, camera, tickDelta);
+
+                    GbufferPrograms.setBlockEntityDefaults();
+
+                    mc.entityRenderer.enableLightmap(tickDelta);
+                    mc.entityRenderer.itemRenderer.renderItemInFirstPerson(tickDelta);
+                    mc.entityRenderer.disableLightmap(tickDelta);
+                } finally {
+                    if (profilerSectionStarted) mc.mcProfiler.endSection();
+                }
+            } finally {
+                if (matrixPushed) {
+                    GLStateManager.glPopMatrix();
+                    resetProjectionMatrix();
+                }
+            }
         } finally {
-            mc.mcProfiler.endSection();
-
-            GLStateManager.glPopMatrix();
-            resetProjectionMatrix();
-
-            GLStateManager.glDepthMask(depthMaskBefore);
-            GbufferPrograms.popCutoutDefaults(cutoutSave);
-            GbufferPrograms.popBlendState(blendSave);
+            GLStateManager.popStateTo(stateDepth);
 
             pipeline.setPhase(WorldRenderingPhase.NONE);
 

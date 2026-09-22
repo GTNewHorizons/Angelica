@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.api.tesr.TesrShaders;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -22,6 +23,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 
 @GLCoreTest
 class TesrLayerStateTest {
@@ -68,11 +70,30 @@ class TesrLayerStateTest {
     }
 
     private static RenderLayer layer(TesrMaterial material) {
-        return RenderLayer.tesr(null, material);
+        return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true);
     }
 
     private static RenderLayer glint(int slot) {
-        return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot);
+        return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot, DrawState.CULL_BACK, true);
+    }
+
+    @Test
+    void failedHookSetupRunsTeardownAndSuppressesItsFailure() {
+        final int[] releases = { 0 };
+        final RuntimeException setup = new RuntimeException("setup");
+        final RuntimeException teardown = new RuntimeException("teardown");
+        final TesrMaterial material = TesrMaterial.builder()
+            .shader(TesrShaders.register("angelica:test_failed_hook_setup", () -> { throw setup; }, () -> {
+                releases[0]++;
+                throw teardown;
+            }))
+            .build();
+
+        final RuntimeException thrown = assertThrows(RuntimeException.class, () -> layer(material).startDrawing());
+        assertSame(setup, thrown);
+        assertEquals(1, releases[0]);
+        assertEquals(1, thrown.getSuppressed().length);
+        assertSame(teardown, thrown.getSuppressed()[0]);
     }
 
     @Test
@@ -100,14 +121,24 @@ class TesrLayerStateTest {
     }
 
     @Test
-    void declaredPhasesApply() {
+    void everyAxisAppliesAbsolutely() {
+        GLStateManager.disableCull();
+        GLStateManager.glCullFace(GL11.GL_FRONT);
+        GLStateManager.disableLighting();
+        GLStateManager.glColorMask(false, false, false, false);
+
         layer(TesrMaterial.CURRENT_STATE).startDrawing();
 
-        assertFalse(GLStateManager.getAlphaTest().isEnabled(), "ZERO_ALPHA");
-        assertTrue(GLStateManager.getDepthTest().isEnabled(), "LEQUAL_DEPTH_TEST");
+        assertFalse(GLStateManager.getAlphaTest().isEnabled(), "no cutout");
+        assertTrue(GLStateManager.getDepthTest().isEnabled(), "depth test");
         assertEquals(GL11.GL_LEQUAL, GLStateManager.getDepthState().getFunc());
-        assertFalse(GLStateManager.getBlendMode().isEnabled(), "NO_TRANSPARENCY");
-        assertEquals(GL11.GL_SMOOTH, GLStateManager.getShadeModelState().getValue(), "SMOOTH_SHADE_MODEL");
+        assertTrue(GLStateManager.getDepthState().isEnabled(), "depth write");
+        assertFalse(GLStateManager.getBlendMode().isEnabled(), "opaque");
+        assertTrue(GLStateManager.getCullState().isEnabled(), "cull pinned on");
+        assertEquals(GL11.GL_BACK, GLStateManager.getPolygonState().getCullFaceMode(), "cull face pinned to back");
+        assertTrue(GLStateManager.getLightingState().isEnabled(), "lit");
+        assertTrue(GLStateManager.getColorMask().red, "color mask pinned on");
+        assertFalse(GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "no polygon offset");
     }
 
     @Test
@@ -128,9 +159,10 @@ class TesrLayerStateTest {
 
         layer.endDrawing();
 
-        assertFalse(GLStateManager.getBlendMode().isEnabled(), "blend restored");
-        assertTrue(GLStateManager.getDepthState().isEnabled(), "depth write restored");
-        assertTrue(GLStateManager.getLightingState().isEnabled(), "lighting restored");
+        assertTrue(GLStateManager.getBlendMode().isEnabled(), "endDrawing must not reset blend");
+        assertFalse(GLStateManager.getDepthState().isEnabled(), "endDrawing must not reset the depth mask");
+        assertFalse(GLStateManager.getLightingState().isEnabled(), "endDrawing must not reset lighting");
+        assertTrue(GLStateManager.getAlphaTest().isEnabled(), "endDrawing must not reset the alpha test");
     }
 
     @Test

@@ -153,7 +153,7 @@ public final class FfpFixture {
     }
 
     public static void clear() {
-        GLStateManager.glClearColor(0f, 0f, 0f, 0f);
+        GLStateManager.glClearColor(0f, 0f, 0f, 1f);
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
     }
 

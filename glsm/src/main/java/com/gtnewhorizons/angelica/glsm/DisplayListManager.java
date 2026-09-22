@@ -79,6 +79,8 @@ public class DisplayListManager {
     // Display list compilation state (current/active context)
     private static int glListMode = 0;
     private static int glListId = -1;
+    private static int recordedStatePushes;
+    private static final DisplayListCommand POP_STATE = GLStateManager::popState;
     private static CommandRecorder currentRecorder = null;  // Command recorder (null when not recording)
     private static volatile Thread recordingThread = null;  // Thread that started recording (for thread-safety)
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
@@ -114,6 +116,7 @@ public class DisplayListManager {
         List<AccumulatedDraw> draws,
         DisplayListCallback callback,
         StackTraceElement[] stackTrace,
+        int recordedStatePushes,
 
         // Debug logging fields (only used when LOG_DISPLAY_LIST_COMPILATION)
         List<String> pendingOps,
@@ -451,6 +454,25 @@ public class DisplayListManager {
         currentRecorder.writePopAttrib();
     }
 
+    public static int virtualStateDepth(RecordMode mode) {
+        return mode == RecordMode.COMPILE ? recordedStatePushes : 0;
+    }
+
+    public static void recordPushState(StateSet set) {
+        currentRecorder.writeComplexCommand(set.pushCommand);
+        recordedStatePushes++;
+    }
+
+    public static boolean recordPopStateIfPending() {
+        if (recordedStatePushes > 0) {
+            drawBarrier();
+            currentRecorder.writeComplexCommand(POP_STATE);
+            recordedStatePushes--;
+            return true;
+        }
+        return false;
+    }
+
     public static void recordFogf(int pname, float param) {
         drawBarrier();
         currentRecorder.writeFogf(pname, param);
@@ -775,7 +797,7 @@ public class DisplayListManager {
             // Save current compilation context and start fresh for nested list
             final CompilationContext parentContext = new CompilationContext(
                 glListId, glListMode, currentRecorder, accumulatedDraws, transformCallback,
-                compilationStackTrace, pendingTransformOps, multMatrixSources, drawRangeSources
+                compilationStackTrace, recordedStatePushes, pendingTransformOps, multMatrixSources, drawRangeSources
             );
             compilationStack.push(parentContext);
         }
@@ -787,6 +809,7 @@ public class DisplayListManager {
         currentRecorder = new CommandRecorder();  // Create command recorder
         accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
         transformCallback = new DisplayListCallback();
+        recordedStatePushes = 0;
         compilationStackTrace = SystemProperties.LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
 
         // Initialize debug logging fields (only when logging enabled)
@@ -830,6 +853,12 @@ public class DisplayListManager {
     private static void finishCurrentList() {
         // Stop compiling mode (works for both root and nested lists now)
         TessellatorManager.stopCapturingDirect();
+
+        boolean unbalancedStatePush = false;
+        while (recordPopStateIfPending()) unbalancedStatePush = true;
+        if (unbalancedStatePush) {
+            GLStateManager.warnOnce("unbalanced-state-push", "Display list {} ended with unpopped internal state pushes - closing them", glListId);
+        }
 
         flushAll();
 
@@ -921,6 +950,7 @@ public class DisplayListManager {
             accumulatedDraws = parentContext.draws;
             transformCallback = parentContext.callback;
             compilationStackTrace = parentContext.stackTrace;
+            recordedStatePushes = parentContext.recordedStatePushes;
             pendingTransformOps = parentContext.pendingOps;
             multMatrixSources = parentContext.matrixSources;
             drawRangeSources = parentContext.drawSources;
@@ -946,6 +976,7 @@ public class DisplayListManager {
         drawRangeSources = null;
         glListId = -1;
         glListMode = 0;
+        recordedStatePushes = 0;
     }
 
     public static void abortCompilation() {

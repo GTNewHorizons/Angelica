@@ -104,7 +104,9 @@ public class DSAARB extends DSAUnsupported {
             super.bindTextureToUnit(target != 0 ? target : GL11.GL_TEXTURE_2D, unit, texture);
         } else {
             RENDER_BACKEND.bindTextureUnit(unit, texture);
-            GLStateManager.getTextures().getTextureUnitBindings(unit).setBinding(texture, target);
+            final var binding = GLStateManager.getTextures().getTextureUnitBindings(unit);
+            binding.beforeModify();
+            binding.setBinding(texture, target);
             GLStateManager.trackMaxBoundTextureUnit(unit);
         }
     }
