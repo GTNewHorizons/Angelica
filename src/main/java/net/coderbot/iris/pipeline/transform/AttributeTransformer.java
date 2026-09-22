@@ -111,8 +111,7 @@ class AttributeTransformer {
 					init.append(" iris_MultiTexCoord1 = vec4(iris_InstLightmap, 0.0, 1.0);");
 					assignMidTexCoord(transformer, init, "vec4((iris_InstUv.x + iris_InstUv.z) * 0.5, (iris_InstUv.y + iris_InstUv.w) * 0.5, 0.0, 1.0)");
 				} else if (weatherVertex) {
-					init.append(InstancedGlslHelpers.weatherPrologue("iris_", "iris_InstColumnSpan",
-						"iris_InstJitter", "iris_InstWeatherParams", "iris_WeatherCorner",
+					init.append(InstancedGlslHelpers.weatherPrologue("iris_", "iris_", "iris_WeatherCorner",
 						"iris_Vertex", "iris_Color", "iris_MultiTexCoord0", "iris_MultiTexCoord1", " "));
 					assignMidTexCoord(transformer, init, "vec4(0.5, 0.5, 0.0, 1.0)");
 				} else {

@@ -34,30 +34,60 @@ public final class InstancedGlslHelpers {
             + "0.0, 1.0)";
     }
 
-    public static String weatherPrologue(String prefix, String columnSpan, String jitter, String params,
-        String corner, String vertex, String color, String tex0, String tex1, String sep) {
-        final String p0 = prefix + "WeatherParams0";
-        final String p1 = prefix + "WeatherParams1";
-        final String p2 = prefix + "WeatherParams2";
-        final String v = prefix + "w";
-        return "vec2 " + v + "Col = " + columnSpan + ".xy;" + sep
-            // Vanilla's rainXCoords table, degenerate at the camera's own column exactly as it is there.
-            + "vec2 " + v + "Half = vec2(-" + v + "Col.y, " + v + "Col.x) * (0.5 / sqrt(dot(" + v + "Col, " + v + "Col)));" + sep
-            + "float " + v + "Y = mix(" + columnSpan + ".z, " + columnSpan + ".w, " + corner + ".y);" + sep
-            + "vec2 " + v + "Edge = " + v + "Col + vec2(0.5) + (" + corner + ".x * 2.0 - 1.0) * " + v + "Half;" + sep
-            + vertex + " = vec4(" + v + "Edge.x + " + p0 + ".x, " + v + "Y + " + p0 + ".y, " + v + "Edge.y + " + p0 + ".z, 1.0);" + sep
-            + "float " + v + "Dist = length(" + v + "Col + vec2(0.5) - " + p1 + ".xy) * " + p0 + ".w;" + sep
-            + "float " + v + "Fall = 1.0 - " + v + "Dist * " + v + "Dist;" + sep
-            + "float " + v + "Snow = " + params + ".w;" + sep
-            + "float " + v + "Scroll = " + v + "Snow < 0.5" + sep
-            + "    ? (mod(" + p2 + ".x + " + params + ".z, 32.0) + " + p1 + ".z) / 32.0 * (3.0 + " + jitter + ".x)" + sep
-            + "    : (" + p2 + ".y + " + p1 + ".z) / 512.0;" + sep
-            + "vec2 " + v + "Drift = " + v + "Snow < 0.5 ? vec2(0.0) : vec2(" + sep
-            + "    " + jitter + ".x + " + p1 + ".w * 0.01 * " + jitter + ".y," + sep
-            + "    " + jitter + ".z + " + p1 + ".w * " + jitter + ".w * 0.001);" + sep
-            + tex0 + " = vec4(" + corner + ".x + " + v + "Drift.x, " + v + "Y * 0.25 + " + v + "Scroll + " + v + "Drift.y, 0.0, 1.0);" + sep
-            + tex1 + " = vec4(" + params + ".xy, 0.0, 1.0);" + sep
-            + color + " = vec4(1.0, 1.0, 1.0, (" + v + "Snow < 0.5 ? " + v + "Fall * 0.5 + 0.5 : " + v + "Fall * 0.3 + 0.5) * " + p2 + ".z);";
+    // wHalfWidth is vanilla's rainXCoords table.
+    private static final String WEATHER_PROLOGUE = """
+        vec2 {p}wColumn = {span}.xy;
+        float {p}wBottom = {span}.z;
+        float {p}wTop = {span}.w;
+        vec2 {p}wLightmap = {params}.xy;
+        float {p}wHash = {params}.z;
+        bool {p}wSnow = {params}.w > 0.5;
+        vec3 {p}wTranslate = {p}WeatherParams0.xyz;
+        float {p}wInvRadius = {p}WeatherParams0.w;
+        vec2 {p}wCameraFrac = {p}WeatherParams1.xy;
+        float {p}wPartialTicks = {p}WeatherParams1.z;
+        float {p}wAge = {p}WeatherParams1.w;
+        float {p}wRainScroll = {p}WeatherParams2.x;
+        float {p}wSnowScroll = {p}WeatherParams2.y;
+        float {p}wStrength = {p}WeatherParams2.z;
+
+        vec2 {p}wHalfWidth = vec2(-{p}wColumn.y, {p}wColumn.x) * (0.5 / sqrt(dot({p}wColumn, {p}wColumn)));
+        vec2 {p}wCornerXZ = {p}wColumn + vec2(0.5) + ({corner}.x * 2.0 - 1.0) * {p}wHalfWidth;
+        float {p}wCornerY = mix({p}wBottom, {p}wTop, {corner}.y);
+        {vertex} = vec4(vec3({p}wCornerXZ.x, {p}wCornerY, {p}wCornerXZ.y) + {p}wTranslate, 1.0);
+
+        float {p}wDistance = length({p}wColumn + vec2(0.5) - {p}wCameraFrac) * {p}wInvRadius;
+        float {p}wFade = 1.0 - {p}wDistance * {p}wDistance;
+        float {p}wScroll;
+        vec2 {p}wDrift;
+        float {p}wAlpha;
+        if ({p}wSnow) {
+            {p}wScroll = ({p}wSnowScroll + {p}wPartialTicks) / 512.0;
+            {p}wDrift = vec2({jitter}.x + {p}wAge * 0.01 * {jitter}.y, {jitter}.z + {p}wAge * {jitter}.w * 0.001);
+            {p}wAlpha = {p}wFade * 0.3 + 0.5;
+        } else {
+            {p}wScroll = (mod({p}wRainScroll + {p}wHash, 32.0) + {p}wPartialTicks) / 32.0 * (3.0 + {jitter}.x);
+            {p}wDrift = vec2(0.0);
+            {p}wAlpha = {p}wFade * 0.5 + 0.5;
+        }
+
+        {tex0} = vec4({corner}.x + {p}wDrift.x, {p}wCornerY * 0.25 + {p}wScroll + {p}wDrift.y, 0.0, 1.0);
+        {tex1} = vec4({p}wLightmap, 0.0, 1.0);
+        {color} = vec4(1.0, 1.0, 1.0, {p}wAlpha * {p}wStrength);""";
+
+    public static String weatherPrologue(String uniformPrefix, String attribPrefix, String corner,
+        String vertex, String color, String tex0, String tex1, String sep) {
+        return WEATHER_PROLOGUE
+            .replace("{p}", uniformPrefix)
+            .replace("{span}", attribPrefix + "InstColumnSpan")
+            .replace("{jitter}", attribPrefix + "InstJitter")
+            .replace("{params}", attribPrefix + "InstWeatherParams")
+            .replace("{corner}", corner)
+            .replace("{vertex}", vertex)
+            .replace("{color}", color)
+            .replace("{tex0}", tex0)
+            .replace("{tex1}", tex1)
+            .replace("\n", sep);
     }
 
     public static String cubePrelude(String prefix, String mid, String delta, String normal, String tex, String sep) {

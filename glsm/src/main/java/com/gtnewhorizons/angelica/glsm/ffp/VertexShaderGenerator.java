@@ -22,9 +22,8 @@ public final class VertexShaderGenerator {
 
         sb.append("void main() {\n");
         if (key.instancing() == Instancing.WEATHER) {
-            sb.append("  ").append(InstancedGlslHelpers.weatherPrologue("u_", "a_InstColumnSpan",
-                "a_InstJitter", "a_InstWeatherParams", "a_TexCoord0", "vec4 weatherVertex",
-                "vec4 weatherColor", "vec4 weatherTex0", "vec4 weatherTex1", "\n  ")).append('\n');
+            sb.append("  ").append(InstancedGlslHelpers.weatherPrologue("u_", "a_", "a_TexCoord0",
+                "vec4 weatherVertex", "vec4 weatherColor", "vec4 weatherTex0", "vec4 weatherTex1", "\n  ")).append('\n');
         }
         emitPositionTransform(sb, key);
         if (key.lightingEnabled()) {
