@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.glsm.stacks.CowStateStack;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
@@ -38,6 +39,7 @@ public final class StateSet {
     public final int restore;
     public final int bump;
     public final boolean blendSnapshot;
+    public final DisplayListCommand pushCommand;
 
     StateSet(int glMask, long[] members, int restore, int bump, boolean blendSnapshot) {
         this.glMask = glMask;
@@ -45,6 +47,7 @@ public final class StateSet {
         this.restore = restore;
         this.bump = bump;
         this.blendSnapshot = blendSnapshot;
+        this.pushCommand = () -> GLStateManager.pushStateLive(this);
     }
 
     public boolean contains(int id) {

@@ -233,7 +233,7 @@ public class GLStateManager {
     public static ContextCapabilities capabilities;
 
     // Software stack depths for FFP emulation
-    public static final int MAX_ATTRIB_STACK_DEPTH = 16 + 2;
+    public static final int MAX_ATTRIB_STACK_DEPTH = 32;
     public static final int MAX_MODELVIEW_STACK_DEPTH = 32 + 2;
     public static final int MAX_PROJECTION_STACK_DEPTH = 4;
     public static final int MAX_TEXTURE_STACK_DEPTH = 4;
@@ -3731,15 +3731,27 @@ public class GLStateManager {
     }
 
     public static void pushState(int mask) {
-        pushState(StateSet.forMask(mask));
+        pushStateLive(StateSet.forMask(mask));
     }
 
     public static int pushState(StateSet set) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        if (mode != RecordMode.NONE) {
+            final int token = ctx().attribDepth + DisplayListManager.virtualStateDepth(mode);
+            if (token >= MAX_ATTRIB_STACK_DEPTH) {
+                throw new IllegalStateException("Attrib stack overflow: max depth " + MAX_ATTRIB_STACK_DEPTH + " reached");
+            }
+            DisplayListManager.recordPushState(set);
+            if (mode == RecordMode.COMPILE) {
+                return token;
+            }
+        }
+        return pushStateLive(set);
+    }
+
+    static int pushStateLive(StateSet set) {
         attribPushes++;
         final GLContextState glCtx = ctx();
-        if (set.glMask == 0 && DisplayListManager.getRecordMode() == RecordMode.COMPILE) {
-            throw new IllegalStateException("Internal state set pushed while compiling a display list");
-        }
         if (glCtx.attribDepth >= MAX_ATTRIB_STACK_DEPTH) {
             throw new IllegalStateException("Attrib stack overflow: max depth " + MAX_ATTRIB_STACK_DEPTH + " reached");
         }
@@ -3783,7 +3795,10 @@ public class GLStateManager {
 
     public static void popStateTo(int depth) {
         final GLContextState glCtx = ctx();
-        while (glCtx.attribDepth > depth) {
+        final RecordMode mode = DisplayListManager.getRecordMode();
+        while (glCtx.attribDepth + DisplayListManager.virtualStateDepth(mode) > depth) {
+            if (mode == RecordMode.COMPILE && DisplayListManager.recordPopStateIfPending()) continue;
+            if (mode == RecordMode.COMPILE_AND_EXECUTE) DisplayListManager.recordPopStateIfPending();
             popState();
         }
     }
