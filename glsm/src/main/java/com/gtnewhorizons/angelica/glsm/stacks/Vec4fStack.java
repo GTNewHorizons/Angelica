@@ -1,48 +1,43 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
-import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import org.joml.Vector4f;
 
 /**
  * Stack for a Vector4f value (e.g. current texture coordinates).
  */
-public class Vec4fStack implements IStateStack<Vec4fStack> {
+public final class Vec4fStack implements CowStateStack<Vec4fStack> {
 
     private final Vector4f value;
     private final float[][] stack;
-    private int pointer;
+    private final CowDepths cow = new CowDepths();
 
-    public Vec4fStack(Vector4f value) {
+    public Vec4fStack(Vector4f value, int id) {
         this.value = value;
+        cow.id = id;
         stack = new float[GLStateManager.MAX_ATTRIB_STACK_DEPTH][4];
     }
 
     @Override
-    public Vec4fStack push() {
-        if (pointer == stack.length) {
-            throw new IllegalStateException("Stack overflow size " + (pointer + 1) + " reached");
-        }
-        stack[pointer][0] = value.x;
-        stack[pointer][1] = value.y;
-        stack[pointer][2] = value.z;
-        stack[pointer][3] = value.w;
-        pointer++;
-        return this;
+    public CowDepths cowDepths() {
+        return cow;
     }
 
     @Override
-    public Vec4fStack pop() {
-        if (pointer == 0) {
-            throw new IllegalStateException("Stack underflow");
-        }
-        pointer--;
-        value.set(stack[pointer][0], stack[pointer][1], stack[pointer][2], stack[pointer][3]);
-        return this;
+    public void captureSlot(int s) {
+        stack[s][0] = value.x;
+        stack[s][1] = value.y;
+        stack[s][2] = value.z;
+        stack[s][3] = value.w;
     }
 
     @Override
-    public boolean isEmpty() {
-        return pointer == 0;
+    public void restoreSlot(int s) {
+        value.set(stack[s][0], stack[s][1], stack[s][2], stack[s][3]);
+    }
+
+    @Override
+    public int stackId() {
+        return cow.id;
     }
 }

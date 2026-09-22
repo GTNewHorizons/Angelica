@@ -93,6 +93,7 @@ DependencyHandlerScope.of(dependencies).apply {
     shadowImplementation(project(":lwjgl3-backend")) { isTransitive = false }
     shadowImplementation(project(":sdl-gpu")) { isTransitive = false }
     runtimeOnlyNonPublishable(project(":tracy-client")) { isTransitive = false }
+    devOnlyNonPublishable(libs.async.profiler)
     shadowImplementation(libs.eventbus)
 
     shadowImplementation(libs.jcpp) // Apache 2.0

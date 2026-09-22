@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.SegmentedBufferBuilder;
 import net.coderbot.iris.Iris;
@@ -161,7 +162,7 @@ final class EntityShadowBatcher {
     private RenderLayer layer() {
         RenderLayer l = layer;
         if (l == null) {
-            l = RenderLayer.tesr(SHADOW_TEXTURE, EntityMaterials.SHADOW, PassOverride.NONE, 0.0F, 0.0F);
+            l = RenderLayer.tesr(SHADOW_TEXTURE, EntityMaterials.SHADOW, PassOverride.NONE, 0.0F, 0.0F, ShaderGlint.NO_TINT, DrawState.CULL_BACK, false);
             layer = l;
         }
         return l;

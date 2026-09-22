@@ -48,6 +48,7 @@ public class BooleanState implements ISettableState<BooleanState> {
         if (stateUnknown || bypass || enabled != this.enabled || (this.glCap == GL11.GL_BLEND && GLStateManager.vendorIsAMD() && GLStateManager.isPoppingAttributes())) {
             stateUnknown = false;
             this.enabled = enabled;
+            onEnabledChanged();
             if (!ffpStateOnly) {
                 if (enabled) {
                     RENDER_BACKEND.enable(this.glCap);
@@ -57,6 +58,8 @@ public class BooleanState implements ISettableState<BooleanState> {
             }
         }
     }
+
+    protected void onEnabledChanged() {}
 
     @Override
     public BooleanState set(BooleanState state) {

@@ -83,6 +83,28 @@ public final class ShaderManager {
     private final Int2ObjectOpenHashMap<ShaderObject> shaderObjects = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<ProgramObject> programObjects = new Int2ObjectOpenHashMap<>();
 
+    private record VertexInputSetKey(int mask, int[] vecSize, int[] baseType) {
+        @Override public boolean equals(Object o) {
+            if (!(o instanceof VertexInputSetKey k)) return false;
+            return mask == k.mask && Arrays.equals(vecSize, k.vecSize) && Arrays.equals(baseType, k.baseType);
+        }
+        @Override public int hashCode() {
+            return (mask * 31 + Arrays.hashCode(vecSize)) * 31 + Arrays.hashCode(baseType);
+        }
+    }
+
+    private final HashMap<VertexInputSetKey, Integer> vertexInputSetIds = new HashMap<>();
+    private int nextVertexInputSetId = 1;
+
+    private int internVertexInputSet(int mask, int[] vecSize, int[] baseType) {
+        final VertexInputSetKey key = new VertexInputSetKey(mask, vecSize.clone(), baseType.clone());
+        final Integer existing = vertexInputSetIds.get(key);
+        if (existing != null) return existing;
+        final int id = nextVertexInputSetId++;
+        vertexInputSetIds.put(key, id);
+        return id;
+    }
+
     private record PrewarmKey(String source, int glShaderType) {}
     private record PrewarmEntry(byte[] remappedSpirv, StageReflection reflection, GraphicsBindingMap graphicsBindingMap, Set<String> boolUniforms, String transformedSource) {}
     private record PrewarmHit(ByteBuffer spirv, StageReflection reflection, GraphicsBindingMap graphicsBindingMap, Set<String> boolUniforms, String transformedSource) {}
@@ -415,6 +437,7 @@ public final class ShaderManager {
 
         applyVaryingMatch(prog, vs.reflection, fs.reflection);
         applyAttribLocationsAndInputMask(prog, vs.reflection);
+        prog.vertexInputSetId = internVertexInputSet(prog.vertexInputMask, prog.vertexInputVecSize, prog.vertexInputBaseType);
 
         prog.vertexResources = vs.reflection.counts();
         prog.fragmentResources = fs.reflection.counts();
@@ -1244,13 +1267,19 @@ public final class ShaderManager {
     }
 
     private static int collectResourceIds(long resources, long compiler, int resourceType, Int2IntOpenHashMap idToNewSet, Int2IntOpenHashMap idToNewBinding, int targetSet, int nextBinding, MemoryStack stack) {
-        final int[] next = { nextBinding };
-        forEachResource(resources, resourceType, stack, (j, res) -> {
-            final int spvId = res.id();
+        final PointerBuffer pList = stack.pointers(0);
+        final PointerBuffer pCount = stack.pointers(0);
+        if (Spvc.spvc_resources_get_resource_list_for_type(resources, resourceType, pList, pCount) != Spvc.SPVC_SUCCESS) return nextBinding;
+        final int count = (int) pCount.get(0);
+        if (count == 0) return nextBinding;
+        final SpvcReflectedResource.Buffer list = SpvcReflectedResource.create(pList.get(0), count);
+        int next = nextBinding;
+        for (int j = 0; j < count; j++) {
+            final int spvId = list.get(j).id();
             idToNewSet.put(spvId, targetSet);
-            idToNewBinding.put(spvId, next[0]++);
-        });
-        return next[0];
+            idToNewBinding.put(spvId, next++);
+        }
+        return next;
     }
 
     private static ByteBuffer copyBuffer(ByteBuffer src) {
@@ -1726,7 +1755,17 @@ public final class ShaderManager {
         public int[] fragmentSamplerUnits = EMPTY_UNITS;
         public boolean samplerUnitsDirty = true;
 
+        public static final byte LOCATION_KIND_PLAIN = 0;
+        public static final byte LOCATION_KIND_SAMPLER = 1;
+        public static final byte LOCATION_KIND_IMAGE = 2;
+
+        public byte[] locationKind = EMPTY_KIND;
+        public String[] locationName = EMPTY_NAMES;
+        public int[] locationSamplerUnit = EMPTY_UNITS;
+
         private static final int[] EMPTY_UNITS = new int[0];
+        private static final byte[] EMPTY_KIND = new byte[0];
+        private static final String[] EMPTY_NAMES = new String[0];
 
         private static Object2IntOpenHashMap<String> newLocMap() {
             final Object2IntOpenHashMap<String> m = new Object2IntOpenHashMap<>();
@@ -1787,6 +1826,7 @@ public final class ShaderManager {
         public int geometryShader;
         public int nextUniformLocation = 0;
         public int vertexInputMask;
+        public int vertexInputSetId;
         public int vertexShader;
         public int vertexUboSize;
         public long sdlComputePipeline;
@@ -1801,6 +1841,21 @@ public final class ShaderManager {
             uniformSlotCount = n;
             vsInfoBySlot = new UniformMemberInfo[n];
             fsInfoBySlot = new UniformMemberInfo[n];
+            locationKind = new byte[n];
+            locationName = new String[n];
+            locationSamplerUnit = new int[n];
+            Arrays.fill(locationSamplerUnit, -1);
+            for (int loc = 0; loc < n; loc++) {
+                final String name = locationToName.get(loc);
+                locationName[loc] = name;
+                if (name != null && allSamplerNames.contains(name)) {
+                    locationKind[loc] = LOCATION_KIND_SAMPLER;
+                } else if (name != null && allImageNames.contains(name)) {
+                    locationKind[loc] = LOCATION_KIND_IMAGE;
+                } else {
+                    locationKind[loc] = LOCATION_KIND_PLAIN;
+                }
+            }
             for (int b = 0; b < BLOCK_COUNT; b++) {
                 blockInfoBySlot[b] = new UniformMemberInfo[n];
                 for (var it = blockMemberInfo[b].int2ObjectEntrySet().fastIterator(); it.hasNext(); ) {

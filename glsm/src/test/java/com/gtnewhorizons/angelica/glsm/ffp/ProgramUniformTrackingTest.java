@@ -31,20 +31,20 @@ class ProgramUniformTrackingTest {
             GLStateManager.glTranslatef(1.0F, 2.0F, 3.0F);
 
             GL20.glUseProgram(a.getProgramId());
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             final int afterFirst = uniforms.blockWrites;
 
             GL20.glUseProgram(b.getProgramId());
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             GL20.glUseProgram(a.getProgramId());
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             assertEquals(afterFirst, uniforms.blockWrites, "program switches with unchanged state write nothing");
 
             GLStateManager.glTranslatef(4.0F, 0.0F, 0.0F);
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             assertEquals(afterFirst + 1, uniforms.blockWrites, "a gen bump writes exactly one block");
 
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             assertEquals(afterFirst + 1, uniforms.blockWrites, "clean draw writes nothing");
 
             GLStateManager.glPopMatrix();
@@ -66,18 +66,18 @@ class ProgramUniformTrackingTest {
             GLStateManager.glLoadIdentity();
 
             GL20.glUseProgram(a.getProgramId());
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             final int base = uniforms.blockWrites;
 
             GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
             GLStateManager.glPopAttrib();
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             assertEquals(base, uniforms.blockWrites, "push/pop with no change inside writes nothing");
 
             GLStateManager.glPushAttrib(GL11.GL_TRANSFORM_BIT);
             GLStateManager.glTranslatef(7.0F, 0.0F, 0.0F);
             GLStateManager.glPopAttrib();
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
             assertEquals(base + 1, uniforms.blockWrites, "pop after change stages once");
 
             GLStateManager.glPopMatrix();

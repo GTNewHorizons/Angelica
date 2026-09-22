@@ -205,7 +205,7 @@ public final class TextureOps {
 
     public void blitTexture(long srcTex, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter, int flipMode) {
         frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
         final long cb = frameManager.getCommandBuffer();
         if (cb == 0) return;
 
@@ -243,7 +243,7 @@ public final class TextureOps {
         f.pendingMipGen.clear();
 
         frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
 
         for (int glId : glIds) {
             final long handle = resourceManager.getTextureHandle(glId);

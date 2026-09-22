@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.ClipPlaneState;
 import com.gtnewhorizons.angelica.glsm.states.FogState;
@@ -7,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.states.LightState;
 import com.gtnewhorizons.angelica.glsm.states.LineState;
 import com.gtnewhorizons.angelica.glsm.states.MaterialState;
 import com.gtnewhorizons.angelica.glsm.states.TexGenState;
+import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import com.gtnewhorizons.angelica.glsm.streaming.UniformRingBuffer;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
@@ -81,43 +83,43 @@ public class Uniforms {
     private static final double LN2 = java.lang.Math.log(2.0);
     private static final double SQRT_LN2 = java.lang.Math.sqrt(LN2);
 
-    public void upload() {
+    public void upload(GLContextState glCtx) {
         boolean dirty = false;
         contentChanged = false;
 
-        final int mvG = GLStateManager.getMvGeneration();
-        final int projG = GLStateManager.getProjGeneration();
+        final int mvG = glCtx.mvGeneration;
+        final int projG = glCtx.projGeneration;
         final boolean mvChanged = mvG != mvGen;
         final boolean projChanged = projG != projGen;
         if (mvChanged || projChanged) {
-            stageMatrices(mvChanged, projChanged);
+            stageMatrices(mvChanged, projChanged, glCtx);
             mvGen = mvG;
             projGen = projG;
             stagedMatrices++;
             dirty = true;
         }
-        final int mvLinG = GLStateManager.getMvLinearGeneration();
+        final int mvLinG = glCtx.mvLinearGeneration;
         if (mvLinG != mvLinearGen) {
-            stageNormalMatrix();
+            stageNormalMatrix(glCtx);
             mvLinearGen = mvLinG;
             dirty = true;
         }
-        final int texMatG = GLStateManager.getTexMatrixGeneration();
+        final int texMatG = glCtx.texMatrixGeneration;
         if (texMatG != texMatGen) {
-            stageTextureMatrices();
+            stageTextureMatrices(glCtx);
             texMatGen = texMatG;
             dirty = true;
         }
-        final int litG = GLStateManager.getLightingGeneration();
+        final int litG = glCtx.lightingGeneration;
         if (litG != lightingGen) {
-            stageLighting();
+            stageLighting(glCtx);
             lightingGen = litG;
             stagedLighting++;
             dirty = true;
         }
-        final int colG = GLStateManager.getColorGeneration();
+        final int colG = glCtx.colorGeneration;
         if (colG != colorGen) {
-            stageCurrentColor();
+            stageCurrentColor(glCtx);
             colorGen = colG;
             stagedColor++;
             dirty = true;
@@ -149,35 +151,36 @@ public class Uniforms {
             stagedLightmap++;
             dirty = true;
         }
-        final int tgG = GLStateManager.getTexGenGeneration();
+        final int tgG = glCtx.texGenGeneration;
         if (tgG != texGenGen) {
-            stageTexGen();
+            stageTexGen(glCtx);
             texGenGen = tgG;
             stagedTexGen++;
             dirty = true;
         }
-        final int cpG = GLStateManager.getClipPlaneGeneration();
+        final int cpG = glCtx.clipPlaneGeneration;
         if (cpG != clipPlaneGen) {
-            stageClipPlanes();
+            stageClipPlanes(glCtx);
             clipPlaneGen = cpG;
             stagedClipPlanes++;
             dirty = true;
         }
-        final int fragG = GLStateManager.getFragmentGeneration();
+        final int fragG = glCtx.fragmentGeneration;
         if (fragG != fragmentGen) {
-            stageFragment();
+            stageFragment(glCtx);
             fragmentGen = fragG;
             stagedFragment++;
             dirty = true;
         }
-        final float lw = GLStateManager.getLineState().getWidth();
+        final LineState line = glCtx.lineState;
+        final float lw = line.getWidth();
         if (lw != lineWidth) {
             putFloat(FFPUniformBlock.LINE_WIDTH, lw);
             lineWidth = lw;
             stagedMisc++;
             dirty = true;
         }
-        final ViewportState vp = GLStateManager.getViewportState();
+        final ViewportState vp = glCtx.viewportState;
         if (vp.x != viewportX || vp.y != viewportY || vp.width != viewportWidth || vp.height != viewportHeight) {
             putFloat(FFPUniformBlock.VIEWPORT_SIZE, vp.width);
             putFloat(FFPUniformBlock.VIEWPORT_SIZE + 4, vp.height);
@@ -189,8 +192,7 @@ public class Uniforms {
             stagedMisc++;
             dirty = true;
         }
-        final LineState line = GLStateManager.getLineState();
-        final int stippleFactor = line.getStippleFactor() < 1 ? 1 : line.getStippleFactor();
+        final int stippleFactor = Math.max(line.getStippleFactor(), 1);
         final int stipplePacked = (line.getStipplePattern() & 0xFFFF) | (stippleFactor << 16);
         if (stipplePacked != lineStipple) {
             putInt(FFPUniformBlock.LINE_STIPPLE, stipplePacked);
@@ -215,9 +217,9 @@ public class Uniforms {
         }
     }
 
-    private void stageMatrices(boolean mvChanged, boolean projChanged) {
-        final Matrix4f mv = GLStateManager.getModelViewMatrix();
-        final Matrix4f proj = GLStateManager.getProjectionMatrix();
+    private void stageMatrices(boolean mvChanged, boolean projChanged, GLContextState glCtx) {
+        final Matrix4f mv = glCtx.modelViewMatrix;
+        final Matrix4f proj = glCtx.projectionMatrix;
         if (mvChanged) {
             putMat4(FFPUniformBlock.MODEL_VIEW_MATRIX, mv);
         }
@@ -228,8 +230,8 @@ public class Uniforms {
         putMat4(FFPUniformBlock.MVP_MATRIX, mvpMatrix);
     }
 
-    private void stageNormalMatrix() {
-        GLStateManager.getModelViewMatrix().normal(normalMatrix);
+    private void stageNormalMatrix(GLContextState glCtx) {
+        glCtx.modelViewMatrix.normal(normalMatrix);
         putMat3(FFPUniformBlock.NORMAL_MATRIX, normalMatrix);
         putFloat(FFPUniformBlock.NORMAL_SCALE, rescaleFactor(normalMatrix, tempVec3));
     }
@@ -239,18 +241,19 @@ public class Uniforms {
         return f > 1.0e-12f ? 1.0f / (float) Math.sqrt(f) : 1.0f;
     }
 
-    private void stageTextureMatrices() {
-        putMat4(FFPUniformBlock.TEXTURE_MATRIX_0, GLStateManager.getTextures().getTextureUnitMatrix(0));
-        putMat4(FFPUniformBlock.TEXTURE_MATRIX_2, GLStateManager.getTextures().getTextureUnitMatrix(2));
-        putMat4(FFPUniformBlock.TEXTURE_MATRIX_3, GLStateManager.getTextures().getTextureUnitMatrix(3));
-        putMat4(FFPUniformBlock.LIGHTMAP_TEXTURE_MATRIX, GLStateManager.getTextures().getTextureUnitMatrix(1));
+    private void stageTextureMatrices(GLContextState glCtx) {
+        final TextureUnitArray textures = glCtx.textures;
+        putMat4(FFPUniformBlock.TEXTURE_MATRIX_0, textures.getTextureUnitMatrix(0));
+        putMat4(FFPUniformBlock.TEXTURE_MATRIX_2, textures.getTextureUnitMatrix(2));
+        putMat4(FFPUniformBlock.TEXTURE_MATRIX_3, textures.getTextureUnitMatrix(3));
+        putMat4(FFPUniformBlock.LIGHTMAP_TEXTURE_MATRIX, textures.getTextureUnitMatrix(1));
     }
 
-    private void stageLighting() {
-        final MaterialState mat = GLStateManager.getFrontMaterial();
-        final Vector4f lmAmbient = GLStateManager.getLightModel().ambient;
-        final LightState light0 = GLStateManager.getLightDataStates()[0];
-        final LightState light1 = GLStateManager.getLightDataStates()[1];
+    private void stageLighting(GLContextState glCtx) {
+        final MaterialState mat = glCtx.frontMaterial;
+        final Vector4f lmAmbient = glCtx.lightModel.ambient;
+        final LightState light0 = glCtx.lightDataStates[0];
+        final LightState light1 = glCtx.lightDataStates[1];
 
         putVec4(FFPUniformBlock.LIGHT_MODEL_AMBIENT, lmAmbient);
         putVec4(FFPUniformBlock.MATERIAL_EMISSION, mat.emission);
@@ -284,8 +287,8 @@ public class Uniforms {
         putVec3(offset, lightVal.x * materialVal.x, lightVal.y * materialVal.y, lightVal.z * materialVal.z);
     }
 
-    private void stageCurrentColor() {
-        final var color = GLStateManager.getColor();
+    private void stageCurrentColor(GLContextState glCtx) {
+        final var color = glCtx.color;
         putVec4(FFPUniformBlock.CURRENT_COLOR,
             Math.clamp(0f, 1f, color.getRed()),
             Math.clamp(0f, 1f, color.getGreen()),
@@ -293,8 +296,8 @@ public class Uniforms {
             Math.clamp(0f, 1f, color.getAlpha()));
     }
 
-    private void stageTexGen() {
-        final TexGenState tg = GLStateManager.getTextures().getTexGenState(0);
+    private void stageTexGen(GLContextState glCtx) {
+        final TexGenState tg = glCtx.textures.getTexGenState(0);
         putPlane(FFPUniformBlock.TEX_GEN_OBJ_PLANE_S, tg.getObjectPlane(GL11.GL_S));
         putPlane(FFPUniformBlock.TEX_GEN_OBJ_PLANE_T, tg.getObjectPlane(GL11.GL_T));
         putPlane(FFPUniformBlock.TEX_GEN_OBJ_PLANE_R, tg.getObjectPlane(GL11.GL_R));
@@ -305,8 +308,8 @@ public class Uniforms {
         putPlane(FFPUniformBlock.TEX_GEN_EYE_PLANE_Q, tg.getEyePlane(GL11.GL_Q));
     }
 
-    private void stageClipPlanes() {
-        final ClipPlaneState cps = GLStateManager.getClipPlaneState();
+    private void stageClipPlanes(GLContextState glCtx) {
+        final ClipPlaneState cps = glCtx.clipPlaneState;
         clipPlaneBuf.clear();
         for (int i = 0; i < GLStateManager.MAX_CLIP_PLANES; i++) {
             cps.putEyePlane(i, clipPlaneBuf);
@@ -317,24 +320,24 @@ public class Uniforms {
         }
     }
 
-    private void stageFragment() {
-        putFloat(FFPUniformBlock.ALPHA_REF, GLStateManager.getAlphaState().getReference());
+    private void stageFragment(GLContextState glCtx) {
+        putFloat(FFPUniformBlock.ALPHA_REF, glCtx.alphaState.getReference());
 
         for (int i = 0; i < 4; i++) {
-            final var envState = GLStateManager.getTextures().getTexEnvState(i);
+            final var envState = glCtx.textures.getTexEnvState(i);
             putVec4(FFPUniformBlock.TEX_ENV_COLOR_0 + i * 16,
                 envState.envColorR, envState.envColorG, envState.envColorB, envState.envColorA);
         }
 
         putVec4(FFPUniformBlock.OVERLAY_COLOR,
-            GLStateManager.getOverlayR(), GLStateManager.getOverlayG(),
-            GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
+            glCtx.overlayR, glCtx.overlayG,
+            glCtx.overlayB, glCtx.overlayA);
 
-        final var secondary = GLStateManager.getSecondaryColor();
+        final var secondary = glCtx.secondaryColor;
         putVec3(FFPUniformBlock.SECONDARY_COLOR, secondary.getRed(), secondary.getGreen(), secondary.getBlue());
 
         // Mesa STATE_FOG_PARAMS_OPTIMIZED
-        final FogState fog = GLStateManager.getFogState();
+        final FogState fog = glCtx.fogState;
         final float start = fog.getStart();
         final float end = fog.getEnd();
         final float density = fog.getDensity();

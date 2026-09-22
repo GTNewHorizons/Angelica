@@ -158,7 +158,7 @@ public final class ComputeBinder implements ComputeDispatchSink {
         final ShaderManager.ProgramObject prog = shaderManager.getProgram(programId);
         if (prog == null || !prog.linked || prog.sdlComputePipeline == 0) return 0;
 
-        frameManager.endRenderPassIfActive();
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COMPUTE);
         frameManager.endCopyPassIfActive();
         final long cb = frameManager.getCommandBuffer();
         if (cb == 0) {
