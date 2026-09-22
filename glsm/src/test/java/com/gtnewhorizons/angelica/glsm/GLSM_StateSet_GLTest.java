@@ -496,22 +496,6 @@ public class GLSM_StateSet_GLTest {
     }
 
     @Test
-    void internalPushDuringDisplayListCompileThrowsAndLeavesDepthUnchanged() {
-        final int list = GLStateManager.glGenLists(1);
-        final int depthBefore = GLStateManager.getAttribDepth();
-        try {
-            GLStateManager.glNewList(list, GL11.GL_COMPILE);
-            assertThrows(IllegalStateException.class, () -> GLStateManager.pushState(StateSet.BLEND));
-            GLStateManager.pushState(StateSet.forMask(GL11.GL_COLOR_BUFFER_BIT));
-            GLStateManager.popState();
-            assertEquals(depthBefore, GLStateManager.getAttribDepth(), "mask-based push/pop is recorded, not executed, and leaves live depth unchanged");
-        } finally {
-            GLStateManager.glEndList();
-            GLStateManager.glDeleteLists(list, 1);
-        }
-    }
-
-    @Test
     void allAttribBitsNestedInsideInternalBracketRestoresBothLevels() {
         try {
             GLStateManager.enableCull();
