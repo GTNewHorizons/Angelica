@@ -292,6 +292,13 @@ public class DarkModeFontTransform {
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString"),
             0x303030, 0x303030, 0x303030
         ),
+            // Forge
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("cpw.mods.fml.client.config.GuiButtonExt func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
+        ),
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("cpw.mods.fml.client.config.GuiUnicodeGlyphButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
+        ),
             // Tinkers Mechworks
         RecolorTarget.includeButtonMethod(
             new MethodInfo("tmechworks.client.gui.AdvDrawbridgeButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
