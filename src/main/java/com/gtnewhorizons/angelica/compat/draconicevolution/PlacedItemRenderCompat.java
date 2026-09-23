@@ -1,9 +1,7 @@
 package com.gtnewhorizons.angelica.compat.draconicevolution;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
-import net.minecraft.block.Block;
 import net.minecraft.client.renderer.entity.RenderItem;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
@@ -17,8 +15,8 @@ public final class PlacedItemRenderCompat {
     public static boolean requiresLiveRender(ItemStack stack) {
         if (stack == null) return false;
         if (MinecraftForgeClient.getItemRenderer(stack, ItemRenderType.ENTITY) != null) return true;
-        return stack.getItem() instanceof ItemBlock
-            && BlockRenderListManager.isISBRH(Block.getBlockFromItem(stack.getItem()).getRenderType());
+        //TODO: Properly optimize this later, right now it's breaking everything.
+        return stack.getItem() instanceof ItemBlock;
     }
 
     public static void render(double x, double y, double z, Runnable draw) {
