@@ -22,6 +22,7 @@ public final class BatchEligibility {
     private static int bracketDepth;
     private static int parts;
     private static boolean uncapturedState;
+    private static ModelPartBatcher.BailReason allowedBail;
 
     private static final ArrayList<SavedScope> isolatedScopes = new ArrayList<>();
     private static int isolatedDepth;
@@ -29,12 +30,14 @@ public final class BatchEligibility {
     private static final class SavedScope {
         int depth, bracketDepth, parts;
         boolean allowed, uncapturedState;
+        ModelPartBatcher.BailReason allowedBail;
         long drawsAtStart, expectedDraws, foreignDraws, bracketDrawsAtStart, bracketExpectedAtStart, isolatedDrawsAtStart;
 
         void save(long drawCount) {
             depth = BatchEligibility.depth;
             allowed = BatchEligibility.allowed;
             uncapturedState = BatchEligibility.uncapturedState;
+            allowedBail = BatchEligibility.allowedBail;
             drawsAtStart = BatchEligibility.drawsAtStart;
             expectedDraws = BatchEligibility.expectedDraws;
             foreignDraws = BatchEligibility.foreignDraws;
@@ -49,6 +52,7 @@ public final class BatchEligibility {
             BatchEligibility.depth = depth;
             BatchEligibility.allowed = allowed;
             BatchEligibility.uncapturedState = uncapturedState;
+            BatchEligibility.allowedBail = allowedBail;
             BatchEligibility.drawsAtStart = drawsAtStart;
             BatchEligibility.expectedDraws = expectedDraws + drawCount - isolatedDrawsAtStart;
             BatchEligibility.foreignDraws = foreignDraws;
@@ -84,6 +88,7 @@ public final class BatchEligibility {
         foreignDraws = 0L;
         parts = 0;
         uncapturedState = false;
+        allowedBail = null;
         allowed = state == SAFE;
         return allowed;
     }
@@ -118,6 +123,15 @@ public final class BatchEligibility {
         if (depth != 0) expectedDraws += draws;
     }
 
+    static void onBail(ModelPartBatcher.BailReason reason) {
+        if (depth == 0 || !allowed) return;
+        if (reason == ModelPartBatcher.BailReason.INACTIVE) {
+            allowed = false;
+            return;
+        }
+        if (allowedBail == null) allowedBail = reason;
+    }
+
     public static void onPartQueued() {
         parts++;
     }
@@ -148,6 +162,6 @@ public final class BatchEligibility {
             GLStateManager.warnOnce("tesr-state:" + name, "{} changes state outside the batch format - keeping its model parts immediate", name);
             return;
         }
-        GLStateManager.warnOnce("tesr-mixed:" + name, "{} draws its own geometry alongside model parts ({} foreign draws) - excluding it from model part batching", name, foreignDraws);
+        GLStateManager.warnOnce("tesr-mixed:" + name, "{} draws its own geometry alongside model parts ({} foreign draws, first allowed bail: {}) - excluding it from model part batching", name, foreignDraws, allowedBail);
     }
 }

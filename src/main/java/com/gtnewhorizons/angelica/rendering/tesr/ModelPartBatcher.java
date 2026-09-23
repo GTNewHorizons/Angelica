@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
@@ -32,15 +33,20 @@ import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.layer.PassOverride;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
+import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.model.ModelBox;
 import net.minecraft.client.model.ModelRenderer;
+import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.Entity;
 import net.minecraft.util.ResourceLocation;
 import net.minecraft.world.World;
+import net.minecraftforge.client.MinecraftForgeClient;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL13;
 
 import java.util.List;
 import java.util.Objects;
@@ -73,10 +79,14 @@ public final class ModelPartBatcher {
     private static final Tracy.ZoneId Z_ENTITY_LAYER_LOOP = Tracy.zoneId("entityLayerLoop", Tracy.COLOR_CLIENT);
 
     private final AngelicaBufferSource bufferSource = new AngelicaBufferSource();
+    private final AngelicaBufferSource entitySource = new AngelicaBufferSource();
     private final EntityShadowBatcher shadows = new EntityShadowBatcher();
     private final RetainedTesrGroups groups = new RetainedTesrGroups(bufferSource);
+    private final RetainedTesrGroups entityGroups = new RetainedTesrGroups(entitySource);
     private final RetainedTesrGroups shadowGroups = new RetainedTesrGroups(bufferSource);
     private RetainedTesrGroups activeGroups = groups;
+    private AngelicaBufferSource activeSource = bufferSource;
+    private boolean entityTranslucentsHeld;
     private boolean shadow;
     private final AngelicaTesrMeshCache.GtnhMeshBackend captureBackend = new AngelicaTesrMeshCache.GtnhMeshBackend();
     private final Matrix4f identity = new Matrix4f();
@@ -100,16 +110,17 @@ public final class ModelPartBatcher {
 
     public long statParts() { return parts; }
     public long statLiveFallbacks() { return liveFallbacks; }
-    public long statInstancedDraws() { return groups.instancedDraws + shadowGroups.instancedDraws; }
-    public long statInstancedInstances() { return groups.instancedInstances + shadowGroups.instancedInstances; }
-    public long statCubeInstances() { return groups.cubeInstances + shadowGroups.cubeInstances; }
-    public long statTexMatrixRuns() { return groups.texMatrixRuns + shadowGroups.texMatrixRuns; }
+    public long statInstancedDraws() { return groups.instancedDraws + entityGroups.instancedDraws + shadowGroups.instancedDraws; }
+    public long statInstancedInstances() { return groups.instancedInstances + entityGroups.instancedInstances + shadowGroups.instancedInstances; }
+    public long statCubeInstances() { return groups.cubeInstances + entityGroups.cubeInstances + shadowGroups.cubeInstances; }
+    public long statTexMatrixRuns() { return groups.texMatrixRuns + entityGroups.texMatrixRuns + shadowGroups.texMatrixRuns; }
     public long statBail(BailReason reason) { return bails[reason.ordinal()]; }
     public long statShadowQuads() { return shadows.statQuads(); }
     public long statShadowDraws() { return shadows.statDraws(); }
 
     private void bail(BailReason reason) {
         bails[reason.ordinal()]++;
+        BatchEligibility.onBail(reason);
     }
 
     private static final class PartTemplate {
@@ -210,16 +221,22 @@ public final class ModelPartBatcher {
             shaderPipeline = null;
             return;
         }
+        final boolean entityPass = mode == Mode.ENTITIES && !shadow;
+        if (entityPass && entityTranslucentsHeld) {
+            discardHeldEntities();
+        }
         active = true;
         final long nowMs = System.currentTimeMillis();
         mvCaptured = false;
         texCaptured = false;
-        activeGroups = shadow ? shadowGroups : groups;
-        bufferSource.setIdKind(mode == Mode.ENTITIES ? AngelicaBufferSource.GroupIdKind.ENTITY : AngelicaBufferSource.GroupIdKind.BLOCK_ENTITY);
+        activeGroups = shadow ? shadowGroups : entityPass ? entityGroups : groups;
+        activeSource = entityPass ? entitySource : bufferSource;
+        activeSource.setIdKind(mode == Mode.ENTITIES ? AngelicaBufferSource.GroupIdKind.ENTITY : AngelicaBufferSource.GroupIdKind.BLOCK_ENTITY);
         activeGroups.beginPass(identity, 0, 0, 0, instancedThisCycle ? TesrBatchRenderer.INSTANCE.instancedRenderer : null, shaderPipeline);
         if (nowMs - lastSweepMs >= SWEEP_INTERVAL_MS) {
             lastSweepMs = nowMs;
             groups.sweep(nowMs);
+            entityGroups.sweep(nowMs);
             shadowGroups.sweep(nowMs);
             sweepTemplates(nowMs);
         }
@@ -228,30 +245,41 @@ public final class ModelPartBatcher {
     public void flush() {
         BatchStateGuard.suspend();
         try {
-            flushNow();
+            flushNow(true);
         } finally {
             BatchStateGuard.resume();
         }
     }
 
-    private void flushNow() {
+    void flushForStateChange() {
+        if (!active) return;
+        flushNow(false);
+        active = true;
+        mvCaptured = false;
+        texCaptured = false;
+        activeGroups.beginPass(identity, 0, 0, 0, instancedThisCycle ? TesrBatchRenderer.INSTANCE.instancedRenderer : null, shaderPipeline);
+    }
+
+    private void flushNow(boolean allowHold) {
         if (!active) return;
         active = false;
+        final boolean hold = allowHold && mode == Mode.ENTITIES && !shadow && MinecraftForgeClient.getRenderPass() == 0
+            && shaderPipeline != null && shaderPipeline.shouldSeparateEntityDraws();
         if (shadow) {
-            drawBatches();
+            drawBatches(false);
         } else {
             final boolean inEntityLoop = mode == Mode.ENTITIES && Iris.enabled && GbufferPrograms.isEntityLoopActive();
             final boolean wrapEntities = mode == Mode.ENTITIES && Iris.enabled && !inEntityLoop;
             if (wrapEntities) GbufferPrograms.beginEntities();
             else if (inEntityLoop) GbufferPrograms.onEntityRenderBoundary();
             try {
-                shadows.flush(bufferSource);
-                drawBatches();
+                shadows.flush(activeSource);
+                drawBatches(hold);
             } finally {
                 if (wrapEntities) GbufferPrograms.endEntities();
             }
         }
-        if (instancedThisCycle) {
+        if (instancedThisCycle && !hold) {
             TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
         }
         if (!TesrBatchRenderer.INSTANCE.hasPendingGeometry()) {
@@ -259,22 +287,73 @@ public final class ModelPartBatcher {
         }
     }
 
-    private void drawBatches() {
+    private void drawBatches(boolean hold) {
         if (Tracy.ENABLED) Tracy.beginZone(Z_ENTITY_LAYER_LOOP);
         try {
-            bufferSource.endBatchWithType(TransparencyType.OPAQUE, activeGroups);
-            bufferSource.endBatch(activeGroups);
+            activeSource.endBatchWithType(TransparencyType.OPAQUE, activeGroups);
+            if (hold) {
+                activeSource.endBatchWithType(TransparencyType.WATER_MASK, activeGroups);
+                activeSource.pauseBatch();
+                entityTranslucentsHeld = true;
+            } else {
+                activeSource.endBatch(activeGroups);
+            }
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
+    }
+
+    public void flushEntitiesAfterDeferred() {
+        if (!entityTranslucentsHeld) return;
+        entityTranslucentsHeld = false;
+        BatchStateGuard.suspend();
+        try {
+            final EntityRenderer entityRenderer = Minecraft.getMinecraft().entityRenderer;
+            final int deferredDepth = GLStateManager.pushState(StateSet.BATCH);
+            try {
+                GLStateManager.glDepthMask(true);
+                GLStateManager.enableDepthTest();
+                GLStateManager.enableBlend();
+                GLStateManager.defaultBlendFunc();
+                entityRenderer.enableLightmap(0);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+                GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+                final boolean wrap = Iris.enabled && GbufferPrograms.getCurrentPhase() == WorldRenderingPhase.NONE;
+                if (wrap) GbufferPrograms.beginEntities();
+                try {
+                    entitySource.endBatch(entityGroups);
+                    if (instancedThisCycle) {
+                        TesrBatchRenderer.INSTANCE.instancedRenderer.endFrame();
+                    }
+                    AngelicaBufferSource.rebindPass();
+                } finally {
+                    if (wrap) GbufferPrograms.endEntities();
+                    entityRenderer.disableLightmap(0);
+                }
+            } finally {
+                GLStateManager.popStateTo(deferredDepth);
+            }
+        } finally {
+            if (Tracy.ENABLED) Tracy.endZone();
+            BatchStateGuard.resume();
+        }
+    }
+
+    private void discardHeldEntities() {
+        entityTranslucentsHeld = false;
+        entitySource.discard();
     }
 
     public boolean isActive() {
         return active;
     }
 
+    boolean hasHeldEntities() {
+        return entityTranslucentsHeld;
+    }
+
     boolean hasQueuedGeometry() {
-        return active && (bufferSource.hasPendingLayers() || shadows.hasPendingGeometry());
+        return active && (activeSource.hasPendingLayers() || shadows.hasPendingGeometry());
     }
 
     public boolean entityPassActive() {
@@ -512,9 +591,15 @@ public final class ModelPartBatcher {
     public void clear() {
         shadows.reset();
         groups.clear();
+        entityGroups.clear();
         shadowGroups.clear();
         templates.clear();
+        entitySource.discard();
         bufferSource.freeBuffers();
+        entitySource.freeBuffers();
+        activeGroups = groups;
+        activeSource = bufferSource;
+        entityTranslucentsHeld = false;
         active = false;
         shaderPipeline = null;
         layers.clear();
@@ -531,7 +616,7 @@ public final class ModelPartBatcher {
     }
 
     public String getDebugString() {
-        final String line = String.format("Parts: %d grp, inst %d, live %d", groups.groupCount() + shadowGroups.groupCount(), parts - lastParts, liveFallbacks - lastLiveFallbacks);
+        final String line = String.format("Parts: %d grp, inst %d, live %d", groups.groupCount() + entityGroups.groupCount() + shadowGroups.groupCount(), parts - lastParts, liveFallbacks - lastLiveFallbacks);
         lastParts = parts;
         lastLiveFallbacks = liveFallbacks;
         return line;

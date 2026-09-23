@@ -16,6 +16,7 @@ import org.joml.Matrix4fc;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PendingProgramSelection;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -836,6 +837,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	@Override
 	public boolean shouldRenderParticlesBeforeDeferred() {
 		return shouldRenderParticlesBeforeDeferred;
+	}
+
+	public boolean shouldSeparateEntityDraws() {
+		return packDirectives.shouldUseSeparateEntityDraws();
 	}
 
 	@Override
@@ -2281,13 +2286,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			currentNormalTexture = pbrHolder.getNormalTexture().getGlTextureId();
 			currentSpecularTexture = pbrHolder.getSpecularTexture().getGlTextureId();
 
-            final TextureFormat textureFormat = TextureFormatLoader.getFormat();
-			if (textureFormat != null) {
-				textureFormat.setupTextureParameters(PBRType.NORMAL, pbrHolder.getNormalTexture());
-				textureFormat.setupTextureParameters(PBRType.SPECULAR, pbrHolder.getSpecularTexture());
-			}
+			BatchStateGuard.suspend();
+			try {
+				final TextureFormat textureFormat = TextureFormatLoader.getFormat();
+				if (textureFormat != null) {
+					textureFormat.setupTextureParameters(PBRType.NORMAL, pbrHolder.getNormalTexture());
+					textureFormat.setupTextureParameters(PBRType.SPECULAR, pbrHolder.getSpecularTexture());
+				}
 
-			PBRTextureManager.notifyPBRTexturesChanged();
+				PBRTextureManager.notifyPBRTexturesChanged();
+			} finally {
+				BatchStateGuard.resume();
+			}
 		}
 	}
 

@@ -387,22 +387,54 @@ class RetainedTesrGroupsGLTest {
         groups.queue(template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrGroupsTest.STREAM,
             new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 0, null);
         final ModelPartBatcher models = ModelPartBatcher.INSTANCE;
-        final Object oldSource = Reflect.get(models, "bufferSource");
+        final Object oldSource = Reflect.get(models, "activeSource");
         final Object oldGroups = Reflect.get(models, "activeGroups");
         final Runnable oldFlush = com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush;
         try {
-            Reflect.set(models, "bufferSource", source);
+            Reflect.set(models, "activeSource", source);
             Reflect.set(models, "activeGroups", groups);
             Reflect.set(models, "active", true);
             BatchStateFallback.install();
             GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
-            assertFalse(models.isActive(), "the remainder of the pass must use immediate rendering");
-            assertFalse(models.queueTemplate(RetainedTesrGroupsTest.template(), RetainedTesrGroupsTest.STREAM));
+            assertTrue(models.isActive(), "batching must resume for the rest of the pass after the flush");
+            assertFalse(models.hasQueuedGeometry(), "the flush must drain what was queued before the change");
             assertTrue(FfpFixture.readPixel(400, 300)[0] > 200, "queued geometry must draw before the zero-area scissor takes effect");
         } finally {
             Reflect.set(models, "active", false);
-            Reflect.set(models, "bufferSource", oldSource);
+            Reflect.set(models, "activeSource", oldSource);
             Reflect.set(models, "activeGroups", oldGroups);
+            com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush = oldFlush;
+            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        }
+    }
+
+    @Test
+    void heldEntityTranslucentsSurviveUncapturedStateChange() {
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.disableTexture();
+        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glScissor(0, 0, 0, 0);
+        FfpFixture.clear();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        groups.queue(template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrGroupsTest.STREAM,
+            new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 0, null);
+        final ModelPartBatcher models = ModelPartBatcher.INSTANCE;
+        final Object oldSource = Reflect.get(models, "entitySource");
+        final Object oldGroups = Reflect.get(models, "entityGroups");
+        final Runnable oldFlush = com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush;
+        try {
+            Reflect.set(models, "entitySource", source);
+            Reflect.set(models, "entityGroups", groups);
+            Reflect.set(models, "entityTranslucentsHeld", true);
+            BatchStateFallback.install();
+            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+            assertTrue(models.hasHeldEntities(), "held entity translucents wait for the post-deferred flush");
+            assertTrue(FfpFixture.readPixel(400, 300)[0] < 50, "held entity geometry must not draw before deferred");
+        } finally {
+            Reflect.set(models, "entityTranslucentsHeld", false);
+            Reflect.set(models, "entitySource", oldSource);
+            Reflect.set(models, "entityGroups", oldGroups);
             com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush = oldFlush;
             GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
         }
