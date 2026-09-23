@@ -89,7 +89,7 @@ public class StandardMacros {
 			define(standardDefines, "IS_ANGELICA_SDLGPU");
 		}
 
-		if (DHCompat.isPresent()) {
+		if (DHCompat.hasRenderingEnabled()) {
 			define(standardDefines, "DISTANT_HORIZONS");
 		}
 
