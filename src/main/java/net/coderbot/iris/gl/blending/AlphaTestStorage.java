@@ -52,13 +52,17 @@ public class AlphaTestStorage {
         }
     }
 
-    public static void deferAlphaTestToggle(boolean enabled) {
+    public static boolean deferAlphaTestToggle(boolean enabled) {
+        if (enabled == vanillaEnabled) return false;
         vanillaEnabled = enabled;
+        return true;
     }
 
-    public static void deferAlphaFunc(int function, float reference) {
+    public static boolean deferAlphaFunc(int function, float reference) {
+        if (function == vanillaFunction && Float.compare(reference, vanillaReference) == 0) return false;
         vanillaFunction = function;
         vanillaReference = reference;
+        return true;
     }
 
     public static void restoreAlphaTest() {

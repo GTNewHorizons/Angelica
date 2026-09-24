@@ -4,12 +4,14 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFlags;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CompatUniformManager;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.stacks.StackIdAllocator;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec3fStack;
 import com.gtnewhorizons.angelica.glsm.stacks.Vec4fStack;
 import com.gtnewhorizons.angelica.glsm.streaming.TessellatorStreamingDrawer;
@@ -50,8 +52,8 @@ public final class ShaderManager {
         new Vector4f(0.0f, 0.0f, 0.0f, 1.0f),
         new Vector4f(0.0f, 0.0f, 0.0f, 1.0f),
     };
-    @Getter private static final Vec3fStack normalStack = new Vec3fStack(currentNormal);
-    @Getter private static final Vec4fStack texCoordStack = new Vec4fStack(currentTexCoords[0]);
+    @Getter private static final Vec3fStack normalStack = new Vec3fStack(currentNormal, StackIdAllocator.nextStaticId());
+    @Getter private static final Vec4fStack texCoordStack = new Vec4fStack(currentTexCoords[0], StackIdAllocator.nextStaticId());
     @Getter private static int normalGeneration;
     @Getter private static int texCoordGeneration;
 
@@ -151,15 +153,16 @@ public final class ShaderManager {
         if (!active) return;
 
         preDrawCalls++;
-        final int fkLen = FragmentKey.packFromState(currentFKScratch);
+        final GLContextState glCtx = GLStateManager.ctx();
+        final int fkLen = FragmentKey.packFromState(currentFKScratch, glCtx);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
-        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask);
+        final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask, glCtx);
 
         if (vkPacked != currentVertexKeyPacked || !Arrays.equals(currentFKScratch, 0, fkLen, currentFKPacked, 0, currentFKLen)) {
             commitVariant(vkPacked, fkLen);
         }
 
-        uploadUniforms();
+        uploadUniforms(glCtx);
     }
 
     private void commitVariant(long vkPacked, int fkLen) {
@@ -175,9 +178,9 @@ public final class ShaderManager {
         }
     }
 
-    private void uploadUniforms() {
+    private void uploadUniforms(GLContextState glCtx) {
         if (currentProgram != null) {
-            uniforms.upload();
+            uniforms.upload(glCtx);
         }
     }
 
@@ -190,16 +193,19 @@ public final class ShaderManager {
     }
 
     public static void setCurrentNormal(float x, float y, float z) {
+        normalStack.beforeModify();
         currentNormal.set(x, y, z);
         normalGeneration++;
     }
 
     public static void setCurrentTexCoord(float s, float t, float r, float q) {
+        texCoordStack.beforeModify();
         currentTexCoords[0].set(s, t, r, q);
         texCoordGeneration++;
     }
 
     public static void setCurrentTexCoord(int unit, float s, float t, float r, float q) {
+        if (unit == 0) texCoordStack.beforeModify();
         currentTexCoords[unit].set(s, t, r, q);
         texCoordGeneration++;
     }

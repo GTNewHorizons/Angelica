@@ -38,6 +38,7 @@ class AttributeTransformer {
 		final boolean instancedVertex = vertex && parameters.instancing != Instancing.NONE;
 		final boolean cubeVertex = vertex && parameters.instancing == Instancing.CUBE;
 		final boolean particleVertex = vertex && parameters.instancing == Instancing.PARTICLE;
+		final boolean weatherVertex = vertex && parameters.instancing == Instancing.WEATHER;
 		final boolean matrixVertex = vertex && parameters.instancing.hasInstanceHead();
 		final boolean wantsMvInverse = matrixVertex && transformer.containsCall("gl_ModelViewMatrixInverse");
 		CoreTransformHelper.injectMatrixUniforms(transformer, vertex ? parameters.instancing : Instancing.NONE);
@@ -47,7 +48,7 @@ class AttributeTransformer {
 		aliasIfUsed(transformer, "normalMatrix", "iris_NormalMatrix");
 
 		if (parameters.type == ShaderType.VERTEX) {
-			if (!particleVertex) {
+			if (!particleVertex && !weatherVertex) {
 				transformer.injectVariable("layout(location = 0) in vec4 iris_Vertex;");
 				transformer.injectVariable("layout(location = 1) in vec4 iris_Color;");
 				if (cubeVertex) {
@@ -109,6 +110,10 @@ class AttributeTransformer {
 					init.append(" iris_MultiTexCoord0 = ").append(InstancedGlslHelpers.particleUv("iris_InstUv", "iris_ParticleCorner")).append(';');
 					init.append(" iris_MultiTexCoord1 = vec4(iris_InstLightmap, 0.0, 1.0);");
 					assignMidTexCoord(transformer, init, "vec4((iris_InstUv.x + iris_InstUv.z) * 0.5, (iris_InstUv.y + iris_InstUv.w) * 0.5, 0.0, 1.0)");
+				} else if (weatherVertex) {
+					init.append(InstancedGlslHelpers.weatherPrologue("iris_", "iris_", "iris_WeatherCorner",
+						"iris_Vertex", "iris_Color", "iris_MultiTexCoord0", "iris_MultiTexCoord1", " "));
+					assignMidTexCoord(transformer, init, "vec4(0.5, 0.5, 0.0, 1.0)");
 				} else {
 					init.append("iris_ModelViewMatrix = ").append(InstancedGlslHelpers.mat4FromRows("iris_InstRow0", "iris_InstRow1", "iris_InstRow2")).append(';');
 					init.append(" iris_NormalMatrix = ").append(InstancedGlslHelpers.mat3FromRows("iris_InstRow0", "iris_InstRow1", "iris_InstRow2")).append(';');

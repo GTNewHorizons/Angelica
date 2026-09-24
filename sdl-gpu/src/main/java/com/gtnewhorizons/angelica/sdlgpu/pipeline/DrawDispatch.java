@@ -143,7 +143,7 @@ public final class DrawDispatch {
             st.fanIndexBuffer = createFanIndexBuffer(st.fanIndexBufferCapacity);
             st.fanIndexBufferOffset = 0;
         } else if (st.fanIndexBufferOffset + indexDataSize > st.fanIndexBufferCapacity) {
-            frameManager.endRenderPassIfActive();
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
             resourceManager.releaseBufferDeferred(st.fanIndexBuffer);
             st.fanIndexBufferCapacity = Math.max(indexDataSize, st.fanIndexBufferCapacity * 2);
             st.fanIndexBuffer = createFanIndexBuffer(st.fanIndexBufferCapacity);

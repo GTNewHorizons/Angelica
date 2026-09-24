@@ -1,18 +1,18 @@
 package com.gtnewhorizons.angelica.mixins.late.chisel;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.World;
-import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Pseudo;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Chisel ships its own beacon beam renderer, we yoink a lot of the code from
@@ -22,17 +22,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(targets = { "team.chisel.client.render.tile.RenderCarvableBeacon" }, remap = false)
 public class MixinRenderCarvableBeacon {
 
-    @Inject(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", at = @At("HEAD"))
-    private void angelica$beginBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, CallbackInfo ci) {
+    @WrapMethod(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", require = 1)
+    private void angelica$wrapBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, Operation<Void> original) {
         // Chisel's beam leaves GL_CULL_FACE disabled behind it
-        GLStateManager.pushState(GL11.GL_ENABLE_BIT);
-        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
-    }
-
-    @Inject(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", at = @At("RETURN"))
-    private void angelica$endBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, CallbackInfo ci) {
-        GbufferPrograms.teardownSpecialRenderCondition();
-        GLStateManager.popState();
+        final int stateDepth = GLStateManager.pushState(StateSet.CULL);
+        try {
+            GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
+            original.call(f1, world, x, y, z, meta, partialTicks);
+        } finally {
+            GbufferPrograms.teardownSpecialRenderCondition();
+            GLStateManager.popStateTo(stateDepth);
+        }
     }
 
     @Redirect(

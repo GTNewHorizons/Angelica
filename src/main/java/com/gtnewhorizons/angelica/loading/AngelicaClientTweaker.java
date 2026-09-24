@@ -91,7 +91,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             if (SDLGPUGate.isSDLGPUAvailable()) {
                 LOGGER.info("SDL GPU window mode enabled");
             } else {
-                LOGGER.warn("angelica.sdlgpu.enable=true but SDL GPU dependencies not available, falling back to GL");
+                LOGGER.warn("SDL GPU disabled, running on OpenGL: {}", SDLGPUGate.missingRequirement());
             }
         }
 

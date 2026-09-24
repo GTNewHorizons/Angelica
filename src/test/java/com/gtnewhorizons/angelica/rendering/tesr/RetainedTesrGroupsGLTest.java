@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.DefaultVertexFormat;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
+import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
+import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
@@ -10,13 +12,17 @@ import com.gtnewhorizons.angelica.glsm.ffp.CubeParityFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.InstanceColumns;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroups.TexRun;
 import com.gtnewhorizons.angelica.rendering.tesr.RetainedTesrGroupsTest.CountingPipeline;
+import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
+import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 import org.junit.jupiter.api.AfterEach;
@@ -26,6 +32,7 @@ import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
 import org.lwjgl.opengl.GL15;
 
 import java.nio.ByteBuffer;
@@ -46,6 +53,7 @@ class RetainedTesrGroupsGLTest {
     private static final float CUBE_SCALE = 0.1f;
     private static final int COLOR_ABGR = 0xFF0000FF;
     private static final float[] TRIANGLE = { -0.1f, -0.1f, 0f, 0.1f, -0.1f, 0f, 0f, 0.15f, 0f };
+    private static final ResourceLocation GLINT_TEXTURE = new ResourceLocation("angelica", "test/glint");
 
     private static boolean overridesRegistered;
     private static boolean skipClientArrays;
@@ -54,7 +62,7 @@ class RetainedTesrGroupsGLTest {
     private InstanceRing ring;
     private InstancedTemplateRenderer instanced;
     private RetainedTesrGroups groups;
-    private RetainedTesrGroupsTest.TestLayer layer;
+    private RenderLayer layer;
 
     private int baseTexture;
     private int glintTexture;
@@ -96,7 +104,7 @@ class RetainedTesrGroupsGLTest {
         ring = new InstanceRing();
         instanced = new InstancedTemplateRenderer(ring);
         groups = new RetainedTesrGroups(source);
-        layer = new RetainedTesrGroupsTest.TestLayer();
+        layer = RetainedTesrGroupsTest.testLayer();
     }
 
     @AfterEach
@@ -315,6 +323,7 @@ class RetainedTesrGroupsGLTest {
 
     private void glintState() {
         GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        layer = RenderLayer.tesr(GLINT_TEXTURE, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
 
         GlintClock.beginFrame(123456789L);
         final float u0 = Reflect.<Float>getStatic(GlintClock.class, "armorU0");
@@ -507,5 +516,119 @@ class RetainedTesrGroupsGLTest {
         final int[] reference = cubeReference();
         FfpFixture.assertOverlayFootprint(base, reference, BACKGROUND, "glint");
         CubeParityFixture.assertPixelParity(reference, cubeCandidate(), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
+    }
+
+    @Test
+    void mirroredModelViewUnderCullFrontBatchesLikeTheImmediateDraw() {
+        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLStateManager.disableTexture();
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.enableDepthTest();
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLStateManager.glDepthMask(true);
+        GLStateManager.glShadeModel(GL11.GL_SMOOTH);
+
+        final TemplateBuffer quad = capturedQuad(0.5);
+        final Matrix4f mirrored = new Matrix4f().scaling(-1f, 1f, 1f);
+        assertTrue(mirrored.determinant() < 0f, "the sky stone chest TESR matrix is mirrored, got determinant " + mirrored.determinant());
+
+        GLStateManager.enableCull();
+        GLStateManager.glCullFace(GL11.GL_FRONT);
+        final int cullCode = DrawState.liveCull();
+        assertEquals(DrawState.CULL_FRONT, cullCode, "queue-time glCullFace(GL_FRONT) must pack as CULL_FRONT");
+
+        final int center = SIZE / 2 * SIZE + SIZE / 2;
+        FfpFixture.clear();
+        final int[] blank = FfpFixture.readRegion(SIZE);
+        drawSingleInstance(instanced, quad, mirrored, COLOR_ABGR);
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the immediate reference draw must not raise a GL error");
+        final int[] reference = FfpFixture.readRegion(SIZE);
+        assertTrue(reference[center] != blank[center], "the mirrored quad must survive glCullFace(GL_FRONT) when drawn immediately, otherwise the parity check is vacuous: " + describe(reference[center]));
+
+        final RenderLayer culled = RenderLayer.tesr(null, RetainedTesrGroupsTest.STREAM, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cullCode, false);
+        FfpFixture.clear();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        groups.queue(quad, culled, RetainedTesrGroupsTest.STREAM, mirrored, 0, COLOR_ABGR, 0, 0L, 1, null);
+        GLStateManager.glCullFace(GL11.GL_BACK);
+
+        final boolean cullEnabledBefore = GLStateManager.getCullState().isEnabled();
+        final int cullFaceBefore = GLStateManager.getPolygonState().getCullFaceMode();
+        final boolean glCullEnabledBefore = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        final int glCullFaceBefore = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
+
+        source.endBatch(groups);
+        instanced.endFrame();
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the batched draw must not raise a GL error");
+
+        assertEquals(cullEnabledBefore, GLStateManager.getCullState().isEnabled(), "the flush must leave the cached cull enable where it found it");
+        assertEquals(cullFaceBefore, GLStateManager.getPolygonState().getCullFaceMode(), "the flush must leave the cached cull face mode where it found it");
+        assertEquals(glCullEnabledBefore, GL11.glIsEnabled(GL11.GL_CULL_FACE), "the flush must leave the real cull enable where it found it");
+        assertEquals(glCullFaceBefore, GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), "the flush must leave the real cull face mode where it found it");
+
+        CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
+    }
+
+
+    @Test
+    void flushRestoresCallerStateOnEveryGuardedAxis() {
+        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLStateManager.disableTexture();
+        GLStateManager.disableAlphaTest();
+
+        GLStateManager.enableCull();
+        GLStateManager.glCullFace(GL11.GL_FRONT);
+        GLStateManager.enableBlend();
+        GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+        GLStateManager.glDepthMask(false);
+        GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
+        GLStateManager.glPolygonOffset(1.0f, 1.0f);
+
+        final boolean cullEnabledBefore = GLStateManager.getCullState().isEnabled();
+        final int cullFaceBefore = GLStateManager.getPolygonState().getCullFaceMode();
+        final boolean glCullEnabledBefore = GL11.glIsEnabled(GL11.GL_CULL_FACE);
+        final int glCullFaceBefore = GL11.glGetInteger(GL11.GL_CULL_FACE_MODE);
+
+        final boolean blendEnabledBefore = GLStateManager.isEffectiveBlendEnabled();
+        final boolean glBlendEnabledBefore = GL11.glIsEnabled(GL11.GL_BLEND);
+        final int blendSrcBefore = GLStateManager.getEffectiveBlendState(new BlendState()).getSrcRgb();
+        final int glBlendSrcBefore = GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB);
+
+        final boolean depthMaskBefore = GLStateManager.isEffectiveDepthMaskEnabled();
+        final boolean glDepthMaskBefore = GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK);
+
+        final boolean offsetFillBefore = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+        final boolean glOffsetFillBefore = GL11.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+        final float offsetFactorBefore = GLStateManager.getPolygonState().getOffsetFactor();
+        final float glOffsetFactorBefore = GL11.glGetFloat(GL11.GL_POLYGON_OFFSET_FACTOR);
+
+        final TemplateBuffer quad = capturedQuad(0.5);
+        final TesrMaterial opposite = TesrMaterial.builder().build();
+        final RenderLayer opposingLayer = RenderLayer.tesr(null, opposite, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
+
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        groups.queue(quad, opposingLayer, RetainedTesrGroupsTest.STREAM, new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 1, null);
+
+        source.endBatch(groups);
+        instanced.endFrame();
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "the flush must not raise a GL error");
+
+        assertEquals(cullEnabledBefore, GLStateManager.getCullState().isEnabled(), "cache cull enable must be restored");
+        assertEquals(cullFaceBefore, GLStateManager.getPolygonState().getCullFaceMode(), "cache cull face must be restored");
+        assertEquals(glCullEnabledBefore, GL11.glIsEnabled(GL11.GL_CULL_FACE), "driver cull enable must be restored");
+        assertEquals(glCullFaceBefore, GL11.glGetInteger(GL11.GL_CULL_FACE_MODE), "driver cull face must be restored");
+
+        assertEquals(blendEnabledBefore, GLStateManager.isEffectiveBlendEnabled(), "cache blend enable must be restored");
+        assertEquals(glBlendEnabledBefore, GL11.glIsEnabled(GL11.GL_BLEND), "driver blend enable must be restored");
+        assertEquals(blendSrcBefore, GLStateManager.getEffectiveBlendState(new BlendState()).getSrcRgb(), "cache blend func must be restored");
+        assertEquals(glBlendSrcBefore, GL11.glGetInteger(GL14.GL_BLEND_SRC_RGB), "driver blend func must be restored");
+
+        assertEquals(depthMaskBefore, GLStateManager.isEffectiveDepthMaskEnabled(), "cache depth mask must be restored");
+        assertEquals(glDepthMaskBefore, GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK), "driver depth mask must be restored");
+
+        assertEquals(offsetFillBefore, GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "cache polygon offset fill must be restored");
+        assertEquals(glOffsetFillBefore, GL11.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL), "driver polygon offset fill must be restored");
+        assertEquals(offsetFactorBefore, GLStateManager.getPolygonState().getOffsetFactor(), 0.0001f, "cache polygon offset factor must be restored");
+        assertEquals(glOffsetFactorBefore, GL11.glGetFloat(GL11.GL_POLYGON_OFFSET_FACTOR), 0.0001f, "driver polygon offset factor must be restored");
     }
 }

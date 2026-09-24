@@ -10,33 +10,42 @@ public final class FogBiomeCache {
 
     private static final Long2ObjectOpenHashMap<BiomeGenBase> CACHE = new Long2ObjectOpenHashMap<>();
     private static World cachedWorld;
-    private static int generation;
+    private static boolean lastCacheable;
 
     private FogBiomeCache() {}
 
-    public static int generation() {
-        return generation;
+    public static boolean lastWasCacheable() {
+        return lastCacheable;
     }
 
     public static void invalidate() {
+        CACHE.clear();
         cachedWorld = null;
+        lastCacheable = false;
+        FogColourGrid.invalidate();
     }
 
-    public static BiomeGenBase get(World world, int x, int z) {
+    static void useWorld(World world) {
         if (world != cachedWorld) {
             CACHE.clear();
             cachedWorld = world;
-            generation++;
+            FogColourGrid.invalidate();
         }
+    }
+
+    public static BiomeGenBase get(World world, int x, int z) {
+        useWorld(world);
         final long key = ((long) x << 32) | (z & 0xFFFFFFFFL);
         BiomeGenBase biome = CACHE.get(key);
         if (biome == null) {
             biome = world.getBiomeGenForCoords(x, z);
-            if (world.getChunkProvider().chunkExists(x >> 4, z >> 4)) {
+            lastCacheable = world.getChunkProvider().chunkExists(x >> 4, z >> 4);
+            if (lastCacheable) {
                 if (CACHE.size() >= MAX_ENTRIES) CACHE.clear();
                 CACHE.put(key, biome);
-                generation++;
             }
+        } else {
+            lastCacheable = true;
         }
         return biome;
     }

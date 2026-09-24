@@ -46,7 +46,7 @@ class FFPUniformValuesTest {
         final Uniforms uniforms = new Uniforms();
         try {
             GL20.glUseProgram(program.getProgramId());
-            uniforms.upload();
+            uniforms.upload(GLStateManager.ctx());
 
             final ByteBuffer block = uniforms.getStaging();
 
