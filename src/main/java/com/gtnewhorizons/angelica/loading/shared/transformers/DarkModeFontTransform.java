@@ -395,7 +395,8 @@ public class DarkModeFontTransform {
         insnList.insertBefore(firstInsn, new VarInsnNode(Opcodes.ISTORE, maxLocals));
 
         for (AbstractInsnNode insn = firstInsn; insn != null; insn = insn.getNext()) {
-            if (insn.getOpcode() == Opcodes.RETURN) {
+            int opcode = insn.getOpcode();
+            if ((opcode >= Opcodes.IRETURN && opcode <= Opcodes.RETURN) || opcode == Opcodes.ATHROW) {
                 insnList.insertBefore(insn, new VarInsnNode(Opcodes.ILOAD, maxLocals));
                 insnList.insertBefore(insn, exitSectionCall(buttonColors));
             }

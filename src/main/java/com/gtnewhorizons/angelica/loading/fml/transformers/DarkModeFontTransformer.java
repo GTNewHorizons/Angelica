@@ -18,7 +18,7 @@ public class DarkModeFontTransformer implements IClassTransformer {
             final ClassReader cr = new ClassReader(basicClass);
             final ClassNode cn = new ClassNode();
             cr.accept(cn, 0);
-            if (!inner.transformClassNode(cn, name, AngelicaClientTweaker.isObfEnv())) {
+            if (!inner.transformClassNode(cn, transformedName, AngelicaClientTweaker.isObfEnv())) {
                 return basicClass;
             }
             final ClassWriter cw = new ClassWriter(ClassWriter.COMPUTE_FRAMES);
