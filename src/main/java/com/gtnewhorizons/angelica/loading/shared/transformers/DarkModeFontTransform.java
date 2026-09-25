@@ -60,7 +60,7 @@ public class DarkModeFontTransform {
 
         public MethodInfo(@NotNull String className, @NotNull String name, @Nullable String obfName, @NotNull String desc) {
             this.className = className;
-            this.classNameSlash = className.replaceAll("\\.", "/");
+            this.classNameSlash = className.replace('.', '/');
             this.name = name;
             this.obfName = obfName;
             this.desc = desc;
@@ -387,6 +387,7 @@ public class DarkModeFontTransform {
 
     private boolean markRecolorMethodScoped(MethodNode mn, MethodInfo method, boolean recolorEnabled, @Nullable ButtonColors buttonColors) {
         InsnList insnList = mn.instructions;
+        if (insnList.size() == 0) { return false; }
         AbstractInsnNode firstInsn = insnList.getFirst();
         int maxLocals = mn.maxLocals;
 
