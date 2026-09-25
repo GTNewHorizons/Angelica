@@ -232,6 +232,11 @@ public class DarkModeFontTransform {
         RecolorTarget.excludeMethod(
             new MethodInfo("com.github.dcysteine.neicustomdiagram.api.draw.Draw drawStackSize(ILcom/github/dcysteine/neicustomdiagram/api/draw/Point;)V")
         ),
+            // BiblioCraft
+        RecolorTarget.excludeMethodCall(
+            new MethodInfo("jds.bibliocraft.gui.GuiFancySign func_146976_a(FII)V # drawGuiContainerBackgroundLayer"),
+            new MethodInfo("jds.bibliocraft.gui.GuiBiblioTextField drawTextBox()V")
+        ),
             // Harvestcraft
         RecolorTarget.excludeMethodCall(
             new MethodInfo("com.pam.harvestcraft.TrapRecipeHandler drawExtras(I)V"),
