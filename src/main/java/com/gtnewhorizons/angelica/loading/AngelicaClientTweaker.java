@@ -120,7 +120,6 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             final boolean rfbLoaded = Launch.blackboard.getOrDefault("angelica.rfbPluginLoaded", Boolean.FALSE) == Boolean.TRUE;
             if (!rfbLoaded) {
                 transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.IsbrhTessellatorAbuseTransformer");
-                transformers.add("com.gtnewhorizons.angelica.loading.fml.transformers.DarkModeFontTransformer");
             }
             transformerClasses = transformers.toArray(new String[0]);
         }
