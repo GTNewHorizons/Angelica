@@ -113,6 +113,7 @@ public final class ContextState {
     public float viewportDepthFar = 1.0f;
     public int scissorX, scissorY, scissorW, scissorH;
     public boolean scissorEnabled;
+    public boolean rasterizerDiscard;
     public int activeTextureUnit;
     public int boundProgram;
     public int autoPushedProgram;

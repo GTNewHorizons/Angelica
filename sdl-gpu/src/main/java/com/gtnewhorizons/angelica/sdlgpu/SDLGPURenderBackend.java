@@ -162,6 +162,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private boolean droppedSsboWriteWarned;
     private boolean depthClearSuppressedWarned;
     private boolean stencilClearSuppressedWarned;
+    private boolean partialClearFallbackWarned;
     private final DeferredCopyOp deferredCopyOp = new DeferredCopyOp();
 
     private TransferThread transferThread;
@@ -814,6 +815,7 @@ public class SDLGPURenderBackend extends RenderBackend {
                 st.scissorDirty = true;
             }
             case GL31.GL_PRIMITIVE_RESTART -> cs.primitiveRestartEnabled = on;
+            case GL30.GL_RASTERIZER_DISCARD -> cs.rasterizerDiscard = on;
         }
     }
 
@@ -954,28 +956,78 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void clearStencil(int s) { s().stencilClearValue = s & 0xFF; }
 
     @Override public void clear(int mask) {
-        final ContextState cs = s();
+        final ContextState st = s();
         if (!frameManager.isFrameActive()) return;
-        final boolean wantColor = (mask & GL11.GL_COLOR_BUFFER_BIT) != 0;
+        boolean wantColor = (mask & GL11.GL_COLOR_BUFFER_BIT) != 0;
         boolean wantDepth = (mask & GL11.GL_DEPTH_BUFFER_BIT) != 0;
         boolean wantStencil = (mask & GL11.GL_STENCIL_BUFFER_BIT) != 0;
-        if (wantDepth && !cs.pipeline.depthWriteEnabled) {
+        if (wantDepth && !st.pipeline.depthWriteEnabled) {
             wantDepth = false;
             if (!depthClearSuppressedWarned) {
                 depthClearSuppressedWarned = true;
                 LOG.warn("clear: GL_DEPTH_BUFFER_BIT requested with glDepthMask(false); clear suppressed per GL semantics");
             }
         }
-        if (wantStencil && cs.pipeline.stencilWriteMask == 0) {
+        if (wantStencil && st.pipeline.stencilWriteMask == 0) {
             wantStencil = false;
             if (!stencilClearSuppressedWarned) {
                 stencilClearSuppressedWarned = true;
                 LOG.warn("clear: GL_STENCIL_BUFFER_BIT requested with a zero glStencilMask; clear suppressed per GL semantics");
             }
         }
+        if (wantColor && (st.pipeline.colorWriteMask & 0xF) == 0) {
+            wantColor = false;
+        }
         if (!wantColor && !wantDepth && !wantStencil) return;
 
-        final ContextState st = cs;
+        final FboState fbo;
+        if (st.boundFboId == 0) {
+            fbo = null;
+        } else {
+            fbo = resourceManager.getFbo(st.boundFboId);
+            if (fbo == null) return;
+            if (fbo.targetsDirty) fbo.recomputeTargets();
+            if (fbo.cachedFormatsDirty && fbo.hasAnyColor) fboClearTracker.updatePipelineCacheColorFormats(st, fbo);
+        }
+
+        final AttachmentClear.Target target = fbo != null ? attachmentClear.forFbo(fbo) : attachmentClear.forFbo0(cachedSwapchainFormatArray, frameManager.getFbo0Width(), frameManager.getFbo0Height());
+
+        int skipSlots = 0;
+        boolean colorPartial = false;
+        if (wantColor) {
+            final int colorWriteMask = st.pipeline.colorWriteMask;
+            final int[] formats = target.colorFormats;
+            final int slotCount = formats != null ? formats.length : 0;
+            boolean anyLive = false;
+            for (int i = 0; i < slotCount; i++) {
+                final boolean present;
+                if (fbo != null) {
+                    final int db = target.drawBuffers[i];
+                    present = db >= 0 && db < ContextState.MAX_COLOR_ATTACHMENTS && fbo.colorTextures[db] != 0;
+                } else {
+                    present = i == 0;
+                }
+                if (!present) continue;
+                final int fm = PixelOps.colorComponentMask(formats[i]);
+                final int m = colorWriteMask & fm;
+                if (m == 0) {
+                    skipSlots |= 1 << i;
+                } else {
+                    anyLive = true;
+                    if (m != fm) colorPartial = true;
+                }
+            }
+            wantColor = anyLive;
+        }
+
+        if (target.width > 0 && target.height > 0) {
+            final int coverage = attachmentClear.coverage(st, target);
+            if (coverage == AttachmentClear.EMPTY) return;
+            final boolean partial = coverage == AttachmentClear.PARTIAL || colorPartial || (wantStencil && (st.pipeline.stencilWriteMask & 0xFF) != 0xFF);
+            if (partial && !(wantColor && attachmentClear.hasIntegerColorTarget(target)) && clearPartial(st, fbo, target, wantColor, wantDepth, wantStencil)) {
+                return;
+            }
+        }
 
         // FBO0 path: just record pending state; ensureFbo0RenderPass consumes it lazily.
         if (st.boundFboId == 0) {
@@ -998,15 +1050,9 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
 
-        final FboState fbo = resourceManager.getFbo(st.boundFboId);
-        if (fbo == null) return;
-
-        if (!wantColor && (wantDepth || wantStencil)) {
-            final FrameState f = frameManager.frame();
-            if (attachmentClear.eligible(st, f, fbo, wantDepth, wantStencil)
-                && attachmentClear.clearInPass(st, f, fbo, wantDepth, wantStencil)) {
-                return;
-            }
+        final FrameState f = frameManager.frame();
+        if (!wantColor && !SystemProperties.SDL_DISABLE_IN_PASS_CLEAR && f.renderPass != 0 && f.activeLayoutHash == fbo.structuralLayoutHash && !FBOClearTracker.fboHasPendingClear(st, fbo) && clearPartial(st, fbo, target, false, wantDepth, wantStencil)) {
+            return;
         }
 
         boolean affectsActivePass = false;
@@ -1015,7 +1061,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         final long activeDepth = passActive ? frameManager.getCurrentDepthTarget() : 0;
 
         if (wantColor) {
-            for (int db : fbo.drawBuffers) {
+            final int[] drawBuffers = fbo.drawBuffers;
+            for (int i = 0; i < drawBuffers.length; i++) {
+                if ((skipSlots & (1 << i)) != 0) continue;
+                final int db = drawBuffers[i];
                 if (db < 0 || db >= ContextState.MAX_COLOR_ATTACHMENTS) continue;
                 final long tex = fbo.colorTextures[db];
                 if (tex == 0) continue;
@@ -1024,17 +1073,44 @@ public class SDLGPURenderBackend extends RenderBackend {
             }
         }
         if (wantDepth && fbo.depthTexture != 0) {
-            FBOClearTracker.recordPendingDepthClear(st, fbo.depthTexture, cs.depthClearValue);
+            FBOClearTracker.recordPendingDepthClear(st, fbo.depthTexture, st.depthClearValue);
             if (passActive && fbo.depthTexture == activeDepth) affectsActivePass = true;
         }
         if (wantStencil && fbo.depthTexture != 0 && PixelOps.isDepthStencilFormat(fbo.depthFormat)) {
-            FBOClearTracker.recordPendingStencilClear(st, fbo.depthTexture, cs.stencilClearValue);
+            FBOClearTracker.recordPendingStencilClear(st, fbo.depthTexture, st.stencilClearValue);
             if (passActive && fbo.depthTexture == activeDepth) affectsActivePass = true;
         }
 
         if (affectsActivePass) {
             frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
         }
+    }
+
+    private boolean clearPartial(ContextState st, FboState fbo, AttachmentClear.Target t, boolean color, boolean depth, boolean stencil) {
+        final FrameState f = frameManager.frame();
+        pipelineApplier.ensureRenderPass(st, f);
+        final long expectedLayout = fbo == null ? FrameManager.FBO0_LAYOUT_HASH : fbo.structuralLayoutHash;
+        if (f.renderPass == 0 || f.activeLayoutHash != expectedLayout) {
+            return warnPartialClearFallback();
+        }
+        if (fbo == null) {
+            t.depthTexture = f.currentDepthTarget;
+            t.depthFormat = t.depthTexture != 0 ? resourceManager.getSwapchainDepthStencilFormat() : 0;
+        }
+        color &= t.colorFormats != null && (fbo == null || fbo.hasAnyColor);
+        depth &= t.depthTexture != 0;
+        stencil &= PixelOps.isDepthStencilFormat(t.depthFormat);
+        if (!color && !depth && !stencil) return true;
+        if (attachmentClear.clearInPass(st, f, t, color, depth, stencil)) return true;
+        return warnPartialClearFallback();
+    }
+
+    private boolean warnPartialClearFallback() {
+        if (!partialClearFallbackWarned) {
+            partialClearFallbackWarned = true;
+            LOG.error("clear: in-pass partial clear unavailable; falling back to the legacy clear path");
+        }
+        return false;
     }
 
     @Override public void lineWidth(float width) { /* no-op */ }
@@ -1051,9 +1127,10 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void drawArrays(int mode, int first, int count) {
         if (count <= 0) return;
+        final ContextState st = s();
+        if (st.rasterizerDiscard) return;
         final FrameState f = frameManager.frame();
         if (!f.frameActive) { f.droppedDrawsThisFrame++; return; }
-        final ContextState st = s();
         if (mode == GL11.GL_TRIANGLE_FAN && count >= 3) {
             if (!drawDispatch.drawTriangleFanAsTriangleList(st, first, count)) { f.droppedDrawsThisFrame++; return; }
             if (SystemProperties.FFP_TRACE) ffpTrace.trace(st, "arraysFan", mode, count, 0, first, 0);
@@ -1096,6 +1173,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private long prepareIndexedDrawBind(ContextState st, int mode, int type, String opName) {
+        if (st.rasterizerDiscard) return 0;
         if (!drawDispatch.prepareIndexedDraw(st, mode, type)) return 0;
         final int ebo = st.currentVao.elementBuffer;
         final long eboHandle = resourceManager.getBufferHandle(ebo);
@@ -1868,6 +1946,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             srcWidth = meta != null ? meta.width() : fbo.width;
             srcHeight = meta != null ? meta.height() : fbo.height;
             srcY = y;
+            if (frameManager.isFrameActive()) fboClearTracker.materializePendingClearForTexture(cs, texHandle);
         }
         if (texHandle == 0 || srcWidth <= 0 || srcHeight <= 0) return;
 
@@ -3747,6 +3826,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL11.GL_SCISSOR_TEST -> cs.scissorEnabled;
             case GL11.GL_STENCIL_TEST -> cs.pipeline.stencilTestEnabled;
             case GL11.GL_DEPTH_WRITEMASK -> cs.pipeline.depthWriteEnabled;
+            case GL30.GL_RASTERIZER_DISCARD -> cs.rasterizerDiscard;
             default -> false;
         };
     }
@@ -4024,8 +4104,9 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override
     public void drawArraysInstanced(int mode, int first, int count, int primcount) {
         if (count <= 0 || primcount <= 0) return;
-        if (!frameManager.isFrameActive()) return;
         final ContextState st = s();
+        if (st.rasterizerDiscard) return;
+        if (!frameManager.isFrameActive()) return;
         drawDispatch.setPrimitiveTypeForDraw(st, FormatMap.mapPrimitiveType(mode));
         pipelineApplier.ensureRenderPass(st);
         if (!frameManager.isRenderPassActive()) return;

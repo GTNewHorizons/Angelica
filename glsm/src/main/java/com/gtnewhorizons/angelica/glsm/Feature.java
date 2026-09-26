@@ -302,7 +302,7 @@ public class Feature {
         ));
         attribToFeatures.put(GL11.GL_SCISSOR_BIT, ImmutableSet.of(
               GLStateManager.getScissorTest()
-            // Scissor box
+            , GLStateManager.getScissorState()
         ));
         attribToFeatures.put(GL11.GL_STENCIL_BUFFER_BIT, ImmutableSet.of(
               GLStateManager.getStencilTest()
