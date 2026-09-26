@@ -73,6 +73,27 @@ final class CloudFaceMesh {
         interiorCount = 0;
     }
 
+    void delete() {
+        if (vao != -1) GLStateManager.glDeleteVertexArrays(vao);
+        if (vbo != -1) GLStateManager.glDeleteBuffers(vbo);
+        if (ebo != -1) GLStateManager.glDeleteBuffers(ebo);
+        vao = -1;
+        vbo = -1;
+        ebo = -1;
+        vboCapacityBytes = 0;
+        clear();
+        stampedCount = 0;
+        ringsPerBucket = 1;
+        buildAnchorX = Integer.MIN_VALUE;
+        buildAnchorZ = Integer.MIN_VALUE;
+        orderAnchorX = Integer.MIN_VALUE;
+        orderAnchorZ = Integer.MIN_VALUE;
+        shape = null;
+        uploadBuffer = null;
+        Arrays.fill(wallStart, 0);
+        Arrays.fill(plateStart, 0);
+    }
+
     void build(CloudShape shape, int anchorX, int anchorZ, int radiusCells, int radiusCellsSq, int wallCutCells) {
         stampedCount = 0;
         this.shape = shape;
