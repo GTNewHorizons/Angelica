@@ -20,6 +20,8 @@ import com.gtnewhorizons.angelica.glsm.states.Color4;
 import com.gtnewhorizons.angelica.glsm.states.PolygonState;
 import com.gtnewhorizons.angelica.mixins.interfaces.ModelBoxData;
 import com.gtnewhorizons.angelica.profiling.BailClassCounts;
+import com.gtnewhorizons.angelica.rendering.GlintClock;
+import com.gtnewhorizons.angelica.rendering.items.HeldItemGlint;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.ObjectIterator;
@@ -41,6 +43,7 @@ import net.minecraft.world.World;
 import org.joml.Matrix4f;
 import org.lwjgl.opengl.GL11;
 
+import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
@@ -91,17 +94,27 @@ public final class ModelPartBatcher {
     private boolean instancedThisCycle;
     private DeferredWorldRenderingPipeline shaderPipeline;
     private long lastSweepMs;
+    private RenderLayer armorGlintLayer;
+    private final Matrix4f armorGlintTexture = new Matrix4f();
+    private int armorGlintColor, armorGlintLight, armorGlintOverlay;
+    private static final int VANILLA_GLINT_COLOR = AngelicaBufferSource.packAbgr(0.5F * 0.76F, 0.25F * 0.76F, 0.8F * 0.76F, 1.0F);
 
     long parts;
     long liveFallbacks;
+    private long armorBaseReuses, glintPassReuses, armorLoopSkips, armorSectionSkips;
     private final long[] bails = new long[BailReason.VALUES.length];
     private long lastParts, lastLiveFallbacks;
 
     public long statParts() { return parts; }
+    public long statArmorBaseReuses() { return armorBaseReuses; }
+    public long statGlintPassReuses() { return glintPassReuses; }
+    public long statArmorLoopSkips() { return armorLoopSkips; }
+    public long statArmorSectionSkips() { return armorSectionSkips; }
     public long statLiveFallbacks() { return liveFallbacks; }
     public long statInstancedDraws() { return groups.instancedDraws + shadowGroups.instancedDraws; }
     public long statInstancedInstances() { return groups.instancedInstances + shadowGroups.instancedInstances; }
     public long statCubeInstances() { return groups.cubeInstances + shadowGroups.cubeInstances; }
+    public long statRedrawnInstances() { return groups.redrawnInstances + shadowGroups.redrawnInstances; }
     public long statTexMatrixRuns() { return groups.texMatrixRuns + shadowGroups.texMatrixRuns; }
     public long statBail(BailReason reason) { return bails[reason.ordinal()]; }
     public long statShadowQuads() { return shadows.statQuads(); }
@@ -130,6 +143,12 @@ public final class ModelPartBatcher {
         int glintSlot;
         int cull;
         boolean lit;
+
+        boolean matches(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit) {
+            return this.texture == texture && this.material == material && pass.equals(this.pass)
+                && this.offsetFactor == offsetFactor && this.offsetUnits == offsetUnits
+                && this.glintSlot == glintSlot && this.cull == cull && this.lit == lit;
+        }
 
         LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit) {
             this.texture = texture;
@@ -167,14 +186,10 @@ public final class ModelPartBatcher {
 
     private final Object2ObjectOpenHashMap<LayerKey, RenderLayer> layers = new Object2ObjectOpenHashMap<>();
     private final LayerKey scratchKey = new LayerKey();
-    private ResourceLocation lastLayerTexture;
-    private TesrMaterial lastLayerMaterial;
-    private PassOverride lastLayerPass;
-    private float lastLayerOffsetFactor;
-    private float lastLayerOffsetUnits;
-    private int lastLayerGlintSlot;
-    private int lastLayerCull;
-    private boolean lastLayerLit;
+    private static final int RECENT_LAYERS = 8;
+    private final LayerKey[] recentKeys = new LayerKey[RECENT_LAYERS];
+    private final RenderLayer[] recentLayers = new RenderLayer[RECENT_LAYERS];
+    private int recentNext;
     private RenderLayer lastLayer;
 
     private static ResourceLocation lastBoundLocation;
@@ -260,6 +275,137 @@ public final class ModelPartBatcher {
 
     public boolean isActive() {
         return active;
+    }
+
+    public boolean beginGlintCapture(GlintCapture capture) {
+        return canCaptureGlint() && capture.begin(activeGroups);
+    }
+
+    public boolean canCaptureGlint() {
+        return active && instancedThisCycle && shaderPipeline == null && !shadow
+            && BatchEligibility.batchingAllowed() && GLStateManager.getActiveProgram() == 0
+            && !GLStateManager.isRecordingDisplayList();
+    }
+
+    public boolean replayGlint(GlintCapture capture) {
+        return replayGlint(capture, GLStateManager.getTextures().getTextureUnitMatrix(0));
+    }
+
+    public boolean queueSecondArmorGlint(GlintCapture capture) {
+        final Matrix4f second = GlintClock.secondArmorMatrix(GLStateManager.getTextures().getTextureUnitMatrix(0));
+        if (second == null || !replayGlint(capture, second)) return false;
+        armorLoopSkips++;
+        return true;
+    }
+
+    private boolean replayGlint(GlintCapture capture, Matrix4f textureMatrix) {
+        if (!active || shaderPipeline != null || shadow || !BatchEligibility.batchingAllowed()
+            || GLStateManager.getActiveProgram() != 0 || GLStateManager.isRecordingDisplayList()) return false;
+        if (!capture.replay(activeGroups, textureMatrix)) return false;
+        glintPassReuses++;
+        BatchEligibility.onPartQueued();
+        return true;
+    }
+
+    public boolean beginArmorCapture(GlintCapture capture) {
+        return canCaptureGlint() && capture.beginBase(activeGroups);
+    }
+
+    public boolean reuseArmorBase(GlintCapture base, GlintCapture glint) {
+        if (!canCaptureGlint() || !glint.beginTrusted(activeGroups)) return false;
+        final boolean copied;
+        try {
+            copied = base.copyBase(this, activeGroups);
+        } finally {
+            glint.end();
+        }
+        if (!copied) {
+            glint.reset();
+            return false;
+        }
+        armorBaseReuses++;
+        return true;
+    }
+
+    public boolean queueSkippedArmorGlint(GlintCapture base, ResourceLocation glintTexture) {
+        if (!canCaptureGlint() || GLStateManager.getActiveTextureUnit() != 0
+            || !GLStateManager.getTextures().getTextureUnitStates(0).isEnabled() || !base.queueBothLayers(this, activeGroups, glintTexture)) return false;
+        armorBaseReuses++;
+        glintPassReuses++;
+        armorSectionSkips++;
+        BatchEligibility.onPartQueued();
+        return true;
+    }
+
+    public boolean queueSkippedHeldGlint(TemplateBuffer template) {
+        if (!canCaptureGlint() || GLStateManager.getActiveTextureUnit() != 0 || !activeGroups.canCopyInstances(EntityMaterials.ITEM_GLINT)
+            || !MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0))) return false;
+        final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+        final PolygonState polygon = GLStateManager.getPolygonState();
+        final int cullCode = EntityMaterials.ITEM_GLINT.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        final RenderLayer layer = layerFor(HeldItemGlint.texture(), EntityMaterials.ITEM_GLINT, PassOverride.NONE,
+            offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, ShaderGlint.NO_TINT, cullCode, false);
+        activeGroups.queueGlintLayers(template, layer, EntityMaterials.ITEM_GLINT, currentModelView(), GLSMConfig.packedLastBrightness(),
+            VANILLA_GLINT_COLOR, currentOverlay(), HeldItemGlint.firstMatrix(), HeldItemGlint.secondMatrix());
+        parts++;
+        glintPassReuses++;
+        return true;
+    }
+
+    private Matrix4f currentModelView() {
+        final int mvGen = GLStateManager.getMvGeneration();
+        if (!mvCaptured || mvGen != lastMvGeneration) {
+            modelView.set(GLStateManager.getModelViewMatrix());
+            lastMvGeneration = mvGen;
+            mvCaptured = true;
+        }
+        return modelView;
+    }
+
+    private static int currentOverlay() {
+        return AngelicaBufferSource.packAbgr(GLStateManager.getOverlayR(), GLStateManager.getOverlayG(), GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
+    }
+
+    boolean prepareArmorGlint() {
+        if (GLStateManager.getBoundTextureForServerState() != lastBoundGlId || lastBoundLocation == null) return false;
+        final Color4 color = GLStateManager.getColor();
+        setArmorGlint(lastBoundLocation, lastBoundGlintSlot, DrawState.liveLit(EntityMaterials.GLINT),
+            GLStateManager.getTextures().getTextureUnitMatrix(0),
+            AngelicaBufferSource.packAbgr(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha()));
+        return true;
+    }
+
+    boolean prepareSkippedArmorGlint(ResourceLocation glintTexture) {
+        setArmorGlint(glintTexture, ShaderGlint.NO_TINT, false, GlintClock.firstArmorMatrix(), VANILLA_GLINT_COLOR);
+        return true;
+    }
+
+    private void setArmorGlint(ResourceLocation texture, int glintSlot, boolean lit, Matrix4f textureMatrix, int color) {
+        final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
+        final PolygonState polygon = GLStateManager.getPolygonState();
+        final int cullCode = EntityMaterials.GLINT.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
+        armorGlintLayer = layerFor(texture, EntityMaterials.GLINT, PassOverride.NONE,
+            offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, glintSlot, cullCode, lit);
+        armorGlintTexture.set(textureMatrix);
+        armorGlintColor = color;
+        armorGlintLight = GLSMConfig.packedLastBrightness();
+        armorGlintOverlay = currentOverlay();
+    }
+
+    void copyArmorGlint(RetainedTesrGroups.InstanceColumns base, int start, int end, boolean inPlace) {
+        if (inPlace) {
+            activeGroups.referenceInstances(base, start, end, armorGlintLayer, EntityMaterials.GLINT, armorGlintColor, armorGlintTexture);
+        } else {
+            activeGroups.copyInstances(base, start, end, armorGlintLayer, EntityMaterials.GLINT,
+                armorGlintLight, armorGlintColor, armorGlintOverlay, armorGlintTexture);
+        }
+        parts += end - start;
+    }
+
+    void queueArmorGlintLayers(RetainedTesrGroups.InstanceColumns base, RetainedTesrGroups.TexRun baseRun, int start, int end) {
+        activeGroups.referenceGlintLayers(base, baseRun, start, end, armorGlintLayer, EntityMaterials.GLINT, armorGlintColor,
+            GlintClock.firstArmorMatrix(), GlintClock.secondArmorMatrix());
+        parts += end - start;
     }
 
     public boolean entityPassActive() {
@@ -362,13 +508,7 @@ public final class ModelPartBatcher {
         final int overlayABGR = shaderPipeline != null ? AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor()) : AngelicaBufferSource.packAbgr(GLStateManager.getOverlayR(), GLStateManager.getOverlayG(), GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
         final long entityInfo = shaderPipeline != null ? InstancedAttribs.packEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedItem()) : 0L;
         final int packedLight = GLSMConfig.packedLastBrightness();
-        final int mvGen = GLStateManager.getMvGeneration();
-        if (!mvCaptured || mvGen != lastMvGeneration) {
-            modelView.set(GLStateManager.getModelViewMatrix());
-            lastMvGeneration = mvGen;
-            mvCaptured = true;
-        }
-        activeGroups.queue(template, cubes, scale, layer, material, modelView, packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix);
+        activeGroups.queue(template, cubes, scale, layer, material, currentModelView(), packedLight, colorABGR, overlayABGR, entityInfo, entityId, texMatrix);
         parts++;
         return true;
     }
@@ -458,26 +598,22 @@ public final class ModelPartBatcher {
     }
 
     private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit) {
-        if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
-            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && glintSlot == lastLayerGlintSlot
-            && cullCode == lastLayerCull && lit == lastLayerLit) {
-            return lastLayer;
+        for (int i = 0; i < RECENT_LAYERS; i++) {
+            final RenderLayer recent = recentLayers[i];
+            if (recent != null && recentKeys[i].matches(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit)) {
+                return lastLayer = recent;
+            }
         }
         RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit));
         if (layer == null) {
             layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit);
             layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit), layer);
         }
-        lastLayerTexture = texture;
-        lastLayerMaterial = material;
-        lastLayerPass = pass;
-        lastLayerOffsetFactor = offsetFactor;
-        lastLayerOffsetUnits = offsetUnits;
-        lastLayerGlintSlot = glintSlot;
-        lastLayerCull = cullCode;
-        lastLayerLit = lit;
-        lastLayer = layer;
-        return layer;
+        if (recentKeys[recentNext] == null) recentKeys[recentNext] = new LayerKey();
+        recentKeys[recentNext].set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit);
+        recentLayers[recentNext] = layer;
+        recentNext = (recentNext + 1) % RECENT_LAYERS;
+        return lastLayer = layer;
     }
 
     private void sweepTemplates(long now) {
@@ -500,12 +636,8 @@ public final class ModelPartBatcher {
         shaderPipeline = null;
         layers.clear();
         scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
-        lastLayerTexture = null;
-        lastLayerMaterial = null;
-        lastLayerPass = null;
-        lastLayerGlintSlot = ShaderGlint.NO_TINT;
-        lastLayerCull = DrawState.DISABLED;
-        lastLayerLit = false;
+        Arrays.fill(recentLayers, null);
+        recentNext = 0;
         lastLayer = null;
         loggedMaterialBails.clear();
         lastBoundLocation = null;

@@ -29,6 +29,8 @@ public final class EntityMaterials {
     static final TesrMaterial OVERLAY = TesrMaterial.builder().translucent().depthEqual().stream().build();
     public static final TesrMaterial GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream()
         .special(TesrMaterial.SpecialRender.GLINT).build();
+    public static final TesrMaterial ITEM_GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream()
+        .special(TesrMaterial.SpecialRender.GLINT).build();
 
     private static final BlendState effectiveBlend = new BlendState();
     private static final AlphaState effectiveAlpha = new AlphaState();

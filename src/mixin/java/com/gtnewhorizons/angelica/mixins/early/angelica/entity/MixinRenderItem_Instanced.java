@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -49,7 +50,7 @@ public abstract class MixinRenderItem_Instanced {
         }
     )
     private void angelica$instanceDroppedGlint(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
-        DroppedItemInstancer.glint(tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
+        DroppedItemInstancer.glint(tessellator, maxU, minV, minU, maxV, width, height, thickness, EntityMaterials.GLINT, original);
     }
 
     @Redirect(

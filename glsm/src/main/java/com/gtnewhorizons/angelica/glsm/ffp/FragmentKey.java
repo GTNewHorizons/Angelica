@@ -66,6 +66,8 @@ public final class FragmentKey {
     public static final int FOG_EXP2   = 3;
 
     private static final int GLOBAL_BITS = 14;
+    private static final int BIT_COMBINED_GLINT = 61;
+    private static final int BIT_GLINT_REPLACE_ALPHA = 62;
     private static final int BIT_FOG_MODE          = 0;  // 2 bits
     private static final int BIT_ALPHA_TEST        = 2;  // 1 bit
     private static final int BIT_ALPHA_FUNC        = 3;  // 3 bits
@@ -111,6 +113,8 @@ public final class FragmentKey {
 
     public static int packFromState(long[] out, GLContextState glCtx) {
         long global = 0;
+        if (CombinedGlint.isActive()) global |= 1L << BIT_COMBINED_GLINT;
+        if (CombinedGlint.replacesAlpha()) global |= 1L << BIT_GLINT_REPLACE_ALPHA;
 
         // Fog
         if (glCtx.fogMode.isEnabled()) {
@@ -248,6 +252,8 @@ public final class FragmentKey {
     }
 
     public int fogMode()              { return (int) (packed[0] & 0x3); }
+    public boolean combinedGlint()    { return (packed[0] & (1L << BIT_COMBINED_GLINT)) != 0; }
+    public boolean glintReplaceAlpha() { return (packed[0] & (1L << BIT_GLINT_REPLACE_ALPHA)) != 0; }
     public boolean alphaTestEnabled() { return ((packed[0] >> BIT_ALPHA_TEST) & 1) != 0; }
     public int alphaTestFunc()        { return (int) ((packed[0] >> BIT_ALPHA_FUNC) & 0x7); }
     public boolean separateSpecular() { return ((packed[0] >> BIT_SEPARATE_SPECULAR) & 1) != 0; }

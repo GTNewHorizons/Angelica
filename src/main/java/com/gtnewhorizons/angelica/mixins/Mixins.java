@@ -680,6 +680,7 @@ public enum Mixins implements IMixins {
             "gui.MixinGuiSlot",
 
             "glint.MixinRenderBiped",
+            "glint.MixinEntityLiving_ArmorEnchantCache",
             "glint.MixinRenderPlayer",
 
             "optimization.MixinRenderItemFrame",
