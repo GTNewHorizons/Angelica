@@ -74,6 +74,14 @@ public final class PixelOps {
         };
     }
 
+    public static int colorComponentMask(int sdlFormat) {
+        int mask = 0;
+        for (int c = 0; c < 4; c++) {
+            if (colorChannelBits(sdlFormat, c) > 0) mask |= 1 << c;
+        }
+        return mask;
+    }
+
     private static int uniformChannelBits(int sdlFormat) {
         return switch (sdlFormat) {
             case SDL_GPU_TEXTUREFORMAT_R8_UNORM, SDL_GPU_TEXTUREFORMAT_R8_SNORM,
@@ -170,6 +178,16 @@ public final class PixelOps {
                  SDL_GPU_TEXTUREFORMAT_R8G8_UINT, SDL_GPU_TEXTUREFORMAT_R16G16_UINT,
                  SDL_GPU_TEXTUREFORMAT_R32G32_UINT, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UINT,
                  SDL_GPU_TEXTUREFORMAT_R16G16B16A16_UINT, SDL_GPU_TEXTUREFORMAT_R32G32B32A32_UINT -> true;
+            default -> false;
+        };
+    }
+
+    public static boolean isSdlFormatInteger(int sdlFormat) {
+        if (isSdlFormatUnsignedInteger(sdlFormat)) return true;
+        return switch (sdlFormat) {
+            case SDL_GPU_TEXTUREFORMAT_R8_INT, SDL_GPU_TEXTUREFORMAT_R8G8_INT, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_INT,
+                 SDL_GPU_TEXTUREFORMAT_R16_INT, SDL_GPU_TEXTUREFORMAT_R16G16_INT, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT,
+                 SDL_GPU_TEXTUREFORMAT_R32_INT, SDL_GPU_TEXTUREFORMAT_R32G32_INT, SDL_GPU_TEXTUREFORMAT_R32G32B32A32_INT -> true;
             default -> false;
         };
     }

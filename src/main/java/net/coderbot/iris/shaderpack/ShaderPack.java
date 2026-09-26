@@ -75,6 +75,8 @@ public class ShaderPack {
 	private final Map<String, String> dimensionMap;
 	private final Map<String, ProgramSet> dimensionProgramSets;
 	private final Set<String> foldersWithShaderFiles;
+	private final boolean mappedByDimensionProperties;
+	private final String legacyDefaultFolder;
 	private final Function<AbsolutePackPath, String> sourceProvider;
 	private final ShaderProperties shaderProperties;
 	private boolean hasLoggedCacheLimitReached = false;
@@ -129,13 +131,16 @@ public class ShaderPack {
 		boolean hasDimensionProperties = dimensionProperties.isPresent();
 
 		List<String> dimensionFolders = new ArrayList<>();
+		String legacyDefault = null;
 
 		if (hasDimensionProperties) {
 			// Extract folder names from dimension.properties (e.g., "world0", "world-1", "custom_dim")
 			dimensionFolders.addAll(parseDimensionMap(dimensionProperties.get(), "dimension."));
 		}
 
-		if (!dimensionFolders.isEmpty()) {
+		this.mappedByDimensionProperties = !dimensionFolders.isEmpty();
+
+		if (mappedByDimensionProperties) {
 			for (String folderName : dimensionFolders) {
 				boolean folderExists = checkAndAddDimensionFolder(starts, root, potentialFileNames, folderName);
 				if (folderExists) {
@@ -183,6 +188,7 @@ public class ShaderPack {
             // If world0 folder exists with shader files, use it for Overworld. Otherwise use base for all oher dims.
 			if (foundFolders.contains("world0")) {
 				dimensionMap.put("Overworld", "world0");
+				legacyDefault = "world0";
 			}
 			if (foundFolders.contains("world-1")) {
 				dimensionMap.put("Nether", "world-1");
@@ -191,6 +197,7 @@ public class ShaderPack {
 				dimensionMap.put("The End", "world1");
 			}
 		}
+		this.legacyDefaultFolder = legacyDefault;
 
 		// Read all files and included files recursively
 		IncludeGraph graph = new IncludeGraph(root, starts.build());
@@ -663,6 +670,7 @@ public class ShaderPack {
      *   Exact match in dimension.properties (dimension.<folder> = dimensionName)
      *   Wildcard match (dimension.<folder> = *)
      *   Legacy world{ID} folder (e.g., world0, world-1)
+     *   world0 for packs without dimension.properties
      *   Fallback to base ProgramSet
      *
      *
@@ -673,29 +681,10 @@ public class ShaderPack {
      * @return The ProgramSet for this dimension, or base ProgramSet if no override exists
      */
     public ProgramSet getProgramSet(String dimensionName) {
-		int dimensionId = Iris.getCurrentDimensionId();
 		dimensionName = DimensionFlatteningMap.toLegacyName(dimensionName);
+		String folderName = resolveDimensionFolder(dimensionMap, foldersWithShaderFiles, legacyDefaultFolder, dimensionName, Iris.getCurrentDimensionId());
 
-		// First, try to find an exact match in the dimension map
-		String folderName = dimensionMap.get(dimensionName);
-		boolean foundExactMatch = folderName != null;
-
-		// If no exact match, try wildcard
-		if (folderName == null) {
-			folderName = dimensionMap.get("*");
-		}
-
-		// If still no match, try world{ID} folder as fallback for backward compatibility
-		// But only if that folder actually has shader files!
-		if (folderName == null) {
-			String worldFolder = "world" + dimensionId;
-			if (foldersWithShaderFiles.contains(worldFolder)) {
-				folderName = worldFolder;
-			}
-		}
-
-		// If we have a folder name that contains shader files, try to get or create its ProgramSet
-		if (folderName != null && foldersWithShaderFiles.contains(folderName)) {
+		if (folderName != null) {
 			ProgramSet programSet = dimensionProgramSets.get(folderName);
 
 			if (programSet == null) {
@@ -723,8 +712,7 @@ public class ShaderPack {
 			}
 		}
 
-		// Warn if dimension.properties exists but this dimension has no mapping and no wildcard
-		if (!dimensionMap.isEmpty() && !foundExactMatch && !dimensionMap.containsKey("*")) {
+		if (mappedByDimensionProperties && !dimensionMap.containsKey(dimensionName) && !dimensionMap.containsKey("*")) {
 			Iris.logger.warn("Dimension '{}' has no shader mapping in dimension.properties and no wildcard (*) fallback is defined. " +
 					"Falling back to base shaders. Consider adding 'dimension.<folder>={}' or 'dimension.<folder>=*' to dimension.properties",
 					dimensionName, dimensionName);
@@ -740,6 +728,19 @@ public class ShaderPack {
 		//     sense to bring it back as a configurable option, and have a more maintainable set of code backing it.
 
 		return base;
+	}
+
+	static String resolveDimensionFolder(Map<String, String> dimensionMap, Set<String> foldersWithShaderFiles,
+										 String legacyDefaultFolder, String dimensionName, int dimensionId) {
+		String folderName = dimensionMap.get(dimensionName);
+		if (folderName == null) {
+			folderName = dimensionMap.get("*");
+		}
+		if (folderName == null) {
+			String worldFolder = "world" + dimensionId;
+			folderName = foldersWithShaderFiles.contains(worldFolder) ? worldFolder : legacyDefaultFolder;
+		}
+		return folderName != null && foldersWithShaderFiles.contains(folderName) ? folderName : null;
 	}
 
     public Optional<CustomTextureData> getCustomNoiseTexture() {

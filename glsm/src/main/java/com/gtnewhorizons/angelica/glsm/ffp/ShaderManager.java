@@ -121,6 +121,12 @@ public final class ShaderManager {
         lastBoundProgramId = GLStateManager.getActiveProgram();
     }
 
+    public static void invalidateBoundProgram() {
+        final ShaderManager sm = Holder.INSTANCE;
+        sm.lastBoundProgramId = -1;
+        sm.currentProgram = null;
+    }
+
     public void deactivate() {
         active = false;
         currentProgram = null;

@@ -113,6 +113,7 @@ public final class ContextState {
     public float viewportDepthFar = 1.0f;
     public int scissorX, scissorY, scissorW, scissorH;
     public boolean scissorEnabled;
+    public boolean rasterizerDiscard;
     public int activeTextureUnit;
     public int boundProgram;
     public int autoPushedProgram;
@@ -397,5 +398,51 @@ public final class ContextState {
         cachedViewport = SDL_GPUViewport.calloc();
         cachedScissor = SDL_Rect.calloc();
         cachedBlendColor = SDL_FColor.calloc();
+    }
+
+    public void invalidateMirror() {
+        boundFboId = -1;
+        boundReadFboId = -1;
+        viewportDirty = true;
+        scissorDirty = true;
+        blendColorDirty = true;
+        lastBoundPipeline = 0;
+        lastAppliedRenderPassGen = 0;
+        lastAppliedStencilRef = Integer.MIN_VALUE;
+        lastBoundEboHandle = 0;
+        lastBoundEboIndexSize = -1;
+        lastBoundEboOffset = 0;
+        lastAppliedSamplerBindGen = -1;
+        lastAppliedSamplerProgram = 0;
+        lastAppliedSamplerCb = 0;
+        lastFragSamplerProgram = 0;
+        lastVertSamplerProgram = 0;
+        lastAppliedStorageTexBindGen = -1;
+        lastAppliedStorageTexProgram = 0;
+        lastAppliedStorageTexCb = 0;
+        lastFragStorageTexProgram = 0;
+        lastVertStorageTexProgram = 0;
+        lastAppliedStorageBufBindGen = -1;
+        lastAppliedStorageBufProgram = 0;
+        lastAppliedStorageBufCb = 0;
+        lastFragStorageBufProgram = 0;
+        lastVertStorageBufProgram = 0;
+        lastAppliedVboBindGen = -1;
+        lastAppliedVboBindProgram = 0;
+        lastAppliedVboBindCb = 0;
+        lastFlushedSamplerBindGen = -1;
+        lastFlushedProgram = -1;
+        lastFlushedPendingMutationGen = -1;
+        lastPushedCbVs = 0;
+        lastPushedCbFs = 0;
+        lastPushedProgramVs = -1;
+        lastPushedProgramFs = -1;
+        lastPushedUboGenVs = -1;
+        lastPushedUboGenFs = -1;
+        pipeline.markInputDirty();
+        pipeline.markOutputDirty();
+        pipeline.markShaderDirty();
+        currentVao.invalidateInputHash();
+        needsSeed = true;
     }
 }

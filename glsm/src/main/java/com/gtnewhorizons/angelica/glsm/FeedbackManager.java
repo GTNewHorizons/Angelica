@@ -48,6 +48,10 @@ public class FeedbackManager {
         return renderMode == GL11.GL_FEEDBACK;
     }
 
+    public static int getRenderMode() {
+        return renderMode;
+    }
+
     public static void glFeedbackBuffer(int type, FloatBuffer buffer) {
         if (renderMode == GL11.GL_FEEDBACK) {
             GLStateManager.LOGGER.error("glFeedbackBuffer called while already in feedback mode");
