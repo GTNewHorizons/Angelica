@@ -1,9 +1,13 @@
 package com.gtnewhorizons.angelica.render;
 
+import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.joml.Vector3f;
 
 final class CloudView {
 
+    private final Matrix4f inverseModelView = new Matrix4f();
+    private final Vector3f cameraOffset = new Vector3f();
     private float lastForwardX = Float.NaN, lastForwardZ = Float.NaN;
     double pixelsPerRadian;
     double facing;
@@ -34,13 +38,13 @@ final class CloudView {
 
     private boolean updateCamera(Matrix4fc modelView) {
         offsetX = offsetY = offsetZ = 0.0f;
-        if (!modelView.isFinite() || modelView.m03() != 0.0f || modelView.m13() != 0.0f
-            || modelView.m23() != 0.0f || modelView.m33() != 1.0f || !rigid(modelView)) return false;
-        final float tx = modelView.m30(), ty = modelView.m31(), tz = modelView.m32();
-        offsetX = -(modelView.m00() * tx + modelView.m01() * ty + modelView.m02() * tz);
-        offsetY = -(modelView.m10() * tx + modelView.m11() * ty + modelView.m12() * tz);
-        offsetZ = -(modelView.m20() * tx + modelView.m21() * ty + modelView.m22() * tz);
-        if (!Float.isFinite(offsetX) || !Float.isFinite(offsetY) || !Float.isFinite(offsetZ)) return false;
+        if (!modelView.isFinite() || !modelView.isAffine()) return false;
+        modelView.invertAffine(inverseModelView).getTranslation(cameraOffset);
+        if (!cameraOffset.isFinite()) return false;
+        offsetX = cameraOffset.x;
+        offsetY = cameraOffset.y;
+        offsetZ = cameraOffset.z;
+        if (!rigid(modelView)) return false;
         final float forwardX = -modelView.m02(), forwardZ = -modelView.m22();
         if (forwardX != lastForwardX || forwardZ != lastForwardZ) {
             facing = Math.atan2(forwardZ, forwardX);
