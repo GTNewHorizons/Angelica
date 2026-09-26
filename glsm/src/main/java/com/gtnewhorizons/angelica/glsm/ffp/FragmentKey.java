@@ -395,7 +395,9 @@ public final class FragmentKey {
             default -> "?";
         };
         final StringBuilder sb = new StringBuilder();
-        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b colorSum=%b overlay=%b units=%d", fogName, alphaTestEnabled(), alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-", separateSpecular(), colorSum(), overlayEnabled() || overlayInstanced(), nrEnabledUnits()));
+        sb.append(String.format("FFPFragmentKey[fog=%s alpha=%b(%s) specSep=%b colorSum=%b overlay=%b units=%d", fogName, alphaTestEnabled(),
+            alphaTestEnabled() ? String.format("0x%04X", decodeAlphaFunc(alphaTestFunc())) : "-", separateSpecular(), colorSum(),
+            overlayEnabled() || overlayInstanced(), nrEnabledUnits()));
         for (int i = 0; i < nrEnabledUnits(); i++) {
             if (!unitEnabled(i)) {
                 sb.append(String.format(" u%d=OFF", i));

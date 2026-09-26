@@ -88,7 +88,8 @@ public final class DroppedItemInstancer {
     }
 
     private static boolean glintEligible(ItemStack stack) {
-        return stack != null && stack.getItem() != null && ModelPartBatcher.INSTANCE.isActive() && !GLStateManager.isRecordingDisplayList() && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(Tessellator.instance);
+        return stack != null && stack.getItem() != null && ModelPartBatcher.INSTANCE.isActive() && !GLStateManager.isRecordingDisplayList()
+            && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(Tessellator.instance);
     }
 
     static TesrMaterial material(ItemStack stack, boolean unfilteredAtlas) {
@@ -144,8 +145,7 @@ public final class DroppedItemInstancer {
     }
 
     /** Held glints use ITEM_GLINT for its stencil guard; dropped items draw with culling on and need none. */
-    public static void glint(Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness,
-                             TesrMaterial material, Operation<Void> original) {
+    public static void glint(Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, TesrMaterial material, Operation<Void> original) {
         if (!basePart) {
             callIcon(GLINT_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
             return;
@@ -336,7 +336,9 @@ public final class DroppedItemInstancer {
 
     private static BailReason blockStateBail(RenderBlocks renderBlocks, Block block, float brightness) {
         if (BlockRenderListManager.isISBRH(block.getRenderType())) return BailReason.ISBRH;
-        if (renderBlocks.enableAO || renderBlocks.overrideBlockTexture != null || brightness != 1.0F || !renderBlocks.useInventoryTint || renderBlocks.blockAccess != null || (renderBlocks.uvRotateEast | renderBlocks.uvRotateWest | renderBlocks.uvRotateSouth | renderBlocks.uvRotateNorth | renderBlocks.uvRotateTop | renderBlocks.uvRotateBottom) != 0) return BailReason.BLOCK_STATE;
+        if (renderBlocks.enableAO || renderBlocks.overrideBlockTexture != null || brightness != 1.0F || !renderBlocks.useInventoryTint
+            || renderBlocks.blockAccess != null || (renderBlocks.uvRotateEast | renderBlocks.uvRotateWest | renderBlocks.uvRotateSouth
+                | renderBlocks.uvRotateNorth | renderBlocks.uvRotateTop | renderBlocks.uvRotateBottom) != 0) return BailReason.BLOCK_STATE;
         return null;
     }
 

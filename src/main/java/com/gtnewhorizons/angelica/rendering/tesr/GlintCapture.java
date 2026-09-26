@@ -69,8 +69,7 @@ public final class GlintCapture {
     }
 
     /**
-     * Base passes are only copied under the same parent pose. Light and overlay are recorded so the glint can draw
-     * the base instances in place when every part still carries them.
+     * Base passes are only copied under the same parent pose. Light and overlay are recorded so the glint can draw the base instances in place when every part still carries them.
      */
     boolean beginBase(RetainedTesrGroups groups) {
         if (!open(groups)) return false;
@@ -104,8 +103,7 @@ public final class GlintCapture {
     void allowBase() { base = true; }
     boolean capturesBase() { return base && valid; }
 
-    void record(RetainedTesrGroups.Group group, RetainedTesrGroups.InstanceColumns columns,
-                RetainedTesrGroups.TexRun source, int start, int end, int instances) {
+    void record(RetainedTesrGroups.Group group, RetainedTesrGroups.InstanceColumns columns, RetainedTesrGroups.TexRun source, int start, int end, int instances) {
         if (!valid) return;
         if (!base && group.material != EntityMaterials.GLINT && group.material != EntityMaterials.ITEM_GLINT) {
             invalidate();
@@ -158,16 +156,10 @@ public final class GlintCapture {
     }
 
     boolean replay(RetainedTesrGroups groups, Matrix4f textureMatrix) {
-        if (base || !valid || owner != groups || pass != groups.captureVersion() || groups.glintCapture != null
-            || GLStateManager.drawCalls != draws) return false;
-        if (!trusted && (blendEnabled != GLStateManager.isEffectiveBlendEnabled()
-            || depthMask != GLStateManager.isEffectiveDepthMaskEnabled() || depthFunc != GLStateManager.getDepthState().getFunc()
-            || !blend.sameAs(GLStateManager.getEffectiveBlendState(scratchBlend))
-            || !sameParentPose()
-            || texture != GLStateManager.getBoundTextureForServerState()
-            || color != currentColor() || light != GLSMConfig.packedLastBrightness()
-            || fragmentLength != FragmentKey.packFromState(scratch)
-            || !Arrays.equals(fragment, 0, fragmentLength, scratch, 0, fragmentLength))) return false;
+        if (base || !valid || owner != groups || pass != groups.captureVersion() || groups.glintCapture != null || GLStateManager.drawCalls != draws) return false;
+        if (!trusted && (blendEnabled != GLStateManager.isEffectiveBlendEnabled() || depthMask != GLStateManager.isEffectiveDepthMaskEnabled() || depthFunc != GLStateManager.getDepthState().getFunc()
+            || !blend.sameAs(GLStateManager.getEffectiveBlendState(scratchBlend)) || !sameParentPose() || texture != GLStateManager.getBoundTextureForServerState() || color != currentColor() || light != GLSMConfig.packedLastBrightness()
+            || fragmentLength != FragmentKey.packFromState(scratch) || !Arrays.equals(fragment, 0, fragmentLength, scratch, 0, fragmentLength))) return false;
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
             if (!groups.captureStillValid(range.group)) return false;
@@ -202,8 +194,7 @@ public final class GlintCapture {
     }
 
     private boolean baseStillValid(RetainedTesrGroups groups) {
-        if (!valid || !base || owner != groups || pass != groups.captureVersion() || !groups.canCopyInstances(EntityMaterials.GLINT)
-            || !sameParentPose()) return false;
+        if (!valid || !base || owner != groups || pass != groups.captureVersion() || !groups.canCopyInstances(EntityMaterials.GLINT) || !sameParentPose()) return false;
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
             if (!groups.captureStillValid(range.group) || range.end > range.columns.size) return false;

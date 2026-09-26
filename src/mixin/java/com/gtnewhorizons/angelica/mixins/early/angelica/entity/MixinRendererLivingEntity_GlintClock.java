@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.entity;
 import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
 import com.gtnewhorizons.angelica.helpers.RendererLivingEntityHelper;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
-import com.gtnewhorizons.angelica.rendering.items.GlintCompatibility;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
@@ -56,8 +55,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         constant = @Constant(intValue = 15, ordinal = 0))
     private int angelica$queueArmorGlintBlock(int mask) {
         final ModelBase model = ((RendererLivingEntity) (Object) this).renderPassModel;
-        if ((angelica$armorPassFlags & 15) != 15 || model != angelica$baseModel || GLStateManager.getOverlayA() != 0.0F
-            || RendererLivingEntityHelper.hasEyePass(this) || !GlintCompatibility.armor(model)
+        if ((angelica$armorPassFlags & 15) != 15 || model != angelica$baseModel || GLStateManager.getOverlayA() != 0.0F || RendererLivingEntityHelper.hasEyePass(this)
             || !ModelPartBatcher.INSTANCE.queueSkippedArmorGlint(angelica$armorBase, RES_ITEM_GLINT)) return mask;
         SkippedGlintBlock.applyArmorExitState();
         return 0;
@@ -74,10 +72,8 @@ public abstract class MixinRendererLivingEntity_GlintClock {
             angelica$zoneOpen = true;
         }
         angelica$armorPassFlags = passFlags;
-        final ModelBase model = ((RendererLivingEntity) (Object) this).renderPassModel;
         angelica$baseModel = null;
-        angelica$capturingBase = (passFlags & 15) == 15 && GlintCompatibility.armor(model)
-            && ModelPartBatcher.INSTANCE.beginArmorCapture(angelica$armorBase);
+        angelica$capturingBase = (passFlags & 15) == 15 && ModelPartBatcher.INSTANCE.beginArmorCapture(angelica$armorBase);
         if (angelica$capturingBase) GLStateManager.glPushMatrix();
     }
 
@@ -99,23 +95,21 @@ public abstract class MixinRendererLivingEntity_GlintClock {
     @WrapWithCondition(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         slice = @Slice(from = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;RES_ITEM_GLINT:Lnet/minecraft/util/ResourceLocation;")),
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0))
-    private boolean angelica$renderArmorGlintLayer(ModelBase model, Entity entity, float swing, float amount, float age,
-                                                float yaw, float pitch, float scale, @Local(ordinal = 2) int layer) {
+    private boolean angelica$renderArmorGlintLayer(ModelBase model, Entity entity, float swing, float amount, float age, float yaw, float pitch, float scale, @Local(ordinal = 2) int layer) {
         if (Tracy.FINE_ZONES) {
             Tracy.beginZone(angelica$Z_ARMOR_GLINT);
             angelica$zoneOpen = true;
         }
         final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
         if (layer == 0) angelica$secondArmorQueued = false;
-        final boolean reusable = GlintCompatibility.armor(model);
         angelica$glintLayer = GLINT_LAYER_QUEUED;
-        if (reusable && layer == 0 && model == angelica$baseModel && batcher.reuseArmorBase(angelica$armorBase, angelica$armorGlint)) {
+        if (layer == 0 && model == angelica$baseModel && batcher.reuseArmorBase(angelica$armorBase, angelica$armorGlint)) {
             angelica$secondArmorQueued = batcher.queueSecondArmorGlint(angelica$armorGlint);
             if (!angelica$secondArmorQueued) angelica$armorGlint.reset();
             return false;
         }
-        if (reusable && layer == 1 && batcher.replayGlint(angelica$armorGlint)) return false;
-        angelica$glintLayer = reusable && layer == 0 && batcher.beginGlintCapture(angelica$armorGlint) ? GLINT_LAYER_CAPTURED : GLINT_LAYER_DRAWN;
+        if (layer == 1 && batcher.replayGlint(angelica$armorGlint)) return false;
+        angelica$glintLayer = layer == 0 && batcher.beginGlintCapture(angelica$armorGlint) ? GLINT_LAYER_CAPTURED : GLINT_LAYER_DRAWN;
         GLStateManager.glPushMatrix();
         return true;
     }

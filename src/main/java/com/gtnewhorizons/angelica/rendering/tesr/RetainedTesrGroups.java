@@ -253,8 +253,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             final ObjectArrayList<TexRun> list = cols.runs;
             for (int i = list.size() - 1; i >= 0; i--) {
                 final TexRun head = list.get(i);
-                if (head.source != src || head.reusedFrom != null || head.color != color
-                    || head.matrixSource != texMatrix && !head.matrix.equals(texMatrix)) continue;
+                if (head.source != src || head.reusedFrom != null || head.color != color || head.matrixSource != texMatrix && !head.matrix.equals(texMatrix)) continue;
                 if (head.last.end != start) {
                     final TexRun segment = pooledRun(start);
                     head.last.next = segment;
@@ -487,8 +486,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         return material.isStream() && instanceableMaterial(material);
     }
 
-    void copyInstances(InstanceColumns src, int start, int end, RenderLayer layer, TesrMaterial material,
-                       int packedLight, int colorABGR, int overlayABGR, Matrix4f texMatrix) {
+    void copyInstances(InstanceColumns src, int start, int end, RenderLayer layer, TesrMaterial material, int packedLight, int colorABGR, int overlayABGR, Matrix4f texMatrix) {
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final boolean cubes = !src.cubes.isEmpty();
@@ -521,8 +519,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         if (glintCapture != null) glintCapture.record(group, dst, run, start, end, instances);
     }
 
-    void referenceGlintLayers(InstanceColumns src, TexRun sourceRun, int start, int end, RenderLayer layer, TesrMaterial material,
-                              int colorABGR, Matrix4f first, Matrix4f second) {
+    void referenceGlintLayers(InstanceColumns src, TexRun sourceRun, int start, int end, RenderLayer layer, TesrMaterial material, int colorABGR, Matrix4f first, Matrix4f second) {
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final boolean cubes = !src.cubes.isEmpty();
@@ -536,8 +533,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         dst.referencedParts += end - start;
     }
 
-    void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight,
-                          int colorABGR, int overlayABGR, Matrix4f first, Matrix4f second) {
+    void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, Matrix4f first, Matrix4f second) {
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final InstanceColumns dst = group.templateColumns;
@@ -681,8 +677,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             if (!live(group) || !instanceable(group)) continue;
             if (group.templateColumns.hasInstances()) {
                 final boolean fixedFunction = deferred == null && GLStateManager.getActiveProgram() == 0;
-                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction,
-                    group.material == EntityMaterials.ITEM_GLINT && fixedFunction);
+                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT && fixedFunction);
             }
             if (!cubeAvailable && group.cubeColumns.hasInstances()) {
                 drawTemplateRuns(group.cubeColumns, group.material == EntityMaterials.GLINT && deferred == null, false);
@@ -759,8 +754,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         for (int r = 0, n = cols.runs.size(); r < n; r++) {
             final TexRun run = cols.runs.get(r);
             applyTexMatrix(run);
-            final boolean combined = group.material == EntityMaterials.GLINT && deferred == null && r + 1 < n
-                && combineRuns(cols, run, cols.runs.get(r + 1));
+            final boolean combined = group.material == EntityMaterials.GLINT && deferred == null && r + 1 < n && combineRuns(cols, run, cols.runs.get(r + 1));
             try {
                 if (canRedraw(run)) {
                     instanced.redrawCubes(run.sourceRun.uploadOffset, run.instances, run.color);
@@ -780,8 +774,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
 
     private boolean canRedraw(TexRun run) {
         final TexRun base = run.sourceRun;
-        return base != null && base.uploadPass == frameMark && base.parts == run.parts && base.instances == run.instances
-            && instanced.canRedraw(base.uploadRingEpoch, base.uploadBuffer);
+        return base != null && base.uploadPass == frameMark && base.parts == run.parts && base.instances == run.instances && instanced.canRedraw(base.uploadRingEpoch, base.uploadBuffer);
     }
 
     private void recordUpload(TexRun run) {

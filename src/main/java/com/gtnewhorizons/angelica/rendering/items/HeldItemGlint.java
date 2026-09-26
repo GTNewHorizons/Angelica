@@ -31,27 +31,22 @@ public final class HeldItemGlint {
     }
 
     public static boolean needsImmediateBase(ItemStack stack, int pass) {
-        return stack.hasEffect(pass) && (boolean) Settings.MODE_GLINT_WORLD.option.getStore()
-            && !ModelPartBatcher.INSTANCE.isShadowPass() && !batchedGlintGuarded();
+        return stack.hasEffect(pass) && (boolean) Settings.MODE_GLINT_WORLD.option.getStore() && !ModelPartBatcher.INSTANCE.isShadowPass() && !batchedGlintGuarded();
     }
 
     public static boolean layersCoverSamePixels() {
-        return GlintCompatibility.held() && opaqueTexture(Minecraft.getMinecraft());
+        return opaqueTexture(Minecraft.getMinecraft());
     }
 
     public static boolean canResetStencil() {
         if (!GLStateManager.getStencilTest().isEnabled()) return true;
         final var stencil = GLStateManager.getStencilState();
-        return stencil.getFuncFront() == GL11.GL_ALWAYS && stencil.getFuncBack() == GL11.GL_ALWAYS
-            && stencil.getFailOpFront() == GL11.GL_KEEP && stencil.getFailOpBack() == GL11.GL_KEEP
-            && stencil.getZFailOpFront() == GL11.GL_KEEP && stencil.getZFailOpBack() == GL11.GL_KEEP
-            && stencil.getZPassOpFront() == GL11.GL_KEEP && stencil.getZPassOpBack() == GL11.GL_KEEP;
+        return stencil.getFuncFront() == GL11.GL_ALWAYS && stencil.getFuncBack() == GL11.GL_ALWAYS && stencil.getFailOpFront() == GL11.GL_KEEP && stencil.getFailOpBack() == GL11.GL_KEEP && stencil.getZFailOpFront() == GL11.GL_KEEP
+            && stencil.getZFailOpBack() == GL11.GL_KEEP && stencil.getZPassOpFront() == GL11.GL_KEEP && stencil.getZPassOpBack() == GL11.GL_KEEP;
     }
 
     public static boolean eligible() {
-        return AngelicaConfig.enableEntityBatching && GLStateManager.getActiveProgram() == 0
-            && (boolean) Settings.MODE_GLINT_WORLD.option.getStore()
-            && GlintCompatibility.held() && opaqueTexture(Minecraft.getMinecraft());
+        return AngelicaConfig.enableEntityBatching && GLStateManager.getActiveProgram() == 0 && (boolean) Settings.MODE_GLINT_WORLD.option.getStore() && opaqueTexture(Minecraft.getMinecraft());
     }
 
     public static boolean begin() {
@@ -80,10 +75,8 @@ public final class HeldItemGlint {
         final long time = GlintClock.millis();
         if (matrixTime == time) return;
         matrixTime = time;
-        first.scaling(0.125f).translate((float) (time % 3000L) / 3000.0f * 8.0f, 0, 0)
-            .rotate((float) Math.toRadians(-50), 0, 0, 1);
-        second.scaling(0.125f).translate(-(float) (time % 4873L) / 4873.0f * 8.0f, 0, 0)
-            .rotate((float) Math.toRadians(10), 0, 0, 1);
+        first.scaling(0.125f).translate((float) (time % 3000L) / 3000.0f * 8.0f, 0, 0).rotate((float) Math.toRadians(-50), 0, 0, 1);
+        second.scaling(0.125f).translate(-(float) (time % 4873L) / 4873.0f * 8.0f, 0, 0).rotate((float) Math.toRadians(10), 0, 0, 1);
     }
 
     private static boolean opaqueTexture(Minecraft mc) {

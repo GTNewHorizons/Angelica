@@ -65,7 +65,8 @@ public abstract class MixinRenderItem_Instanced {
         method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
+            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;"
+                + "FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
             remap = false
         )
     )
@@ -77,7 +78,8 @@ public abstract class MixinRenderItem_Instanced {
         method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
+            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;"
+                + "FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
             shift = At.Shift.AFTER,
             remap = false
         )

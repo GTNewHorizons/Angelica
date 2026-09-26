@@ -161,8 +161,7 @@ final class InstancedTemplateRenderer {
 
     private static void setConstantColor(int colorABGR) {
         GLStateManager.glDisableVertexAttribArray(InstancedAttribs.LOC_COLOR);
-        GLStateManager.glVertexAttrib4f(InstancedAttribs.LOC_COLOR, (colorABGR & 0xFF) / 255.0f, (colorABGR >>> 8 & 0xFF) / 255.0f,
-            (colorABGR >>> 16 & 0xFF) / 255.0f, (colorABGR >>> 24) / 255.0f);
+        GLStateManager.glVertexAttrib4f(InstancedAttribs.LOC_COLOR, (colorABGR & 0xFF) / 255.0f, (colorABGR >>> 8 & 0xFF) / 255.0f, (colorABGR >>> 16 & 0xFF) / 255.0f, (colorABGR >>> 24) / 255.0f);
     }
 
     /** Returns the ring offset of the uploaded instances, for {@link #redrawCubes}. */
