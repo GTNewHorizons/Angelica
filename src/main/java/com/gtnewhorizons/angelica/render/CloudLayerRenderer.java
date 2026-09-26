@@ -204,9 +204,9 @@ final class CloudLayerRenderer {
         final float cellHeightBlocks = layer.cellHeight() * scaleMult;
         final float coordinateWidth = layer.coordinateWidth() * scaleMult;
 
-        final float cameraY = (float) (viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks);
-        final double cameraCellX = CloudDisc.cellCoordinate(viewEntity.prevPosX + (viewEntity.posX - viewEntity.prevPosX) * partialTicks, coordinateWidth, layer.offsetX());
-        final double cameraCellZ = CloudDisc.cellCoordinate(viewEntity.prevPosZ + (viewEntity.posZ - viewEntity.prevPosZ) * partialTicks, coordinateWidth, layer.offsetZ());
+        final float cameraY = (float) (viewEntity.lastTickPosY + (viewEntity.posY - viewEntity.lastTickPosY) * partialTicks + cloudView.offsetY);
+        final double cameraCellX = CloudDisc.cellCoordinate(viewEntity.prevPosX + (viewEntity.posX - viewEntity.prevPosX) * partialTicks + cloudView.offsetX, coordinateWidth, layer.offsetX());
+        final double cameraCellZ = CloudDisc.cellCoordinate(viewEntity.prevPosZ + (viewEntity.posZ - viewEntity.prevPosZ) * partialTicks + cloudView.offsetZ, coordinateWidth, layer.offsetZ());
 
         final float cloudBaseRelativeY = layer.height() - cameraY + 0.33F;
         final float cellFractionX = (float) (cameraCellX - MathHelper.floor_double(cameraCellX));
@@ -339,14 +339,17 @@ final class CloudLayerRenderer {
         final float anchorDriftX = (float) (anchorX - anchorCellX);
         final float anchorDriftZ = (float) (anchorZ - anchorCellZ);
         // Face wedges are re-bucketed around the current cell; vertex wedges keep their build anchor.
-        final double cameraDriftX = (faceMeshActive ? 0 : anchorDriftX) + cellFractionX + cloudView.offsetX / cellWidthBlocks;
-        final double cameraDriftZ = (faceMeshActive ? 0 : anchorDriftZ) + cellFractionZ + cloudView.offsetZ / cellWidthBlocks;
+        final double cameraDriftX = (faceMeshActive ? 0 : anchorDriftX) + cellFractionX;
+        final double cameraDriftZ = (faceMeshActive ? 0 : anchorDriftZ) + cellFractionZ;
         driftCells = Math.hypot(cameraDriftX, cameraDriftZ);
-        final double baseFromEye = cloudBaseRelativeY - cloudView.offsetY;
-        cullingHeightCells = Math.max(Math.abs(baseFromEye), Math.abs(baseFromEye + cellHeightBlocks)) / cellWidthBlocks;
+        cullingHeightCells = Math.max(Math.abs(cloudBaseRelativeY), Math.abs(cloudBaseRelativeY + cellHeightBlocks)) / cellWidthBlocks;
 
         interiorDriftX = anchorDriftX;
         interiorDriftZ = anchorDriftZ;
+
+        final float entityToCameraX = cloudView.offsetX / cellWidthBlocks;
+        final float entityToCameraZ = cloudView.offsetZ / cellWidthBlocks;
+        final float deckBaseY = cloudBaseRelativeY + cloudView.offsetY;
 
         if (!shadersActive) {
             program.bind();
@@ -356,11 +359,11 @@ final class CloudLayerRenderer {
             modelView.scale(cellWidthBlocks, 1.0f, cellWidthBlocks);
             if (interiorActive) {
                 modelView.pushMatrix();
-                modelView.translate(-cellFractionX, cloudBaseRelativeY, -cellFractionZ);
+                modelView.translate(entityToCameraX - cellFractionX, deckBaseY, entityToCameraZ - cellFractionZ);
                 GLStateManager.getProjectionMatrix().mul(modelView, mvpInteriorScratch);
                 modelView.popMatrix();
             }
-            modelView.translate(-(cellFractionX + anchorDriftX), cloudBaseRelativeY, -(cellFractionZ + anchorDriftZ));
+            modelView.translate(entityToCameraX - (cellFractionX + anchorDriftX), deckBaseY, entityToCameraZ - (cellFractionZ + anchorDriftZ));
             modelViewScratch.set(modelView);
             GLStateManager.getProjectionMatrix().mul(modelView, mvpScratch);
             modelView.popMatrix();
@@ -376,7 +379,7 @@ final class CloudLayerRenderer {
         } else {
             GLStateManager.glPushMatrix();
             GLStateManager.glScalef(cellWidthBlocks, 1.0f, cellWidthBlocks);
-            GLStateManager.glTranslatef(-(cellFractionX + anchorDriftX), cloudBaseRelativeY, -(cellFractionZ + anchorDriftZ));
+            GLStateManager.glTranslatef(entityToCameraX - (cellFractionX + anchorDriftX), deckBaseY, entityToCameraZ - (cellFractionZ + anchorDriftZ));
             drawClouds(r, g, b, true);
             GLStateManager.glPopMatrix();
         }
