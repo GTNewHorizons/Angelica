@@ -495,6 +495,7 @@ public final class ModelPartBatcher {
         groups.clear();
         shadowGroups.clear();
         templates.clear();
+        bufferSource.discard();
         bufferSource.freeBuffers();
         active = false;
         shaderPipeline = null;

@@ -242,6 +242,8 @@ public abstract class RenderBackend {
         }
     }
 
+    public void invalidateStateMirror() {}
+
     public void onFrameEnd() {}
 
     /** Fired by lwjgl3ify Display before a mutation that recreates the swapchain. */
