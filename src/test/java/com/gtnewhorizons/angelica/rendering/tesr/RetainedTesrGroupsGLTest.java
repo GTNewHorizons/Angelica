@@ -44,6 +44,7 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 
 @GLCoreTest
 class RetainedTesrGroupsGLTest {
@@ -516,6 +517,102 @@ class RetainedTesrGroupsGLTest {
         final int[] reference = cubeReference();
         FfpFixture.assertOverlayFootprint(base, reference, BACKGROUND, "glint");
         CubeParityFixture.assertPixelParity(reference, cubeCandidate(), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
+    }
+
+    @Test
+    void replayedGlintTemplatesMatchIndependentPasses() {
+        glintState();
+        final int[] reference = templateReference(false);
+        drawBaseTemplates();
+        setGlintBlendState();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        final GlintCapture capture = new GlintCapture();
+        for (Matrix4f pose : new Matrix4f[] {templateE1, templateE2}) {
+            applyGlintTexMatrix(glintMatrixA);
+            assertTrue(capture.begin(groups));
+            groups.queue(glintTemplate, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA);
+            capture.end();
+            applyGlintTexMatrix(glintMatrixB);
+            GLStateManager.glColor4f(0.5f, 1, 1, 1);
+            assertFalse(capture.replay(groups), "changed layer color must retain the original render call");
+            GLStateManager.glColor4f(1, 1, 1, 1);
+            GLStateManager.glBlendFunc(GL11.GL_ONE, GL11.GL_ONE);
+            assertFalse(capture.replay(groups), "changed layer blending must retain the original render call");
+            setGlintBlendState();
+            assertTrue(capture.replay(groups));
+            assertFalse(capture.replay(groups), "a captured pass is replayed only once");
+        }
+        groups.drawLayer(layer);
+        instanced.endFrame();
+        CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
+    }
+
+    @Test
+    void replayedGlintCubesMatchIndependentPasses() {
+        glintState();
+        final int[] reference = cubeReference();
+        drawBaseCubes();
+        setGlintBlendState();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        final GlintCapture capture = new GlintCapture();
+        for (Matrix4f pose : new Matrix4f[] {cubeE1, cubeE2}) {
+            applyGlintTexMatrix(glintMatrixA);
+            assertTrue(capture.begin(groups));
+            groups.queue(null, glintCubes, CUBE_SCALE, layer, EntityMaterials.GLINT, pose, 0, -1, 0, 0L, 0, glintMatrixA);
+            capture.end();
+            applyGlintTexMatrix(glintMatrixB);
+            assertTrue(capture.replay(groups));
+        }
+        groups.drawLayer(layer);
+        instanced.endFrame();
+        CubeParityFixture.assertPixelParity(reference, FfpFixture.readRegion(SIZE), SIZE, BACKGROUND, RetainedTesrGroupsGLTest::describe);
+    }
+
+    @Test
+    void armorGlintUsesTheBasePoseWithTheGlintMaterial() {
+        glintState();
+        drawBaseTemplates();
+        setGlintBlendState();
+        GLStateManager.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE);
+        applyGlintTexMatrix(glintMatrixA);
+        drawSingleInstance(instanced, glintTemplate, templateE1, 0xFFFFFFFF);
+        applyGlintTexMatrix(glintMatrixB);
+        drawSingleInstance(instanced, glintTemplate, templateE1, 0xFFFFFFFF);
+        final int[] reference = FfpFixture.readRegion(SIZE);
+        drawBaseTemplates();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        final GlintCapture base = new GlintCapture();
+        assertTrue(base.begin(groups));
+        base.allowBase();
+        groups.queue(glintTemplate, layer, EntityMaterials.CUTOUT, templateE1, 0, 0xFF123456, 0, 0L, 0, null);
+        base.end();
+        setGlintBlendState();
+        GLStateManager.glBlendFunc(GL11.GL_SRC_COLOR, GL11.GL_ONE);
+        applyGlintTexMatrix(glintMatrixA);
+        ModelPartBatcher.onTextureBind(new ResourceLocation("angelica", "test/glint"), glintTexture);
+        final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
+        final RetainedTesrGroups previousGroups = Reflect.get(batcher, "activeGroups");
+        Reflect.set(batcher, "activeGroups", groups);
+        try {
+            final GlintCapture glint = new GlintCapture();
+            assertTrue(glint.begin(groups));
+            GLStateManager.glTranslatef(0.1f, 0, 0);
+            assertFalse(base.copyBase(batcher, groups), "a different parent pose must use the original model call");
+            GLStateManager.glLoadIdentity();
+            assertTrue(base.copyBase(batcher, groups));
+            glint.end();
+            assertTrue(glint.replay(groups, glintMatrixB), "the second layer can be queued without rerunning legacy texture setup");
+            groups.drawLayer(Reflect.get(batcher, "lastLayer"));
+            instanced.endFrame();
+            final int[] actual = FfpFixture.readRegion(SIZE);
+            int error = 0;
+            for (int p = 0; p < actual.length; p++) for (int shift = 0; shift < 24; shift += 8) {
+                error = Math.max(error, Math.abs(((actual[p] >>> shift) & 255) - ((reference[p] >>> shift) & 255)));
+            }
+            assertTrue(error <= 2, "reusing the base pose must retain the glint color; error " + error);
+        } finally {
+            Reflect.set(batcher, "activeGroups", previousGroups);
+        }
     }
 
     @Test

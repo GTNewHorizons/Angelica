@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.BakedTransformCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
+import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -34,6 +35,12 @@ public final class DroppedItemInstancer {
     private static final Object[] BLOCK_ARGS = new Object[4];
     private static BakedTransformCapture blockBackend;
     private static boolean basePart;
+    private static final GlintCapture glintCapture = new GlintCapture();
+    private static boolean glintSeen;
+    private static final ItemPropCache.ItemProp glintProperties = new ItemPropCache.ItemProp();
+    private static final ItemPropCache.ItemProp currentGlintProperties = new ItemPropCache.ItemProp();
+    private static TemplateBuffer glintTemplate;
+    private static int glintTemplateWidth, glintTemplateHeight;
 
     private static long instanced;
     private static long glintInstanced;
@@ -81,7 +88,8 @@ public final class DroppedItemInstancer {
     }
 
     private static boolean glintEligible(ItemStack stack) {
-        return stack != null && stack.getItem() != null && ModelPartBatcher.INSTANCE.isActive() && !GLStateManager.isRecordingDisplayList() && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(Tessellator.instance);
+        return stack != null && stack.getItem() != null && ModelPartBatcher.INSTANCE.isActive() && !GLStateManager.isRecordingDisplayList()
+            && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(Tessellator.instance);
     }
 
     static TesrMaterial material(ItemStack stack, boolean unfilteredAtlas) {
@@ -100,6 +108,8 @@ public final class DroppedItemInstancer {
     }
 
     public static void icon(ItemStack stack, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+        glintCapture.reset();
+        glintSeen = false;
         final TesrMaterial material = material(stack, true);
         if (material == null) {
             basePart = false;
@@ -131,10 +141,11 @@ public final class DroppedItemInstancer {
         }
         callIcon(ICON_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
         BatchEligibility.onPartFallback(drawsBefore, GLStateManager.drawCalls);
-        return true;
+        return false;
     }
 
-    public static void glint(Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    /** Held glints use ITEM_GLINT for its stencil guard; dropped items draw with culling on and need none. */
+    public static void glint(Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, TesrMaterial material, Operation<Void> original) {
         if (!basePart) {
             callIcon(GLINT_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
             return;
@@ -146,8 +157,22 @@ public final class DroppedItemInstancer {
         }
         final long drawsBefore = GLStateManager.drawCalls;
         if (allowed) {
+            currentGlintProperties.set(maxU, minV, minU, maxV, width, height, thickness);
+            if (glintSeen && glintProperties.equals(currentGlintProperties) && ModelPartBatcher.INSTANCE.replayGlint(glintCapture)) {
+                glintInstanced++;
+                return;
+            }
             final TemplateBuffer template = iconTemplate(GLINT_ARGS, maxU, minV, minU, maxV, width, height, thickness, original);
-            if (template != null && ModelPartBatcher.INSTANCE.queueTemplate(template, EntityMaterials.GLINT)) {
+            final boolean capture = !glintSeen && ModelPartBatcher.INSTANCE.beginGlintCapture(glintCapture);
+            if (capture) glintProperties.set(currentGlintProperties);
+            glintSeen = true;
+            final boolean queued;
+            try {
+                queued = template != null && ModelPartBatcher.INSTANCE.queueTemplate(template, material);
+            } finally {
+                if (capture) glintCapture.end();
+            }
+            if (queued) {
                 glintInstanced++;
                 BatchEligibility.onPartQueued();
                 return;
@@ -159,6 +184,22 @@ public final class DroppedItemInstancer {
         }
         callIcon(GLINT_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
         BatchEligibility.onPartFallback(drawsBefore, GLStateManager.drawCalls);
+    }
+
+    public static boolean queueSkippedGlint(int iconWidth, int iconHeight) {
+        if (!basePart || !BatchEligibility.batchingAllowed()) return false;
+        if (glintTemplate == null || glintTemplateWidth != iconWidth || glintTemplateHeight != iconHeight) {
+            final IconMesh hit = icons.get(0.0F, 0.0F, 1.0F, 1.0F, iconWidth, iconHeight, 0.0625F);
+            if (hit == null || hit.template == null) return false;
+            glintTemplate = hit.template;
+            glintTemplateWidth = iconWidth;
+            glintTemplateHeight = iconHeight;
+        }
+        if (!ModelPartBatcher.INSTANCE.queueSkippedHeldGlint(glintTemplate)) return false;
+        glintInstanced += 2;
+        BatchEligibility.onPartQueued();
+        BatchEligibility.onPartQueued();
+        return true;
     }
 
     public static void block(ItemStack stack, RenderBlocks rb, Block block, int meta, float brightness, boolean unfilteredAtlas, Operation<Void> original) {
@@ -211,6 +252,9 @@ public final class DroppedItemInstancer {
         blocks.clear();
         blockKey.block = null;
         basePart = false;
+        glintCapture.reset();
+        glintSeen = false;
+        glintTemplate = null;
         if (blockBackend != null) {
             blockBackend.delete();
             blockBackend = null;
@@ -292,7 +336,9 @@ public final class DroppedItemInstancer {
 
     private static BailReason blockStateBail(RenderBlocks renderBlocks, Block block, float brightness) {
         if (BlockRenderListManager.isISBRH(block.getRenderType())) return BailReason.ISBRH;
-        if (renderBlocks.enableAO || renderBlocks.overrideBlockTexture != null || brightness != 1.0F || !renderBlocks.useInventoryTint || renderBlocks.blockAccess != null || (renderBlocks.uvRotateEast | renderBlocks.uvRotateWest | renderBlocks.uvRotateSouth | renderBlocks.uvRotateNorth | renderBlocks.uvRotateTop | renderBlocks.uvRotateBottom) != 0) return BailReason.BLOCK_STATE;
+        if (renderBlocks.enableAO || renderBlocks.overrideBlockTexture != null || brightness != 1.0F || !renderBlocks.useInventoryTint
+            || renderBlocks.blockAccess != null || (renderBlocks.uvRotateEast | renderBlocks.uvRotateWest | renderBlocks.uvRotateSouth
+                | renderBlocks.uvRotateNorth | renderBlocks.uvRotateTop | renderBlocks.uvRotateBottom) != 0) return BailReason.BLOCK_STATE;
         return null;
     }
 

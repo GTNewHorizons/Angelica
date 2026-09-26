@@ -65,10 +65,15 @@ final class InstancedTemplateRenderer {
     }
 
     int drawTemplates(InstanceColumns cols, TexRun run, long nowMs) {
+        return drawTemplates(cols, run, nowMs, false);
+    }
+
+    int drawTemplates(InstanceColumns cols, TexRun run, long nowMs, boolean recordUpload) {
+        final InstanceColumns data = run.source != null ? run.source : cols;
         final long epoch = ++bucketEpochSource;
         for (TexRun seg = run; seg != null; seg = seg.next) {
             for (int i = seg.start, end = seg.end; i < end; i++) {
-                final TemplateBuffer template = cols.templates.get(i);
+                final TemplateBuffer template = data.templates.get(i);
                 final Bucket bucket;
                 if (template.bucketEpoch == epoch) {
                     bucket = liveBuckets.get(template.bucketIndex);
@@ -90,12 +95,19 @@ final class InstancedTemplateRenderer {
             final IntArrayList indices = liveBuckets.get(b).indices;
             for (int j = 0, m = indices.size(); j < m; j++) {
                 final int i = indices.getInt(j);
-                InstancedAttribs.writeHead(ptr, cols.matrices, i * 16, cols.colors.getInt(i), cols.overlays.getInt(i), cols.infos.getLong(i));
-                InstancedAttribs.writeLightmap(ptr + InstancedAttribs.OFFSET_LIGHTMAP, cols.lights.getInt(i));
+                final int color = run.source != null ? run.color : data.colors.getInt(i);
+                final long info = run.source != null ? 0L : data.infos.getLong(i);
+                InstancedAttribs.writeHead(ptr, data.matrices, i * 16, color, data.overlays.getInt(i), info);
+                InstancedAttribs.writeLightmap(ptr + InstancedAttribs.OFFSET_LIGHTMAP, data.lights.getInt(i));
                 ptr += InstancedAttribs.STRIDE;
             }
         }
         final long ringBase = uploadStaging(base, ptr, InstancedAttribs.STRIDE);
+        if (recordUpload) {
+            run.uploadOffset = ringBase;
+            run.uploadMeshes.clear();
+            run.uploadCounts.clear();
+        }
 
         int draws = 0;
         long recordOffset = ringBase;
@@ -104,6 +116,10 @@ final class InstancedTemplateRenderer {
         for (int b = 0, n = liveBuckets.size(); b < n; b++) {
             final Bucket bucket = liveBuckets.get(b);
             final TemplateMesh mesh = bucket.mesh;
+            if (recordUpload) {
+                run.uploadMeshes.add(mesh);
+                run.uploadCounts.add(bucket.indices.size());
+            }
             bindRingTo(mesh.vao, TEMPLATE_FLAGS);
             InstancedAttribs.pointTemplate(recordOffset);
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -120,22 +136,52 @@ final class InstancedTemplateRenderer {
         return draws;
     }
 
-    void drawCubes(InstanceColumns cols, TexRun run) {
+    /**
+     * Draws a base run's recorded template upload again, every instance in one color.
+     */
+    int redrawTemplates(TexRun base, int colorABGR) {
+        long recordOffset = base.uploadOffset;
+        neutralizeExtendedAttribs();
+        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
+        for (int b = 0, n = base.uploadMeshes.size(); b < n; b++) {
+            final TemplateMesh mesh = (TemplateMesh) base.uploadMeshes.get(b);
+            final int count = base.uploadCounts.getInt(b);
+            bindRingTo(mesh.vao, TEMPLATE_FLAGS);
+            InstancedAttribs.pointTemplate(recordOffset);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            setConstantColor(colorABGR);
+            GLStateManager.glDrawArraysInstanced(mesh.drawMode, 0, mesh.vertexCount, count);
+            GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+            recordOffset += (long) count * InstancedAttribs.STRIDE;
+        }
+        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.glBindVertexArray(0);
+        return base.uploadMeshes.size();
+    }
+
+    private static void setConstantColor(int colorABGR) {
+        GLStateManager.glDisableVertexAttribArray(InstancedAttribs.LOC_COLOR);
+        GLStateManager.glVertexAttrib4f(InstancedAttribs.LOC_COLOR, (colorABGR & 0xFF) / 255.0f, (colorABGR >>> 8 & 0xFF) / 255.0f, (colorABGR >>> 16 & 0xFF) / 255.0f, (colorABGR >>> 24) / 255.0f);
+    }
+
+    /** Returns the ring offset of the uploaded instances, for {@link #redrawCubes}. */
+    long drawCubes(InstanceColumns cols, TexRun run) {
+        final InstanceColumns data = run.source != null ? run.source : cols;
         staging = MeshBuffer.ensureCapacity(staging, run.instances * CubeInstancedAttribs.STRIDE, false);
         final long base = memAddress0(staging);
         long ptr = base;
         for (TexRun seg = run; seg != null; seg = seg.next) {
             for (int i = seg.start, end = seg.end; i < end; i++) {
                 final int off = i * 16;
-                final CubeParams[] partCubes = cols.cubes.get(i);
-                final float scale = cols.scales.getFloat(i);
-                final int color = cols.colors.getInt(i);
-                final int light = cols.lights.getInt(i);
-                final int overlay = cols.overlays.getInt(i);
-                final long info = cols.infos.getLong(i);
+                final CubeParams[] partCubes = data.cubes.get(i);
+                final float scale = data.scales.getFloat(i);
+                final int color = run.source != null ? run.color : data.colors.getInt(i);
+                final int light = data.lights.getInt(i);
+                final int overlay = data.overlays.getInt(i);
+                final long info = run.source != null ? 0L : data.infos.getLong(i);
                 for (int p = 0, n = partCubes.length; p < n; p++) {
                     final CubeParams cube = partCubes[p];
-                    cube.writeRows(ptr, cols.matrices, off, scale);
+                    cube.writeRows(ptr, data.matrices, off, scale);
                     InstancedAttribs.writeTail(ptr, color, overlay, info);
                     InstancedAttribs.writeLightmap(ptr + CubeInstancedAttribs.OFFSET_LIGHTMAP_SCALE, light);
                     cube.writeTexture(ptr);
@@ -152,6 +198,32 @@ final class InstancedTemplateRenderer {
         GLStateManager.ffpInstancing = Instancing.CUBE;
         GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
         GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.glBindVertexArray(0);
+        return ringBase;
+    }
+
+    boolean canRedraw(int ringEpoch, int buffer) {
+        return ringEpoch >= 0 && ringEpoch == ring.keptUploadsEpoch() && buffer == ring.bufferId();
+    }
+
+    int ringEpoch() {
+        return ring.keptUploadsEpoch();
+    }
+
+    int ringBuffer() {
+        return ring.bufferId();
+    }
+
+    void redrawCubes(long offset, int instances, int colorABGR) {
+        neutralizeExtendedAttribs();
+        bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
+        CubeInstancedAttribs.pointInstanceAttribs(offset);
+        GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+        setConstantColor(colorABGR);
+        GLStateManager.ffpInstancing = Instancing.CUBE;
+        GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, instances);
+        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
         GLStateManager.glBindVertexArray(0);
     }
 

@@ -11,6 +11,7 @@ public final class InstanceRing {
     private OrphanStreamingBuffer orphanRing;
     private boolean initialized;
     private boolean usedThisFrame;
+    private boolean lastUploadKept;
     private int bufferId;
 
     public long upload(ByteBuffer data, int stride) {
@@ -23,13 +24,19 @@ public final class InstanceRing {
             final int index = persistentRing.upload(data, stride);
             if (index >= 0) {
                 bufferId = persistentRing.getBufferId();
+                lastUploadKept = true;
                 return (long) index * stride;
             }
         }
         if (orphanRing == null) orphanRing = new OrphanStreamingBuffer();
         orphanRing.upload(data);
         bufferId = orphanRing.getBufferId();
+        lastUploadKept = false;
         return 0;
+    }
+
+    public int keptUploadsEpoch() {
+        return lastUploadKept && persistentRing != null ? persistentRing.getWraps() : -1;
     }
 
     public int bufferId() {
@@ -54,6 +61,7 @@ public final class InstanceRing {
         }
         initialized = false;
         usedThisFrame = false;
+        lastUploadKept = false;
         bufferId = 0;
     }
 }
