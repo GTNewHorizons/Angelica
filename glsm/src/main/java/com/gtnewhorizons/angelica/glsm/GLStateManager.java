@@ -49,6 +49,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.ScissorStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StackIdAllocator;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.TextureBindingStack;
@@ -585,6 +586,7 @@ public class GLStateManager {
             // Initialize viewport state from display dimensions.
             // After Display.create(), viewport is (0, 0, width, height)
             mod(ctx().viewportState).setViewPort(0, 0, displayWidth, displayHeight);
+            mod(ctx().scissorState).setScissor(0, 0, displayWidth, displayHeight);
         }
 
         final String glVendor = RENDER_BACKEND.getString(GL11.GL_VENDOR);
@@ -762,6 +764,7 @@ public class GLStateManager {
             case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> glCtx.sampleAlphaToCoverageState.enable();
             case GL13.GL_SAMPLE_ALPHA_TO_ONE -> glCtx.sampleAlphaToOneState.enable();
             case GL13.GL_SAMPLE_COVERAGE -> glCtx.sampleCoverageState.enable();
+            case GL30.GL_RASTERIZER_DISCARD -> glCtx.rasterizerDiscard.enable();
             case GL11.GL_SCISSOR_TEST -> enableScissorTest();
             case GL11.GL_STENCIL_TEST -> glCtx.stencilTest.enable();
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).enable();
@@ -844,6 +847,7 @@ public class GLStateManager {
             case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> glCtx.sampleAlphaToCoverageState.disable();
             case GL13.GL_SAMPLE_ALPHA_TO_ONE -> glCtx.sampleAlphaToOneState.disable();
             case GL13.GL_SAMPLE_COVERAGE -> glCtx.sampleCoverageState.disable();
+            case GL30.GL_RASTERIZER_DISCARD -> glCtx.rasterizerDiscard.disable();
             case GL11.GL_SCISSOR_TEST -> disableScissorTest();
             case GL11.GL_STENCIL_TEST -> glCtx.stencilTest.disable();
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).disable();
@@ -920,6 +924,7 @@ public class GLStateManager {
             case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> glCtx.sampleAlphaToCoverageState.isEnabled();
             case GL13.GL_SAMPLE_ALPHA_TO_ONE -> glCtx.sampleAlphaToOneState.isEnabled();
             case GL13.GL_SAMPLE_COVERAGE -> glCtx.sampleCoverageState.isEnabled();
+            case GL30.GL_RASTERIZER_DISCARD -> glCtx.rasterizerDiscard.isEnabled();
             case GL11.GL_SCISSOR_TEST -> glCtx.scissorTest.isEnabled();
             case GL11.GL_STENCIL_TEST -> glCtx.stencilTest.isEnabled();
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).isEnabled();
@@ -997,6 +1002,7 @@ public class GLStateManager {
             case GL13.GL_SAMPLE_ALPHA_TO_COVERAGE -> glCtx.sampleAlphaToCoverageState.isEnabled();
             case GL13.GL_SAMPLE_ALPHA_TO_ONE -> glCtx.sampleAlphaToOneState.isEnabled();
             case GL13.GL_SAMPLE_COVERAGE -> glCtx.sampleCoverageState.isEnabled();
+            case GL30.GL_RASTERIZER_DISCARD -> glCtx.rasterizerDiscard.isEnabled();
             case GL11.GL_SCISSOR_TEST -> glCtx.scissorTest.isEnabled();
             case GL11.GL_STENCIL_TEST -> glCtx.stencilTest.isEnabled();
             case GL11.GL_TEXTURE_1D -> glCtx.textures.getTexture1DStates(glCtx.activeTextureUnit.getValue()).isEnabled();
@@ -1125,6 +1131,7 @@ public class GLStateManager {
 
         switch (pname) {
             case GL11.GL_VIEWPORT -> ctx().viewportState.get(params);
+            case GL11.GL_SCISSOR_BOX -> ctx().scissorState.get(params);
             case GL11.GL_POLYGON_MODE -> {
                 final PolygonState polygon = ctx().polygonState;
                 final int pos = params.position();
@@ -1950,6 +1957,7 @@ public class GLStateManager {
                 return;
             }
         }
+        depth = Math.min(1.0, Math.max(0.0, depth));
         mod(glCtx.depthState);
         if (isCachingEnabled()) glCtx.depthState.setClearValue(depth);
         RENDER_BACKEND.clearDepth(depth);
@@ -3954,6 +3962,7 @@ public class GLStateManager {
 
         RENDER_BACKEND.viewport(glCtx.viewportState.x, glCtx.viewportState.y, glCtx.viewportState.width, glCtx.viewportState.height);
         RENDER_BACKEND.depthRange(glCtx.viewportState.depthRangeNear, glCtx.viewportState.depthRangeFar);
+        RENDER_BACKEND.scissor(glCtx.scissorState.x, glCtx.scissorState.y, glCtx.scissorState.width, glCtx.scissorState.height);
         RENDER_BACKEND.lineWidth(Math.clamp(glCtx.lineState.getWidth(), lineWidthMin, lineWidthMax));
         RENDER_BACKEND.pointSize(glCtx.pointState.getSize());
 
@@ -4064,6 +4073,11 @@ public class GLStateManager {
             RENDER_BACKEND.depthRange(glCtx.viewportState.depthRangeNear, glCtx.viewportState.depthRangeFar);
             attribBackendCalls += 2;
         }
+        if ((restore & StateSet.R_SCISSOR) != 0 && (changed & StateSet.R_SCISSOR) != 0) {
+            attribValueRestores++;
+            RENDER_BACKEND.scissor(glCtx.scissorState.x, glCtx.scissorState.y, glCtx.scissorState.width, glCtx.scissorState.height);
+            attribBackendCalls++;
+        }
         if ((restore & StateSet.R_LINE) != 0 && (changed & StateSet.R_LINE) != 0) {
             attribValueRestores++;
             RENDER_BACKEND.lineWidth(Math.clamp(glCtx.lineState.getWidth(), lineWidthMin, lineWidthMax));
@@ -4151,6 +4165,9 @@ public class GLStateManager {
             if (mode == RecordMode.COMPILE) {
                 return;
             }
+        }
+        if (ctx().rasterizerDiscard.isEnabled() || FeedbackManager.getRenderMode() != GL11.GL_RENDER) {
+            return;
         }
         if (firstClearPending && Thread.currentThread() == MainThread && getDrawFramebuffer() == 0) {
             firstClearPending = false;
@@ -5945,6 +5962,9 @@ public class GLStateManager {
             }
         }
         RENDER_BACKEND.scissor(x, y, width, height);
+        if (isCachingEnabled()) {
+            mod(ctx().scissorState).setScissor(x, y, width, height);
+        }
     }
 
     public static void glStencilFunc(int func, int ref, int mask) {
@@ -6858,6 +6878,13 @@ public class GLStateManager {
                     RENDER_BACKEND.getInteger(pname, params);
                 } else {
                     ctx().viewportState.get(params);
+                }
+            }
+            case GL11.GL_SCISSOR_BOX -> {
+                if (params.length < 4) {
+                    RENDER_BACKEND.getInteger(pname, params);
+                } else {
+                    ctx().scissorState.get(params);
                 }
             }
             case GL11.GL_POLYGON_MODE -> {
@@ -8185,6 +8212,10 @@ public class GLStateManager {
 
     public static ViewPortStateStack getViewportState() {
         return ctx().viewportState;
+    }
+
+    public static ScissorStateStack getScissorState() {
+        return ctx().scissorState;
     }
 
     public static int getActiveProgram() {

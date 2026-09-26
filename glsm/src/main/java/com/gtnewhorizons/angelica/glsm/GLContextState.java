@@ -23,6 +23,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.ScissorStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StackIdAllocator;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
@@ -41,6 +42,7 @@ import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL30;
 
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
@@ -125,6 +127,7 @@ public class GLContextState {
     public final BlendStateStack blendState = member(new BlendStateStack(StackIdAllocator.nextId()));
     public final BooleanStateStack blendMode = track(new BooleanStateStack(GL11.GL_BLEND));
     public final BooleanStateStack scissorTest = track(new BooleanStateStack(GL11.GL_SCISSOR_TEST));
+    public final BooleanStateStack rasterizerDiscard = track(new BooleanStateStack(GL30.GL_RASTERIZER_DISCARD));
     public final DepthStateStack depthState = member(new DepthStateStack(StackIdAllocator.nextId()));
     public final BooleanStateStack depthTest = track(new BooleanStateStack(GL11.GL_DEPTH_TEST));
     public final FogStateStack fogState = member(new FogStateStack(StackIdAllocator.nextId()));
@@ -200,6 +203,7 @@ public class GLContextState {
     public final MaterialStateStack frontMaterial = member(new MaterialStateStack(GL11.GL_FRONT, StackIdAllocator.nextId()));
     public final MaterialStateStack backMaterial = member(new MaterialStateStack(GL11.GL_BACK, StackIdAllocator.nextId()));
     public final ViewPortStateStack viewportState = member(new ViewPortStateStack(StackIdAllocator.nextId()));
+    public final ScissorStateStack scissorState = member(new ScissorStateStack(StackIdAllocator.nextId()));
     public int activeProgram = 0;
     public final IntegerStateStack programStack = member(new IntegerStateStack(0, StackIdAllocator.nextId()));
     public int listBase = 0;
