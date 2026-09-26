@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.debug.ChunkDebugMinimap;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRoute;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
+import com.gtnewhorizons.angelica.rendering.RenderRecovery;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.minecraft.client.Minecraft;
@@ -23,7 +24,19 @@ import java.util.List;
 
 public class AngelicaCommand extends CommandBase {
 
-    private static final List<String> SUBCOMMANDS = Arrays.asList("wireframe", "fog", "minimap", "flyby", "profile", "help");
+    private static final List<String> SUBCOMMANDS = buildSubcommands();
+
+    private static List<String> buildSubcommands() {
+        final List<String> subcommands = new ArrayList<>(Arrays.asList("wireframe", "fog", "minimap", "flyby", "profile", "help"));
+        if (isDeobfuscatedEnvironment()) {
+            subcommands.add("crashtest");
+        }
+        return subcommands;
+    }
+
+    private static boolean isDeobfuscatedEnvironment() {
+        return SystemProperties.isDeobf();
+    }
 
     @Override
     public String getCommandName() {
@@ -32,7 +45,7 @@ public class AngelicaCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/angelica <wireframe|fog|minimap|flyby|profile|help>";
+        return "/angelica <wireframe|fog|minimap|flyby|profile" + (isDeobfuscatedEnvironment() ? "|crashtest" : "") + "|help>";
     }
 
     @Override
@@ -95,6 +108,13 @@ public class AngelicaCommand extends CommandBase {
             case "minimap"   -> handleMinimap(sender);
             case "flyby"     -> handleFlyby(sender, args);
             case "profile"   -> handleProfile(sender, args);
+            case "crashtest" -> {
+                if (isDeobfuscatedEnvironment()) {
+                    handleCrashTest(sender);
+                } else {
+                    sendHelp(sender);
+                }
+            }
             default          -> sendHelp(sender);
         }
     }
@@ -117,6 +137,11 @@ public class AngelicaCommand extends CommandBase {
         ChunkDebugMinimap.toggle();
         final String state = ChunkDebugMinimap.isEnabled() ? "ON" : "OFF";
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Chunk debug minimap: " + state));
+    }
+
+    private void handleCrashTest(ICommandSender sender) {
+        RenderRecovery.armCrashTest();
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Crash test armed: fires on the next tile entity render"));
     }
 
     private void handleFlyby(ICommandSender sender, String[] args) {
@@ -221,6 +246,9 @@ public class AngelicaCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica minimap" + EnumChatFormatting.WHITE + " - Toggle chunk debug overlay"));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica flyby <" + FlybyRoute.ids() + ">" + EnumChatFormatting.WHITE + " - Run a deterministic benchmark route"));
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica profile <start|stop|status>" + EnumChatFormatting.WHITE + " - Control async-profiler (JFR) recording"));
+        if (isDeobfuscatedEnvironment()) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica crashtest" + EnumChatFormatting.WHITE + " - Arm a crash on the next tile entity render"));
+        }
     }
 
     @Override

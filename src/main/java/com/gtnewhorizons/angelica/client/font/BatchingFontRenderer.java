@@ -582,6 +582,17 @@ public class BatchingFontRenderer {
         endBatch();
     }
 
+    public void resetAfterCrash() {
+        discardDeferredText();
+        batchDepth = 0;
+        deferredCmdWatermark = 0;
+        deferredVertexPos = 0;
+        deferredIdxPos = 0;
+        truncateBatchToWatermark();
+        arenaOwner = null;
+        flushLastTexture = null;
+    }
+
     private void deferBatch() {
         sealBatchSegment();
         if (batchSegments.isEmpty()) {

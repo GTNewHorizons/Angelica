@@ -196,6 +196,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         for (ContextState st : registeredStates.snapshot()) st.pipeline.markInputDirty();
     }
 
+    @Override public void invalidateStateMirror() {
+        s().invalidateMirror();
+    }
+
     public static final int CTR_SLOT_WRITES = 0;
     public static final int CTR_SLOT_WRITES_ELIDED = 1;
     public static final int CTR_SSBO_BINDS = 2;

@@ -118,6 +118,7 @@ public final class TesrBatchRenderer {
     }
 
     private void discardDeferred() {
+        activePass = -1;
         deferredFlushPending = false;
         pendingDeferredHook = null;
         bufferSource.discard();

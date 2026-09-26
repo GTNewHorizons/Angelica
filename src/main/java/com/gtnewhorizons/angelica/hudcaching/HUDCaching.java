@@ -65,6 +65,12 @@ public class HUDCaching {
         framebuffer = new SharedDepthFramebuffer(CustomFramebuffer.STENCIL_BUFFER);
     }
 
+    public static void resetAfterCrash() {
+        renderingCacheOverride = false;
+        GLSMConfig.hudCacheOverride = false;
+        dirty = true;
+    }
+
     public static void renderCachedHud(EntityRenderer renderer, GuiIngame ingame, float partialTicks, boolean hasScreen, int mouseX, int mouseY) {
         ClientEvent.post(ClientEventType.PRE_RENDER_GUI, renderer, partialTicks);
         ClientEvent.post(ClientEventType.PRE_RENDER_HUD, renderer, partialTicks);
@@ -99,10 +105,13 @@ public class HUDCaching {
             }
             renderingCacheOverride = true;
             GLSMConfig.hudCacheOverride = true;
-            ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
-            renderingCacheOverride = false;
-            GLSMConfig.hudCacheOverride = false;
-            mc.getFramebuffer().bindFramebuffer(false);
+            try {
+                ingame.renderGameOverlay(partialTicks, hasScreen, mouseX, mouseY);
+            } finally {
+                renderingCacheOverride = false;
+                GLSMConfig.hudCacheOverride = false;
+                mc.getFramebuffer().bindFramebuffer(false);
+            }
         } else {
             renderer.setupOverlayRendering();
         }

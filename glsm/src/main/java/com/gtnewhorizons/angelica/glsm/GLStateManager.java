@@ -116,6 +116,7 @@ import java.nio.IntBuffer;
 import java.nio.LongBuffer;
 import java.nio.ShortBuffer;
 import java.nio.charset.StandardCharsets;
+import java.util.Arrays;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -470,7 +471,7 @@ public class GLStateManager {
 
     public static void reset() {
         final GLContextState glCtx = ctx();
-        runningSplash = true;
+        DisplayListManager.abortCompilation();
         glCtx.attribDepth = 0;
         for (int i = 0; i < glCtx.attribSets.length; i++) {
             glCtx.attribSets[i] = null;
@@ -484,8 +485,40 @@ public class GLStateManager {
             ((CowStateStack<?>) stack).drain();
         }
 
+        Arrays.fill(glCtx.savedMvGen, 0);
+        Arrays.fill(glCtx.savedMvLinearGen, 0);
+        Arrays.fill(glCtx.savedProjGen, 0);
+        Arrays.fill(glCtx.savedTexMatGen, 0);
+        Arrays.fill(glCtx.savedLightingGen, 0);
+        Arrays.fill(glCtx.savedFragmentGen, 0);
+        Arrays.fill(glCtx.savedColorGen, 0);
+        Arrays.fill(glCtx.savedNormalGen, 0);
+        Arrays.fill(glCtx.savedTexCoordGen, 0);
+
         glCtx.modelViewMatrix.clear();
         glCtx.projectionMatrix.clear();
+        glCtx.mvGeneration++;
+        glCtx.mvLinearGeneration++;
+        glCtx.projGeneration++;
+        glCtx.texMatrixGeneration++;
+        glCtx.lightingGeneration++;
+        glCtx.colorGeneration++;
+        glCtx.texGenGeneration++;
+        glCtx.clipPlaneGeneration++;
+        glCtx.fragmentGeneration++;
+        glCtx.programGeneration++;
+        ShaderManager.bumpNormalGeneration();
+        ShaderManager.bumpTexCoordGeneration();
+        glCtx.textures.texMatIdentityGen++;
+
+        glCtx.drawFramebuffer = 0;
+        glCtx.readFramebuffer = 0;
+        glCtx.drawFramebufferGeneration++;
+
+        if (RENDER_BACKEND != null) {
+            RENDER_BACKEND.invalidateStateMirror();
+            replayStateToBackend();
+        }
     }
 
     /**
@@ -3934,6 +3967,18 @@ public class GLStateManager {
             final int sampler = samplerUnits.get(i);
             if (sampler != 0) RENDER_BACKEND.bindSampler(i, sampler);
         }
+
+        for (int i = 0; i <= glCtx.maxBoundTextureUnit; i++) {
+            final TextureBinding b = glCtx.textures.getTextureUnitBindings(i);
+            RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + i);
+            RENDER_BACKEND.bindTexture(b.getTarget() == 0 ? GL11.GL_TEXTURE_2D : b.getTarget(), b.getBinding());
+        }
+        RENDER_BACKEND.activeTexture(GL13.GL_TEXTURE0 + getActiveTextureUnit());
+        RENDER_BACKEND.bindVertexArray(glCtx.boundVAO != 0 ? glCtx.boundVAO : defaultVAO);
+        RENDER_BACKEND.useProgram(glCtx.activeProgram);
+        ShaderManager.invalidateBoundProgram();
+        RENDER_BACKEND.bindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, glCtx.drawFramebuffer);
+        RENDER_BACKEND.bindFramebuffer(GL30.GL_READ_FRAMEBUFFER, glCtx.readFramebuffer);
     }
 
     private static void applyPolygonOffset(GLContextState glCtx) {
