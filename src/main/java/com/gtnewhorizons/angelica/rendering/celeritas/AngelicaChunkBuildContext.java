@@ -52,7 +52,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final TextureMapExtension textureAtlas;
     private final ChunkVertexEncoder.Vertex[] vertices = ChunkVertexEncoder.Vertex.uninitializedQuad();
     @Getter
-    private final WorldSlice worldSlice;
+    private WorldSlice worldSlice;
     @Getter
     private final BlockRenderContext blockRenderContext = new BlockRenderContext();
     private final LightDataCache lightDataCache = new LightDataCache();
@@ -60,6 +60,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
     private final FlatLightPipeline flatLightPipeline;
     private final QuadLightData quadLightData = new QuadLightData();
     @Getter private final FloatArrayList teBoundsScratch = new FloatArrayList();
+    @Getter private final long[] deferredMask = new long[64];
     private final VertexArrayQuadView quadView;
     private final boolean hasColoredLight;
     private final float[] tintResult = new float[3];
@@ -95,6 +96,12 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         flatLightPipeline.reset();
         lightPipelineReady = true;
         cachedSkylightSubtracted = Minecraft.getMinecraft().theWorld.skylightSubtracted;
+    }
+
+    public WorldSlice swapWorldSlice(WorldSlice replacement) {
+        final WorldSlice previous = this.worldSlice;
+        this.worldSlice = replacement;
+        return previous;
     }
 
     public void setupDynamicLights(int chunkOriginX, int chunkOriginY, int chunkOriginZ) {
