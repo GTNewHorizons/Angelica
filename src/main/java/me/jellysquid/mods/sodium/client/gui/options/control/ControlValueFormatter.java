@@ -39,6 +39,10 @@ public interface ControlValueFormatter {
         return (v) -> v + "x";
     }
 
+    static ControlValueFormatter seconds() {
+        return (v) -> v + "s";
+    }
+
     static ControlValueFormatter quantity(String name) {
         return (v) -> I18n.format(name, v);
     }

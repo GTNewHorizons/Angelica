@@ -2,12 +2,12 @@ package com.gtnewhorizons.angelica.mixins;
 
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
 import com.gtnewhorizon.gtnhmixins.builders.MixinBuilder;
-import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.api.BlockLightProvider;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import jss.notfine.config.MCPatcherForgeConfig;
 import jss.notfine.config.NotFineConfig;
@@ -242,7 +242,7 @@ public enum Mixins implements IMixins {
 
     ANGELICA_TRACY(new MixinBuilder("Tracy profiler zones from vanilla Profiler sections")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaMod.tracyEnabled)
+        .setApplyIf(() -> TracyOptions.enabled() && TracyOptions.backendPresent())
         .addCommonMixins(
             "angelica.tracy.MixinProfiler_Tracy"
             , "angelica.tracy.MixinNetHandlerPlayServer_Tracy"
@@ -256,14 +256,14 @@ public enum Mixins implements IMixins {
 
     ANGELICA_ENABLE_DEBUG(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaMod.lwjglDebug)
+        .setApplyIf(() -> SystemProperties.LWJGL_DEBUG)
         .addClientMixins(
             "angelica.debug.MixinSplashProgress"
         )
     ),
     ANGELICA_DEBUG_MARKERS(new MixinBuilder("RenderDoc/RGP debug groups + object labels")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaMod.lwjglDebug || CaptureGate.enabledAtStartup())
+        .setApplyIf(() -> SystemProperties.LWJGL_DEBUG || CaptureGate.enabledAtStartup())
         .addClientMixins(
             "angelica.debug.MixinProfiler"
             , "angelica.debug.MixinTextureManager"
@@ -333,7 +333,7 @@ public enum Mixins implements IMixins {
     // Not compatible with the lwjgl debug callbacks, so disable if that's enabled
     ARCHAIC_SPLASH(new MixinBuilder()
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !AngelicaMod.lwjglDebug)
+        .setApplyIf(() -> AngelicaConfig.showSplashMemoryBar && !SystemProperties.LWJGL_DEBUG)
         .addClientMixins(
             "angelica.archaic.MixinSplashProgress$3",
             "angelica.archaic.AccessorSplashProgress"
@@ -416,6 +416,8 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinBlockGrass"
             , "celeritas.biome_blending.MixinBlockLeaves"
             , "celeritas.biome_blending.MixinBlockLiquid"
+            , "celeritas.biome_blending.MixinWorld"
+            , "celeritas.biome_blending.MixinRenderBlocks"
             , "celeritas.threading.MixinForgeHooksClient"
             , "celeritas.terrain.MixinChunk"
             , "celeritas.terrain.MixinWorldClient_WorkerAccess"
