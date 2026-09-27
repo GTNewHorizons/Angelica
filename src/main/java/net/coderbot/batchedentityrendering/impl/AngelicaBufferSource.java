@@ -151,15 +151,29 @@ public class AngelicaBufferSource implements Groupable {
     public void endBatch(LayerDrawHook hook) {
         ensurePrepared();
         try {
+            int lastGlint = -1;
             for (int i = 0, n = order.size(); i < n; i++) {
-                drawLayer(order.get(i), hook);
+                if (getTransparencyType(order.get(i)) == TransparencyType.DECAL) lastGlint = i;
             }
+            for (int i = 0, n = order.size(); i < n; i++) {
+                final RenderLayer layer = order.get(i);
+                if (getTransparencyType(layer) != TransparencyType.AFTER_GLINT) drawLayer(layer, hook);
+                if (i == lastGlint) drawAfterGlintLayers(hook);
+            }
+            if (lastGlint < 0) drawAfterGlintLayers(hook);
         } catch (Throwable t) {
             discardAfterFailure(t);
             throw t;
         }
         order.clear();
         finish();
+    }
+
+    private void drawAfterGlintLayers(LayerDrawHook hook) {
+        for (int i = 0, n = order.size(); i < n; i++) {
+            final RenderLayer layer = order.get(i);
+            if (getTransparencyType(layer) == TransparencyType.AFTER_GLINT) drawLayer(layer, hook);
+        }
     }
 
     public void pauseBatch() {

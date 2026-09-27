@@ -31,6 +31,8 @@ public abstract class MixinItemRenderer_Instanced {
     @Unique private static int angelica$pass;
     @Unique private static ItemRenderType angelica$type;
     @Unique private static int angelica$iconWidth, angelica$iconHeight;
+    @Unique private static ItemStack angelica$deferredGlintStack;
+    @Unique private static int angelica$deferredGlintPass;
 
     @Inject(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
@@ -41,6 +43,7 @@ public abstract class MixinItemRenderer_Instanced {
         angelica$stack = stack;
         angelica$pass = pass;
         angelica$type = type;
+        if (stack != angelica$deferredGlintStack || pass <= angelica$deferredGlintPass) angelica$deferredGlintStack = null;
     }
 
     @WrapOperation(
@@ -57,7 +60,9 @@ public abstract class MixinItemRenderer_Instanced {
         final ItemStack stack = angelica$stack;
         if (Tracy.FINE_ZONES) Tracy.beginZone(angelica$Z_HELD_ICON);
         try {
-            DroppedItemInstancer.icon(angelica$batchable(angelica$type) && !HeldItemGlint.needsImmediateBase(stack, angelica$pass) ? stack : null, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
+            // A later pass without glint covers the deferred glint of an earlier one, as vanilla draws it after that glint.
+            final boolean afterGlint = angelica$deferredGlintStack != null && stack == angelica$deferredGlintStack && !stack.hasEffect(angelica$pass);
+            DroppedItemInstancer.icon(angelica$batchable(angelica$type) && !HeldItemGlint.needsImmediateBase(stack, angelica$pass) ? stack : null, afterGlint, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
         } finally {
             if (Tracy.FINE_ZONES) Tracy.endZone();
         }
@@ -70,6 +75,8 @@ public abstract class MixinItemRenderer_Instanced {
     )
     private boolean angelica$queueHeldGlintBlock(boolean hasEffect) {
         if (!hasEffect || !HeldItemGlint.eligible() || !DroppedItemInstancer.queueSkippedGlint(angelica$iconWidth, angelica$iconHeight)) return hasEffect;
+        angelica$deferredGlintStack = angelica$stack;
+        angelica$deferredGlintPass = angelica$pass;
         SkippedGlintBlock.applyHeldItemExitState();
         return false;
     }

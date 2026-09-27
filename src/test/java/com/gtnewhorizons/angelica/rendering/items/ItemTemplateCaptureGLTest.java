@@ -189,7 +189,7 @@ class ItemTemplateCaptureGLTest {
                     final int rotation = item * 90;
                     assertEquals(SAFE, PlacedItemRenderCompat.renderWithBatchState(item, 0, 0, SAFE, () -> {
                         GLStateManager.glRotatef(rotation, 0, 1, 0);
-                        DroppedItemInstancer.batchIcon(EntityMaterials.DROPPED_ITEM_CUTOUT, Tessellator.instance,
+                        DroppedItemInstancer.batchIcon(EntityMaterials.DROPPED_ITEM_CUTOUT, false, Tessellator.instance,
                             1f, 0f, 0f, 1f, 16, 16, 0.0625f, original);
                     }));
                     PlacedItemRenderCompat.renderWithBatchState(0, 0, 0, BatchEligibility.DENIED, () -> {

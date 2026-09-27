@@ -31,7 +31,7 @@ public abstract class MixinRenderItem_Instanced {
         )
     )
     private void angelica$instanceDroppedIcon(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original, @Local ItemStack stack) {
-        DroppedItemInstancer.icon(stack, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
+        DroppedItemInstancer.icon(stack, false, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
     }
 
     @WrapOperation(

@@ -108,7 +108,7 @@ public final class DroppedItemInstancer {
         return material;
     }
 
-    public static void icon(ItemStack stack, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    public static void icon(ItemStack stack, boolean afterGlint, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
         glintCapture.reset();
         glintSeen = false;
         final TesrMaterial material = material(stack, true);
@@ -117,10 +117,10 @@ public final class DroppedItemInstancer {
             callIcon(ICON_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
             return;
         }
-        basePart = batchIcon(material, t, maxU, minV, minU, maxV, width, height, thickness, original);
+        basePart = batchIcon(material, afterGlint, t, maxU, minV, minU, maxV, width, height, thickness, original);
     }
 
-    static boolean batchIcon(TesrMaterial material, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    static boolean batchIcon(TesrMaterial material, boolean afterGlint, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
         final long drawsBefore = GLStateManager.drawCalls;
         if (BatchEligibility.batchingAllowed()) {
             final TemplateBuffer template = iconTemplate(ICON_ARGS, maxU, minV, minU, maxV, width, height, thickness, original);
@@ -130,7 +130,7 @@ public final class DroppedItemInstancer {
                 bail(BailReason.TEMPLATE);
                 return false;
             }
-            if (ModelPartBatcher.INSTANCE.queueTemplate(template, material)) {
+            if (ModelPartBatcher.INSTANCE.queueTemplate(template, material, afterGlint)) {
                 instanced++;
                 BatchEligibility.onPartQueued();
                 return true;

@@ -22,6 +22,9 @@ import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
+import java.util.ArrayList;
+import java.util.List;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
@@ -124,6 +127,39 @@ class TesrLayerStateTest {
             source.endBatch(hook);
             assertTrue(GLStateManager.getDepthTest().isEnabled(), "cached depth before block entities");
             assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST), "driver depth before block entities");
+        } finally {
+            source.discard();
+            source.freeBuffers();
+        }
+    }
+
+    @Test
+    void afterGlintLayerDrawsAfterEveryGlintLayer() {
+        final AngelicaBufferSource source = new AngelicaBufferSource();
+        final RenderLayer liquid = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final RenderLayer glint = glint(ShaderGlint.NO_TINT);
+        final RenderLayer bottle = RenderLayer.tesr(null, EntityMaterials.DROPPED_ITEM_CUTOUT, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
+        final List<RenderLayer> drawn = new ArrayList<>();
+        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
+            @Override
+            public boolean hasDraws(RenderLayer layer) {
+                return true;
+            }
+
+            @Override
+            public void drawLayer(RenderLayer layer) {
+                drawn.add(layer);
+            }
+        };
+        try {
+            assertNotSame(liquid, bottle);
+            assertEquals(TransparencyType.AFTER_GLINT, bottle.getTransparencyType());
+            source.declareUse(liquid);
+            source.declareUse(bottle);
+            source.declareUse(glint);
+            source.endBatchWithType(TransparencyType.OPAQUE, hook);
+            source.endBatch(hook);
+            assertEquals(List.of(liquid, glint, bottle), drawn);
         } finally {
             source.discard();
             source.freeBuffers();
