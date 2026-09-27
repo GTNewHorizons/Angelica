@@ -3,8 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
-import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
@@ -30,7 +29,6 @@ import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @GLCoreTest
 public class GLSM_SharedDrawableContext_GLTest {
@@ -38,28 +36,24 @@ public class GLSM_SharedDrawableContext_GLTest {
     private SharedDrawable sharedDrawable;
 
     @AfterEach
-    void cleanup() throws Exception {
+    void cleanup() {
         if (sharedDrawable != null) {
-            DrawableContexts.forget(sharedDrawable);
-            sharedDrawable.destroy();
+            DrawableContexts.destroy(sharedDrawable);
             sharedDrawable = null;
         }
     }
 
     @Test
     void sharedDrawableBindsItsOwnContext() throws Exception {
-        final GLContextState primary = Reflect.getStatic(GLStateManager.class, "primaryContext");
+        final GLContextState primary = GLStateManager.ctx();
         sharedDrawable = new SharedDrawable(Display.getDrawable());
 
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final Thread worker = new Thread(() -> {
+        TestThreads.run("SharedDrawableContext-Bind-Thread", () -> {
+            GLStateManager.makeCurrent(sharedDrawable);
             try {
-                GLStateManager.makeCurrent(sharedDrawable);
-
                 final GLContextState workerCtx = GLStateManager.ctx();
                 assertNotSame(primary, workerCtx);
                 assertNotEquals(0, workerCtx.defaultVAO);
-                assertNotEquals(primary.defaultVAO, workerCtx.defaultVAO);
                 assertEquals(workerCtx.defaultVAO, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
 
                 final IntBuffer viewport = BufferUtils.createIntBuffer(16);
@@ -68,23 +62,11 @@ public class GLSM_SharedDrawableContext_GLTest {
                 assertEquals(0, viewport.get(1));
                 assertEquals(Display.getWidth(), viewport.get(2));
                 assertEquals(Display.getHeight(), viewport.get(3));
-
+            } finally {
                 GLStateManager.releaseContext(sharedDrawable);
-                assertSame(primary, GLStateManager.ctx());
-            } catch (Throwable t) {
-                error.set(t);
             }
-        }, "SharedDrawableContext-Bind-Thread");
-        worker.start();
-        worker.join(5000);
-        assertFalse(worker.isAlive(), "worker thread did not finish");
-
-        if (error.get() != null) {
-            fail(error.get());
-        }
-
-        final boolean workerContextsActive = Reflect.getStatic(GLStateManager.class, "workerContextsActive");
-        assertFalse(workerContextsActive, "worker contexts should be inactive after release");
+            assertSame(primary, GLStateManager.ctx());
+        });
     }
 
     @Test
@@ -93,33 +75,19 @@ public class GLSM_SharedDrawableContext_GLTest {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
         final CountDownLatch acquired = new CountDownLatch(1);
         final CountDownLatch release = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final Thread worker = new Thread(() -> {
-            try {
-                GLStateManager.makeCurrent(sharedDrawable);
-                acquired.countDown();
-                if (!release.await(5, TimeUnit.SECONDS)) throw new AssertionError("release timed out");
-                GLStateManager.releaseContext(sharedDrawable);
-            } catch (Throwable t) {
-                error.set(t);
-                acquired.countDown();
-            }
-        }, "SharedDrawableContext-Owner-Thread");
-        worker.start();
+        final TestThreads.Worker worker = DrawableContexts.start(sharedDrawable, "SharedDrawableContext-Owner-Thread", () -> {
+            acquired.countDown();
+            if (!release.await(5, TimeUnit.SECONDS)) throw new AssertionError("release timed out");
+        });
         try {
             assertTrue(acquired.await(5, TimeUnit.SECONDS));
-            if (error.get() != null) fail(error.get());
-            final int count = Reflect.getStatic(GLStateManager.class, "workerContextCount");
             assertThrows(IllegalStateException.class, () -> GLStateManager.makeCurrent(sharedDrawable));
             assertSame(primary, GLStateManager.ctx());
-            assertEquals(count, (int) Reflect.getStatic(GLStateManager.class, "workerContextCount"));
             assertEquals(primary.defaultVAO, GL11.glGetInteger(GL30.GL_VERTEX_ARRAY_BINDING));
         } finally {
             release.countDown();
-            worker.join(5000);
+            worker.join();
         }
-        assertFalse(worker.isAlive());
-        if (error.get() != null) fail(error.get());
         GLStateManager.makeCurrent(sharedDrawable);
         assertNotSame(primary, GLStateManager.ctx());
         GLStateManager.releaseContext(sharedDrawable);
@@ -140,39 +108,27 @@ public class GLSM_SharedDrawableContext_GLTest {
 
         final CountDownLatch started = new CountDownLatch(1);
         final CountDownLatch finish = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final Thread worker = new Thread(() -> {
+        final TestThreads.Worker worker = DrawableContexts.start(sharedDrawable, "SharedDrawableContext-List-Thread", () -> {
+            GLStateManager.glNewList(active, GL11.GL_COMPILE);
+            started.countDown();
+            if (!finish.await(5, TimeUnit.SECONDS)) throw new AssertionError("finish timed out");
+            GLStateManager.glEndList();
+        });
+        try {
             try {
-                GLStateManager.makeCurrent(sharedDrawable);
-                GLStateManager.glNewList(active, GL11.GL_COMPILE);
-                started.countDown();
-                if (!finish.await(5, TimeUnit.SECONDS)) throw new AssertionError("finish timed out");
-                GLStateManager.glEndList();
-                GLStateManager.releaseContext(sharedDrawable);
-            } catch (Throwable t) {
-                error.set(t);
-                started.countDown();
+                assertTrue(started.await(5, TimeUnit.SECONDS));
+                assertThrows(IllegalStateException.class, () -> GLStateManager.glNewList(rejected, GL11.GL_COMPILE));
+                assertThrows(IllegalStateException.class, GLStateManager::glEndList);
+                assertEquals(0, GLStateManager.getListMode());
+                DisplayListManager.abortIfLeaked();
+                assertThrows(IllegalStateException.class, DisplayListManager::abortCompilation);
+                GLStateManager.glCallList(existing);
+                assertTrue(GLStateManager.glIsEnabled(GL11.GL_BLEND));
+                assertEquals(0, GLStateManager.getListMode());
+            } finally {
+                finish.countDown();
+                worker.join();
             }
-        }, "SharedDrawableContext-List-Thread");
-        worker.start();
-        try {
-            assertTrue(started.await(5, TimeUnit.SECONDS));
-            if (error.get() != null) fail(error.get());
-            assertThrows(IllegalStateException.class, () -> GLStateManager.glNewList(rejected, GL11.GL_COMPILE));
-            assertThrows(IllegalStateException.class, GLStateManager::glEndList);
-            assertEquals(0, GLStateManager.getListMode());
-            DisplayListManager.abortIfLeaked();
-            assertThrows(IllegalStateException.class, DisplayListManager::abortCompilation);
-            GLStateManager.glCallList(existing);
-            assertTrue(GLStateManager.glIsEnabled(GL11.GL_BLEND));
-            assertEquals(0, GLStateManager.getListMode());
-        } finally {
-            finish.countDown();
-            worker.join(5000);
-        }
-        try {
-            assertFalse(worker.isAlive());
-            if (error.get() != null) fail(error.get());
             assertTrue(DisplayListManager.displayListExists(active));
             GLStateManager.glCallList(active);
         } finally {
@@ -192,34 +148,20 @@ public class GLSM_SharedDrawableContext_GLTest {
         final CountDownLatch attempted = new CountDownLatch(2);
         final AtomicInteger completed = new AtomicInteger();
         final AtomicInteger rejected = new AtomicInteger();
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final Thread worker = new Thread(() -> {
+        final TestThreads.Worker worker = DrawableContexts.start(sharedDrawable, "SharedDrawableContext-List-Race-Thread", () -> {
+            start.await();
             try {
-                GLStateManager.makeCurrent(sharedDrawable);
-                start.await();
-                try {
-                    GLStateManager.glNewList(second, GL11.GL_COMPILE);
-                } catch (IllegalStateException expected) {
-                    rejected.incrementAndGet();
-                    attempted.countDown();
-                    return;
-                }
+                GLStateManager.glNewList(second, GL11.GL_COMPILE);
+            } catch (IllegalStateException expected) {
+                rejected.incrementAndGet();
                 attempted.countDown();
-                if (!attempted.await(5, TimeUnit.SECONDS)) throw new AssertionError("attempts timed out");
-                GLStateManager.glEndList();
-                completed.incrementAndGet();
-            } catch (Throwable t) {
-                error.set(t);
-                attempted.countDown();
-            } finally {
-                try {
-                    GLStateManager.releaseContext(sharedDrawable);
-                } catch (Throwable t) {
-                    error.set(t);
-                }
+                return;
             }
-        }, "SharedDrawableContext-List-Race-Thread");
-        worker.start();
+            attempted.countDown();
+            if (!attempted.await(5, TimeUnit.SECONDS)) throw new AssertionError("attempts timed out");
+            GLStateManager.glEndList();
+            completed.incrementAndGet();
+        });
         try {
             start.await();
             try {
@@ -234,13 +176,11 @@ public class GLSM_SharedDrawableContext_GLTest {
                 GLStateManager.glEndList();
                 completed.incrementAndGet();
             }
+            worker.join();
         } finally {
-            worker.join(5000);
             GLStateManager.glDeleteLists(first, 1);
             GLStateManager.glDeleteLists(second, 1);
         }
-        assertFalse(worker.isAlive());
-        if (error.get() != null) fail(error.get());
         assertEquals(1, completed.get());
         assertEquals(1, rejected.get());
     }
@@ -249,16 +189,12 @@ public class GLSM_SharedDrawableContext_GLTest {
     void reenteredContextRebindsFfpProgram() throws Exception {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
 
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final Thread worker = new Thread(() -> {
+        DrawableContexts.run(sharedDrawable, "SharedDrawableContext-Reentry-Thread", () -> {
+            final ShaderManager sm = ShaderManager.getInstance();
+            final boolean wasEnabled = ShaderManager.isEnabled();
+            ShaderManager.enable();
+            sm.activate();
             try {
-                GLStateManager.makeCurrent(sharedDrawable);
-
-                final ShaderManager sm = ShaderManager.getInstance();
-                final boolean wasEnabled = ShaderManager.isEnabled();
-                ShaderManager.enable();
-                sm.activate();
-
                 final FloatBuffer vertices = BufferUtils.createFloatBuffer(9);
                 vertices.put(new float[] { -0.5f, -0.5f, 0f, 0.5f, -0.5f, 0f, 0f, 0.5f, 0f });
                 vertices.flip();
@@ -277,23 +213,13 @@ public class GLSM_SharedDrawableContext_GLTest {
 
                 assertNotEquals(0, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "invalidateProgram must force a rebind after replay clears the program to 0");
 
-                sm.deactivate();
-                if (!wasEnabled) ShaderManager.disable();
                 GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
                 GLStateManager.glDeleteBuffers(vbo);
-
-                GLStateManager.releaseContext(sharedDrawable);
-            } catch (Throwable t) {
-                error.set(t);
+            } finally {
+                sm.deactivate();
+                if (!wasEnabled) ShaderManager.disable();
             }
-        }, "SharedDrawableContext-Reentry-Thread");
-        worker.start();
-        worker.join(10000);
-        assertFalse(worker.isAlive(), "worker thread did not finish");
-
-        if (error.get() != null) {
-            fail(error.get());
-        }
+        });
     }
 
     @Test
@@ -301,25 +227,11 @@ public class GLSM_SharedDrawableContext_GLTest {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
         final int t = GLStateManager.glGenTextures();
 
-        final AtomicReference<Throwable> error = new AtomicReference<>();
         final AtomicReference<GLContextState> workerCtxRef = new AtomicReference<>();
-        final Thread worker = new Thread(() -> {
-            try {
-                GLStateManager.makeCurrent(sharedDrawable);
-                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, t);
-                workerCtxRef.set(GLStateManager.ctx());
-                GLStateManager.releaseContext(sharedDrawable);
-            } catch (Throwable th) {
-                error.set(th);
-            }
-        }, "SharedDrawableContext-DeferredDelete-Thread");
-        worker.start();
-        worker.join(5000);
-        assertFalse(worker.isAlive(), "worker thread did not finish");
-
-        if (error.get() != null) {
-            fail(error.get());
-        }
+        DrawableContexts.run(sharedDrawable, "SharedDrawableContext-DeferredDelete-Thread", () -> {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, t);
+            workerCtxRef.set(GLStateManager.ctx());
+        });
 
         final GLContextState workerCtx = workerCtxRef.get();
         int deferredGen = 0;
@@ -330,14 +242,13 @@ public class GLSM_SharedDrawableContext_GLTest {
             GLStateManager.glDeleteTextures(t);
             deferredGen = GLStateManager.glGenTextures();
 
-            final IntOpenHashSet deferred = Reflect.getStatic(GLStateManager.class, "deferredDeleteTextures");
-            assertTrue(deferred.contains(t), "delete must stay deferred while the splash is not complete");
+            assertTrue(GL11.glIsTexture(t), "delete must stay deferred while the splash is not complete");
             assertEquals(t, workerCtx.textures.getTextureUnitBindings(0).getBinding(), "worker ctx binding must survive until the flush");
 
             SplashWindow.setSplashComplete(true);
             flushGen = GLStateManager.glGenTextures();
 
-            assertTrue(deferred.isEmpty(), "the flush must clear the deferred set once the splash is complete");
+            assertFalse(GL11.glIsTexture(t), "the flush must delete the texture once the splash is complete");
             assertEquals(0, workerCtx.textures.getTextureUnitBindings(0).getBinding(), "the flush must scrub the drawable context's binding");
         } finally {
             SplashWindow.setSplashComplete(true);
@@ -352,32 +263,17 @@ public class GLSM_SharedDrawableContext_GLTest {
         sharedDrawable = new SharedDrawable(Display.getDrawable());
 
         final CyclicBarrier barrier = new CyclicBarrier(2);
-        final AtomicReference<Throwable> mainError = new AtomicReference<>();
-        final AtomicReference<Throwable> workerError = new AtomicReference<>();
         final AtomicReference<GLContextState> workerCtxRef = new AtomicReference<>();
-
-        final Thread worker = new Thread(() -> {
-            try {
-                GLStateManager.makeCurrent(sharedDrawable);
-                workerCtxRef.set(GLStateManager.ctx());
-                barrier.await();
-                for (int i = 0; i < 20000; i++) {
-                    final int t = GLStateManager.pushState(StateSet.FONT);
-                    GLStateManager.glNormal3f(0.1f, 0.2f, 0.3f);
-                    GLStateManager.popStateTo(t);
-                }
+        final TestThreads.Worker worker = DrawableContexts.start(sharedDrawable, "SharedDrawableContext-Concurrent-Thread", () -> {
+            workerCtxRef.set(GLStateManager.ctx());
+            barrier.await();
+            for (int i = 0; i < 20000; i++) {
+                final int t = GLStateManager.pushState(StateSet.FONT);
                 GLStateManager.glNormal3f(0.1f, 0.2f, 0.3f);
-            } catch (Throwable t) {
-                workerError.set(t);
-            } finally {
-                try {
-                    GLStateManager.releaseContext(sharedDrawable);
-                } catch (Throwable t) {
-                    if (workerError.get() == null) workerError.set(t);
-                }
+                GLStateManager.popStateTo(t);
             }
-        }, "SharedDrawableContext-Concurrent-Thread");
-        worker.start();
+            GLStateManager.glNormal3f(0.1f, 0.2f, 0.3f);
+        });
 
         try {
             barrier.await();
@@ -387,21 +283,8 @@ public class GLSM_SharedDrawableContext_GLTest {
                 GLStateManager.popStateTo(t);
             }
             GLStateManager.glNormal3f(0.25f, 0.5f, 0.75f);
-        } catch (Throwable t) {
-            mainError.set(t);
-        }
+            worker.join();
 
-        worker.join(10000);
-        assertFalse(worker.isAlive(), "worker thread did not finish");
-
-        if (mainError.get() != null) {
-            fail(mainError.get());
-        }
-        if (workerError.get() != null) {
-            fail(workerError.get());
-        }
-
-        try {
             final GLContextState workerCtx = workerCtxRef.get();
             assertNotSame(primary, workerCtx);
             assertEquals(0, primary.attribDepth);

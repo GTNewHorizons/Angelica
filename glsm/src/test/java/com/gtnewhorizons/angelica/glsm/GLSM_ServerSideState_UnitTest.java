@@ -26,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * be properly synchronized in the GLSM cache. Client-side state (texture bindings, active unit)
  * is per-context and should NOT be shared.
  */
-@GLCoreTest
+@GLCompatTest
 public class GLSM_ServerSideState_UnitTest {
 
     private SharedDrawable sharedDrawable;
@@ -143,8 +143,7 @@ public class GLSM_ServerSideState_UnitTest {
         }
 
         if (sharedDrawable != null) {
-            DrawableContexts.forget(sharedDrawable);
-            sharedDrawable.destroy();
+            DrawableContexts.destroy(sharedDrawable);
         }
 
         // Restore original state

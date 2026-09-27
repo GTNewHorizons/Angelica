@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm;
 
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -9,13 +10,11 @@ import org.lwjgl.opengl.Display;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
-import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 @GLCoreTest
 public class GLSM_SplashCompleteLatch_UnitTest {
@@ -74,35 +73,23 @@ public class GLSM_SplashCompleteLatch_UnitTest {
     void pausedSplashThreadDoesNotCompleteUntilItExits() throws Exception {
         final CountDownLatch released = new CountDownLatch(1);
         final CountDownLatch resume = new CountDownLatch(1);
-        final AtomicReference<Throwable> workerError = new AtomicReference<>();
 
         GLStateManager.releaseContext(Display.getDrawable());
 
-        final Thread worker = new Thread(() -> {
-            try {
+        try {
+            final TestThreads.Worker worker = TestThreads.start("SplashPause-Worker-Thread", () -> {
                 GLStateManager.makeCurrent(Display.getDrawable());
                 GLStateManager.releaseContext(Display.getDrawable());
                 released.countDown();
                 resume.await();
-            } catch (Throwable t) {
-                workerError.set(t);
-            }
-        }, "SplashPause-Worker-Thread");
-
-        try {
-            worker.start();
+            });
             assertTrue(released.await(10, TimeUnit.SECONDS), "worker did not release the Display drawable in time");
 
             GLStateManager.makeCurrent(Display.getDrawable());
             assertFalse(GLStateManager.isSplashComplete());
 
             resume.countDown();
-            worker.join(10000);
-            assertFalse(worker.isAlive(), "worker thread did not finish");
-
-            if (workerError.get() != null) {
-                fail(workerError.get());
-            }
+            worker.join();
 
             GLStateManager.releaseContext(Display.getDrawable());
             GLStateManager.makeCurrent(Display.getDrawable());

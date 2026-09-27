@@ -1,10 +1,11 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
+
 import java.util.HashSet;
 import java.util.Set;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -12,7 +13,6 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.junit.jupiter.api.Assertions.fail;
 
 class DisplayListIdAllocatorTest {
 
@@ -21,26 +21,16 @@ class DisplayListIdAllocatorTest {
         final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
         final int[][] ids = new int[2][500];
         final CountDownLatch start = new CountDownLatch(1);
-        final AtomicReference<Throwable> error = new AtomicReference<>();
-        final Thread[] threads = new Thread[2];
-        for (int t = 0; t < threads.length; t++) {
-            final int index = t;
-            threads[t] = new Thread(() -> {
-                try {
-                    if (!start.await(5, TimeUnit.SECONDS)) throw new AssertionError("start timed out");
-                    for (int i = 0; i < ids[index].length; i++) ids[index][i] = alloc.allocRange(1);
-                } catch (Throwable failure) {
-                    error.set(failure);
-                }
+        final TestThreads.Worker[] workers = new TestThreads.Worker[2];
+        for (int t = 0; t < workers.length; t++) {
+            final int[] lane = ids[t];
+            workers[t] = TestThreads.start("DisplayListIdAllocator-" + t, () -> {
+                if (!start.await(5, TimeUnit.SECONDS)) throw new AssertionError("start timed out");
+                for (int i = 0; i < lane.length; i++) lane[i] = alloc.allocRange(1);
             });
-            threads[t].start();
         }
         start.countDown();
-        for (Thread thread : threads) {
-            thread.join(5000);
-            assertFalse(thread.isAlive());
-        }
-        if (error.get() != null) fail(error.get());
+        for (TestThreads.Worker worker : workers) worker.join();
         final Set<Integer> unique = new HashSet<>();
         for (int[] lane : ids) {
             for (int id : lane) assertTrue(unique.add(id));

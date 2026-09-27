@@ -91,7 +91,7 @@ public final class GlsmSdlHeadlessRig {
         return bound.get(target);
     }
 
-    private static int colorTargetSdlFormat() {
+    static int colorTargetSdlFormat() {
         final ResourceManager rm = Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
         final ResourceManager.TextureMeta meta = rm.getTextureMeta(colorTexture);
         return meta != null ? meta.sdlFormat() : 0;
