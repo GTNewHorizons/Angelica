@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
+import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Disabled;
@@ -29,6 +30,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 class GlsmSdlAttachmentClearTest {
 
     private static final int SIZE = GlsmSdlHeadlessRig.SIZE;
+    private static final int RED = 0xFFFF0000;
+    private static final int BLACK = 0xFF000000;
 
     @BeforeAll
     static void boot() {
@@ -569,5 +572,32 @@ class GlsmSdlAttachmentClearTest {
         GLStateManager.glDeleteFramebuffers(fbo);
         GLStateManager.glDeleteTextures(tex);
         GlsmSdlHeadlessRig.bindTarget();
+    }
+
+    @Test
+    void stencilWrittenLastFramePersists() {
+        GlsmSdlHeadlessRig.bindTarget();
+        GlsmSdlHeadlessRig.writeStencilOneInBottomHalf();
+
+        GlsmSdlHeadlessRig.endFrame();
+        GlsmSdlHeadlessRig.beginFrameAndReset();
+        GlsmSdlHeadlessRig.drawRedWhereStencilIsOne();
+
+        final int[] pixels = GlsmSdlHeadlessRig.readTarget();
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, 4, RED, "stencil written last frame");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE - 5, BLACK, "outside last frame's stencil");
+    }
+
+    @Test
+    void aSingleAspectClearLeavesTheTextureUndefined() {
+        final int fbo = GlsmSdlHeadlessRig.createDepthStencilFbo();
+        GLStateManager.glDepthMask(true);
+        GLStateManager.glClear(GL11.GL_DEPTH_BUFFER_BIT);
+
+        final ResourceManager resourceManager = Reflect.get(BackendManager.RENDER_BACKEND, "resourceManager");
+        final long depthTexture = resourceManager.getFbo(fbo).depthTexture;
+        GlsmSdlHeadlessRig.endFrame();
+
+        assertFalse(resourceManager.isTextureContentDefined(depthTexture), "the stencil aspect was never written, so the first pass must still clear it");
     }
 }
