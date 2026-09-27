@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import me.eigenraven.lwjgl3ify.client.MainThreadExec;
+import org.lwjgl.PointerBuffer;
 import org.lwjglx.Lwjgl3ifyEventLoop;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -59,6 +60,7 @@ import java.nio.ShortBuffer;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
+import java.util.Locale;
 import java.util.concurrent.ConcurrentLinkedQueue;
 
 /**
@@ -73,6 +75,7 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     private GLCapabilities caps;
     private GLDebugMessageCallback debugCallback;
     private boolean debugOutputActive;
+    private boolean amdShaderSourceWorkaround;
 
     private SDL_EventFilter dropEventFilter;
     private final ConcurrentLinkedQueue<String> droppedFiles = new ConcurrentLinkedQueue<>();
@@ -82,6 +85,15 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public void init() {
         caps = GL.getCapabilities();
+        if (GLStateManager.isWindows()) {
+            final String vendor = GL11C.glGetString(GL11C.GL_VENDOR);
+            if (vendor != null) {
+                final String normalizedVendor = vendor.toLowerCase(Locale.ROOT);
+                amdShaderSourceWorkaround = normalizedVendor.startsWith("amd")
+                    || normalizedVendor.startsWith("ati technologies")
+                    || normalizedVendor.startsWith("advanced micro devices");
+            }
+        }
         if (RenderSystem.isGLES()) {
             pfnClearDepthf = GL.getFunctionProvider().getFunctionAddress("glClearDepthf");
             pfnDepthRangef = GL.getFunctionProvider().getFunctionAddress("glDepthRangef");
@@ -779,6 +791,11 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void readPixels(int x, int y, int width, int height, int format, int type, long pixelBufferOffset) {
+        GL11C.glReadPixels(x, y, width, height, format, type, pixelBufferOffset);
+    }
+
+    @Override
     public void getTexImage(int target, int level, int format, int type, ByteBuffer pixels) {
         GL11C.glGetTexImage(target, level, format, type, pixels);
     }
@@ -810,7 +827,20 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
 
     @Override
     public void shaderSource(int shader, CharSequence source) {
-        GL20C.glShaderSource(shader, source);
+        if (!amdShaderSourceWorkaround) {
+            GL20C.glShaderSource(shader, source);
+            return;
+        }
+        try (MemoryStack stack = MemoryStack.stackPush()) {
+            final ByteBuffer encodedSource = MemoryUtil.memUTF8(source, true);
+            try {
+                final PointerBuffer pointers = stack.mallocPointer(1);
+                pointers.put(encodedSource);
+                GL20C.nglShaderSource(shader, 1, pointers.address0(), 0L);
+            } finally {
+                MemoryUtil.memFree(encodedSource);
+            }
+        }
     }
 
     @Override

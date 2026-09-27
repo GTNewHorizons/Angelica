@@ -61,6 +61,7 @@ public final class PipelineCache {
     public int primitiveType = SDL_GPU_PRIMITIVETYPE_TRIANGLELIST;
 
     public final boolean[] blendEnabledPerDrawBuffer = new boolean[ContextState.MAX_COLOR_ATTACHMENTS];
+    public boolean logicOpEnabled;
     public final int[] srcColorFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
     public final int[] dstColorFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
     public final int[] srcAlphaFactors = new int[ContextState.MAX_COLOR_ATTACHMENTS];
@@ -162,7 +163,7 @@ public final class PipelineCache {
     }
 
     private boolean blendEnabledForSlot(int slot) {
-        return slot >= 0 && slot < ContextState.MAX_COLOR_ATTACHMENTS && blendEnabledPerDrawBuffer[slot];
+        return !logicOpEnabled && slot >= 0 && slot < ContextState.MAX_COLOR_ATTACHMENTS && blendEnabledPerDrawBuffer[slot];
     }
 
     public boolean setBlendFactors(int sc, int dc, int sa, int da) {
@@ -259,7 +260,7 @@ public final class PipelineCache {
 
     private boolean computeUsesBlendConstants() {
         for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
-            if (!blendEnabledPerDrawBuffer[i]) continue;
+            if (!blendEnabledForSlot(i)) continue;
             if (isBlendConstantFactor(srcColorFactors[i]) || isBlendConstantFactor(dstColorFactors[i])
                 || isBlendConstantFactor(srcAlphaFactors[i]) || isBlendConstantFactor(dstAlphaFactors[i])) {
                 return true;

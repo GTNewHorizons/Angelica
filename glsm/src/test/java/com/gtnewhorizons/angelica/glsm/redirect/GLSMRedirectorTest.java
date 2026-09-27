@@ -265,6 +265,15 @@ class GLSMRedirectorTest {
     }
 
     @Test
+    void pixelPackBufferReadbackOverloadsHaveDeclaredTargets() throws Exception {
+        assertRedirectedToDeclaredTarget(new String[][]{
+            {"org/lwjgl/opengl/GL11", "glReadPixels", "(IIIIIIJ)V"},
+            {"org/lwjgl/opengl/GL11C", "glReadPixels", "(IIIIIIJ)V"},
+            {"org/lwjgl/opengl/GL11", "glGetTexImage", "(IIIIJ)V"},
+        });
+    }
+
+    @Test
     void newlyMappedOcclusionQueryAliasIsRedirected() {
         final ClassNode cn = makeClassWithMethodCall("org/lwjgl/opengl/ARBOcclusionQuery", "glGenQueriesARB", "(Ljava/nio/IntBuffer;)V");
 

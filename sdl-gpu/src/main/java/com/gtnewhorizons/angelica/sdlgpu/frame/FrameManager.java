@@ -55,7 +55,9 @@ public final class FrameManager {
     public static final int PASS_END_TARGET = 3;
     public static final int PASS_END_UNIFORM_BLOCK = 4;
     public static final int PASS_END_FRAME_END = 5;
-    public static final int PASS_END_CAUSE_COUNT = 6;
+    public static final int PASS_END_LOGIC_OP = 6;
+    public static final int PASS_END_READBACK = 7;
+    public static final int PASS_END_CAUSE_COUNT = 8;
 
     public static final class FrameState {
         public final Thread owner = Thread.currentThread();

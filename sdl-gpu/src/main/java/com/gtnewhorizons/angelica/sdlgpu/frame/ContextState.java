@@ -3,6 +3,8 @@ package com.gtnewhorizons.angelica.sdlgpu.frame;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
+import com.gtnewhorizons.angelica.sdlgpu.resource.PackState;
+import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpVariant;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.UniformStaging;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
@@ -13,6 +15,7 @@ import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import org.lwjgl.PointerBuffer;
+import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL15;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
@@ -49,12 +52,17 @@ public final class ContextState {
         public int unpackSkipPixels = 0;
         public int unpackSkipRows = 0;
         public int packAlignment = 4;
+        public int packRowLength = 0;
+        public int packSkipPixels = 0;
+        public int packSkipRows = 0;
+        public boolean packSwapBytes;
         public boolean isDefault() {
             return unpackAlignment == 4 && unpackRowLength == 0 && unpackSkipPixels == 0 && unpackSkipRows == 0 && packAlignment == 4;
         }
     }
 
     public final PixelStoreState pixelStore = new PixelStoreState();
+    public final PackState packState = new PackState();
 
     public static final class ProxyTextureState {
         public int target;
@@ -126,6 +134,20 @@ public final class ContextState {
     public int ssboBinds;
 
     public float blendColorR, blendColorG, blendColorB, blendColorA;
+    public boolean logicOpEnabled;
+    public int logicOpMode = GL11.GL_COPY;
+    public long appliedLogicOpKey;
+    public LogicOpVariant activeLogicOpVariant;
+    public final long[] logicOpScratch = new long[MAX_COLOR_ATTACHMENTS];
+    public final int[] logicOpScratchFormat = new int[MAX_COLOR_ATTACHMENTS];
+    public final int[] logicOpScratchWidth = new int[MAX_COLOR_ATTACHMENTS];
+    public final int[] logicOpScratchHeight = new int[MAX_COLOR_ATTACHMENTS];
+    public long readbackDepthScratch;
+    public int readbackDepthScratchWidth;
+    public int readbackDepthScratchHeight;
+    public long readbackStencilScratch;
+    public int readbackStencilScratchWidth;
+    public int readbackStencilScratchHeight;
     public int stencilRef;
     public float depthClearValue = 1.0f;
     public int stencilClearValue;
@@ -305,6 +327,7 @@ public final class ContextState {
     public final long[] lastVertSamplerTex = new long[MAX_SAMPLERS];
     public final long[] lastVertSamplerSmp = new long[MAX_SAMPLERS];
     public int lastFragSamplerProgram;
+    public LogicOpVariant lastFragSamplerVariant;
     public int lastVertSamplerProgram;
 
     public final PointerBuffer fragStorageTexBindings = PointerBuffer.allocateDirect(MAX_IMAGE_UNITS);
@@ -416,6 +439,7 @@ public final class ContextState {
         lastAppliedSamplerProgram = 0;
         lastAppliedSamplerCb = 0;
         lastFragSamplerProgram = 0;
+        lastFragSamplerVariant = null;
         lastVertSamplerProgram = 0;
         lastAppliedStorageTexBindGen = -1;
         lastAppliedStorageTexProgram = 0;

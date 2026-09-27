@@ -244,6 +244,17 @@ public final class FBOClearTracker {
         resourceManager.markTextureContentDefined(destTex);
     }
 
+    public void materializePendingClearForRead(ContextState st, FrameManager.FrameState f, long texture) {
+        if (texture == 0L || !f.frameActive) return;
+        if (texture == frameManager.getFbo0Texture()) {
+            if (st.pendingSwapchainClear || !f.clearedThisFrame) frameManager.ensureFbo0RenderPass(f, st);
+        } else if (texture == resourceManager.getSwapchainDepthStencil()) {
+            if (st.pendingSwapchainDepthClear || st.pendingSwapchainStencilClear || !f.depthClearedThisFrame) frameManager.ensureFbo0RenderPass(f, st);
+        } else {
+            materializePendingClearForTexture(st, texture);
+        }
+    }
+
     public void materializePendingClearForTexture(ContextState st, long handle) {
         if (handle == 0) return;
         final boolean depthPending = st.pendingDepthTextures.remove(handle);

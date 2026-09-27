@@ -138,6 +138,12 @@ public enum Mixins implements IMixins {
             .addClientMixins("angelica.gui.MixinGuiMainMenuSplash")
     ),
 
+    ANGELICA_TEXT_HIGHLIGHT(
+        new MixinBuilder("Draw text field selection without color logic op")
+            .setPhase(Phase.EARLY)
+            .addClientMixins("angelica.gui.MixinGuiTextField")
+    ),
+
     ANGELICA_FONT_RENDERER(new MixinBuilder()
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableFontRenderer)

@@ -58,6 +58,7 @@ public final class PipelineApplier {
     private final SamplerBinder samplerBinder;
     private final StorageTextureBinder storageTextureBinder;
     private final StorageBufferBinder storageBufferBinder;
+    private final LogicOpEmulator logicOpEmulator;
 
     private DrawDispatch.FanUploadSink deferredUploadSink;
     public void setDeferredUploadSink(DrawDispatch.FanUploadSink sink) { this.deferredUploadSink = sink; }
@@ -84,6 +85,16 @@ public final class PipelineApplier {
         this.samplerBinder = samplerBinder;
         this.storageTextureBinder = storageTextureBinder;
         this.storageBufferBinder = storageBufferBinder;
+        this.logicOpEmulator = new LogicOpEmulator(frameManager, resourceManager, shaderManager, this);
+    }
+
+    public void ensureDrawRenderPass(ContextState st) {
+        ensureDrawRenderPass(st, frameManager.frame());
+    }
+
+    public void ensureDrawRenderPass(ContextState st, FrameState f) {
+        logicOpEmulator.beforeDraw(st, f);
+        ensureRenderPass(st, f);
     }
 
     public void ensureRenderPass(ContextState st) {

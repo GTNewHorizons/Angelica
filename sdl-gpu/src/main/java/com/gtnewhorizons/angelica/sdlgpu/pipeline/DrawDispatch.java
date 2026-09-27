@@ -92,7 +92,7 @@ public final class DrawDispatch {
             return false;
         }
         setPrimitiveTypeForDraw(st, FormatMap.mapPrimitiveType(mode));
-        pipelineApplier.ensureRenderPass(st, f);
+        pipelineApplier.ensureDrawRenderPass(st, f);
         if (!frameManager.isRenderPassActive(f)) {
             f.droppedDrawsThisFrame++;
             if (!prepareRpInactiveWarned) {
@@ -180,7 +180,7 @@ public final class DrawDispatch {
         st.fanIndexBufferOffset += indexDataSize;
 
         setPrimitiveTypeForDraw(st, SDL_GPU_PRIMITIVETYPE_TRIANGLELIST);
-        pipelineApplier.ensureRenderPass(st);
+        pipelineApplier.ensureDrawRenderPass(st);
         if (!frameManager.isRenderPassActive()) return false;
         if (!pipelineApplier.applyPipelineAndState(st)) return false;
 
