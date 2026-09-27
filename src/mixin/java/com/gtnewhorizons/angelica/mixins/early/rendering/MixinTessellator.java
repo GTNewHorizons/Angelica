@@ -1,6 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
+import com.gtnewhorizons.angelica.rendering.celeritas.BiomeBlendTessellator;
+import com.gtnewhorizons.angelica.rendering.celeritas.BiomeVertexBlender;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
+import com.llamalad7.mixinextras.sugar.Local;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import net.minecraft.client.renderer.Tessellator;
 import org.spongepowered.asm.mixin.Mixin;
@@ -10,7 +14,25 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(Tessellator.class)
-public class MixinTessellator implements StateAwareTessellator {
+public class MixinTessellator implements StateAwareTessellator, BiomeBlendTessellator {
+    @Unique
+    private BiomeVertexBlender angelica$biomeBlender;
+
+    @Override
+    public BiomeVertexBlender angelica$getBiomeBlender() {
+        return angelica$biomeBlender;
+    }
+
+    @Override
+    public void angelica$setBiomeBlender(BiomeVertexBlender blender) {
+        angelica$biomeBlender = blender;
+    }
+
+    @ModifyExpressionValue(method = "addVertex", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;color:I"))
+    private int angelica$blendVertexColor(int original, @Local(argsOnly = true, ordinal = 0) double x, @Local(argsOnly = true, ordinal = 1) double y, @Local(argsOnly = true, ordinal = 2) double z) {
+        return angelica$biomeBlender == null ? original : angelica$biomeBlender.tint(original, x, y, z);
+    }
+
     @Unique
     private final IntArrayList vertexStates = new IntArrayList();
 
