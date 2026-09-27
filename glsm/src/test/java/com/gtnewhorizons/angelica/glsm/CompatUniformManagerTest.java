@@ -68,7 +68,7 @@ class CompatUniformManagerTest {
 
         // Use program and upload — should not error
         GL20.glUseProgram(program);
-        CompatUniformManager.refreshCompatUniforms(program);
+        CompatUniformManager.refreshCompatUniforms(program, GLStateManager.ctx());
 
         // Verify no GL errors
         assertEquals(0, GL11.glGetError(), "GL error after uniform upload");
@@ -146,7 +146,7 @@ class CompatUniformManagerTest {
 
         // Use program and upload — should not error
         GL20.glUseProgram(program);
-        CompatUniformManager.refreshCompatUniforms(program);
+        CompatUniformManager.refreshCompatUniforms(program, GLStateManager.ctx());
 
         assertEquals(0, GL11.glGetError(), "GL error after fog uniform upload");
     }

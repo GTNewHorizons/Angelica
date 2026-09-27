@@ -112,7 +112,7 @@ final class InstancedTemplateRenderer {
         int draws = 0;
         long recordOffset = ringBase;
         neutralizeExtendedAttribs();
-        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
+        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
         for (int b = 0, n = liveBuckets.size(); b < n; b++) {
             final Bucket bucket = liveBuckets.get(b);
             final TemplateMesh mesh = bucket.mesh;
@@ -130,7 +130,7 @@ final class InstancedTemplateRenderer {
             bucket.mesh = null;
             bucketPool.add(bucket);
         }
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
         liveBuckets.clear();
         return draws;
@@ -142,7 +142,7 @@ final class InstancedTemplateRenderer {
     int redrawTemplates(TexRun base, int colorABGR) {
         long recordOffset = base.uploadOffset;
         neutralizeExtendedAttribs();
-        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
+        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
         for (int b = 0, n = base.uploadMeshes.size(); b < n; b++) {
             final TemplateMesh mesh = (TemplateMesh) base.uploadMeshes.get(b);
             final int count = base.uploadCounts.getInt(b);
@@ -154,7 +154,7 @@ final class InstancedTemplateRenderer {
             GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
             recordOffset += (long) count * InstancedAttribs.STRIDE;
         }
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
         return base.uploadMeshes.size();
     }
@@ -195,9 +195,9 @@ final class InstancedTemplateRenderer {
         bindRingTo(UnitCubeMesh.vao(), UnitCubeMesh.VERTEX_FLAGS);
         CubeInstancedAttribs.pointInstanceAttribs(ringBase);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
-        GLStateManager.ffpInstancing = Instancing.CUBE;
+        GLStateManager.setFfpInstancing(Instancing.CUBE);
         GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, run.instances);
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
         return ringBase;
     }
@@ -220,9 +220,9 @@ final class InstancedTemplateRenderer {
         CubeInstancedAttribs.pointInstanceAttribs(offset);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         setConstantColor(colorABGR);
-        GLStateManager.ffpInstancing = Instancing.CUBE;
+        GLStateManager.setFfpInstancing(Instancing.CUBE);
         GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, instances);
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_COLOR);
         GLStateManager.glBindVertexArray(0);
     }

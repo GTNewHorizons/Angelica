@@ -59,7 +59,7 @@ public class DisplayListIDAllocator {
         numSetElements = 1;
     }
 
-    public int allocRange(int count) {
+    public synchronized int allocRange(int count) {
         if (count <= 0) throw new IllegalArgumentException("count must be > 0");
         if (count == 1) return allocSingle();
         return allocMultiple(count);
@@ -132,7 +132,7 @@ public class DisplayListIDAllocator {
         return numElements;
     }
 
-    public void free(int id) {
+    public synchronized void free(int id) {
         if (id <= 0) return; // ID 0 is reserved
         int idx = id / 32;
         if (idx >= numElements) return;
@@ -147,7 +147,7 @@ public class DisplayListIDAllocator {
         }
     }
 
-    public void freeRange(int base, int count) {
+    public synchronized void freeRange(int base, int count) {
         if (count <= 0 || base <= 0) return;
 
         int startIdx = base / 32;
@@ -166,7 +166,7 @@ public class DisplayListIDAllocator {
         }
     }
 
-    public boolean isAllocated(int id) {
+    public synchronized boolean isAllocated(int id) {
         if (id <= 0) return false;
         int idx = id / 32;
         if (idx >= numSetElements) return false;

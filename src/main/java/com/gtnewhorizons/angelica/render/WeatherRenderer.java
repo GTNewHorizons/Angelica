@@ -308,9 +308,9 @@ public final class WeatherRenderer {
         WeatherInstancedAttribs.pointInstanceAttribs((long) first * WeatherInstancedAttribs.STRIDE);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         VAOManager.setCurrentVertexFlags(WeatherQuadMesh.VERTEX_FLAGS);
-        if (deferred == null) GLStateManager.ffpInstancing = Instancing.WEATHER;
+        if (deferred == null) GLStateManager.setFfpInstancing(Instancing.WEATHER);
         GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLE_FAN, 0, WeatherQuadMesh.VERTEX_COUNT, count);
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
 
         if (deferred != null) deferred.rebindCurrentPass();

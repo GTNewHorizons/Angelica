@@ -98,7 +98,7 @@ class RetainedTesrGroupsGLTest {
         GLStateManager.glColor4f(1f, 1f, 1f, 1f);
 
         final ShaderManager ffp = ShaderManager.getInstance();
-        ffp.enable();
+        ShaderManager.enable();
         ffp.activate();
 
         source = new AngelicaBufferSource();
@@ -111,7 +111,7 @@ class RetainedTesrGroupsGLTest {
     @AfterEach
     void cleanup() {
         skipClientArrays = false;
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         groups.clear();
@@ -119,7 +119,7 @@ class RetainedTesrGroupsGLTest {
         ring.delete();
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
-        ffp.disable();
+        ShaderManager.disable();
         if (baseTexture != 0) GLStateManager.glDeleteTextures(baseTexture);
         if (glintTexture != 0) GLStateManager.glDeleteTextures(glintTexture);
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);

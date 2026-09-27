@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
@@ -59,7 +60,6 @@ public final class FfpExtendedAttribs {
 
     private static final HashMap<Key, ExtBuffer> cache = new HashMap<>();
     private static final Key lookup = new Key();
-    private static int internalGlDepth = 0;
 
     private static final HashMap<EboKey, Boolean> eboPatternCache = new HashMap<>();
     private static final EboKey eboLookup = new EboKey();
@@ -79,15 +79,19 @@ public final class FfpExtendedAttribs {
         return cache.isEmpty() && eboPatternCache.isEmpty();
     }
 
-    private static int internalDrawDepth = 0;
+    public static void beginInternalDraw() { GLStateManager.ctx().internalDrawDepth++; }
 
-    public static void beginInternalDraw() { internalDrawDepth++; }
+    public static void endInternalDraw() {
+        final GLContextState glCtx = GLStateManager.ctx();
+        if (glCtx.internalDrawDepth > 0) glCtx.internalDrawDepth--;
+    }
 
-    public static void endInternalDraw() { if (internalDrawDepth > 0) internalDrawDepth--; }
+    private static void beginInternalGl() { GLStateManager.ctx().internalGlDepth++; }
 
-    private static void beginInternalGl() { internalGlDepth++; }
-
-    private static void endInternalGl() { if (internalGlDepth > 0) internalGlDepth--; }
+    private static void endInternalGl() {
+        final GLContextState glCtx = GLStateManager.ctx();
+        if (glCtx.internalGlDepth > 0) glCtx.internalGlDepth--;
+    }
 
     private static boolean isNotConventionalTexturedArray(VAOManager.Attrib a) {
         return a == null || !a.enabled || a.genericPointer || a.vboId == 0 || a.size < 2;
@@ -104,20 +108,20 @@ public final class FfpExtendedAttribs {
         return true;
     }
 
-    public static boolean maybeBind(int mode, int first, int count) {
+    public static boolean maybeBind(GLContextState glCtx, int mode, int first, int count) {
         final ImmediateExtendedAttribHandler h = GLSMHooks.immediateExtendedHandler;
         if (h == null) return false;
-        if (internalDrawDepth > 0) return false;
+        if (glCtx.internalDrawDepth > 0) return false;
         final int extPrim = ImmediateExtendedAttribHandler.extPrimVerts(mode, count);
         if (extPrim == 0 || first < 0) return false;
         if (!h.wantsExtended()) return false;
 
-        final VAOManager.Attrib pos = VAOManager.get(POSITION_LOC);
-        final VAOManager.Attrib uv = VAOManager.get(UV_LOC);
+        final VAOManager.Attrib pos = glCtx.vaos.attrib(POSITION_LOC);
+        final VAOManager.Attrib uv = glCtx.vaos.attrib(UV_LOC);
         if (isNotConventionalTexturedArray(pos) || isNotConventionalTexturedArray(uv)) return false;
         if (isStreaming(pos.vboId) || isStreaming(uv.vboId)) return false;
 
-        VAOManager.Attrib normal = extPrim == 3 ? VAOManager.get(NORMAL_LOC) : null;
+        VAOManager.Attrib normal = extPrim == 3 ? glCtx.vaos.attrib(NORMAL_LOC) : null;
         if (normal != null && (!normal.enabled || normal.genericPointer || normal.vboId == 0 || normal.size < 3
             || isStreaming(normal.vboId))) {
             normal = null;
@@ -126,17 +130,17 @@ public final class FfpExtendedAttribs {
         return bindExt(h, mode, first, count, extPrim, pos, uv, normal);
     }
 
-    public static boolean maybeBindIndexed(int mode, int indexCount, int indexType, long indicesOffset) {
+    public static boolean maybeBindIndexed(GLContextState glCtx, int mode, int indexCount, int indexType, long indicesOffset) {
         final ImmediateExtendedAttribHandler h = GLSMHooks.immediateExtendedHandler;
         if (h == null) return false;
-        if (internalDrawDepth > 0) return false;
+        if (glCtx.internalDrawDepth > 0) return false;
         if (mode != GL11.GL_TRIANGLES || indexCount <= 0 || indexCount % 6 != 0) return false;
         if (!h.wantsExtended()) return false;
 
-        final VAOManager.Attrib pos = VAOManager.get(POSITION_LOC);
-        final VAOManager.Attrib uv = VAOManager.get(UV_LOC);
+        final VAOManager.Attrib pos = glCtx.vaos.attrib(POSITION_LOC);
+        final VAOManager.Attrib uv = glCtx.vaos.attrib(UV_LOC);
         if (isNotConventionalTexturedArray(pos) || isNotConventionalTexturedArray(uv)) return false;
-        if (isStreaming(pos.vboId) || isStreaming(uv.vboId) || isStreaming(VAOManager.boundEBO)) return false;
+        if (isStreaming(pos.vboId) || isStreaming(uv.vboId) || isStreaming(glCtx.vaos.boundEBO)) return false;
 
         final int indexSize = indexTypeBytes(indexType);
         if (indexSize == 0) return false;
@@ -144,7 +148,7 @@ public final class FfpExtendedAttribs {
         final int first = (int) (indicesOffset / indexSize) / 6 * 4;
         final int count = indexCount / 6 * 4;
 
-        if (!isQuadPatternEbo(VAOManager.boundEBO, indicesOffset, indexCount, indexType, indexSize, first)) return false;
+        if (!isQuadPatternEbo(glCtx.vaos.boundEBO, indicesOffset, indexCount, indexType, indexSize, first)) return false;
 
         // Build/bind as GL_QUADS (the real primitive): face-normal tangents, 4-vertex tiles, no per-vertex normal.
         return bindExt(h, GL11.GL_QUADS, first, count, 4, pos, uv, null);
@@ -226,8 +230,8 @@ public final class FfpExtendedAttribs {
         GLStateManager.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
     }
 
-    public static void onDeleteBuffer(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    public static void onDeleteBuffer(GLContextState glCtx, int vboId) {
+        if (glCtx.internalGlDepth > 0 || vboId == 0) return;
         dropDerivedFrom(vboId);
         respecCounts.remove(vboId);
         respecFrames.remove(vboId);
@@ -236,8 +240,8 @@ public final class FfpExtendedAttribs {
         persistentSources.remove(vboId);
     }
 
-    public static void onBufferRespecified(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    public static void onBufferRespecified(GLContextState glCtx, int vboId) {
+        if (glCtx.internalGlDepth > 0 || vboId == 0) return;
         if (streamingSources.contains(vboId)) {
             respecFrames.put(vboId, frame);
             return;
@@ -268,16 +272,15 @@ public final class FfpExtendedAttribs {
         respecFrames.put(vboId, frame);
     }
 
-    public static void markStreaming(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    private static void markStreaming(int vboId) {
         respecCounts.remove(vboId);
         respecRunStart.remove(vboId);
         respecFrames.put(vboId, frame);
         if (streamingSources.add(vboId)) dropDerivedFrom(vboId);
     }
 
-    public static void markPersistent(int vboId) {
-        if (internalGlDepth > 0 || vboId == 0) return;
+    public static void markPersistent(GLContextState glCtx, int vboId) {
+        if (glCtx.internalGlDepth > 0 || vboId == 0) return;
         markStreaming(vboId);
         persistentSources.add(vboId);
     }

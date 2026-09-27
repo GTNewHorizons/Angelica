@@ -134,13 +134,13 @@ public final class FragmentKey {
         }
 
         // Damage overlay
-        if (GLStateManager.ffpInstancing.hasInstanceHead()) {
+        if (glCtx.ffpInstancing.hasInstanceHead()) {
             global |= (1L << BIT_OVERLAY_INSTANCED);
         } else if (glCtx.overlayA != 0.0f) {
             global |= (1L << BIT_OVERLAY_ENABLED);
         }
 
-        if (GLStateManager.lineStippleActive) {
+        if (glCtx.lineStippleActive) {
             global |= (1L << BIT_LINE_STIPPLE);
         }
 

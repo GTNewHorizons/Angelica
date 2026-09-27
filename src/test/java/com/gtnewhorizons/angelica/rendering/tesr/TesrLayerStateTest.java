@@ -58,7 +58,7 @@ class TesrLayerStateTest {
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         final ShaderManager ffp = ShaderManager.getInstance();
         if (ffp.isActive()) ffp.deactivate();
-        ffp.disable();
+        ShaderManager.disable();
 
         GLStateManager.disableBlend();
         GLStateManager.disableAlphaTest();
@@ -213,7 +213,7 @@ class TesrLayerStateTest {
         GLStateManager.glLoadIdentity();
         GLStateManager.glMatrixMode(GL11.GL_MODELVIEW);
         final ShaderManager ffp = ShaderManager.getInstance();
-        ffp.enable();
+        ShaderManager.enable();
         ffp.activate();
 
         assertTrue(unitTexIdentity(), "a freshly loaded identity unit-0 matrix must read as identity");

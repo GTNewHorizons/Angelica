@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.VanillaBooleanLayer;
 import com.gtnewhorizons.angelica.glsm.states.BooleanState;
@@ -89,7 +90,8 @@ public class BooleanStateStack extends BooleanState implements CowStateStack<Boo
 
     @Override
     public void setEnabled(boolean enabled) {
-        if (GLStateManager.getAttribDepth() > 0
+        final GLContextState o = cow.owner;
+        if (o != null && o.attribDepth > 0
             && (stateUnknown || !GLStateManager.isCachingEnabled() || enabled != vanillaValue())) {
             beforeModify();
         }
