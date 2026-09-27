@@ -194,7 +194,7 @@ public class GLStateManager {
         return st != null ? st : primaryContext();
     }
 
-    private static GLContextState primaryContext() {
+    public static GLContextState primaryContext() {
         GLContextState p = primaryContext;
         if (p != null) return p;
         synchronized (GLStateManager.class) {
@@ -7225,7 +7225,7 @@ public class GLStateManager {
             glCtx.ffp.setTexCoord(s, t, 0.0f, 1.0f);
             glCtx.dirtyTexCoordAttrib = true;
         } else if (target == GL13.GL_TEXTURE1) {
-            if (DisplayListManager.isRecording() || ImmediateModeRecorder.isDrawing()) {
+            if (ImmediateModeRecorder.isDrawing()) {
                 ImmediateModeRecorder.setLightmapCoord(s, t);
                 return;
             }
@@ -7252,6 +7252,11 @@ public class GLStateManager {
 
     public static void setLightmapTextureCoords(int unit, float x, float y) {
         if (unit == GL13.GL_TEXTURE1) {
+            final RecordMode mode = DisplayListManager.getRecordMode();
+            if (mode != RecordMode.NONE) {
+                DisplayListManager.recordStateCommand(() -> setLightmapTextureCoords(unit, x, y));
+                if (mode == RecordMode.COMPILE) return;
+            }
             final GLContextState glCtx = ctx();
             glCtx.lastBrightnessX = x;
             glCtx.lastBrightnessY = y;

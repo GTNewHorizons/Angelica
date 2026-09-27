@@ -209,6 +209,13 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    THAUMCRAFT_SCANNER_SCREEN(new MixinBuilder("Render the held Thaumometer screen after world transparency")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.thaumcraft.MixinItemThaumometerRenderer")
+    ),
+
     THAUMCRAFT_TESR_JAR_CACHE(new MixinBuilder("Batch TC4 jar liquid via the retained TESR mesh cache")
         .setPhase(Phase.LATE)
         .setApplyIf(() -> AngelicaConfig.enableTESRJarCache)
