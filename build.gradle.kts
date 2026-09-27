@@ -15,7 +15,7 @@ extra["lwjglDebug"] = lwjglDebug
 minecraft   {
     extraRunJvmArguments.add("-Dangelica.debug.testBlocks=true")
     extraRunJvmArguments.add("-Dangelica.tracy=true")
-    extraRunJvmArguments.add("-Dangelica.sdlgpu.enable=true")
+    extraRunJvmArguments.add("-Dangelica.sdlgpu.enable=false")
     extraRunJvmArguments.add("-Dangelica.unmappedGL=fail")
     extraRunJvmArguments.add("-Dorg.lwjgl.util.Debug=$lwjglDebug")
 
