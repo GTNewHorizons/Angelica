@@ -283,6 +283,19 @@ public final class FBOClearTracker {
         }
     }
 
+    public void materializeAllPendingClears(ContextState st) {
+        if (st.pendingColorTextures.isEmpty() && st.pendingDepthTextures.isEmpty() && st.pendingStencilTextures.isEmpty()) return;
+        final LongArrayList handles = st.samplerFlushColorHandles;
+        handles.clear();
+        handles.addAll(st.pendingColorTextures);
+        handles.addAll(st.pendingDepthTextures);
+        handles.addAll(st.pendingStencilTextures);
+        for (int i = 0; i < handles.size(); i++) {
+            materializePendingClearForTexture(st, handles.getLong(i));
+        }
+        handles.clear();
+    }
+
     public void scrubPendingClearsForTexture(ContextState st, int glId) {
         final long handle = resourceManager.getTextureHandle(glId);
         if (handle == 0) return;

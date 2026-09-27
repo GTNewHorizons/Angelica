@@ -611,16 +611,6 @@ public final class RwImageStoreExtractor {
         final Set<String> present = new HashSet<>();
         for (AttributeSlot slot : attrs) present.add(slot.name());
 
-        out.append("#ifdef USE_VERTEX_COMPRESSION\n");
-        if (present.contains("a_PosId")) {
-            out.append("    _vert_position = vec3(a_PosId.xyz) * VERT_POS_SCALE + VERT_POS_OFFSET;\n");
-            out.append("    _draw_id = (a_PosId.w >> 8u) & 0xFFu;\n");
-            out.append("    _material_params = (a_PosId.w >> 0u) & 0xFFu;\n");
-        }
-        if (present.contains("a_TexCoord")) out.append("    _vert_tex_diffuse_coord = a_TexCoord * VERT_TEX_SCALE;\n");
-        if (present.contains("a_LightCoord")) out.append("    _vert_tex_light_coord = a_LightCoord;\n");
-        if (present.contains("a_Color")) out.append("    _vert_color = a_Color;\n");
-        out.append("#else\n");
         if (present.contains("a_PosId")) out.append("    _vert_position = a_PosId;\n");
         if (present.contains("a_TexCoord")) out.append("    _vert_tex_diffuse_coord = a_TexCoord;\n");
         if (present.contains("a_Color")) out.append("    _vert_color = a_Color;\n");
@@ -630,7 +620,6 @@ public final class RwImageStoreExtractor {
             out.append("    _draw_id = (_vg_draw_params >> 8) & 0xFFu;\n");
             out.append("    _vert_tex_light_coord = ivec2((uvec2((a_LightCoord >> 16) & 0xFFFFu) >> uvec2(0, 8)) & uvec2(0xFFu));\n");
         }
-        out.append("#endif\n");
     }
 
     private static void emitDispatchMain(StringBuilder out, RwExtractMode mode, List<AttributeSlot> attrs) {
@@ -787,11 +776,6 @@ public final class RwImageStoreExtractor {
             "vec2(uintBitsToFloat(_vg_vbuf.data[base + 4u]), uintBitsToFloat(_vg_vbuf.data[base + 5u]))"));
         addAttr(m, new AttributeSlot("a_LightCoord", "uint", 24,
             "_vg_vbuf.data[base + 6u]"));
-
-        addAttr(m, new AttributeSlot("a_PosId", "uvec4", 0,
-                "uvec4(0u, 0u, 0u, 0u)", false));
-        addAttr(m, new AttributeSlot("a_LightCoord", "ivec2", 24,
-                "ivec2(0, 0)", false));
 
         final LinkedHashMap<String, Map<String, AttributeSlot>> immutable = new LinkedHashMap<>();
         for (var e : m.entrySet()) immutable.put(e.getKey(), Map.copyOf(e.getValue()));

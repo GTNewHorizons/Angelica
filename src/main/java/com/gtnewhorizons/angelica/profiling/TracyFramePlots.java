@@ -22,8 +22,6 @@ import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import net.coderbot.iris.pipeline.ShadowRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.WorldRenderer;
-import org.embeddedt.embeddium.impl.render.chunk.SharedQuadIndexBuffer;
-import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegionManager;
 
 public final class TracyFramePlots {
     private static final long P_ALLOC_RATE = Tracy.plotHandle("allocRate", TracyBackend.PLOT_FORMAT_MEMORY);
@@ -267,9 +265,9 @@ public final class TracyFramePlots {
             TESR_BAILS[reason.ordinal()].plot(batcher.statBail(reason));
         }
 
-        P_MESH_UPLOADED_SECTIONS.plot(RenderRegionManager.getSectionsUploaded());
-        P_MESH_UPLOADED_BYTES.plot(RenderRegionManager.getBytesUploaded());
-        P_DRAW_INDEX_BUFFER_GROWTHS.plot(SharedQuadIndexBuffer.getGrowths());
+        P_MESH_UPLOADED_SECTIONS.plot(TerrainDrawStats.getSectionsUploaded());
+        P_MESH_UPLOADED_BYTES.plot(TerrainDrawStats.getBytesUploaded());
+        P_DRAW_INDEX_BUFFER_GROWTHS.plot(TerrainDrawStats.getIndexBufferGrowths());
         Tracy.plotInt(P_MESH_META_SLOTS, GpuCulling.sectionMeta().getHighWaterMark());
         Tracy.plotInt(P_MT_QUEUE_DEPTH, AngelicaRenderQueue.getQueueDepth());
         Tracy.plotInt(P_MT_QUEUE_TASKS, AngelicaRenderQueue.getLastFrameTasksRan());

@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
@@ -27,7 +28,6 @@ import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.gl.shader.GlProgram;
 import org.embeddedt.embeddium.impl.gl.shader.GlShader;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderConstants;
-import org.embeddedt.embeddium.impl.gl.shader.ShaderParser;
 import org.embeddedt.embeddium.impl.gl.shader.ShaderType;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlPrimitiveType;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlTessellation;
@@ -81,7 +81,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private static MultiDrawMode installedBatchMode;
 
     public AngelicaChunkRenderer(RenderDevice device, RenderPassConfiguration<?> renderPassConfiguration) {
-        super(device, renderPassConfiguration);
+        super(device, renderPassConfiguration, AngelicaFogService.INSTANCE);
 
         installBatchFactory();
         this.culler = createCuller();
@@ -146,11 +146,6 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         }
         AngelicaMod.LOGGER.warn("GPU culling unavailable ({}); terrain will use CPU culling", availability);
         return null;
-    }
-
-    private static GlShader loadShader(ShaderType type, String path, ShaderConstants constants) {
-        final String source = ShaderParser.parseShader(ShaderLoader.getShaderSource(path), ShaderLoader::getShaderSource, constants);
-        return new GlShader(type, path, source);
     }
 
     @Override
@@ -301,8 +296,8 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         final List<GlShader> loadedShaders = new ArrayList<>();
 
         try {
-            loadedShaders.add(loadShader(ShaderType.VERTEX, "sodium:" + path + ".vsh", constants));
-            loadedShaders.add(loadShader(ShaderType.FRAGMENT, "angelica:" + path + ".fsh", constants));
+            loadedShaders.add(ShaderLoader.loadShader(ShaderType.VERTEX, "sodium:" + path + ".vsh", constants));
+            loadedShaders.add(ShaderLoader.loadShader(ShaderType.FRAGMENT, "angelica:" + path + ".fsh", constants));
 
             final var builder = GlProgram.builder("sodium:chunk_shader");
             loadedShaders.forEach(builder::attachShader);
@@ -310,8 +305,10 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             for (var attr : options.pass().vertexType().getVertexFormat().getAttributes()) {
                 builder.bindAttribute(attr.getName(), i++);
             }
-            builder.bindFragmentData("fragColor", ChunkShaderBindingPoints.FRAG_COLOR);
-            return builder.link((shader) -> new DefaultChunkShaderInterface(shader, options));
+            if (!this.enableLegacyGLPatches) {
+                builder.bindFragmentData("fragColor", ChunkShaderBindingPoints.FRAG_COLOR);
+            }
+            return builder.link((shader) -> new DefaultChunkShaderInterface(shader, options, this.environment));
         } finally {
             loadedShaders.forEach(GlShader::delete);
         }
@@ -351,12 +348,12 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
                 useBlockFaceCulling, cacheParams);
         }
 
-        final long batchesCreatedBefore = BatchAssembler.getCachedBatchesCreated();
+        final CachedBatch before = storage.getCachedMultiDrawBatch(cacheParams);
         Tracy.beginZone(Z_CHUNK_ASSEMBLE_REGION);
         try {
             final CachedBatch cached = super.getRegionBatch(commandList, region, storage, renderList, occlusionCamera,
                 renderPass, useBlockFaceCulling, cacheParams);
-            if (BatchAssembler.getCachedBatchesCreated() != batchesCreatedBefore) TerrainDrawStats.recordRebuild();
+            if (cached != before) TerrainDrawStats.recordRebuild();
             final MultiDrawBatch batch = cached != null ? cached.getBatch() : null;
             if (batch != null && !batch.isEmpty()) TerrainDrawStats.recordBatch(batch.size());
             return cached;

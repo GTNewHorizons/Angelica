@@ -5,6 +5,8 @@ import org.embeddedt.embeddium.impl.render.chunk.fog.FogService;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkFogMode;
 
 public class AngelicaFogService implements FogService {
+    public static final AngelicaFogService INSTANCE = new AngelicaFogService();
+
     private final float[] fogColorArray = new float[4];
 
     @Override

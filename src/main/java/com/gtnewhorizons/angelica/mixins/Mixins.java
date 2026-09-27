@@ -421,7 +421,9 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
-            , "celeritas.terrain.MixinDefaultChunkShaderInterface"
+            , "celeritas.terrain.MixinSharedQuadIndexBuffer"
+            , "celeritas.terrain.MixinRenderRegionManager"
+            , "celeritas.terrain.MixinShaderLoader"
         )
     ),
 

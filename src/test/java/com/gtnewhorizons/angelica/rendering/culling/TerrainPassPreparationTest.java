@@ -21,6 +21,8 @@ import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.lang.reflect.Field;
 import java.util.Iterator;
@@ -157,6 +159,23 @@ class TerrainPassPreparationTest {
         assertEquals(((long) base << 32) | 1L, ((long[]) field(expected, expected.getClass(), "regionRanges"))[0]);
     }
 
+    private int indexPointerMaskOf(String pass) {
+        final Object state = state(pass);
+        return (int) field(state, state.getClass(), "indexPointerMask");
+    }
+
+    @SuppressWarnings("unchecked")
+    private void useUnsortedTranslucentPass() {
+        storage[2].delete();
+        final TerrainRenderPass pass = new TerrainRenderPass("preparation2-unsorted", null, false, true, false, false, ChunkMeshFormats.VANILLA_LIKE, QuadPrimitiveType.TRIANGULATED, Map.of());
+        final Storage newStorage = new Storage(false);
+        passes[2] = pass;
+        storage[2] = newStorage;
+        AngelicaRenderPassConfiguration.TRANSLUCENT_PASS = pass;
+        final Map<TerrainRenderPass, SectionRenderDataStorage> attached = (Map<TerrainRenderPass, SectionRenderDataStorage>) field(region, RenderRegion.class, "sectionRenderData");
+        attached.put(pass, newStorage);
+    }
+
     @Test
     void preparesAndSelectsAllEightPassCombinations() {
         for (int mask = 0; mask < 8; mask++) {
@@ -236,6 +255,15 @@ class TerrainPassPreparationTest {
         select(lists, 2);
         assertRange("sortedPass", 1);
     }
+
+    @ParameterizedTest(name = "passMask={0}")
+    @ValueSource(ints = {4, 5}) // translucent alone, and chained after solid
+    void unsortedTranslucentPassClearsIndexPointerMask(int passMask) {
+        useUnsortedTranslucentPass();
+        prepare(lists(passMask));
+        assertEquals(0, indexPointerMaskOf("sortedPass"));
+    }
+
     @Test
     void independentlyResetCommandStorageCannotSelectOldPreparation() {
         prepare(lists(7));
