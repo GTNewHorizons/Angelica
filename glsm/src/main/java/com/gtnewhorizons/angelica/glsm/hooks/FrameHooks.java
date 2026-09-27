@@ -41,10 +41,6 @@ public final class FrameHooks {
         BackendManager.shutdown();
     }
 
-    public static void bindSplashVao() {
-        GLStateManager.glBindVertexArray(GLStateManager.glGenVertexArrays());
-    }
-
     public static void splashFinished() {
         GLStateManager.markSplashComplete("SplashProgress.finish");
     }

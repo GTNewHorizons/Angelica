@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
-import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
@@ -35,7 +34,6 @@ class AttachmentClearTest {
         rig = SdlTestRig.acquireRealDevice();
         rig.resourceManager.cachePreferredDepthFormats();
         sm = new ShaderManager(rig.device);
-        VAOManager.init(0);
         store = new PipelineStore(rig.device);
         attachmentClear = new AttachmentClear(rig.frameManager, store, sm);
 

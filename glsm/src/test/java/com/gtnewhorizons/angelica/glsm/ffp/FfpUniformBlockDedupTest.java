@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.glsm.ffp;
 
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import org.junit.jupiter.api.DynamicTest;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestFactory;
@@ -50,8 +49,8 @@ class FfpUniformBlockDedupTest {
         GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
         GLStateManager.glNormal3f(0.0f, 0.0f, 1.0f);
         GLStateManager.glTexCoord2f(0.0f, 0.0f);
-        GLSMConfig.lastBrightnessX = 0.0f;
-        GLSMConfig.lastBrightnessY = 0.0f;
+        GLStateManager.ctx().lastBrightnessX = 0.0f;
+        GLStateManager.ctx().lastBrightnessY = 0.0f;
         GLStateManager.glFog(GL11.GL_FOG_COLOR, floats(0.0f, 0.0f, 0.0f, 1.0f));
         GLStateManager.glFogf(GL11.GL_FOG_DENSITY, 1.0f);
         GLStateManager.glTexEnv(GL11.GL_TEXTURE_ENV, GL11.GL_TEXTURE_ENV_COLOR, floats(0.0f, 0.0f, 0.0f, 0.0f));
@@ -128,7 +127,7 @@ class FfpUniformBlockDedupTest {
         addCategory(tests, "currentColor", () -> GLStateManager.glColor4f(0.25f, 0.5f, 0.75f, 1.0f));
         addCategory(tests, "currentNormal", () -> GLStateManager.glNormal3f(0.0f, 1.0f, 0.0f));
         addCategory(tests, "currentTexCoord", () -> GLStateManager.glTexCoord2f(0.125f, 0.375f));
-        addCategory(tests, "lightmapCoord", () -> GLSMConfig.lastBrightnessX = 96.0f);
+        addCategory(tests, "lightmapCoord", () -> GLStateManager.ctx().lastBrightnessX = 96.0f);
         addCategory(tests, "texGenPlane", () -> GLStateManager.glTexGen(GL11.GL_S, GL11.GL_OBJECT_PLANE, floats(0.5f, 0.0f, 0.0f, 0.25f)));
         addCategory(tests, "clipPlane", () -> GLStateManager.glClipPlane(GL11.GL_CLIP_PLANE0, doubles(0.0, 1.0, 0.0, 7.0)));
         addCategory(tests, "alphaRef", () -> GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.35f));

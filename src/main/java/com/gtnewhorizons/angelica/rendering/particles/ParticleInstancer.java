@@ -345,11 +345,11 @@ public final class ParticleInstancer {
         ParticleInstancedAttribs.pointInstanceAttribs(base);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         try {
-            if (ffp) GLStateManager.ffpInstancing = Instancing.PARTICLE;
+            if (ffp) GLStateManager.setFfpInstancing(Instancing.PARTICLE);
             GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, ParticleQuadMesh.VERTEX_COUNT, count);
             draws++;
         } finally {
-            GLStateManager.ffpInstancing = Instancing.NONE;
+            GLStateManager.setFfpInstancing(Instancing.NONE);
             GLStateManager.glBindVertexArray(0);
         }
     }

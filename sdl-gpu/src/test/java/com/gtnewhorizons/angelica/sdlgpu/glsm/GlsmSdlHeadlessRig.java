@@ -51,7 +51,6 @@ public final class GlsmSdlHeadlessRig {
         GLStateManager.initialize(GLSMInitConfig.builder()
             .displaySize(SIZE, SIZE)
             .directDrawer(TessellatorStreamingDrawer::drawDirect)
-            .streamingDrawerDestroy(TessellatorStreamingDrawer::destroy)
             .build());
         GLStateManager.setRunningSplash(false);
         GLStateManager.markSplashComplete("glsmSdlHeadlessRig");

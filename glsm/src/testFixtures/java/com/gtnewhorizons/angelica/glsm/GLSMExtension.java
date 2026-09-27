@@ -70,7 +70,6 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
             final GLSMInitConfig config = GLSMInitConfig.builder()
                 .displaySize(displayMode.getWidth(), displayMode.getHeight())
                 .directDrawer(t -> {})
-                .streamingDrawerDestroy(() -> {})
                 .enableDSA(false)
                 .build();
             setMainThread(Thread.currentThread());
@@ -144,7 +143,7 @@ public class GLSMExtension implements BeforeAllCallback, BeforeEachCallback, Aft
         if (ffp.isActive()) {
             ffp.deactivate();
         }
-        ffp.disable();
+        ShaderManager.disable();
 
         // Force-sync VAO binding. Tests may unbind via raw GL, desynchronizing GLSM's cache.
         // Invalidate the cache so glBindVertexArray(0) actually issues the GL call.
