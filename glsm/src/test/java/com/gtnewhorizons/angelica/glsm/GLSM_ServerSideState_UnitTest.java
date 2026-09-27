@@ -15,6 +15,7 @@ import java.util.concurrent.TimeUnit;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -25,7 +26,7 @@ import static org.junit.jupiter.api.Assertions.fail;
  * be properly synchronized in the GLSM cache. Client-side state (texture bindings, active unit)
  * is per-context and should NOT be shared.
  */
-@GLCompatTest
+@GLCoreTest
 public class GLSM_ServerSideState_UnitTest {
 
     private SharedDrawable sharedDrawable;
@@ -37,7 +38,10 @@ public class GLSM_ServerSideState_UnitTest {
     private Runnable pendingCommand;
     private Throwable backgroundError;
     private volatile boolean shutdownRequested;
+    private volatile GLContextState workerContext;
+    private volatile boolean workerCaching;
     private boolean originalSplashComplete;
+    private Thread originalDrawableGLHolder;
 
     private static void setSplashComplete(boolean value) {
         SplashWindow.setSplashComplete(value);
@@ -50,6 +54,7 @@ public class GLSM_ServerSideState_UnitTest {
     @BeforeEach
     void setupSharedDrawable() throws Exception {
         originalSplashComplete = getSplashComplete();
+        originalDrawableGLHolder = GLStateManager.getDrawableGLHolder();
 
         // Reset splash state to simulate splash screen scenario
         setSplashComplete(false);
@@ -67,6 +72,8 @@ public class GLSM_ServerSideState_UnitTest {
 
         shutdownRequested = false;
         backgroundError = null;
+        workerContext = null;
+        workerCaching = false;
         initLatch = new CountDownLatch(1);
         commandLatch = new CountDownLatch(1);
         completeLatch = new CountDownLatch(1);
@@ -75,10 +82,8 @@ public class GLSM_ServerSideState_UnitTest {
         backgroundThread = new Thread(() -> {
             try {
                 GLStateManager.makeCurrent(sharedDrawable);
-
-                if (GLStateManager.isCachingEnabled()) {
-                    throw new AssertionError("SharedDrawable thread should have caching DISABLED");
-                }
+                workerContext = GLStateManager.ctx();
+                workerCaching = GLStateManager.isCachingEnabled();
 
                 // Signal that initialization is complete
                 initLatch.countDown();
@@ -102,11 +107,12 @@ public class GLSM_ServerSideState_UnitTest {
                 }
             } catch (InterruptedException e) {
                 // Normal shutdown
-            } catch (LWJGLException e) {
-                backgroundError = e;
+            } catch (Throwable t) {
+                backgroundError = t;
+                initLatch.countDown();
             } finally {
                 try {
-                    sharedDrawable.releaseContext();
+                    GLStateManager.releaseContext(sharedDrawable);
                 } catch (LWJGLException e) {
                     // Ignore on cleanup
                 }
@@ -116,6 +122,11 @@ public class GLSM_ServerSideState_UnitTest {
 
         // Wait for background thread to complete initialization
         assertTrue(initLatch.await(5, TimeUnit.SECONDS), "Background thread failed to initialize");
+        if (backgroundError != null) {
+            fail("Background thread failed to make SharedDrawable current", backgroundError);
+        }
+        assertTrue(workerCaching, "SharedDrawable thread should cache into its own context");
+        assertNotSame(GLStateManager.ctx(), workerContext, "SharedDrawable thread must not share the main thread's context");
     }
 
     @AfterEach
@@ -132,11 +143,13 @@ public class GLSM_ServerSideState_UnitTest {
         }
 
         if (sharedDrawable != null) {
+            DrawableContexts.forget(sharedDrawable);
             sharedDrawable.destroy();
         }
 
         // Restore original state
         GLStateManager.setDrawableGL(null);
+        GLStateManager.setDrawableGLHolder(originalDrawableGLHolder);
         setSplashComplete(originalSplashComplete);
         if (originalSplashComplete) {
             GLStateManager.markSplashComplete("test");
@@ -328,7 +341,11 @@ public class GLSM_ServerSideState_UnitTest {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId1);
             assertEquals(texId1, GLStateManager.getBoundTextureForServerState(), "Main thread cache should show texId1 bound");
 
-            executeOnSharedDrawable(() -> GL11.glBindTexture(GL11.GL_TEXTURE_2D, texId2));
+            executeOnSharedDrawable(() -> {
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId2);
+                assertEquals(texId2, GLStateManager.getBoundTextureForServerState(), "SharedDrawable cache should show texId2 bound");
+                assertEquals(texId2, GL11.glGetInteger(GL11.GL_TEXTURE_BINDING_2D), "SharedDrawable actual GL binding should be texId2");
+            });
 
             assertEquals(texId1, GLStateManager.getBoundTextureForServerState(), "Main thread cache should still show texId1 (client-side state is per-context)");
 
@@ -436,38 +453,40 @@ public class GLSM_ServerSideState_UnitTest {
         }
     }
 
-    /**
-     * Test glDeleteTextures: SharedDrawable deletes texture, verify cache cleared.
-     */
     @Test
     void testDeleteTexturesFromSharedDrawable() throws InterruptedException {
-        int texId = GL11.glGenTextures();
+        final int texId = GLStateManager.glGenTextures();
+        int flushGen = 0;
 
         try {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
             GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
             GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, 32, 32, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
 
-            int cachedFilter = GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER);
-            assertEquals(GL11.GL_LINEAR, cachedFilter, "Cache should have LINEAR before delete");
-
+            assertEquals(GL11.GL_LINEAR, GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER), "Cache should have LINEAR before delete");
             assertTrue(GL11.glIsTexture(texId), "Texture should exist before delete");
 
-            // SharedDrawable: delete the texture (deferred — name stays valid)
             executeOnSharedDrawable(() -> {
+                GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texId);
                 GLStateManager.glDeleteTextures(texId);
+                assertEquals(0, GLStateManager.getBoundTextureForServerState(), "Delete should unbind from the deleting context");
                 assertTrue(GL11.glIsTexture(texId), "Texture name should still be valid (deferred delete)");
             });
 
-            assertTrue(GL11.glIsTexture(texId), "Texture name should still be valid on main thread (deferred delete)");
+            assertEquals(texId, GLStateManager.getBoundTextureForServerState(), "Main thread binding should survive until the flush");
 
-            // glGenTextures flushes deferred deletes
-            int newTexId = GLStateManager.glGenTextures();
-            assertFalse(GL11.glIsTexture(texId), "Texture should be gone after flush via glGenTextures");
-            GL11.glDeleteTextures(newTexId);
+            final int deferredGen = GLStateManager.glGenTextures();
+            GL11.glDeleteTextures(deferredGen);
+            assertTrue(GL11.glIsTexture(texId), "Delete should stay deferred while the splash is not complete");
+
+            setSplashComplete(true);
+            flushGen = GLStateManager.glGenTextures();
+            assertFalse(GL11.glIsTexture(texId), "Texture should be gone after the post-splash flush");
+            assertEquals(0, GLStateManager.getBoundTextureForServerState(), "Flush should scrub the main thread binding");
 
         } finally {
             GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            if (flushGen != 0) GL11.glDeleteTextures(flushGen);
             if (GL11.glIsTexture(texId)) {
                 GL11.glDeleteTextures(texId);
             }

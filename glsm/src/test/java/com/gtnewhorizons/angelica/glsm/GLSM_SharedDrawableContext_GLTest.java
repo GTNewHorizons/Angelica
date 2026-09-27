@@ -17,8 +17,6 @@ import org.lwjgl.opengl.SharedDrawable;
 
 import java.nio.FloatBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
-import java.util.Map;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.TimeUnit;
@@ -42,12 +40,7 @@ public class GLSM_SharedDrawableContext_GLTest {
     @AfterEach
     void cleanup() throws Exception {
         if (sharedDrawable != null) {
-            final Map<Object, GLContextState> contexts = Reflect.getStatic(GLStateManager.class, "drawableContexts");
-            final GLContextState ctx = contexts.remove(sharedDrawable);
-            if (ctx != null) {
-                final GLContextState[] states = Reflect.getStatic(GLStateManager.class, "drawableContextStates");
-                Reflect.setStatic(GLStateManager.class, "drawableContextStates", Arrays.stream(states).filter(s -> s != ctx).toArray(GLContextState[]::new));
-            }
+            DrawableContexts.forget(sharedDrawable);
             sharedDrawable.destroy();
             sharedDrawable = null;
         }
