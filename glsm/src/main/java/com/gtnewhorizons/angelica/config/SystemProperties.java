@@ -40,10 +40,10 @@ public final class SystemProperties {
     public static final boolean SDL_DISABLE_IN_PASS_CLEAR = Boolean.getBoolean("angelica.sdlgpu.disableInPassClear");
 
     // Tracy
-    public static final boolean TRACY = Boolean.getBoolean("angelica.tracy");
-    public static final boolean TRACY_FINE_ZONES = Boolean.getBoolean("angelica.tracy.fineZones");
+    public static final Boolean TRACY_OVERRIDE = parseBooleanOverride("angelica.tracy");
+    public static final Boolean TRACY_FINE_ZONES_OVERRIDE = parseBooleanOverride("angelica.tracy.fineZones");
     public static final String TRACY_DIR = System.getProperty("angelica.tracy.dir", "angelica" + File.separator + "natives" + File.separator + "tracy");
-    public static final int TRACY_MAX_SRC_LOCS = Math.max(16, Integer.getInteger("angelica.tracy.maxSrcLocs", 4096));
+    public static final Integer TRACY_MAX_SRC_LOCS_OVERRIDE = Integer.getInteger("angelica.tracy.maxSrcLocs");
 
     // Profiling
     public static final String PROFILE_OPTS = System.getProperty("angelica.profile.opts", "event=wall,interval=5ms,alloc=512k,lock=10ms");
@@ -150,6 +150,11 @@ public final class SystemProperties {
             LOGGER.warn("Unrecognized value '{}' for -D{}; using {}. Valid values: {}", raw, key, whenInvalid, Arrays.toString(type.getEnumConstants()));
             return whenInvalid;
         }
+    }
+
+    private static Boolean parseBooleanOverride(String key) {
+        final String raw = System.getProperty(key);
+        return raw == null ? null : Boolean.parseBoolean(raw);
     }
 
     private static double parseDouble(String key) {

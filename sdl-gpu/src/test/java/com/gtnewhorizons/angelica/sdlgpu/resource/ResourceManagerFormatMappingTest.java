@@ -84,6 +84,7 @@ class ResourceManagerFormatMappingTest {
     @Test
     void testPackedFormats() {
         assertEquals(SDL_GPU_TEXTUREFORMAT_R11G11B10_UFLOAT, map(GL30.GL_R11F_G11F_B10F));
+        assertEquals(SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM, map(GL11.GL_RGB10_A2));
     }
 
     @Test

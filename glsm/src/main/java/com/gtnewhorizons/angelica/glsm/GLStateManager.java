@@ -8113,6 +8113,9 @@ public class GLStateManager {
     public static void glGetTexImage(int target, int level, int format, int type, long pixels) {
         RENDER_BACKEND.getTexImage(target, level, format, type, pixels);
     }
+    public static void glReadPixels(int x, int y, int width, int height, int format, int type, long pixels) {
+        RENDER_BACKEND.readPixels(x, y, width, height, format, remapPixelTypeForGLES(format, type), pixels);
+    }
 
     /**
      * Draw modes that rely on the previous vertex data cannot be merged currently.

@@ -67,6 +67,8 @@ final class SdlFramePlots {
     private static final long PLOT_PASS_END_TARGET = Tracy.plotHandle("sdl.passEnd.target");
     private static final long PLOT_PASS_END_UNIFORM_BLOCK = Tracy.plotHandle("sdl.passEnd.uniformBlock");
     private static final long PLOT_PASS_END_FRAME_END = Tracy.plotHandle("sdl.passEnd.frameEnd");
+    private static final long PLOT_PASS_END_LOGIC_OP = Tracy.plotHandle("sdl.passEnd.logicOp");
+    private static final long PLOT_PASS_END_READBACK = Tracy.plotHandle("sdl.passEnd.readback");
 
     private static final int[] contextCounters = new int[SDLGPURenderBackend.CTR_COUNT];
 
@@ -129,5 +131,7 @@ final class SdlFramePlots {
         Tracy.plotInt(PLOT_PASS_END_TARGET, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_TARGET]);
         Tracy.plotInt(PLOT_PASS_END_UNIFORM_BLOCK, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_UNIFORM_BLOCK]);
         Tracy.plotInt(PLOT_PASS_END_FRAME_END, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_FRAME_END]);
+        Tracy.plotInt(PLOT_PASS_END_LOGIC_OP, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_LOGIC_OP]);
+        Tracy.plotInt(PLOT_PASS_END_READBACK, f.passEndCauseCountsThisFrame[FrameManager.PASS_END_READBACK]);
     }
 }

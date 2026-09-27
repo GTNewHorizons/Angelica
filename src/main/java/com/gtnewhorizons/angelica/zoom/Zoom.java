@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.zoom;
 
+import com.gtnewhorizons.angelica.AngelicaMod;
 import cpw.mods.fml.client.registry.ClientRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
@@ -29,7 +30,7 @@ public class Zoom {
     private static long zoomLerpLastNano = 0L;
 
     @Getter
-    private static final KeyBinding zoomKey = new KeyBinding("angelica.keybind.zoom", 0, "key.categories.misc");
+    private static final KeyBinding zoomKey = new KeyBinding("angelica.keybind.zoom", 0, AngelicaMod.KEY_CATEGORY);
 
     private static boolean zoomEnabled = false;
 

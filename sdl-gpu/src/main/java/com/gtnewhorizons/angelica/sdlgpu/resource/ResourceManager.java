@@ -129,6 +129,7 @@ public final class ResourceManager {
     private int preferredD24S8 = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
     private volatile int swapchainDepthStencilFormat = SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
     private long swapchainDepthStencil;
+    private int swapchainDepthStencilUsage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
     private int swapchainDepthStencilWidth;
     private int swapchainDepthStencilHeight;
 
@@ -159,16 +160,32 @@ public final class ResourceManager {
             LOG.info("D24_UNORM_S8_UINT not supported for depth+sampler, using D32_FLOAT_S8_UINT");
         }
 
-        swapchainDepthStencilFormat = preferredD24S8;
-        if (!SDL_GPUTextureSupportsFormat(dev, swapchainDepthStencilFormat, texType, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)) {
-            final int alt = swapchainDepthStencilFormat == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT ? SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
-            if (SDL_GPUTextureSupportsFormat(dev, alt, texType, SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)) {
-                swapchainDepthStencilFormat = alt;
+        final int alt = preferredD24S8 == SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT ? SDL_GPU_TEXTUREFORMAT_D32_FLOAT_S8_UINT : SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT;
+        swapchainDepthStencilUsage = depthUsage;
+        swapchainDepthStencilFormat = pickDepthStencilFormat(dev, texType, preferredD24S8, alt, depthUsage);
+        if (swapchainDepthStencilFormat == 0) {
+            swapchainDepthStencilUsage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET;
+            swapchainDepthStencilFormat = pickDepthStencilFormat(dev, texType, preferredD24S8, alt, swapchainDepthStencilUsage);
+            if (swapchainDepthStencilFormat != 0) {
+                LOG.warn("No depth+stencil format is both sampleable and a render target; default framebuffer depth/stencil cannot be read back");
             } else {
-                swapchainDepthStencilFormat = 0;
                 LOG.warn("No depth+stencil format usable as a render target; default framebuffer will have no depth or stencil");
             }
         }
+    }
+
+    private static int pickDepthStencilFormat(long dev, int texType, int preferred, int alt, int usage) {
+        if (SDL_GPUTextureSupportsFormat(dev, preferred, texType, usage)) return preferred;
+        if (SDL_GPUTextureSupportsFormat(dev, alt, texType, usage)) return alt;
+        return 0;
+    }
+
+    public long getSwapchainDepthStencil() {
+        return swapchainDepthStencil;
+    }
+
+    public boolean isSwapchainDepthStencilSampleable() {
+        return (swapchainDepthStencilUsage & SDL_GPU_TEXTUREUSAGE_SAMPLER) != 0;
     }
 
     public int getSwapchainDepthStencilFormat() {
@@ -364,6 +381,7 @@ public final class ResourceManager {
 
     public void markTextureContentDefined(long handle) {
         if (handle == 0) return;
+        if (isTextureContentDefined(handle)) return;
         wLock.lock();
         try { definedContentTextures.add(handle); } finally { wLock.unlock(); }
     }
@@ -2134,7 +2152,7 @@ public final class ResourceManager {
             final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
                 .type(SDL_GPU_TEXTURETYPE_2D)
                 .format(swapchainDepthStencilFormat)
-                .usage(SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET)
+                .usage(swapchainDepthStencilUsage)
                 .width(width).height(height).layer_count_or_depth(1).num_levels(1);
             swapchainDepthStencil = SDL_CreateGPUTexture(device.getDevice(), ci);
         }
@@ -2147,6 +2165,27 @@ public final class ResourceManager {
         swapchainDepthStencilWidth = width;
         swapchainDepthStencilHeight = height;
         return swapchainDepthStencil;
+    }
+
+    public long createLogicOpScratch(int sdlFormat, int width, int height) {
+        return createScratchTexture(sdlFormat, width, height, SDL_GPU_TEXTUREUSAGE_SAMPLER);
+    }
+
+    public long createScratchTexture(int sdlFormat, int width, int height, int usage) {
+        final long handle;
+        try (var stack = stackPush()) {
+            final SDL_GPUTextureCreateInfo ci = SDL_GPUTextureCreateInfo.calloc(stack)
+                .type(SDL_GPU_TEXTURETYPE_2D)
+                .format(sdlFormat)
+                .usage(usage)
+                .width(width).height(height).layer_count_or_depth(1).num_levels(1);
+            handle = SDL_CreateGPUTexture(device.getDevice(), ci);
+        }
+        if (handle == 0) {
+            throw new IllegalStateException("Failed to create scratch texture (" + width + "x" + height + " format " + sdlFormat + " usage " + usage + "): " + SDLError.SDL_GetError());
+        }
+        trackTextureHandle(handle);
+        return handle;
     }
 
     private static final int DUMMY_VBO_SIZE = 16 * 16;
@@ -2308,6 +2347,7 @@ public final class ResourceManager {
             case GL30.GL_RGB16I -> SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT;
             case GL30.GL_RGB32I -> SDL_GPU_TEXTUREFORMAT_R32G32B32A32_INT;
             case GL30.GL_R11F_G11F_B10F -> SDL_GPU_TEXTUREFORMAT_R11G11B10_UFLOAT;
+            case GL11.GL_RGB10_A2 -> SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM;
             case GL31.GL_R8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8_SNORM;
             case GL31.GL_RG8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8G8_SNORM;
             case GL31.GL_RGB8_SNORM -> SDL_GPU_TEXTUREFORMAT_R8G8B8A8_SNORM; // RGB SNORM -> RGBA SNORM promotion

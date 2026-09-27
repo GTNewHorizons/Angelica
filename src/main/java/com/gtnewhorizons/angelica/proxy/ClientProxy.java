@@ -52,6 +52,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyFallGuard;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
+import com.gtnewhorizons.angelica.debug.profiling.TracyCaptureNotifier;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -197,12 +198,16 @@ public final class ClientProxy extends CommonProxy {
         }
 
         // Debug tooling
-        if (SystemProperties.debugTooling()) {
+        if (SystemProperties.debugTooling() || Tracy.ENABLED) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
-
+        }
+        if (SystemProperties.debugTooling()) {
             FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);
             MinecraftForge.EVENT_BUS.register(FlybyFallGuard.INSTANCE);
             FlybyRunner.INSTANCE.startFromProperties();
+        }
+        if (Tracy.ENABLED) {
+            TracyCaptureNotifier.INSTANCE.register();
         }
     }
 

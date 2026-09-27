@@ -39,8 +39,8 @@ class AsprofRecorderTest {
     @Test
     void fileNameMatchesShape() {
         final long fixedMillis = 1_700_000_000_000L;
-        final String circuit = AsprofRecorder.fileName("circuit", fixedMillis);
-        final String manual = AsprofRecorder.fileName("manual", fixedMillis);
+        final String circuit = AsprofRecorder.fileName("circuit", "jfr", fixedMillis);
+        final String manual = AsprofRecorder.fileName("manual", "jfr", fixedMillis);
         assertTrue(circuit.matches("angelica-circuit-\\d{8}-\\d{6}\\.jfr"));
         assertTrue(manual.matches("angelica-manual-\\d{8}-\\d{6}\\.jfr"));
     }
@@ -48,7 +48,7 @@ class AsprofRecorderTest {
     @Test
     void fileNameIsDeterministicForSameMillis() {
         final long fixedMillis = 1_700_000_000_000L;
-        assertEquals(AsprofRecorder.fileName("circuit", fixedMillis), AsprofRecorder.fileName("circuit", fixedMillis));
+        assertEquals(AsprofRecorder.fileName("circuit", "jfr", fixedMillis), AsprofRecorder.fileName("circuit", "jfr", fixedMillis));
     }
 
     @Test

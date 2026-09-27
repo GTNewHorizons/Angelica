@@ -58,6 +58,7 @@ public final class PipelineApplier {
     private final SamplerBinder samplerBinder;
     private final StorageTextureBinder storageTextureBinder;
     private final StorageBufferBinder storageBufferBinder;
+    private final LogicOpEmulator logicOpEmulator;
 
     private DrawDispatch.FanUploadSink deferredUploadSink;
     public void setDeferredUploadSink(DrawDispatch.FanUploadSink sink) { this.deferredUploadSink = sink; }
@@ -84,6 +85,16 @@ public final class PipelineApplier {
         this.samplerBinder = samplerBinder;
         this.storageTextureBinder = storageTextureBinder;
         this.storageBufferBinder = storageBufferBinder;
+        this.logicOpEmulator = new LogicOpEmulator(frameManager, resourceManager, shaderManager, this);
+    }
+
+    public void ensureDrawRenderPass(ContextState st) {
+        ensureDrawRenderPass(st, frameManager.frame());
+    }
+
+    public void ensureDrawRenderPass(ContextState st, FrameState f) {
+        logicOpEmulator.beforeDraw(st, f);
+        ensureRenderPass(st, f);
     }
 
     public void ensureRenderPass(ContextState st) {
@@ -160,16 +171,11 @@ public final class PipelineApplier {
         final boolean proposedStencilClear;
         final boolean depthHasStencil = fbo.depthTexture != 0 && PixelOps.isDepthStencilFormat(fbo.depthFormat);
         if (fbo.depthTexture != 0) {
+            final boolean defined = resourceManager.isTextureContentDefined(fbo.depthTexture);
             final boolean pendingClear = st.pendingDepthTextures.contains(fbo.depthTexture);
-            final boolean firstUse = !pendingClear && !st.clearedTexturesThisFrame.contains(fbo.depthTexture);
-            proposedDepthClear = pendingClear || firstUse;
+            proposedDepthClear = pendingClear || !defined;
             final boolean pendingStencil = depthHasStencil && st.pendingStencilTextures.contains(fbo.depthTexture);
-            if (depthHasStencil) {
-                final boolean firstStencilUse = !pendingStencil && !st.clearedStencilTexturesThisFrame.contains(fbo.depthTexture);
-                proposedStencilClear = pendingStencil || firstStencilUse;
-            } else {
-                proposedStencilClear = false;
-            }
+            proposedStencilClear = depthHasStencil && (pendingStencil || !defined);
             layoutHash = Hashing.fmix64(layoutHash, fbo.depthTexture);
             if (proposedDepthClear) {
                 layoutHash = foldClearDepth(layoutHash, pendingClear ? st.pendingDepthValues.get(fbo.depthTexture) : st.depthClearValue);
@@ -274,11 +280,8 @@ public final class PipelineApplier {
         }
         if (fbo.depthTexture == 0) return;
         st.pendingDepthTextures.remove(fbo.depthTexture);
-        if (depthClear) st.clearedTexturesThisFrame.add(fbo.depthTexture);
-        if (depthHasStencil) {
-            st.pendingStencilTextures.remove(fbo.depthTexture);
-            if (stencilClear) st.clearedStencilTexturesThisFrame.add(fbo.depthTexture);
-        }
+        if (depthHasStencil) st.pendingStencilTextures.remove(fbo.depthTexture);
+        if (depthClear || stencilClear) rm.markTextureContentDefined(fbo.depthTexture);
     }
 
     static long foldClearColor(long h, float r, float g, float b, float a) {
