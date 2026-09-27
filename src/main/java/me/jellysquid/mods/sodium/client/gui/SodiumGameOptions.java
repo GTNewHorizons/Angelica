@@ -246,7 +246,7 @@ public class SodiumGameOptions {
 
     public static class QualitySettings {
         public int biomeBlendRadius = 3;
-        public BiomeBlendMode biomeBlendMode = BiomeBlendMode.FAST;
+        public BiomeBlendMode biomeBlendMode = BiomeBlendMode.FANCY;
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
