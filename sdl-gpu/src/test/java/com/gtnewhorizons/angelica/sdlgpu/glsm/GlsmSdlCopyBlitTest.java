@@ -155,32 +155,13 @@ class GlsmSdlCopyBlitTest {
         assertRow(pixels, SIZE - 1, SENTINEL, "last out-of-range row");
     }
 
-    private static int createSecondaryFbo() {
-        final int color = GLStateManager.glGenTextures();
-        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
-        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, color);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
-        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
-
-        final int depth = GLStateManager.glGenRenderbuffers();
-        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, depth);
-        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
-
-        final int fbo = GLStateManager.glGenFramebuffers();
-        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
-        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, color, 0);
-        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, depth);
-        return fbo;
-    }
-
     @Test
     void blitFramebufferWithColorAndDepthBitsMovesColor() {
         GlsmSdlHeadlessRig.bindTarget();
         GlsmSdlHeadlessRig.clearTo(0.0f, 1.0f, 0.0f, 1.0f);
         GlsmSdlHeadlessRig.solidQuad(0.0f, 1.0f, 0.0f);
 
-        final int destination = createSecondaryFbo();
+        final int destination = GlsmSdlHeadlessRig.createDepthStencilFbo();
         GLStateManager.glViewport(0, 0, SIZE, SIZE);
         GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
@@ -242,5 +223,26 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE - 5, RED, "blitted fbo0 top");
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE / 2 - 4, GREEN, "blitted fbo0 below the split");
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE / 2 + 4, RED, "blitted fbo0 above the split");
+    }
+
+    @Test
+    void blitFramebufferStencilSurvivesTheDestinationsFirstDraw() {
+        GlsmSdlHeadlessRig.bindTarget();
+        GlsmSdlHeadlessRig.writeStencilOneInBottomHalf();
+
+        final int destination = GlsmSdlHeadlessRig.createDepthStencilFbo();
+        GLStateManager.glClearColor(0.0f, 0.0f, 1.0f, 1.0f);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+
+        GlsmSdlHeadlessRig.bindTarget();
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, destination);
+        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT, GL11.GL_NEAREST);
+
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, destination);
+        GlsmSdlHeadlessRig.drawRedWhereStencilIsOne();
+
+        final int[] pixels = GlsmSdlHeadlessRig.readTarget();
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, 4, RED, "stencil carried by the blit");
+        GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE - 5, BLUE, "outside the blitted stencil");
     }
 }

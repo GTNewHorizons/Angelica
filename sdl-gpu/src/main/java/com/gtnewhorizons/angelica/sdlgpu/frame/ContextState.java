@@ -332,9 +332,6 @@ public final class ContextState {
     public int defaultFboId;
     public GLContextState mirroredContext;
 
-    public final LongOpenHashSet clearedTexturesThisFrame = new LongOpenHashSet();
-    public final LongOpenHashSet clearedStencilTexturesThisFrame = new LongOpenHashSet();
-
     public final LongOpenHashSet pendingColorTextures = new LongOpenHashSet();
     public final Long2ObjectOpenHashMap<float[]> pendingColorValues = new Long2ObjectOpenHashMap<>();
     public final LongOpenHashSet pendingDepthTextures = new LongOpenHashSet();

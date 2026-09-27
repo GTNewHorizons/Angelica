@@ -141,7 +141,7 @@ public final class TextureOps {
         final int h = CopyRectClip.height(clip);
 
         fboClearTracker.materializePendingClearForTexture(st, srcTex);
-        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h);
+        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h, true);
 
         if (isDepthDest || (srcMeta != null && destMeta != null && srcMeta.sdlFormat() == destMeta.sdlFormat())) {
             copyTexture(srcTex, sx, sy, destTex, level, dx, dy, w, h);
@@ -180,7 +180,7 @@ public final class TextureOps {
         if (st.pendingSwapchainClear || st.pendingSwapchainDepthClear || st.pendingSwapchainStencilClear) {
             frameManager.ensureFbo0RenderPass(frameManager.frame(), st);
         }
-        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h);
+        fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h, true);
 
         blitTexture(srcTex, sx, srcFullH - sy - h, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST, SDL_FLIP_VERTICAL);
     }
