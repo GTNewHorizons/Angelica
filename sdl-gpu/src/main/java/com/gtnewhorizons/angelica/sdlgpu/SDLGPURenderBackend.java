@@ -649,8 +649,6 @@ public class SDLGPURenderBackend extends RenderBackend {
             GLStateManager.replayStateToBackend();
         }
         ResourceManager.setSingleThreadedReads(GLStateManager.isSplashComplete());
-        st.clearedTexturesThisFrame.clear();
-        st.clearedStencilTexturesThisFrame.clear();
         st.pendingColorTextures.clear();
         st.pendingDepthTextures.clear();
         st.pendingStencilTextures.clear();
@@ -3622,7 +3620,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int flipMode = (srcIsFbo0 != dstIsFbo0) ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE;
 
         if (blitColor) {
-            resolveBlitClears(cs, colorSrcTex, colorDstTex, colorDstGlId, dstX0, dstY, dstW, dstH);
+            resolveBlitClears(cs, colorSrcTex, colorDstTex, colorDstGlId, dstX0, dstY, dstW, dstH, true);
             final ResourceManager.TextureMeta srcMeta = resourceManager.getTextureMeta(colorSrcGlId);
             final ResourceManager.TextureMeta dstMeta = resourceManager.getTextureMeta(colorDstGlId);
             if (flipMode == SDL_FLIP_NONE && TextureOps.canCopyInsteadOfBlit(srcMeta, dstMeta, srcW, srcH, dstW, dstH)) {
@@ -3632,14 +3630,15 @@ public class SDLGPURenderBackend extends RenderBackend {
             }
         }
         if (blitDepth) {
-            resolveBlitClears(cs, depthSrcTex, depthDstTex, dstFbo.depthGlId, dstX0, dstY, dstW, dstH);
+            final boolean allAspects = !PixelOps.isDepthStencilFormat(dstFbo.depthFormat) || (mask & (GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT)) == (GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+            resolveBlitClears(cs, depthSrcTex, depthDstTex, dstFbo.depthGlId, dstX0, dstY, dstW, dstH, allAspects);
             textureOps.copyTexture(depthSrcTex, srcX0, srcY, depthDstTex, 0, dstX0, dstY, srcW, srcH);
         }
     }
 
-    private void resolveBlitClears(ContextState cs, long srcTex, long dstTex, int dstGlId, int dstX, int dstY, int dstW, int dstH) {
+    private void resolveBlitClears(ContextState cs, long srcTex, long dstTex, int dstGlId, int dstX, int dstY, int dstW, int dstH, boolean allAspects) {
         fboClearTracker.materializePendingClearForTexture(cs, srcTex);
-        fboClearTracker.resolveDestinationForWrite(cs, dstTex, resourceManager.getTextureMeta(dstGlId), 0, dstX, dstY, 0, dstW, dstH);
+        fboClearTracker.resolveDestinationForWrite(cs, dstTex, resourceManager.getTextureMeta(dstGlId), 0, dstX, dstY, 0, dstW, dstH, allAspects);
     }
     @Override public int createBuffers() { return resourceManager.genBuffer(); }
     @Override public void namedBufferData(int buffer, long size, int usage) {
@@ -3995,7 +3994,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (srcTex == 0 || dstTex == 0) return;
         final ContextState copySt = s();
         fboClearTracker.materializePendingClearForTexture(copySt, srcTex);
-        fboClearTracker.resolveDestinationForWrite(copySt, dstTex, resourceManager.getTextureMeta(dstName), dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight);
+        fboClearTracker.resolveDestinationForWrite(copySt, dstTex, resourceManager.getTextureMeta(dstName), dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, true);
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return;
         try (var stack = MemoryStack.stackPush()) {
