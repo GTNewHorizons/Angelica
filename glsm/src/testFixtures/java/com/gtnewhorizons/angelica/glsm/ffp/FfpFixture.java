@@ -245,10 +245,10 @@ public final class FfpFixture {
     }
 
     public static void resetFfpState() {
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         final ShaderManager sm = ShaderManager.getInstance();
         if (sm.isActive()) sm.deactivate();
-        sm.disable();
+        ShaderManager.disable();
         GLStateManager.glBindVertexArray(0);
 
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);

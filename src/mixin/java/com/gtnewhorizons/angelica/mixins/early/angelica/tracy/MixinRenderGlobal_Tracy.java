@@ -16,6 +16,7 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderGlobal.class)
 public class MixinRenderGlobal_Tracy {
     private static final Tracy.ZoneId Z_ENTITY_DISPATCH = Tracy.zoneId("entityDispatch", Tracy.COLOR_CLIENT);
+    private static final Tracy.ZoneId Z_ENTITY_RENDER = Tracy.zoneId("entityRender", Tracy.COLOR_CLIENT);
 
     @Inject(method = "renderEntities", at = @At(value = "INVOKE_STRING", target = "Lnet/minecraft/profiler/Profiler;endStartSection(Ljava/lang/String;)V", args = "ldc=entities", shift = At.Shift.AFTER))
     private void angelica$beginEntityDispatchZone(CallbackInfo ci) {
@@ -33,9 +34,17 @@ public class MixinRenderGlobal_Tracy {
         if (TesrAttribution.currentRenderable == null && entity != null) {
             TesrAttribution.currentRenderable = entity.getClass();
         }
+        if (Tracy.FINE_ZONES) {
+            Tracy.setGpuZonesEnabled(false);
+            Tracy.beginZone(Z_ENTITY_RENDER);
+        }
         try {
             return original.call(instance, entity, partialTicks);
         } finally {
+            if (Tracy.FINE_ZONES) {
+                Tracy.endZone();
+                Tracy.setGpuZonesEnabled(true);
+            }
             TesrAttribution.currentRenderable = null;
             RenderClassTimings.ENTITY.add(entity.getClass(), System.nanoTime() - start);
         }

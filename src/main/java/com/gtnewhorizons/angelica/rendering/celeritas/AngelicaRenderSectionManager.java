@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.cardinalstar.cubicchunks.world.ICubicWorld;
+import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
@@ -20,22 +21,21 @@ import net.minecraft.client.multiplayer.WorldClient;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.chunk.Chunk;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
-import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkUpdateType;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
+import org.embeddedt.embeddium.impl.render.chunk.fog.FogService;
 import org.embeddedt.embeddium.impl.render.chunk.lists.SectionTicker;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.AsyncOcclusionMode;
 import org.embeddedt.embeddium.impl.render.chunk.sprite.GenericSectionSpriteTicker;
-import org.embeddedt.embeddium.impl.render.chunk.terrain.TerrainRenderPass;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
-import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.util.PositionUtil;
 import org.jetbrains.annotations.Nullable;
+import org.joml.Vector3d;
 
 import java.util.ArrayList;
 import java.util.Collection;
@@ -58,15 +58,13 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     private static final Tracy.ZoneId Z_BIOME_REBUILDS = Tracy.zoneId("biomeRebuilds", Tracy.COLOR_TERRAIN);
     private static final Tracy.ZoneId Z_GRAPH_SEARCH = Tracy.zoneId("graphSearch", Tracy.COLOR_TERRAIN);
     private static final Tracy.ZoneId Z_SECTION_UPLOAD = Tracy.zoneId("sectionUpload", Tracy.COLOR_TERRAIN);
-    private static final Tracy.ZoneId Z_SHADOW_GRAPH_WAIT = Tracy.zoneId("shadowGraphWait", Tracy.COLOR_TERRAIN);
-
-    private boolean initialCameraSectionReady = false;
 
     private final WorldClient world;
     private final ClonedChunkSectionCache sectionCache;
     private final ChunkTaskProvider taskProvider;
     private final LongOpenHashSet biomeRebuildColumns = new LongOpenHashSet();
     private final DeferredMeshScheduler deferredScheduler;
+    private int shadowSearchSubmissions;
 
     public AngelicaRenderSectionManager(RenderPassConfiguration<?> configuration, WorldClient world, int renderDistance, CommandList commandList, int minSection, int maxSection, int requestedThreads, ChunkTaskProvider taskProvider) {
         super(configuration, () -> new AngelicaChunkBuildContext(configuration, world), AngelicaChunkRenderer::new, renderDistance, commandList, minSection, maxSection, requestedThreads, true  /* hasShadowPass = true for Iris */);
@@ -92,24 +90,9 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         return new AngelicaRenderSectionManager(AngelicaRenderPassConfiguration.build(vertexType), world, renderDistance, commandList, minSection, maxSection, provider.threadCount(), provider);
     }
 
-    public void setCameraPosition(double x, double y, double z) {
-        this.cameraPosition.set(x, y, z);
-    }
-
     @Override
-    public void update(Viewport positionedViewport, int frame, boolean spectator) {
-        if (isInShadowPass()) {
-            return;
-        }
-        if (!initialCameraSectionReady) {
-            var origin = positionedViewport.getChunkCoord();
-            long key = PositionUtil.packSection(origin.x(), origin.y(), origin.z());
-            if (!((RenderSectionManagerAccessor) this).angelica$getSectionByPosition().containsKey(key)) {
-                return;
-            }
-            initialCameraSectionReady = true;
-        }
-        super.update(positionedViewport, frame, spectator);
+    public FogService getFogService() {
+        return AngelicaFogService.INSTANCE;
     }
 
     @Override
@@ -173,7 +156,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
             return null;
         }
 
-        final ChunkBuilderTask<ChunkBuildOutput> task = this.taskProvider.createRebuildTask(render, frame, this.cameraPosition, this.sectionCache);
+        final ChunkBuilderTask<ChunkBuildOutput> task = this.taskProvider.createRebuildTask(render, frame, new Vector3d(this.cameraPosition), this.sectionCache);
         if (task instanceof AngelicaChunkBuilderMeshingTask t) {
             final ChunkUpdateType pending = render.getPendingUpdate();
             t.bindScheduler(this.deferredScheduler, pending != null && pending.isImportant());
@@ -219,9 +202,6 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
 
     @Override
     public void updateChunks(boolean updateImmediately) {
-        if (isInShadowPass()) {
-            return;
-        }
         this.sectionCache.cleanup();
         this.flushBiomeRebuilds();
         if (Tracy.ENABLED) Tracy.beginZone(Z_GRAPH_SEARCH);
@@ -276,14 +256,19 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     }
 
     @Override
-    public boolean canSubmitShadowGraphSearch() {
-        return super.canSubmitShadowGraphSearch() && this.shadowRenderListManager.isNeedsUpdate()
-            && !this.shadowRenderListManager.hasOcclusionFutureInFlight();
+    protected boolean canSubmitShadowGraphSearch() {
+        return super.canSubmitShadowGraphSearch() && this.shadowRenderListManager.isNeedsUpdate();
     }
 
     @Override
-    public boolean submitShadowGraphSearch(Viewport viewport, int frame) {
-        return super.submitShadowGraphSearch(viewport, frame);
+    protected void submitShadowGraphSearch(Viewport viewport, int frame) {
+        super.submitShadowGraphSearch(viewport, frame);
+        this.shadowSearchSubmissions++;
+    }
+
+    /** Running count of submitted shadow searches; a change across a shadow pass means new lists are pending. */
+    public int getShadowSearchSubmissions() {
+        return this.shadowSearchSubmissions;
     }
 
     public boolean isShadowGraphDirty() {
@@ -312,20 +297,6 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         list.add(String.format("MT Queue: %d, ran %d (%.1fms)", queueDepth, tasksRan, mtTimeMs));
 
         return list;
-    }
-
-    @Override
-    public void renderLayer(ChunkRenderMatrices matrices, TerrainRenderPass pass, CameraTransform occlusionCamera, CameraTransform camera) {
-        // Shadow pass graph update is async - must wait for it to complete before rendering
-        if (IrisShaderProviderHolder.isShadowPass()) {
-            if (Tracy.ENABLED) Tracy.beginZone(Z_SHADOW_GRAPH_WAIT);
-            try {
-                finishAllGraphUpdates();
-            } finally {
-                if (Tracy.ENABLED) Tracy.endZone();
-            }
-        }
-        super.renderLayer(matrices, pass, occlusionCamera, camera);
     }
 
     /**

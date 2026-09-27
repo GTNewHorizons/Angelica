@@ -117,6 +117,7 @@ public class CompatUniformManager {
 
     private static final class ProgramUniforms {
         final int[] locs;
+        GLContextState owner;
         int lastMvGen = -1, lastMvLinearGen = -1, lastProjGen = -1, lastTexMatGen = -1;
         int lastFragmentGen = -1, lastLightingGen = -1, lastClipPlaneGen = -1;
         ProgramUniforms(int[] locs) { this.locs = locs; }
@@ -161,7 +162,13 @@ public class CompatUniformManager {
         }
 
         if (hasAny) {
-            programUniforms.put(program, new ProgramUniforms(locs));
+            final ProgramUniforms uniforms = new ProgramUniforms(locs);
+            final boolean locked = GLStateManager.acquireDrawLock();
+            try {
+                programUniforms.put(program, uniforms);
+            } finally {
+                if (locked) GLStateManager.releaseDrawLock();
+            }
             GLStateManager.LOGGER.debug("CompatUniformManager: program {} has compat uniforms", program);
         }
     }
@@ -171,16 +178,21 @@ public class CompatUniformManager {
      *
      * @return Whether the program needs emulation (FFP or Iris Program)
      */
-    public static boolean refreshCompatUniforms(int program) {
+    public static boolean refreshCompatUniforms(int program, GLContextState glCtx) {
         final ProgramUniforms pu = programUniforms.get(program);
         if (pu == null) return false;
         final int[] locs = pu.locs;
+        if (pu.owner != glCtx) {
+            pu.owner = glCtx;
+            pu.lastMvGen = pu.lastMvLinearGen = pu.lastProjGen = pu.lastTexMatGen = -1;
+            pu.lastFragmentGen = pu.lastLightingGen = pu.lastClipPlaneGen = -1;
+        }
 
         // Matrix uniforms — skip if this program's storage already holds the current generation
-        final int mvGen = GLStateManager.getMvGeneration();
-        final int mvLinearGen = GLStateManager.getMvLinearGeneration();
-        final int projGen = GLStateManager.getProjGeneration();
-        final int texMatGen = GLStateManager.getTexMatrixGeneration();
+        final int mvGen = glCtx.mvGeneration;
+        final int mvLinearGen = glCtx.mvLinearGeneration;
+        final int projGen = glCtx.projGeneration;
+        final int texMatGen = glCtx.texMatrixGeneration;
         final boolean mvChanged = mvGen != pu.lastMvGen;
         final boolean mvLinearChanged = mvLinearGen != pu.lastMvLinearGen;
         final boolean projChanged = projGen != pu.lastProjGen;
@@ -194,14 +206,14 @@ public class CompatUniformManager {
         }
 
         // Fragment-category uniforms (fog, alpha) — skip if generation unchanged
-        final int fragGen = GLStateManager.getFragmentGeneration();
+        final int fragGen = glCtx.fragmentGeneration;
         if (fragGen != pu.lastFragmentGen) {
             pu.lastFragmentGen = fragGen;
             uploadFragmentUniforms(locs);
         }
 
         // Lighting-derived uniforms (scene color, light sources, material)
-        final int litGen = GLStateManager.getLightingGeneration();
+        final int litGen = glCtx.lightingGeneration;
         if (litGen != pu.lastLightingGen) {
             pu.lastLightingGen = litGen;
             if (locs[LOC_SCENE_COLOR] != -1) uploadSceneColor(locs);
@@ -211,7 +223,7 @@ public class CompatUniformManager {
 
         // Clip plane equations + enabled bool — uploaded when enable state or equations change
         if (locs[LOC_CLIP_PLANES] != -1 || locs[LOC_CLIP_PLANES_ENABLED] != -1) {
-            final int cpGen = GLStateManager.getClipPlaneGeneration();
+            final int cpGen = glCtx.clipPlaneGeneration;
             if (cpGen != pu.lastClipPlaneGen) {
                 pu.lastClipPlaneGen = cpGen;
                 uploadClipPlanes(locs);
@@ -438,7 +450,12 @@ public class CompatUniformManager {
     }
 
     public static void onDeleteProgram(int program) {
-        programUniforms.remove(program);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            programUniforms.remove(program);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
+        }
     }
 
     public static boolean hasProgram(int program) {

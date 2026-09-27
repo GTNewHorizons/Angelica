@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.glsm.stacks;
 
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 /**
@@ -14,6 +15,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
 public final class CowDepths {
     public int id = -1;
+    public GLContextState owner;
     public final int restoreBit;
     public final int restoreUnit;
     private final int[] slotDepth = new int[GLStateManager.MAX_ATTRIB_STACK_DEPTH];

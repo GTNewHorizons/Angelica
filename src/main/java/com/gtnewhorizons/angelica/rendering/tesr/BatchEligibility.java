@@ -89,6 +89,7 @@ public final class BatchEligibility {
         parts = 0;
         uncapturedState = false;
         allowedBail = null;
+        bracketDepth = 0;
         allowed = state == SAFE;
         return allowed;
     }

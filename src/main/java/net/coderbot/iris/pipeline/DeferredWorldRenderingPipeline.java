@@ -1975,11 +1975,6 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	@Override
-	public void preSubmitShadowGraph(int frame) {
-		if (shadowRenderer != null) shadowRenderer.preSubmitGraphUpdate(frame);
-	}
-
-	@Override
 	public void renderShadows(EntityRenderer levelRenderer, Camera playerCamera) {
 		if (shouldRenderPrepareBeforeShadow) {
 			isRenderingFullScreenPass = true;

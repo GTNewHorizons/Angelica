@@ -272,9 +272,9 @@ public final class CubeParityFixture {
         CubeInstancedAttribs.pointInstanceAttribs(0L);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-        GLStateManager.ffpInstancing = Instancing.CUBE;
+        GLStateManager.setFfpInstancing(Instancing.CUBE);
         GLStateManager.glDrawArraysInstanced(GL11.GL_QUADS, 0, UnitCubeMesh.VERTEX_COUNT, specs.length);
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
     }
 

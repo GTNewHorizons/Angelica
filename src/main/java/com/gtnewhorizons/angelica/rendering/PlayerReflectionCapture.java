@@ -333,7 +333,7 @@ public final class PlayerReflectionCapture {
         GLStateManager.glColorMask(false, false, false, false);
         GLStateManager.glDepthMask(false);
         try {
-            QuadConverter.drawQuadsAsTriangles(0, VERTEX_COUNT);
+            QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, VERTEX_COUNT);
         } finally {
             GLStateManager.popStateTo(maskStateDepth);
             GLStateManager.setModelViewMatrix(savedModelView);

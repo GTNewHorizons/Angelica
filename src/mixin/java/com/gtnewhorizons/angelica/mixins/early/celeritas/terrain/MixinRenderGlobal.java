@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.terrain;
 
+import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.event.RenderChunkEvent;
@@ -30,8 +31,8 @@ import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
-import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderFogComponent;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
+import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
@@ -201,7 +202,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         try {
             final Entity viewEntity = this.mc.renderViewEntity;
-            final float fogDistance = ChunkShaderFogComponent.FOG_SERVICE.getFogCutoff();
+            final float fogDistance = AngelicaFogService.INSTANCE.getFogCutoff();
 
             final double camX = lerp(viewEntity.lastTickPosX, viewEntity.posX, partialTicks);
             final double camY = lerp(viewEntity.lastTickPosY, viewEntity.posY, partialTicks) + viewEntity.getEyeHeight();
@@ -223,7 +224,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
                 camX, camY, camZ,
                 viewEntity.rotationPitch, viewEntity.rotationYaw, fogDistance
             );
-            this.celeritas$renderer.setupTerrain(((ViewportProvider)camera).sodium$createViewport(), cameraState, this.celeritas$frame++, angelica$isSpectatorMode(), false);
+            final Viewport viewport = ((ViewportProvider) camera).sodium$createViewport();
+            if (this.celeritas$renderer.isInShadowPass()) {
+                this.celeritas$renderer.setupShadowTerrain(viewport, cameraState, this.celeritas$frame++, angelica$isSpectatorMode());
+            } else {
+                this.celeritas$renderer.setupTerrain(viewport, cameraState, this.celeritas$frame++, angelica$isSpectatorMode(), false);
+            }
         } finally {
             RenderDevice.exitManagedCode();
         }

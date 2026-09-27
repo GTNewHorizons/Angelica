@@ -7,7 +7,8 @@ import com.cardinalstar.cubicchunks.util.HashMap3D;
 import com.cardinalstar.cubicchunks.util.HashSet3D;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 
-public class CubeStatusTracker implements ChunkTracker {
+/** Tracks 3D cubes instead of columns; the inherited 2D state stays empty. */
+public class CubeStatusTracker extends ChunkTracker {
 
     /// Cubes that have been synced to the client and are currently loaded.
     private final HashSet3D loadedCubes = new HashSet3D();
@@ -28,14 +29,12 @@ public class CubeStatusTracker implements ChunkTracker {
 
     }
 
-    @Override
     public void setFastMode(boolean fastMode) {
         this.fastMode = fastMode;
 
         this.loadedCubes.forEach(this::pollCube);
     }
 
-    @Override
     public boolean isFastModeEnabled() {
         return fastMode;
     }
@@ -107,7 +106,6 @@ public class CubeStatusTracker implements ChunkTracker {
         // do nothing
     }
 
-    @Override
     public void forEachReady(RenderSectionManager renderSectionManager) {
         if (this.isFastModeEnabled() != AngelicaConfig.useVanillaChunkTracking) {
             setFastMode(AngelicaConfig.useVanillaChunkTracking);
@@ -134,7 +132,6 @@ public class CubeStatusTracker implements ChunkTracker {
         }
     }
 
-    @Override
     public void forEachEvent(RenderSectionManager renderSectionManager) {
         if (this.isFastModeEnabled() != AngelicaConfig.useVanillaChunkTracking) {
             setFastMode(AngelicaConfig.useVanillaChunkTracking);

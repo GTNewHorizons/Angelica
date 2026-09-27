@@ -105,7 +105,7 @@ public class Program {
             if (previousProgram != 0) {
                 backend.useProgram(previousProgram);
             } else {
-                ShaderManager.getInstance().invalidateBoundProgram();
+                ShaderManager.getInstance().invalidateProgram();
             }
 
             return ffpProgram;

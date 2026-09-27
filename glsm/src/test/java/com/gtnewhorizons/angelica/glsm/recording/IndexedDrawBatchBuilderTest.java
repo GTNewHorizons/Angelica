@@ -314,10 +314,11 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
         final ByteBuffer colorSlice = clientData.duplicate().order(ByteOrder.nativeOrder());
         colorSlice.position(8);
-        VAOManager.setAttribute(0, 2, GL11.GL_FLOAT, false, POS_COLOR_STRIDE, clientData);
-        VAOManager.enableAttribute(0);
-        VAOManager.setAttribute(1, 4, GL11.GL_UNSIGNED_BYTE, true, POS_COLOR_STRIDE, colorSlice);
-        VAOManager.enableAttribute(1);
+        final VAOManager vaos = GLStateManager.ctx().vaos;
+        vaos.setAttribute(0, 2, GL11.GL_FLOAT, false, POS_COLOR_STRIDE, clientData);
+        vaos.enableAttribute(0);
+        vaos.setAttribute(1, 4, GL11.GL_UNSIGNED_BYTE, true, POS_COLOR_STRIDE, colorSlice);
+        vaos.enableAttribute(1);
         GLStateManager.glBindVertexArray(0);
 
         final int ebo = uploadEbo(GL11.GL_UNSIGNED_SHORT, 0, 1, 2);
@@ -593,8 +594,9 @@ class IndexedDrawBatchBuilderTest extends DisplayListTestFixture {
         GLStateManager.glBindVertexArray(vao);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
 
-        VAOManager.setAttribute(0, 3, GL11.GL_FLOAT, false, 0, clientVerts);
-        VAOManager.enableAttribute(0);
+        final VAOManager vaos = GLStateManager.ctx().vaos;
+        vaos.setAttribute(0, 3, GL11.GL_FLOAT, false, 0, clientVerts);
+        vaos.enableAttribute(0);
         GLStateManager.glDrawElements(GL11.GL_TRIANGLES, indices);
         GLStateManager.glBindVertexArray(0);
         GLStateManager.glEndList();

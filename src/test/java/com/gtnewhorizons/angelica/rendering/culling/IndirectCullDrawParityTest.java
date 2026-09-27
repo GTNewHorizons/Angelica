@@ -17,7 +17,6 @@ import org.embeddedt.embeddium.impl.gl.array.GlVertexArray;
 import org.embeddedt.embeddium.impl.gl.buffer.GlBufferUsage;
 import org.embeddedt.embeddium.impl.gl.buffer.GlMutableBuffer;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
-import org.embeddedt.embeddium.impl.gl.device.GLRenderDevice;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlPrimitiveType;
 import org.embeddedt.embeddium.impl.gl.tessellation.GlVertexArrayTessellation;
@@ -183,7 +182,6 @@ class IndirectCullDrawParityTest {
 
     @BeforeAll
     static void setUpDevice() {
-        GLRenderDevice.VANILLA_STATE_RESETTER = () -> {};
         RenderDevice.enterManagedCode();
         commandList = RenderDevice.INSTANCE.createCommandList();
         program = buildProgram();

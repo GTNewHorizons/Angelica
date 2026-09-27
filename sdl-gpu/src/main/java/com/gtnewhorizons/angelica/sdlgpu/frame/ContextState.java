@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.frame;
 
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
@@ -328,6 +329,8 @@ public final class ContextState {
 
     public int boundFboId;
     public int boundReadFboId;
+    public int defaultFboId;
+    public GLContextState mirroredContext;
 
     public final LongOpenHashSet clearedTexturesThisFrame = new LongOpenHashSet();
     public final LongOpenHashSet clearedStencilTexturesThisFrame = new LongOpenHashSet();

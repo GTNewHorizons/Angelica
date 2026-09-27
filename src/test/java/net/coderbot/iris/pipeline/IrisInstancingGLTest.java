@@ -191,7 +191,7 @@ class IrisInstancingGLTest {
         GLSMHooks.pendingProgramSelection = null;
         Reflect.setStatic(BatchEligibility.class, "depth", 0);
         Reflect.setStatic(BatchEligibility.class, "allowed", false);
-        Reflect.setStatic(GLStateManager.class, "foreignDrawDepth", 0);
+        GLStateManager.ctx().foreignDrawDepth = 0;
     }
 
     private static DeferredWorldRenderingPipeline newPipeline(WorldRenderingPhase phase, boolean isMainBound) {

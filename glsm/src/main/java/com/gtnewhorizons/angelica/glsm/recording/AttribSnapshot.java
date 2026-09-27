@@ -68,6 +68,7 @@ public final class AttribSnapshot {
         final AttribDesc[] out = new AttribDesc[VAOManager.MAX_ATTRIBS];
         final List<ByteBuffer> allocated = new ArrayList<>();
         final int prevVBO = GLStateManager.getBoundVBO();
+        final VAOManager vaos = GLStateManager.ctx().vaos;
         boolean success = false;
 
         // Pass 1 — unioned [start,end] per vboId. Hot path: one source VBO, zero allocations.
@@ -78,7 +79,7 @@ public final class AttribSnapshot {
 
         final long lastVtx = (long) firstVertex + vertexCount - 1;
         for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
-            final VAOManager.Attrib a = VAOManager.get(i);
+            final VAOManager.Attrib a = vaos.attrib(i);
             if (a == null || !a.enabled || a.vboId == 0) continue;
             final int stride = a.effectiveStride();
             final long typeBytes = (long) a.size * GLTypes.sizeBytes(a.type);
@@ -114,7 +115,7 @@ public final class AttribSnapshot {
 
         try {
             for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
-                final VAOManager.Attrib a = VAOManager.get(i);
+                final VAOManager.Attrib a = vaos.attrib(i);
                 if (a == null || !a.enabled) continue;
 
                 if (a.vboId != 0) {

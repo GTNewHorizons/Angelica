@@ -66,12 +66,6 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
         return BlockRenderingSettings.INSTANCE.getBlockTypeIds();
     }
 
-    @Override
-    public void preSubmitShadowGraph(int frame) {
-        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline != null) pipeline.preSubmitShadowGraph(frame);
-    }
-
     public void deleteShaders() {
         overrides.deleteShaders();
     }

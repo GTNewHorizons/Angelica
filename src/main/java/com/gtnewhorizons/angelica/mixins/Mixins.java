@@ -419,7 +419,9 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
-            , "celeritas.terrain.MixinDefaultChunkShaderInterface"
+            , "celeritas.terrain.MixinSharedQuadIndexBuffer"
+            , "celeritas.terrain.MixinRenderRegionManager"
+            , "celeritas.terrain.MixinShaderLoader"
         )
     ),
 
@@ -680,6 +682,7 @@ public enum Mixins implements IMixins {
             "gui.MixinGuiSlot",
 
             "glint.MixinRenderBiped",
+            "glint.MixinEntityLiving_ArmorEnchantCache",
             "glint.MixinRenderPlayer",
 
             "optimization.MixinRenderItemFrame",
