@@ -10,11 +10,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(value = cpw.mods.fml.client.SplashProgress.class, remap = false)
 public class MixinSplashProgressCaching {
 
-    @Inject(method = "start", at = @At("TAIL"))
-    private static void umbra$bindSharedDrawableVAO(CallbackInfo ci) {
-        FrameHooks.bindSplashVao();
-    }
-
     @Inject(method = "finish", at = @At("RETURN"))
     private static void umbra$enableCachingOnFinish(CallbackInfo ci) {
         FrameHooks.splashFinished();

@@ -28,6 +28,7 @@ public final class BatchEligibility {
         expectedDraws = 0L;
         foreignDraws = 0L;
         parts = 0;
+        bracketDepth = 0;
         allowed = state == SAFE;
         return allowed;
     }

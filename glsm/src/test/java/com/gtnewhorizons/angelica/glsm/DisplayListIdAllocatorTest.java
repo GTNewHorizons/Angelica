@@ -1,7 +1,11 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
+
 import java.util.HashSet;
 import java.util.Set;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -11,6 +15,28 @@ import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class DisplayListIdAllocatorTest {
+
+    @Test
+    void concurrentAllocationsRemainUnique() throws Exception {
+        final DisplayListIDAllocator alloc = new DisplayListIDAllocator();
+        final int[][] ids = new int[2][500];
+        final CountDownLatch start = new CountDownLatch(1);
+        final TestThreads.Worker[] workers = new TestThreads.Worker[2];
+        for (int t = 0; t < workers.length; t++) {
+            final int[] lane = ids[t];
+            workers[t] = TestThreads.start("DisplayListIdAllocator-" + t, () -> {
+                if (!start.await(5, TimeUnit.SECONDS)) throw new AssertionError("start timed out");
+                for (int i = 0; i < lane.length; i++) lane[i] = alloc.allocRange(1);
+            });
+        }
+        start.countDown();
+        for (TestThreads.Worker worker : workers) worker.join();
+        final Set<Integer> unique = new HashSet<>();
+        for (int[] lane : ids) {
+            for (int id : lane) assertTrue(unique.add(id));
+        }
+        assertEquals(1000, unique.size());
+    }
 
     @Test
     void zeroNeverReturned() {

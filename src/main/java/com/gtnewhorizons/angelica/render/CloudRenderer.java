@@ -150,11 +150,11 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             return true;
         });
 
-        final Entity view = mc.renderViewEntity;
-        final double cameraY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks;
-        drawOrder.sort((a, b) -> Double.compare(distanceToLayer(b.layer, cameraY), distanceToLayer(a.layer, cameraY)));
         final ViewportState viewport = GLStateManager.getViewportState();
         cloudView.update(GLStateManager.getProjectionMatrix(), GLStateManager.getModelViewMatrix(), viewport.width, viewport.height);
+        final Entity view = mc.renderViewEntity;
+        final double cameraY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks + cloudView.offsetY;
+        drawOrder.sort((a, b) -> Double.compare(distanceToLayer(b.layer, cameraY), distanceToLayer(a.layer, cameraY)));
         boolean rendered = descriptions.isEmpty();
         for (CloudLayerRenderer renderer : drawOrder) rendered |= renderer.render(partialTicks, cloudView);
         return rendered;
@@ -198,7 +198,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             float radius = (radiusChunks + marginChunks) * CELLS_PER_CHUNK * width;
             if (cloudMode != MODE_FANCY) radius *= (float) Math.sqrt(2);
             radius += MARGIN_CELLS * width;
-            final float cameraY = view == null ? 0.0f : (float) view.posY;
+            final float cameraY = view == null ? 0.0f : (float) (view.posY + cloudView.offsetY);
             final float verticalSlack = Math.abs(layer.height() + 0.33f - cameraY) + layer.cellHeight() * scaleMult;
             required = Math.max(required, Math.min(radius + verticalSlack, MAX_FAR_PLANE_DISTANCE));
         }

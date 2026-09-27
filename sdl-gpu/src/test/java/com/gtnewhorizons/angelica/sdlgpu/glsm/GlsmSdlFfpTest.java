@@ -47,7 +47,7 @@ class GlsmSdlFfpTest {
 
     @AfterEach
     void cleanupInstancing() {
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
         CubeParityFixture.deleteResources();
         ParticleParityFixture.deleteResources();
         FfpFixture.IntegerInstances.delete();

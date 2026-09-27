@@ -245,7 +245,7 @@ class FFPCombineShaderTest {
     @Test
     void testMultiTexCoordRoutesToShaderManager() {
         // Not in immediate mode or display list recording, so should go to ShaderManager.currentTexCoord
-        ShaderManager.setCurrentTexCoord(0.0f, 0.0f, 0.0f, 1.0f); // reset
+        GLStateManager.ctx().ffp.setTexCoord(0.0f, 0.0f, 0.0f, 1.0f); // reset
         GLStateManager.glMultiTexCoord2f(GL13.GL_TEXTURE0, 0.5f, 0.75f);
 
         var texCoord = ShaderManager.getCurrentTexCoord();
@@ -255,7 +255,7 @@ class FFPCombineShaderTest {
 
     @Test
     void testMultiTexCoord2dDelegatesToFloat() {
-        ShaderManager.setCurrentTexCoord(0.0f, 0.0f, 0.0f, 1.0f);
+        GLStateManager.ctx().ffp.setTexCoord(0.0f, 0.0f, 0.0f, 1.0f);
         GLStateManager.glMultiTexCoord2d(GL13.GL_TEXTURE0, 0.5, 0.75);
 
         var texCoord = ShaderManager.getCurrentTexCoord();

@@ -144,7 +144,7 @@ public class DisplayListManager {
     }
 
     public static String describeCurrentCompilation() {
-        if (currentRecorder == null) {
+        if (!isRecording()) {
             return "(not compiling)";
         }
         final String mode = glListMode == GL11.GL_COMPILE_AND_EXECUTE ? "GL_COMPILE_AND_EXECUTE" : "GL_COMPILE";
@@ -153,16 +153,20 @@ public class DisplayListManager {
     }
 
     public static boolean isCompileAndExecute() {
-        return glListMode == GL11.GL_COMPILE_AND_EXECUTE;
+        return isRecording() && glListMode == GL11.GL_COMPILE_AND_EXECUTE;
     }
 
     public static CommandRecorder pauseRecording() {
+        if (Thread.currentThread() != recordingThread) return null;
         final CommandRecorder r = currentRecorder;
         currentRecorder = null;
         return r;
     }
 
     public static void resumeRecording(CommandRecorder r) {
+        if (Thread.currentThread() != recordingThread) {
+            throw new IllegalStateException("Cannot resume another thread's display list compilation");
+        }
         currentRecorder = r;
     }
 
@@ -229,15 +233,15 @@ public class DisplayListManager {
     }
 
     public static int getRecordingListId() {
-        return glListId;
+        return Thread.currentThread() == recordingThread ? glListId : -1;
     }
 
     public static int getListMode() {
-        return glListMode;
+        return Thread.currentThread() == recordingThread ? glListMode : 0;
     }
 
     public static void trackDrawRangeSource(String source) {
-        if (drawRangeSources != null) {
+        if (Thread.currentThread() == recordingThread && drawRangeSources != null) {
             drawRangeSources.add(source);
         }
     }
@@ -761,8 +765,11 @@ public class DisplayListManager {
      * @return true if the display list exists, false otherwise
      */
     public static boolean displayListExists(int list) {
-        if (displayListCache.containsKey(list)) {
-            return true;
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            if (displayListCache.containsKey(list)) return true;
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
         // Check VBOManager for GTNHLib compatibility (negative IDs)
         if (list < -1) {
@@ -778,7 +785,12 @@ public class DisplayListManager {
      * @return The CompiledDisplayList, or null if not found
      */
     public static CompiledDisplayList getDisplayList(int list) {
-        return displayListCache.get(list);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            return displayListCache.get(list);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
+        }
     }
 
     /**
@@ -787,73 +799,100 @@ public class DisplayListManager {
      *   GL_COMPILE: Commands are recorded only (not executed), GLSM cache unchanged
      *   GL_COMPILE_AND_EXECUTE: Commands are recorded AND executed (GLSM cache updated)
      */
-    public static void glNewList(int list, int mode) {
-        // Handle nested compilation - push current context onto stack
+    public static synchronized void glNewList(int list, int mode) {
+        final Thread recorder = recordingThread;
+        if (recorder != null && recorder != Thread.currentThread()) {
+            throw new IllegalStateException("glNewList(" + list + ") on " + Thread.currentThread().getName() + " while " + recorder.getName() + " is compiling a display list");
+        }
         final boolean isNested = glListMode > 0;
+        final int captureDepth = TessellatorManager.getDirectCaptureDepth();
+        boolean pushed = false;
+        if (!isNested) recordingThread = Thread.currentThread();
+        try {
+            if (isNested) {
+                flushAll();
+                final CompilationContext parentContext = new CompilationContext(
+                    glListId, glListMode, currentRecorder, accumulatedDraws, transformCallback,
+                    compilationStackTrace, recordedStatePushes, pendingTransformOps, multMatrixSources, drawRangeSources
+                );
+                compilationStack.push(parentContext);
+                pushed = true;
+            }
 
-        if (isNested) {
-            flushAll();
-            // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
-            // Save current compilation context and start fresh for nested list
-            final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws, transformCallback,
-                compilationStackTrace, recordedStatePushes, pendingTransformOps, multMatrixSources, drawRangeSources
-            );
-            compilationStack.push(parentContext);
+            glListId = list;
+            glListMode = mode;
+            currentRecorder = new CommandRecorder();
+            accumulatedDraws = new ArrayList<>(8);
+            transformCallback = new DisplayListCallback();
+            recordedStatePushes = 0;
+            compilationStackTrace = SystemProperties.LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
+
+            if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
+                pendingTransformOps = new ArrayList<>();
+                multMatrixSources = new ArrayList<>();
+                drawRangeSources = new ArrayList<>();
+            } else {
+                pendingTransformOps = null;
+                multMatrixSources = null;
+                drawRangeSources = null;
+            }
+
+            TessellatorManager.startCapturingDirect(transformCallback);
+        } catch (RuntimeException | Error failure) {
+            try {
+                if (TessellatorManager.getDirectCaptureDepth() > captureDepth) TessellatorManager.stopCapturingDirect();
+            } catch (RuntimeException | Error cleanup) {
+                failure.addSuppressed(cleanup);
+            }
+            try {
+                if (pushed) {
+                    final CommandRecorder parent = compilationStack.peek().recorder();
+                    try {
+                        if (currentRecorder != null && currentRecorder != parent) currentRecorder.delete();
+                    } finally {
+                        popCompilationContext();
+                    }
+                } else if (!isNested) {
+                    try {
+                        if (currentRecorder != null) currentRecorder.delete();
+                    } finally {
+                        resetCompilationState();
+                    }
+                }
+            } catch (RuntimeException | Error cleanup) {
+                failure.addSuppressed(cleanup);
+            }
+            throw failure;
         }
-
-        // Initialize fresh context for this (possibly nested) list
-        glListId = list;
-        glListMode = mode;
-        recordingThread = Thread.currentThread();  // Track which thread is recording
-        currentRecorder = new CommandRecorder();  // Create command recorder
-        accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
-        transformCallback = new DisplayListCallback();
-        recordedStatePushes = 0;
-        compilationStackTrace = SystemProperties.LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
-
-        // Initialize debug logging fields (only when logging enabled)
-        if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
-            pendingTransformOps = new ArrayList<>();
-            multMatrixSources = new ArrayList<>();
-            drawRangeSources = new ArrayList<>();
-        } else {
-            pendingTransformOps = null;
-            multMatrixSources = null;
-            drawRangeSources = null;
-        }
-
-        TessellatorManager.startCapturingDirect(transformCallback);
     }
 
     /**
      * End display list compilation and build optimized/unoptimized versions.
      */
-    public static void glEndList() {
+    public static synchronized void glEndList() {
+        final Thread recorder = recordingThread;
+        if (recorder != null && recorder != Thread.currentThread()) {
+            throw new IllegalStateException("glEndList on " + Thread.currentThread().getName() + " while " + recorder.getName() + " is compiling a display list");
+        }
         if (glListMode == 0) {
             GLStateManager.warnOnce("endlist-outside", "glEndList called outside of a display list!");
             return;
         }
         if (Tracy.ENABLED) Tracy.beginZone(Z_GL_LIST_COMPILE);
         try {
+            TessellatorManager.stopCapturingDirect();
             finishCurrentList();
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
-            // Non-null here means finishCurrentList threw before transferring or releasing
-            // ownership of the recorder.
-            if (currentRecorder != null) {
-                currentRecorder.delete();
+            try {
+                if (currentRecorder != null) currentRecorder.delete();
+            } finally {
+                popCompilationContext();
             }
-            // Must always run, even when compilation fails - a leaked context leaves
-            // isRecording() true forever and every guarded GL call throws afterward.
-            popCompilationContext();
         }
     }
 
     private static void finishCurrentList() {
-        // Stop compiling mode (works for both root and nested lists now)
-        TessellatorManager.stopCapturingDirect();
-
         boolean unbalancedStatePush = false;
         while (recordPopStateIfPending()) unbalancedStatePush = true;
         if (unbalancedStatePush) {
@@ -966,7 +1005,6 @@ public class DisplayListManager {
     /** Clear all root-level compilation state back to "not recording". */
     private static void resetCompilationState() {
         currentRecorder = null;
-        recordingThread = null;
         accumulatedDraws = null;
         pendingDraw = null;
         transformCallback = null;
@@ -977,9 +1015,13 @@ public class DisplayListManager {
         glListId = -1;
         glListMode = 0;
         recordedStatePushes = 0;
+        recordingThread = null;
     }
 
-    public static void abortCompilation() {
+    public static synchronized void abortCompilation() {
+        if (recordingThread != null && recordingThread != Thread.currentThread()) {
+            throw new IllegalStateException("Cannot abort another thread's display list compilation");
+        }
         if (glListMode == 0 && compilationStack.isEmpty()) {
             return;
         }
@@ -1007,7 +1049,7 @@ public class DisplayListManager {
     }
 
     public static void abortIfLeaked() {
-        if (glListMode != 0 || !compilationStack.isEmpty()) {
+        if (Thread.currentThread() == recordingThread && (glListMode != 0 || !compilationStack.isEmpty())) {
             GLStateManager.warnOnce("frame-leak", "Display list {} left open across a frame boundary - aborting to recover", glListId);
             abortCompilation();
         }
@@ -1043,7 +1085,7 @@ public class DisplayListManager {
      * Execute a compiled display list.
      */
     public static void glCallList(int list) {
-        if (currentRecorder != null) {
+        if (isRecording()) {
             recordCallList(list);
 
             if (getListMode() != GL11.GL_COMPILE) {

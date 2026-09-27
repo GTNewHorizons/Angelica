@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.sdlgpu.compute.VoxelizationDispatcher;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
@@ -555,12 +556,32 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public boolean handleMakeCurrent(Object drawable) {
         if (!isSDLManagedDrawable(drawable)) return false;
         Lwjgl3GLCapabilitiesShim.installOnCurrentThread(advertisedCapabilities());
-        final OffscreenTarget splash = splashTarget;
-        if (splash != null && Thread.currentThread() != GLStateManager.getMainThread()) {
-            s().boundFboId = splash.fboId();
-            frameManager.frame().swapchainUnavailable = true;
-        }
+        enterContext(drawable instanceof SDLDrawable);
         return true;
+    }
+
+    private void enterContext(boolean displayDrawable) {
+        final ContextState st = s();
+        final GLContextState ctx = GLStateManager.ctx();
+        if (st.mirroredContext != ctx) {
+            st.invalidateMirror();
+            st.mirroredContext = ctx;
+        }
+        final OffscreenTarget splash = splashTarget;
+        final boolean splashContext = displayDrawable && splash != null && Thread.currentThread() != GLStateManager.getMainThread();
+        st.defaultFboId = splashContext ? splash.fboId() : 0;
+        if (splashContext && !frameManager.isFrameActive()) {
+            beginSplashFrame();
+        } else if (st.needsSeed) {
+            st.needsSeed = false;
+            GLStateManager.replayStateToBackend();
+        }
+    }
+
+    private void beginSplashFrame() {
+        frameManager.beginFrame();
+        beginFrameInit();
+        frameManager.frame().swapchainUnavailable = true;
     }
 
     @Override public boolean handleReleaseContext(Object drawable) {
@@ -583,9 +604,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             endFrameUploadFlush();
             frameManager.endFrame();
             SplashDispatcher.signalFrameReady((int) s().viewportW, (int) s().viewportH);
-            frameManager.beginFrame();
-            beginFrameInit();
-            frameManager.frame().swapchainUnavailable = true;
+            beginSplashFrame();
             return true;
         }
         frameManager.presentFrame();
@@ -1726,13 +1745,16 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void deleteFramebuffers(int framebuffer) {
         final ContextState cs = s();
+        final boolean drawBound = cs.boundFboId == framebuffer;
+        final boolean readBound = cs.boundReadFboId == framebuffer;
         resourceManager.deleteFbo(framebuffer);
-        if (cs.boundFboId == framebuffer) cs.boundFboId = 0;
-        if (cs.boundReadFboId == framebuffer) cs.boundReadFboId = 0;
+        if (drawBound) bindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, 0);
+        if (readBound) bindFramebuffer(GL30.GL_READ_FRAMEBUFFER, 0);
     }
 
     @Override public void bindFramebuffer(int target, int framebuffer) {
         final ContextState cs = s();
+        if (framebuffer == 0) framebuffer = cs.defaultFboId;
         final boolean isRead = target == GL30.GL_READ_FRAMEBUFFER;
         final boolean isDraw = target == GL30.GL_DRAW_FRAMEBUFFER;
         final boolean isBoth = !isRead && !isDraw;
@@ -1771,7 +1793,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void framebufferTexture2D(int target, int attachment, int textarget, int texture, int level) {
         final ContextState cs = s();
-        if (cs.boundFboId == 0) return;
+        if (cs.boundFboId == cs.defaultFboId) return;
         final FboState fbo = resourceManager.getFbo(cs.boundFboId);
         if (fbo == null) return;
 
@@ -1852,7 +1874,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void drawBuffers(int buffer) {
         final ContextState cs = s();
-        if (cs.boundFboId == 0) return;
+        if (cs.boundFboId == cs.defaultFboId) return;
         final FboState fbo = resourceManager.getFbo(cs.boundFboId);
         if (fbo == null) return;
 
@@ -1875,7 +1897,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
     @Override public void drawBuffers(IntBuffer bufs) {
         final ContextState cs = s();
-        if (cs.boundFboId == 0) return;
+        if (cs.boundFboId == cs.defaultFboId) return;
         final FboState fbo = resourceManager.getFbo(cs.boundFboId);
         if (fbo == null) return;
         applyDrawBuffersFromIntBuffer(fbo, bufs, true);
@@ -1911,8 +1933,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
     }
     @Override public void readBuffer(int mode) {
-        final int fboId = s().boundReadFboId;
-        if (fboId == 0) return;
+        final ContextState cs = s();
+        final int fboId = cs.boundReadFboId;
+        if (fboId == cs.defaultFboId) return;
         final FboState fbo = resourceManager.getFbo(fboId);
         if (fbo == null) return;
         if (mode >= GL30.GL_COLOR_ATTACHMENT0 && mode < GL30.GL_COLOR_ATTACHMENT0 + ContextState.MAX_COLOR_ATTACHMENTS) {
@@ -2046,6 +2069,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (fboId == 0) {
             final int colorFormat = cachedSwapchainFormatArray != null ? cachedSwapchainFormatArray[0] : 0;
             return defaultFramebufferAttachmentParameteri(attachment, pname, colorFormat, resourceManager.getSwapchainDepthStencilFormat());
+        }
+        if (fboId == cs.defaultFboId) {
+            final FboState fbo = resourceManager.getFbo(fboId);
+            return defaultFramebufferAttachmentParameteri(attachment, pname, fbo.colorFormats[0], fbo.depthFormat);
         }
         return fboAttachmentParameteri(resourceManager.getFbo(fboId), attachment, pname);
     }
@@ -3720,8 +3747,8 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL43.GL_MAX_DEBUG_GROUP_STACK_DEPTH -> 64;
             case GL43.GL_MAX_LABEL_LENGTH -> 256;
             case GL43.GL_MAX_DEBUG_MESSAGE_LENGTH -> 1024;
-            case GL11.GL_DRAW_BUFFER -> drawBufferEnum(cs.boundFboId);
-            case GL11.GL_READ_BUFFER -> readBufferEnum(cs.boundReadFboId);
+            case GL11.GL_DRAW_BUFFER -> drawBufferEnum(cs.boundFboId, cs.defaultFboId);
+            case GL11.GL_READ_BUFFER -> readBufferEnum(cs.boundReadFboId, cs.defaultFboId);
             case GL11.GL_TEXTURE_BINDING_2D -> boundTextureOf(cs.activeTextureUnit, cs.boundTextures);
             case GL11.GL_DEPTH_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_DEPTH, GL30.GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE);
             case GL11.GL_STENCIL_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
@@ -3738,15 +3765,15 @@ public class SDLGPURenderBackend extends RenderBackend {
         return GL30.GL_COLOR_ATTACHMENT0 + attachmentIndex;
     }
 
-    private int drawBufferEnum(int fboId) {
-        if (fboId == 0) return bufferEnum(0, 0);
+    private int drawBufferEnum(int fboId, int defaultFboId) {
+        if (fboId == defaultFboId) return bufferEnum(0, 0);
         final FboState fbo = resourceManager.getFbo(fboId);
         final int idx = (fbo == null || fbo.drawBuffers.length == 0) ? -1 : fbo.drawBuffers[0];
         return bufferEnum(fboId, idx);
     }
 
-    private int readBufferEnum(int fboId) {
-        if (fboId == 0) return bufferEnum(0, 0);
+    private int readBufferEnum(int fboId, int defaultFboId) {
+        if (fboId == defaultFboId) return bufferEnum(0, 0);
         final FboState fbo = resourceManager.getFbo(fboId);
         return bufferEnum(fboId, fbo == null ? -1 : fbo.readBufferIndex);
     }

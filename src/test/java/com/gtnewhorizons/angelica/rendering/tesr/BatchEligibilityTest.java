@@ -172,7 +172,7 @@ class BatchEligibilityTest {
             };
 
             BatchEligibility.begin(SAFE, 0L);
-            DroppedItemInstancer.glint(new Tessellator(), 1f, 0f, 0f, 1f, 16, 16, 0.0625f, original);
+            DroppedItemInstancer.glint(new Tessellator(), 1f, 0f, 0f, 1f, 16, 16, 0.0625f, EntityMaterials.GLINT, original);
             assertEquals(SAFE, BatchEligibility.end(SAFE, 0L));
 
             assertFalse(originalCalled[0], "the shadow-pass early return must not fall back to the original draw");

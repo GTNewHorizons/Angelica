@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
-import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -31,7 +30,6 @@ class PipelineCacheVertexInputTest {
 
     @BeforeEach
     void setUp() {
-        VAOManager.init(0);
         PipelineCache.setSwapchainFormats(new int[]{SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM});
         store = new PipelineStore(null);
     }

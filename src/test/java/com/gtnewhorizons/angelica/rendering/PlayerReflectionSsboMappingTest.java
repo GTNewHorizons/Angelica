@@ -149,7 +149,7 @@ class PlayerReflectionSsboMappingTest {
 
         GLStateManager.glUseProgram(program);
         GLStateManager.glBindVertexArray(vao);
-        QuadConverter.drawQuadsAsTriangles(0, PlayerReflectionCapture.VERTEX_COUNT);
+        QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, PlayerReflectionCapture.VERTEX_COUNT);
 
         final ByteBuffer ssboData = readback(ssbo, SSBO_BYTES);
         final int floats = PlayerReflectionLayoutTest.FLOATS;
@@ -176,7 +176,7 @@ class PlayerReflectionSsboMappingTest {
 
         GLStateManager.glUseProgram(program);
         GLStateManager.glBindVertexArray(vao);
-        QuadConverter.drawQuadsAsTriangles(0, PlayerReflectionCapture.VERTEX_COUNT);
+        QuadConverter.drawQuadsAsTriangles(GLStateManager.ctx(), 0, PlayerReflectionCapture.VERTEX_COUNT);
 
         final ByteBuffer visitedData = readback(visitedSsbo, VISITED_BYTES);
         for (int vertexId = 0; vertexId < PlayerReflectionCapture.VERTEX_COUNT; vertexId++) {

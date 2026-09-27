@@ -17,6 +17,7 @@ public class VAOManagerEboIndexTest {
     private static final int DEFAULT_VAO = 0;
     private static final int NO_VAO = -1;
 
+    private final VAOManager vaos = new VAOManager();
     private final Int2IntOpenHashMap expectedEbo = new Int2IntOpenHashMap();
     private int currentVao;
 
@@ -24,7 +25,7 @@ public class VAOManagerEboIndexTest {
     void reset() {
         drainManagerState();
         expectedEbo.clear();
-        VAOManager.init(DEFAULT_VAO);
+        vaos.init(DEFAULT_VAO);
         expectedEbo.put(DEFAULT_VAO, 0);
         currentVao = DEFAULT_VAO;
     }
@@ -34,23 +35,23 @@ public class VAOManagerEboIndexTest {
         drainManagerState();
     }
 
-    private static void drainManagerState() {
-        for (int vao : VAOManager.vaoMap.keySet().toIntArray()) {
-            VAOManager.onDeleteVertexArray(vao);
+    private void drainManagerState() {
+        for (int vao : vaos.vaoMap.keySet().toIntArray()) {
+            vaos.onDeleteVertexArray(vao);
         }
-        VAOManager.boundEBO = 0;
-        assertEquals(0, VAOManager.eboOwners.size(), "draining every VAO left entries in the index");
+        vaos.boundEBO = 0;
+        assertEquals(0, vaos.eboOwners.size(), "draining every VAO left entries in the index");
     }
 
     private void bindVao(int vao) {
-        if (currentVao != NO_VAO) expectedEbo.put(currentVao, VAOManager.boundEBO);
-        VAOManager.onBindVertexArrayPre(vao);
+        if (currentVao != NO_VAO) expectedEbo.put(currentVao, vaos.boundEBO);
+        vaos.onBindVertexArrayPre(vao);
         expectedEbo.putIfAbsent(vao, 0);
         currentVao = vao;
     }
 
     private void bindEbo(int ebo) {
-        VAOManager.onBindEBO(ebo);
+        vaos.onBindEBO(ebo);
     }
 
     private int countOwners(int buffer) {
@@ -62,20 +63,20 @@ public class VAOManagerEboIndexTest {
     }
 
     private void deleteBuffer(int buffer) {
-        VAOManager.onDeleteBuffer(buffer);
+        vaos.onDeleteBuffer(buffer);
         for (int vao : expectedEbo.keySet().toIntArray()) {
             if (expectedEbo.get(vao) == buffer) expectedEbo.put(vao, 0);
         }
     }
 
     private void deleteVao(int vao) {
-        VAOManager.onDeleteVertexArray(vao);
+        vaos.onDeleteVertexArray(vao);
         expectedEbo.remove(vao);
         if (vao == currentVao) currentVao = NO_VAO;
     }
 
     private void assertExpectedEbos(int op) {
-        for (var entry : VAOManager.vaoMap.int2ObjectEntrySet()) {
+        for (var entry : vaos.vaoMap.int2ObjectEntrySet()) {
             final int vao = entry.getIntKey();
             if (vao == currentVao) continue;
             assertEquals(expectedEbo.get(vao), entry.getValue().ebo, () -> "op " + op + ": vao " + vao + " ebo mismatch");
@@ -140,10 +141,10 @@ public class VAOManagerEboIndexTest {
 
         deleteBuffer(ebo);
 
-        assertEquals(0, VAOManager.vaoMap.get(1).ebo, "vao 1 kept a freed shared EBO");
-        assertEquals(0, VAOManager.vaoMap.get(2).ebo, "vao 2 kept a freed shared EBO");
-        assertEquals(0, VAOManager.vaoMap.get(3).ebo, "vao 3 kept a freed shared EBO");
-        assertFalse(VAOManager.eboOwners.containsKey(ebo), "index kept owners for a freed EBO");
+        assertEquals(0, vaos.vaoMap.get(1).ebo, "vao 1 kept a freed shared EBO");
+        assertEquals(0, vaos.vaoMap.get(2).ebo, "vao 2 kept a freed shared EBO");
+        assertEquals(0, vaos.vaoMap.get(3).ebo, "vao 3 kept a freed shared EBO");
+        assertFalse(vaos.eboOwners.containsKey(ebo), "index kept owners for a freed EBO");
     }
 
     @Test
@@ -156,9 +157,9 @@ public class VAOManagerEboIndexTest {
         bindVao(DEFAULT_VAO);
 
         deleteVao(1);
-        assertTrue(VAOManager.eboOwners.containsKey(ebo), "index dropped a still-live owner");
+        assertTrue(vaos.eboOwners.containsKey(ebo), "index dropped a still-live owner");
         deleteVao(2);
-        assertFalse(VAOManager.eboOwners.containsKey(ebo), "index kept an entry after its last owner went away");
+        assertFalse(vaos.eboOwners.containsKey(ebo), "index kept an entry after its last owner went away");
     }
 
     @Test
@@ -170,8 +171,8 @@ public class VAOManagerEboIndexTest {
         deleteVao(1);
         bindVao(DEFAULT_VAO);
 
-        assertFalse(VAOManager.eboOwners.containsKey(ebo), "deleting the bound VAO left an unreachable owner in the index");
-        assertEquals(0, VAOManager.eboOwners.size(), "index leaked an entry for a deleted VAO");
+        assertFalse(vaos.eboOwners.containsKey(ebo), "deleting the bound VAO left an unreachable owner in the index");
+        assertEquals(0, vaos.eboOwners.size(), "index leaked an entry for a deleted VAO");
     }
 
     @Test
@@ -184,6 +185,6 @@ public class VAOManagerEboIndexTest {
         for (int vao = 1; vao <= 64; vao++) {
             deleteVao(vao);
         }
-        assertEquals(0, VAOManager.eboOwners.size(), "index leaked entries after every VAO was deleted");
+        assertEquals(0, vaos.eboOwners.size(), "index leaked entries after every VAO was deleted");
     }
 }

@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 import com.gtnewhorizons.angelica.glsm.recording.ImmediateModeRecorder;
 import com.gtnewhorizons.angelica.glsm.states.ViewportState;
 import org.joml.Matrix4f;
@@ -130,30 +129,32 @@ public class FeedbackManager {
         feedbackVertex(winX, winY, winZ, winW);
     }
 
-    private static int positionStride() {
-        final int s = VAOManager.getAttribEffectiveStride(0);
+    private static int positionStride(GLContextState glCtx) {
+        final int s = glCtx.vaos.attribEffectiveStride(0);
         return (s != 0) ? s : 12;
     }
 
-    private static long positionOffset() {
-        return VAOManager.getAttribOffset(0);
+    private static long positionOffset(GLContextState glCtx) {
+        return glCtx.vaos.attribOffset(0);
     }
 
     public static void processDrawArrays(int mode, int first, int count) {
         computeMVP();
-        final int stride = positionStride();
-        final long posOffset = positionOffset();
+        final GLContextState glCtx = GLStateManager.ctx();
+        final int stride = positionStride(glCtx);
+        final long posOffset = positionOffset(glCtx);
         final int byteCount = count * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        readPositionBuffer((long) first * stride + posOffset, readbackBuf);
+        readPositionBuffer((long) first * stride + posOffset, readbackBuf, glCtx);
 
         emitAllPrimitives(mode, count, i -> i, stride);
     }
 
     public static void processDrawElements(int mode, int indexCount, int type, long eboOffset) {
         computeMVP();
-        final int stride = positionStride();
+        final GLContextState glCtx = GLStateManager.ctx();
+        final int stride = positionStride(glCtx);
 
         final int elementSize = GLTypes.sizeBytes(type);
         final int indexByteCount = indexCount * elementSize;
@@ -169,12 +170,12 @@ public class FeedbackManager {
             if (idx > maxIdx) maxIdx = idx;
         }
 
-        final long posOffset = positionOffset();
+        final long posOffset = positionOffset(glCtx);
         final int vertexCount = maxIdx - minIdx + 1;
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        readPositionBuffer((long) minIdx * stride + posOffset, readbackBuf);
+        readPositionBuffer((long) minIdx * stride + posOffset, readbackBuf, glCtx);
 
         final int base = minIdx;
         emitAllPrimitives(mode, indexCount, i -> ImmediateModeRecorder.readIndex(indexBuf, type, 0, i) - base, stride);
@@ -208,7 +209,8 @@ public class FeedbackManager {
 
     private static void processDrawElementsImpl(int mode, int count, IndexReader reader) {
         computeMVP();
-        final int stride = positionStride();
+        final GLContextState glCtx = GLStateManager.ctx();
+        final int stride = positionStride(glCtx);
 
         int minIdx = Integer.MAX_VALUE, maxIdx = Integer.MIN_VALUE;
         for (int i = 0; i < count; i++) {
@@ -217,7 +219,7 @@ public class FeedbackManager {
             if (idx > maxIdx) maxIdx = idx;
         }
 
-        readVerticesFromVBO(minIdx, maxIdx, stride);
+        readVerticesFromVBO(minIdx, maxIdx, stride, glCtx);
         final int base = minIdx;
         emitAllPrimitives(mode, count, i -> reader.read(i) - base, stride);
     }
@@ -249,18 +251,18 @@ public class FeedbackManager {
         }
     }
 
-    private static void readVerticesFromVBO(int minIdx, int maxIdx, int stride) {
-        final long posOffset = positionOffset();
+    private static void readVerticesFromVBO(int minIdx, int maxIdx, int stride, GLContextState glCtx) {
+        final long posOffset = positionOffset(glCtx);
         final int vertexCount = maxIdx - minIdx + 1;
         final int byteCount = vertexCount * stride;
         ensureReadbackCapacity(byteCount);
         readbackBuf.clear().limit(byteCount);
-        readPositionBuffer((long) minIdx * stride + posOffset, readbackBuf);
+        readPositionBuffer((long) minIdx * stride + posOffset, readbackBuf, glCtx);
     }
 
-    private static void readPositionBuffer(long offset, ByteBuffer destination) {
-        final int positionVbo = VAOManager.getAttribVBO(0);
-        final int previousVbo = GLStateManager.getBoundVBO();
+    private static void readPositionBuffer(long offset, ByteBuffer destination, GLContextState glCtx) {
+        final int positionVbo = glCtx.vaos.attribVBO(0);
+        final int previousVbo = glCtx.boundVBO;
 
         if (positionVbo != 0 && positionVbo != previousVbo) {
             GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, positionVbo);

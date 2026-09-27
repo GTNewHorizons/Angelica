@@ -98,7 +98,8 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
 
     @ModifyConstant(method = "renderWorld(FJ)V", constant = @Constant(doubleValue = 128.0D), expect = 2)
     private double iris$alwaysRenderCloudsLate(double cloudHeightCheck) {
-        return IrisApi.getInstance().isShaderPackInUse() ? Double.NEGATIVE_INFINITY : SettingsManager.cloudRenderOrderHeight();
+        if (IrisApi.getInstance().isShaderPackInUse()) return Double.NEGATIVE_INFINITY;
+        return SettingsManager.cloudRenderOrderHeight() - Camera.INSTANCE.getOffset().y;
     }
 
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V"))

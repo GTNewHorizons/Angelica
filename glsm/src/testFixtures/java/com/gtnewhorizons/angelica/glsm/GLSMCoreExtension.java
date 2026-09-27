@@ -42,7 +42,6 @@ public class GLSMCoreExtension implements BeforeAllCallback, BeforeEachCallback,
             GLStateManager.initialize(GLSMInitConfig.builder()
                 .displaySize(800, 600)
                 .directDrawer(t -> {})
-                .streamingDrawerDestroy(() -> {})
                 .enableDSA(false)
                 .build());
             GLStateManager.setRunningSplash(false);

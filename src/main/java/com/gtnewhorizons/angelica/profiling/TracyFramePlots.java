@@ -91,6 +91,11 @@ public final class TracyFramePlots {
     private static final PlotDelta P_TESR_CACHE_HITS = new PlotDelta("tesr.cacheHits");
     private static final PlotDelta P_TESR_CACHE_MISSES = new PlotDelta("tesr.cacheMisses");
     private static final PlotDelta P_TESR_MODEL_PARTS = new PlotDelta("tesr.modelParts");
+    private static final PlotDelta P_ARMOR_BASE_REUSES = new PlotDelta("glint.armorBaseReuses");
+    private static final PlotDelta P_GLINT_PASS_REUSES = new PlotDelta("glint.passReuses");
+    private static final PlotDelta P_ARMOR_LOOP_SKIPS = new PlotDelta("glint.armorLoopSkips");
+    private static final PlotDelta P_ARMOR_SECTION_SKIPS = new PlotDelta("glint.armorSectionSkips");
+    private static final PlotDelta P_REDRAWN_INSTANCES = new PlotDelta("glint.redrawnInstances");
     private static final PlotDelta P_TESR_LIVE_FALLBACKS = new PlotDelta("tesr.liveFallbacks");
     private static final PlotDelta P_ITEMS_INSTANCED = new PlotDelta("items.instanced");
     private static final PlotDelta P_ITEMS_FALLBACK = new PlotDelta("items.fallback");
@@ -239,6 +244,11 @@ public final class TracyFramePlots {
         P_TESR_CACHE_HITS.plot(AngelicaTesrMeshCache.cacheHits);
         P_TESR_CACHE_MISSES.plot(AngelicaTesrMeshCache.cacheMisses);
         P_TESR_MODEL_PARTS.plot(batcher.statParts());
+        P_ARMOR_BASE_REUSES.plot(batcher.statArmorBaseReuses());
+        P_GLINT_PASS_REUSES.plot(batcher.statGlintPassReuses());
+        P_ARMOR_LOOP_SKIPS.plot(batcher.statArmorLoopSkips());
+        P_ARMOR_SECTION_SKIPS.plot(batcher.statArmorSectionSkips());
+        P_REDRAWN_INSTANCES.plot(batcher.statRedrawnInstances());
         P_TESR_LIVE_FALLBACKS.plot(batcher.statLiveFallbacks());
         P_ITEMS_INSTANCED.plot(DroppedItemInstancer.statInstanced());
         P_ITEMS_FALLBACK.plot(DroppedItemInstancer.statFallback());

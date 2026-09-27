@@ -11,8 +11,22 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 class GlintClockTest {
+
+    @Test
+    void cachedSecondLayerMatchesTheLegacyTransformAndRejectsModifiedFirstLayers() {
+        for (long time : new long[] {0, 1000003, 864000000123L}) {
+            GlintClock.beginFrame(time);
+            final Matrix4f first = new Matrix4f().scaling(0.33333334f).rotateZ((float) Math.toRadians(30))
+                .translate(armorU0(), armorV0(), 0);
+            final Matrix4f second = new Matrix4f().scaling(0.33333334f).rotateZ((float) Math.toRadians(-30))
+                .translate(armorU1(), armorV1(), 0);
+            assertTrue(second.equals(GlintClock.secondArmorMatrix(first), 1e-6f));
+            assertNull(GlintClock.secondArmorMatrix(first.translate(0.1f, 0, 0)));
+        }
+    }
 
     @BeforeEach
     void resetArmorPathTable() {
