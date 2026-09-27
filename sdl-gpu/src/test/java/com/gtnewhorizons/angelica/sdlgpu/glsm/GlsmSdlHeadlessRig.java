@@ -116,6 +116,44 @@ public final class GlsmSdlHeadlessRig {
         GLStateManager.glViewport(0, 0, SIZE, SIZE);
     }
 
+    public static int createDepthStencilFbo() {
+        final int color = GLStateManager.glGenTextures();
+        GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, color);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+        GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, (ByteBuffer) null);
+
+        final int depth = GLStateManager.glGenRenderbuffers();
+        GLStateManager.glBindRenderbuffer(GL30.GL_RENDERBUFFER, depth);
+        GLStateManager.glRenderbufferStorage(GL30.GL_RENDERBUFFER, GL30.GL_DEPTH24_STENCIL8, SIZE, SIZE);
+
+        final int fbo = GLStateManager.glGenFramebuffers();
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, fbo);
+        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT0, GL11.GL_TEXTURE_2D, color, 0);
+        GLStateManager.glFramebufferRenderbuffer(GL30.GL_FRAMEBUFFER, GL30.GL_DEPTH_STENCIL_ATTACHMENT, GL30.GL_RENDERBUFFER, depth);
+        return fbo;
+    }
+
+    public static void writeStencilOneInBottomHalf() {
+        GLStateManager.glClearStencil(0);
+        GLStateManager.glStencilMask(0xFF);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
+        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
+        GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 1, 0xFF);
+        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+        halfQuad(-1.0f, 0.0f, 0.0f, 1.0f, 0.0f);
+        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+    }
+
+    public static void drawRedWhereStencilIsOne() {
+        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
+        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 0xFF);
+        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_KEEP);
+        solidQuad(1.0f, 0.0f, 0.0f);
+        GLStateManager.glDisable(GL11.GL_STENCIL_TEST);
+    }
+
     public static void clearTo(float r, float g, float b, float a) {
         GLStateManager.glClearColor(r, g, b, a);
         GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);

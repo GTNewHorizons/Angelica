@@ -106,7 +106,7 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     private StructureBoundingBox volume;
     private Block renderingBlock;
 
-    private final SmoothBiomeColorCache biomeColorCache;
+    private SmoothBiomeColorCache biomeColorCache;
 
     private List<IDynamicLightSource> chunkLightSources;
     private DynamicLights dynamicLightsInstance;
@@ -201,6 +201,9 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
         this.sections = context.getSections();
         this.volume = context.getVolume();
 
+        if (!this.biomeColorCache.matchesConfiguredRadius()) {
+            this.biomeColorCache = new SmoothBiomeColorCache(this);
+        }
         this.biomeColorCache.update(new SectionPos(origin.x, origin.y, origin.z));
 
         this.baseX = (this.origin.x - NEIGHBOR_CHUNK_RADIUS) << 4;

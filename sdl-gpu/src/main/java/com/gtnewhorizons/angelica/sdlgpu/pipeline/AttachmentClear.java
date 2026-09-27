@@ -200,11 +200,6 @@ public final class AttachmentClear {
         st.lastAppliedStencilRef = Integer.MIN_VALUE;
         st.lastAppliedVboBindCb = 0;
 
-        if (t.depthTexture != 0) {
-            if (depth) st.clearedTexturesThisFrame.add(t.depthTexture);
-            if (stencil) st.clearedStencilTexturesThisFrame.add(t.depthTexture);
-        }
-
         frameManager.noteInPassClear();
         return true;
     }

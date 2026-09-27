@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.biome_blending;
 
+import com.gtnewhorizons.angelica.rendering.celeritas.BiomeVertexBlender;
 import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.WorldClientExtension;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -24,7 +25,7 @@ public abstract class MixinBlockLiquid extends Block {
         // Check ThreadLocal first (for worker threads), then fall back to world cache
         SmoothBiomeColorCache cache = SmoothBiomeColorCache.getActiveCache();
         if (cache != null) {
-            return cache.getColor(SmoothBiomeColorCache.ColorType.WATER, x, y, z);
+            return BiomeVertexBlender.blockColor(cache, SmoothBiomeColorCache.ColorType.WATER, x, y, z);
         } else if (access instanceof WorldClientExtension ext) {
             return ext.celeritas$getSmoothBiomeColorCache().getColor(SmoothBiomeColorCache.ColorType.WATER, x, y, z);
         } else {

@@ -74,16 +74,16 @@ class ClearConsumptionTest {
 
     @Test
     void depthAndStencilAreConsumedIndependently() {
+        final ResourceManager rm = rm();
         final ContextState st = new ContextState();
         FBOClearTracker.recordPendingDepthClear(st, DEPTH, 1f);
         FBOClearTracker.recordPendingStencilClear(st, DEPTH, 0);
 
-        consumeClears(rm(), st, fbo(SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT), DUMMY, 0, true, true, true);
+        consumeClears(rm, st, fbo(SDL_GPU_TEXTUREFORMAT_D24_UNORM_S8_UINT), DUMMY, 0, true, true, true);
 
         assertFalse(st.pendingDepthTextures.contains(DEPTH));
         assertFalse(st.pendingStencilTextures.contains(DEPTH));
-        assertTrue(st.clearedTexturesThisFrame.contains(DEPTH));
-        assertTrue(st.clearedStencilTexturesThisFrame.contains(DEPTH));
+        assertTrue(rm.isTextureContentDefined(DEPTH), "the clear pass defines the depth-stencil contents");
     }
 
     @Test
@@ -96,17 +96,17 @@ class ClearConsumptionTest {
 
         assertFalse(st.pendingDepthTextures.contains(DEPTH));
         assertTrue(st.pendingStencilTextures.contains(DEPTH), "the format has no stencil aspect to clear");
-        assertFalse(st.clearedStencilTexturesThisFrame.contains(DEPTH));
     }
 
     @Test
     void anUnclearedDepthTargetIsStillConsumed() {
+        final ResourceManager rm = rm();
         final ContextState st = new ContextState();
         FBOClearTracker.recordPendingDepthClear(st, DEPTH, 1f);
 
-        consumeClears(rm(), st, fbo(SDL_GPU_TEXTUREFORMAT_D24_UNORM), DUMMY, 0, false, false, false);
+        consumeClears(rm, st, fbo(SDL_GPU_TEXTUREFORMAT_D24_UNORM), DUMMY, 0, false, false, false);
 
         assertFalse(st.pendingDepthTextures.contains(DEPTH));
-        assertFalse(st.clearedTexturesThisFrame.contains(DEPTH), "no clear was baked, so nothing was cleared");
+        assertFalse(rm.isTextureContentDefined(DEPTH), "no clear was baked, so nothing was defined");
     }
 }

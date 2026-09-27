@@ -364,6 +364,7 @@ public final class ResourceManager {
 
     public void markTextureContentDefined(long handle) {
         if (handle == 0) return;
+        if (isTextureContentDefined(handle)) return;
         wLock.lock();
         try { definedContentTextures.add(handle); } finally { wLock.unlock(); }
     }

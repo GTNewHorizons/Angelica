@@ -57,15 +57,6 @@ class StencilClearTrackingTest {
     }
 
     @Test
-    void recordingAStencilClearRetractsTheClearedThisFrameMark() {
-        final ContextState st = new ContextState();
-        st.clearedStencilTexturesThisFrame.add(DEPTH);
-
-        FBOClearTracker.recordPendingStencilClear(st, DEPTH, 0);
-        assertFalse(st.clearedStencilTexturesThisFrame.contains(DEPTH), "a second clear in one frame must not be swallowed");
-    }
-
-    @Test
     void recordingBumpsMutationGen() {
         final ContextState st = new ContextState();
         FBOClearTracker.snapshotFlushGenerations(st);
@@ -79,7 +70,6 @@ class StencilClearTrackingTest {
     void scrubDropsStencilStateWithTheTexture() {
         final ContextState st = new ContextState();
         FBOClearTracker.recordPendingStencilClear(st, DEPTH, 7);
-        st.clearedStencilTexturesThisFrame.add(DEPTH);
 
         final SdlTestRig rig = SdlTestRig.create();
         final int glId = rig.resourceManager.genTexture();
@@ -88,7 +78,6 @@ class StencilClearTrackingTest {
 
         assertFalse(st.pendingStencilTextures.contains(DEPTH));
         assertFalse(st.pendingStencilValues.containsKey(DEPTH));
-        assertFalse(st.clearedStencilTexturesThisFrame.contains(DEPTH));
     }
 
     @Test
