@@ -96,8 +96,7 @@ final class InstancedTemplateRenderer {
             for (int j = 0, m = indices.size(); j < m; j++) {
                 final int i = indices.getInt(j);
                 final int color = run.source != null ? run.color : data.colors.getInt(i);
-                final long info = run.source != null ? 0L : data.infos.getLong(i);
-                InstancedAttribs.writeHead(ptr, data.matrices, i * 16, color, data.overlays.getInt(i), info);
+                InstancedAttribs.writeHead(ptr, data.matrices, i * 16, color, data.overlays.getInt(i), data.infos.getLong(i));
                 InstancedAttribs.writeLightmap(ptr + InstancedAttribs.OFFSET_LIGHTMAP, data.lights.getInt(i));
                 ptr += InstancedAttribs.STRIDE;
             }
@@ -178,7 +177,7 @@ final class InstancedTemplateRenderer {
                 final int color = run.source != null ? run.color : data.colors.getInt(i);
                 final int light = data.lights.getInt(i);
                 final int overlay = data.overlays.getInt(i);
-                final long info = run.source != null ? 0L : data.infos.getLong(i);
+                final long info = data.infos.getLong(i);
                 for (int p = 0, n = partCubes.length; p < n; p++) {
                     final CubeParams cube = partCubes[p];
                     cube.writeRows(ptr, data.matrices, off, scale);

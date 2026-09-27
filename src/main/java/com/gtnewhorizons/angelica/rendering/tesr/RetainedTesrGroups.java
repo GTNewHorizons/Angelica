@@ -573,13 +573,13 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         dst.referencedParts += end - start;
     }
 
-    void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, Matrix4f first, Matrix4f second) {
+    void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, Matrix4f first, Matrix4f second) {
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final InstanceColumns dst = group.templateColumns;
         final int index = dst.size;
         final TexRun run = group.openOrExtendRun(dst, first, true, false);
-        dst.add(template, currentMV, packedLight, colorABGR, overlayABGR, 0L);
+        dst.add(template, currentMV, packedLight, colorABGR, overlayABGR, entityInfo);
         run.last.end = dst.size;
         run.parts++;
         run.instances++;
@@ -716,7 +716,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             if (!live(group) || !instanceable(group)) continue;
             if (group.templateColumns.hasInstances()) {
                 final boolean fixedFunction = deferred == null && GLStateManager.getActiveProgram() == 0;
-                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT && fixedFunction);
+                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT);
             }
             if (!cubeAvailable && group.cubeColumns.hasInstances()) {
                 drawTemplateRuns(group.cubeColumns, group.material == EntityMaterials.GLINT && deferred == null, false);
@@ -873,10 +873,10 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 final int runEnd = seg.end;
                 int sub = seg.start;
                 while (sub < runEnd) {
-                    final long info = head.source != null ? 0L : data.infos.getLong(sub);
+                    final long info = data.infos.getLong(sub);
                     final int overlay = data.overlays.getInt(sub);
                     int subEnd = sub;
-                    while (subEnd < runEnd && (head.source != null || data.infos.getLong(subEnd) == info) && data.overlays.getInt(subEnd) == overlay) {
+                    while (subEnd < runEnd && data.infos.getLong(subEnd) == info && data.overlays.getInt(subEnd) == overlay) {
                         subEnd++;
                     }
                     source.applyIdsAndRebind(entityFromInfo(info), blockEntityFromInfo(info), itemFromInfo(info));

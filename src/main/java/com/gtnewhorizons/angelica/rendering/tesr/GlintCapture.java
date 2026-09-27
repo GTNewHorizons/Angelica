@@ -59,7 +59,6 @@ public final class GlintCapture {
         texture = GLStateManager.getBoundTextureForServerState();
         color = currentColor();
         light = GLSMConfig.packedLastBrightness();
-        overlay = currentOverlay();
         fragmentLength = FragmentKey.packFromState(fragment);
         GLStateManager.getEffectiveBlendState(blend);
         blendEnabled = GLStateManager.isEffectiveBlendEnabled();
@@ -71,11 +70,11 @@ public final class GlintCapture {
     /**
      * Base passes are only copied under the same parent pose. Light and overlay are recorded so the glint can draw the base instances in place when every part still carries them.
      */
-    boolean beginBase(RetainedTesrGroups groups) {
+    boolean beginBase(RetainedTesrGroups groups, int overlay) {
         if (!open(groups)) return false;
         parent.set(GLStateManager.getModelViewMatrix());
         light = GLSMConfig.packedLastBrightness();
-        overlay = currentOverlay();
+        this.overlay = overlay;
         base = true;
         return true;
     }
@@ -174,7 +173,7 @@ public final class GlintCapture {
 
     boolean copyBase(ModelPartBatcher batcher, RetainedTesrGroups groups) {
         if (!baseStillValid(groups) || EntityMaterials.fromCurrentState(false) != EntityMaterials.GLINT || !batcher.prepareArmorGlint()) return false;
-        final boolean inPlace = sameLightAndOverlay();
+        final boolean inPlace = sameLightAndOverlay(batcher.currentOverlay());
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
             batcher.copyArmorGlint(range.columns, range.start, range.end, inPlace);
@@ -184,7 +183,7 @@ public final class GlintCapture {
     }
 
     boolean queueBothLayers(ModelPartBatcher batcher, RetainedTesrGroups groups, ResourceLocation glintTexture) {
-        if (!baseStillValid(groups) || !sameLightAndOverlay() || !batcher.prepareSkippedArmorGlint(glintTexture)) return false;
+        if (!baseStillValid(groups) || !sameLightAndOverlay(batcher.currentOverlay()) || !batcher.prepareSkippedArmorGlint(glintTexture)) return false;
         for (int i = 0; i < used; i++) {
             final Range range = ranges.get(i);
             batcher.queueArmorGlintLayers(range.columns, range.source, range.start, range.end);
@@ -202,16 +201,12 @@ public final class GlintCapture {
         return true;
     }
 
-    private boolean sameLightAndOverlay() {
-        return uniformLight && light == GLSMConfig.packedLastBrightness() && overlay == currentOverlay();
+    private boolean sameLightAndOverlay(int currentOverlay) {
+        return uniformLight && light == GLSMConfig.packedLastBrightness() && overlay == currentOverlay;
     }
 
     private static int currentColor() {
         final var c = GLStateManager.getColor();
         return AngelicaBufferSource.packAbgr(c.getRed(), c.getGreen(), c.getBlue(), c.getAlpha());
-    }
-
-    private static int currentOverlay() {
-        return AngelicaBufferSource.packAbgr(GLStateManager.getOverlayR(), GLStateManager.getOverlayG(), GLStateManager.getOverlayB(), GLStateManager.getOverlayA());
     }
 }

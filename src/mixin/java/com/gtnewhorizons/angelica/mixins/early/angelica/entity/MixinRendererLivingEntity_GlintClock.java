@@ -7,8 +7,8 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
-import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.model.ModelBase;
 import net.minecraft.entity.Entity;
 import net.minecraft.client.renderer.entity.RendererLivingEntity;
@@ -37,6 +37,7 @@ public abstract class MixinRendererLivingEntity_GlintClock {
     @Unique private ModelBase angelica$baseModel;
     @Unique private boolean angelica$capturingBase;
     @Unique private int angelica$armorPassFlags;
+    @Unique private int angelica$nextGlintLayer;
     @Unique private int angelica$glintLayer;
     @Unique private boolean angelica$secondArmorQueued;
     @Unique private boolean angelica$zoneOpen;
@@ -55,10 +56,19 @@ public abstract class MixinRendererLivingEntity_GlintClock {
         constant = @Constant(intValue = 15, ordinal = 0))
     private int angelica$queueArmorGlintBlock(int mask) {
         final ModelBase model = ((RendererLivingEntity) (Object) this).renderPassModel;
-        if ((angelica$armorPassFlags & 15) != 15 || model != angelica$baseModel || GLStateManager.getOverlayA() != 0.0F || RendererLivingEntityHelper.hasEyePass(this)
+        if ((angelica$armorPassFlags & 15) != 15) return mask;
+        angelica$nextGlintLayer = 0;
+        if (model != angelica$baseModel || GLStateManager.getOverlayA() != 0.0F || RendererLivingEntityHelper.hasEyePass(this)
             || !ModelPartBatcher.INSTANCE.queueSkippedArmorGlint(angelica$armorBase, RES_ITEM_GLINT)) return mask;
         SkippedGlintBlock.applyArmorExitState();
         return 0;
+    }
+
+    @ModifyExpressionValue(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;shouldRenderPass(Lnet/minecraft/entity/EntityLivingBase;IF)I"))
+    private int angelica$rememberPassFlags(int passFlags) {
+        angelica$armorPassFlags = passFlags;
+        return passFlags;
     }
 
     @Inject(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
@@ -66,14 +76,13 @@ public abstract class MixinRendererLivingEntity_GlintClock {
             @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0),
             @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 1)
         })
-    private void angelica$beginArmorBase(CallbackInfo ci, @Local(ordinal = 0) int passFlags) {
+    private void angelica$beginArmorBase(CallbackInfo ci) {
         if (Tracy.FINE_ZONES) {
             Tracy.beginZone(angelica$Z_ARMOR_BASE);
             angelica$zoneOpen = true;
         }
-        angelica$armorPassFlags = passFlags;
         angelica$baseModel = null;
-        angelica$capturingBase = (passFlags & 15) == 15 && ModelPartBatcher.INSTANCE.beginArmorCapture(angelica$armorBase);
+        angelica$capturingBase = (angelica$armorPassFlags & 15) == 15 && ModelPartBatcher.INSTANCE.beginArmorCapture(angelica$armorBase);
         if (angelica$capturingBase) GLStateManager.glPushMatrix();
     }
 
@@ -95,11 +104,12 @@ public abstract class MixinRendererLivingEntity_GlintClock {
     @WrapWithCondition(method = "doRender(Lnet/minecraft/entity/EntityLivingBase;DDDFF)V",
         slice = @Slice(from = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/entity/RendererLivingEntity;RES_ITEM_GLINT:Lnet/minecraft/util/ResourceLocation;")),
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/model/ModelBase;render(Lnet/minecraft/entity/Entity;FFFFFF)V", ordinal = 0))
-    private boolean angelica$renderArmorGlintLayer(ModelBase model, Entity entity, float swing, float amount, float age, float yaw, float pitch, float scale, @Local(ordinal = 2) int layer) {
+    private boolean angelica$renderArmorGlintLayer(ModelBase model, Entity entity, float swing, float amount, float age, float yaw, float pitch, float scale) {
         if (Tracy.FINE_ZONES) {
             Tracy.beginZone(angelica$Z_ARMOR_GLINT);
             angelica$zoneOpen = true;
         }
+        final int layer = angelica$nextGlintLayer++;
         final ModelPartBatcher batcher = ModelPartBatcher.INSTANCE;
         if (layer == 0) angelica$secondArmorQueued = false;
         angelica$glintLayer = GLINT_LAYER_QUEUED;
