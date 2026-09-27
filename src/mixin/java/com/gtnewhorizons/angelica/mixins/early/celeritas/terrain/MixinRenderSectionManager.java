@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.mixins.interfaces.RenderSectionManagerAccessor
 import it.unimi.dsi.fastutil.longs.Long2ReferenceMap;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
+import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkTaskOutput;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkJobResult;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -17,6 +19,8 @@ public class MixinRenderSectionManager implements RenderSectionManagerAccessor {
 
     @Shadow @Final private ConcurrentLinkedDeque<Runnable> asyncSubmittedTasks;
 
+    @Shadow @Final private ConcurrentLinkedDeque<ChunkJobResult<? extends ChunkTaskOutput>> buildResults;
+
     @Override
     public Long2ReferenceMap<RenderSection> angelica$getSectionByPosition() {
         return sectionByPosition;
@@ -25,5 +29,10 @@ public class MixinRenderSectionManager implements RenderSectionManagerAccessor {
     @Override
     public ConcurrentLinkedDeque<Runnable> angelica$getAsyncSubmittedTasks() {
         return asyncSubmittedTasks;
+    }
+
+    @Override
+    public ConcurrentLinkedDeque<ChunkJobResult<? extends ChunkTaskOutput>> angelica$getBuildResults() {
+        return buildResults;
     }
 }

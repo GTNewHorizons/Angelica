@@ -1,5 +1,7 @@
 package com.gtnewhorizons.angelica.render;
 
+import org.joml.Matrix4fc;
+
 /**
  * The shape of the drawn disc, how it splits into wedges, and how far out each kind of geometry should
  * really be worth building.
@@ -47,6 +49,29 @@ final class CloudDisc {
     static double pixelsPerRadian(int displayHeight, float fovDegrees) {
         if (!(fovDegrees > 0.0f) || fovDegrees >= 180.0f) return 0.0;
         return (displayHeight * 0.5) / Math.tan(Math.toRadians(fovDegrees) * 0.5);
+    }
+
+    static double pixelsPerRadian(int displayWidth, int displayHeight, Matrix4fc projection) {
+        if (displayWidth <= 0 || displayHeight <= 0 || projection == null) return 0.0;
+        final float perspectiveW = projection.m23();
+        if (!Float.isFinite(perspectiveW) || perspectiveW >= 0.0f || projection.m33() != 0.0f) return 0.0;
+
+        final double scale = -0.5 / perspectiveW;
+        final double a = displayWidth * projection.m00() * scale;
+        final double b = displayWidth * projection.m10() * scale;
+        final double c = displayHeight * projection.m01() * scale;
+        final double d = displayHeight * projection.m11() * scale;
+        if (!Double.isFinite(a) || !Double.isFinite(b) || !Double.isFinite(c) || !Double.isFinite(d)) {
+            return 0.0;
+        }
+        if (b == 0.0 && c == 0.0) return Math.max(Math.abs(a), Math.abs(d));
+        final double column0 = a * a + c * c;
+        final double column1 = b * b + d * d;
+        final double cross = a * b + c * d;
+        final double largest = 0.5 * (column0 + column1
+            + Math.hypot(column0 - column1, 2.0 * cross));
+        final double pixels = Math.sqrt(largest);
+        return Double.isFinite(pixels) ? pixels : 0.0;
     }
 
     static int wallCutCells(double pixelsPerRadian, boolean platesInFront) {

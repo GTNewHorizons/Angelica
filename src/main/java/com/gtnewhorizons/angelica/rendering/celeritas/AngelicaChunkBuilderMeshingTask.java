@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 
 import com.gtnewhorizon.gtnhlib.blockpos.BlockPos;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
-import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.StateAwareTessellator;
 import com.gtnewhorizons.angelica.mixins.interfaces.OverridesGetDistanceFrom;
 import com.gtnewhorizons.angelica.rendering.TileEntityRenderBoundsRegistry;
@@ -10,6 +9,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.BlockRenderContext;
 import com.gtnewhorizons.angelica.rendering.celeritas.iris.ContextAwareChunkVertexEncoder;
+import com.gtnewhorizons.angelica.rendering.celeritas.threading.RenderPassHelper;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.utils.NaturalTextureUtils;
@@ -39,6 +39,7 @@ import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildBuffers;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildContext;
 import org.embeddedt.embeddium.impl.render.chunk.compile.ChunkBuildOutput;
+import org.embeddedt.embeddium.impl.render.chunk.compile.executor.ChunkJobResult;
 import org.embeddedt.embeddium.impl.render.chunk.compile.tasks.ChunkBuilderTask;
 import org.embeddedt.embeddium.impl.render.chunk.data.BuiltSectionMeshParts;
 import org.embeddedt.embeddium.impl.render.chunk.occlusion.SectionVisibilityBuilder;
@@ -48,26 +49,22 @@ import org.embeddedt.embeddium.impl.util.task.CancellationToken;
 import org.joml.Vector3d;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<ChunkBuildOutput> {
     private static final Tracy.ZoneId Z_MESH_SECTION = Tracy.zoneId("meshSection");
-    private static final Tracy.ZoneId Z_MESH_DEFERRED = Tracy.zoneId("meshDeferred");
+    private static final Tracy.ZoneId Z_MESH_PRESCAN = Tracy.zoneId("meshPrescan");
+    private static final Tracy.ZoneId Z_MESH_DEFERRED_MAIN = Tracy.zoneId("meshDeferredMain");
     private static final Tracy.ZoneId Z_MESH_FINALIZE = Tracy.zoneId("meshFinalize");
 
     protected final RenderSection render;
     protected final int buildTime;
     protected final Vector3d camera;
 
-    private static final long DEFERRED_BLOCK_TIMEOUT_MS = 10_000; // 10 seconds
-    private static final int MAX_RETRIES = 2;
-
-    protected record DeferredBlock(int x, int y, int z, Block block, int meta, int pass, Material materialOverride, boolean isShaderPackOverride) {}
+    private DeferredMeshScheduler scheduler;
+    private boolean important;
 
     public AngelicaChunkBuilderMeshingTask(RenderSection render, int time, Vector3d camera) {
         this.render = render;
@@ -88,6 +85,15 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         return false;
     }
 
+    protected boolean canHandOff() {
+        return false;
+    }
+
+    public void bindScheduler(DeferredMeshScheduler s, boolean important) {
+        this.scheduler = s;
+        this.important = important;
+    }
+
     protected void onEnterExecute() {}
 
     protected void onExitExecute() {}
@@ -96,12 +102,10 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
     @Override
     public ChunkBuildOutput execute(ChunkBuildContext context, CancellationToken cancellationToken) {
+        final long start = System.nanoTime();
         final AngelicaChunkBuildContext buildContext = (AngelicaChunkBuildContext) context;
         final AngelicaBuiltRenderSectionData renderData = new AngelicaBuiltRenderSectionData();
         final SectionVisibilityBuilder occluder = new SectionVisibilityBuilder();
-
-        final ChunkBuildBuffers buffers = buildContext.buffers;
-        buffers.init(renderData, this.render.getSectionIndex());
 
         final int minX = this.render.getOriginX();
         final int minY = this.render.getOriginY();
@@ -125,7 +129,35 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         final Tessellator tessellator = getTessellator();
         ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
 
+        ChunkBuildBuffers handoffBuffers = null;
+
         try {
+            final boolean threaded = isThreaded();
+            final long[] deferredMask = buildContext.getDeferredMask();
+            final boolean handoff;
+            if (threaded) {
+                if (!canHandOff() || scheduler == null) {
+                    throw new IllegalStateException("Threaded meshing task cannot hand off deferred blocks for " + this.render);
+                }
+                if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_PRESCAN);
+                try {
+                    handoff = prescanDeferred(region, minX, minY, minZ, deferredMask);
+                } finally {
+                    if (Tracy.ENABLED) Tracy.endZone();
+                }
+            } else {
+                handoff = false;
+            }
+
+            final ChunkBuildBuffers buffers;
+            if (handoff) {
+                handoffBuffers = scheduler.acquireBuffers();
+                buffers = handoffBuffers;
+            } else {
+                buffers = buildContext.buffers;
+            }
+            buffers.init(renderData, this.render.getSectionIndex());
+
             tessellator.setTranslation(-minX, -minY, -minZ);
             SmoothBiomeColorCache.setActiveCache(biomeColorCache);
 
@@ -137,8 +169,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             final World mcWorld = Minecraft.getMinecraft().theWorld;
             final long currentTick = mcWorld != null ? mcWorld.getTotalWorldTime() : 0L;
 
-            final boolean threaded = isThreaded();
-            final List<DeferredBlock> deferredBlocks = threaded ? new ArrayList<>() : null;
+            final List<DeferredBlock> deferredBlocks = handoff ? new ArrayList<>() : null;
 
             final FloatArrayList culledBounds = buildContext.getTeBoundsScratch();
             culledBounds.clear();
@@ -207,7 +238,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                             }
                         }
 
-                        final boolean canRenderOffThread = !threaded || canRenderOffThread(block);
+                        final boolean canRenderOffThread = !handoff || !isDeferred(deferredMask, x, y, z);
 
                         // Check for shader pack override
                         final BlockRenderLayer override = blockTypeIds != null ? blockTypeIds.get(block) : null;
@@ -245,14 +276,23 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                 }
             }
 
-            // Process deferred blocks on main thread if any
-            if (deferredBlocks != null && !deferredBlocks.isEmpty()) {
-                if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_DEFERRED);
-                try {
-                    processDeferredBlocks(deferredBlocks, buildContext, buffers, region, minX, minY, minZ, teMap, currentTick);
-                } finally {
-                    if (Tracy.ENABLED) Tracy.endZone();
+            renderData.visibilityData = occluder.computeVisibilityEncoding();
+            renderData.culledBlockEntityBounds = culledBounds.isEmpty() ? AngelicaBuiltRenderSectionData.EMPTY_BOUNDS : culledBounds.toFloatArray();
+            renderData.maxTeRenderDistSq = maxTeRenderDistSq;
+
+            if (handoff) {
+                if (region != buildContext.getWorldSlice()) {
+                    throw new IllegalStateException("Deferred handoff requires the context WorldSlice for " + this.render);
                 }
+                final WorldSlice slice = buildContext.swapWorldSlice(scheduler.acquireSlice());
+                final DeferredSectionMesh mesh = new DeferredSectionMesh(this, cancellationToken, buffers, slice, renderData, deferredBlocks, teMap, currentTick, this.important, System.nanoTime() - start);
+                scheduler.submit(mesh);
+                handoffBuffers = null;
+
+                SmoothBiomeColorCache.clearActiveCache();
+                tessellator.setTranslation(0, 0, 0);
+
+                return null;
             }
 
             if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_FINALIZE);
@@ -260,7 +300,6 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
             try {
                 meshes = BuiltSectionMeshParts.groupFromBuildBuffers(buffers,
                     (float) camera.x - minX, (float) camera.y - minY, (float) camera.z - minZ);
-                renderData.visibilityData = occluder.computeVisibilityEncoding();
             } finally {
                 if (Tracy.ENABLED) Tracy.endZone();
             }
@@ -276,9 +315,6 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                 }
             }
 
-            renderData.culledBlockEntityBounds = culledBounds.isEmpty() ? AngelicaBuiltRenderSectionData.EMPTY_BOUNDS : culledBounds.toFloatArray();
-            renderData.maxTeRenderDistSq = maxTeRenderDistSq;
-
             SmoothBiomeColorCache.clearActiveCache();
             tessellator.setTranslation(0, 0, 0);
 
@@ -291,10 +327,100 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
         } catch (Throwable ex) {
             throw fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building chunk meshes"), region, blockPos);
         } finally {
+            if (handoffBuffers != null) scheduler.releaseBuffers(handoffBuffers);
             ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
             SmoothBiomeColorCache.clearActiveCache();
             if (Tracy.ENABLED) Tracy.endZone();
             onExitExecute();
+        }
+    }
+
+    private boolean prescanDeferred(IBlockAccess region, int minX, int minY, int minZ, long[] mask) {
+        Arrays.fill(mask, 0L);
+        boolean any = false;
+        for (int y = 0; y < 16; y++) {
+            for (int z = 0; z < 16; z++) {
+                for (int x = 0; x < 16; x++) {
+                    final Block block = region.getBlock(minX + x, minY + y, minZ + z);
+                    if (block != Blocks.air && !canRenderOffThread(block)) {
+                        final int bit = (y << 8) | (z << 4) | x;
+                        mask[bit >>> 6] |= 1L << bit;
+                        any = true;
+                    }
+                }
+            }
+        }
+        return any;
+    }
+
+    private static boolean isDeferred(long[] mask, int x, int y, int z) {
+        final int bit = ((y & 15) << 8) | ((z & 15) << 4) | (x & 15);
+        return (mask[bit >>> 6] & (1L << bit)) != 0;
+    }
+
+    ChunkJobResult<ChunkBuildOutput> completeDeferred(DeferredSectionMesh m, AngelicaChunkBuildContext ctx) {
+        final long start = System.nanoTime();
+
+        final int minX = this.render.getOriginX();
+        final int minY = this.render.getOriginY();
+        final int minZ = this.render.getOriginZ();
+
+        final WorldSlice slice = m.slice;
+        final BlockPos blockPos = new BlockPos(minX, minY, minZ);
+        final Tessellator tessellator = Tessellator.instance;
+        final List<DeferredBlock> blocks = m.blocks;
+
+        if (Tracy.ENABLED) {
+            Tracy.beginZone(Z_MESH_DEFERRED_MAIN);
+            Tracy.zoneValue(blocks.size());
+        }
+
+        try {
+            ctx.setupLightPipeline(slice, minX, minY, minZ);
+            ctx.setupDynamicLights(minX, minY, minZ);
+            slice.setRenderingBlock(null);
+
+            SmoothBiomeColorCache.setActiveCache(slice.getBiomeColorCache());
+            ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(true);
+            tessellator.setTranslation(-minX, -minY, -minZ);
+
+            final RenderBlocks renderBlocks = new RenderBlocks(slice);
+            final BlockRenderContext blockRenderContext = ctx.getBlockRenderContext();
+
+            for (int i = 0, n = blocks.size(); i < n; i++) {
+                final DeferredBlock deferred = blocks.get(i);
+                blockPos.set(deferred.x(), deferred.y(), deferred.z());
+                slice.setRenderingBlock(deferred.block());
+                renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
+                    tessellator, renderBlocks, m.buffers, ctx, blockRenderContext, minX, minY, minZ,
+                    deferred.materialOverride(), deferred.isShaderPackOverride(), m.teMap, m.currentTick);
+            }
+
+            if (Tracy.ENABLED) Tracy.beginZone(Z_MESH_FINALIZE);
+            final Reference2ReferenceMap<TerrainRenderPass, BuiltSectionMeshParts> meshes;
+            try {
+                meshes = BuiltSectionMeshParts.groupFromBuildBuffers(m.buffers, (float) camera.x - minX, (float) camera.y - minY, (float) camera.z - minZ);
+            } finally {
+                if (Tracy.ENABLED) Tracy.endZone();
+            }
+
+            if (!meshes.isEmpty()) {
+                m.renderData.hasBlockGeometry = true;
+            }
+
+            CeleritasDebug.incrementChunkUpdateCounter();
+
+            return new ChunkJobResult.Success<>(new ChunkBuildOutput(this.render, m.renderData, meshes, this.buildTime), m.workerNanos + (System.nanoTime() - start));
+        } catch (ReportedException ex) {
+            return new ChunkJobResult.Failure<>(fillCrashInfo(ex.getCrashReport(), slice, blockPos));
+        } catch (Throwable ex) {
+            return new ChunkJobResult.Failure<>(fillCrashInfo(CrashReport.makeCrashReport(ex, "Encountered exception while building deferred chunk meshes"), slice, blockPos));
+        } finally {
+            ((StateAwareTessellator)tessellator).angelica$setCeleritasMeshing(false);
+            tessellator.setTranslation(0, 0, 0);
+            SmoothBiomeColorCache.clearActiveCache();
+            RenderPassHelper.resetWorldRenderPass();
+            if (Tracy.ENABLED) Tracy.endZone();
         }
     }
 
@@ -342,7 +468,7 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
                     int teBlockId = BlockRenderingSettings.getCachedTeNbtId(packedPos, currentTick);
 
                     if (teBlockId == BlockRenderingSettings.CACHE_MISS) {
-                        final TileEntity te = getBlockAccess().getTileEntity(x, y, z);
+                        final TileEntity te = renderBlocks.blockAccess.getTileEntity(x, y, z);
                         if (te != null) {
                             final NBTTagCompound teNbt = new NBTTagCompound();
                             te.writeToNBT(teNbt);
@@ -384,54 +510,6 @@ public abstract class AngelicaChunkBuilderMeshingTask extends ChunkBuilderTask<C
 
         if (contextEncoder != null) {
             contextEncoder.finishRenderingBlock();
-        }
-    }
-
-    private void processDeferredBlocks(List<DeferredBlock> deferredBlocks, AngelicaChunkBuildContext buildContext, ChunkBuildBuffers buffers, IBlockAccess region, int minX, int minY, int minZ, NbtConditionalIdMap<Block> teMap, long currentTick) {
-
-        final BlockRenderContext blockRenderContext = buildContext.getBlockRenderContext();
-
-        final CompletableFuture<Void> future = CompletableFuture.runAsync(() -> {
-            final RenderBlocks mainThreadRenderBlocks = new RenderBlocks(region);
-            final Tessellator mainTessellator = Tessellator.instance;
-            ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(true);
-            mainTessellator.setTranslation(-minX, -minY, -minZ);
-
-            try {
-                for (DeferredBlock deferred : deferredBlocks) {
-                    renderBlock(deferred.block(), deferred.meta(), deferred.x(), deferred.y(), deferred.z(), deferred.pass(),
-                        mainTessellator, mainThreadRenderBlocks, buffers, buildContext,
-                        blockRenderContext, minX, minY, minZ, deferred.materialOverride(), deferred.isShaderPackOverride(), teMap, currentTick);
-                }
-            } finally {
-                ((StateAwareTessellator)mainTessellator).angelica$setCeleritasMeshing(false);
-                mainTessellator.setTranslation(0, 0, 0);
-            }
-        }, AngelicaRenderQueue.executor());
-
-        if (Thread.currentThread().isInterrupted()) {
-            return;
-        }
-
-        int retries = 0;
-        while (retries < MAX_RETRIES) {
-            try {
-                future.get(DEFERRED_BLOCK_TIMEOUT_MS, TimeUnit.MILLISECONDS);
-                return;
-            } catch (TimeoutException e) {
-                retries++;
-                if (Thread.currentThread().isInterrupted()) {
-                    return;
-                }
-                if (retries >= MAX_RETRIES) {
-                    return;
-                }
-            } catch (InterruptedException e) {
-                Thread.currentThread().interrupt();
-                return;
-            } catch (ExecutionException e) {
-                throw new RuntimeException("Error during main thread deferred block rendering", e);
-            }
         }
     }
 

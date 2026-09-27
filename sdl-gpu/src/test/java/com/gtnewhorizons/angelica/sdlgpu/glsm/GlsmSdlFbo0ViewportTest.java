@@ -96,6 +96,19 @@ class GlsmSdlFbo0ViewportTest {
     }
 
     @Test
+    void scissoredClearFlipsYOnFbo0() {
+        bindFbo0WithFullViewport();
+        GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glScissor(0, 0, FBO0_W, VIEW);
+        GLStateManager.glClearColor(1.0f, 0.0f, 0.0f, 1.0f);
+        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+
+        GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(0, 0, FBO0_W, VIEW), RED, "GL scissor y=0 is the bottom rows of the FBO0 texture");
+        GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTarget(0, FBO0_H - VIEW, FBO0_W, VIEW), BLUE, "the top rows must stay untouched by the flipped scissor");
+    }
+
+    @Test
     void scissorLargerThanFbo0StillCoversTheWholeTarget() {
         bindFbo0WithFullViewport();
         GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);

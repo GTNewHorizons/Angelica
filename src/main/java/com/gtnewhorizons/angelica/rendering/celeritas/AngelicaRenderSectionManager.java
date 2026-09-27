@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.rendering.AngelicaRenderQueue;
 import com.gtnewhorizons.angelica.rendering.celeritas.api.IrisShaderProviderHolder;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskProvider;
 import com.gtnewhorizons.angelica.rendering.celeritas.threading.ChunkTaskRegistry;
+import com.gtnewhorizons.angelica.rendering.celeritas.world.WorldSlice;
 import com.gtnewhorizons.angelica.rendering.celeritas.world.cloned.ClonedChunkSectionCache;
 import it.unimi.dsi.fastutil.longs.LongIterator;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
@@ -20,6 +21,7 @@ import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.world.chunk.Chunk;
 import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
+import org.embeddedt.embeddium.impl.render.chunk.ChunkUpdateType;
 import org.embeddedt.embeddium.impl.render.chunk.RenderPassConfiguration;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSectionManager;
@@ -51,6 +53,7 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     private static final long P_MESH_DEVICE_USED = Tracy.plotHandle("mesh.deviceUsed", TracyBackend.PLOT_FORMAT_MEMORY);
     private static final long P_DRAW_REGION_BUFFERS = Tracy.plotHandle("draw.regionBuffers");
     private static final long P_MESH_DEVICE_ALLOCATED = Tracy.plotHandle("mesh.deviceAllocated", TracyBackend.PLOT_FORMAT_MEMORY);
+    private static final long P_MESH_DEFERRED_PENDING = Tracy.plotHandle("mesh.deferredPending");
 
     private static final Tracy.ZoneId Z_BIOME_REBUILDS = Tracy.zoneId("biomeRebuilds", Tracy.COLOR_TERRAIN);
     private static final Tracy.ZoneId Z_GRAPH_SEARCH = Tracy.zoneId("graphSearch", Tracy.COLOR_TERRAIN);
@@ -63,12 +66,14 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
     private final ClonedChunkSectionCache sectionCache;
     private final ChunkTaskProvider taskProvider;
     private final LongOpenHashSet biomeRebuildColumns = new LongOpenHashSet();
+    private final DeferredMeshScheduler deferredScheduler;
 
     public AngelicaRenderSectionManager(RenderPassConfiguration<?> configuration, WorldClient world, int renderDistance, CommandList commandList, int minSection, int maxSection, int requestedThreads, ChunkTaskProvider taskProvider) {
         super(configuration, () -> new AngelicaChunkBuildContext(configuration, world), AngelicaChunkRenderer::new, renderDistance, commandList, minSection, maxSection, requestedThreads, true  /* hasShadowPass = true for Iris */);
         this.world = world;
         this.sectionCache = new ClonedChunkSectionCache(world);
         this.taskProvider = taskProvider;
+        this.deferredScheduler = new DeferredMeshScheduler(configuration, () -> new AngelicaChunkBuildContext(configuration, world), () -> new WorldSlice(world), AngelicaRenderQueue::submit, ((RenderSectionManagerAccessor) this).angelica$getBuildResults());
     }
 
     public static AngelicaRenderSectionManager create(ChunkVertexType vertexType, WorldClient world, int renderDistance, CommandList commandList) {
@@ -168,7 +173,12 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
             return null;
         }
 
-        return this.taskProvider.createRebuildTask(render, frame, this.cameraPosition, this.sectionCache);
+        final ChunkBuilderTask<ChunkBuildOutput> task = this.taskProvider.createRebuildTask(render, frame, this.cameraPosition, this.sectionCache);
+        if (task instanceof AngelicaChunkBuilderMeshingTask t) {
+            final ChunkUpdateType pending = render.getPendingUpdate();
+            t.bindScheduler(this.deferredScheduler, pending != null && pending.isImportant());
+        }
+        return task;
     }
 
     @Override
@@ -217,9 +227,17 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         if (Tracy.ENABLED) Tracy.beginZone(Z_GRAPH_SEARCH);
         try {
             super.updateChunks(updateImmediately);
+            this.deferredScheduler.runImportant();
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
         }
+    }
+
+    @Override
+    public void destroy() {
+        this.deferredScheduler.markDestroyed();
+        super.destroy();
+        this.deferredScheduler.runImportant();
     }
 
     @Override
@@ -353,5 +371,6 @@ public class AngelicaRenderSectionManager extends RenderSectionManager {
         Tracy.plotInt(P_MESH_DEVICE_USED, mem.deviceUsed + mem.indexUsed);
         Tracy.plotInt(P_MESH_DEVICE_ALLOCATED, mem.deviceAllocated + mem.indexAllocated);
         Tracy.plotInt(P_DRAW_REGION_BUFFERS, mem.bufferCount);
+        Tracy.plotInt(P_MESH_DEFERRED_PENDING, this.deferredScheduler.pendingCount());
     }
 }

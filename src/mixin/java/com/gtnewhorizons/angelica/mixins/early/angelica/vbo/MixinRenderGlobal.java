@@ -21,13 +21,14 @@ public class MixinRenderGlobal {
      */
     @Overwrite
     public void renderClouds(float partialTicks) {
-        final IRenderHandler renderer;
-        if((renderer = theWorld.provider.getCloudRenderer()) != null) {
+        final IRenderHandler renderer = theWorld.provider.getCloudRenderer();
+        final boolean layered = CloudRenderer.supportsLayers(theWorld, renderer);
+        if (renderer != null && !layered) {
             renderer.render(partialTicks, theWorld, mc);
             return;
         }
-        if(mc.theWorld.provider.isSurfaceWorld()) {
-            CloudRenderer.getCloudRenderer().render(cloudTickCounter, partialTicks);
+        if (layered || theWorld.provider.isSurfaceWorld()) {
+            CloudRenderer.getCloudRenderer().render(cloudTickCounter, partialTicks, renderer);
         }
     }
 }

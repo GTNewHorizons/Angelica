@@ -243,8 +243,7 @@ public final class ClientProxy extends CommonProxy {
 
         // Register all blocks. Because blockids are unique to a world, this must be done each load
         GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
+            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o);
         });
     }
 

@@ -40,6 +40,7 @@ public final class CowDispatch {
     public static final byte LINE = 20;
     public static final byte TEXTURE_BINDING = 21;
     public static final byte TEX_ENV = 22;
+    public static final byte SCISSOR = 23;
 
     public static byte kindOf(CowStateStack<?> s) {
         final Class<?> c = s.getClass();
@@ -66,6 +67,7 @@ public final class CowDispatch {
         if (c == LineStateStack.class) return LINE;
         if (c == TextureBindingStack.class) return TEXTURE_BINDING;
         if (c == TexEnvState.class) return TEX_ENV;
+        if (c == ScissorStateStack.class) return SCISSOR;
         throw new IllegalStateException("Unknown CowStateStack class: " + c.getName());
     }
 
@@ -94,6 +96,7 @@ public final class CowDispatch {
             case LINE -> ((LineStateStack) s).topSlotChanged();
             case TEXTURE_BINDING -> ((TextureBindingStack) s).topSlotChanged();
             case TEX_ENV -> ((TexEnvState) s).topSlotChanged();
+            case SCISSOR -> ((ScissorStateStack) s).topSlotChanged();
             default -> throw new IllegalStateException("Unknown kind: " + kind);
         };
     }
@@ -123,6 +126,7 @@ public final class CowDispatch {
             case LINE -> ((LineStateStack) s).restoreSlot(slot);
             case TEXTURE_BINDING -> ((TextureBindingStack) s).restoreSlot(slot);
             case TEX_ENV -> ((TexEnvState) s).restoreSlot(slot);
+            case SCISSOR -> ((ScissorStateStack) s).restoreSlot(slot);
             default -> throw new IllegalStateException("Unknown kind: " + kind);
         }
     }

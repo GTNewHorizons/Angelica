@@ -122,9 +122,11 @@ public final class ShaderManager {
     }
 
     /** Invalidate both binding and state key so the next draw selects and binds an FFP variant. */
-    void invalidateBoundProgram() {
-        lastBoundProgramId = -1;
-        currentVertexKeyPacked = Long.MIN_VALUE;
+    public static void invalidateBoundProgram() {
+        final ShaderManager sm = Holder.INSTANCE;
+        sm.lastBoundProgramId = -1;
+        sm.currentVertexKeyPacked = Long.MIN_VALUE;
+        sm.currentProgram = null;
     }
 
     public void deactivate() {

@@ -595,6 +595,7 @@ public final class ModelPartBatcher {
         shadowGroups.clear();
         templates.clear();
         entitySource.discard();
+        bufferSource.discard();
         bufferSource.freeBuffers();
         entitySource.freeBuffers();
         activeGroups = groups;

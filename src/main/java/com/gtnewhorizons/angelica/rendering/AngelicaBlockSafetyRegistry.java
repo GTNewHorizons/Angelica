@@ -5,47 +5,56 @@ import com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderingRegistryExt;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
-import it.unimi.dsi.fastutil.objects.Reference2BooleanMap;
-import it.unimi.dsi.fastutil.objects.Reference2BooleanOpenHashMap;
+import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import net.minecraft.block.Block;
 
 import java.util.concurrent.locks.StampedLock;
 
 public class AngelicaBlockSafetyRegistry {
-    private static final Reference2BooleanMap<Block> BLOCK_SAFETY_MAP = new Reference2BooleanOpenHashMap<>();
-    private static final Reference2BooleanMap<Block> ISBRH_SAFETY_MAP = new Reference2BooleanOpenHashMap<>();
+    private static final Int2IntOpenHashMap ISBRH_SAFETY_MAP = new Int2IntOpenHashMap();
     private static final StampedLock LOCK = new StampedLock();
 
-    /**
-     * This method is threadsafe to read, and threadsafe to write, but NOT if both could happen at the same time.
-     */
-    public static boolean canBlockRenderOffThread(Block block, boolean checkISBRH, boolean shouldPopulate) {
-
-        final Reference2BooleanMap<Block> map = checkISBRH ? ISBRH_SAFETY_MAP : BLOCK_SAFETY_MAP;
-
-        if (shouldPopulate)
-            return populateCanRenderOffThread(block, map);
-        return map.getBoolean(block);
+    static {
+        ISBRH_SAFETY_MAP.defaultReturnValue(-1);
     }
 
-    private static boolean populateCanRenderOffThread(Block block, Reference2BooleanMap<Block> map) {
-        final boolean canBeOffThread;
-        if(map == ISBRH_SAFETY_MAP) {
-            @SuppressWarnings("deprecation")
-            final ISimpleBlockRenderingHandler isbrh = ((IRenderingRegistryExt)RenderingRegistry.instance()).getISBRH(block.getRenderType());
-            canBeOffThread = isbrh != null
-                && (isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class)
-                || isbrh instanceof ThreadSafeISBRHFactory);
-         } else {
-            // Check blacklist here
-            // !(block.getClass().getName().startsWith("com.github.bartimaeusnek."));
-            canBeOffThread = true;
+    public static boolean canBlockRenderOffThread(Block block) {
+        final int renderType = block.getRenderType();
+
+        long stamp = LOCK.tryOptimisticRead();
+        int value;
+        try {
+            value = ISBRH_SAFETY_MAP.get(renderType);
+        } catch (RuntimeException ignored) {
+            value = -1;
+        }
+        if (LOCK.validate(stamp) && value != -1) {
+            return value == 1;
         }
 
-        final long stamp = LOCK.writeLock();
-
+        stamp = LOCK.readLock();
         try {
-            map.put(block, canBeOffThread);
+            value = ISBRH_SAFETY_MAP.get(renderType);
+        } finally {
+            LOCK.unlockRead(stamp);
+        }
+        if (value != -1) {
+            return value == 1;
+        }
+
+        return populateCanRenderOffThread(renderType);
+    }
+
+    @SuppressWarnings("deprecation")
+    private static boolean populateCanRenderOffThread(int renderType) {
+        final ISimpleBlockRenderingHandler isbrh = ((IRenderingRegistryExt) RenderingRegistry.instance())
+            .getISBRH(renderType);
+        final boolean canBeOffThread = isbrh != null
+            && (isbrh.getClass().isAnnotationPresent(ThreadSafeISBRH.class) || isbrh instanceof ThreadSafeISBRHFactory);
+
+        final long stamp = LOCK.writeLock();
+        try {
+            ISBRH_SAFETY_MAP.put(renderType, canBeOffThread ? 1 : 0);
         } finally {
             LOCK.unlock(stamp);
         }
