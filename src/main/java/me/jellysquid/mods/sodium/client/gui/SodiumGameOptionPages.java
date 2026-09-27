@@ -35,6 +35,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatte
 import me.jellysquid.mods.sodium.client.gui.options.control.CyclingControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.TickBoxControl;
+import me.jellysquid.mods.sodium.client.gui.options.named.BiomeBlendMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.LightingQuality;
@@ -266,16 +267,24 @@ public class SodiumGameOptionPages {
                 .add(texelSampling)
                 .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
-                // TODO
-                /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
-                        .setName(new TranslatableText("options.biomeBlendRadius"))
-                        .setTooltip(new TranslatableText("sodium.options.biome_blend.tooltip"))
-                        .setControl(option -> new SliderControl(option, 0, 7, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.biome_blend.value", "gui.none")))
-                        .setBinding((opts, value) -> opts.biomeBlendRadius = value, opts -> opts.biomeBlendRadius)
+                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
+                        .setName(I18n.format("options.biomeBlendRadius"))
+                        .setTooltip(I18n.format("sodium.options.biome_blend.tooltip"))
+                        .setControl(option -> new SliderControl(option, 0, 7, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.biome_blend.value", "sodium.options.none")))
+                        .setBinding((opts, value) -> opts.quality.biomeBlendRadius = value, opts -> opts.quality.biomeBlendRadius)
                         .setImpact(OptionImpact.LOW)
                         .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
                         .build())
-                .add(OptionImpl.createBuilder(int.class, vanillaOpts)
+                .add(OptionImpl.createBuilder(BiomeBlendMode.class, sodiumOpts)
+                    .setName(I18n.format("sodium.options.biome_blend_mode.name"))
+                    .setTooltip(I18n.format("sodium.options.biome_blend_mode.tooltip"))
+                    .setControl(option -> new CyclingControl<>(option, BiomeBlendMode.class))
+                    .setBinding((opts, value) -> opts.quality.biomeBlendMode = value, opts -> opts.quality.biomeBlendMode)
+                    .setImpact(OptionImpact.LOW)
+                    .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                    .build())
+                // TODO
+                /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(new TranslatableText("options.entityDistanceScaling"))
                         .setTooltip(new TranslatableText("sodium.options.entity_distance.tooltip"))
                         .setControl(option -> new SliderControl(option, 50, 500, 25, ControlValueFormatter.percentage()))
@@ -434,7 +443,7 @@ public class SodiumGameOptionPages {
                         .setName(I18n.format("sodium.options.async_occlusion_mode.name"))
                         .setTooltip(I18n.format("sodium.options.async_occlusion_mode.tooltip"))
                         .setControl(o -> new CyclingControl<>(o, AsyncOcclusionMode.class, new String[]{
-                            I18n.format("sodium.options.async_occlusion_mode.none"),
+                            I18n.format("sodium.options.none"),
                             I18n.format("sodium.options.async_occlusion_mode.only_shadow"),
                             I18n.format("sodium.options.async_occlusion_mode.everything") }))
                         .setImpact(OptionImpact.MEDIUM)

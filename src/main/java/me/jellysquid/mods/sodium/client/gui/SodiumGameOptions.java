@@ -9,6 +9,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
+import me.jellysquid.mods.sodium.client.gui.options.named.BiomeBlendMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.GraphicsQuality;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import me.jellysquid.mods.sodium.client.gui.options.named.TexelSampling;
@@ -244,6 +245,8 @@ public class SodiumGameOptions {
     }
 
     public static class QualitySettings {
+        public int biomeBlendRadius = 3;
+        public BiomeBlendMode biomeBlendMode = BiomeBlendMode.FAST;
         public GraphicsQuality grassQuality = GraphicsQuality.DEFAULT;
         public boolean useCeleritasSmoothLighting = true;
         public TextureFilterMode textureFilterMode = TextureFilterMode.RGSS_ANISOTROPIC;
