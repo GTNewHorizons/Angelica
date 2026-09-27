@@ -442,8 +442,9 @@ public final class GpuTerrainCuller {
     }
 
     private void walkSortedGroup(ChunkRenderMatrices matrices, ChunkRenderListIterable renderLists, CameraTransform occlusionCamera, CameraTransform camera, boolean useBlockFaceCulling, boolean chained) {
+        final int indexPointerMask = AngelicaRenderPassConfiguration.TRANSLUCENT_PASS.isSorted() ? 0xFFFFFFFF : 0;
         if (chained) {
-            startSortedPass(0xFFFFFFFF);
+            startSortedPass(indexPointerMask);
         } else {
             invalidatePreparedPasses();
             computeActiveThisPass = GpuCulling.mode().computeEnabled();
@@ -452,7 +453,7 @@ public final class GpuTerrainCuller {
             passOutputBase = 0;
             walkPrimitiveType = null;
             primaryPass.reset(0, 0);
-            sortedPass.reset(0xFFFFFFFF, 0);
+            sortedPass.reset(indexPointerMask, 0);
             buildPass = sortedPass;
             current = sortedPass;
         }

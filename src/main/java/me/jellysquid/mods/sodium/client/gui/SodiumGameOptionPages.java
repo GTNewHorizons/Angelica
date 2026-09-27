@@ -766,6 +766,12 @@ public class SodiumGameOptionPages {
                         .setControl(TickBoxControl::new)
                         .setBinding((opts, value) -> AngelicaConfig.disableF3Additions = value, opts -> AngelicaConfig.disableF3Additions)
                         .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.verbosef3"))
+                        .setTooltip(I18n.format("options.angelica.verbosef3.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> AngelicaConfig.verboseF3 = value, opts -> AngelicaConfig.verboseF3)
+                        .build())
                 .build());
 
         if (AngelicaConfig.enableZoom) {

@@ -30,6 +30,7 @@ class GlsmSdlSplashTargetTest {
         final OffscreenTarget target = createSplashTarget(backend);
         Reflect.set(backend, "splashTarget", target);
         try {
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
             TestThreads.run("SplashTarget-Seed-Thread", () -> {
                 Reflect.invoke(backend, "enterContext", new Class<?>[]{boolean.class}, true);
                 GlsmSdlHeadlessRig.solidQuad(0f, 1f, 0f);
