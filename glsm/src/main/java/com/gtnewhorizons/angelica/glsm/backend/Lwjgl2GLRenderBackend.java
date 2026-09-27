@@ -653,6 +653,11 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
+    public void readPixels(int x, int y, int width, int height, int format, int type, long pixelBufferOffset) {
+        GL11.glReadPixels(x, y, width, height, format, type, pixelBufferOffset);
+    }
+
+    @Override
     public void getTexImage(int target, int level, int format, int type, ByteBuffer pixels) {
         GL11.glGetTexImage(target, level, format, type, pixels);
     }

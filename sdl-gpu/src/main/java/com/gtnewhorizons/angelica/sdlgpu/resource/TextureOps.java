@@ -29,6 +29,8 @@ public final class TextureOps {
     private final FrameManager frameManager;
     private final ResourceManager resourceManager;
     private final FBOClearTracker fboClearTracker;
+    private ByteBuffer readbackStaging;
+    private long readbackStagingAddress;
 
     public TextureOps(Device device, FrameManager frameManager, ResourceManager resourceManager, FBOClearTracker fboClearTracker) {
         this.device = device;
@@ -49,7 +51,7 @@ public final class TextureOps {
         final long cp = defer ? 0L : frameManager.ensureCopyPass();
         if (!defer && cp == 0) return false;
         final ByteBuffer unpacked = PixelOps.applyUnpackPixelStore(src, w, h, srcFormat, srcType, st.pixelStore);
-        final ByteBuffer prepped = PixelOps.prepareUploadBuffer(srcFormat, meta.sdlFormat(), unpacked, w, h);
+        final ByteBuffer prepped = PixelOps.prepareUploadBuffer(srcFormat, srcType, meta.sdlFormat(), unpacked, w, h);
         try {
             final boolean handled = defer && resourceManager.enqueueDeferredTextureUpload(st, prepped, texHandle, x, y, w, h, level);
             if (!handled) {
@@ -109,6 +111,35 @@ public final class TextureOps {
         final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (cb == 0) return;
         resourceManager.downloadFromTexture(cb, texHandle, x, y, w, h, level, output);
+    }
+
+    public long ensureReadbackStaging(long bytes) {
+        if (bytes > Integer.MAX_VALUE) throw new IllegalArgumentException("readback of " + bytes + " bytes exceeds the staging limit");
+        if (readbackStaging == null || readbackStaging.capacity() < bytes) {
+            if (readbackStaging != null) MemoryUtil.memFree(readbackStaging);
+            readbackStaging = MemoryUtil.memAlloc((int) Math.max(bytes, 64 * 1024));
+            readbackStagingAddress = MemoryUtil.memAddress(readbackStaging);
+        }
+        return readbackStagingAddress;
+    }
+
+    public ByteBuffer readbackStagingRegion(int offset, int size) {
+        readbackStaging.limit(offset + size);
+        readbackStaging.position(offset);
+        return readbackStaging;
+    }
+
+    public void readbackTextureToStaging(long texHandle, int x, int y, int w, int h, int level, int offset, int size) {
+        readbackTexture(texHandle, x, y, w, h, level, readbackStagingRegion(offset, size));
+        readbackStaging.clear();
+    }
+
+    public void shutdown() {
+        if (readbackStaging != null) {
+            MemoryUtil.memFree(readbackStaging);
+            readbackStaging = null;
+            readbackStagingAddress = 0L;
+        }
     }
 
     public void copyTexSubImageImpl(ContextState st, int destGlId, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
@@ -190,7 +221,10 @@ public final class TextureOps {
     }
 
     public void copyTexture(long srcTex, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
-        final long cp = frameManager.ensureCopyPass();
+        copyTexture(frameManager.ensureCopyPass(), srcTex, srcX, srcY, dstTex, dstLevel, dstX, dstY, w, h);
+    }
+
+    public static void copyTexture(long cp, long srcTex, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
         if (cp == 0) return;
         try (var stack = MemoryStack.stackPush()) {
             final var src = SDL_GPUTextureLocation.calloc(stack).texture(srcTex).x(srcX).y(srcY);

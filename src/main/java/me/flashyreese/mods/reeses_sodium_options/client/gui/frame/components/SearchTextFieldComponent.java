@@ -14,9 +14,8 @@ import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ChatAllowedCharacters;
 import net.minecraft.util.MathHelper;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.hooks.TextHighlightHooks;
 import org.lwjgl.input.Keyboard;
-import org.lwjgl.opengl.GL11;
 
 import java.util.HashSet;
 import java.util.List;
@@ -173,13 +172,7 @@ public class SearchTextFieldComponent extends AbstractWidget {
         if (x1 > this.dim.getOriginX() + this.dim.getWidth()) {
             x1 = this.dim.getOriginX() + this.dim.getWidth();
         }
-        GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
-        GLStateManager.glLogicOp(GL11.GL_OR_REVERSE);
-
-        drawRect(x1, y1, x2, y2, -0xFFFF01);
-
-        GLStateManager.glDisable(GL11.GL_COLOR_LOGIC_OP);
-
+        TextHighlightHooks.draw(x1, y1, x2, y2);
     }
 
     private int getMaxLength() {
