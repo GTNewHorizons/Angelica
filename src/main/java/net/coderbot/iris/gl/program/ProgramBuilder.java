@@ -71,7 +71,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 		final int previous = GLStateManager.getActiveProgram();
 		final CommandRecorder recorder = DisplayListManager.isRecording() ? DisplayListManager.pauseRecording() : null;
 		try {
-			GLStateManager.glUseProgram(programId);
+			Program.bindManaged(programId);
 			seedUniform1i(programId, "iris_currentAlphaFunc", 7);
 			seedUniform1f(programId, "iris_currentAlphaTest", -1.0f);
 			seedUniform1f(programId, "alphaTestRef", -1.0f);
@@ -81,7 +81,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 			}
 		} finally {
 			try {
-				GLStateManager.glUseProgram(previous);
+				Program.bindManaged(previous);
 			} finally {
 				if (recorder != null) DisplayListManager.resumeRecording(recorder);
 			}

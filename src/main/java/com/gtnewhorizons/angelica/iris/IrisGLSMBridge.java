@@ -271,7 +271,7 @@ public class IrisGLSMBridge {
             if (!drp.shouldOverrideShaders()) return;
             DepthColorStorage.unlockDepthColor();
 
-            if (event.newProgram != 0 && !DepthColorStorage.isOwnedProgram(event.newProgram)) {
+            if (event.newProgram != 0 && !Program.isManagedBind(event.newProgram) && !DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 drp.onModProgramOverride();
             }
         });

@@ -1076,9 +1076,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private boolean drivingProgram;
+	private Instancing activeInstancing = Instancing.NONE;
 
 	@Override
 	public void rebindCurrentPass() {
+		activeInstancing = Instancing.NONE;
 		GLSMHooks.resolvePendingProgram();
 		final Pass pass = this.current;
 		if (pass == null) {
@@ -1404,11 +1406,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				bufferBlendOverrides.forEach(BufferBlendOverride::apply);
 			}
 
-			if (program != null) {
-				program.use();
+			if (activeInstancing != Instancing.NONE && program != null) {
+				DeferredWorldRenderingPipeline.this.bindInstancedVariant(activeInstancing);
+			} else {
+				if (program != null) program.use();
+				DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 			}
-
-			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 		}
 
 		public void stopUsing() {
@@ -1499,6 +1502,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void bindInstancedVariant(Instancing kind) {
+		activeInstancing = kind;
 		final Program variant = current.instancedVariant(kind);
 		variant.use();
 		this.customUniforms.push(variant);

@@ -37,17 +37,21 @@ public final class Program extends GlResource {
 
 	public void use() {
 		RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
-		final int previousManagedBind = managedBindProgram;
-		managedBindProgram = getGlId();
-		try {
-			GLStateManager.glUseProgram(getGlId());
-		} finally {
-			managedBindProgram = previousManagedBind;
-		}
+		bindManaged(getGlId());
 
 		uniforms.update();
 		samplers.update();
 		images.update();
+	}
+
+	static void bindManaged(int program) {
+		final int previousManagedBind = managedBindProgram;
+		managedBindProgram = program;
+		try {
+			GLStateManager.glUseProgram(program);
+		} finally {
+			managedBindProgram = previousManagedBind;
+		}
 	}
 
 	public static void unbind() {
