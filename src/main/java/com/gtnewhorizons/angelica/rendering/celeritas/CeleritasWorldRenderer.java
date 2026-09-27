@@ -3,7 +3,6 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
-import java.util.Iterator;
 import java.util.List;
 
 import com.gtnewhorizons.angelica.compat.bop.FogBiomeCache;
@@ -25,9 +24,8 @@ import org.embeddedt.embeddium.impl.gl.device.CommandList;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.render.chunk.ChunkRenderMatrices;
 import org.embeddedt.embeddium.impl.render.chunk.RenderSection;
-import org.embeddedt.embeddium.impl.render.chunk.data.MinecraftBuiltRenderSectionData;
-import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderList;
-import org.embeddedt.embeddium.impl.render.chunk.lists.SortedRenderLists;
+import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTracker;
+import org.embeddedt.embeddium.impl.render.chunk.map.ChunkTrackerHolder;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkMeshFormats;
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
@@ -41,6 +39,7 @@ import org.lwjgl.opengl.GL11;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.cubicchunks.CubicChunksAPI;
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.IDynamicLightWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
@@ -78,16 +77,15 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
     /** Debug flag for wireframe rendering mode. Toggle via /angelica wireframe */
     public static boolean DEBUG_WIREFRAME_MODE = false;
 
-    private final TileEntityRenderContext teRenderContext = new TileEntityRenderContext();
+    private final TileEntityRenderContext teRenderContext = new TileEntityRenderContext(false);
+    private final TileEntityRenderContext shadowCollectContext = new TileEntityRenderContext(true);
+    private Viewport shadowPassPlayerViewport;
     private boolean useEntityCulling = true;
 
     private FrustumIntersection teFrustum;
     private CameraTransform teTransform;
     private int teCullEpoch;
     private double teCamX, teCamY, teCamZ;
-
-    // the volume of a section multiplied by the number of sections to be checked at most
-    private static final double MAX_ENTITY_CHECK_VOLUME = 16 * 16 * 16 * 15;
 
     private final ObjectArrayList<TileEntity> frameTEs = new ObjectArrayList<>();
     private final ObjectArrayList<TileEntity> frameOverride = new ObjectArrayList<>();
@@ -130,7 +128,7 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     public void runFrameIdleWork(long deadlineNanos) {
         final AngelicaRenderSectionManager rsm = this.renderSectionManager;
-        if (rsm == null || this.world == null) return;
+        if (rsm == null || this.world == null || rsm.isInShadowPass()) return;
         RenderDevice.enterManagedCode();
         try {
             long start = System.nanoTime();
@@ -264,102 +262,103 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return count;
     }
 
-    private CameraState lastMainCameraState;
-
     @Override
     public void setupTerrain(Viewport viewport, CameraState cameraState, int frame, boolean spectator, boolean updateChunksImmediately) {
-        var transform = viewport.getTransform();
+        this.shadowPassPlayerViewport = null;
 
+        final CameraTransform transform = viewport.getTransform();
         if (transform.x == 0 && transform.y == 0 && transform.z == 0) {
             return;
         }
 
-        renderSectionManager.setCameraPosition(transform.x, transform.y, transform.z);
-
         this.useEntityCulling = ClientProxy.options().performance.useEntityCulling;
 
-        if (renderSectionManager.isInShadowPass()) {
-            if (lastMainCameraState != null) {
-                cameraState = lastMainCameraState;
-            }
-        } else {
-            lastMainCameraState = cameraState;
+        // Same inputs as the shadow pass's state; reusing it keeps a fog-end change made while rendering shadows from
+        // dirtying the graph a second time this frame.
+        if (renderSectionManager.didShadowPassRunThisFrame() && this.lastCameraState != null) {
+            cameraState = this.lastCameraState;
         }
 
         super.setupTerrain(viewport, cameraState, frame, spectator, updateChunksImmediately);
 
-        if (!renderSectionManager.isInShadowPass()) {
-            final GpuTerrainCuller terrainCuller = GpuTerrainCuller.activeInstance();
-            if (terrainCuller != null) {
-                terrainCuller.prepareAllPasses(createChunkRenderMatrices(), renderSectionManager.getRenderLists(),
-                    viewport.getTransform(), cameraTransform(cameraState.x(), cameraState.y(), cameraState.z()),
-                    IrisShaderProviderHolder.shouldUseFaceCulling());
-            }
+        final GpuTerrainCuller terrainCuller = GpuTerrainCuller.activeInstance();
+        if (terrainCuller != null) {
+            terrainCuller.prepareAllPasses(createChunkRenderMatrices(), renderSectionManager.getRenderLists(),
+                viewport.getTransform(), cameraTransform(cameraState.x(), cameraState.y(), cameraState.z()),
+                IrisShaderProviderHolder.shouldUseFaceCulling());
         }
 
-        // Process deferred dynamic light chunk rebuilds with frustum culling
         if (DynamicLights.isEnabled() && DynamicLights.FrustumCullingEnabled) {
             DynamicLights.get().processChunkRebuilds(viewport);
         }
+    }
 
-        if (renderSectionManager.isInShadowPass()) {
-            if (IrisShaderProviderHolder.isActive()) {
-                collectTileEntitiesForShadow();
-            }
-        } else if (IrisShaderProviderHolder.isActive()) {
-            IrisShaderProviderHolder.getProvider().preSubmitShadowGraph(frame);
+    /** Captured before the shadow pass; the shadow pass's clipRenderersByFrustum only sees the shadow frustum. */
+    public void setShadowPassPlayerViewport(Viewport viewport) {
+        this.shadowPassPlayerViewport = viewport;
+    }
+
+    /** Shadow-pass entry from clipRenderersByFrustum; falls back to the last terrain viewport if none was captured. */
+    public void setupShadowTerrain(Viewport shadowViewport, CameraState cameraState, int frame, boolean spectator) {
+        Viewport playerViewport = this.shadowPassPlayerViewport;
+        this.shadowPassPlayerViewport = null;
+        if (playerViewport == null) {
+            playerViewport = this.getLastViewport();
         }
+        if (playerViewport != null) {
+            this.setupShadowTerrain(playerViewport, shadowViewport, cameraState, frame, spectator);
+        }
+    }
+
+    @Override
+    public void setupShadowTerrain(Viewport playerViewport, Viewport shadowViewport, CameraState cameraState, int frame, boolean spectator) {
+        final CameraTransform transform = playerViewport.getTransform();
+        if (transform.x == 0 && transform.y == 0 && transform.z == 0) {
+            return;
+        }
+
+        this.useEntityCulling = ClientProxy.options().performance.useEntityCulling;
+
+        super.setupShadowTerrain(playerViewport, shadowViewport, cameraState, frame, spectator);
+
+        if (DynamicLights.isEnabled() && DynamicLights.FrustumCullingEnabled) {
+            DynamicLights.get().processChunkRebuilds(shadowViewport);
+        }
+
+        if (IrisShaderProviderHolder.isActive()) {
+            super.renderBlockEntities(this.shadowCollectContext);
+        }
+    }
+
+    @Override
+    protected void processChunkEvents() {
+        final ChunkTracker tracker = ChunkTrackerHolder.get(this.world);
+        if (tracker instanceof CubeStatusTracker cubic) {
+            cubic.forEachEvent(this.renderSectionManager);
+            return;
+        }
+        syncChunkTrackingMode(tracker);
+        super.processChunkEvents();
+    }
+
+    @Override
+    protected void initRenderer(CommandList commandList) {
+        final ChunkTracker tracker = ChunkTrackerHolder.get(this.world);
+        if (!(tracker instanceof CubeStatusTracker)) {
+            syncChunkTrackingMode(tracker);
+        }
+        super.initRenderer(commandList);
+        if (tracker instanceof CubeStatusTracker cubic) {
+            cubic.forEachReady(this.renderSectionManager);
+        }
+    }
+
+    private static void syncChunkTrackingMode(ChunkTracker tracker) {
+        tracker.setRequiredNeighborRadius(AngelicaConfig.useVanillaChunkTracking ? 0 : 1);
     }
 
     public void setCurrentViewport(Viewport viewport) {
         this.currentViewport = viewport;
-    }
-
-    public Viewport getCurrentViewport() {
-        return this.currentViewport;
-    }
-
-    @SuppressWarnings("unchecked")
-    private void collectTileEntitiesForShadow() {
-        final SortedRenderLists renderLists = renderSectionManager.getRenderLists();
-        final Iterator<ChunkRenderList> renderListIterator = renderLists.iterator();
-
-        while (renderListIterator.hasNext()) {
-            final var renderList = renderListIterator.next();
-            final var renderRegion = renderList.getRegion();
-            final var renderSectionIterator = renderList.sectionsWithEntitiesIterator();
-
-            if (renderSectionIterator == null) {
-                continue;
-            }
-
-            while (renderSectionIterator.hasNext()) {
-                final var renderSectionId = renderSectionIterator.nextByteAsInt();
-                final var renderSection = renderRegion.getSection(renderSectionId);
-
-                if (renderSection == null) {
-                    continue;
-                }
-
-                final var context = renderSection.getBuiltContext();
-                if (context instanceof MinecraftBuiltRenderSectionData<?, ?> mcData) {
-                    final var culledEntities = (List<TileEntity>) mcData.culledBlockEntities;
-                    if (!culledEntities.isEmpty()) {
-                        ShadowRenderer.visibleTileEntities.add(culledEntities);
-                    }
-                }
-            }
-        }
-
-        for (var renderSection : renderSectionManager.getSectionsWithGlobalEntities()) {
-            final var context = renderSection.getBuiltContext();
-            if (context instanceof MinecraftBuiltRenderSectionData<?, ?> mcData) {
-                final var globalEntities = (List<TileEntity>) mcData.globalBlockEntities;
-                if (!globalEntities.isEmpty()) {
-                    ShadowRenderer.globalTileEntities.add(globalEntities);
-                }
-            }
-        }
     }
 
     private CameraTransform cachedCameraTransform;
@@ -481,6 +480,11 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
 
     @Override
     protected int renderSectionBlockEntities(RenderSection section, List<TileEntity> blockEntities, boolean culled, TileEntityRenderContext renderContext) {
+        if (renderContext.shadowCollect) {
+            (culled ? ShadowRenderer.visibleTileEntities : ShadowRenderer.globalTileEntities).add(blockEntities);
+            return blockEntities.size();
+        }
+
         if (culled) {
             if (section.getBuiltContext() instanceof AngelicaBuiltRenderSectionData angelicaData) {
                 if (TeDistanceMath.distSqToSection(teCamX, teCamY, teCamZ,
@@ -625,19 +629,18 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
             return true;
         }
 
-        // bail on very large entities to avoid checking many sections
-        final double entityVolume = (box.maxX - box.minX) * (box.maxY - box.minY) * (box.maxZ - box.minZ);
-        if (entityVolume > MAX_ENTITY_CHECK_VOLUME) {
-            // TODO: do a frustum check instead, even large entities aren't visible if they're outside the frustum
-            return true;
-        }
-
         return this.isBoxVisible(box.minX, box.minY, box.minZ, box.maxX, box.maxY, box.maxZ);
     }
 
     public static class TileEntityRenderContext {
+        /** Collects shadow-pass block entity lists for ShadowRenderer instead of rendering. */
+        final boolean shadowCollect;
         public float partialTicks;
         public int pass;
+
+        TileEntityRenderContext(boolean shadowCollect) {
+            this.shadowCollect = shadowCollect;
+        }
 
         public TileEntityRenderContext set(float partialTicks, int pass) {
             this.partialTicks = partialTicks;

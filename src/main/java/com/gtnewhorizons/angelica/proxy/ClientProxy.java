@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import com.gtnewhorizons.angelica.debug.DebugKeyHandler;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
@@ -185,6 +186,7 @@ public final class ClientProxy extends CommonProxy {
             Zoom.init();
         }
         FpsReducer.init();
+        FMLCommonHandler.instance().bus().register(new DebugKeyHandler());
         AngelicaConfig.applyGpuCullingMode();
         if (AngelicaConfig.enableDynamicLights) {
             EntityLightConfig.init(new java.io.File(mc.mcDataDir, "config"));

@@ -2,8 +2,10 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import jss.notfine.core.SettingsManager;
@@ -24,10 +26,12 @@ import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -85,7 +89,11 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     }
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V"), method = "renderWorld(FJ)V")
-    private void iris$renderShadows(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    private void iris$renderShadows(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline, @Local Frustrum playerFrustum) {
+        final CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstanceOrNull();
+        if (renderer != null) {
+            renderer.setShadowPassPlayerViewport(((ViewportProvider) playerFrustum).sodium$createViewport());
+        }
         pipeline.get().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 

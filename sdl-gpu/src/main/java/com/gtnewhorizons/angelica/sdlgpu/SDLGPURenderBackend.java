@@ -542,11 +542,12 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void onRenderThreadReleased(Thread t) {
         if (shutdown || t == GLStateManager.getMainThread()) return;
+        final ContextState st = tlState.get();
         if (frameManager.isFrameActive()) {
+            if (st != null) fboClearTracker.materializeAllPendingClears(st);
             frameManager.endFrame();
         }
         frameManager.releaseThreadState();
-        final ContextState st = tlState.get();
         if (st != null) {
             tlState.remove();
             registeredStates.remove(st);
@@ -601,6 +602,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public boolean handleSwapBuffers() {
         final OffscreenTarget splash = splashTarget;
         if (splash != null && splash.isFor(s()) && Thread.currentThread() != GLStateManager.getMainThread()) {
+            if (frameManager.isFrameActive()) fboClearTracker.materializeAllPendingClears(s());
             endFrameUploadFlush();
             frameManager.endFrame();
             SplashDispatcher.signalFrameReady((int) s().viewportW, (int) s().viewportH);
@@ -728,6 +730,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             frameManager.markFrameEmpty(f);
         }
 
+        if (f.frameActive) fboClearTracker.materializeAllPendingClears(s());
         awaitUploadFlush();
         if (SystemProperties.FFP_TRACE) ffpTrace.frameEnd(f);
         frameManager.endFrame();
@@ -740,6 +743,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void onPreSwapchainInvalidatingChange(Object change) {
         super.onPreSwapchainInvalidatingChange(change);
         if (presenter != null) presenter.drain();
+        if (frameManager.isFrameActive()) fboClearTracker.materializeAllPendingClears(s());
         endFrameUploadFlush();
         if (frameManager.isFrameActive()) {
             frameManager.endFrame();

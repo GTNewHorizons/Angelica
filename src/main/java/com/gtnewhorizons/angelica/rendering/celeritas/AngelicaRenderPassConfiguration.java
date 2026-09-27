@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.rendering.celeritas;
 import com.google.common.collect.ImmutableListMultimap;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.utils.SpritePadding;
 import it.unimi.dsi.fastutil.objects.Reference2ReferenceOpenHashMap;
 import lombok.Getter;
@@ -15,6 +16,7 @@ import org.embeddedt.embeddium.impl.render.chunk.terrain.material.parameters.Alp
 import org.embeddedt.embeddium.impl.render.chunk.vertex.format.ChunkVertexType;
 import org.lwjgl.opengl.GL11;
 
+import java.util.LinkedHashMap;
 import java.util.Map;
 
 public class AngelicaRenderPassConfiguration {
@@ -31,23 +33,30 @@ public class AngelicaRenderPassConfiguration {
             .vertexType(vertexType)
             .primitiveType(QuadPrimitiveType.TRIANGULATED);
 
-        final int mipmapLevels = SodiumGameOptions.terrainMipmapLevels();
-
-        if (rgssEnabled) {
-            builder.extraDefine("USE_RGSS", "");
-        }
-        if (SodiumGameOptions.usesTerrainTexelSnap()) {
-            builder.extraDefine("USE_TEXEL_SNAP", "");
-        }
-        if (SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy()) {
-            builder.extraDefine("USE_ANISOTROPIC", "");
-            builder.extraDefine("TERRAIN_GUTTER", SpritePadding.gutterFor(mipmapLevels, true) + ".0");
-        }
-        if (mipmapLevels <= 0) {
-            builder.extraDefine("TERRAIN_NO_MIPS", "");
-        }
+        samplerDefines(rgssEnabled, SodiumGameOptions.usesTerrainTexelSnap(),
+            SodiumGameOptions.effectiveTextureFilterMode().usesAnisotropy(), SodiumGameOptions.terrainMipmapLevels())
+            .forEach(builder::extraDefine);
 
         return builder;
+    }
+
+    /** Defines selecting the terrain fragment shader's sampling path. */
+    public static Map<String, String> samplerDefines(boolean rgss, boolean texelSnap, boolean anisotropic, int mipmapLevels) {
+        final Map<String, String> defines = new LinkedHashMap<>();
+        if (rgss) {
+            defines.put("USE_RGSS", "");
+        }
+        if (texelSnap) {
+            defines.put("USE_TEXEL_SNAP", "");
+        }
+        if (anisotropic) {
+            defines.put("USE_ANISOTROPIC", "");
+            defines.put("TERRAIN_GUTTER", SpritePadding.gutterFor(mipmapLevels, true) + ".0");
+        }
+        if (mipmapLevels <= 0) {
+            defines.put("TERRAIN_NO_MIPS", "");
+        }
+        return defines;
     }
 
     public static RenderPassConfiguration<BlockRenderLayer> build(ChunkVertexType vertexType) {
@@ -69,7 +78,7 @@ public class AngelicaRenderPassConfiguration {
             .name("translucent")
             .fragmentDiscard(false)
             .useReverseOrder(true)
-            .useTranslucencySorting(true)
+            .useTranslucencySorting(ClientProxy.options().performance.translucencySorting)
             .build();
 
         TRANSLUCENT_MATERIAL = new Material(TRANSLUCENT_PASS, AlphaCutoffParameter.ZERO, true);

@@ -419,6 +419,10 @@ public class AngelicaConfig {
     @Config.DefaultBoolean(false)
     public static boolean disableF3Additions;
 
+    @Config.Comment("Shows developer counters (FFP, streaming, TESR, transfer) on the F3 screen. Toggle in game with F3+V.")
+    @Config.DefaultBoolean(false)
+    public static boolean verboseF3;
+
     @Config.Comment("Replaces various FFP uploads with statically allocated VBO's.")
     @Config.DefaultBoolean(true)
     public static boolean replaceFFPUploads;
