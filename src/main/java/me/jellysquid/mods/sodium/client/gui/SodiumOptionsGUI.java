@@ -3,9 +3,12 @@ package me.jellysquid.mods.sodium.client.gui;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.client.gui.DynamicLightsOptionPages;
 import com.gtnewhorizons.angelica.client.gui.ScrollableGuiScreen;
+import com.gtnewhorizons.angelica.client.gui.TracyOptionPages;
 import com.gtnewhorizons.angelica.compat.mojang.Drawable;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
+import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import jss.notfine.gui.GuiCustomMenu;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
@@ -68,6 +71,10 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
         // Add Dynamic Lights page if enabled
         if (DynamicLights.configEnabled) {
             this.pages.add(DynamicLightsOptionPages.dynamicLights());
+        }
+
+        if (SystemProperties.debugTooling() || TracyOptions.backendPresent()) {
+            this.pages.add(TracyOptionPages.tracy());
         }
 
         if (Iris.enabled) {

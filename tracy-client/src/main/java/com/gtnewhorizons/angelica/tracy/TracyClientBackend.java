@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.tracy;
 
-import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import com.gtnewhorizons.angelica.glsm.profiling.ZoneStack;
 import me.eigenraven.lwjgl3ify.api.Lwjgl3Aware;
 import org.apache.logging.log4j.LogManager;
@@ -41,6 +41,8 @@ public final class TracyClientBackend implements TracyBackend {
     private SrcLocInterner interner;
     private long emptyString;
     private int ctxSize;
+    private int port;
+    private final TracyCapture capture = new TracyCapture();
     int zoneCtxSize() {
         return ctxSize;
     }
@@ -52,7 +54,7 @@ public final class TracyClientBackend implements TracyBackend {
                 LOGGER.warn("Tracy: 64-bit JVM required");
                 return false;
             }
-            lib = TracyNativeLoader.load();
+            lib = TracyNativeLoader.load("TracyClient");
             if (lib == null) return false;
             sym = TracyLibrary.resolve(lib);
             if (sym == null) return false;
@@ -66,7 +68,27 @@ public final class TracyClientBackend implements TracyBackend {
             emptyString = nmemAllocChecked(1);
             memPutByte(emptyString, (byte) 0);
 
-            interner = new SrcLocInterner(this::allocSrcLoc, SystemProperties.TRACY_MAX_SRC_LOCS);
+            interner = new SrcLocInterner(this::allocSrcLoc, TracyOptions.maxSrcLocs());
+
+            final String envPort = System.getenv("TRACY_PORT");
+            if (envPort != null) {
+                port = TracyPorts.parsePort(envPort);
+                if (port <= 0) {
+                    LOGGER.warn("Tracy: TRACY_PORT='{}' is not a valid port (1-65535); in-game capture disabled", envPort);
+                }
+            } else {
+                port = TracyPorts.pick();
+                if (port > 0) {
+                    if (!setEnv("TRACY_PORT", String.valueOf(port))) port = 0;
+                } else {
+                    LOGGER.warn("Tracy: no free port in 8086-8105; in-game capture disabled, set the TRACY_PORT environment variable to pin one");
+                }
+            }
+            if (!TracyOptions.allowRemote() && !(setEnv("TRACY_ONLY_LOCALHOST", "1") && setEnv("TRACY_ONLY_IPV4", "1"))) {
+                LOGGER.warn("Tracy: cannot restrict the listener to localhost; not starting (enable Allow remote connections on the Tracy settings page to allow remote)");
+                return false;
+            }
+            LOGGER.info("Tracy: using port {} ({})", port, TracyOptions.allowRemote() ? "remote allowed" : "localhost only");
 
             JNI.invokeV(sym.startupProfiler);
             if (JNI.invokeI(sym.profilerStarted) == 0) {
@@ -79,6 +101,14 @@ public final class TracyClientBackend implements TracyBackend {
         } catch (Throwable t) {
             LOGGER.warn("Tracy: init failed: {}", t.toString());
             return false;
+        }
+    }
+
+    private boolean setEnv(String name, String value) {
+        try (MemoryStack stack = stackPush()) {
+            final ByteBuffer nameUtf8 = stack.UTF8(name, true);
+            final ByteBuffer valueUtf8 = stack.UTF8(value, true);
+            return JNI.invokePPI(memAddress(nameUtf8), memAddress(valueUtf8), sym.setEnv) == 0;
         }
     }
 
@@ -240,6 +270,32 @@ public final class TracyClientBackend implements TracyBackend {
     @Override
     public boolean isConnected() {
         return JNI.invokeI(sym.connected) != 0;
+    }
+
+    @Override
+    public String captureStart(String path, int seconds) {
+        if (port <= 0) return "no free Tracy port in 8086-8105; set the TRACY_PORT environment variable";
+        return capture.start(path, port, seconds);
+    }
+
+    @Override
+    public void captureStop() {
+        capture.stop();
+    }
+
+    @Override
+    public int captureState() {
+        return capture.state();
+    }
+
+    @Override
+    public long captureElapsedMs() {
+        return capture.elapsedMs();
+    }
+
+    @Override
+    public String captureError() {
+        return capture.error();
     }
 
     @Override

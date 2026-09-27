@@ -40,7 +40,7 @@ public final class AsprofRecorder {
         if (!available()) return "async-profiler is not available on this platform/build";
         if (SESSION.recordingId() != 0) return "already recording to " + SESSION.outputPath();
 
-        File file = SystemProperties.PROFILE_OUTPUT.isEmpty() ? new File(SystemProperties.PROFILE_DIR, fileName(tag, System.currentTimeMillis())) : new File(SystemProperties.PROFILE_OUTPUT);
+        File file = SystemProperties.PROFILE_OUTPUT.isEmpty() ? new File(SystemProperties.PROFILE_DIR, fileName(tag, "jfr", System.currentTimeMillis())) : new File(SystemProperties.PROFILE_OUTPUT);
         file = file.getAbsoluteFile();
         if (file.exists()) return "output file already exists: " + file.getPath();
         final File parent = file.getParentFile();
@@ -121,9 +121,9 @@ public final class AsprofRecorder {
         return opts.isEmpty() ? "start,jfr,file=" + file : "start,jfr," + opts + ",file=" + file;
     }
 
-    static String fileName(String tag, long nowMillis) {
+    static String fileName(String tag, String ext, long nowMillis) {
         final SimpleDateFormat format = new SimpleDateFormat("yyyyMMdd-HHmmss", Locale.ROOT);
-        return "angelica-" + tag + "-" + format.format(new Date(nowMillis)) + ".jfr";
+        return "angelica-" + tag + "-" + format.format(new Date(nowMillis)) + "." + ext;
     }
 
     static String firstLine(String s) {
