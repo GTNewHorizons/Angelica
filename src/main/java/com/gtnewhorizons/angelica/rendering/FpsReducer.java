@@ -42,8 +42,8 @@ public final class FpsReducer {
     private FpsReducer() {}
 
     public static void init() {
-        forceKey = new KeyBinding("angelica.keybind.fps_reducer_force", 0, "key.categories.misc");
-        disableKey = new KeyBinding("angelica.keybind.fps_reducer_disable", 0, "key.categories.misc");
+        forceKey = new KeyBinding("angelica.keybind.fps_reducer_force", 0, AngelicaMod.KEY_CATEGORY);
+        disableKey = new KeyBinding("angelica.keybind.fps_reducer_disable", 0, AngelicaMod.KEY_CATEGORY);
         ClientRegistry.registerKeyBinding(forceKey);
         ClientRegistry.registerKeyBinding(disableKey);
         FMLCommonHandler.instance().bus().register(INSTANCE);

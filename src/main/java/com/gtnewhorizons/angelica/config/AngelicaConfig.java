@@ -472,6 +472,32 @@ public class AngelicaConfig {
         "minecraft:andesite", "minecraft:dirt", "minecraft:granite", "minecraft:grass", "minecraft:mycelium", "minecraft:sand", "minecraft:soul_sand", "etfuturum:calcite", "etfuturum:coarse_dirt", "etfuturum:concrete_powder", "etfuturum:grass_path", "BiomesOPlenty:ash", "BiomesOPlenty:driedDirt", "BiomesOPlenty:hardDirt", "BiomesOPlenty:hardSand", "BiomesOPlenty:mud", "BiomesOPlenty:newBopDirt", "Botania:dirtPath", "Botania:enchantedSoil", "Botania:livingrock", "Botania:prismarine", "Botania:shimmerrock", "Botany:loam", "Botany:loamNoWeed", "Botany:soil", "Botany:soilNoWeed", "chisel:moss", "chisel:moss_carpet", "ExtraUtilities:color_hellsand", "ExtraUtilities:cursedearthside", "GalaxySpace:acentauribbgrunt", "GalaxySpace:acentauribbsubgrunt", "GalaxySpace:barnardaCdirt", "GalaxySpace:barnardaEgrunt", "GalaxySpace:barnardaEsubgrunt", "GalaxySpace:barnardaFgrunt", "GalaxySpace:barnardaFsubgrunt", "GalaxySpace:callistoblocks", "GalaxySpace:ceresblocks", "GalaxySpace:deimosblocks", "GalaxySpace:europagrunt", "GalaxySpace:ganymedeblocks", "GalaxySpace:haumeablocks", "GalaxySpace:ioblocks", "GalaxySpace:makemakegrunt", "GalaxySpace:mercuryblocks", "GalaxySpace:mirandablocks", "GalaxySpace:oberonblocks", "GalaxySpace:phobosblocks", "GalaxySpace:proteusblocks", "GalaxySpace:tcetieblocks", "GalaxySpace:titanblocks", "GalaxySpace:tritonblocks", "GalaxySpace:vegabgrunt", "GalaxySpace:vegabsubgrunt", "GalaxySpace:venusblocks", "gregtech:gt.blockgranites", "IC2:blockBasalt", "MagicBees:magicbees.enchantedEarth", "RandomThings:fertilizedDirt", "ToxicEverglades:blockDarkWorldGround2", "VillageNames:concretePowder", "witchery:pitdirt"
     };
 
+    @Config.Comment("Enable the Tracy profiler backend. Requires angelica-tracy.jar on the classpath. Overridden by -Dangelica.tracy")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean enableTracy;
+
+    @Config.Comment("Allow Tracy to accept connections from other machines, not just localhost")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean tracyAllowRemote;
+
+    @Config.Comment("Emit Tracy zones for many more call sites. More detail, more overhead. Overridden by -Dangelica.tracy.fineZones")
+    @Config.DefaultBoolean(false)
+    @Config.RequiresMcRestart
+    public static boolean tracyFineZones;
+
+    @Config.Comment("Max distinct Tracy zone/message call sites to preallocate. Overridden by -Dangelica.tracy.maxSrcLocs")
+    @Config.DefaultInt(4096)
+    @Config.RangeInt(min = 1024, max = 16384)
+    @Config.RequiresMcRestart
+    public static int tracyMaxSrcLocs;
+
+    @Config.Comment("Default length in seconds for a Tracy capture started from the command or video settings. 0 = until stopped")
+    @Config.DefaultInt(60)
+    @Config.RangeInt(min = 0, max = 3600)
+    public static int tracyCaptureSeconds;
+
     public static void applyGpuCullingMode() {
         GpuCulling.setMode(gpuCullingMode == null ? GpuCullingMode.CPU_ONLY : gpuCullingMode);
     }

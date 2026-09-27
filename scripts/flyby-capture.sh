@@ -104,6 +104,9 @@ if [ -n "$JFR_OUT" ]; then
         PROFILE_ARGS+=(-Dangelica.profile.opts="$ASPROF_OPTS")
     fi
 fi
+if [ "$MODE" = "tracy" ]; then
+    PROFILE_ARGS+=(-Dangelica.tracy=true)
+fi
 
 if [ "$MODE" = "tracy" ]; then
     if ! command -v "$TRACY_CAPTURE" >/dev/null 2>&1 && [ ! -x "$TRACY_CAPTURE" ]; then
