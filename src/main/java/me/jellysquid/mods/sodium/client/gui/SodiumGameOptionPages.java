@@ -210,6 +210,25 @@ public class SodiumGameOptionPages {
                     : EnumSet.noneOf(OptionFlag.class))
                 .build();
 
+        final OptionImpl<SodiumGameOptions, Integer> biomeBlendRadius = OptionImpl.createBuilder(int.class, sodiumOpts)
+            .setName(I18n.format("options.biomeBlendRadius"))
+            .setTooltip(I18n.format("sodium.options.biome_blend.tooltip"))
+            .setControl(option -> new SliderControl(option, 0, 7, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.biome_blend.value", "sodium.options.none")))
+            .setBinding((opts, value) -> opts.quality.biomeBlendRadius = value, opts -> opts.quality.biomeBlendRadius)
+            .setImpact(OptionImpact.LOW)
+            .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+            .build();
+
+        final OptionImpl<SodiumGameOptions, BiomeBlendMode> biomeBlendMode = OptionImpl.createBuilder(BiomeBlendMode.class, sodiumOpts)
+            .setName(I18n.format("sodium.options.biome_blend_mode.name"))
+            .setTooltip(I18n.format("sodium.options.biome_blend_mode.tooltip"))
+            .setControl(option -> new CyclingControl<>(option, BiomeBlendMode.class))
+            .setBinding((opts, value) -> opts.quality.biomeBlendMode = value, opts -> opts.quality.biomeBlendMode)
+            .setImpact(OptionImpact.LOW)
+            .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+            .build();
+        biomeBlendMode.iris$dynamicallyEnable(() -> biomeBlendRadius.getValue() > 0);
+
         groups.add(OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(GraphicsMode.class, vanillaOpts)
                         .setName(I18n.format("options.graphics"))
@@ -267,22 +286,8 @@ public class SodiumGameOptionPages {
                 .add(texelSampling)
                 .add(anisotropicFilteringSlider(vanillaOpts, textureFilterMode::getValue),
                     SodiumGameOptions.anisotropySupported())
-                .add(OptionImpl.createBuilder(int.class, sodiumOpts)
-                        .setName(I18n.format("options.biomeBlendRadius"))
-                        .setTooltip(I18n.format("sodium.options.biome_blend.tooltip"))
-                        .setControl(option -> new SliderControl(option, 0, 7, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.biome_blend.value", "sodium.options.none")))
-                        .setBinding((opts, value) -> opts.quality.biomeBlendRadius = value, opts -> opts.quality.biomeBlendRadius)
-                        .setImpact(OptionImpact.LOW)
-                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                        .build())
-                .add(OptionImpl.createBuilder(BiomeBlendMode.class, sodiumOpts)
-                    .setName(I18n.format("sodium.options.biome_blend_mode.name"))
-                    .setTooltip(I18n.format("sodium.options.biome_blend_mode.tooltip"))
-                    .setControl(option -> new CyclingControl<>(option, BiomeBlendMode.class))
-                    .setBinding((opts, value) -> opts.quality.biomeBlendMode = value, opts -> opts.quality.biomeBlendMode)
-                    .setImpact(OptionImpact.LOW)
-                    .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
-                    .build())
+                .add(biomeBlendRadius)
+                .add(biomeBlendMode)
                 // TODO
                 /*.add(OptionImpl.createBuilder(int.class, vanillaOpts)
                         .setName(new TranslatableText("options.entityDistanceScaling"))
