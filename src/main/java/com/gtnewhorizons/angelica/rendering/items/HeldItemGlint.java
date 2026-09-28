@@ -27,7 +27,7 @@ public final class HeldItemGlint {
     private HeldItemGlint() {}
 
     private static boolean batchedGlintGuarded() {
-        return ModelPartBatcher.INSTANCE.entityPassActive() && ModelPartBatcher.INSTANCE.canCaptureGlint() && canResetStencil();
+        return ModelPartBatcher.INSTANCE.entityPassActive() && ModelPartBatcher.INSTANCE.canQueueGlint() && canResetStencil();
     }
 
     public static boolean needsImmediateBase(ItemStack stack, int pass) {
@@ -46,7 +46,7 @@ public final class HeldItemGlint {
     }
 
     public static boolean eligible() {
-        return AngelicaConfig.enableEntityBatching && GLStateManager.getActiveProgram() == 0 && (boolean) Settings.MODE_GLINT_WORLD.option.getStore() && opaqueTexture(Minecraft.getMinecraft());
+        return AngelicaConfig.enableEntityBatching && (boolean) Settings.MODE_GLINT_WORLD.option.getStore() && opaqueTexture(Minecraft.getMinecraft());
     }
 
     public static boolean begin() {

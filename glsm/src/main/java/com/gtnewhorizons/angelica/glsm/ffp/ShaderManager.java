@@ -116,9 +116,10 @@ public final class ShaderManager {
 
     public void activate() {
         active = true;
-        lastBoundProgramId = GLStateManager.getActiveProgram();
+        invalidateProgram();
     }
 
+    /** Invalidate both binding and state key so the next draw selects and binds an FFP variant. */
     public void invalidateProgram() {
         lastBoundProgramId = -1;
         currentProgram = null;
@@ -170,10 +171,11 @@ public final class ShaderManager {
     }
 
     private void commitVariant(long vkPacked, int fkLen) {
-        currentVertexKeyPacked = vkPacked;
         System.arraycopy(currentFKScratch, 0, currentFKPacked, 0, fkLen);
         currentFKLen = fkLen;
         currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
+        // Building a variant can invalidate the previous binding and key.
+        currentVertexKeyPacked = vkPacked;
         final int programId = currentProgram.getProgramId();
         if (programId != lastBoundProgramId) {
             if (Tracy.ENABLED) variantSwitches++;

@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
+import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.block.Block;
@@ -107,7 +108,7 @@ public final class DroppedItemInstancer {
         return material;
     }
 
-    public static void icon(ItemStack stack, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    public static void icon(ItemStack stack, boolean afterGlint, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
         glintCapture.reset();
         glintSeen = false;
         final TesrMaterial material = material(stack, true);
@@ -116,10 +117,10 @@ public final class DroppedItemInstancer {
             callIcon(ICON_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
             return;
         }
-        basePart = batchIcon(material, t, maxU, minV, minU, maxV, width, height, thickness, original);
+        basePart = batchIcon(material, afterGlint, t, maxU, minV, minU, maxV, width, height, thickness, original);
     }
 
-    static boolean batchIcon(TesrMaterial material, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    static boolean batchIcon(TesrMaterial material, boolean afterGlint, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
         final long drawsBefore = GLStateManager.drawCalls;
         if (BatchEligibility.batchingAllowed()) {
             final TemplateBuffer template = iconTemplate(ICON_ARGS, maxU, minV, minU, maxV, width, height, thickness, original);
@@ -129,7 +130,7 @@ public final class DroppedItemInstancer {
                 bail(BailReason.TEMPLATE);
                 return false;
             }
-            if (ModelPartBatcher.INSTANCE.queueTemplate(template, material)) {
+            if (ModelPartBatcher.INSTANCE.queueTemplate(template, material, afterGlint)) {
                 instanced++;
                 BatchEligibility.onPartQueued();
                 return true;
@@ -234,6 +235,7 @@ public final class DroppedItemInstancer {
                 return;
             }
             if (ModelPartBatcher.INSTANCE.queueTemplate(mesh.template(), material)) {
+                mesh.sprites().markUsed();
                 instanced++;
                 BatchEligibility.onPartQueued();
                 return;
@@ -311,6 +313,7 @@ public final class DroppedItemInstancer {
             blockBackend = new BakedTransformCapture(CAPTURE_BYTES);
         }
         final TemplateBuffer template;
+        final AnimationsRenderUtils.SpriteCapture sprites = AnimationsRenderUtils.captureSprites();
         GLStateManager.glPushMatrix();
         try {
             blockBackend.begin();
@@ -321,9 +324,10 @@ public final class DroppedItemInstancer {
             }
         } finally {
             GLStateManager.glPopMatrix();
+            sprites.close();
         }
         final Color4 color = GLStateManager.getColor();
-        final BlockMesh mesh = new BlockMesh(template, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
+        final BlockMesh mesh = new BlockMesh(template, color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha(), sprites);
         blocks.put(new BlockMeta(block, meta), mesh);
         return mesh;
     }
@@ -346,5 +350,6 @@ public final class DroppedItemInstancer {
         TemplateBuffer template;
     }
 
-    private record BlockMesh(TemplateBuffer template, float red, float green, float blue, float alpha) {}
+    private record BlockMesh(TemplateBuffer template, float red, float green, float blue, float alpha,
+                             AnimationsRenderUtils.SpriteCapture sprites) {}
 }

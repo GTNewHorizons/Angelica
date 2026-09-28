@@ -9,10 +9,12 @@ import com.gtnewhorizons.angelica.glsm.states.AlphaTestFunction;
 import com.gtnewhorizons.angelica.glsm.states.BlendState;
 import com.gtnewhorizons.angelica.glsm.states.ColorMask;
 import com.gtnewhorizons.angelica.glsm.states.DepthState;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import net.coderbot.iris.gl.blending.AlphaTest;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 import net.coderbot.iris.gl.uniform.FloatSupplier;
 import net.coderbot.iris.gl.uniform.FloatUniform;
@@ -52,6 +54,7 @@ class StateSetOverrideGLTest {
     @AfterEach
     void cleanup() {
         listener = null;
+        ProgramUniforms.clearActiveUniforms();
         BlendModeStorage.restoreBlend();
         AlphaTestStorage.restoreAlphaTest();
         DepthColorStorage.unlockDepthColor();
@@ -481,6 +484,7 @@ class StateSetOverrideGLTest {
         GLStateManager.glUseProgram(program);
         final int referenceLocation = GLStateManager.glGetUniformLocation(program, "alphaReference");
         final int functionLocation = GLStateManager.glGetUniformLocation(program, "alphaFunction");
+        Reflect.setStatic(ProgramUniforms.class, "active", ProgramUniforms.builder("alpha", program).buildUniforms());
         final Runnable[] updates = new Runnable[2];
         final FloatUniform reference = newFloatUniform(referenceLocation, () -> GLStateManager.getAlphaState().getReference(), update -> updates[0] = update);
         final IntUniform function = newIntUniform(functionLocation, () -> GLStateManager.getAlphaState().getFunction(), update -> updates[1] = update);

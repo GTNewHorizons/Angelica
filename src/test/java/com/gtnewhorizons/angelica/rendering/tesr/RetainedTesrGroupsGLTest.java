@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParityFixture;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
@@ -22,6 +23,7 @@ import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.layer.PassOverride;
 import net.minecraft.client.renderer.Tessellator;
+import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
@@ -42,6 +44,8 @@ import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.CO
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.VERTEX_SIZE;
 import static com.gtnewhorizon.gtnhlib.client.renderer.cel.util.ModelQuadUtil.X_INDEX;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertArrayEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -58,6 +62,7 @@ class RetainedTesrGroupsGLTest {
 
     private static boolean overridesRegistered;
     private static boolean skipClientArrays;
+    private static Runnable onBufferSetup;
 
     private AngelicaBufferSource source;
     private InstanceRing ring;
@@ -80,7 +85,10 @@ class RetainedTesrGroupsGLTest {
     static void registerClientArrayOverrides() {
         if (overridesRegistered) return;
         overridesRegistered = true;
-        VertexFormat.registerSetupBufferStateOverride((format, offset) -> skipClientArrays);
+        VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
+            if (onBufferSetup != null) onBufferSetup.run();
+            return skipClientArrays;
+        });
         VertexFormat.registerClearBufferStateOverride(format -> skipClientArrays);
     }
 
@@ -110,7 +118,9 @@ class RetainedTesrGroupsGLTest {
 
     @AfterEach
     void cleanup() {
+        onBufferSetup = null;
         skipClientArrays = false;
+        source.discard();
         GLStateManager.setFfpInstancing(Instancing.NONE);
         GLStateManager.glBindVertexArray(0);
         GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
@@ -183,6 +193,50 @@ class RetainedTesrGroupsGLTest {
             final Matrix4f mv = new Matrix4f().translation(id, 0f, 0f);
             groups.queue(template, layer, RetainedTesrGroupsTest.STREAM, mv, 0, -1, 0, 0L, id, null);
             groups.queue(template, RetainedTesrGroupsTest.cubes(1), 0.0625f, layer, RetainedTesrGroupsTest.STREAM, mv, 0, -1, 0, 0L, id, null);
+        }
+    }
+
+    @Test
+    void cpuFallbackRestoresEveryIdAndTintBeforeDrawingAndRestoresTheCaller() {
+        final var state = net.coderbot.iris.uniforms.CapturedRenderingState.INSTANCE;
+        state.pushCurrentEntityAndItem();
+        state.pushCurrentBlockEntity();
+        state.pushCurrentEntityColor();
+        try {
+            final var draws = new java.util.ArrayList<long[]>();
+            onBufferSetup = () -> draws.add(new long[] {
+                state.getCurrentRenderedEntity(), state.getCurrentRenderedBlockEntity(), state.getCurrentRenderedItem(),
+                AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor())
+            });
+            groups.beginPass(new Matrix4f(), 0, 0, 0, instanced, new CountingPipeline(false, false));
+            final TemplateBuffer template = capturedQuad(0.1);
+            for (int i = 0; i < 3; i++) {
+                final long info = com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs.packEntityInfo(45010 + i, 45020 + i, 45030 + i);
+                final int color = AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1);
+                groups.queue(template, layer, RetainedTesrGroupsTest.STREAM, new Matrix4f(), 0, -1, color, info, 45020 + i, null);
+            }
+            state.setCurrentEntityAndItem(81, 82);
+            state.setCurrentBlockEntity(83);
+            state.setCurrentEntityColor(0, 1, 0, 0.5f);
+            draws.clear();
+            skipClientArrays = true;
+            groups.drawLayer(layer);
+            assertEquals(3, draws.size(), "only differing uniform values split the CPU fallback");
+            for (int i = 0; i < 3; i++) {
+                assertArrayEquals(new long[] {45010 + i, 45020 + i, 45030 + i,
+                    AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1)}, draws.get(i));
+            }
+            source.discard();
+            assertEquals(81, state.getCurrentRenderedEntity());
+            assertEquals(82, state.getCurrentRenderedItem());
+            assertEquals(83, state.getCurrentRenderedBlockEntity());
+            assertTrue(state.getCurrentEntityColor().equals(0, 1, 0, 0.5f));
+        } finally {
+            onBufferSetup = null;
+            source.discard();
+            state.popCurrentEntityColor();
+            state.popCurrentBlockEntity();
+            state.popCurrentEntityAndItem();
         }
     }
 
@@ -320,6 +374,181 @@ class RetainedTesrGroupsGLTest {
 
         final int[] identityAtOrigin = FfpFixture.readPixel(originX, originY);
         assertTrue(identityAtOrigin[0] > 200 && identityAtOrigin[1] < 50 && identityAtOrigin[2] < 50, "an identity instance must render red at the origin, got " + identityAtOrigin[0] + "," + identityAtOrigin[1] + "," + identityAtOrigin[2]);
+    }
+
+    @Test
+    void scissorChangeDrainsQueuedGeometryBeforeClippingAndEndsModelBatching() {
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.disableTexture();
+        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glScissor(0, 0, 0, 0);
+        FfpFixture.clear();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        groups.queue(template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrGroupsTest.STREAM,
+            new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 0, null);
+        final ModelPartBatcher models = ModelPartBatcher.INSTANCE;
+        final Object oldSource = Reflect.get(models, "activeSource");
+        final Object oldGroups = Reflect.get(models, "activeGroups");
+        final Runnable oldFlush = com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush;
+        try {
+            Reflect.set(models, "activeSource", source);
+            Reflect.set(models, "activeGroups", groups);
+            Reflect.set(models, "active", true);
+            BatchStateFallback.install();
+            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+            assertTrue(models.isActive(), "batching must resume for the rest of the pass after the flush");
+            assertFalse(models.hasQueuedGeometry(), "the flush must drain what was queued before the change");
+            assertTrue(FfpFixture.readPixel(400, 300)[0] > 200, "queued geometry must draw before the zero-area scissor takes effect");
+        } finally {
+            Reflect.set(models, "active", false);
+            Reflect.set(models, "activeSource", oldSource);
+            Reflect.set(models, "activeGroups", oldGroups);
+            com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush = oldFlush;
+            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        }
+    }
+
+    @Test
+    void heldEntityTranslucentsSurviveUncapturedStateChange() {
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.disableTexture();
+        GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        GLStateManager.glScissor(0, 0, 0, 0);
+        FfpFixture.clear();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        groups.queue(template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrGroupsTest.STREAM,
+            new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 0, null);
+        final ModelPartBatcher models = ModelPartBatcher.INSTANCE;
+        final Object oldSource = Reflect.get(models, "entitySource");
+        final Object oldGroups = Reflect.get(models, "entityGroups");
+        final Runnable oldFlush = com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush;
+        try {
+            Reflect.set(models, "entitySource", source);
+            Reflect.set(models, "entityGroups", groups);
+            Reflect.set(models, "entityTranslucentsHeld", true);
+            BatchStateFallback.install();
+            GLStateManager.glEnable(GL11.GL_SCISSOR_TEST);
+            assertTrue(models.hasHeldEntities(), "held entity translucents wait for the post-deferred flush");
+            assertTrue(FfpFixture.readPixel(400, 300)[0] < 50, "held entity geometry must not draw before deferred");
+        } finally {
+            Reflect.set(models, "entityTranslucentsHeld", false);
+            Reflect.set(models, "entitySource", oldSource);
+            Reflect.set(models, "entityGroups", oldGroups);
+            com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush = oldFlush;
+            GLStateManager.glDisable(GL11.GL_SCISSOR_TEST);
+        }
+    }
+
+    @Test
+    void fogChangeDrainsProviderBatchesAndClearsTheActivePass() {
+        GLStateManager.disableBlend();
+        GLStateManager.disableAlphaTest();
+        GLStateManager.disableTexture();
+        FfpFixture.clear();
+        groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
+        groups.queue(template(TRIANGLE, COLOR_ABGR, GL11.GL_TRIANGLES), layer, RetainedTesrGroupsTest.STREAM,
+            new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 0, null);
+        final TesrBatchRenderer renderer = TesrBatchRenderer.INSTANCE;
+        final Object oldSource = Reflect.get(renderer, "bufferSource");
+        final RetainedTesrGroups[] retained = Reflect.get(renderer, "retained");
+        final RetainedTesrGroups oldGroups = retained[0];
+        final Runnable oldFlush = com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush;
+        try {
+            Reflect.set(renderer, "bufferSource", source);
+            retained[0] = groups;
+            Reflect.set(renderer, "activePass", 0);
+            BatchStateFallback.install();
+            GLStateManager.enableFog();
+            assertFalse(renderer.hasPendingGeometry());
+            assertTrue(FfpFixture.readPixel(400, 300)[0] > 200, "provider geometry must reach the framebuffer before fog is enabled");
+        } finally {
+            Reflect.set(renderer, "activePass", -1);
+            Reflect.set(renderer, "bufferSource", oldSource);
+            retained[0] = oldGroups;
+            com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush = oldFlush;
+            GLStateManager.disableFog();
+        }
+    }
+
+    @Test
+    void emptyShadowPassSetupKeepsBatchingButRendererSpecificStateDisablesIt() {
+        final TesrBatchRenderer renderer = TesrBatchRenderer.INSTANCE;
+        final Object oldSource = Reflect.get(renderer, "bufferSource");
+        final Runnable oldFlush = com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush;
+        try {
+            Reflect.set(renderer, "bufferSource", source);
+            Reflect.set(renderer, "activePass", TesrBatchRenderer.PASS_SHADOW);
+            BatchStateFallback.install();
+            net.coderbot.iris.layer.GbufferPrograms.setBlockEntityDefaults();
+            assertTrue(renderer.hasActivePass(), "default attributes before the first renderer must not disable shadow batching");
+            BatchEligibility.begin(BatchEligibility.SAFE, GLStateManager.drawCalls);
+            try {
+                GLStateManager.glScissor(0, 0, 8, 8);
+                assertFalse(renderer.hasActivePass(), "unsupported renderer state needs fallback even before its first model part");
+            } finally {
+                assertEquals(BatchEligibility.DENIED, BatchEligibility.end(BatchEligibility.SAFE, GLStateManager.drawCalls));
+            }
+        } finally {
+            Reflect.set(renderer, "activePass", -1);
+            Reflect.set(renderer, "bufferSource", oldSource);
+            com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard.flush = oldFlush;
+        }
+    }
+
+    @Test
+    void mirroredItemKeepsItsOuterFacesAndDepthTestedGlintWhenDrawnLater() {
+        final AngelicaTesrMeshCache.GtnhMeshBackend backend = new AngelicaTesrMeshCache.GtnhMeshBackend();
+        final Tessellator direct = backend.beginCapture(DefaultVertexFormat.POSITION_TEXTURE_NORMAL);
+        ItemRenderer.renderItemIn2D(direct, 1f, 0f, 0f, 1f, 16, 16, 0.0625f);
+        final TemplateBuffer icon = backend.endCaptureToTemplate();
+        assertNotNull(icon);
+        // Red front/back faces must hide the green internal pixel walls.
+        for (int i = 0; i < icon.vertexCount; i++) {
+            icon.data[i * VERTEX_SIZE + COLOR_INDEX] = i < 8 ? 0xFF0000FF : 0xFF00FF00;
+        }
+        GLStateManager.glViewport(0, 0, SIZE, SIZE);
+        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLStateManager.glFrontFace(GL11.GL_CCW);
+        GLStateManager.disableCull();
+        final RenderLayer base = TesrLayerStateTest.capturedLayer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final RenderLayer glint = TesrLayerStateTest.capturedLayer(
+            TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream().build());
+        for (float yScale : new float[] { -0.9f, 0.9f }) {
+            final Matrix4f mv = new Matrix4f().rotateY(0.55f).scale(0.9f, yScale, 0.9f).translate(-0.5f, -0.5f, 0f);
+            final int[][] reference = drawItemAndGlint(icon, mv, base, glint, true);
+            final int[][] queued = drawItemAndGlint(icon, mv, base, glint, false);
+            assertArrayEquals(reference[0], queued[0], "queued base must preserve its original culling state");
+            FfpFixture.assertOverlayFootprint(reference[0], reference[1], BACKGROUND, "item glint");
+            assertArrayEquals(reference[1], queued[1], "glint must cover the same visible faces after batching");
+        }
+        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError());
+        ModelPartBatcher.INSTANCE.clear();
+    }
+
+    private int[][] drawItemAndGlint(TemplateBuffer icon, Matrix4f mv, RenderLayer base, RenderLayer glint, boolean reference) {
+        GLStateManager.disableLighting();
+        GLStateManager.glDepthMask(true);
+        FfpFixture.clear();
+        GLStateManager.enableCull();
+        final int depth = GLStateManager.pushState(StateSet.BATCH);
+        base.startDrawing();
+        if (reference) GLStateManager.disableCull();
+        drawSingleInstance(instanced, icon, mv, 0xFF808080);
+        final int[] basePixels = FfpFixture.readRegion(SIZE);
+        base.endDrawing();
+        glint.startDrawing();
+        if (reference) GLStateManager.disableCull();
+        assertTrue(GL11.glIsEnabled(GL11.GL_DEPTH_TEST));
+        assertEquals(GL11.GL_EQUAL, GL11.glGetInteger(GL11.GL_DEPTH_FUNC));
+        assertFalse(GL11.glGetBoolean(GL11.GL_DEPTH_WRITEMASK));
+        drawSingleInstance(instanced, icon, mv, 0xFF808080);
+        final int[] glintPixels = FfpFixture.readRegion(SIZE);
+        glint.endDrawing();
+        GLStateManager.popStateTo(depth);
+        assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE), "the batch bracket restores the flush caller's culling");
+        return new int[][] { basePixels, glintPixels };
     }
 
     private void glintState() {

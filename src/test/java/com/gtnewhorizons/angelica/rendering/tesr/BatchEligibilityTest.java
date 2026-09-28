@@ -16,6 +16,21 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class BatchEligibilityTest {
 
+    @Test
+    void uncapturedStateDemotesSafeRenderersAndPreventsUnknownPromotion() {
+        for (byte state : new byte[] {BatchEligibility.SAFE, BatchEligibility.UNKNOWN}) {
+            BatchEligibility.begin(state, 0);
+            BatchEligibility.onPartQueued();
+            BatchEligibility.onUncapturedState();
+            assertFalse(BatchEligibility.batchingAllowed());
+            BatchEligibility.onBatchFlushed(4);
+            BatchEligibility.onPartFallback(4, 5);
+            assertEquals(BatchEligibility.DENIED, BatchEligibility.end(state, 5));
+        }
+        assertTrue(BatchEligibility.begin(BatchEligibility.SAFE, 5));
+        assertEquals(BatchEligibility.SAFE, BatchEligibility.end(BatchEligibility.SAFE, 5));
+    }
+
     private long drawCalls;
 
     @BeforeEach
@@ -107,6 +122,73 @@ class BatchEligibilityTest {
     void batchingIsDisallowedOutsideADispatch() {
         BatchEligibility.begin(SAFE, drawCalls);
         BatchEligibility.end(SAFE, drawCalls);
+        assertFalse(BatchEligibility.batchingAllowed());
+    }
+
+    @Test
+    void ordinaryPlacedItemCanBatchInsideADeniedWrapper() {
+        BatchEligibility.begin(DENIED, drawCalls);
+        BatchEligibility.beginIsolated(SAFE, drawCalls);
+        assertTrue(BatchEligibility.batchingAllowed());
+        BatchEligibility.begin(DENIED, drawCalls);
+        assertTrue(BatchEligibility.batchingAllowed(), "nested RenderItem inherits the content scope");
+        BatchEligibility.onPartQueued();
+        assertEquals(DENIED, BatchEligibility.end(DENIED, drawCalls));
+        assertEquals(SAFE, BatchEligibility.endIsolated(SAFE, drawCalls));
+        assertFalse(BatchEligibility.batchingAllowed(), "restore the wrapper's eligibility");
+        assertEquals(DENIED, BatchEligibility.end(DENIED, drawCalls));
+    }
+
+    @Test
+    void customPlacedItemStaysEntirelyLiveWithoutPoisoningOrdinaryItems() {
+        BatchEligibility.begin(SAFE, drawCalls);
+        BatchEligibility.onPartQueued();
+        BatchEligibility.beginIsolated(DENIED, drawCalls);
+        assertFalse(BatchEligibility.batchingAllowed());
+        BatchEligibility.begin(SAFE, drawCalls);
+        assertFalse(BatchEligibility.batchingAllowed(), "even a batchable nested mob must stay live");
+        unbatchedPart(2);
+        draw(3);
+        assertEquals(SAFE, BatchEligibility.end(SAFE, drawCalls));
+        assertEquals(DENIED, BatchEligibility.endIsolated(DENIED, drawCalls));
+        assertTrue(BatchEligibility.batchingAllowed());
+
+        BatchEligibility.beginIsolated(UNKNOWN, drawCalls);
+        unbatchedPart(1);
+        assertEquals(SAFE, BatchEligibility.endIsolated(UNKNOWN, drawCalls));
+        assertEquals(SAFE, BatchEligibility.end(SAFE, drawCalls));
+    }
+
+    @Test
+    void isolatedScopesRestoreEnclosingDrawBracketsWithoutDoubleCounting() {
+        BatchEligibility.begin(UNKNOWN, drawCalls);
+        BatchEligibility.beginExpectedDraws(drawCalls);
+        draw(1);
+        BatchEligibility.beginIsolated(UNKNOWN, drawCalls);
+        BatchEligibility.beginExpectedDraws(drawCalls);
+        unbatchedPart(2);
+        BatchEligibility.endExpectedDraws(drawCalls);
+        assertEquals(SAFE, BatchEligibility.endIsolated(UNKNOWN, drawCalls));
+        draw(1);
+        BatchEligibility.endExpectedDraws(drawCalls);
+        unbatchedPart(1);
+        draw(1);
+        assertEquals(DENIED, BatchEligibility.end(UNKNOWN, drawCalls));
+        assertEquals(1L, (long) Reflect.getStatic(BatchEligibility.class, "foreignDraws"));
+    }
+
+    @Test
+    void isolatedScopesCanNestAndDoNotPromoteTheirWrapper() {
+        BatchEligibility.begin(UNKNOWN, drawCalls);
+        BatchEligibility.beginIsolated(SAFE, drawCalls);
+        BatchEligibility.onPartQueued();
+        BatchEligibility.beginIsolated(DENIED, drawCalls);
+        unbatchedPart(1);
+        draw(1);
+        assertEquals(DENIED, BatchEligibility.endIsolated(DENIED, drawCalls));
+        assertTrue(BatchEligibility.batchingAllowed());
+        assertEquals(SAFE, BatchEligibility.endIsolated(SAFE, drawCalls));
+        assertEquals(UNKNOWN, BatchEligibility.end(UNKNOWN, drawCalls));
         assertFalse(BatchEligibility.batchingAllowed());
     }
 

@@ -87,17 +87,21 @@ public final class RenderLayer implements BlendingStateHolder {
     }
 
     public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit) {
-        return build(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cull, lit, false);
+        return tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cull, lit, false);
+    }
+
+    public static RenderLayer tesr(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean afterGlint) {
+        return build(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cull, lit, false, afterGlint);
     }
 
     public static RenderLayer tesrNoPass(ResourceLocation texture, TesrMaterial material, int cull, boolean lit) {
-        return build(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT, cull, lit, true);
+        return build(texture, material, PassOverride.NONE, 0.0f, 0.0f, ShaderGlint.NO_TINT, cull, lit, true, false);
     }
 
-    private static RenderLayer build(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean noPass) {
+    private static RenderLayer build(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean noPass, boolean afterGlint) {
         final DrawState state = DrawState.forMaterial(material, cull, lit, offsetFactor, offsetUnits);
         final Hook hook = hookFor(material, noPass ? PassOverride.NONE : pass, glintSlot);
-        final TransparencyType transparency = transparencyFor(state.getBlend());
+        final TransparencyType transparency = afterGlint ? TransparencyType.AFTER_GLINT : transparencyFor(state.getBlend());
         final RenderLayer candidate = new RenderLayer(null, BatchVertexFormats.POSITION_COLOR_TEXTURE_LIGHTF_NORMAL,
             GL11.GL_QUADS, TESR_BUFFER_SIZE, state, texture, material.isUnfilteredAtlas(), transparency, hook,
             noPass);
@@ -107,7 +111,7 @@ public final class RenderLayer implements BlendingStateHolder {
                 + material.transparency().name().toLowerCase(Locale.ROOT) + (noPass ? "" : pass.nameSuffix())
                 + (offsetFactor == 0.0f && offsetUnits == 0.0f ? "" : "_offset" + offsetFactor + "_" + offsetUnits)
                 + "_cull" + state.getCull() + (state.isLit() ? "_lit" : "")
-                + (glintSlot == ShaderGlint.NO_TINT ? "" : "_tint" + glintSlot);
+                + (glintSlot == ShaderGlint.NO_TINT ? "" : "_tint" + glintSlot) + (afterGlint ? "_after_glint" : "");
         }
         return retained;
     }

@@ -4,6 +4,8 @@ import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
+import com.gtnewhorizons.angelica.glsm.ffp.FfpFixture;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
@@ -13,6 +15,10 @@ import net.coderbot.iris.gbuffer_overrides.matching.ProgramTable;
 import net.coderbot.iris.gbuffer_overrides.matching.RenderCondition;
 import net.coderbot.iris.gl.shader.GlShader;
 import net.coderbot.iris.gl.shader.ProgramCreator;
+import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.gl.uniform.Uniform;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline.Pass;
 import net.coderbot.iris.pipeline.transform.PatchShaderType;
 import net.coderbot.iris.pipeline.transform.ShaderTransformer;
@@ -22,10 +28,19 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.EnumSource;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.BufferUtils;
+
+import java.nio.ByteBuffer;
 
 import java.util.Map;
+import java.util.Arrays;
+import java.util.List;
+import java.util.function.Consumer;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -307,6 +322,146 @@ class IrisInstancingGLTest {
     }
 
     private static void link(String name, Map<PatchShaderType, String> result) {
+        GLStateManager.glDeleteProgram(linkProgram(name, result));
+    }
+
+    @ParameterizedTest
+    @EnumSource(value = Instancing.class, names = { "NONE", "TEMPLATE", "CUBE" })
+    void freshEntityTintPreservesColorBeforeAndAfterAHurtScope(Instancing kind) {
+        final CapturedRenderingState state = Reflect.construct(CapturedRenderingState.class);
+        final String vertexSource = """
+            #version 120
+            void main() {
+                gl_Position = vec4(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0, 0.0, 1.0);
+            }
+            """;
+        final String fragmentSource = """
+            #version 120
+            uniform vec4 entityColor;
+            void main() {
+                gl_FragData[0] = vec4(mix(vec3(0, 0, 1), entityColor.rgb, entityColor.a), 1);
+            }
+            """;
+        final int program = linkProgram("entityTint", kind == Instancing.NONE
+            ? TransformPatcher.patchAttributes(vertexSource, null, fragmentSource, TEX_LM)
+            : TransformPatcher.patchAttributesInstanced(vertexSource, null, null, null, fragmentSource, TEX_LM, false, kind));
+        final int vao = GLStateManager.glGenVertexArrays();
+        final int buffer = GLStateManager.glGenBuffers();
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        try {
+            GLStateManager.disableDepthTest();
+            GLStateManager.disableCull();
+            GLStateManager.glColorMask(true, true, true, true);
+            GLStateManager.glViewport(0, 0, 8, 8);
+            GLStateManager.glUseProgram(program);
+            GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "iris_currentAlphaFunc"), 7);
+            GLStateManager.glBindVertexArray(vao);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+            InstancedAttribs.pointHead(0, InstancedAttribs.HEAD_SIZE);
+            GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_OVERLAY);
+            GLStateManager.glVertexAttribDivisor(InstancedAttribs.LOC_OVERLAY, 1);
+            final ByteBuffer data = BufferUtils.createByteBuffer(InstancedAttribs.HEAD_SIZE);
+            final var builder = ProgramUniforms.builder("entityTint", program);
+            builder.uniform4f("entityColor", state::getCurrentEntityColor, state.getEntityColorNotifier());
+            final List<Uniform> uniforms = Reflect.get(builder.buildUniforms(), "dynamic");
+            final Consumer<int[]> checkPixel = expected -> {
+                for (Uniform uniform : uniforms) uniform.update();
+                data.putInt(InstancedAttribs.OFFSET_OVERLAY, AngelicaBufferSource.packEntityColor(state.getCurrentEntityColor()));
+                GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                GLStateManager.glClearColor(0, 0, 0, 1);
+                GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                if (kind == Instancing.NONE) GLStateManager.glDrawArrays(GL11.GL_TRIANGLES, 0, 3);
+                else GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 1);
+                assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "draw error");
+                final int[] pixel = FfpFixture.readPixel(0, 0);
+                for (int channel = 0; channel < 4; channel++) {
+                    assertEquals(expected[channel], pixel[channel], 1, kind + " tint pixel " + Arrays.toString(pixel));
+                }
+            };
+            checkPixel.accept(new int[] {0, 0, 255, 255});
+            state.pushCurrentEntityColor();
+            state.setCurrentEntityColor(1, 0, 0, 0.5f);
+            checkPixel.accept(new int[] {128, 0, 127, 255});
+            state.popCurrentEntityColor();
+            checkPixel.accept(new int[] {0, 0, 255, 255});
+        } finally {
+            state.getEntityColorNotifier().setListener(null);
+            GLStateManager.glUseProgram(0);
+            GLStateManager.glBindVertexArray(0);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLStateManager.glDeleteBuffers(buffer);
+            GLStateManager.glDeleteVertexArrays(vao);
+            GLStateManager.glDeleteProgram(program);
+            GLStateManager.glPopAttrib();
+        }
+    }
+
+    @Test
+    void highEntityBlockAndItemIdsReachTheFragmentShader() {
+        final String vertexSource = """
+            #version 120
+            void main() {
+                gl_Position = vec4(gl_VertexID == 1 ? 3.0 : -1.0, gl_VertexID == 2 ? 3.0 : -1.0, 0.0, 1.0);
+            }
+            """;
+        final String fragmentSource = """
+            #version 120
+            uniform int entityId;
+            uniform int blockEntityId;
+            uniform int currentRenderedItemId;
+            uniform int expectedId;
+            void main() {
+                bool matches = entityId == expectedId && blockEntityId == expectedId && currentRenderedItemId == expectedId;
+                gl_FragData[0] = matches ? vec4(0, 1, 0, 1) : vec4(1, 0, 0, 1);
+            }
+            """;
+        final int vao = GLStateManager.glGenVertexArrays();
+        final int buffer = GLStateManager.glGenBuffers();
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        GLStateManager.disableDepthTest();
+        GLStateManager.disableCull();
+        GLStateManager.glColorMask(true, true, true, true);
+        GLStateManager.glViewport(0, 0, 8, 8);
+        try {
+            for (Instancing kind : new Instancing[] { Instancing.TEMPLATE, Instancing.CUBE }) {
+                final int program = linkProgram("highIds", TransformPatcher.patchAttributesInstanced(
+                    vertexSource, null, null, null, fragmentSource, TEX_LM, false, kind));
+                try {
+                    GLStateManager.glUseProgram(program);
+                    GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "iris_currentAlphaFunc"), 7);
+                    GLStateManager.glBindVertexArray(vao);
+                    GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, buffer);
+                    InstancedAttribs.pointHead(0, InstancedAttribs.HEAD_SIZE);
+                    GLStateManager.glEnableVertexAttribArray(InstancedAttribs.LOC_ENTITY);
+                    GLStateManager.glVertexAttribDivisor(InstancedAttribs.LOC_ENTITY, 1);
+                    final ByteBuffer data = BufferUtils.createByteBuffer(InstancedAttribs.HEAD_SIZE);
+                    for (int id : new int[] { -1, 0, 32767, 32768, 45020, 50020, 50072, 65534 }) {
+                        data.putLong(InstancedAttribs.OFFSET_ENTITY, InstancedAttribs.packEntityInfo(id, id, id));
+                        GLStateManager.glBufferData(GL15.GL_ARRAY_BUFFER, data, GL15.GL_STREAM_DRAW);
+                        GLStateManager.glUniform1i(GLStateManager.glGetUniformLocation(program, "expectedId"), id);
+                        GLStateManager.glClearColor(0, 0, 0, 1);
+                        GLStateManager.glClear(GL11.GL_COLOR_BUFFER_BIT);
+                        GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 1);
+                        assertEquals(program, GL11.glGetInteger(GL20.GL_CURRENT_PROGRAM), "draw program");
+                        assertEquals(GL11.GL_NO_ERROR, GL11.glGetError(), "draw error");
+                        final int[] pixel = FfpFixture.readPixel(0, 0);
+                        assertEquals(255, pixel[1], kind + " material ID " + id + " pixel " + Arrays.toString(pixel));
+                    }
+                } finally {
+                    GLStateManager.glUseProgram(0);
+                    GLStateManager.glDeleteProgram(program);
+                }
+            }
+        } finally {
+            GLStateManager.glBindVertexArray(0);
+            GLStateManager.glBindBuffer(GL15.GL_ARRAY_BUFFER, 0);
+            GLStateManager.glDeleteBuffers(buffer);
+            GLStateManager.glDeleteVertexArrays(vao);
+            GLStateManager.glPopAttrib();
+        }
+    }
+
+    private static int linkProgram(String name, Map<PatchShaderType, String> result) {
         final String v = result.get(PatchShaderType.VERTEX);
         final String g = result.get(PatchShaderType.GEOMETRY);
         final String f = result.get(PatchShaderType.FRAGMENT);
@@ -317,10 +472,9 @@ class IrisInstancingGLTest {
         final GlShader geometry = g == null ? null : new GlShader(ShaderType.GEOMETRY, name + "Geometry", g);
         final GlShader fragment = new GlShader(ShaderType.FRAGMENT, name + "Fragment", f);
         try {
-            final int program = geometry == null
+            return geometry == null
                 ? ProgramCreator.create(name, vertex, fragment)
                 : ProgramCreator.create(name, vertex, geometry, fragment);
-            GLStateManager.glDeleteProgram(program);
         } finally {
             vertex.destroy();
             if (geometry != null) {

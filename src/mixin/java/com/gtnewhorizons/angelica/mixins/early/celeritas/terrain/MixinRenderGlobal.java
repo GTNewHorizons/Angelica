@@ -12,6 +12,7 @@ import com.gtnewhorizons.angelica.rendering.RenderingState;
 import com.gtnewhorizons.angelica.rendering.celeritas.BlockRenderLayer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
+import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -328,6 +329,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         HandRenderer.INSTANCE.renderSolid(camera.getPartialTicks(), camera, mc.renderGlobal, pipeline);
         mc.mcProfiler.endStartSection("iris_pre_translucent");
         pipeline.beginTranslucents();
+        ModelPartBatcher.INSTANCE.flushEntitiesAfterDeferred();
         TesrBatchRenderer.INSTANCE.flushAfterDeferred();
     }
 

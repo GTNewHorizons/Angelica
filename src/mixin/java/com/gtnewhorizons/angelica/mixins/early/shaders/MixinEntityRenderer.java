@@ -15,6 +15,7 @@ import net.coderbot.iris.compat.dh.DHCompat;
 import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
+import com.gtnewhorizons.angelica.compat.thaumcraft.ThaumometerScreen;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
@@ -53,6 +54,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         Iris.tryLoadShaderpackWhenPossible();
 
         CapturedRenderingState.INSTANCE.setTickDelta(partialTicks);
+        ThaumometerScreen.discard();
         SystemTimeUniforms.COUNTER.beginFrame();
         SystemTimeUniforms.TIMER.beginFrame(System.nanoTime());
 
@@ -71,6 +73,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     private void iris$endLevelRender(float partialTicks, long limitTime, CallbackInfo callback, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
         // TODO: Iris
         HandRenderer.INSTANCE.renderTranslucent(partialTicks, Camera.INSTANCE, mc.renderGlobal, pipeline.get());
+        ThaumometerScreen.render(pipeline.get());
         Minecraft.getMinecraft().mcProfiler.endStartSection("iris_final");
         pipeline.get().finalizeLevelRendering();
         pipeline.set(null);

@@ -4,12 +4,13 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormat;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.CubeParams;
 import com.gtnewhorizons.angelica.glsm.ffp.CombinedGlint;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import it.unimi.dsi.fastutil.floats.FloatArrayList;
-import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -181,7 +182,9 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         boolean anchored;
         long frameMark = -1;
         long lastUsedMs;
-        int entityColor;
+        final int entityColor;
+        final int itemId;
+        final DrawStateKey state;
 
         final InstanceColumns templateColumns = new InstanceColumns();
         final InstanceColumns cubeColumns = new InstanceColumns();
@@ -334,10 +337,13 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             runPoolUsed = 0;
         }
 
-        Group(RenderLayer layer, TesrMaterial material, int blockEntityId) {
+        Group(RenderLayer layer, TesrMaterial material, int blockEntityId, DrawStateKey state) {
             this.layer = layer;
             this.material = material;
             this.blockEntityId = blockEntityId;
+            this.state = state;
+            this.itemId = state.item;
+            this.entityColor = state.color;
             this.opaque = material.transparency() == TesrMaterial.Transparency.OPAQUE;
             this.stream = material.isStream();
             this.mergeRuns = material.isDepthEqual() && material.isNoDepthWrite();
@@ -345,7 +351,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         }
     }
 
-    private final Reference2ObjectOpenHashMap<RenderLayer, Reference2ObjectOpenHashMap<TesrMaterial, Int2ObjectOpenHashMap<Group>>> groups = new Reference2ObjectOpenHashMap<>();
+    private final Reference2ObjectOpenHashMap<RenderLayer, Reference2ObjectOpenHashMap<TesrMaterial, Object2ObjectOpenHashMap<DrawStateKey, Group>>> groups = new Reference2ObjectOpenHashMap<>();
     private final Reference2ObjectOpenHashMap<RenderLayer, ObjectArrayList<Group>> byLayer = new Reference2ObjectOpenHashMap<>();
     private static final int RECENT_GROUPS = 4;
     private final Group[] recentGroups = new Group[RECENT_GROUPS];
@@ -389,32 +395,66 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
 
     long captureVersion() { return frameMark; }
 
+    /** Mutable lookup avoids allocating a key for each queued model part. Stored keys are never mutated. */
+    private static final class DrawStateKey {
+        int entity, block, item, color;
+
+        DrawStateKey set(int entity, int block, int item, int color) {
+            this.entity = entity;
+            this.block = block;
+            this.item = item;
+            this.color = color;
+            return this;
+        }
+
+        boolean matches(int entity, int block, int item, int color) {
+            return this.entity == entity && this.block == block && this.item == item && this.color == color;
+        }
+
+        @Override
+        public boolean equals(Object other) {
+            return other instanceof DrawStateKey key && matches(key.entity, key.block, key.item, key.color);
+        }
+
+        @Override
+        public int hashCode() { return ((entity * 31 + block) * 31 + item) * 31 + color; }
+    }
+
+    private final DrawStateKey lookupState = new DrawStateKey();
+
     private Group groupFor(RenderLayer layer, TesrMaterial material, int id) {
-        final int key = instanceableMaterial(material) ? 0 : id;
+        final boolean perInstance = instanceableMaterial(material);
+        final boolean entityKind = !perInstance && source.effectiveIdKind() == AngelicaBufferSource.GroupIdKind.ENTITY;
+        final CapturedRenderingState captured = CapturedRenderingState.INSTANCE;
+        final int entity = perInstance ? 0 : entityKind ? id : captured.getCurrentRenderedEntity();
+        final int block = perInstance ? 0 : entityKind ? captured.getCurrentRenderedBlockEntity() : id;
+        final int item = perInstance ? 0 : captured.getCurrentRenderedItem();
+        final int color = perInstance ? 0 : AngelicaBufferSource.packEntityColor(captured.getCurrentEntityColor());
         Group group = null;
         for (int i = 0; i < RECENT_GROUPS; i++) {
             final Group recent = recentGroups[i];
-            if (recent != null && recent.layer == layer && recent.material == material && recent.blockEntityId == key) {
+            if (recent != null && recent.layer == layer && recent.material == material && recent.state.matches(entity, block, item, color)) {
                 group = recent;
                 break;
             }
         }
         if (group == null) {
-            Reference2ObjectOpenHashMap<TesrMaterial, Int2ObjectOpenHashMap<Group>> byMaterial = groups.get(layer);
+            Reference2ObjectOpenHashMap<TesrMaterial, Object2ObjectOpenHashMap<DrawStateKey, Group>> byMaterial = groups.get(layer);
             if (byMaterial == null) {
                 byMaterial = new Reference2ObjectOpenHashMap<>();
                 groups.put(layer, byMaterial);
             }
-            Int2ObjectOpenHashMap<Group> byId = byMaterial.get(material);
-            if (byId == null) {
-                byId = new Int2ObjectOpenHashMap<>();
-                byMaterial.put(material, byId);
+            Object2ObjectOpenHashMap<DrawStateKey, Group> byState = byMaterial.get(material);
+            if (byState == null) {
+                byState = new Object2ObjectOpenHashMap<>();
+                byMaterial.put(material, byState);
             }
-            group = byId.get(key);
+            group = byState.get(lookupState.set(entity, block, item, color));
             if (group == null) {
-                group = new Group(layer, material, key);
+                final DrawStateKey key = new DrawStateKey().set(entity, block, item, color);
+                group = new Group(layer, material, perInstance ? 0 : id, key);
                 group.lastUsedMs = nowMs;
-                byId.put(key, group);
+                byState.put(key, group);
                 byLayer.computeIfAbsent(layer, l -> new ObjectArrayList<>()).add(group);
             }
             recentGroups[recentGroupNext] = group;
@@ -533,13 +573,13 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
         dst.referencedParts += end - start;
     }
 
-    void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, Matrix4f first, Matrix4f second) {
+    void queueGlintLayers(TemplateBuffer template, RenderLayer layer, TesrMaterial material, Matrix4f currentMV, int packedLight, int colorABGR, int overlayABGR, long entityInfo, Matrix4f first, Matrix4f second) {
         final Group group = groupFor(layer, material, 0);
         touch(group, layer);
         final InstanceColumns dst = group.templateColumns;
         final int index = dst.size;
         final TexRun run = group.openOrExtendRun(dst, first, true, false);
-        dst.add(template, currentMV, packedLight, colorABGR, overlayABGR, 0L);
+        dst.add(template, currentMV, packedLight, colorABGR, overlayABGR, entityInfo);
         run.last.end = dst.size;
         run.parts++;
         run.instances++;
@@ -576,7 +616,6 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             }
             group.frameMark = frameMark;
             group.lastUsedMs = nowMs;
-            group.entityColor = AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor());
             group.hashAcc = 0;
             group.clearInstances();
             if (!group.anchored || TesrAnchorMath.shouldReanchor(camX, camY, camZ, group.anchorX, group.anchorY, group.anchorZ)) {
@@ -677,7 +716,7 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
             if (!live(group) || !instanceable(group)) continue;
             if (group.templateColumns.hasInstances()) {
                 final boolean fixedFunction = deferred == null && GLStateManager.getActiveProgram() == 0;
-                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT && fixedFunction);
+                drawTemplateRuns(group.templateColumns, group.material.special() == TesrMaterial.SpecialRender.GLINT && fixedFunction, group.material == EntityMaterials.ITEM_GLINT);
             }
             if (!cubeAvailable && group.cubeColumns.hasInstances()) {
                 drawTemplateRuns(group.cubeColumns, group.material == EntityMaterials.GLINT && deferred == null, false);
@@ -810,15 +849,15 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
     private static final Matrix4f IDENTITY = new Matrix4f();
 
     static int entityFromInfo(long info) {
-        return (short) info;
+        return InstancedAttribs.unpackId(info, 0);
     }
 
     static int blockEntityFromInfo(long info) {
-        return (short) (info >>> 16);
+        return InstancedAttribs.unpackId(info, 16);
     }
 
-    private int idFromInfo(long info) {
-        return source.effectiveIdKind() == AngelicaBufferSource.GroupIdKind.ENTITY ? entityFromInfo(info) : blockEntityFromInfo(info);
+    static int itemFromInfo(long info) {
+        return InstancedAttribs.unpackId(info, 32);
     }
 
     private void drawInstancesCpu(Group group, InstanceColumns cols) {
@@ -834,14 +873,14 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 final int runEnd = seg.end;
                 int sub = seg.start;
                 while (sub < runEnd) {
-                    final long info = head.source != null ? 0L : data.infos.getLong(sub);
+                    final long info = data.infos.getLong(sub);
                     final int overlay = data.overlays.getInt(sub);
                     int subEnd = sub;
-                    while (subEnd < runEnd && (head.source != null || data.infos.getLong(subEnd) == info) && data.overlays.getInt(subEnd) == overlay) {
+                    while (subEnd < runEnd && data.infos.getLong(subEnd) == info && data.overlays.getInt(subEnd) == overlay) {
                         subEnd++;
                     }
+                    source.applyIdsAndRebind(entityFromInfo(info), blockEntityFromInfo(info), itemFromInfo(info));
                     AngelicaBufferSource.setEntityColor(overlay);
-                    source.applyIdAndRebind(idFromInfo(info));
                     int start = sub;
                     while (start < subEnd) {
                         final int drawMode = templates.get(start).drawMode;
@@ -895,11 +934,11 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
                 if (now - group.lastUsedMs <= GROUP_TTL_MS) continue;
                 group.mesh.delete();
                 list.remove(i);
-                final Reference2ObjectOpenHashMap<TesrMaterial, Int2ObjectOpenHashMap<Group>> byMaterial = groups.get(group.layer);
+                final Reference2ObjectOpenHashMap<TesrMaterial, Object2ObjectOpenHashMap<DrawStateKey, Group>> byMaterial = groups.get(group.layer);
                 if (byMaterial != null) {
-                    final Int2ObjectOpenHashMap<Group> byId = byMaterial.get(group.material);
+                    final Object2ObjectOpenHashMap<DrawStateKey, Group> byId = byMaterial.get(group.material);
                     if (byId != null) {
-                        byId.remove(group.blockEntityId);
+                        byId.remove(group.state);
                     }
                 }
             }
@@ -1020,8 +1059,8 @@ final class RetainedTesrGroups implements AngelicaBufferSource.LayerDrawHook {
 
     private void draw(Group group) {
         retainedDraws++;
+        source.applyIdsAndRebind(group.state.entity, group.state.block, group.state.item);
         AngelicaBufferSource.setEntityColor(group.entityColor);
-        source.applyIdAndRebind(group.blockEntityId);
         drawMV.set(baseMV).translate((float) (group.anchorX - camX), (float) (group.anchorY - camY), (float) (group.anchorZ - camZ));
         saveMV();
         GLStateManager.setModelViewMatrix(drawMV);

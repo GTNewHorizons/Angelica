@@ -215,6 +215,13 @@ public enum Mixins implements IMixins {
         )
     ),
 
+    THAUMCRAFT_SCANNER_SCREEN(new MixinBuilder("Render the held Thaumometer screen after world transparency")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.THAUMCRAFT)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins("client.thaumcraft.MixinItemThaumometerRenderer")
+    ),
+
     THAUMCRAFT_TESR_JAR_CACHE(new MixinBuilder("Batch TC4 jar liquid via the retained TESR mesh cache")
         .setPhase(Phase.LATE)
         .setApplyIf(() -> AngelicaConfig.enableTESRJarCache)
@@ -813,6 +820,11 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.ET_FUTURUM_REQUIEM)
         .setApplyIf(() -> AngelicaConfig.enableIris)
         .addClientMixins("client.etfuturum.MixinTileEntityNewBeaconRenderer")
+    ),
+    DRACONIC_PLACED_ITEM_RENDERER(new MixinBuilder("Keep custom placed-item renderers live")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.DRACONIC_EVOLUTION)
+        .addClientMixins("client.draconicevolution.MixinRenderTilePlacedItem")
     ),
     OPENBLOCKS_TROPHY_ENTITY_GBUFFER(new MixinBuilder("Render OpenBlocks trophies with the entity gbuffer programs")
         .setPhase(Phase.LATE)

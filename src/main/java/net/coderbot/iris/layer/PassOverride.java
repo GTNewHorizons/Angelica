@@ -13,6 +13,7 @@ public record PassOverride(SpecialCondition special, Boolean translucent, WorldR
     public static final PassOverride NONE = new PassOverride(null, null, null);
 
     private static final ObjectArrayList<PassOverride> INTERNED = new ObjectArrayList<>();
+    private static final ObjectArrayList<Boolean> translucencyStack = new ObjectArrayList<>();
 
     public PassOverride(SpecialCondition special, Boolean translucent) {
         this(special, translucent, null);
@@ -38,14 +39,14 @@ public record PassOverride(SpecialCondition special, Boolean translucent, WorldR
 
     public void apply() {
         GbufferPrograms.setupSpecialRenderCondition(special);
-        GbufferPrograms.setTranslucencyDeclaration(translucent);
-        GbufferPrograms.setOverridePhase(phase);
+        translucencyStack.add(GbufferPrograms.beginTranslucencyDeclaration(translucent));
+        GbufferPrograms.pushOverridePhase(phase);
     }
 
     public void clear() {
-        GbufferPrograms.setupSpecialRenderCondition(null);
-        GbufferPrograms.setTranslucencyDeclaration(null);
-        GbufferPrograms.setOverridePhase(null);
+        GbufferPrograms.popOverridePhase();
+        GbufferPrograms.endTranslucencyDeclaration(translucencyStack.pop());
+        GbufferPrograms.teardownSpecialRenderCondition();
     }
 
     public boolean isEntityPhase() {

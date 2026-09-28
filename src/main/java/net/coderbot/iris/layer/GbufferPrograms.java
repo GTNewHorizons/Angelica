@@ -1,10 +1,12 @@
 package net.coderbot.iris.layer;
 
 import lombok.Getter;
+import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
+import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
 import net.coderbot.iris.gl.shader.ProgramCreator;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -179,20 +181,48 @@ public class GbufferPrograms {
 	}
 
 	public static boolean beginNestedEntityPhase() {
+		IrisDisplayListState.recordNestedEntityScope(true);
 		if (getCurrentPhase() != WorldRenderingPhase.BLOCK_ENTITIES) {
 			return false;
 		}
-		setOverridePhase(WorldRenderingPhase.ENTITIES);
+		applyPushOverridePhase(WorldRenderingPhase.ENTITIES);
 		return true;
 	}
 
 	public static void endNestedEntityPhase(boolean pushed) {
+		IrisDisplayListState.recordNestedEntityScope(false);
 		if (pushed) {
-			setOverridePhase(null);
+			applyPopOverridePhase();
 		}
 	}
 
 	public static void setOverridePhase(WorldRenderingPhase phase) {
+		IrisDisplayListState.recordOverridePhase(phase);
+		applyOverridePhase(phase);
+	}
+
+	private static final ObjectArrayList<WorldRenderingPhase> phaseStack = new ObjectArrayList<>();
+
+	public static void pushOverridePhase(WorldRenderingPhase phase) {
+		IrisDisplayListState.recordPhaseScope(phase, true);
+		applyPushOverridePhase(phase);
+	}
+
+	private static void applyPushOverridePhase(WorldRenderingPhase phase) {
+		phaseStack.add(overridePhase);
+		applyOverridePhase(phase);
+	}
+
+	public static void popOverridePhase() {
+		IrisDisplayListState.recordPhaseScope(null, false);
+		applyPopOverridePhase();
+	}
+
+	private static void applyPopOverridePhase() {
+		applyOverridePhase(phaseStack.pop());
+	}
+
+	private static void applyOverridePhase(WorldRenderingPhase phase) {
 		overridePhase = phase;
 
 		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
@@ -206,6 +236,7 @@ public class GbufferPrograms {
     private static WorldRenderingPhase overridePhase;
 
     public static Boolean beginTranslucencyDeclaration(Boolean translucent) {
+		IrisDisplayListState.recordTranslucencyScope(translucent, true);
 		final Boolean previous = declaredTranslucent;
 		declaredTranslucent = translucent;
 		applyTranslucencyDeclaration();
@@ -213,11 +244,13 @@ public class GbufferPrograms {
 	}
 
 	public static void endTranslucencyDeclaration(Boolean previous) {
+		IrisDisplayListState.recordTranslucencyScope(null, false);
 		declaredTranslucent = previous;
 		applyTranslucencyDeclaration();
 	}
 
 	public static void setTranslucencyDeclaration(Boolean translucent) {
+		IrisDisplayListState.recordTranslucency(translucent);
 		declaredTranslucent = translucent;
 		applyTranslucencyDeclaration();
 	}
@@ -233,6 +266,7 @@ public class GbufferPrograms {
 	}
 
 	private static SpecialCondition currentSpecial;
+	private static final ObjectArrayList<SpecialCondition> specialStack = new ObjectArrayList<>();
 
 	public static SpecialCondition getSpecialCondition() {
 		return currentSpecial;
@@ -243,6 +277,12 @@ public class GbufferPrograms {
 	}
 
 	public static void setupSpecialRenderCondition(SpecialCondition override) {
+		IrisDisplayListState.recordSpecialCondition(override, true);
+		specialStack.add(currentSpecial);
+		applySpecialCondition(override);
+	}
+
+	private static void applySpecialCondition(SpecialCondition override) {
 		currentSpecial = override;
 		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
 
@@ -252,12 +292,8 @@ public class GbufferPrograms {
 	}
 
 	public static void teardownSpecialRenderCondition() {
-		currentSpecial = null;
-		final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-
-		if (pipeline != null) {
-			pipeline.setSpecialCondition(null);
-		}
+		IrisDisplayListState.recordSpecialCondition(null, false);
+		applySpecialCondition(specialStack.pop());
 	}
 
 	public static void runPhaseChangeNotifier() {

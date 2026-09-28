@@ -4,6 +4,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.cel.api.util.NormI8;
 import com.gtnewhorizon.gtnhlib.client.renderer.vertex.VertexFormatElement.Usage;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
@@ -226,8 +227,13 @@ public final class FfpExtendedAttribs {
     }
 
     public static void setNeutralCurrentValues() {
-        GLStateManager.glVertexAttrib2f(ImmediateExtendedAttribHandler.LOC_MID_TEX, 0.5f, 0.5f);
-        GLStateManager.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+        BatchStateGuard.suspend();
+        try {
+            GLStateManager.glVertexAttrib2f(ImmediateExtendedAttribHandler.LOC_MID_TEX, 0.5f, 0.5f);
+            GLStateManager.glVertexAttrib4f(ImmediateExtendedAttribHandler.LOC_TANGENT, 1.0f, 0.0f, 0.0f, 1.0f);
+        } finally {
+            BatchStateGuard.resume();
+        }
     }
 
     public static void onDeleteBuffer(GLContextState glCtx, int vboId) {

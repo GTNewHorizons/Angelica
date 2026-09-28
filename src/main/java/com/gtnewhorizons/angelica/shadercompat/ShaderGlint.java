@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.shadercompat;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.GlintColorHandler;
+import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import it.unimi.dsi.fastutil.ints.Int2IntLinkedOpenHashMap;
 import net.coderbot.iris.pipeline.ShadowRenderer;
@@ -57,11 +58,13 @@ public final class ShaderGlint {
     private ShaderGlint() {}
 
     public static void beginGlint() {
-        if (ShadowRenderer.ACTIVE || !IrisApi.getInstance().isShaderPackInUse()) return;
+        IrisDisplayListState.recordGlintSpan(true);
 
         // If a glint span is already active, keep the outer span's saved state and
         // let the nested render ride on its handler.
         if (depth++ > 0) return;
+
+        if (ShadowRenderer.ACTIVE || !IrisApi.getInstance().isShaderPackInUse()) return;
 
         swapped = false;
         injecting = false;
@@ -74,6 +77,7 @@ public final class ShaderGlint {
     }
 
     public static void endGlint() {
+        IrisDisplayListState.recordGlintSpan(false);
         if (depth == 0 || --depth > 0) return;
         if (GLSMHooks.glintColorHandler != COLOR_HANDLER) return;
         GLSMHooks.glintColorHandler = null;

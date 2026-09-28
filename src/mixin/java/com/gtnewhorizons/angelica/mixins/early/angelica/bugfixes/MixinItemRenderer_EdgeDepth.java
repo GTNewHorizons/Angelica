@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica.bugfixes;
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.CombinedGlint;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.items.HeldItemGlint;
 import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
@@ -77,11 +78,16 @@ public class MixinItemRenderer_EdgeDepth {
             && GLStateManager.getDepthTest().isEnabled() && GLStateManager.getDepthState().isEnabled()
             && HeldItemGlint.canResetStencil() && HeldItemGlint.eligible() && HeldItemGlint.needsImmediateBase(stack, pass);
         if (angelica$preparingStencil) {
-            GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
-            GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-            GLStateManager.glStencilMask(1);
-            GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 0, 1);
-            GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+            BatchStateGuard.suspend();
+            try {
+                GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT);
+                GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
+                GLStateManager.glStencilMask(1);
+                GLStateManager.glStencilFunc(GL11.GL_ALWAYS, 0, 1);
+                GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_REPLACE);
+            } finally {
+                BatchStateGuard.resume();
+            }
         }
     }
 
@@ -91,7 +97,14 @@ public class MixinItemRenderer_EdgeDepth {
         remap = false
     )
     private void angelica$finishGlintStencil(CallbackInfo ci) {
-        if (angelica$preparingStencil) GLStateManager.glPopAttrib();
+        if (angelica$preparingStencil) {
+            BatchStateGuard.suspend();
+            try {
+                GLStateManager.glPopAttrib();
+            } finally {
+                BatchStateGuard.resume();
+            }
+        }
         angelica$stencilPrepared = angelica$preparingStencil;
         angelica$preparingStencil = false;
     }
@@ -119,33 +132,38 @@ public class MixinItemRenderer_EdgeDepth {
                 && !TessellatorManager.isCurrentlyCapturing() && !TessellatorManager.shouldInterceptDraw(tess)) {
                 if (angelica$combinedGlint) return;
                 final boolean secondLayer = angelica$firstLayerMarked;
-                final boolean combined = !secondLayer && HeldItemGlint.begin();
-                // Depth selects the surface, stencil limits it to one blend.
-                // The base draw's stencil reset or the first layer's marks avoid a masked full-screen clear.
-                GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+                BatchStateGuard.suspend();
                 try {
-                    GLStateManager.glDepthMask(false);
-                    GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
-                    GLStateManager.glStencilMask(1);
-                    if (secondLayer) {
-                        // Same pixels as the first layer, so removing its marks leaves the stencil reset.
-                        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 1);
-                        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
-                    } else {
-                        if (!angelica$stencilPrepared) {
-                            GLStateManager.glClearStencil(0);
-                            GLStateManager.glClear(GL11.GL_STENCIL_BUFFER_BIT);
+                    final boolean combined = !secondLayer && HeldItemGlint.begin();
+                    // Depth selects the surface, stencil limits it to one blend.
+                    // The base draw's stencil reset or the first layer's marks avoid a masked full-screen clear.
+                    GLStateManager.glPushAttrib(GL11.GL_STENCIL_BUFFER_BIT | GL11.GL_DEPTH_BUFFER_BIT);
+                    try {
+                        GLStateManager.glDepthMask(false);
+                        GLStateManager.glEnable(GL11.GL_STENCIL_TEST);
+                        GLStateManager.glStencilMask(1);
+                        if (secondLayer) {
+                            // Same pixels as the first layer, so removing its marks leaves the stencil reset.
+                            GLStateManager.glStencilFunc(GL11.GL_EQUAL, 1, 1);
+                            GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_DECR);
+                        } else {
+                            if (!angelica$stencilPrepared) {
+                                GLStateManager.glClearStencil(0);
+                                GLStateManager.glClear(GL11.GL_STENCIL_BUFFER_BIT);
+                            }
+                            GLStateManager.glStencilFunc(GL11.GL_EQUAL, 0, 1);
+                            GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
                         }
-                        GLStateManager.glStencilFunc(GL11.GL_EQUAL, 0, 1);
-                        GLStateManager.glStencilOp(GL11.GL_KEEP, GL11.GL_KEEP, GL11.GL_INCR);
+                        original.call(tess, minU, minV, maxU, maxV, width, height, thickness);
+                    } finally {
+                        GLStateManager.glPopAttrib();
+                        if (combined) CombinedGlint.end();
                     }
-                    original.call(tess, minU, minV, maxU, maxV, width, height, thickness);
+                    angelica$combinedGlint = combined;
+                    angelica$firstLayerMarked = !combined && !secondLayer && HeldItemGlint.layersCoverSamePixels();
                 } finally {
-                    GLStateManager.glPopAttrib();
-                    if (combined) CombinedGlint.end();
+                    BatchStateGuard.resume();
                 }
-                angelica$combinedGlint = combined;
-                angelica$firstLayerMarked = !combined && !secondLayer && HeldItemGlint.layersCoverSamePixels();
                 return;
             }
         }

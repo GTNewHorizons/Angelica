@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.iris;
 
 import com.gtnewhorizons.angelica.client.rendering.TextureTracker;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredAlphaHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredDepthColorHandler;
@@ -20,6 +21,7 @@ import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.program.ProgramUniforms;
+import net.coderbot.iris.gl.program.Program;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -87,6 +89,18 @@ public class IrisGLSMBridge {
         };
     }
 
+    static void installVanillaStateLayers() {
+        // Forge initializes mods with the splash screen's shared drawable current.
+        // Iris overrides belong to the display context used for world rendering.
+        final GLContextState context = GLStateManager.primaryContext();
+        context.blendMode.setVanillaLayer(BlendModeStorage.ENABLE_LAYER);
+        context.blendState.setVanillaLayer(BlendModeStorage.FUNC_LAYER);
+        context.alphaTest.setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
+        context.alphaState.setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
+        context.depthState.setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+        context.colorMask.setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+    }
+
     public static void register() {
         GLSMConfig.expandVertexFormats = Iris.enabled;
         IrisSamplers.initRenderer();
@@ -124,12 +138,7 @@ public class IrisGLSMBridge {
             }
         };
 
-        GLStateManager.getBlendMode().setVanillaLayer(BlendModeStorage.ENABLE_LAYER);
-        GLStateManager.getBlendState().setVanillaLayer(BlendModeStorage.FUNC_LAYER);
-        GLStateManager.getAlphaTest().setVanillaLayer(AlphaTestStorage.ENABLE_LAYER);
-        GLStateManager.getAlphaState().setVanillaLayer(AlphaTestStorage.FUNC_LAYER);
-        GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
-        GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+        installVanillaStateLayers();
 
         GLSMHooks.alphaHandler = new DeferredAlphaHandler() {
             @Override
@@ -270,7 +279,7 @@ public class IrisGLSMBridge {
             if (!drp.shouldOverrideShaders()) return;
             DepthColorStorage.unlockDepthColor();
 
-            if (event.newProgram != 0 && !DepthColorStorage.isOwnedProgram(event.newProgram)) {
+            if (event.newProgram != 0 && !Program.isManagedBind(event.newProgram) && !DepthColorStorage.isOwnedProgram(event.newProgram)) {
                 drp.onModProgramOverride();
             }
         });
@@ -294,12 +303,15 @@ public class IrisGLSMBridge {
         GLSMHooks.PROGRAM_CHANGE.addListener(event -> {
             if (!Iris.enabled) return;
             if (!event.postBind) return;
+            if (Program.isManagedBind(event.newProgram)) return;
             WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (pipeline instanceof DeferredWorldRenderingPipeline drp) {
                 DeferredWorldRenderingPipeline.Pass activePass = drp.getActivePassProgram();
                 if (activePass != null && activePass.getProgram() != null && activePass.getProgram().getProgramId() == event.newProgram) {
                     final int frame = SystemTimeUniforms.COUNTER.getAsInt();
-                    if (programLastUpdatedFrame.get(event.newProgram) != frame) {
+                    if (programLastUpdatedFrame.get(event.newProgram) != frame
+                        || !ProgramUniforms.isActiveProgramBound()
+                        || ProgramUniforms.activeHasDeferredUploads()) {
                         activePass.getProgram().getUniforms().update();
                         programLastUpdatedFrame.put(event.newProgram, frame);
                     }

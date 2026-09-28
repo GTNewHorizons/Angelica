@@ -10,6 +10,12 @@ import org.lwjgl.opengl.GL43;
 
 public final class Program extends GlResource {
 
+	private static int managedBindProgram;
+
+	public static boolean isManagedBind(int program) {
+		return program != 0 && managedBindProgram == program;
+	}
+
 	@Getter
 	private final ProgramUniforms uniforms;
 
@@ -31,11 +37,21 @@ public final class Program extends GlResource {
 
 	public void use() {
 		RenderSystem.memoryBarrier(GL42.GL_SHADER_IMAGE_ACCESS_BARRIER_BIT | GL42.GL_TEXTURE_FETCH_BARRIER_BIT | GL43.GL_SHADER_STORAGE_BARRIER_BIT);
-		GLStateManager.glUseProgram(getGlId());
+		bindManaged(getGlId());
 
 		uniforms.update();
 		samplers.update();
 		images.update();
+	}
+
+	static void bindManaged(int program) {
+		final int previousManagedBind = managedBindProgram;
+		managedBindProgram = program;
+		try {
+			GLStateManager.glUseProgram(program);
+		} finally {
+			managedBindProgram = previousManagedBind;
+		}
 	}
 
 	public static void unbind() {

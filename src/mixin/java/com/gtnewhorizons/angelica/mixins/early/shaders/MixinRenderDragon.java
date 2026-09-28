@@ -3,8 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import it.unimi.dsi.fastutil.objects.Object2IntFunction;
-import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
@@ -32,19 +30,7 @@ public abstract class MixinRenderDragon {
     private static final NamespacedId DRAGON_DEATH_RAY = new NamespacedId("minecraft", "dragon_death_rays");
 
     @Unique
-    private static final int NOTHING_SAVED = Integer.MIN_VALUE;
-
-    @Unique
-    private int angelica$previousEntityId = NOTHING_SAVED;
-
-    @Unique
-    private int angelica$previousDeathRayEntityId = NOTHING_SAVED;
-
-    @Unique
-    private int angelica$previousItemId = 0;
-
-    @Unique
-    private int angelica$previousDeathRayItemId = 0;
+    private boolean angelica$beamScope;
 
     @Unique
     private boolean angelica$deathBeamsActive = false;
@@ -62,15 +48,9 @@ public abstract class MixinRenderDragon {
     private void iris$setBeamEntityId(EntityDragon dragon, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         // Only set the ID if the dragon is being healed by a crystal
         if (dragon.healingEnderCrystal != null) {
-            Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-            if (entityIdMap != null) {
-                // Save the current entity ID
-                angelica$previousEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
-                angelica$previousItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
-
-                int beamId = entityIdMap.applyAsInt(END_CRYSTAL_BEAM);
-                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(beamId, 0);
-            }
+            CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+            CapturedRenderingState.INSTANCE.setCurrentNamedEntity(END_CRYSTAL_BEAM);
+            angelica$beamScope = true;
         }
     }
 
@@ -79,10 +59,9 @@ public abstract class MixinRenderDragon {
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glPopMatrix()V", ordinal = 0, shift = At.Shift.BEFORE, remap = false)
     )
     private void iris$restoreEntityId(EntityDragon dragon, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
-        if (angelica$previousEntityId != NOTHING_SAVED) {
-            CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(angelica$previousEntityId, angelica$previousItemId);
-            angelica$previousEntityId = NOTHING_SAVED;
-            angelica$previousItemId = 0;
+        if (angelica$beamScope) {
+            CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
+            angelica$beamScope = false;
         }
     }
 
@@ -100,13 +79,8 @@ public abstract class MixinRenderDragon {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
             angelica$deathBeamsActive = true;
 
-            Object2IntFunction<NamespacedId> entityIdMap = BlockRenderingSettings.INSTANCE.getEntityIds();
-            if (entityIdMap != null) {
-                angelica$previousDeathRayEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedEntity();
-                angelica$previousDeathRayItemId = CapturedRenderingState.INSTANCE.getCurrentRenderedItem();
-                int deathRayId = entityIdMap.applyAsInt(DRAGON_DEATH_RAY);
-                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(deathRayId, 0);
-            }
+            CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
+            CapturedRenderingState.INSTANCE.setCurrentNamedEntity(DRAGON_DEATH_RAY);
 
             angelica$depthPassReplay++;
             GLStateManager.glColorMask(false, false, false, false);
@@ -143,11 +117,7 @@ public abstract class MixinRenderDragon {
     private void angelica$endDeathBeamsLighting(EntityDragon dragon, float partialTicks, CallbackInfo ci) {
         if (angelica$depthPassReplay > 0) return;
         if (angelica$deathBeamsActive) {
-            if (angelica$previousDeathRayEntityId != NOTHING_SAVED) {
-                CapturedRenderingState.INSTANCE.setCurrentEntityAndItem(angelica$previousDeathRayEntityId, angelica$previousDeathRayItemId);
-                angelica$previousDeathRayEntityId = NOTHING_SAVED;
-                angelica$previousDeathRayItemId = 0;
-            }
+            CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
             GbufferPrograms.teardownSpecialRenderCondition();
             angelica$deathBeamsActive = false;
         }

@@ -206,7 +206,7 @@ class InstancedFFPDrawGLTest {
 
         assertPixel(51, 50, 255, 0, 0, "entity -1 must render red");
         assertPixel(150, 50, 0, 255, 0, "entity 7 must render green");
-        assertPixel(249, 50, 0, 0, 255, "entity 42 must render blue");
+        assertPixel(249, 50, 0, 0, 255, "entity 50020 must render blue");
     }
 
     private static void assertPixel(int x, int y, int r, int g, int b, String label) {

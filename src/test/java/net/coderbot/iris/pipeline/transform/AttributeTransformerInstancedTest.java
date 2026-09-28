@@ -251,9 +251,9 @@ class AttributeTransformerInstancedTest {
         assertLacks(v, "uniform int entityId;");
         assertLacks(v, "uniform int blockEntityId;");
         assertLacks(v, "uniform int currentRenderedItemId;");
-        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in ivec4 iris_Entity;");
+        assertHas(v, "layout(location = " + InstancedAttribs.LOC_ENTITY + ") in uvec4 iris_Entity;");
         assertHas(v, "flat out ivec3 iris_entityInfo;");
-        assertHas(v, "iris_entityInfo = iris_Entity.xyz;");
+        assertHas(v, "iris_entityInfo = ivec3(iris_Entity.x == 65535u ? -1 : int(iris_Entity.x), iris_Entity.y == 65535u ? -1 : int(iris_Entity.y), iris_Entity.z == 65535u ? -1 : int(iris_Entity.z));");
 
         assertLacks(f, "uniform int entityId;");
         assertHas(f, "flat in ivec3 iris_entityInfo;");

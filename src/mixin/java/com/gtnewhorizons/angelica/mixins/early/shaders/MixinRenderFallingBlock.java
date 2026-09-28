@@ -28,9 +28,10 @@ public class MixinRenderFallingBlock {
     @Inject(method = "doRender(Lnet/minecraft/entity/item/EntityFallingBlock;DDDFF)V", at = @At("HEAD"))
     private void angelica$beginFallingBlock(EntityFallingBlock entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         FallingBlockRendering.active = true;
+        CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
 
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
-        GbufferPrograms.setOverridePhase(WorldRenderingPhase.TERRAIN_SOLID);
+        GbufferPrograms.pushOverridePhase(WorldRenderingPhase.TERRAIN_SOLID);
         FallingBlockRendering.setEntityAttribute(entity.func_145805_f(), entity.field_145814_a);
     }
 
@@ -39,8 +40,8 @@ public class MixinRenderFallingBlock {
         FallingBlockRendering.active = false;
 
         FallingBlockRendering.resetEntityAttribute();
-        GbufferPrograms.setOverridePhase(null);
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
+        GbufferPrograms.popOverridePhase();
+        CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
     }
 
     @WrapOperation(

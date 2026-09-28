@@ -15,6 +15,10 @@ public enum TransparencyType {
 	 */
 	DECAL,
 	/**
+	 * Opaque item passes vanilla draws after an earlier pass's glint, such as a potion's bottle over its glinted liquid.
+	 */
+	AFTER_GLINT,
+	/**
 	 * Water mask, should be drawn after pretty much everything except for translucent terrain and lines.
 	 * Prevents water from appearing inside of boats.
 	 */

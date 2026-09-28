@@ -14,14 +14,14 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     @Override
     public void celeritas$markActive() {
         if (this instanceof IPatchedTextureAtlasSprite patched) {
-            patched.markNeedsAnimationUpdate();
+            patched.angelica$markNeedsAnimationUpdate();
         }
     }
 
     @Override
     public boolean celeritas$shouldUpdate() {
         if (this instanceof IPatchedTextureAtlasSprite patched) {
-            return patched.needsAnimationUpdate();
+            return patched.angelica$needsAnimationUpdate();
         }
         return false;
     }
@@ -29,7 +29,7 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     @ModifyReturnValue(method = {"getMinU", "getInterpolatedU"}, at = @At("RETURN"))
     private float celeritas$markActiveOnUVAccess(float original) {
         if (this instanceof IPatchedTextureAtlasSprite patched) {
-            patched.markNeedsAnimationUpdate();
+            patched.angelica$markNeedsAnimationUpdate();
         }
         return original;
     }

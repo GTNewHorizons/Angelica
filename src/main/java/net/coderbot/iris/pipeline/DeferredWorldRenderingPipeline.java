@@ -1,5 +1,8 @@
 package net.coderbot.iris.pipeline;
 
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
+import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
+
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableSet;
 import com.google.common.primitives.Ints;
@@ -10,10 +13,10 @@ import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix3f;
 import org.embeddedt.embeddium.impl.gl.shader.uniform.GlUniformMatrix4f;
 import org.joml.Matrix3f;
 import org.joml.Matrix4fc;
-import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PendingProgramSelection;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
@@ -113,7 +116,6 @@ import org.taumc.glsl.ShaderParser;
 import org.taumc.glsl.Transformer;
 
 import java.util.ArrayList;
-import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.EnumMap;
@@ -837,6 +839,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return shouldRenderParticlesBeforeDeferred;
 	}
 
+	public boolean shouldSeparateEntityDraws() {
+		return packDirectives.shouldUseSeparateEntityDraws();
+	}
+
 	@Override
 	public boolean allowConcurrentCompute() {
 		return allowConcurrentCompute;
@@ -991,6 +997,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private boolean matchingBlend;
 
 	private void requestMatch() {
+		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.COMPILE) return;
 		if (GLStateManager.isForeignDraw() || BatchEligibility.batchingAllowed()) {
 			GLSMHooks.pendingProgramSelection = this;
 			return;
@@ -1022,6 +1029,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private void matchPass(RenderCondition condition) {
+		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.COMPILE) return;
 		currentCondition = condition;
 		beginPass(table.match(condition, inputs));
 	}
@@ -1041,6 +1049,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	public void beginPass(Pass pass) {
+		IrisDisplayListState.runProgramTransition(() -> beginPassNow(pass));
+	}
+
+	private void beginPassNow(Pass pass) {
 		if (current == pass) {
 			return;
 		}
@@ -1064,9 +1076,11 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	}
 
 	private boolean drivingProgram;
+	private Instancing activeInstancing = Instancing.NONE;
 
 	@Override
 	public void rebindCurrentPass() {
+		activeInstancing = Instancing.NONE;
 		GLSMHooks.resolvePendingProgram();
 		final Pass pass = this.current;
 		if (pass == null) {
@@ -1353,6 +1367,10 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		public void use() {
+			IrisDisplayListState.runProgramTransition(this::useNow);
+		}
+
+		private void useNow() {
 			DepthColorStorage.unlockDepthColor();
 
 			if (isBeforeTranslucent) {
@@ -1388,11 +1406,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				bufferBlendOverrides.forEach(BufferBlendOverride::apply);
 			}
 
-			if (program != null) {
-				program.use();
+			if (activeInstancing != Instancing.NONE && program != null) {
+				DeferredWorldRenderingPipeline.this.bindInstancedVariant(activeInstancing);
+			} else {
+				if (program != null) program.use();
+				DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 			}
-
-			DeferredWorldRenderingPipeline.this.customUniforms.push(this);
 		}
 
 		public void stopUsing() {
@@ -1483,6 +1502,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	@Override
 	public void bindInstancedVariant(Instancing kind) {
+		activeInstancing = kind;
 		final Program variant = current.instancedVariant(kind);
 		variant.use();
 		this.customUniforms.push(variant);
@@ -2265,13 +2285,18 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			currentNormalTexture = pbrHolder.getNormalTexture().getGlTextureId();
 			currentSpecularTexture = pbrHolder.getSpecularTexture().getGlTextureId();
 
-            final TextureFormat textureFormat = TextureFormatLoader.getFormat();
-			if (textureFormat != null) {
-				textureFormat.setupTextureParameters(PBRType.NORMAL, pbrHolder.getNormalTexture());
-				textureFormat.setupTextureParameters(PBRType.SPECULAR, pbrHolder.getSpecularTexture());
-			}
+			BatchStateGuard.suspend();
+			try {
+				final TextureFormat textureFormat = TextureFormatLoader.getFormat();
+				if (textureFormat != null) {
+					textureFormat.setupTextureParameters(PBRType.NORMAL, pbrHolder.getNormalTexture());
+					textureFormat.setupTextureParameters(PBRType.SPECULAR, pbrHolder.getSpecularTexture());
+				}
 
-			PBRTextureManager.notifyPBRTexturesChanged();
+				PBRTextureManager.notifyPBRTexturesChanged();
+			} finally {
+				BatchStateGuard.resume();
+			}
 		}
 	}
 
