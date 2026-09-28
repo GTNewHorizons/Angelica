@@ -161,6 +161,11 @@ public class DarkModeFontTransform {
             new MethodInfo("mods.railcraft.client.gui.GuiBasic func_73863_a(IIF)V # drawScreen"),
             new MethodInfo("mods.railcraft.client.gui.GuiBasic drawExtras(IIF)V")
         ),
+            // Galacticraft
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("micdoodle8.mods.galacticraft.core.client.gui.element.GuiElementCheckbox func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_85187_a(Ljava/lang/String;IIIZ)I # drawString")
+        ),
             // Steve's Factory Manager
         RecolorTarget.includeMethodCall(
             new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawString(Ljava/lang/String;IIFI)V"),
