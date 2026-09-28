@@ -7,7 +7,7 @@ import java.util.Arrays;
 import java.util.function.Supplier;
 
 public class Vector4ArrayUniform extends Uniform {
-	private final Runnable updateListener = this::updateValue;
+	private final Runnable updateListener = uploadWhileBound(this::updateValue);
     private final Supplier<float[]> value;
     private float[] cachedValue;
 
@@ -34,7 +34,8 @@ public class Vector4ArrayUniform extends Uniform {
     private void updateValue() {
         float[] newValue = value.get();
 
-        if (!Arrays.equals(newValue, cachedValue)) {
+        if (dirty || !Arrays.equals(newValue, cachedValue)) {
+            dirty = false;
             cachedValue = newValue;
             RenderSystem.uniform4f(location, cachedValue[0], cachedValue[1], cachedValue[2], cachedValue[3]);
         }

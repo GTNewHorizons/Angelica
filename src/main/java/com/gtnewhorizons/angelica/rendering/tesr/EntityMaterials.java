@@ -27,8 +27,8 @@ public final class EntityMaterials {
     public static final TesrMaterial HELD_BLOCK_CUTOUT = TesrMaterial.builder().cutout(0.1f).stream().build();
     public static final TesrMaterial HELD_BLOCK_TRANSLUCENT = TesrMaterial.builder().translucent().cutout(0.1f).stream().build();
     static final TesrMaterial OVERLAY = TesrMaterial.builder().translucent().depthEqual().stream().build();
-    public static final TesrMaterial GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream()
-        .special(TesrMaterial.SpecialRender.GLINT).build();
+    public static final TesrMaterial GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream().special(TesrMaterial.SpecialRender.GLINT).build();
+    public static final TesrMaterial ITEM_GLINT = TesrMaterial.builder().glint().depthEqual().noDepthWrite().unlit().stream().special(TesrMaterial.SpecialRender.GLINT).build();
 
     private static final BlendState effectiveBlend = new BlendState();
     private static final AlphaState effectiveAlpha = new AlphaState();
@@ -39,13 +39,17 @@ public final class EntityMaterials {
         final boolean textured = GLStateManager.getTextures().getTextureUnitStates(0).isEnabled();
         final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
         final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
-        return fromState(textured, textured && !texIdentity, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(), GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),GLStateManager.isEffectiveDepthMaskEnabled());
+        return fromState(textured, textured && !texIdentity, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
+            GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),
+            GLStateManager.isEffectiveDepthMaskEnabled());
     }
 
     public static TesrMaterial itemFromCurrentState(boolean unfilteredAtlas) {
         final BlendState blend = GLStateManager.getEffectiveBlendState(effectiveBlend);
         final AlphaState alpha = GLStateManager.getEffectiveAlphaState(effectiveAlpha);
-        return itemFromState(unfilteredAtlas, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(), GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),GLStateManager.isEffectiveDepthMaskEnabled());
+        return itemFromState(unfilteredAtlas, GLStateManager.isEffectiveBlendEnabled(), blend.getSrcRgb(), blend.getDstRgb(),
+            GLStateManager.isEffectiveAlphaTestEnabled(), alpha.getFunction(), alpha.getReference(), GLStateManager.getDepthState().getFunc(),
+            GLStateManager.isEffectiveDepthMaskEnabled());
     }
 
     static TesrMaterial itemFromState(boolean unfilteredAtlas, boolean blend, int srcRgb, int dstRgb, boolean alphaTest, int alphaFunc, float alphaRef, int depthFunc, boolean depthMask) {

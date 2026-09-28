@@ -53,7 +53,7 @@ public final class OffscreenTarget {
     public void markContent() { hasContent = true; }
 
     public boolean isFor(ContextState st) {
-        return fboGlId != 0 && st.boundFboId == fboGlId;
+        return fboGlId != 0 && st.defaultFboId == fboGlId;
     }
 
     public void destroy(ResourceManager rm) {

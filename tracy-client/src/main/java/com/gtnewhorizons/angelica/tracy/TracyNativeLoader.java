@@ -33,7 +33,7 @@ final class TracyNativeLoader {
 
     private TracyNativeLoader() {}
 
-    static SharedLibrary load() {
+    static SharedLibrary load(String baseName) {
         final OS os = OS.detect(System.getProperty("os.name", "").toLowerCase());
         final String arch = System.getProperty("os.arch", "").toLowerCase();
         final boolean arm64 = arch.contains("aarch64") || arch.contains("arm64");
@@ -43,9 +43,9 @@ final class TracyNativeLoader {
         }
         final String platform = os.name().toLowerCase() + (arm64 ? "-arm64" : "-x64");
         final String libName = switch (os) {
-            case WINDOWS -> "TracyClient.dll";
-            case MACOS -> "libTracyClient.dylib";
-            case LINUX -> "libTracyClient.so";
+            case WINDOWS -> baseName + ".dll";
+            case MACOS -> "lib" + baseName + ".dylib";
+            case LINUX -> "lib" + baseName + ".so";
         };
         final String resource = "/natives/tracy/" + TRACY_VERSION + "/" + platform + "/" + libName;
 
@@ -63,11 +63,11 @@ final class TracyNativeLoader {
 
         final String ext = libName.substring(libName.lastIndexOf('.') + 1);
         final File dir = new File(SystemProperties.TRACY_DIR);
-        final File target = new File(dir, "libTracyClient-" + TRACY_VERSION + "-" + platform + "." + ext);
+        final File target = new File(dir, "lib" + baseName + "-" + TRACY_VERSION + "-" + platform + "." + ext);
         try {
             if (!target.isFile() || target.length() != lib.length || !Arrays.equals(Files.readAllBytes(target.toPath()), lib)) {
                 if (!dir.isDirectory() && !dir.mkdirs()) throw new IOException("cannot create " + dir);
-                final File tmp = File.createTempFile("libTracyClient", "." + ext, dir);
+                final File tmp = File.createTempFile("lib" + baseName, "." + ext, dir);
                 Files.write(tmp.toPath(), lib);
                 Files.move(tmp.toPath(), target.toPath(), StandardCopyOption.REPLACE_EXISTING);
             }

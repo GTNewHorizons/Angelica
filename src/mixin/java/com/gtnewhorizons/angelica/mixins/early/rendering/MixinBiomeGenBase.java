@@ -1,8 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
 import com.gtnewhorizons.angelica.compat.iris.BiomeCategoryCache;
+import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.utils.EventUtils;
+import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.world.biome.BiomeGenBase;
+import net.minecraft.world.gen.NoiseGeneratorPerlin;
 import net.minecraftforge.event.terraingen.BiomeEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -13,9 +17,23 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 public class MixinBiomeGenBase implements BiomeCategoryCache {
     @Unique
     private int cachedBiomeCategory = -1;
+
     private final ThreadLocal<BiomeEvent.GetWaterColor> waterColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetWaterColor((BiomeGenBase)(Object)this, 0));
     private final ThreadLocal<BiomeEvent.GetGrassColor> grassColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetGrassColor((BiomeGenBase)(Object)this, 0));
     private final ThreadLocal<BiomeEvent.GetFoliageColor> foliageColorEventLocal = ThreadLocal.withInitial(() -> new BiomeEvent.GetFoliageColor((BiomeGenBase)(Object)this, 0));
+
+    @WrapOperation(method = "getFloatTemperature", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/gen/NoiseGeneratorPerlin;func_151601_a(DD)D"))
+    private double angelica$cachedTemperatureNoise(NoiseGeneratorPerlin noise, double x, double z, Operation<Double> original) {
+        final SmoothBiomeColorCache cache = SmoothBiomeColorCache.getActiveCache();
+        if (cache == null) return original.call(noise, x, z);
+        final int index = cache.temperatureNoiseIndex(noise, x, z);
+        if (index < 0) return original.call(noise, x, z);
+        final double cached = cache.getTemperatureNoise(index);
+        if (!Double.isNaN(cached)) return cached;
+        final double value = original.call(noise, x, z);
+        cache.setTemperatureNoise(index, value);
+        return value;
+    }
 
     @Unique
     private void prepareEvent(BiomeEvent.BiomeColor event, int defaultColor) {

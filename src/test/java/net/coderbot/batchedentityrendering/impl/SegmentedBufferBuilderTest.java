@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.DrawState;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.iris.layer.PassOverride;
+import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.joml.Vector3f;
@@ -27,6 +28,44 @@ class SegmentedBufferBuilderTest {
 
     private static final TesrMaterial OPAQUE_MATERIAL = TesrMaterial.CURRENT_STATE;
     private static final TesrMaterial TRANSLUCENT_MATERIAL = TesrMaterial.builder().translucent().build();
+
+    @Test
+    void segmentsSnapshotAllIdsAndTintAtQueueTime() {
+        final CapturedRenderingState state = CapturedRenderingState.INSTANCE;
+        state.pushCurrentEntityAndItem();
+        state.pushCurrentBlockEntity();
+        state.pushCurrentEntityColor();
+        try {
+            final SegmentedBufferBuilder builder = new SegmentedBufferBuilder();
+            final RenderLayer layer = layer("snapshot", TransparencyType.OPAQUE);
+            for (int i = 0; i < 3; i++) {
+                state.setCurrentEntityAndItem(11 + i, 13);
+                state.setCurrentBlockEntity(12);
+                state.setCurrentEntityColor(i / 2f, 0, 0, 1);
+                builder.begin(layer, 12);
+                builder.addQuad(quad());
+                builder.begin(layer, 12);
+                builder.addQuad(quad());
+            }
+            state.setCurrentEntityAndItem(90, 91);
+            state.setCurrentBlockEntity(92);
+            state.setCurrentEntityColor(0, 1, 0, 0);
+            final var segments = builder.getSegments();
+            assertEquals(3, segments.size(), "adjacent equal states still merge");
+            for (int i = 0; i < 3; i++) {
+                final var segment = segments.get(i);
+                assertEquals(11 + i, segment.getEntityId());
+                assertEquals(12, segment.getRenderedBlockEntityId());
+                assertEquals(13, segment.getItemId());
+                assertEquals(AngelicaBufferSource.packAbgr(i / 2f, 0, 0, 1), segment.getEntityColor());
+                assertEquals(8, segment.getVertexCount());
+            }
+        } finally {
+            state.popCurrentEntityColor();
+            state.popCurrentBlockEntity();
+            state.popCurrentEntityAndItem();
+        }
+    }
 
     static RenderLayer layer(String name, TransparencyType transparencyType) {
         final TesrMaterial material = transparencyType == TransparencyType.OPAQUE ? OPAQUE_MATERIAL : TRANSLUCENT_MATERIAL;

@@ -3,8 +3,6 @@ package com.gtnewhorizons.angelica.glsm;
 import com.gtnewhorizon.gtnhlib.client.renderer.stacks.IStateStack;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
-import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
-import it.unimi.dsi.fastutil.ints.IntSet;
 import com.gtnewhorizons.angelica.glsm.stacks.AlphaStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BlendStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.BooleanStateStack;
@@ -23,6 +21,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.ScissorStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StackIdAllocator;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.ViewPortStateStack;
@@ -34,16 +33,24 @@ import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
 import com.gtnewhorizons.angelica.glsm.states.ImageUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.SamplerUnitArray;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
+import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
+import com.gtnewhorizons.angelica.glsm.streaming.StreamingVaos;
+import org.joml.Matrix4d;
+import org.joml.Matrix4f;
 import org.joml.Matrix4fStack;
+import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL30;
 
 import java.nio.DoubleBuffer;
 import java.nio.FloatBuffer;
+import java.nio.IntBuffer;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -100,6 +107,8 @@ public class GLContextState {
     public int maxBoundImageUnit = 0;
     public final StateSet[] attribSets = new StateSet[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
     public int attribDepth = 0;
+    public int batchStateGeneration;
+    public final int[] savedBatchStateGen = new int[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
     public CowStateStack<?>[] stackById;
     public CowDepths[] depthsById;
     public int[] restoreBitById;
@@ -125,6 +134,7 @@ public class GLContextState {
     public final BlendStateStack blendState = member(new BlendStateStack(StackIdAllocator.nextId()));
     public final BooleanStateStack blendMode = track(new BooleanStateStack(GL11.GL_BLEND));
     public final BooleanStateStack scissorTest = track(new BooleanStateStack(GL11.GL_SCISSOR_TEST));
+    public final BooleanStateStack rasterizerDiscard = track(new BooleanStateStack(GL30.GL_RASTERIZER_DISCARD));
     public final DepthStateStack depthState = member(new DepthStateStack(StackIdAllocator.nextId()));
     public final BooleanStateStack depthTest = track(new BooleanStateStack(GL11.GL_DEPTH_TEST));
     public final FogStateStack fogState = member(new FogStateStack(StackIdAllocator.nextId()));
@@ -200,6 +210,7 @@ public class GLContextState {
     public final MaterialStateStack frontMaterial = member(new MaterialStateStack(GL11.GL_FRONT, StackIdAllocator.nextId()));
     public final MaterialStateStack backMaterial = member(new MaterialStateStack(GL11.GL_BACK, StackIdAllocator.nextId()));
     public final ViewPortStateStack viewportState = member(new ViewPortStateStack(StackIdAllocator.nextId()));
+    public final ScissorStateStack scissorState = member(new ScissorStateStack(StackIdAllocator.nextId()));
     public int activeProgram = 0;
     public final IntegerStateStack programStack = member(new IntegerStateStack(0, StackIdAllocator.nextId()));
     public int listBase = 0;
@@ -210,7 +221,6 @@ public class GLContextState {
     public int boundCopyReadBuffer;
     public int boundCopyWriteBuffer;
     public final Int2IntMap boundOtherBuffers = new Int2IntOpenHashMap();
-    public final IntSet writeMappedBuffers = new IntOpenHashSet();
     public PixelUnpackState pixelUnpackState = PixelUnpackState.DEFAULT;
     public final int[] clientAttribSavedTextureUnit = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
     public final int[] clientAttribSavedVertexFlags = new int[GLStateManager.CLIENT_ATTRIB_STACK_DEPTH];
@@ -223,6 +233,31 @@ public class GLContextState {
     public int drawFramebuffer = 0;
     public int readFramebuffer = 0;
     public int texGenGeneration;
+    public int defaultVAO;
+    public final VAOManager vaos = new VAOManager();
+    public final StreamingVaos streamingVaos = new StreamingVaos();
+    public int fontVao;
+    public boolean lockBindCallback;
+    public int foreignDrawDepth;
+    public int internalGlDepth;
+    public int internalDrawDepth;
+    public int savedFilterTextureId;
+    public boolean wideLineEmulationActive = false;
+    public boolean lineStippleActive = false;
+    public Instancing ffpInstancing = Instancing.NONE;
+    public float lastBrightnessX;
+    public float lastBrightnessY;
+    public final Matrix4f multMatrix = new Matrix4f();
+    public final Matrix4d conversionMatrix4d = new Matrix4d();
+    public final Matrix4f conversionMatrix4f = new Matrix4f();
+    public final Matrix4f gluMatrix = new Matrix4f();
+    public final Matrix4f gluMatrix2 = new Matrix4f();
+    public final Vector4f gluVec4 = new Vector4f();
+    public final FloatBuffer gluBuffer = BufferUtils.createFloatBuffer(16);
+    public final float[] texGenTempPlane = new float[4];
+    public final IntBuffer shaderBuf = BufferUtils.createIntBuffer(8);
+    public final FloatBuffer projectionMatrixBuffer = BufferUtils.createFloatBuffer(16);
+    public final ShaderManager ffp = new ShaderManager();
 
     GLContextState() {
         allStacksBuilder.addAll(textures.idStacks());
@@ -238,11 +273,11 @@ public class GLContextState {
         for (int i = 0; i < lightDataStates.length; i++) {
             lightDataStates[i] = member(new LightStateStack(GL11.GL_LIGHT0 + i, StackIdAllocator.nextId()));
         }
-        allStacksBuilder.add(ShaderManager.getNormalStack());
-        allStacksBuilder.add(ShaderManager.getTexCoordStack());
+        allStacksBuilder.add(ffp.normalStack);
+        allStacksBuilder.add(ffp.texCoordStack);
         allStacks = allStacksBuilder.toArray(new IStateStack<?>[0]);
 
-        final int capacity = StackIdAllocator.capacity();
+        final int capacity = StackIdAllocator.allocated();
         stackById = new CowStateStack<?>[capacity];
         depthsById = new CowDepths[capacity];
         restoreBitById = new int[capacity];
@@ -253,6 +288,7 @@ public class GLContextState {
             final int id = s.stackId();
             stackById[id] = s;
             depthsById[id] = s.cowDepths();
+            depthsById[id].owner = this;
             restoreBitById[id] = s.restoreBit();
             restoreUnitById[id] = s.restoreUnit();
             kindById[id] = CowDispatch.kindOf(s);

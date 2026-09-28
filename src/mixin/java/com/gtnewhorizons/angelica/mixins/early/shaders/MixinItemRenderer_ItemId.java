@@ -38,7 +38,7 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
         remap = false
     )
     private void iris$entityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type, Operation<Void> original) {
-        final int prevItemId = ItemIdManager.getItemId();
+        ItemIdManager.pushItemId();
         final int stateDepth = GLStateManager.pushState(StateSet.CUTOUT);
         Boolean prevTranslucency = null;
         boolean translucencyDeclared = false;
@@ -53,7 +53,7 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
             original.call(entity, itemStack, renderPass, type);
         } finally {
             if (translucencyDeclared) GbufferPrograms.endTranslucencyDeclaration(prevTranslucency);
-            ItemIdManager.setItemIdRaw(prevItemId);
+            ItemIdManager.popItemId();
             GLStateManager.popStateTo(stateDepth);
         }
     }
@@ -64,6 +64,7 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
         remap = false
     )
     private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.pushItemId();
         ItemIdManager.resetItemId();
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
         ShaderGlint.beginGlint();
@@ -77,5 +78,6 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
         ShaderGlint.endGlint();
+        ItemIdManager.popItemId();
     }
 }

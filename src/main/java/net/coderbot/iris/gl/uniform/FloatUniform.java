@@ -4,7 +4,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
 
 public class FloatUniform extends Uniform {
-	private final Runnable updateListener = this::updateValue;
+	private final Runnable updateListener = uploadWhileBound(this::updateValue);
 	private float cachedValue;
 	private final FloatSupplier value;
 
@@ -31,8 +31,9 @@ public class FloatUniform extends Uniform {
 	private void updateValue() {
 		float newValue = value.getAsFloat();
 
-		if (cachedValue != newValue) {
+		if (dirty || cachedValue != newValue) {
 			cachedValue = newValue;
+			dirty = false;
 			RenderSystem.uniform1f(location, newValue);
 		}
 	}

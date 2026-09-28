@@ -8,7 +8,6 @@ import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.hooks.DeferredBlendHandler;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
-import com.gtnewhorizons.angelica.glsm.hooks.GLSMInitConfig;
 import com.gtnewhorizons.angelica.glsm.QuadConverter;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.stacks.StackIdAllocator;
@@ -28,45 +27,42 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
  */
 public final class ShaderManager {
 
-    private static final class Holder {
-
-        static final ShaderManager INSTANCE = new ShaderManager();
-    }
-
-    private final ShaderCache cache = new ShaderCache();
+    private static final ShaderCache cache = new ShaderCache();
     private final Uniforms uniforms = new Uniforms();
 
     @Getter
-    private boolean active = false;
+    private boolean active;
     private Program currentProgram = null;
-    private int lastBoundProgramId = -1;
+    private int lastBoundProgramId;
     private long currentVertexKeyPacked = Long.MIN_VALUE;
     private final long[] currentFKScratch = new long[FragmentKey.MAX_UNITS];
     private final long[] currentFKPacked = new long[FragmentKey.MAX_UNITS];
     private int currentFKLen = 0;
 
-    @Getter private static final Vector3f currentNormal = new Vector3f(0.0f, 0.0f, 1.0f);
-    private static final Vector4f[] currentTexCoords = {
+    public final Vector3f currentNormal = new Vector3f(0.0f, 0.0f, 1.0f);
+    public final Vector4f[] currentTexCoords = {
         new Vector4f(0.0f, 0.0f, 0.0f, 1.0f),
         new Vector4f(0.0f, 0.0f, 0.0f, 1.0f),
         new Vector4f(0.0f, 0.0f, 0.0f, 1.0f),
         new Vector4f(0.0f, 0.0f, 0.0f, 1.0f),
     };
-    @Getter private static final Vec3fStack normalStack = new Vec3fStack(currentNormal, StackIdAllocator.nextStaticId());
-    @Getter private static final Vec4fStack texCoordStack = new Vec4fStack(currentTexCoords[0], StackIdAllocator.nextStaticId());
-    @Getter private static int normalGeneration;
-    @Getter private static int texCoordGeneration;
+    public final Vec3fStack normalStack = new Vec3fStack(currentNormal, StackIdAllocator.nextId());
+    public final Vec4fStack texCoordStack = new Vec4fStack(currentTexCoords[0], StackIdAllocator.nextId());
+    public int normalGeneration;
+    public int texCoordGeneration;
 
     private int preDrawCalls;
     private int lastFramePreDrawCalls;
 
     public static long variantSwitches;
 
-    public static Vector4f getCurrentTexCoord() { return currentTexCoords[0]; }
-    public static Vector4f getCurrentTexCoord(int unit) { return currentTexCoords[unit]; }
-    @Getter private boolean enabled = false;
+    public static Vector3f getCurrentNormal() { return GLStateManager.ctx().ffp.currentNormal; }
+    public static Vector4f getCurrentTexCoord() { return GLStateManager.ctx().ffp.currentTexCoords[0]; }
+    public static Vec3fStack getNormalStack() { return GLStateManager.ctx().ffp.normalStack; }
+    public static Vec4fStack getTexCoordStack() { return GLStateManager.ctx().ffp.texCoordStack; }
+    @Getter private static boolean enabled = false;
 
-    private ShaderManager() {
+    static {
         cache.setDumpDir(SystemProperties.shaderDumpDir("ffp"));
         VertexFormat.registerSetupBufferStateOverride((format, offset) -> {
             VAOManager.setCurrentVertexFlags(format.getVertexFlags());
@@ -74,18 +70,20 @@ public final class ShaderManager {
         });
     }
 
-    public static ShaderManager getInstance() {
-        return Holder.INSTANCE;
+    public ShaderManager() {
+        active = enabled;
+        lastBoundProgramId = enabled ? 0 : -1;
     }
 
-    public void enable() {
+    public static ShaderManager getInstance() {
+        return GLStateManager.ctx().ffp;
+    }
+
+    public static void enable() {
         warmUp();
         enabled = true;
-
-        if (GLStateManager.getActiveProgram() == 0) {
-            activate();
-        }
-
+        final GLContextState glCtx = GLStateManager.ctx();
+        if (glCtx.activeProgram == 0) glCtx.ffp.activate();
         GLStateManager.LOGGER.info("FFP shader emulation enabled");
     }
 
@@ -112,13 +110,21 @@ public final class ShaderManager {
         }
     }
 
-    public void disable() {
+    public static void disable() {
         enabled = false;
     }
 
     public void activate() {
         active = true;
-        lastBoundProgramId = GLStateManager.getActiveProgram();
+        invalidateProgram();
+    }
+
+    /** Invalidate both binding and state key so the next draw selects and binds an FFP variant. */
+    public void invalidateProgram() {
+        lastBoundProgramId = -1;
+        currentProgram = null;
+        currentVertexKeyPacked = Long.MIN_VALUE;
+        uniforms.invalidateBinding();
     }
 
     public void deactivate() {
@@ -130,30 +136,29 @@ public final class ShaderManager {
         GLStateManager.forceAttribDefaultsDirty();
     }
 
-    public void preDraw() {
+    public void preDraw(GLContextState glCtx) {
         GLSMHooks.resolvePendingProgram();
         final DeferredBlendHandler bh = GLSMHooks.blendHandler;
         if (bh != null) bh.flushDeferredBlend();
 
         // Handle FFP & Iris uniforms
-        final int currentProgramId = GLStateManager.getActiveProgram();
+        final int currentProgramId = glCtx.activeProgram;
         if (currentProgramId != 0) {
-            if (!CompatUniformManager.refreshCompatUniforms(currentProgramId)) {
+            if (!CompatUniformManager.refreshCompatUniforms(currentProgramId, glCtx)) {
                 return; // Don't emulate FFP on non-iris core shaders
             }
         }
 
-        final int vertexFlags = VAOManager.getCurrentVertexFlags();
+        final int vertexFlags = glCtx.vaos.getVertexFlags();
         final boolean hasColor = (vertexFlags & VertexFlags.COLOR_BIT) != 0;
         final boolean hasNormal =   (vertexFlags & VertexFlags.NORMAL_BIT) != 0;
         final boolean hasTexCoord = (vertexFlags & VertexFlags.TEXTURE_BIT) != 0;
         final boolean hasLightmap = (vertexFlags & VertexFlags.BRIGHTNESS_BIT) != 0;
-        GLStateManager.flushDeferredVertexAttribs(hasColor, hasNormal, hasTexCoord, hasLightmap);
+        GLStateManager.flushDeferredVertexAttribs(glCtx, hasColor, hasNormal, hasTexCoord, hasLightmap);
 
         if (!active) return;
 
         preDrawCalls++;
-        final GLContextState glCtx = GLStateManager.ctx();
         final int fkLen = FragmentKey.packFromState(currentFKScratch, glCtx);
         final int fragMask = FragmentKey.unitMaskFromPacked(currentFKScratch, fkLen);
         final long vkPacked = VertexKey.packFromState(hasColor, hasNormal, hasTexCoord, hasLightmap, fragMask, glCtx);
@@ -166,10 +171,11 @@ public final class ShaderManager {
     }
 
     private void commitVariant(long vkPacked, int fkLen) {
-        currentVertexKeyPacked = vkPacked;
         System.arraycopy(currentFKScratch, 0, currentFKPacked, 0, fkLen);
         currentFKLen = fkLen;
         currentProgram = cache.getOrCreate(vkPacked, currentFKPacked, currentFKLen);
+        // Building a variant can invalidate the previous binding and key.
+        currentVertexKeyPacked = vkPacked;
         final int programId = currentProgram.getProgramId();
         if (programId != lastBoundProgramId) {
             if (Tracy.ENABLED) variantSwitches++;
@@ -185,42 +191,29 @@ public final class ShaderManager {
     }
 
     public static void endFrame() {
-        final ShaderManager sm = Holder.INSTANCE;
+        final ShaderManager sm = GLStateManager.ctx().ffp;
         sm.lastFramePreDrawCalls = sm.preDrawCalls;
         sm.preDrawCalls = 0;
         sm.uniforms.endFrame();
         FfpExtendedAttribs.endFrame();
     }
 
-    public static void setCurrentNormal(float x, float y, float z) {
+    public void setNormal(float x, float y, float z) {
         normalStack.beforeModify();
         currentNormal.set(x, y, z);
         normalGeneration++;
     }
 
-    public static void setCurrentTexCoord(float s, float t, float r, float q) {
+    public void setTexCoord(float s, float t, float r, float q) {
         texCoordStack.beforeModify();
         currentTexCoords[0].set(s, t, r, q);
         texCoordGeneration++;
     }
 
-    public static void setCurrentTexCoord(int unit, float s, float t, float r, float q) {
+    public void setTexCoord(int unit, float s, float t, float r, float q) {
         if (unit == 0) texCoordStack.beforeModify();
         currentTexCoords[unit].set(s, t, r, q);
         texCoordGeneration++;
-    }
-
-    public static void bumpNormalGeneration() { normalGeneration++; }
-    public static void bumpTexCoordGeneration() { texCoordGeneration++; }
-
-    public void destroy() {
-        cache.destroy();
-        uniforms.destroy();
-        final GLSMInitConfig config = GLStateManager.getInitConfig();
-        if (config != null && config.getStreamingDrawerDestroy() != null) config.getStreamingDrawerDestroy().run();
-        QuadConverter.destroy();
-        active = false;
-        currentProgram = null;
     }
 
     public String getDebugInfo() {

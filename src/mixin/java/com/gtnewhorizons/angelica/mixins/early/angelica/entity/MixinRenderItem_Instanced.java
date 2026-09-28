@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchEligibility;
+import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
@@ -30,7 +31,7 @@ public abstract class MixinRenderItem_Instanced {
         )
     )
     private void angelica$instanceDroppedIcon(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original, @Local ItemStack stack) {
-        DroppedItemInstancer.icon(stack, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
+        DroppedItemInstancer.icon(stack, false, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
     }
 
     @WrapOperation(
@@ -49,7 +50,7 @@ public abstract class MixinRenderItem_Instanced {
         }
     )
     private void angelica$instanceDroppedGlint(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
-        DroppedItemInstancer.glint(tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
+        DroppedItemInstancer.glint(tessellator, maxU, minV, minU, maxV, width, height, thickness, EntityMaterials.GLINT, original);
     }
 
     @Redirect(
@@ -64,7 +65,8 @@ public abstract class MixinRenderItem_Instanced {
         method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
+            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;"
+                + "FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
             remap = false
         )
     )
@@ -76,7 +78,8 @@ public abstract class MixinRenderItem_Instanced {
         method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
+            target = "Lnet/minecraftforge/client/ForgeHooksClient;renderEntityItem(Lnet/minecraft/entity/item/EntityItem;Lnet/minecraft/item/ItemStack;"
+                + "FFLjava/util/Random;Lnet/minecraft/client/renderer/texture/TextureManager;Lnet/minecraft/client/renderer/RenderBlocks;I)Z",
             shift = At.Shift.AFTER,
             remap = false
         )

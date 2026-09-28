@@ -26,7 +26,7 @@ public class MixinRenderItem {
      */
     @WrapMethod(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
     private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        final int prevItemId = ItemIdManager.getItemId();
+        ItemIdManager.pushItemId();
         final int stateDepth = GLStateManager.pushState(StateSet.CUTOUT);
         try {
             GbufferPrograms.setCutoutDefaults();
@@ -34,7 +34,7 @@ public class MixinRenderItem {
             ItemIdManager.setItemId(entity.getEntityItem());
             original.call(entity, x, y, z, entityYaw, partialTicks);
         } finally {
-            ItemIdManager.setItemIdRaw(prevItemId);
+            ItemIdManager.popItemId();
             GLStateManager.popStateTo(stateDepth);
         }
     }
@@ -48,6 +48,7 @@ public class MixinRenderItem {
         remap = false
     )
     private void iris$glintStart(CallbackInfo ci) {
+        ItemIdManager.pushItemId();
         ItemIdManager.resetItemId();
         GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
         ShaderGlint.beginGlint();
@@ -64,5 +65,6 @@ public class MixinRenderItem {
     private void iris$glintEnd(CallbackInfo ci) {
         GbufferPrograms.teardownSpecialRenderCondition();
         ShaderGlint.endGlint();
+        ItemIdManager.popItemId();
     }
 }

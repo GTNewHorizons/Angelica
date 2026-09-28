@@ -26,7 +26,7 @@ final class CloudUniforms {
     private float lastTextureScaleX = Float.NaN, lastTextureScaleZ = Float.NaN;
     private int lastFogEnabled = -1;
     private float lastFogR = Float.NaN, lastFogG = Float.NaN, lastFogB = Float.NaN;
-    private float lastColorR = Float.NaN, lastColorG = Float.NaN, lastColorB = Float.NaN;
+    private float lastColorR = Float.NaN, lastColorG = Float.NaN, lastColorB = Float.NaN, lastColorA = Float.NaN;
     private float lastFogParamX = Float.NaN, lastFogParamY = Float.NaN, lastFogParamZ = Float.NaN, lastFogParamW = Float.NaN;
     private float lastCellHeight = Float.NaN;
 
@@ -96,15 +96,16 @@ final class CloudUniforms {
         }
     }
 
-    void setColorMult(float r, float g, float b) {
-        if (r != lastColorR || g != lastColorG || b != lastColorB) {
+    void setColorMult(float r, float g, float b, float alpha) {
+        if (r != lastColorR || g != lastColorG || b != lastColorB || alpha != lastColorA) {
             lastColorR = r;
             lastColorG = g;
             lastColorB = b;
+            lastColorA = alpha;
             vec4Buf[0] = r;
             vec4Buf[1] = g;
             vec4Buf[2] = b;
-            vec4Buf[3] = ALPHA;
+            vec4Buf[3] = alpha;
             colorMult.set(vec4Buf);
         }
     }

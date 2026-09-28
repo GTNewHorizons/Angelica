@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.tracy;
 import com.gtnewhorizon.gtnhlib.reflect.Fields;
 import com.gtnewhorizon.gtnhlib.reflect.Fields.LookupType;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
 import org.junit.jupiter.api.Test;
@@ -11,14 +12,17 @@ import org.junit.jupiter.api.TestMethodOrder;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.io.TempDir;
 
+import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicReference;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 @EnabledIf("nativePresent")
@@ -34,6 +38,17 @@ class TracyBindingSmokeTest {
     static boolean nativePresent() {
         for (String platform : new String[] {"windows-x64", "linux-x64", "macos-x64", "macos-arm64"}) {
             for (String lib : new String[] {"TracyClient.dll", "libTracyClient.so", "libTracyClient.dylib"}) {
+                if (TracyBindingSmokeTest.class.getResource("/natives/tracy/" + TracyTags.TRACY_VERSION + "/" + platform + "/" + lib) != null) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    static boolean captureLibPresent() {
+        for (String platform : new String[] {"windows-x64", "linux-x64", "macos-x64", "macos-arm64"}) {
+            for (String lib : new String[] {"AngelicaTracyCapture.dll", "libAngelicaTracyCapture.so", "libAngelicaTracyCapture.dylib"}) {
                 if (TracyBindingSmokeTest.class.getResource("/natives/tracy/" + TracyTags.TRACY_VERSION + "/" + platform + "/" + lib) != null) {
                     return true;
                 }
@@ -171,6 +186,73 @@ class TracyBindingSmokeTest {
 
     @Test
     @Order(7)
+    @EnabledIf("captureLibPresent")
+    void captureLifecycle(@TempDir Path tmp) throws Exception {
+        final TracyClientBackend b = backend();
+        final long srcLoc = b.internSrcLoc("capture-smoke", 0);
+        final Path file = tmp.resolve("t.tracy");
+
+        final Thread emitter = startEmitter(b, srcLoc, 1500L);
+        final String error = b.captureStart(file.toAbsolutePath().toString(), 1);
+        assertNull(error, "captureStart failed: " + error);
+
+        final int state = pollUntilDone(b);
+        emitter.join(5_000);
+
+        assertEquals(TracyBackend.CAPTURE_DONE, state, "capture did not finish, last state " + state + ": " + b.captureError());
+        assertTrue(Files.isRegularFile(file), "capture file missing: " + file);
+        assertTrue(Files.size(file) > 0, "capture file empty: " + file);
+    }
+
+    @Test
+    @Order(8)
+    @EnabledIf("captureLibPresent")
+    void captureReconnect(@TempDir Path tmp) throws Exception {
+        final TracyClientBackend b = backend();
+        final long srcLoc = b.internSrcLoc("capture-smoke-2", 0);
+        final Path file = tmp.resolve("t2.tracy");
+
+        final Thread emitter = startEmitter(b, srcLoc, 1500L);
+        final String error = b.captureStart(file.toAbsolutePath().toString(), 0);
+        assertNull(error, "captureStart failed: " + error);
+
+        Thread.sleep(500);
+        b.captureStop();
+
+        final int state = pollUntilDone(b);
+        emitter.join(5_000);
+
+        assertEquals(TracyBackend.CAPTURE_DONE, state, "capture did not finish, last state " + state + ": " + b.captureError());
+        assertTrue(Files.isRegularFile(file), "capture file missing: " + file);
+        assertTrue(Files.size(file) > 0, "capture file empty: " + file);
+    }
+
+    private static Thread startEmitter(TracyClientBackend b, long srcLoc, long durationMs) {
+        final Thread t = new Thread(() -> {
+            b.setCurrentThreadName("capture-emitter");
+            final long deadline = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(durationMs);
+            while (System.nanoTime() < deadline) {
+                final long ctx = b.beginZone(srcLoc);
+                b.endZone(ctx);
+                b.frameMark();
+            }
+        }, "capture-emitter");
+        t.start();
+        return t;
+    }
+
+    private static int pollUntilDone(TracyClientBackend b) throws InterruptedException {
+        final long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(15);
+        int state = b.captureState();
+        while (state != TracyBackend.CAPTURE_DONE && state != TracyBackend.CAPTURE_FAILED && System.nanoTime() < deadline) {
+            Thread.sleep(50);
+            state = b.captureState();
+        }
+        return state;
+    }
+
+    @Test
+    @Order(9)
     void shutdownFlushes() throws Exception {
         backend().shutdown();
     }

@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrShader;
 import com.gtnewhorizons.angelica.client.font.BatchingFontRenderer;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.InstancedAttribs;
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
@@ -82,6 +83,7 @@ public final class TesrBatchRenderer {
     }
 
     public void beginPass(int passKey, Matrix4f baseMV, double camX, double camY, double camZ) {
+        BatchStateFallback.install();
         if (deferredFlushPending) {
             discardDeferred();
         }
@@ -118,6 +120,7 @@ public final class TesrBatchRenderer {
     }
 
     private void discardDeferred() {
+        activePass = -1;
         deferredFlushPending = false;
         pendingDeferredHook = null;
         bufferSource.discard();
@@ -157,6 +160,10 @@ public final class TesrBatchRenderer {
         return activePass >= 0 || deferredFlushPending;
     }
 
+    boolean hasQueuedGeometry() {
+        return hasPendingGeometry() && bufferSource.hasPendingLayers();
+    }
+
     public void queue(TemplateBuffer template, ResourceLocation texture, TesrMaterial material) {
         modelView.set(GLStateManager.getModelViewMatrix());
         final int packedLight = currentPackedLight(material);
@@ -173,7 +180,8 @@ public final class TesrBatchRenderer {
                 ? CapturedRenderingState.INSTANCE.getCurrentRenderedEntity()
                 : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
             final long entityInfo = InstancedAttribs.packEntityInfo(CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedItem());
-            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR, 0, entityInfo, blockEntityId, captureTextureMatrix());
+            retained[activePass].queue(template, layer, material, modelView, packedLight, colorABGR,
+                AngelicaBufferSource.packEntityColor(CapturedRenderingState.INSTANCE.getCurrentEntityColor()), entityInfo, blockEntityId, captureTextureMatrix());
         } else {
             drawImmediate(template, texture, material, packedLight, colorABGR);
         }
@@ -336,6 +344,26 @@ public final class TesrBatchRenderer {
     }
 
     public void flush() {
+        BatchStateGuard.suspend();
+        try {
+            flushNow();
+        } finally {
+            BatchStateGuard.resume();
+        }
+    }
+
+    void flushForStateChange() {
+        final RetainedTesrGroups hook = activePass >= 0 ? retained[activePass] : pendingDeferredHook;
+        if (!hasPendingGeometry()) return;
+        activePass = -1;
+        deferredFlushPending = false;
+        pendingDeferredHook = null;
+        bufferSource.endBatch(hook);
+        instancedRenderer.endFrame();
+        BatchingFontRenderer.flushDeferredText();
+    }
+
+    private void flushNow() {
         final RetainedTesrGroups hook = activePass >= 0 ? retained[activePass] : null;
         if (Tracy.ENABLED) Tracy.beginZone(Z_TESR_OPAQUE);
         try {
@@ -372,6 +400,15 @@ public final class TesrBatchRenderer {
     }
 
     public void flushAfterDeferred() {
+        BatchStateGuard.suspend();
+        try {
+            flushAfterDeferredNow();
+        } finally {
+            BatchStateGuard.resume();
+        }
+    }
+
+    private void flushAfterDeferredNow() {
         if (!deferredFlushPending) return;
         deferredFlushPending = false;
         final RetainedTesrGroups hook = pendingDeferredHook;

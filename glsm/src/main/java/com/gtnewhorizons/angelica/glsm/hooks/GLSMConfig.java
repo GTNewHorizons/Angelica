@@ -1,17 +1,17 @@
 package com.gtnewhorizons.angelica.glsm.hooks;
 
-public final class GLSMConfig {
+import com.gtnewhorizons.angelica.glsm.GLContextState;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
 
-    // Lightmap (replaces OpenGlHelper.lastBrightnessX/Y)
-    public static float lastBrightnessX;
-    public static float lastBrightnessY;
+public final class GLSMConfig {
 
     public static int packBrightness(float x, float y) {
         return ((int) y << 16) | ((int) x & 0xFFFF);
     }
 
     public static int packedLastBrightness() {
-        return packBrightness(lastBrightnessX, lastBrightnessY);
+        final GLContextState glCtx = GLStateManager.ctx();
+        return packBrightness(glCtx.lastBrightnessX, glCtx.lastBrightnessY);
     }
 
     public static boolean hudCacheOverride;

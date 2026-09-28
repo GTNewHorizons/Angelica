@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.ffp;
 
 import org.lwjgl.opengl.GL11;
+import org.embeddedt.embeddium.impl.render.shader.ShaderLoader;
 
 /**
  * Generates GLSL 330 core fragment shaders for FFP emulation.
@@ -17,6 +18,15 @@ public final class FragmentShaderGenerator {
 
         emitInputs(sb, key);
         emitUniforms(sb, key);
+        if (key.combinedGlint()) {
+            sb.append("#define GLINT_REPLACE_ALPHA ").append(key.glintReplaceAlpha() ? 1 : 0).append('\n');
+            sb.append("#define GLINT_FOG_MODE ").append(key.fogMode()).append('\n');
+            sb.append("#define GLINT_ALPHA_FUNC ").append(key.alphaTestEnabled() ? key.alphaTestFunc() : 7).append('\n');
+            sb.append("#define GLINT_OVERLAY ").append(key.overlayInstanced() ? 2 : key.overlayEnabled() ? 1 : 0).append('\n');
+            sb.append("#define GLINT_LIGHTMAP ").append(key.nrEnabledUnits() > 1 && key.unitEnabled(1) ? 1 : 0).append('\n');
+            sb.append(ShaderLoader.getShaderSource("angelica:combined_glint.frag.glsl"));
+            return sb.toString();
+        }
         sb.append("out vec4 fragColor;\n\n");
 
         sb.append("void main() {\n");

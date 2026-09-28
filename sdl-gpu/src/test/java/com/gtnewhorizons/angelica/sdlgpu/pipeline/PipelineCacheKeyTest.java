@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.sdlgpu.pipeline;
 
 
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
-import com.gtnewhorizons.angelica.glsm.ffp.VAOManager;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -17,7 +16,6 @@ class PipelineCacheKeyTest {
 
     @BeforeEach
     void setUp() {
-        VAOManager.init(0);
         PipelineCache.setSwapchainFormats(new int[]{SDL_GPU_TEXTUREFORMAT_B8G8R8A8_UNORM});
     }
 

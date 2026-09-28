@@ -242,6 +242,8 @@ public abstract class RenderBackend {
         }
     }
 
+    public void invalidateStateMirror() {}
+
     public void onFrameEnd() {}
 
     /** Fired by lwjgl3ify Display before a mutation that recreates the swapchain. */
@@ -391,6 +393,7 @@ public abstract class RenderBackend {
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, ByteBuffer pixels);
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, FloatBuffer pixels);
     public abstract void readPixels(int x, int y, int width, int height, int format, int type, IntBuffer pixels);
+    public abstract void readPixels(int x, int y, int width, int height, int format, int type, long pixelBufferOffset);
     public abstract void getTexImage(int target, int level, int format, int type, ByteBuffer pixels);
     public abstract void getTexImage(int target, int level, int format, int type, IntBuffer pixels);
     public abstract void getTexImage(int target, int level, int format, int type, long pixelBufferOffset);

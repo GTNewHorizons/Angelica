@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.proxy;
 
+import com.gtnewhorizons.angelica.debug.DebugKeyHandler;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
@@ -52,6 +53,7 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.F3Direction;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyFallGuard;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
+import com.gtnewhorizons.angelica.debug.profiling.TracyCaptureNotifier;
 import com.gtnewhorizons.angelica.debug.FrametimeGraph;
 import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
@@ -187,6 +189,7 @@ public final class ClientProxy extends CommonProxy {
             Zoom.init();
         }
         FpsReducer.init();
+        FMLCommonHandler.instance().bus().register(new DebugKeyHandler());
         AngelicaConfig.applyGpuCullingMode();
         if (AngelicaConfig.enableDynamicLights) {
             EntityLightConfig.init(new java.io.File(mc.mcDataDir, "config"));
@@ -197,12 +200,16 @@ public final class ClientProxy extends CommonProxy {
         }
 
         // Debug tooling
-        if (SystemProperties.debugTooling()) {
+        if (SystemProperties.debugTooling() || Tracy.ENABLED) {
             ClientCommandHandler.instance.registerCommand(new AngelicaCommand());
-
+        }
+        if (SystemProperties.debugTooling()) {
             FMLCommonHandler.instance().bus().register(FlybyRunner.INSTANCE);
             MinecraftForge.EVENT_BUS.register(FlybyFallGuard.INSTANCE);
             FlybyRunner.INSTANCE.startFromProperties();
+        }
+        if (Tracy.ENABLED) {
+            TracyCaptureNotifier.INSTANCE.register();
         }
     }
 
@@ -245,8 +252,7 @@ public final class ClientProxy extends CommonProxy {
 
         // Register all blocks. Because blockids are unique to a world, this must be done each load
         GameData.getBlockRegistry().typeSafeIterable().forEach(o -> {
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, true, true);
-            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o, false, true);
+            AngelicaBlockSafetyRegistry.canBlockRenderOffThread(o);
         });
     }
 

@@ -147,7 +147,7 @@ class InstancedFFPDrawGLTest {
         CubeParityFixture.setupScene(lightmap, lit);
 
         final ShaderManager sm = ShaderManager.getInstance();
-        sm.enable();
+        ShaderManager.enable();
         sm.activate();
 
         final CubeParityFixture.Spec[] specs = CubeParityFixture.specs();
@@ -172,7 +172,7 @@ class InstancedFFPDrawGLTest {
         ParticleParityFixture.setupScene(true);
 
         final ShaderManager sm = ShaderManager.getInstance();
-        sm.enable();
+        ShaderManager.enable();
         sm.activate();
 
         final ParticleParityFixture.Particle[] particles = ParticleParityFixture.particles();
@@ -206,7 +206,7 @@ class InstancedFFPDrawGLTest {
 
         assertPixel(51, 50, 255, 0, 0, "entity -1 must render red");
         assertPixel(150, 50, 0, 255, 0, "entity 7 must render green");
-        assertPixel(249, 50, 0, 0, 255, "entity 42 must render blue");
+        assertPixel(249, 50, 0, 0, 255, "entity 50020 must render blue");
     }
 
     private static void assertPixel(int x, int y, int r, int g, int b, String label) {
@@ -222,9 +222,9 @@ class InstancedFFPDrawGLTest {
 
     @Test
     void instancedSourceUsesInstanceAttribs() {
-        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
+        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
         final VertexKey key = VertexKey.fromState(true, true, false, false, 0b10);
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
 
         final String source = VertexShaderGenerator.generate(key);
         assertTrue(source.contains("a_InstRow0"), "instance matrix attribs declared");
@@ -248,7 +248,7 @@ class InstancedFFPDrawGLTest {
         uploadInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
 
         final ShaderManager sm = ShaderManager.getInstance();
-        sm.enable();
+        ShaderManager.enable();
         sm.activate();
 
         GLStateManager.glClearColor(0f, 0f, 0f, 1f);
@@ -278,7 +278,7 @@ class InstancedFFPDrawGLTest {
         uploadInstances(0xFF0000FF, 0, 0x0D0000FF, 0);
 
         final ShaderManager sm = ShaderManager.getInstance();
-        sm.enable();
+        ShaderManager.enable();
         sm.activate();
         GLStateManager.enableAlphaTest();
         GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
@@ -311,7 +311,7 @@ class InstancedFFPDrawGLTest {
         uploadInstances(0xFF0000FF, 0, 0xFF00FF00, 0);
 
         final ShaderManager sm = ShaderManager.getInstance();
-        sm.enable();
+        ShaderManager.enable();
         sm.activate();
 
         GLStateManager.glClearColor(0f, 0f, 0f, 1f);
@@ -351,7 +351,7 @@ class InstancedFFPDrawGLTest {
         uploadInstances(0xFFFFFFFF, 0, 0xFFFFFFFF, 0xFF0000FF);
 
         final ShaderManager sm = ShaderManager.getInstance();
-        sm.enable();
+        ShaderManager.enable();
         sm.activate();
 
         GLStateManager.glClearColor(0f, 0f, 0f, 1f);
@@ -430,8 +430,8 @@ class InstancedFFPDrawGLTest {
     }
 
     private static void drawInstances() {
-        GLStateManager.ffpInstancing = Instancing.TEMPLATE;
+        GLStateManager.setFfpInstancing(Instancing.TEMPLATE);
         GLStateManager.glDrawArraysInstanced(GL11.GL_TRIANGLES, 0, 3, 2);
-        GLStateManager.ffpInstancing = Instancing.NONE;
+        GLStateManager.setFfpInstancing(Instancing.NONE);
     }
 }

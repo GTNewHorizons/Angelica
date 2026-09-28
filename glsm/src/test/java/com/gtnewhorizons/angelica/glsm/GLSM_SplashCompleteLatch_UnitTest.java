@@ -1,9 +1,14 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.glsm.testutil.TestThreads;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.opengl.Display;
 
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -62,5 +67,38 @@ public class GLSM_SplashCompleteLatch_UnitTest {
         t.start();
         t.join();
         assertTrue(cachingOffThread.get(), "after the latch caching is global - this is what the latch buys");
+    }
+
+    @Test
+    void pausedSplashThreadDoesNotCompleteUntilItExits() throws Exception {
+        final CountDownLatch released = new CountDownLatch(1);
+        final CountDownLatch resume = new CountDownLatch(1);
+
+        GLStateManager.releaseContext(Display.getDrawable());
+
+        try {
+            final TestThreads.Worker worker = TestThreads.start("SplashPause-Worker-Thread", () -> {
+                GLStateManager.makeCurrent(Display.getDrawable());
+                GLStateManager.releaseContext(Display.getDrawable());
+                released.countDown();
+                resume.await();
+            });
+            assertTrue(released.await(10, TimeUnit.SECONDS), "worker did not release the Display drawable in time");
+
+            GLStateManager.makeCurrent(Display.getDrawable());
+            assertFalse(GLStateManager.isSplashComplete());
+
+            resume.countDown();
+            worker.join();
+
+            GLStateManager.releaseContext(Display.getDrawable());
+            GLStateManager.makeCurrent(Display.getDrawable());
+            assertTrue(GLStateManager.isSplashComplete());
+        } finally {
+            resume.countDown();
+            Reflect.setStatic(GLStateManager.class, "stateSeedPending", false);
+            Reflect.setStatic(GLStateManager.class, "splashDisplayReleaser", null);
+            GLStateManager.makeCurrent(Display.getDrawable());
+        }
     }
 }

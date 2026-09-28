@@ -3,6 +3,7 @@ package net.coderbot.iris.gl.program;
 import com.google.common.collect.ImmutableList;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import java.nio.IntBuffer;
 import java.util.ArrayList;
@@ -11,7 +12,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.OptionalInt;
-import java.util.function.Supplier;
 
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.state.ValueUpdateNotifier;
@@ -23,7 +23,6 @@ import net.coderbot.iris.gl.uniform.UniformUpdateFrequency;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.WorldClient;
-import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.ARBShaderImageLoadStore;
 import org.lwjgl.opengl.GL11;
@@ -32,6 +31,7 @@ import org.lwjgl.opengl.GL30;
 
 public class ProgramUniforms {
 	private static ProgramUniforms active;
+	private final int program;
 	private final ImmutableList<Uniform> perTick;
 	private final ImmutableList<Uniform> perFrame;
 	private final ImmutableList<Uniform> dynamic;
@@ -40,9 +40,11 @@ public class ProgramUniforms {
 	private ImmutableList<Uniform> once;
 	long lastTick = -1;
 	int lastFrame = -1;
+	private boolean hasDeferredUploads;
 
-	public ProgramUniforms(ImmutableList<Uniform> once, ImmutableList<Uniform> perTick, ImmutableList<Uniform> perFrame,
+	public ProgramUniforms(int program, ImmutableList<Uniform> once, ImmutableList<Uniform> perTick, ImmutableList<Uniform> perFrame,
 						   ImmutableList<Uniform> dynamic, ImmutableList<ValueUpdateNotifier> notifiersToReset) {
+		this.program = program;
 		this.once = once;
 		this.perTick = perTick;
 		this.perFrame = perFrame;
@@ -68,11 +70,18 @@ public class ProgramUniforms {
 	}
 
 	public void update() {
+		// glUseProgram is only recorded during GL_COMPILE
+		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.COMPILE
+			|| GLStateManager.getActiveProgram() != program) {
+			hasDeferredUploads = true;
+			return;
+		}
 		if (active != null) {
 			active.removeListeners();
 		}
 
 		active = this;
+		hasDeferredUploads = false;
 
 		updateStage(dynamic);
 
@@ -116,6 +125,19 @@ public class ProgramUniforms {
 		if (active != null) {
 			active.removeListeners();
 		}
+	}
+
+	public static boolean isActiveProgramBound() {
+		return active != null && GLStateManager.getActiveProgram() == active.program;
+	}
+
+	public static void markActiveDeferred() {
+		if (active != null) {
+			active.hasDeferredUploads = true;
+		}
+	}
+	public static boolean activeHasDeferredUploads() {
+		return active != null && active.hasDeferredUploads;
 	}
 
 	public static Builder builder(String name, int program) {
@@ -263,7 +285,7 @@ public class ProgramUniforms {
 				}
 			}
 
-			return new ProgramUniforms(ImmutableList.copyOf(once.values()), ImmutableList.copyOf(perTick.values()), ImmutableList.copyOf(perFrame.values()),
+			return new ProgramUniforms(program, ImmutableList.copyOf(once.values()), ImmutableList.copyOf(perTick.values()), ImmutableList.copyOf(perFrame.values()),
 					ImmutableList.copyOf(dynamic.values()), ImmutableList.copyOf(notifiersToReset));
 		}
 

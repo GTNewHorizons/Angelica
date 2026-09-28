@@ -14,30 +14,34 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 public final class VAOManager {
     public static final int MAX_ATTRIBS = 16;
 
-    public static final Int2ObjectOpenHashMap<VAOData> vaoMap = new Int2ObjectOpenHashMap<>();
+    public final Int2ObjectOpenHashMap<VAOData> vaoMap = new Int2ObjectOpenHashMap<>();
 
-    static final Int2ObjectOpenHashMap<VAOData> eboOwners = new Int2ObjectOpenHashMap<>();
+    final Int2ObjectOpenHashMap<VAOData> eboOwners = new Int2ObjectOpenHashMap<>();
 
-    private static VAOData current = null;
-    private static int currentVertexFlags = 0;
-    private static Attrib[] currentAttribs = null;
-    public static int boundEBO = 0;
+    private VAOData current = null;
+    private int currentVertexFlags = 0;
+    private Attrib[] currentAttribs = null;
+    public int boundEBO = 0;
 
-    private static int clientSideEnabledCount = 0;
+    private int clientSideEnabledCount = 0;
 
 
-    public static void init(int defaultVAO) {
+    public void init(int defaultVAO) {
         final VAOData data = new VAOData();
         current = data;
         currentAttribs = data.attribs;
         vaoMap.put(defaultVAO, data);
     }
 
-    public static void onBindEBO(int ebo) {
+    public boolean isInitialized() {
+        return current != null;
+    }
+
+    public void onBindEBO(int ebo) {
         boundEBO = ebo;
     }
 
-    public static void onBindVertexArrayPre(int vaoId) {
+    public void onBindVertexArrayPre(int vaoId) {
         // Save old VAO data
         if (current != null) {
             current.vertexFlags = currentVertexFlags;
@@ -62,14 +66,14 @@ public final class VAOManager {
         clientSideEnabledCount = data.clientSideEnabledCount;
     }
 
-    public static void onDeleteVertexArray(int vaoId) {
+    public void onDeleteVertexArray(int vaoId) {
         final VAOData data = vaoMap.remove(vaoId);
         if (data == null) return;
         removeEboOwner(data.ebo, data);
         if (data == current) current = null;
     }
 
-    public static void onDeleteBuffer(int buffer) {
+    public void onDeleteBuffer(int buffer) {
         if (buffer == 0) return;
         VAOData owner = eboOwners.remove(buffer);
         while (owner != null) {
@@ -80,12 +84,12 @@ public final class VAOManager {
         }
     }
 
-    private static void addEboOwner(int ebo, VAOData data) {
+    private void addEboOwner(int ebo, VAOData data) {
         if (ebo == 0) return;
         data.nextEboOwner = eboOwners.put(ebo, data);
     }
 
-    private static void removeEboOwner(int ebo, VAOData data) {
+    private void removeEboOwner(int ebo, VAOData data) {
         if (ebo == 0) return;
         VAOData node = eboOwners.get(ebo);
         if (node == data) {
@@ -105,10 +109,11 @@ public final class VAOManager {
         }
     }
 
-    public static void enableClientVertexFlag(int flag) { currentVertexFlags |= flag; }
-    public static void disableClientVertexFlag(int flag) { currentVertexFlags &= ~flag; }
-    public static int getCurrentVertexFlags() { return currentVertexFlags; }
-    public static void setCurrentVertexFlags(int flags) { currentVertexFlags = flags; }
+    public void enableClientVertexFlag(int flag) { currentVertexFlags |= flag; }
+    public void disableClientVertexFlag(int flag) { currentVertexFlags &= ~flag; }
+    public int getVertexFlags() { return currentVertexFlags; }
+    public void setVertexFlags(int flags) { currentVertexFlags = flags; }
+    public static void setCurrentVertexFlags(int flags) { GLStateManager.ctx().vaos.currentVertexFlags = flags; }
 
     public static final class VAOData {
         public Attrib[] attribs;
@@ -122,7 +127,7 @@ public final class VAOManager {
         }
     }
 
-    public static void setAttribute(int index, int size, int type, boolean normalized, int stride, long offset, int vboId) {
+    public void setAttribute(int index, int size, int type, boolean normalized, int stride, long offset, int vboId) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
         final boolean wasClient = a.clientPointer != null;
@@ -139,7 +144,7 @@ public final class VAOManager {
         }
     }
 
-    public static void setAttribute(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
+    public void setAttribute(int index, int size, int type, boolean normalized, int stride, ByteBuffer pointer) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
         final boolean wasClient = a.clientPointer != null;
@@ -156,19 +161,19 @@ public final class VAOManager {
         }
     }
 
-    public static boolean isGenericPointerEnabled(int index) {
+    public boolean isGenericPointerEnabled(int index) {
         if (index < 0 || index >= MAX_ATTRIBS) return false;
         final Attrib a = currentAttribs[index];
         return a != null && a.genericPointer && a.enabled;
     }
 
-    public static void markConventional(int index) {
+    public void markConventional(int index) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = currentAttribs[index];
         if (a != null) a.genericPointer = false;
     }
 
-    public static void setEnabled(int index, boolean enabled) {
+    public void setEnabled(int index, boolean enabled) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
         if (a.clientPointer != null && a.enabled != enabled) {
@@ -177,7 +182,7 @@ public final class VAOManager {
         a.enabled = enabled;
     }
 
-    public static void enableAttribute(int index) {
+    public void enableAttribute(int index) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
         if (a.clientPointer != null && !a.enabled) {
@@ -186,7 +191,7 @@ public final class VAOManager {
         a.enabled = true;
     }
 
-    public static void disableAttribute(int index) {
+    public void disableAttribute(int index) {
         if (index < 0 || index >= MAX_ATTRIBS) return;
         final Attrib a = getAttrib(index);
         if (a.clientPointer != null && a.enabled) {
@@ -196,7 +201,7 @@ public final class VAOManager {
     }
 
     // Lazily allocate each attrib. Most VAOs don't even have 4 attribs, let alone 16.
-    private static Attrib getAttrib(int index) {
+    private Attrib getAttrib(int index) {
         Attrib a = currentAttribs[index];
         if (a == null) {
             a = new Attrib();
@@ -205,28 +210,32 @@ public final class VAOManager {
         return a;
     }
 
-    public static boolean isClientSideAttrib(int index) {
+    public boolean isClientSideAttrib(int index) {
         final Attrib attrib = currentAttribs[index];
         return attrib != null && attrib.isClientSide();
     }
 
-    public static int getAttribEffectiveStride(int index) {
+    public Attrib attrib(int index) {
+        return currentAttribs[index];
+    }
+
+    public int attribEffectiveStride(int index) {
         final Attrib attrib = currentAttribs[index];
         return attrib != null ? attrib.effectiveStride() : 0;
     }
 
-    public static long getAttribOffset(int index) {
+    public long attribOffset(int index) {
         final Attrib attrib = currentAttribs[index];
         return attrib != null ? attrib.offset : 0;
     }
 
-    public static int getAttribVBO(int index) {
+    public int attribVBO(int index) {
         final Attrib attrib = currentAttribs[index];
         return attrib != null ? attrib.vboId : 0;
     }
 
     public static @Nullable Attrib get(int index) {
-        return currentAttribs[index];
+        return GLStateManager.ctx().vaos.attrib(index);
     }
 
 
@@ -236,7 +245,7 @@ public final class VAOManager {
      * (i.e. as a client-side pointer). In core profile, such attribs are treated as null
      * offsets into a non-existent buffer, causing a native crash at draw time.
      */
-    public static boolean hasAnyClientSideEnabledAttrib() {
+    public boolean hasAnyClientSideEnabledAttrib() {
         return clientSideEnabledCount > 0;
     }
 
@@ -244,15 +253,15 @@ public final class VAOManager {
      * If any enabled vertex attribute uses a client-side pointer (no VBO), upload all such
      * attribs into a shared stream VBO so the draw succeeds under core profile.
      */
-    private static int clientArraysVBO = 0;
-    private static int clientArraysVBOCapacity = 0;
-    private static final int[] clientArraysVBOOffsets = new int[VAOManager.MAX_ATTRIBS];
+    private int clientArraysVBO = 0;
+    private int clientArraysVBOCapacity = 0;
+    private final int[] clientArraysVBOOffsets = new int[VAOManager.MAX_ATTRIBS];
 
-    public static void uploadClientArraysToVBO() {
+    public void uploadClientArraysToVBO() {
         int totalBytes = 0;
         for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
             clientArraysVBOOffsets[i] = -1;
-            final VAOManager.Attrib a = VAOManager.get(i);
+            final VAOManager.Attrib a = currentAttribs[i];
             if (a == null || !a.enabled || a.clientPointer == null) continue;
             clientArraysVBOOffsets[i] = totalBytes;
             totalBytes += a.clientPointer.remaining();
@@ -275,7 +284,7 @@ public final class VAOManager {
 
         for (int i = 0; i < VAOManager.MAX_ATTRIBS; i++) {
             if (clientArraysVBOOffsets[i] < 0) continue;
-            final VAOManager.Attrib a = VAOManager.get(i);
+            final VAOManager.Attrib a = currentAttribs[i];
             RENDER_BACKEND.bufferSubData(GL15.GL_ARRAY_BUFFER, clientArraysVBOOffsets[i], a.clientPointer.duplicate());
             RENDER_BACKEND.vertexAttribPointer(i, a.size, a.type, a.normalized, a.stride, (long) clientArraysVBOOffsets[i]);
         }

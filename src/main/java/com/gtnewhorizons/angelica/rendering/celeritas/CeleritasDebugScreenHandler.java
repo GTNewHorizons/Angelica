@@ -35,6 +35,15 @@ public class CeleritasDebugScreenHandler {
     private List<String> cachedRight;
     private long lastBuildNanos;
 
+    static boolean isVerbose() {
+        return AngelicaConfig.verboseF3 || SystemProperties.DEBUG_F3_DETAIL;
+    }
+
+    /** Drops the cached right-hand lines so a verbose toggle shows on the next frame. */
+    public static void invalidate() {
+        INSTANCE.cachedRight = null;
+    }
+
     @SubscribeEvent(priority = EventPriority.LOW)
     public void onRenderGameOverlayTextEvent(RenderGameOverlayEvent.Text event) {
         final Minecraft mc = Minecraft.getMinecraft();
@@ -69,17 +78,17 @@ public class CeleritasDebugScreenHandler {
         lines.add("");
         lines.add(EnumChatFormatting.GREEN + "Angelica " + Tags.VERSION + " [Celeritas Renderer] [" + RENDER_BACKEND.getName() + "]");
         lines.addAll(renderer.getDebugStrings());
-        final ShaderManager sm = ShaderManager.getInstance();
-        if (sm != null) {
-            lines.add(sm.getDebugInfo());
-        }
-        lines.add(TessellatorStreamingDrawer.getDebugInfo());
-        lines.add(TesrBatchRenderer.INSTANCE.getDebugSummaryLine());
-        final String transferInfo = RENDER_BACKEND.getTransferDebugInfo();
-        if (transferInfo != null) {
-            lines.add(transferInfo);
-        }
-        if (SystemProperties.DEBUG_F3_DETAIL) {
+        if (isVerbose()) {
+            final ShaderManager sm = ShaderManager.getInstance();
+            if (sm != null) {
+                lines.add(sm.getDebugInfo());
+            }
+            lines.add(TessellatorStreamingDrawer.getDebugInfo());
+            lines.add(TesrBatchRenderer.INSTANCE.getDebugSummaryLine());
+            final String transferInfo = RENDER_BACKEND.getTransferDebugInfo();
+            if (transferInfo != null) {
+                lines.add(transferInfo);
+            }
             lines.addAll(TesrBatchRenderer.INSTANCE.getDebugDetailStrings());
             lines.add(ModelPartBatcher.INSTANCE.getDebugString());
             if (Tracy.ENABLED) {

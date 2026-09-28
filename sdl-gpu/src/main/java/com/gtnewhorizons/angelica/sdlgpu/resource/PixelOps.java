@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLTypes;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
+import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
@@ -74,6 +75,14 @@ public final class PixelOps {
         };
     }
 
+    public static int colorComponentMask(int sdlFormat) {
+        int mask = 0;
+        for (int c = 0; c < 4; c++) {
+            if (colorChannelBits(sdlFormat, c) > 0) mask |= 1 << c;
+        }
+        return mask;
+    }
+
     private static int uniformChannelBits(int sdlFormat) {
         return switch (sdlFormat) {
             case SDL_GPU_TEXTUREFORMAT_R8_UNORM, SDL_GPU_TEXTUREFORMAT_R8_SNORM,
@@ -123,13 +132,20 @@ public final class PixelOps {
         final int packed = GLTypes.packedTexelBytes(type);
         if (packed != 0) return packed;
         final int components = switch (format) {
-            case GL11.GL_RED, GL11.GL_ALPHA, GL11.GL_LUMINANCE -> 1;
-            case GL11.GL_LUMINANCE_ALPHA -> 2;
-            case GL11.GL_RGB -> 3;
-            case GL11.GL_RGBA, GL12.GL_BGRA -> 4;
+            case GL11.GL_RED, GL11.GL_GREEN, GL11.GL_BLUE, GL11.GL_ALPHA, GL11.GL_LUMINANCE,
+                 GL30.GL_RED_INTEGER, GL30.GL_GREEN_INTEGER, GL30.GL_BLUE_INTEGER, GL30.GL_ALPHA_INTEGER,
+                 GL11.GL_DEPTH_COMPONENT, GL11.GL_STENCIL_INDEX -> 1;
+            case GL11.GL_LUMINANCE_ALPHA, GL30.GL_RG, GL30.GL_RG_INTEGER -> 2;
+            case GL11.GL_RGB, GL12.GL_BGR, GL30.GL_RGB_INTEGER, GL30.GL_BGR_INTEGER -> 3;
             default -> 4;
         };
         return components * GLTypes.sizeBytes(type);
+    }
+
+    public static int alignedRowStride(int rowPixels, int pixelBytes, int alignment) {
+        final int unaligned = rowPixels * pixelBytes;
+        final int align = Math.max(1, alignment);
+        return ((unaligned + align - 1) / align) * align;
     }
 
     public static int sdlFormatTexelBytes(int sdlFormat) {
@@ -170,6 +186,16 @@ public final class PixelOps {
                  SDL_GPU_TEXTUREFORMAT_R8G8_UINT, SDL_GPU_TEXTUREFORMAT_R16G16_UINT,
                  SDL_GPU_TEXTUREFORMAT_R32G32_UINT, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UINT,
                  SDL_GPU_TEXTUREFORMAT_R16G16B16A16_UINT, SDL_GPU_TEXTUREFORMAT_R32G32B32A32_UINT -> true;
+            default -> false;
+        };
+    }
+
+    public static boolean isSdlFormatInteger(int sdlFormat) {
+        if (isSdlFormatUnsignedInteger(sdlFormat)) return true;
+        return switch (sdlFormat) {
+            case SDL_GPU_TEXTUREFORMAT_R8_INT, SDL_GPU_TEXTUREFORMAT_R8G8_INT, SDL_GPU_TEXTUREFORMAT_R8G8B8A8_INT,
+                 SDL_GPU_TEXTUREFORMAT_R16_INT, SDL_GPU_TEXTUREFORMAT_R16G16_INT, SDL_GPU_TEXTUREFORMAT_R16G16B16A16_INT,
+                 SDL_GPU_TEXTUREFORMAT_R32_INT, SDL_GPU_TEXTUREFORMAT_R32G32_INT, SDL_GPU_TEXTUREFORMAT_R32G32B32A32_INT -> true;
             default -> false;
         };
     }
@@ -240,8 +266,9 @@ public final class PixelOps {
         pixels.position(pos);
     }
 
-    public static ByteBuffer prepareUploadBuffer(int format, int dstSdlFormat, ByteBuffer src, int width, int height) {
+    public static ByteBuffer prepareUploadBuffer(int format, int type, int dstSdlFormat, ByteBuffer src, int width, int height) {
         if (src == null) return null;
+        if (dstSdlFormat == SDL_GPU_TEXTUREFORMAT_R10G10B10A2_UNORM) return prepareRgb10A2Upload(format, type, src, width, height);
         final boolean storageBgra = isBgraSdlFormat(dstSdlFormat);
         final ByteBuffer expanded = expandToRGBA(format, src, width, height);
         if (expanded != null) {
@@ -255,14 +282,37 @@ public final class PixelOps {
         return src;
     }
 
+    private static ByteBuffer prepareRgb10A2Upload(int format, int type, ByteBuffer src, int width, int height) {
+        if (format == GL11.GL_RGBA && type == GL12.GL_UNSIGNED_INT_2_10_10_10_REV) return src;
+        if ((format == GL11.GL_RGBA || format == GL12.GL_BGRA) && type == GL11.GL_UNSIGNED_BYTE) {
+            final int pixelCount = width * height;
+            final ByteBuffer dst = MemoryUtil.memAlloc(pixelCount * 4);
+            final int srcPos = src.position();
+            final int rOff = format == GL12.GL_BGRA ? 2 : 0;
+            final int bOff = 2 - rOff;
+            for (int i = 0; i < pixelCount; i++) {
+                final int o = i * 4;
+                final int r = src.get(srcPos + o + rOff) & 0xFF;
+                final int g = src.get(srcPos + o + 1) & 0xFF;
+                final int b = src.get(srcPos + o + bOff) & 0xFF;
+                final int a = src.get(srcPos + o + 3) & 0xFF;
+                dst.putInt(o, unorm8ToBits(r, 1023) | unorm8ToBits(g, 1023) << 10 | unorm8ToBits(b, 1023) << 20 | unorm8ToBits(a, 3) << 30);
+            }
+            dst.position(0).limit(pixelCount * 4);
+            return dst;
+        }
+        throw new UnsupportedOperationException("GL_RGB10_A2 upload from format 0x" + Integer.toHexString(format) + " type 0x" + Integer.toHexString(type) + " is not supported on SDL-GPU");
+    }
+
+    private static int unorm8ToBits(int v, int max) {
+        return (v * max + 127) / 255;
+    }
+
     public static ByteBuffer applyUnpackPixelStore(ByteBuffer src, int width, int height, int format, int type, ContextState.PixelStoreState ps) {
         if (src == null || ps == null || ps.isDefault()) return src;
         final int pixelBytes = glPixelSize(format, type);
         if (pixelBytes <= 0) return src;
-        final int rowPixels = ps.unpackRowLength > 0 ? ps.unpackRowLength : width;
-        final int unalignedRowBytes = rowPixels * pixelBytes;
-        final int align = Math.max(1, ps.unpackAlignment);
-        final int srcStride = ((unalignedRowBytes + align - 1) / align) * align;
+        final int srcStride = alignedRowStride(ps.unpackRowLength > 0 ? ps.unpackRowLength : width, pixelBytes, ps.unpackAlignment);
         final int dstStride = width * pixelBytes;
         final int totalDst = dstStride * height;
         final ByteBuffer dst = MemoryUtil.memAlloc(totalDst);
@@ -277,32 +327,5 @@ public final class PixelOps {
         }
         dst.position(0).limit(totalDst);
         return dst;
-    }
-
-    public static void postProcessReadback(ByteBuffer pixels, int width, int height, int format, int srcSdlFormat, boolean flipRows) {
-        final int rowBytes = width * 4;
-        final int pos = pixels.position();
-
-        if (flipRows) {
-            final byte[] rowA = new byte[rowBytes];
-            final byte[] rowB = new byte[rowBytes];
-            for (int top = 0, bot = height - 1; top < bot; top++, bot--) {
-                pixels.position(pos + top * rowBytes);
-                pixels.get(rowA);
-                pixels.position(pos + bot * rowBytes);
-                pixels.get(rowB);
-                pixels.position(pos + top * rowBytes);
-                pixels.put(rowB);
-                pixels.position(pos + bot * rowBytes);
-                pixels.put(rowA);
-            }
-        }
-
-        pixels.position(pos);
-        final boolean storageBgra = isBgraSdlFormat(srcSdlFormat);
-        final boolean requestBgra = (format == GL12.GL_BGRA);
-        swapRedBlueIfNeeded(pixels, width, height, storageBgra != requestBgra);
-
-        pixels.position(pos);
     }
 }

@@ -12,7 +12,6 @@ public final class GLSMInitConfig {
     @Getter private final boolean lwjglDebug;
     @Getter private final StreamingUploader.UploadStrategy streamingUploadStrategy;
     @Getter private final Consumer<DirectTessellator> directDrawer;
-    @Getter private final Runnable streamingDrawerDestroy;
     @Getter private final int displayWidth;
     @Getter private final int displayHeight;
     @Getter private final Runnable postInitCallback;
@@ -24,7 +23,6 @@ public final class GLSMInitConfig {
         this.streamingUploadStrategy = builder.streamingUploadStrategy;
         this.noErrorChecks = builder.noErrorChecks;
         this.directDrawer = builder.directDrawer;
-        this.streamingDrawerDestroy = builder.streamingDrawerDestroy;
         this.displayWidth = builder.displayWidth;
         this.displayHeight = builder.displayHeight;
         this.postInitCallback = builder.postInitCallback;
@@ -43,7 +41,6 @@ public final class GLSMInitConfig {
         private boolean lwjglDebug = SystemProperties.LWJGL_DEBUG;
         private StreamingUploader.UploadStrategy streamingUploadStrategy = StreamingUploader.UploadStrategy.BUFFER_DATA;
         private Consumer<DirectTessellator> directDrawer = TessellatorStreamingDrawer::drawDirect;
-        private Runnable streamingDrawerDestroy = TessellatorStreamingDrawer::destroy;
         private int displayWidth = 0;
         private int displayHeight = 0;
         private Runnable postInitCallback = null;
@@ -69,11 +66,6 @@ public final class GLSMInitConfig {
 
         public Builder directDrawer(Consumer<DirectTessellator> directDrawer) {
             this.directDrawer = directDrawer;
-            return this;
-        }
-
-        public Builder streamingDrawerDestroy(Runnable streamingDrawerDestroy) {
-            this.streamingDrawerDestroy = streamingDrawerDestroy;
             return this;
         }
 

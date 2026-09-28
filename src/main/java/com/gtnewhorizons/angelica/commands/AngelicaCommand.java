@@ -2,11 +2,16 @@ package com.gtnewhorizons.angelica.commands;
 
 // Debug commands adapted from Beddium by Ven and FalsePattern
 
+import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.debug.ChunkDebugMinimap;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRoute;
 import com.gtnewhorizons.angelica.debug.flyby.FlybyRunner;
 import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
+import com.gtnewhorizons.angelica.debug.profiling.TracyCaptureNotifier;
+import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
+import com.gtnewhorizons.angelica.rendering.RenderRecovery;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import net.minecraft.client.Minecraft;
@@ -18,12 +23,43 @@ import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.EnumChatFormatting;
 
 import java.util.ArrayList;
-import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 public class AngelicaCommand extends CommandBase {
 
-    private static final List<String> SUBCOMMANDS = Arrays.asList("wireframe", "fog", "minimap", "flyby", "profile", "help");
+    private static final Map<String, String> HELP = buildHelp();
+    private static final String[] SUBCOMMANDS = buildSubcommands();
+    private static final String USAGE = "/angelica <" + String.join("|", SUBCOMMANDS) + ">";
+
+    private static Map<String, String> buildHelp() {
+        final Map<String, String> help = new LinkedHashMap<>();
+        if (SystemProperties.debugTooling()) {
+            help.put("wireframe", helpLine("wireframe", "Toggle wireframe rendering"));
+            help.put("fog", helpLine("fog", "Toggle fog debug on F3"));
+            help.put("minimap", helpLine("minimap", "Toggle chunk debug overlay"));
+            help.put("flyby", helpLine("flyby <" + FlybyRoute.ids() + ">", "Run a deterministic benchmark route"));
+            help.put("profile", helpLine("profile <start|stop|status>", "Control async-profiler (JFR) recording"));
+            if (SystemProperties.isDeobf()) {
+                help.put("crashtest", helpLine("crashtest", "Arm a crash on the next tile entity render"));
+            }
+        }
+        if (Tracy.ENABLED) {
+            help.put("tracy", helpLine("tracy <start|stop|status>", "Control Tracy capture recording"));
+        }
+        return help;
+    }
+
+    private static String[] buildSubcommands() {
+        final String[] subcommands = HELP.keySet().toArray(new String[HELP.size() + 1]);
+        subcommands[HELP.size()] = "help";
+        return subcommands;
+    }
+
+    private static String helpLine(String syntax, String description) {
+        return EnumChatFormatting.GRAY + "  /angelica " + syntax + EnumChatFormatting.WHITE + " - " + description;
+    }
 
     @Override
     public String getCommandName() {
@@ -32,7 +68,7 @@ public class AngelicaCommand extends CommandBase {
 
     @Override
     public String getCommandUsage(ICommandSender sender) {
-        return "/angelica <wireframe|fog|minimap|flyby|profile|help>";
+        return USAGE;
     }
 
     @Override
@@ -60,7 +96,7 @@ public class AngelicaCommand extends CommandBase {
     @Override
     public List<String> addTabCompletionOptions(ICommandSender sender, String[] args) {
         if (args.length == 1) {
-            return getListOfStringsMatchingLastWord(args, SUBCOMMANDS.toArray(new String[0]));
+            return getListOfStringsMatchingLastWord(args, SUBCOMMANDS);
         }
         if (args.length == 2 && "flyby".equalsIgnoreCase(args[0])) {
             final List<String> options = new ArrayList<>();
@@ -71,7 +107,10 @@ public class AngelicaCommand extends CommandBase {
             return getListOfStringsMatchingLastWord(args, options.toArray(new String[0]));
         }
         if (args.length == 2 && "profile".equalsIgnoreCase(args[0])) {
-            return getListOfStringsMatchingLastWord(args, new String[] { "start", "stop", "status" });
+            return getListOfStringsMatchingLastWord(args, "start", "stop", "status");
+        }
+        if (args.length == 2 && "tracy".equalsIgnoreCase(args[0])) {
+            return getListOfStringsMatchingLastWord(args, "start", "stop", "status");
         }
         return new ArrayList<>();
     }
@@ -84,6 +123,10 @@ public class AngelicaCommand extends CommandBase {
         }
 
         final String subcommand = args[0].toLowerCase();
+        if (!HELP.containsKey(subcommand)) {
+            sendHelp(sender);
+            return;
+        }
         if (requiresCheats(subcommand) && !cheatsAllowed()) {
             sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] " + subcommand + " needs cheats enabled on a world you host"));
             return;
@@ -95,7 +138,8 @@ public class AngelicaCommand extends CommandBase {
             case "minimap"   -> handleMinimap(sender);
             case "flyby"     -> handleFlyby(sender, args);
             case "profile"   -> handleProfile(sender, args);
-            default          -> sendHelp(sender);
+            case "tracy"     -> handleTracy(sender, args);
+            case "crashtest" -> handleCrashTest(sender);
         }
     }
 
@@ -117,6 +161,11 @@ public class AngelicaCommand extends CommandBase {
         ChunkDebugMinimap.toggle();
         final String state = ChunkDebugMinimap.isEnabled() ? "ON" : "OFF";
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Chunk debug minimap: " + state));
+    }
+
+    private void handleCrashTest(ICommandSender sender) {
+        RenderRecovery.armCrashTest();
+        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Crash test armed: fires on the next tile entity render"));
     }
 
     private void handleFlyby(ICommandSender sender, String[] args) {
@@ -214,13 +263,76 @@ public class AngelicaCommand extends CommandBase {
         }
     }
 
+    private void handleTracy(ICommandSender sender, String[] args) {
+        if (args.length < 2) {
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica tracy <start|stop|status> [seconds]"));
+            return;
+        }
+
+        switch (args[1].toLowerCase()) {
+            case "start" -> {
+                int seconds = AngelicaConfig.tracyCaptureSeconds;
+                if (args.length > 2) {
+                    try {
+                        seconds = Integer.parseInt(args[2]);
+                    } catch (NumberFormatException e) {
+                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica tracy start [seconds]"));
+                        return;
+                    }
+                    if (seconds < 0) {
+                        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica tracy start [seconds]"));
+                        return;
+                    }
+                }
+                final String error = TracyCaptureNotifier.INSTANCE.startCapture(seconds);
+                if (error != null) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] " + error));
+                } else {
+                    final String length = seconds > 0 ? seconds + "s" : "until stopped";
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Tracy capture started (" + length + "): " + TracyCaptureNotifier.INSTANCE.path()));
+                }
+            }
+            case "stop" -> {
+                final int state = Tracy.captureState();
+                if (state == TracyBackend.CAPTURE_CONNECTING || state == TracyBackend.CAPTURE_RECORDING) {
+                    Tracy.captureStop();
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Stopping Tracy capture, saving..."));
+                } else if (state == TracyBackend.CAPTURE_SAVING) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] Tracy capture is already saving"));
+                } else {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.RED + "[Angelica] No Tracy capture is running"));
+                }
+            }
+            case "status" -> {
+                final int state = Tracy.captureState();
+                sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Tracy capture: " + tracyStateName(state) + " (" + Tracy.captureElapsedMs() / 1000L + "s)"));
+                if (state == TracyBackend.CAPTURE_FAILED) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  " + Tracy.captureError()));
+                } else if (TracyCaptureNotifier.INSTANCE.path() != null) {
+                    sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  " + TracyCaptureNotifier.INSTANCE.path()));
+                }
+            }
+            default -> sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Usage: /angelica tracy <start|stop|status> [seconds]"));
+        }
+    }
+
+    private static String tracyStateName(int state) {
+        return switch (state) {
+            case TracyBackend.CAPTURE_IDLE -> "idle";
+            case TracyBackend.CAPTURE_CONNECTING -> "connecting";
+            case TracyBackend.CAPTURE_RECORDING -> "recording";
+            case TracyBackend.CAPTURE_SAVING -> "saving";
+            case TracyBackend.CAPTURE_DONE -> "done";
+            case TracyBackend.CAPTURE_FAILED -> "failed";
+            default -> "unknown";
+        };
+    }
+
     private void sendHelp(ICommandSender sender) {
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] Debug Commands:"));
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica wireframe" + EnumChatFormatting.WHITE + " - Toggle wireframe rendering"));
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica fog" + EnumChatFormatting.WHITE + " - Toggle fog debug on F3"));
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica minimap" + EnumChatFormatting.WHITE + " - Toggle chunk debug overlay"));
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica flyby <" + FlybyRoute.ids() + ">" + EnumChatFormatting.WHITE + " - Run a deterministic benchmark route"));
-        sender.addChatMessage(new ChatComponentText(EnumChatFormatting.GRAY + "  /angelica profile <start|stop|status>" + EnumChatFormatting.WHITE + " - Control async-profiler (JFR) recording"));
+        for (String line : HELP.values()) {
+            sender.addChatMessage(new ChatComponentText(line));
+        }
     }
 
     @Override

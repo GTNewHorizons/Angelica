@@ -32,11 +32,11 @@ class EntityPatcher {
 
 		switch (parameters.type) {
 			case VERTEX -> {
-				if (!transformer.hasVariable("iris_Entity")) {
-					transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_ENTITY + ") in ivec4 iris_Entity;");
-				}
+				removeIfDeclared(transformer, "iris_Entity");
+				transformer.injectVariable("layout(location = " + InstancedAttribs.LOC_ENTITY + ") in uvec4 iris_Entity;");
 				transformer.injectVariable("flat out ivec3 iris_entityInfo;");
-				transformer.prependMain("iris_entityInfo = iris_Entity.xyz;");
+				transformer.prependMain("iris_entityInfo = ivec3(iris_Entity.x == 65535u ? -1 : int(iris_Entity.x), "
+					+ "iris_Entity.y == 65535u ? -1 : int(iris_Entity.y), iris_Entity.z == 65535u ? -1 : int(iris_Entity.z));");
 			}
 			case TESSELATION_CONTROL -> {
 				transformer.injectVariable("flat out ivec3 iris_entityInfoTCS[];");

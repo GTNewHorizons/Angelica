@@ -47,6 +47,8 @@ final class EntityShadowBatcher {
     private long quads;
     private long draws;
 
+    boolean hasPendingGeometry() { return count != 0; }
+
     long statQuads() { return quads; }
 
     long statDraws() { return draws; }

@@ -1,10 +1,14 @@
 package com.prupe.mcpatcher.cc;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.IdentityHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Properties;
+import java.util.Set;
+
+import com.gtnewhorizons.angelica.rendering.celeritas.BiomeVertexBlender;
 
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -70,6 +74,7 @@ public class ColorizeBlock {
 
     // bitmaps from palette.block.*
     private static final Map<Block, List<BlockStateMatcher>> blockColorMaps = new IdentityHashMap<>();
+    private static final Set<BlockStateMatcher> vanillaColorMaps = Collections.newSetFromMap(new IdentityHashMap<>());
     private static IColorMap waterColorMap;
     private static float[][] redstoneColor; // colormap/redstone.png
 
@@ -136,6 +141,7 @@ public class ColorizeBlock {
 
     static void reset() {
         blockColorMaps.clear();
+        vanillaColorMaps.clear();
         waterColorMap = null;
         resetVertexColors();
         redstoneColor = null;
@@ -248,6 +254,7 @@ public class ColorizeBlock {
         if (colorMap == null) {
             return null;
         }
+        final boolean vanilla = colorMap instanceof ColorMap.Vanilla;
         colorMap = wrapBlockMap(colorMap);
         for (String idString : idList.split("\\s+")) {
             for (BlockStateMatcher blockMatcher : BlockAPI
@@ -256,6 +263,7 @@ public class ColorizeBlock {
                     .computeIfAbsent(blockMatcher.getBlock(), k -> new ArrayList<>());
                 blockMatcher.setData(colorMap);
                 maps.add(blockMatcher);
+                if (vanilla) vanillaColorMaps.add(blockMatcher);
                 if (resource != null) {
                     logger.fine(
                         "using %s for block %s, default color %06x",
@@ -301,6 +309,16 @@ public class ColorizeBlock {
 
     static List<BlockStateMatcher> findColorMaps(Block block) {
         return blockColorMaps.get(block);
+    }
+
+    public static boolean hasCustomColors(Block block, IBlockAccess access, int x, int y, int z) {
+        final List<BlockStateMatcher> maps = findColorMaps(block);
+        if (maps != null) {
+            for (BlockStateMatcher matcher : maps) {
+                if (matcher.match(access, x, y, z)) return !vanillaColorMaps.contains(matcher);
+            }
+        }
+        return false;
     }
 
     static IColorMap getThreadLocal(BlockStateMatcher matcher) {
@@ -529,6 +547,7 @@ public class ColorizeBlock {
     }
 
     private static boolean setupBlockSmoothing(Block block, IBlockAccess blockAccess, int x, int y, int z, int face) {
+        if (BiomeVertexBlender.isRendering()) return false;
         if (!checkBiomeSmoothing(block, face)) {
             return false;
         }

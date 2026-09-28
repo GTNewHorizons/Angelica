@@ -55,13 +55,18 @@ public final class InstancedAttribs {
         return (entity & 0xFFFFL) | ((blockEntity & 0xFFFFL) << 16) | ((item & 0xFFFFL) << 32);
     }
 
+    public static int unpackId(long info, int shift) {
+        final int id = (int) (info >>> shift) & 0xFFFF;
+        return id == 0xFFFF ? -1 : id;
+    }
+
     public static void pointHead(long base, int stride) {
         for (int r = 0; r < 3; r++) {
             GLStateManager.glVertexAttribPointer(LOC_ROW0 + r, 4, GL11.GL_FLOAT, false, stride, base + OFFSET_ROWS + r * 16L);
         }
         GLStateManager.glVertexAttribPointer(LOC_COLOR, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_COLOR);
         GLStateManager.glVertexAttribPointer(LOC_OVERLAY, 4, GL11.GL_UNSIGNED_BYTE, true, stride, base + OFFSET_OVERLAY);
-        GLStateManager.glVertexAttribIPointer(LOC_ENTITY, 4, GL11.GL_SHORT, stride, base + OFFSET_ENTITY);
+        GLStateManager.glVertexAttribIPointer(LOC_ENTITY, 4, GL11.GL_UNSIGNED_SHORT, stride, base + OFFSET_ENTITY);
     }
 
     public static void pointTemplate(long base) {

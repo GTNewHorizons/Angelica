@@ -24,7 +24,8 @@ public class MixinRenderBlocks_ItemId {
         }
 
         final int prevItemId = ItemIdManager.getItemId();
-        final int prevBlockEntityId = CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
+        ItemIdManager.pushItemId();
+        CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
 
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(1);
 
@@ -35,8 +36,8 @@ public class MixinRenderBlocks_ItemId {
         try {
             original.call(block, metadata, brightness);
         } finally {
-            ItemIdManager.setItemIdRaw(prevItemId);
-            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(prevBlockEntityId);
+            ItemIdManager.popItemId();
+            CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
         }
     }
 }

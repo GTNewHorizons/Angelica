@@ -9,15 +9,14 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 
 import com.gtnewhorizons.angelica.compat.ModStatus;
-import com.gtnewhorizons.angelica.rendering.celeritas.AngelicaChunkTracker;
 import com.gtnewhorizons.angelica.rendering.celeritas.CubeStatusTracker;
 import com.gtnewhorizons.angelica.rendering.celeritas.SmoothBiomeColorCache;
 import com.gtnewhorizons.angelica.rendering.celeritas.WorldClientExtension;
 
 @Mixin(WorldClient.class)
 public class MixinWorldClient implements ChunkTrackerHolder, WorldClientExtension {
-    @Unique private final ChunkTracker celeritas$tracker = ModStatus.isCubicChunksLoaded ? new CubeStatusTracker() : new AngelicaChunkTracker();
-    @Unique private final SmoothBiomeColorCache celeritas$smoothBiomeColorCache = new SmoothBiomeColorCache((IBlockAccess) this);
+    @Unique private final ChunkTracker celeritas$tracker = ModStatus.isCubicChunksLoaded ? new CubeStatusTracker() : new ChunkTracker();
+    @Unique private SmoothBiomeColorCache celeritas$smoothBiomeColorCache = new SmoothBiomeColorCache((IBlockAccess) this);
 
     @Override
     public ChunkTracker sodium$getTracker() {
@@ -26,6 +25,9 @@ public class MixinWorldClient implements ChunkTrackerHolder, WorldClientExtensio
 
     @Override
     public SmoothBiomeColorCache celeritas$getSmoothBiomeColorCache() {
+        if (!celeritas$smoothBiomeColorCache.matchesConfiguredRadius()) {
+            celeritas$smoothBiomeColorCache = new SmoothBiomeColorCache((IBlockAccess) this);
+        }
         return this.celeritas$smoothBiomeColorCache;
     }
 }

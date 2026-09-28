@@ -238,15 +238,15 @@ public final class VertexKey {
             bits |= (1L << BIT_CLIP_PLANES);
         }
 
-        if (GLStateManager.wideLineEmulationActive) {
+        if (glCtx.wideLineEmulationActive) {
             bits |= (1L << BIT_WIDE_LINE);
         }
 
-        if (GLStateManager.lineStippleActive) {
+        if (glCtx.lineStippleActive) {
             bits |= (1L << BIT_LINE_STIPPLE);
         }
 
-        bits |= (long) GLStateManager.ffpInstancing.ordinal() << BIT_INSTANCING;
+        bits |= (long) glCtx.ffpInstancing.ordinal() << BIT_INSTANCING;
 
         return bits;
     }

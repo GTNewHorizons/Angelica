@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.config.FontConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
 import com.gtnewhorizons.angelica.glsm.loading.Lwjgl3ifyExclusions;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import com.gtnewhorizons.angelica.loading.fml.compat.CompatHandlers;
 import com.gtnewhorizons.angelica.lwjgl3.MissingDependencySdl;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
@@ -66,6 +67,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
         try {
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
+            TracyOptions.latch(AngelicaConfig.enableTracy, AngelicaConfig.tracyAllowRemote, AngelicaConfig.tracyFineZones, AngelicaConfig.tracyMaxSrcLocs);
             ConfigurationManager.registerConfig(CompatConfig.class);
             ConfigurationManager.registerConfig(FontConfig.class);
             MCPatcherForgeConfig.registerConfig();

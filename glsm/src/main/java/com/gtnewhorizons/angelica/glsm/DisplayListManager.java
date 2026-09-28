@@ -86,7 +86,6 @@ public class DisplayListManager {
     private static List<AccumulatedDraw> accumulatedDraws = null;  // Accumulates quad draws for batching
     private static AccumulatedDraw pendingDraw = null;
     private static DisplayListCallback transformCallback = null;
-    private static int relativeTransformType;
 
     private static final int TRANSFORM_SCALE = 0x1; // Can be extracted to a glScale easily
     private static final int TRANSFORM_TRANSLATE = 0x2; // Can be extracted to a glTranslate easily
@@ -95,7 +94,7 @@ public class DisplayListManager {
     private static StackTraceElement[] compilationStackTrace = null;  // For logging: captured at glNewList()
 
     // Debug logging: track sources of MULT_MATRIX commands and draw origins; only populated when LOG_DISPLAY_LIST_COMPILATION is true
-    private static List<String> pendingTransformOps = null;  // Ops accumulated since last flush
+    private static List<List<String>> pendingTransformOps = null;  // Ops per matrix slot since its last flush
     private static List<List<String>> multMatrixSources = null;  // Source ops for each MULT_MATRIX in raw buffer
     private static List<String> drawRangeSources = null;  // Source type for each DRAW_RANGE in final buffer
 
@@ -119,7 +118,7 @@ public class DisplayListManager {
         int recordedStatePushes,
 
         // Debug logging fields (only used when LOG_DISPLAY_LIST_COMPILATION)
-        List<String> pendingOps,
+        List<List<String>> pendingOps,
         List<List<String>> matrixSources,
         List<String> drawSources
     ) {}
@@ -144,7 +143,7 @@ public class DisplayListManager {
     }
 
     public static String describeCurrentCompilation() {
-        if (currentRecorder == null) {
+        if (!isRecording()) {
             return "(not compiling)";
         }
         final String mode = glListMode == GL11.GL_COMPILE_AND_EXECUTE ? "GL_COMPILE_AND_EXECUTE" : "GL_COMPILE";
@@ -153,16 +152,20 @@ public class DisplayListManager {
     }
 
     public static boolean isCompileAndExecute() {
-        return glListMode == GL11.GL_COMPILE_AND_EXECUTE;
+        return isRecording() && glListMode == GL11.GL_COMPILE_AND_EXECUTE;
     }
 
     public static CommandRecorder pauseRecording() {
+        if (Thread.currentThread() != recordingThread) return null;
         final CommandRecorder r = currentRecorder;
         currentRecorder = null;
         return r;
     }
 
     public static void resumeRecording(CommandRecorder r) {
+        if (Thread.currentThread() != recordingThread) {
+            throw new IllegalStateException("Cannot resume another thread's display list compilation");
+        }
         currentRecorder = r;
     }
 
@@ -171,7 +174,9 @@ public class DisplayListManager {
 
     static void flushAll() {
         drawBarrier();
-        flushMatrix();
+        for (int slot = 0; slot < DisplayListCallback.SLOT_COUNT; slot++) {
+            flushMatrix(slot);
+        }
     }
 
 
@@ -186,13 +191,21 @@ public class DisplayListManager {
     }
 
     /**
-     * Emit accumulated transform as MultMatrix if non-identity, then reset.
+     * Emit the current matrix target's accumulated transform as MultMatrix if non-identity, then reset.
      */
     static void flushMatrix() {
-        if (transformCallback.isIdentity()) {
+        flushMatrix(transformCallback.getCurrentSlot());
+    }
+
+    /**
+     * Emit one matrix target's accumulated transform as MultMatrix if non-identity, then reset.
+     */
+    private static void flushMatrix(int slot) {
+        if (transformCallback.isIdentity(slot)) {
             // Clear pending ops even if we don't emit - they were no-ops (identity)
+            transformCallback.reset(slot);
             if (pendingTransformOps != null) {
-                pendingTransformOps.clear();
+                pendingTransformOps.get(slot).clear();
             }
             return;
         }
@@ -200,44 +213,60 @@ public class DisplayListManager {
 
         // Save pending transform ops for logging (before we clear them)
         if (multMatrixSources != null && pendingTransformOps != null) {
-            if (pendingTransformOps.isEmpty()) {
+            final List<String> ops = pendingTransformOps.get(slot);
+            if (ops.isEmpty()) {
                 GLStateManager.LOGGER.warn("flushMatrix: non-identity transform with no tracked ops");
                 multMatrixSources.add(Collections.singletonList("(unknown source)"));
             } else {
-                multMatrixSources.add(new ArrayList<>(pendingTransformOps));
+                multMatrixSources.add(new ArrayList<>(ops));
             }
-            pendingTransformOps.clear();
+            ops.clear();
         }
 
         // Record the collapsed MultMatrix command (for playback)
         // Always put a draw barrier BEFORE flushing the matrix (the transforms are already baked into the current draw)
         drawBarrier();
-        if (relativeTransformType == TRANSFORM_SCALE) {
-            currentRecorder.writeScale(transformCallback.getScale(transformVector));
-        } else if (relativeTransformType == TRANSFORM_TRANSLATE) {
-            currentRecorder.writeTranslate(transformCallback.getTranslation(transformVector));
+        syncStreamMatrixMode(transformCallback.getSlotMatrixMode(slot));
+        final Matrix4f pending = transformCallback.getReadMatrix(slot);
+        final int type = transformCallback.getTransformType(slot);
+        if (type == TRANSFORM_SCALE) {
+            currentRecorder.writeScale(transformCallback.getScale(slot, transformVector));
+        } else if (type == TRANSFORM_TRANSLATE) {
+            currentRecorder.writeTranslate(transformCallback.getTranslation(slot, transformVector));
         } else {
-            currentRecorder.writeMultMatrix(transformCallback.getReadMatrix());
+            currentRecorder.writeMultMatrix(pending);
         }
         if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
-            GLStateManager.applyMultMatrix(transformCallback.getReadMatrix());
+            GLStateManager.applyMultMatrix(pending);
         }
 
 
         // Reset to identity - we're now synchronized with GL
-        resetRelativeTransform();
+        transformCallback.reset(slot);
+    }
+
+    private static void syncStreamMatrixMode(int mode) {
+        if (transformCallback.getStreamMatrixMode() == 0 && !transformCallback.explicitMatrixMode) {
+            return;
+        }
+        if (transformCallback.getStreamMatrixMode() == mode) {
+            return;
+        }
+        drawBarrier();
+        transformCallback.setStreamMatrixMode(mode);
+        currentRecorder.writeMatrixMode(mode);
     }
 
     public static int getRecordingListId() {
-        return glListId;
+        return Thread.currentThread() == recordingThread ? glListId : -1;
     }
 
     public static int getListMode() {
-        return glListMode;
+        return Thread.currentThread() == recordingThread ? glListMode : 0;
     }
 
     public static void trackDrawRangeSource(String source) {
-        if (drawRangeSources != null) {
+        if (Thread.currentThread() == recordingThread && drawRangeSources != null) {
             drawRangeSources.add(source);
         }
     }
@@ -315,6 +344,11 @@ public class DisplayListManager {
         currentRecorder.writeSecondaryColor(r, g, b);
     }
 
+    public static void recordVertexAttrib(int index, float x, float y, float z, float w) {
+        drawBarrier();
+        currentRecorder.writeVertexAttrib(index, x, y, z, w);
+    }
+
     public static void recordColorMask(boolean r, boolean g, boolean b, boolean a) {
         drawBarrier();
         currentRecorder.writeColorMask(r, g, b, a);
@@ -371,14 +405,37 @@ public class DisplayListManager {
     }
 
     public static void recordMatrixMode(int mode) {
-        flushMatrix();  // Matrix barrier: flush and reset
+        final int previous = transformCallback.getMatrixMode();
+        if (!transformCallback.explicitMatrixMode) {
+            // Pending transforms still inherit the caller's target until this explicit selection.
+            flushMatrix();
+        }
+        transformCallback.explicitMatrixMode = true;
+        if (previous == mode) {
+            // The initial target and the target after a nested list are unknown at playback.
+            syncStreamMatrixMode(mode);
+            return;
+        }
+        if (glListMode == GL11.GL_COMPILE_AND_EXECUTE) {
+            // Live GL follows the app's matrix mode, so a pending delta can only be replayed onto GL
+            // while its own target is still current.
+            flushAll();
+        } else {
+            // MODELVIEW and PROJECTION share the vertex delta, so a delta belonging to one of them has to
+            // be flushed before the other starts adding to it.
+            final int slot = DisplayListCallback.slotOf(mode);
+            if (transformCallback.getSlotMatrixMode(slot) != mode) {
+                flushMatrix(slot);
+            }
+        }
         transformCallback.setMatrixMode(mode);
-        currentRecorder.writeMatrixMode(mode);
     }
 
     public static void recordPushMatrix() {
+        drawBarrier();
         // Flush any pending delta, then record push.
         flushMatrix();
+        syncStreamMatrixMode(transformCallback.getMatrixMode());
         currentRecorder.writePushMatrix();
     }
 
@@ -386,6 +443,7 @@ public class DisplayListManager {
         // Discard any transformations & flush any pending draw operations
         drawBarrier();
         resetRelativeTransform();
+        syncStreamMatrixMode(transformCallback.getMatrixMode());
         currentRecorder.writePopMatrix();
     }
 
@@ -435,6 +493,8 @@ public class DisplayListManager {
     }
 
     public static void recordActiveTexture(int texture) {
+        drawBarrier();
+        flushMatrix(DisplayListCallback.SLOT_TEXTURE);
         currentRecorder.writeActiveTexture(texture);
     }
 
@@ -443,15 +503,31 @@ public class DisplayListManager {
         currentRecorder.writeUseProgram(program);
     }
 
-    // PushAttrib saves state but doesn't change it - not a draw barrier
+    private record AttribState(int matrixMode, boolean restoresTexture) {}
+
     public static void recordPushAttrib(int mask) {
+        final boolean savesMode = (mask & GL11.GL_TRANSFORM_BIT) != 0;
+        if (savesMode) syncStreamMatrixMode(transformCallback.getMatrixMode());
+        transformCallback.attribStates.push(new AttribState(
+            savesMode ? transformCallback.getStreamMatrixMode() : -1, (mask & GL11.GL_TEXTURE_BIT) != 0));
         currentRecorder.writePushAttrib(mask);
     }
 
     // PopAttrib restores potentially any state - draw barrier
     public static void recordPopAttrib() {
-        drawBarrier();
+        final AttribState restored = transformCallback.attribStates.poll();
+        final int restoredMode = restored == null ? 0 : restored.matrixMode();
+        if (restoredMode != -1) flushAll();
+        else {
+            drawBarrier();
+            if (restored.restoresTexture()) flushMatrix(DisplayListCallback.SLOT_TEXTURE);
+        }
         currentRecorder.writePopAttrib();
+        if (restoredMode != -1) {
+            transformCallback.setMatrixMode(restoredMode == 0 ? GL11.GL_MODELVIEW : restoredMode);
+            transformCallback.setStreamMatrixMode(restoredMode);
+            transformCallback.explicitMatrixMode = restoredMode != 0;
+        }
     }
 
     public static int virtualStateDepth(RecordMode mode) {
@@ -571,7 +647,10 @@ public class DisplayListManager {
     public static void recordCallList(int listId) {
         // Flush all pending draws & transformations
         flushAll();
+        syncStreamMatrixMode(transformCallback.getMatrixMode());
         currentRecorder.writeCallList(listId);
+        transformCallback.setStreamMatrixMode(0);
+        transformCallback.explicitMatrixMode = false;
     }
 
     public static void recordDrawBuffer(int mode) {
@@ -594,6 +673,19 @@ public class DisplayListManager {
         currentRecorder.writeComplexCommand(cmd);
     }
 
+    public static void recordStateCommand(DisplayListCommand cmd) {
+        drawBarrier();
+        currentRecorder.writeComplexCommand(cmd);
+    }
+
+    public static void recordStateCommandIfChanged(DisplayListCommand cmd) {
+        if (!currentRecorder.isLastCommand(cmd)) recordStateCommand(cmd);
+    }
+
+    public static void recordStateCommandOnce(DisplayListCommand cmd) {
+        if (currentRecorder.markRecordedOnce(cmd)) recordStateCommand(cmd);
+    }
+
     public static void recordIndexedDrawCapture(IndexedDrawCapture capture) {
         flushAll(); //TODO
         currentRecorder.writeIndexedDrawCapture(capture);
@@ -602,12 +694,14 @@ public class DisplayListManager {
     public static void recordLoadMatrix(Matrix4f matrix) {
         drawBarrier();
         resetRelativeTransform();
+        syncStreamMatrixMode(transformCallback.getMatrixMode());
         currentRecorder.writeLoadMatrix(matrix);
     }
 
     public static void recordLoadIdentity() {
         drawBarrier();
         resetRelativeTransform();
+        syncStreamMatrixMode(transformCallback.getMatrixMode());
         currentRecorder.writeLoadIdentity();
 
     }
@@ -645,11 +739,10 @@ public class DisplayListManager {
     }
 
     public static void applyMatrixTranslation(float x, float y, float z) {
-        transformCallback.translate(x, y, z);
-        relativeTransformType |= TRANSFORM_TRANSLATE;
+        transformCallback.translate(x, y, z, TRANSFORM_TRANSLATE);
 
         if (pendingTransformOps != null) {
-            pendingTransformOps.add(String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z));
+            pendingTransformOps.get(transformCallback.getCurrentSlot()).add(String.format("glTranslatef(%.4f, %.4f, %.4f)", x, y, z));
         }
 
         if (SystemProperties.DEBUG_DISPLAY_LISTS) {
@@ -658,11 +751,10 @@ public class DisplayListManager {
     }
 
     public static void applyMatrixScale(float x, float y, float z) {
-        transformCallback.scale(x, y, z);
-        relativeTransformType |= TRANSFORM_SCALE;
+        transformCallback.scale(x, y, z, TRANSFORM_SCALE);
 
         if (pendingTransformOps != null) {
-            pendingTransformOps.add(String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z));
+            pendingTransformOps.get(transformCallback.getCurrentSlot()).add(String.format("glScalef(%.4f, %.4f, %.4f)", x, y, z));
         }
 
         if (SystemProperties.DEBUG_DISPLAY_LISTS) {
@@ -676,11 +768,10 @@ public class DisplayListManager {
      * Requires the angle to be in radians & the coordinates to be normalized.
      */
     public static void applyMatrixRotation(float rad, float x, float y, float z) {
-        transformCallback.rotate(rad, x, y, z);
-        relativeTransformType |= TRANSFORM_COMPLEX;
+        transformCallback.rotate(rad, x, y, z, TRANSFORM_COMPLEX);
 
         if (pendingTransformOps != null) {
-            pendingTransformOps.add(String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", Math.toDegrees(rad), x, y, z));
+            pendingTransformOps.get(transformCallback.getCurrentSlot()).add(String.format("glRotatef(%.4f, %.4f, %.4f, %.4f)", Math.toDegrees(rad), x, y, z));
         }
 
         if (SystemProperties.DEBUG_DISPLAY_LISTS) {
@@ -698,11 +789,10 @@ public class DisplayListManager {
      * @param matrix The matrix to multiply
      */
     public static void updateRelativeTransform(Matrix4f matrix) {
-        transformCallback.multMatrix(matrix);
-        relativeTransformType |= TRANSFORM_COMPLEX;
+        transformCallback.multMatrix(matrix, TRANSFORM_COMPLEX);
 
         if (pendingTransformOps != null) {
-            pendingTransformOps.add("glMultMatrixf(...)");
+            pendingTransformOps.get(transformCallback.getCurrentSlot()).add("glMultMatrixf(...)");
         }
 
         if (SystemProperties.DEBUG_DISPLAY_LISTS) {
@@ -716,11 +806,10 @@ public class DisplayListManager {
     public static void updateRelativeTransformOrtho(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().ortho((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        transformCallback.multMatrix(orthoFrustumTemp);
-        relativeTransformType |= TRANSFORM_COMPLEX;
+        transformCallback.multMatrix(orthoFrustumTemp, TRANSFORM_COMPLEX);
 
         if (pendingTransformOps != null) {
-            pendingTransformOps.add(String.format("glOrtho(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
+            pendingTransformOps.get(transformCallback.getCurrentSlot()).add(String.format("glOrtho(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
 
         if (SystemProperties.DEBUG_DISPLAY_LISTS) {
@@ -731,11 +820,10 @@ public class DisplayListManager {
     public static void updateRelativeTransformFrustum(double left, double right, double bottom, double top, double zNear, double zFar) {
         orthoFrustumTemp.identity().frustum((float) left, (float) right, (float) bottom, (float) top, (float) zNear, (float) zFar);
 
-        transformCallback.multMatrix(orthoFrustumTemp);
-        relativeTransformType |= TRANSFORM_COMPLEX;
+        transformCallback.multMatrix(orthoFrustumTemp, TRANSFORM_COMPLEX);
 
         if (pendingTransformOps != null) {
-            pendingTransformOps.add(String.format("glFrustum(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
+            pendingTransformOps.get(transformCallback.getCurrentSlot()).add(String.format("glFrustum(%.4f, %.4f, %.4f, %.4f, %.4f, %.4f)", left, right, bottom, top, zNear, zFar));
         }
 
         if (SystemProperties.DEBUG_DISPLAY_LISTS) {
@@ -749,8 +837,8 @@ public class DisplayListManager {
      * subsequent transforms are relative to that loaded matrix (i.e., start from identity).
      */
     static void resetRelativeTransform() {
-        transformCallback.setIdentity();
-        relativeTransformType = 0;
+        transformCallback.reset(transformCallback.getCurrentSlot());
+        if (pendingTransformOps != null) pendingTransformOps.get(transformCallback.getCurrentSlot()).clear();
     }
 
     /**
@@ -761,8 +849,11 @@ public class DisplayListManager {
      * @return true if the display list exists, false otherwise
      */
     public static boolean displayListExists(int list) {
-        if (displayListCache.containsKey(list)) {
-            return true;
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            if (displayListCache.containsKey(list)) return true;
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
         }
         // Check VBOManager for GTNHLib compatibility (negative IDs)
         if (list < -1) {
@@ -778,7 +869,12 @@ public class DisplayListManager {
      * @return The CompiledDisplayList, or null if not found
      */
     public static CompiledDisplayList getDisplayList(int list) {
-        return displayListCache.get(list);
+        final boolean locked = GLStateManager.acquireDrawLock();
+        try {
+            return displayListCache.get(list);
+        } finally {
+            if (locked) GLStateManager.releaseDrawLock();
+        }
     }
 
     /**
@@ -787,73 +883,103 @@ public class DisplayListManager {
      *   GL_COMPILE: Commands are recorded only (not executed), GLSM cache unchanged
      *   GL_COMPILE_AND_EXECUTE: Commands are recorded AND executed (GLSM cache updated)
      */
-    public static void glNewList(int list, int mode) {
-        // Handle nested compilation - push current context onto stack
+    public static synchronized void glNewList(int list, int mode) {
+        final Thread recorder = recordingThread;
+        if (recorder != null && recorder != Thread.currentThread()) {
+            throw new IllegalStateException("glNewList(" + list + ") on " + Thread.currentThread().getName() + " while " + recorder.getName() + " is compiling a display list");
+        }
         final boolean isNested = glListMode > 0;
+        final int captureDepth = TessellatorManager.getDirectCaptureDepth();
+        boolean pushed = false;
+        if (!isNested) recordingThread = Thread.currentThread();
+        try {
+            if (isNested) {
+                flushAll();
+                final CompilationContext parentContext = new CompilationContext(
+                    glListId, glListMode, currentRecorder, accumulatedDraws, transformCallback,
+                    compilationStackTrace, recordedStatePushes, pendingTransformOps, multMatrixSources, drawRangeSources
+                );
+                compilationStack.push(parentContext);
+                pushed = true;
+            }
 
-        if (isNested) {
-            flushAll();
-            // Nested display list compilation violates OpenGL spec, but some of our optimizations require it
-            // Save current compilation context and start fresh for nested list
-            final CompilationContext parentContext = new CompilationContext(
-                glListId, glListMode, currentRecorder, accumulatedDraws, transformCallback,
-                compilationStackTrace, recordedStatePushes, pendingTransformOps, multMatrixSources, drawRangeSources
-            );
-            compilationStack.push(parentContext);
+            glListId = list;
+            glListMode = mode;
+            currentRecorder = new CommandRecorder();
+            accumulatedDraws = new ArrayList<>(8);
+            transformCallback = new DisplayListCallback();
+            recordedStatePushes = 0;
+            compilationStackTrace = SystemProperties.LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
+
+            if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
+                pendingTransformOps = new ArrayList<>();
+                for (int slot = 0; slot < DisplayListCallback.SLOT_COUNT; slot++) {
+                    pendingTransformOps.add(new ArrayList<>());
+                }
+                multMatrixSources = new ArrayList<>();
+                drawRangeSources = new ArrayList<>();
+            } else {
+                pendingTransformOps = null;
+                multMatrixSources = null;
+                drawRangeSources = null;
+            }
+
+            TessellatorManager.startCapturingDirect(transformCallback);
+        } catch (RuntimeException | Error failure) {
+            try {
+                if (TessellatorManager.getDirectCaptureDepth() > captureDepth) TessellatorManager.stopCapturingDirect();
+            } catch (RuntimeException | Error cleanup) {
+                failure.addSuppressed(cleanup);
+            }
+            try {
+                if (pushed) {
+                    final CommandRecorder parent = compilationStack.peek().recorder();
+                    try {
+                        if (currentRecorder != null && currentRecorder != parent) currentRecorder.delete();
+                    } finally {
+                        popCompilationContext();
+                    }
+                } else if (!isNested) {
+                    try {
+                        if (currentRecorder != null) currentRecorder.delete();
+                    } finally {
+                        resetCompilationState();
+                    }
+                }
+            } catch (RuntimeException | Error cleanup) {
+                failure.addSuppressed(cleanup);
+            }
+            throw failure;
         }
-
-        // Initialize fresh context for this (possibly nested) list
-        glListId = list;
-        glListMode = mode;
-        recordingThread = Thread.currentThread();  // Track which thread is recording
-        currentRecorder = new CommandRecorder();  // Create command recorder
-        accumulatedDraws = new ArrayList<>(8);   // Fewer draws than commands typically
-        transformCallback = new DisplayListCallback();
-        recordedStatePushes = 0;
-        compilationStackTrace = SystemProperties.LOG_DISPLAY_LIST_COMPILATION ? Thread.currentThread().getStackTrace() : null;
-
-        // Initialize debug logging fields (only when logging enabled)
-        if (SystemProperties.LOG_DISPLAY_LIST_COMPILATION) {
-            pendingTransformOps = new ArrayList<>();
-            multMatrixSources = new ArrayList<>();
-            drawRangeSources = new ArrayList<>();
-        } else {
-            pendingTransformOps = null;
-            multMatrixSources = null;
-            drawRangeSources = null;
-        }
-
-        TessellatorManager.startCapturingDirect(transformCallback);
     }
 
     /**
      * End display list compilation and build optimized/unoptimized versions.
      */
-    public static void glEndList() {
+    public static synchronized void glEndList() {
+        final Thread recorder = recordingThread;
+        if (recorder != null && recorder != Thread.currentThread()) {
+            throw new IllegalStateException("glEndList on " + Thread.currentThread().getName() + " while " + recorder.getName() + " is compiling a display list");
+        }
         if (glListMode == 0) {
             GLStateManager.warnOnce("endlist-outside", "glEndList called outside of a display list!");
             return;
         }
         if (Tracy.ENABLED) Tracy.beginZone(Z_GL_LIST_COMPILE);
         try {
+            TessellatorManager.stopCapturingDirect();
             finishCurrentList();
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
-            // Non-null here means finishCurrentList threw before transferring or releasing
-            // ownership of the recorder.
-            if (currentRecorder != null) {
-                currentRecorder.delete();
+            try {
+                if (currentRecorder != null) currentRecorder.delete();
+            } finally {
+                popCompilationContext();
             }
-            // Must always run, even when compilation fails - a leaked context leaves
-            // isRecording() true forever and every guarded GL call throws afterward.
-            popCompilationContext();
         }
     }
 
     private static void finishCurrentList() {
-        // Stop compiling mode (works for both root and nested lists now)
-        TessellatorManager.stopCapturingDirect();
-
         boolean unbalancedStatePush = false;
         while (recordPopStateIfPending()) unbalancedStatePush = true;
         if (unbalancedStatePush) {
@@ -862,10 +988,8 @@ public class DisplayListManager {
 
         flushAll();
 
-        // Reset back to MODELVIEW (default state)
-        if (transformCallback.getMatrixMode() != GL11.GL_MODELVIEW) {
-            recordMatrixMode(GL11.GL_MODELVIEW);
-        }
+        transformCallback.setMatrixMode(GL11.GL_MODELVIEW);
+        syncStreamMatrixMode(GL11.GL_MODELVIEW);
 
         final CompiledDisplayList compiled;
         // Create CompiledDisplayList with both unoptimized and optimized versions
@@ -966,7 +1090,6 @@ public class DisplayListManager {
     /** Clear all root-level compilation state back to "not recording". */
     private static void resetCompilationState() {
         currentRecorder = null;
-        recordingThread = null;
         accumulatedDraws = null;
         pendingDraw = null;
         transformCallback = null;
@@ -977,9 +1100,13 @@ public class DisplayListManager {
         glListId = -1;
         glListMode = 0;
         recordedStatePushes = 0;
+        recordingThread = null;
     }
 
-    public static void abortCompilation() {
+    public static synchronized void abortCompilation() {
+        if (recordingThread != null && recordingThread != Thread.currentThread()) {
+            throw new IllegalStateException("Cannot abort another thread's display list compilation");
+        }
         if (glListMode == 0 && compilationStack.isEmpty()) {
             return;
         }
@@ -1007,7 +1134,7 @@ public class DisplayListManager {
     }
 
     public static void abortIfLeaked() {
-        if (glListMode != 0 || !compilationStack.isEmpty()) {
+        if (Thread.currentThread() == recordingThread && (glListMode != 0 || !compilationStack.isEmpty())) {
             GLStateManager.warnOnce("frame-leak", "Display list {} left open across a frame boundary - aborting to recover", glListId);
             abortCompilation();
         }
@@ -1043,7 +1170,7 @@ public class DisplayListManager {
      * Execute a compiled display list.
      */
     public static void glCallList(int list) {
-        if (currentRecorder != null) {
+        if (isRecording()) {
             recordCallList(list);
 
             if (getListMode() != GL11.GL_COMPILE) {
@@ -1357,12 +1484,32 @@ public class DisplayListManager {
 
     private static final class DisplayListCallback extends VertexTransformCallback {
 
+        static final int SLOT_VERTEX = 0;   // GL_MODELVIEW + GL_PROJECTION, feeds into gl_Position
+        static final int SLOT_TEXTURE = 1;
+        static final int SLOT_COLOR = 2;
+        static final int SLOT_OTHER = 3;
+        static final int SLOT_COUNT = 4;
+
+        static int slotOf(int mode) {
+            return switch (mode) {
+                case GL11.GL_MODELVIEW, GL11.GL_PROJECTION -> SLOT_VERTEX;
+                case GL11.GL_TEXTURE -> SLOT_TEXTURE;
+                case GL11.GL_COLOR -> SLOT_COLOR;
+                default -> SLOT_OTHER;
+            };
+        }
 
         private int matrixMode = GL11.GL_MODELVIEW;
 
+        private int streamMatrixMode;
+        private boolean explicitMatrixMode;
+        private final Deque<AttribState> attribStates = new ArrayDeque<>();
+
         private final Matrix3f normalMatrix = new Matrix3f();
 
-        private final Matrix4f transformMatrix = new Matrix4f();
+        private final Matrix4f[] transformMatrices = { new Matrix4f(), new Matrix4f(), new Matrix4f(), new Matrix4f() };
+        private final int[] transformTypes = new int[SLOT_COUNT];
+        private final int[] slotModes = { GL11.GL_MODELVIEW, GL11.GL_TEXTURE, GL11.GL_COLOR, 0 };
 
         private DirectTessellator bakedOwner;
         private int bakedVertices;
@@ -1374,49 +1521,69 @@ public class DisplayListManager {
             }
         }
 
-        public void scale(float x, float y, float z) {
-            transformMatrix.scale(x, y, z);
+        private Matrix4f begin(int typeBits) {
+            final int slot = getCurrentSlot();
+            transformTypes[slot] |= typeBits;
+            slotModes[slot] = matrixMode;
+            return transformMatrices[slot];
+        }
+
+        public void scale(float x, float y, float z, int typeBits) {
+            begin(typeBits).scale(x, y, z);
             markDirty();
         }
 
-        public void translate(float x, float y, float z) {
-            transformMatrix.translate(x, y, z);
+        public void translate(float x, float y, float z, int typeBits) {
+            begin(typeBits).translate(x, y, z);
             markDirty();
         }
 
-        public void rotate(float rad, float x, float y, float z) {
-            transformMatrix.rotate(rad, x, y, z);
+        public void rotate(float rad, float x, float y, float z, int typeBits) {
+            begin(typeBits).rotate(rad, x, y, z);
             markDirty();
         }
 
-        public void multMatrix(Matrix4f matrix4f) {
-            transformMatrix.mul(matrix4f);
+        public void multMatrix(Matrix4f matrix4f, int typeBits) {
+            begin(typeBits).mul(matrix4f);
             markDirty();
         }
 
-        public void setIdentity() {
-            transformMatrix.identity();
-            markDirty();
+        public void reset(int slot) {
+            transformMatrices[slot].identity();
+            transformTypes[slot] = 0;
+            if (slot == SLOT_VERTEX) {
+                markDirty();
+            }
         }
 
-        public Vector3f getScale(Vector3f dest) {
-            return transformMatrix.getScale(dest);
+        public Vector3f getScale(int slot, Vector3f dest) {
+            final Matrix4f matrix = transformMatrices[slot];
+            return dest.set(matrix.m00(), matrix.m11(), matrix.m22());
         }
 
-        public Vector3f getTranslation(Vector3f dest) {
-            return transformMatrix.getTranslation(dest);
+        public Vector3f getTranslation(int slot, Vector3f dest) {
+            return transformMatrices[slot].getTranslation(dest);
         }
 
         /**
          * WARNING: If you apply transformations to this matrix, make sure to call markDirty() afterward!
          */
-        public Matrix4f getReadMatrix() {
-            return transformMatrix;
+        public Matrix4f getReadMatrix(int slot) {
+            return transformMatrices[slot];
+        }
+
+        public int getTransformType(int slot) {
+            return transformTypes[slot];
+        }
+
+        /** The GL matrix target a slot's pending delta belongs to. */
+        public int getSlotMatrixMode(int slot) {
+            return slotModes[slot];
         }
 
         public void markDirty() {
             if (matrixMode == GL11.GL_MODELVIEW) {
-                NormalHelper.getNormalMatrix(transformMatrix, normalMatrix);
+                NormalHelper.getNormalMatrix(transformMatrices[SLOT_VERTEX], normalMatrix);
             }
         }
 
@@ -1425,15 +1592,26 @@ public class DisplayListManager {
          */
         public void setMatrixMode(int mode) {
             this.matrixMode = mode;
-            markDirty();
         }
 
         public int getMatrixMode() {
             return this.matrixMode;
         }
 
-        public boolean isIdentity() {
-            return MatrixHelper.isIdentity(transformMatrix);
+        public int getCurrentSlot() {
+            return slotOf(matrixMode);
+        }
+
+        public int getStreamMatrixMode() {
+            return this.streamMatrixMode;
+        }
+
+        public void setStreamMatrixMode(int mode) {
+            this.streamMatrixMode = mode;
+        }
+
+        public boolean isIdentity(int slot) {
+            return MatrixHelper.isIdentity(transformMatrices[slot]);
         }
 
         @Override
@@ -1446,10 +1624,12 @@ public class DisplayListManager {
         @Override
         public boolean onDraw(CallbackTessellator tessellator) {
             if (!tessellator.isEmpty()) {
-                if (!isIdentity()) {
+                if (!isIdentity(SLOT_VERTEX) || !isIdentity(SLOT_TEXTURE) || !isIdentity(SLOT_COLOR)) {
                     final int baked = bakedOwner == tessellator ? bakedVertices : 0;
                     if (bakedVertices == 0) {
-                        flushMatrix();
+                        flushMatrix(SLOT_VERTEX);
+                        flushMatrix(SLOT_TEXTURE);
+                        flushMatrix(SLOT_COLOR);
                     } else if (baked != tessellator.vertexCount) {
                         GLStateManager.warnOnce("dl-mixed-baked-raw", "Display list {}: draw of {} vertices carries {} transformed ones - the rest lose the pending transform", glListId, tessellator.vertexCount, baked);
                     }
@@ -1473,22 +1653,22 @@ public class DisplayListManager {
 
         @Override
         protected Matrix4f getMVPMatrix() {
-            return matrixMode <= GL11.GL_PROJECTION ? transformMatrix : null;
+            return transformTypes[SLOT_VERTEX] != 0 ? transformMatrices[SLOT_VERTEX] : null;
         }
 
         @Override
         protected Matrix4f getTextureMatrix() {
-            return matrixMode == GL11.GL_TEXTURE ? transformMatrix : null;
+            return transformTypes[SLOT_TEXTURE] != 0 ? transformMatrices[SLOT_TEXTURE] : null;
         }
 
         @Override
         protected Matrix4f getColorMatrix() {
-            return matrixMode == GL11.GL_COLOR ? transformMatrix : null;
+            return transformTypes[SLOT_COLOR] != 0 ? transformMatrices[SLOT_COLOR] : null;
         }
 
         @Override
         protected Matrix3f getNormalMatrix() {
-            return matrixMode == GL11.GL_MODELVIEW ? normalMatrix : null; // GL_PROJECTION doesn't transform normals
+            return transformTypes[SLOT_VERTEX] != 0 && slotModes[SLOT_VERTEX] == GL11.GL_MODELVIEW ? normalMatrix : null;
         }
     }
 }

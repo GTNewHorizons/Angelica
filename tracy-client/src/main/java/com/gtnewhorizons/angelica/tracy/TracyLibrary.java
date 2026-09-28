@@ -36,6 +36,7 @@ final class TracyLibrary {
     final long gpuTimeSync;
     final long gpuNewContext;
     final long gpuContextName;
+    final long setEnv;
 
     static TracyLibrary resolve(SharedLibrary lib) {
         try {
@@ -72,6 +73,7 @@ final class TracyLibrary {
         gpuTimeSync = req(lib, "___tracy_emit_gpu_time_sync");
         gpuNewContext = req(lib, "___tracy_emit_gpu_new_context");
         gpuContextName = req(lib, "___tracy_emit_gpu_context_name");
+        setEnv = req(lib, "ang_set_env");
     }
 
     private static long req(SharedLibrary lib, String name) {

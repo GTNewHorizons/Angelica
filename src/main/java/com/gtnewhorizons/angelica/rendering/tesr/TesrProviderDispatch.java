@@ -29,12 +29,16 @@ public final class TesrProviderDispatch {
         final Object key = provider.angelica$meshKey(te);
         if (key == null) return false;
 
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(resolveBlockEntityId(te));
+        CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(te == null ? null : te.getBlockType(), te == null ? 0 : te.getBlockMetadata());
         GLStateManager.glPushMatrix();
-        provider.angelica$transform(te, x, y, z);
-        AngelicaTesrMeshCache.INSTANCE.renderCached(key, provider.angelica$meshDirty(te), provider, te);
-        GLStateManager.glPopMatrix();
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
+        try {
+            provider.angelica$transform(te, x, y, z);
+            AngelicaTesrMeshCache.INSTANCE.renderCached(key, provider.angelica$meshDirty(te), provider, te);
+        } finally {
+            GLStateManager.glPopMatrix();
+            CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
+        }
         return true;
     }
 }

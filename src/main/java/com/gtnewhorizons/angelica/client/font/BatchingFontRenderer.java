@@ -7,6 +7,7 @@ import com.gtnewhorizon.gtnhlib.util.font.FontRendering;
 import com.gtnewhorizon.gtnhlib.util.font.GlyphReplacements;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.FFPVertexLighting;
@@ -159,7 +160,6 @@ public class BatchingFontRenderer {
 
 
     // OpenGL objects (static, can be used between multiple BatchingFontRenderer)
-    private static int fontVAO = 0;
     private static int vbo;
     private static IndexBuffer ebo;
     private static int lightmapSamplerProgram;
@@ -169,6 +169,7 @@ public class BatchingFontRenderer {
     private static boolean streamingInitialized;
     private static int pendingBuffer;
     private static int pendingBase;
+    private static GLContextState vaoContext;
     private static int vaoBuffer = -1;
     private static int vaoBase = -1;
 
@@ -219,7 +220,8 @@ public class BatchingFontRenderer {
         float v = 0.0f;
         int texture = 0;
         if (active) {
-            scratchLightmapUv.set(GLSMConfig.lastBrightnessX, GLSMConfig.lastBrightnessY, 0.0f, 1.0f).mul(GLStateManager.getTextures().getTextureUnitMatrix(LIGHTMAP_TEX_UNIT));
+            final GLContextState glCtx = GLStateManager.ctx();
+            scratchLightmapUv.set(glCtx.lastBrightnessX, glCtx.lastBrightnessY, 0.0f, 1.0f).mul(GLStateManager.getTextures().getTextureUnitMatrix(LIGHTMAP_TEX_UNIT));
             u = scratchLightmapUv.x;
             v = scratchLightmapUv.y;
             texture = unitBinding;
@@ -582,6 +584,17 @@ public class BatchingFontRenderer {
         endBatch();
     }
 
+    public void resetAfterCrash() {
+        discardDeferredText();
+        batchDepth = 0;
+        deferredCmdWatermark = 0;
+        deferredVertexPos = 0;
+        deferredIdxPos = 0;
+        truncateBatchToWatermark();
+        arenaOwner = null;
+        flushLastTexture = null;
+    }
+
     private void deferBatch() {
         sealBatchSegment();
         if (batchSegments.isEmpty()) {
@@ -609,11 +622,16 @@ public class BatchingFontRenderer {
             return;
         }
 
-        GLStateManager.beginForeignDraw();
+        final boolean locked = GLStateManager.acquireDrawLock();
         try {
-            flushDeferredTextInner();
+            GLStateManager.beginForeignDraw();
+            try {
+                flushDeferredTextInner();
+            } finally {
+                GLStateManager.endForeignDraw();
+            }
         } finally {
-            GLStateManager.endForeignDraw();
+            if (locked) GLStateManager.releaseDrawLock();
         }
     }
 
@@ -848,8 +866,15 @@ public class BatchingFontRenderer {
             lightmapSamplerProgram = fontShaderId;
         }
 
+        final GLContextState glCtx = GLStateManager.ctx();
+        if (vaoContext != glCtx) {
+            vaoContext = glCtx;
+            vaoBuffer = -1;
+        }
+        int fontVAO = glCtx.fontVao;
         if (fontVAO == 0) {
             fontVAO = GLStateManager.glGenVertexArrays();
+            glCtx.fontVao = fontVAO;
 
             GLStateManager.glBindVertexArray(fontVAO);
             ebo.bind();
