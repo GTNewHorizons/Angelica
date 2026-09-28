@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.PassRebindGate;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import com.gtnewhorizons.angelica.rendering.RenderRecovery;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBlendScope;
+import com.gtnewhorizons.angelica.rendering.tesr.TesrProviderDispatch;
 import com.prupe.mcpatcher.ctm.CTMUtils;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.tileentity.TileEntityRendererDispatcher;
@@ -22,7 +23,7 @@ public class MixinTileEntityRendererDispatcher {
         TesrBlendScope.enter();
         CTMUtils.clearCurrentCompact();
         CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(te == null ? null : te.getBlockType(), te == null ? 0 : te.getBlockMetadata());
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(te == null ? null : te.getBlockType(), TesrProviderDispatch.blockMetadata(te));
         TesrAttribution.currentRenderable = te != null ? te.getClass() : null;
         PassRebindGate.rebindIfDirty();
     }
