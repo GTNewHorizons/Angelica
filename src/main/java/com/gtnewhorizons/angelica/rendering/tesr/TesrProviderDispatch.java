@@ -21,7 +21,17 @@ public final class TesrProviderDispatch {
         if (matches == null) return 0;
         final Int2IntMap metaMap = matches.get(block);
         if (metaMap == null) return 0;
-        return Math.max(0, metaMap.get(te.getBlockMetadata()));
+        return Math.max(0, metaMap.get(blockMetadata(te)));
+    }
+
+    /**
+     * Item renderers often hand a world-less dummy TE to the dispatcher, and some mods override getBlockMetadata()
+     * to read the world unconditionally (e.g. EFR shulker boxes), so don't call it without a world.
+     */
+    public static int blockMetadata(TileEntity te) {
+        if (te == null) return 0;
+        if (te.getWorldObj() == null) return Math.max(0, te.blockMetadata);
+        return te.getBlockMetadata();
     }
 
     public static boolean tryRender(Object renderer, TileEntity te, double x, double y, double z) {
@@ -30,7 +40,7 @@ public final class TesrProviderDispatch {
         if (key == null) return false;
 
         CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(te == null ? null : te.getBlockType(), te == null ? 0 : te.getBlockMetadata());
+        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(te == null ? null : te.getBlockType(), blockMetadata(te));
         GLStateManager.glPushMatrix();
         try {
             provider.angelica$transform(te, x, y, z);
