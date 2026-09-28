@@ -1470,11 +1470,11 @@ public class BatchingFontRenderer {
                 }
 
                 if (darkModeRecolorEnabled) {
-                    DarkModeUtils.GuiFontRecolor recolor = DarkModeUtils.computeGuiFontRecolor(curColor);
-                    if (recolor != null) {
-                        curColor = recolor.color();
-                        curShadowColor = (curShadowColor & 0xFF000000) | recolor.shadowRgb();
-                        curShadow = recolor.shadow();
+                    long recolor = DarkModeUtils.computeGuiFontRecolor(curColor);
+                    if (recolor != DarkModeUtils.NO_RECOLOR) {
+                        curColor = DarkModeUtils.unpackColor(recolor);
+                        curShadowColor = (curShadowColor & 0xFF000000) | DarkModeUtils.unpackShadowRgb(recolor);
+                        curShadow = DarkModeUtils.unpackShadow(recolor);
                     }
                 }
 

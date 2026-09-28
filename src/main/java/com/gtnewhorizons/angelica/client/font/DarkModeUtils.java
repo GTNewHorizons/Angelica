@@ -196,12 +196,31 @@ public class DarkModeUtils {
         return found;
     }
 
-    public static GuiFontRecolor computeGuiFontRecolor(int argbColor) {
+    public static final long NO_RECOLOR = -1L;
+
+    public static long computeGuiFontRecolor(int argbColor) {
         FontRecolorRule rule = guiFontRule;
         if (rule == null) {
-            return null;
+            return NO_RECOLOR;
         }
         return rule.tryRecolor(argbColor);
+    }
+
+    // layout: newColor (32), shadowRgb (24, no alpha), zeroes (7), shadow (1)
+    private static long packRecolor(int newColor, int shadowRgb, boolean shadow) {
+        return ((long) newColor << 32) | ((long) (shadowRgb & 0xFFFFFF) << 8) | (shadow ? 1L : 0L);
+    }
+
+    public static int unpackColor(long packed) {
+        return (int) (packed >>> 32);
+    }
+
+    public static int unpackShadowRgb(long packed) {
+        return (int) ((packed >>> 8) & 0xFFFFFF);
+    }
+
+    public static boolean unpackShadow(long packed) {
+        return (packed & 1L) != 0;
     }
 
     /**
@@ -234,8 +253,6 @@ public class DarkModeUtils {
         return 0x00FF0000 | animated;
     }
 
-    public record GuiFontRecolor(int color, int shadowRgb, boolean shadow) {}
-
     private record PackDarkModeRules(FontRecolorRule guiFont, ButtonFontRules buttonFont) {}
 
     private record ButtonFontRules(ButtonColorRule enabled, ButtonColorRule hovered, ButtonColorRule disabled) {}
@@ -262,7 +279,7 @@ public class DarkModeUtils {
             this.shadow = shadow;
         }
 
-        GuiFontRecolor tryRecolor(int argbColor) {
+        long tryRecolor(int argbColor) {
             final int r = (argbColor >> 16) & 0xFF;
             final int g = (argbColor >> 8) & 0xFF;
             final int b = argbColor & 0xFF;
@@ -270,13 +287,13 @@ public class DarkModeUtils {
             final boolean nearBlack = r <= minR && g <= minG && b <= minB;
             final boolean nearWhite = r >= maxR && g >= maxG && b >= maxB;
             if (!nearBlack && !nearWhite) {
-                return null;
+                return NO_RECOLOR;
             }
 
             final int outputRgb = debugPulse ? computeDebugPulseRgb() : output;
             final int newColor = (argbColor & 0xFF000000) | outputRgb;
             final int shadowRgb = (outputRgb & 0xFCFCFC) >> 2;
-            return new GuiFontRecolor(newColor, shadowRgb, shadow);
+            return packRecolor(newColor, shadowRgb, shadow);
         }
     }
 }
