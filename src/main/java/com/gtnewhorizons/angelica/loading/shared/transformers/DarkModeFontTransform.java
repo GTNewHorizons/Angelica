@@ -152,6 +152,15 @@ public class DarkModeFontTransform {
         RecolorTarget.includeMethod(
             new MethodInfo("ca.wescook.nutrition.gui.GuiLabelNutrition drawLabel(Lnet/minecraft/client/Minecraft;II)V")
         ),
+            // Railcraft
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("mods.railcraft.client.gui.GuiBasic func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("mods.railcraft.client.gui.GuiTools drawCenteredString(Lnet/minecraft/client/gui/FontRenderer;Ljava/lang/String;II)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("mods.railcraft.client.gui.GuiBasic func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("mods.railcraft.client.gui.GuiBasic drawExtras(IIF)V")
+        ),
             // Steve's Factory Manager
         RecolorTarget.includeMethodCall(
             new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawString(Ljava/lang/String;IIFI)V"),
@@ -319,6 +328,14 @@ public class DarkModeFontTransform {
             // RemoteIO
         RecolorTarget.includeButtonMethod(
             new MethodInfo("remoteio.client.gui.button.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
+        ),
+            // Railcraft
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("mods.railcraft.client.gui.buttons.GuiBetterButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton"),
+            0xE0E0E0, 0xFFFFA0, 0x777777
+        ),
+        RecolorTarget.includeButtonMethod(
+            new MethodInfo("mods.railcraft.client.gui.buttons.GuiMultiButton func_146112_a(Lnet/minecraft/client/Minecraft;II)V # drawButton")
         ),
             // BuildCraft
         RecolorTarget.includeButtonMethod(
