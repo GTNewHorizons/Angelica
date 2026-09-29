@@ -180,7 +180,7 @@ DependencyHandlerScope.of(dependencies).apply {
     // Distant Horizons
     compileOnly(libs.distant.horizons.api)
 
-    compileOnly(files("/dependencies/fluidlogged-mc1.7.10-0.1.2.jar"))
+    compileOnly("mega:fluidlogged-mc1.7.10:0.1.2")
 
     compileOnly("com.cardinalstar.cubicchunks:CubicChunks1710:v0.1.5-alpha:dev") { isTransitive = false }
 }
@@ -205,7 +205,7 @@ afterEvaluate {
 
         glsmTestFixtures(testFixtures(project(":glsm")) as ModuleDependency) { isTransitive = false }
         testCompileOnly(testFixtures(project(":glsm")))
-        testImplementation(files("/dependencies/fluidlogged-mc1.7.10-0.1.2.jar"))
+        testImplementation("mega:fluidlogged-mc1.7.10:0.1.2")
 
         testRuntimeOnly(libs.fastutil)
         testRuntimeOnly(libs.joml)

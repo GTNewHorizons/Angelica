@@ -2,10 +2,6 @@ import com.modrinth.minotaur.TaskModrinthUpload
 import net.darkhax.curseforgegradle.TaskPublishCurseForge
 import xyz.wagyourtail.jvmdg.gradle.task.files.DowngradeFiles
 
-dependencies {
-    compileOnly(files("/dependencies/fluidlogged-mc1.7.10-0.1.2.jar"))
-}
-
 plugins {
     id("com.gtnewhorizons.gtnhconvention")
 }
