@@ -26,6 +26,8 @@ import java.awt.image.Raster;
 import java.nio.IntBuffer;
 import java.util.Objects;
 
+import static com.gtnewhorizons.angelica.client.font.FontStrategist.getFontName;
+
 public final class FontProviderCustom implements FontProvider {
 
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
@@ -52,7 +54,7 @@ public final class FontProviderCustom implements FontProvider {
         }
         int fontPos = -1;
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(myFontName, availableFonts[i].getFontName())) {
+            if (Objects.equals(myFontName, getFontName(availableFonts[i]))) {
                 fontPos = i;
                 break;
             }
