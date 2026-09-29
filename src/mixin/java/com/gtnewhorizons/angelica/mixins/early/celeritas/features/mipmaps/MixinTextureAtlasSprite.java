@@ -54,6 +54,8 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     private boolean celeritas$alwaysTranslucent;
     @Unique
     private int angelica$gutterWidth;
+    @Unique
+    private boolean angelica$uploaded;
 
     @Unique
     private static boolean celeritas$isAlwaysTranslucent(String name) {
@@ -187,6 +189,18 @@ public abstract class MixinTextureAtlasSprite implements SpriteExtension {
     @Override
     public void angelica$setGutterWidth(int gutter) {
         this.angelica$gutterWidth = gutter;
+    }
+
+    @Override
+    public void angelica$setUploaded(boolean uploaded) {
+        this.angelica$uploaded = uploaded;
+    }
+
+    @Override
+    public boolean angelica$takeUploaded() {
+        final boolean uploaded = this.angelica$uploaded;
+        this.angelica$uploaded = false;
+        return uploaded;
     }
 
     @Override

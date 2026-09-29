@@ -19,6 +19,7 @@ import org.lwjgl.opengl.GL30;
 import org.lwjgl.system.MemoryUtil;
 
 import java.nio.ByteBuffer;
+import java.nio.IntBuffer;
 
 import static com.gtnewhorizons.angelica.sdlgpu.glsm.GlsmSdlHeadlessRig.SIZE;
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -178,6 +179,44 @@ class GlsmSdlCopyBlitTest {
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, 4, SIZE - 5, GREEN, "color aspect of a color+depth blit");
     }
 
+    private static void blitLevelOneInto(int dstSize, int dstLevel) {
+        final int source = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 1, RED);
+        uploadLevel(1, SIZE / 2, GREEN);
+        final int destination = GlsmSdlHeadlessRig.createSolidMipTexture(dstSize, dstLevel, BLUE);
+        final int readFbo = GlsmSdlHeadlessRig.fboWithColor(source, 1);
+        final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(destination, dstLevel);
+
+        final int dstExtent = Math.max(1, dstSize >> dstLevel);
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+        GLStateManager.glBlitFramebuffer(0, 0, SIZE / 2, SIZE / 2, 0, 0, dstExtent, dstExtent, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+
+        GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(destination, dstLevel), GREEN, "destination level " + dstLevel + " after blitting source level 1");
+        GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(source, 0), RED, "source level 0 is not the blit source");
+        if (dstLevel != 0) GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(destination, 0), BLUE, "destination level 0 is not the blit target");
+
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLStateManager.glDeleteFramebuffers(readFbo);
+        GLStateManager.glDeleteFramebuffers(drawFbo);
+        GLStateManager.glDeleteTextures(source);
+        GLStateManager.glDeleteTextures(destination);
+    }
+
+    @Test
+    void blitFramebufferReadsTheSourceAttachmentLevel() {
+        blitLevelOneInto(SIZE / 2, 0);
+    }
+
+    @Test
+    void scaledBlitFramebufferReadsTheSourceAttachmentLevel() {
+        blitLevelOneInto(SIZE, 0);
+    }
+
+    @Test
+    void blitFramebufferWritesTheDestinationAttachmentLevel() {
+        blitLevelOneInto(SIZE, 1);
+    }
+
     @Test
     void blitFramebufferIntoFbo0SurvivesTheFramesFirstFbo0Pass() {
         GlsmSdlHeadlessRig.bindTarget();
@@ -244,5 +283,139 @@ class GlsmSdlCopyBlitTest {
         final int[] pixels = GlsmSdlHeadlessRig.readTarget();
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, 4, RED, "stencil carried by the blit");
         GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, SIZE / 2, SIZE - 5, BLUE, "outside the blitted stencil");
+    }
+
+    private static final int UNTOUCHED = 0xFF101010;
+    private static final int CELL = 8;
+
+    private static int pattern(int x, int y) {
+        return 0xFF000040 | ((x / CELL) * 32 << 16) | ((y / CELL) * 32 << 8);
+    }
+
+    private static int createPatternTexture() {
+        final int id = GlsmSdlHeadlessRig.newNearestTexture();
+        GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_MAX_LEVEL, 0);
+        final ByteBuffer texels = MemoryUtil.memAlloc(SIZE * SIZE * 4);
+        try {
+            for (int y = 0; y < SIZE; y++) {
+                for (int x = 0; x < SIZE; x++) {
+                    final int argb = pattern(x, y);
+                    final int i = (y * SIZE + x) * 4;
+                    texels.put(i, (byte) ((argb >> 16) & 0xFF));
+                    texels.put(i + 1, (byte) ((argb >> 8) & 0xFF));
+                    texels.put(i + 2, (byte) (argb & 0xFF));
+                    texels.put(i + 3, (byte) ((argb >>> 24) & 0xFF));
+                }
+            }
+            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA8, SIZE, SIZE, 0, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, texels);
+        } finally {
+            MemoryUtil.memFree(texels);
+        }
+        return id;
+    }
+
+    private static int[] blitPattern(int srcX0, int srcY0, int srcX1, int srcY1, int dstX0, int dstY0, int dstX1, int dstY1) {
+        final int source = createPatternTexture();
+        final int destination = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 0, UNTOUCHED);
+        final int readFbo = GlsmSdlHeadlessRig.fboWithColor(source, 0);
+        final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(destination, 0);
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+        GLStateManager.glBlitFramebuffer(srcX0, srcY0, srcX1, srcY1, dstX0, dstY0, dstX1, dstY1, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+        final int[] pixels = GlsmSdlHeadlessRig.readTextureLevel(destination, 0);
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLStateManager.glDeleteFramebuffers(readFbo);
+        GLStateManager.glDeleteFramebuffers(drawFbo);
+        GLStateManager.glDeleteTextures(source);
+        GLStateManager.glDeleteTextures(destination);
+        return pixels;
+    }
+
+    @Test
+    void blitFramebufferWithReversedSourceXMirrorsHorizontally() {
+        final int[] pixels = blitPattern(SIZE, 0, 0, SIZE, 0, 0, SIZE, SIZE);
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = 0; x < SIZE; x++) {
+                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(SIZE - 1 - x, y), "horizontal mirror");
+            }
+        }
+    }
+
+    @Test
+    void blitFramebufferWithReversedDestinationYMirrorsVertically() {
+        final int[] pixels = blitPattern(0, 0, SIZE, SIZE, 0, SIZE, SIZE, 0);
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = 0; x < SIZE; x++) {
+                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(x, SIZE - 1 - y), "vertical mirror");
+            }
+        }
+    }
+
+    @Test
+    void blitFramebufferWithBothRangesReversedDoesNotMirror() {
+        final int[] pixels = blitPattern(SIZE, SIZE, 0, 0, SIZE, SIZE, 0, 0);
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = 0; x < SIZE; x++) {
+                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(x, y), "both ranges reversed");
+            }
+        }
+    }
+
+    @Test
+    void mirroredScaledBlitClipsTheOutOfBoundsSourceOnTheMirroredSide() {
+        final int[] pixels = blitPattern(SIZE + SIZE / 2, 0, SIZE / 2, SIZE / 2, 0, 0, SIZE / 2, SIZE);
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = 0; x < SIZE; x++) {
+                if (x < SIZE / 4 || x >= SIZE / 2) {
+                    GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, UNTOUCHED, "outside the in-bounds part of the mirrored source");
+                    continue;
+                }
+                final int sx = SIZE + SIZE / 2 - 1 - 2 * x;
+                final int sy = y / 2;
+                if ((sx - 1) / CELL != (sx + 1) / CELL || (sy - 1) / CELL != (sy + 1) / CELL) continue;
+                GlsmSdlHeadlessRig.assertPixel(pixels, SIZE, x, y, pattern(sx, sy), "mirrored scaled blit");
+            }
+        }
+    }
+
+    @Test
+    void blitFramebufferWritesEveryDrawBuffer() {
+        final int source = createPatternTexture();
+        final int first = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 0, UNTOUCHED);
+        final int skipped = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 0, UNTOUCHED);
+        final int third = GlsmSdlHeadlessRig.createSolidMipTexture(SIZE, 0, UNTOUCHED);
+        final int readFbo = GlsmSdlHeadlessRig.fboWithColor(source, 0);
+        final int drawFbo = GlsmSdlHeadlessRig.fboWithColor(first, 0);
+        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT1, GL11.GL_TEXTURE_2D, skipped, 0);
+        GLStateManager.glFramebufferTexture2D(GL30.GL_FRAMEBUFFER, GL30.GL_COLOR_ATTACHMENT2, GL11.GL_TEXTURE_2D, third, 0);
+        final IntBuffer bufs = MemoryUtil.memAllocInt(3);
+        try {
+            bufs.put(0, GL30.GL_COLOR_ATTACHMENT0).put(1, GL11.GL_NONE).put(2, GL30.GL_COLOR_ATTACHMENT2);
+            GLStateManager.glDrawBuffers(bufs);
+        } finally {
+            MemoryUtil.memFree(bufs);
+        }
+
+        GLStateManager.glBindFramebuffer(GL30.GL_READ_FRAMEBUFFER, readFbo);
+        GLStateManager.glBindFramebuffer(GL30.GL_DRAW_FRAMEBUFFER, drawFbo);
+        GLStateManager.glBlitFramebuffer(0, 0, SIZE, SIZE, 0, 0, SIZE, SIZE, GL11.GL_COLOR_BUFFER_BIT, GL11.GL_NEAREST);
+
+        final int[] firstPixels = GlsmSdlHeadlessRig.readTextureLevel(first, 0);
+        final int[] thirdPixels = GlsmSdlHeadlessRig.readTextureLevel(third, 0);
+        for (int y = 0; y < SIZE; y++) {
+            for (int x = 0; x < SIZE; x++) {
+                GlsmSdlHeadlessRig.assertPixel(firstPixels, SIZE, x, y, pattern(x, y), "draw buffer 0");
+                GlsmSdlHeadlessRig.assertPixel(thirdPixels, SIZE, x, y, pattern(x, y), "draw buffer 2");
+            }
+        }
+        GlsmSdlHeadlessRig.assertUniform(GlsmSdlHeadlessRig.readTextureLevel(skipped, 0), UNTOUCHED, "attachment 1 behind a GL_NONE draw buffer");
+
+        GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+        GLStateManager.glDeleteFramebuffers(readFbo);
+        GLStateManager.glDeleteFramebuffers(drawFbo);
+        GLStateManager.glDeleteTextures(source);
+        GLStateManager.glDeleteTextures(first);
+        GLStateManager.glDeleteTextures(skipped);
+        GLStateManager.glDeleteTextures(third);
     }
 }

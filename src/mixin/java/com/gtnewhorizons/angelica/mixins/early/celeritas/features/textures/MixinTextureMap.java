@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.celeritas.features.textures;
 import com.gtnewhorizons.angelica.mixins.interfaces.TextureMetadataExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.SpriteExtension;
 import com.gtnewhorizons.angelica.rendering.celeritas.TextureMapExtension;
+import com.gtnewhorizons.angelica.textures.atlas.AtlasAssembler;
 import com.google.common.collect.Lists;
 import com.gtnewhorizons.angelica.utils.MipmapStrategies;
 import com.gtnewhorizons.angelica.utils.MipmapStrategy;
@@ -32,6 +33,7 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -140,8 +142,18 @@ public class MixinTextureMap implements TextureMapExtension {
             target = "Lnet/minecraft/client/renderer/texture/TextureUtil;uploadTextureMipmap([[IIIIIZZ)V"))
     private void angelica$uploadPaddedSprite(int[][] frameData, int width, int height, int originX, int originY,
         boolean blur, boolean clamp, @Local(ordinal = 0) TextureAtlasSprite sprite) {
-        SpritePadding.uploadPadded(frameData, width, height, originX, originY,
-            ((SpriteExtension) sprite).angelica$getGutterWidth(), blur, clamp);
+        final SpriteExtension ext = (SpriteExtension) sprite;
+        if (ext.angelica$takeUploaded()) return;
+        SpritePadding.uploadPadded(frameData, width, height, originX, originY, ext.angelica$getGutterWidth(), blur, clamp);
+    }
+
+    @WrapOperation(
+        method = "loadTextureAtlas",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/texture/Stitcher;getStichSlots()Ljava/util/List;"))
+    private List<TextureAtlasSprite> angelica$assembleAtlas(Stitcher stitcher, Operation<List<TextureAtlasSprite>> original) {
+        final List<TextureAtlasSprite> sprites = original.call(stitcher);
+        AtlasAssembler.upload(sprites, this.mipmapLevels, stitcher.getCurrentWidth(), stitcher.getCurrentHeight());
+        return sprites;
     }
 
     /**

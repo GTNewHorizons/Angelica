@@ -28,6 +28,7 @@ public class MixinInitGLStateManager {
 
     @Inject(method = "initializeTextures", at = @At("HEAD"))
     private static void angelica$installSDLDrawable(CallbackInfo ci) {
+        GLSMConfig.workerThreadCount = AngelicaConfig.workerThreadCount;
         SDLGPUGate.ensureDrawableInstalled();
     }
 

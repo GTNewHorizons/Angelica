@@ -6,6 +6,7 @@ import org.junit.jupiter.api.Test;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class SDLGPUFboTargetCacheTest {
@@ -138,6 +139,30 @@ class SDLGPUFboTargetCacheTest {
         assertEquals(0, fbo.depthGlId);
         assertEquals(0, fbo.depthFormat);
         assertTrue(fbo.targetsDirty);
+    }
+
+    @Test
+    void sameTextureAtAnotherLevelChangesStructuralHash() {
+        final FboState fbo = new FboState();
+        fbo.colorTextures[0] = 0xAAAAL;
+        fbo.depthTexture = 0xDDDDL;
+        fbo.recomputeTargets();
+        final long level0 = fbo.structuralLayoutHash;
+
+        fbo.colorLevels[0] = 1;
+        fbo.recomputeTargets();
+        final long colorLevel1 = fbo.structuralLayoutHash;
+        assertNotEquals(level0, colorLevel1);
+
+        fbo.colorLevels[0] = 0;
+        fbo.depthLevel = 1;
+        fbo.recomputeTargets();
+        assertNotEquals(level0, fbo.structuralLayoutHash);
+        assertNotEquals(colorLevel1, fbo.structuralLayoutHash);
+
+        fbo.depthLevel = 0;
+        fbo.recomputeTargets();
+        assertEquals(level0, fbo.structuralLayoutHash);
     }
 
     @Test

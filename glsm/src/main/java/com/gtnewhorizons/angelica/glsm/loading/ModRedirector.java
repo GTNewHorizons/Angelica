@@ -38,6 +38,10 @@ public class ModRedirector {
         return allExclusions;
     }
 
+    public String[] getConstantPoolSearchStrings() {
+        return core.getConstantPoolSearchStrings();
+    }
+
     public boolean shouldTransform(byte[] basicClass) {
         return core.shouldTransform(basicClass);
     }

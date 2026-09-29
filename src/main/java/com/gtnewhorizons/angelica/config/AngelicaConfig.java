@@ -25,6 +25,36 @@ public class AngelicaConfig {
     @Config.RequiresWorldRestart
     public static int chunkBuilderThreadCount;
 
+    @Config.Comment("Decode block and item textures on multiple threads for faster startup. Disable if you notice missing or broken textures.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableParallelAtlasDecode;
+
+    @Config.Comment("Generate texture mipmaps on multiple threads for faster startup. Disable if you notice broken mipmaps.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableParallelAtlasMipmaps;
+
+    @Config.Comment("Upload the block and item texture atlas in large batches instead of one texture at a time. Disable if you notice missing or broken textures.")
+    @Config.DefaultBoolean(true)
+    public static boolean enableBatchedAtlasUpload;
+
+    @Config.Comment("Resource pack classes the player allows to be read on worker threads during texture loading.")
+    @Config.DefaultStringList({})
+    public static String[] atlasTrustedPacks;
+
+    @Config.Comment("Built-in trusted resource pack classes the player has turned off.")
+    @Config.DefaultStringList({})
+    public static String[] atlasDistrustedPacks;
+
+    @Config.Comment("Resource pack classes seen during texture loading that are not trusted. Recorded automatically; trust them from Video Settings > Performance.")
+    @Config.DefaultStringList({})
+    public static String[] atlasObservedPacks;
+
+    @Config.Comment("Worker threads for startup and shader loading work. 0 = automatic.")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 32)
+    @Config.RequiresMcRestart
+    public static int workerThreadCount;
+
     @Config.Comment("Enable NotFine Options")
     @Config.DefaultBoolean(false)
     public static boolean enableNotFineOptions;
