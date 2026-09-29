@@ -1442,7 +1442,7 @@ public class BatchingFontRenderer {
                 final float glyphW = fontProvider.getGlyphW(chr) * glyphScaleX;
                 final float uSz = fontProvider.getUSize(chr);
                 final float vSz = fontProvider.getVSize(chr);
-                final float itOff = curItalic ? 1.0F : 0.0F; // italic offset
+                final float itOff = curItalic ? glyphScaleX : 0.0F; // italic offset
                 final float shadowOffset = fontProvider.getShadowOffset();
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
