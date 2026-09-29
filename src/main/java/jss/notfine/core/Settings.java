@@ -175,8 +175,10 @@ public enum Settings {
         }
     },
     VOID_FOG(new NotFineOptionTickBox(false, OptionImpact.LOW)),
+    ZOOM_CINEMATIC(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     ZOOM_SMOOTH(new NotFineOptionTickBox(true, OptionImpact.LOW)),
     ZOOM_SMOOTH_SPEED(new NotFineOptionSlider(20, 1, 30, 1, OptionImpact.LOW));
+  
 
     public final NotFineOption<?> option;
 
