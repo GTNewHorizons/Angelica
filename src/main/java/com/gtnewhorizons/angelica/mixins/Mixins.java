@@ -150,7 +150,6 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.fontrenderer.MixinGuiIngameForge"
             , "angelica.fontrenderer.MixinFontRenderer"
-            , "angelica.fontrenderer.MixinMCResourceAccessor"
         )
     ),
 

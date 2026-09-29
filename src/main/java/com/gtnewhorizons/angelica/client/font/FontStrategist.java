@@ -2,14 +2,11 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
 import com.gtnewhorizons.angelica.config.FontConfig;
-import com.gtnewhorizons.angelica.mixins.interfaces.ResourceAccessor;
 import cpw.mods.fml.client.SplashProgress;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
-import net.minecraft.client.resources.DefaultResourcePack;
-import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
@@ -25,12 +22,15 @@ import java.nio.charset.StandardCharsets;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.Map;
 import java.util.Objects;
+import java.util.stream.Collectors;
 
 public class FontStrategist {
 
     @Getter
     private static final Font[] availableFonts;
+    private static final Map<Font,String> fontNameMap;
     public static final Logger LOGGER = LogManager.getLogger("Angelica");
     private static final boolean isSafeToUseAwtEnvironmentData = checkIsSafeToUseAwtEnvironmentData();
 
@@ -74,20 +74,13 @@ public class FontStrategist {
 
         loadBundledFonts(fontSet);
 
-        availableFonts = fontSet.values().stream().sorted(Comparator.comparing(Font::getFontName)).toArray(Font[]::new);
+        fontNameMap = fontSet.entrySet().stream().collect(Collectors.toMap(Map.Entry::getValue, Map.Entry::getKey));
+        availableFonts = fontSet.values().stream().sorted(Comparator.comparing(fontNameMap::get)).toArray(Font[]::new);
+    }
 
-        // create and add the resource pack that provides fonts
-        HashMap<String, File> packMap = new HashMap<>();
-        for (int i = 0; i < FontProviderCustom.ATLAS_COUNT; i++) {
-            packMap.put(FontProviderCustom.getPrimary().getAtlasResourceName(i), new File(FontProviderCustom.getPrimary().getAtlasFullPath(i)));
-            packMap.put(FontProviderCustom.getFallback().getAtlasResourceName(i), new File(FontProviderCustom.getFallback().getAtlasFullPath(i)));
-        }
-
-        Minecraft mc = Minecraft.getMinecraft();
-        DefaultResourcePack fontResourcePack = new DefaultResourcePack(packMap);
-
-        ((ResourceAccessor) mc).angelica$getDefaultResourcePacks().add(fontResourcePack);
-        ((SimpleReloadableResourceManager) mc.getResourceManager()).reloadResourcePack(fontResourcePack);
+    // reduces allocations
+    public static String getFontName(Font font) {
+        return fontNameMap.get(font);
     }
 
     private static boolean checkIsSafeToUseAwtEnvironmentData() {
@@ -181,10 +174,11 @@ public class FontStrategist {
         FontProviderCustom.getPrimary().setFont(null);
         FontProviderCustom.getFallback().setFont(null);
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(FontConfig.customFontNamePrimary, availableFonts[i].getFontName())) {
+            String fontName = getFontName(availableFonts[i]);
+            if (Objects.equals(FontConfig.customFontNamePrimary, fontName)) {
                 FontProviderCustom.getPrimary().reloadFont(i);
             }
-            if (Objects.equals(FontConfig.customFontNameFallback, availableFonts[i].getFontName())) {
+            if (Objects.equals(FontConfig.customFontNameFallback, fontName)) {
                 FontProviderCustom.getFallback().reloadFont(i);
             }
         }
