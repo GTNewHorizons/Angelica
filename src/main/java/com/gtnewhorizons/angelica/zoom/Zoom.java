@@ -43,6 +43,10 @@ public class Zoom {
         return zoomEnabled;
     }
 
+    public static boolean isCinematicCameraEnabled(){
+        return (boolean)Settings.ZOOM_CINEMATIC.option.getStore();
+    }
+
     public static void modifyZoom(int eventDWheel) {
         if (eventDWheel == 0) return;
         zoom = MathHelper.clamp_float((float) (zoom * Math.pow(ZOOM_STEP, Integer.signum(eventDWheel))), ZOOM_MIN, ZOOM_MAX);

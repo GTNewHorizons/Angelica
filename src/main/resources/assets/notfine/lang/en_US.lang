@@ -83,3 +83,5 @@ options.zoom_smooth=Smooth Zoom
 options.zoom_smooth.tooltip=Smoothly interpolates the camera toward the zoom level instead of snapping instantly.
 options.zoom_smooth_speed=Smooth Zoom Speed
 options.zoom_smooth_speed.tooltip=How fast smooth zoom converges to the target zoom. Higher is snappier, lower is floatier. No effect when Smooth Zoom is off.
+options.zoom_cinematic=Cinematic Camera Zoom
+options.zoom_cinematic.tooltip=Whether or not to use the Cinematic Camera smooth movement. Off is standard Minecraft mouse camera movement where camera snaps to mouse position. On is floating uninterrupted movement after initial mouse movement, where the camera continues to shift after halting mouse movement.
