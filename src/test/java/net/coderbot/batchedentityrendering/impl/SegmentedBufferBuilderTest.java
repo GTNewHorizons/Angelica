@@ -69,7 +69,7 @@ class SegmentedBufferBuilderTest {
 
     static RenderLayer layer(String name, TransparencyType transparencyType) {
         final TesrMaterial material = transparencyType == TransparencyType.OPAQUE ? OPAQUE_MATERIAL : TRANSLUCENT_MATERIAL;
-        return RenderLayer.tesr(new ResourceLocation("angelicatest", name), material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
+        return RenderLayer.tesr(new ResourceLocation("angelicatest", name), material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
     }
 
     static ModelQuad quad() {

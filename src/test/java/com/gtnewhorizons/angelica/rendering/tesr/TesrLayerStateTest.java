@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering.tesr;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.MatrixHelper;
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrShaders;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
@@ -7,13 +8,18 @@ import com.gtnewhorizons.angelica.glsm.GLCoreTest;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
+import com.gtnewhorizons.angelica.glsm.hooks.TextureUtilHooks;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
 import net.coderbot.batchedentityrendering.impl.AngelicaBufferSource;
 import net.coderbot.batchedentityrendering.impl.TransparencyType;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
+import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.layer.PassOverride;
+import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.minecraft.util.ResourceLocation;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterEach;
@@ -21,6 +27,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL20;
+import org.lwjgl.opengl.GL30;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -28,6 +36,7 @@ import java.util.List;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -77,7 +86,7 @@ class TesrLayerStateTest {
     }
 
     private static RenderLayer layer(TesrMaterial material) {
-        return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true);
+        return RenderLayer.tesr(null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
     }
 
     @Test
@@ -138,7 +147,7 @@ class TesrLayerStateTest {
         final AngelicaBufferSource source = new AngelicaBufferSource();
         final RenderLayer liquid = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
         final RenderLayer glint = glint(ShaderGlint.NO_TINT);
-        final RenderLayer bottle = RenderLayer.tesr(null, EntityMaterials.DROPPED_ITEM_CUTOUT, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
+        final RenderLayer bottle = RenderLayer.tesr(null, EntityMaterials.DROPPED_ITEM_CUTOUT, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true, true);
         final List<RenderLayer> drawn = new ArrayList<>();
         final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
             @Override
@@ -166,8 +175,164 @@ class TesrLayerStateTest {
         }
     }
 
+    @Test
+    void batchDrawDoesNotInheritTheInterruptedRenderersTextureMatrixOrIrisOverride() {
+        final AngelicaBufferSource source = new AngelicaBufferSource();
+        final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final int[] draws = { 0 };
+        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
+            @Override
+            public boolean hasDraws(RenderLayer candidate) {
+                return candidate == layer;
+            }
+
+            @Override
+            public void drawLayer(RenderLayer drawn) {
+                draws[0]++;
+                assertTrue(MatrixHelper.isIdentity(GLStateManager.getTextures().getTextureUnitMatrix(0)), "unit 0 texture matrix during batch draw");
+                assertNull(GbufferPrograms.getSpecialCondition(), "special condition during batch draw");
+                assertNull(GbufferPrograms.getOverridePhase(), "override phase during batch draw");
+            }
+        };
+        GLStateManager.setTextureMatrix(0, new Matrix4f().translation(0.25f, 0f, 0f));
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.GLINT);
+        GbufferPrograms.pushOverridePhase(WorldRenderingPhase.TERRAIN_CUTOUT);
+        try {
+            source.declareUse(layer);
+            source.endBatch(hook);
+            assertEquals(1, draws[0]);
+            assertEquals(0.25f, GLStateManager.getTextures().getTextureUnitMatrix(0).m30(), "caller texture matrix restored");
+            assertEquals(SpecialCondition.GLINT, GbufferPrograms.getSpecialCondition(), "caller special condition restored");
+            assertEquals(WorldRenderingPhase.TERRAIN_CUTOUT, GbufferPrograms.getOverridePhase(), "caller override phase restored");
+        } finally {
+            GbufferPrograms.popOverridePhase();
+            GbufferPrograms.teardownSpecialRenderCondition();
+            GLStateManager.setTextureMatrix(0, new Matrix4f());
+            source.discard();
+            source.freeBuffers();
+        }
+    }
+
+    @Test
+    void clockwiseFrontFaceIsStoredWithTheLayer() {
+        GLStateManager.glCullFace(GL11.GL_BACK);
+        GLStateManager.glFrontFace(GL11.GL_CW);
+        try {
+            final int cull = DrawState.liveCull();
+            assertEquals(DrawState.CULL_BACK | DrawState.FRONT_FACE_CLOCKWISE, cull);
+            final RenderLayer layer = RenderLayer.tesr(null, TesrMaterial.builder().build(), PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cull, true, true);
+            GLStateManager.glFrontFace(GL11.GL_CCW);
+            final int depth = GLStateManager.pushState(StateSet.BATCH);
+            layer.startDrawing();
+            assertEquals(GL11.GL_CW, GLStateManager.getPolygonState().getFrontFace(), "cached front face");
+            assertEquals(GL11.GL_CW, GL11.glGetInteger(GL11.GL_FRONT_FACE), "driver front face");
+            assertTrue(GL11.glIsEnabled(GL11.GL_CULL_FACE), "cull stays on");
+            layer.endDrawing();
+            GLStateManager.popStateTo(depth);
+            assertEquals(GL11.GL_CCW, GLStateManager.getPolygonState().getFrontFace(), "front face restored by BATCH pop");
+        } finally {
+            GLStateManager.glFrontFace(GL11.GL_CCW);
+        }
+    }
+
+    @Test
+    void batchDrawSwapsOutAForeignProgramAndFramebuffer() {
+        final int program = linkTrivialProgram();
+        final int framebuffer = GLStateManager.glGenFramebuffers();
+        final AngelicaBufferSource source = new AngelicaBufferSource();
+        final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final int[] draws = { 0 };
+        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
+            @Override
+            public boolean hasDraws(RenderLayer candidate) {
+                return candidate == layer;
+            }
+
+            @Override
+            public void drawLayer(RenderLayer drawn) {
+                draws[0]++;
+                assertEquals(0, GLStateManager.getActiveProgram(), "program during batch draw");
+                assertEquals(0, GLStateManager.getDrawFramebuffer(), "framebuffer during batch draw");
+            }
+        };
+        try {
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            BatchDrawDefaults.capturePassFramebuffer();
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, framebuffer);
+            GLStateManager.glUseProgram(program);
+            source.declareUse(layer);
+            source.endBatch(hook);
+            assertEquals(1, draws[0]);
+            assertEquals(program, GLStateManager.getActiveProgram(), "caller program restored");
+            assertEquals(framebuffer, GLStateManager.getDrawFramebuffer(), "caller framebuffer restored");
+        } finally {
+            GLStateManager.glUseProgram(0);
+            GLStateManager.glBindFramebuffer(GL30.GL_FRAMEBUFFER, 0);
+            GLStateManager.glDeleteFramebuffers(framebuffer);
+            GLStateManager.glDeleteProgram(program);
+            source.discard();
+            source.freeBuffers();
+        }
+    }
+
+    @Test
+    void batchDrawUsesTheFilterFromBeforeAnItemRenderersBlurWindow() {
+        final int texture = GLStateManager.glGenTextures();
+        final AngelicaBufferSource source = new AngelicaBufferSource();
+        final RenderLayer layer = layer(EntityMaterials.DROPPED_ITEM_CUTOUT);
+        final int[] draws = { 0 };
+        final AngelicaBufferSource.LayerDrawHook hook = new AngelicaBufferSource.LayerDrawHook() {
+            @Override
+            public boolean hasDraws(RenderLayer candidate) {
+                return candidate == layer;
+            }
+
+            @Override
+            public void drawLayer(RenderLayer drawn) {
+                draws[0]++;
+                assertEquals(GL11.GL_LINEAR, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "filter from before the window");
+            }
+        };
+        try {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_LINEAR);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_LINEAR);
+            // What TextureUtil.func_152777_a(false, false, 1) does around an item render.
+            TextureUtilHooks.captureBoundFilterTexture();
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MIN_FILTER, GL11.GL_NEAREST);
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL11.GL_TEXTURE_MAG_FILTER, GL11.GL_NEAREST);
+            source.declareUse(layer);
+            source.endBatch(hook);
+            assertEquals(1, draws[0]);
+            assertEquals(GL11.GL_NEAREST, TextureInfoCache.INSTANCE.getInfo(texture).getMinFilter(), "window filter restored");
+        } finally {
+            TextureUtilHooks.clearSavedFilterTexture();
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, 0);
+            GLStateManager.glDeleteTextures(texture);
+            source.discard();
+            source.freeBuffers();
+        }
+    }
+
+    private static int linkTrivialProgram() {
+        final int vertex = GLStateManager.glCreateShader(GL20.GL_VERTEX_SHADER);
+        GLStateManager.glShaderSource(vertex, "#version 330 core\nvoid main() { gl_Position = vec4(0.0); }\n");
+        GLStateManager.glCompileShader(vertex);
+        final int fragment = GLStateManager.glCreateShader(GL20.GL_FRAGMENT_SHADER);
+        GLStateManager.glShaderSource(fragment, "#version 330 core\nout vec4 color;\nvoid main() { color = vec4(1.0); }\n");
+        GLStateManager.glCompileShader(fragment);
+        final int program = GLStateManager.glCreateProgram();
+        GLStateManager.glAttachShader(program, vertex);
+        GLStateManager.glAttachShader(program, fragment);
+        GLStateManager.glLinkProgram(program);
+        GLStateManager.glDeleteShader(vertex);
+        GLStateManager.glDeleteShader(fragment);
+        return program;
+    }
+
     private static RenderLayer glint(int slot) {
-        return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot, DrawState.CULL_BACK, true);
+        return RenderLayer.tesr(null, EntityMaterials.GLINT, PassOverride.NONE, 0f, 0f, slot, DrawState.CULL_BACK, true, true);
     }
 
     @Test
@@ -195,14 +360,14 @@ class TesrLayerStateTest {
 
     static RenderLayer capturedLayer(TesrMaterial material) {
         return Reflect.invoke(ModelPartBatcher.INSTANCE, "layerFor",
-            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, int.class, boolean.class },
-            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, liveCull(material), DrawState.liveLit(material));
+            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, int.class, boolean.class, boolean.class },
+            null, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
     }
 
     private static RenderLayer queuedLayer(TesrMaterial material) {
         return Reflect.invoke(TesrBatchRenderer.INSTANCE, "layerFor",
-            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, boolean.class },
-            null, material, PassOverride.NONE, 0f, 0f, liveCull(material), DrawState.liveLit(material));
+            new Class<?>[] { ResourceLocation.class, TesrMaterial.class, PassOverride.class, float.class, float.class, int.class, boolean.class, boolean.class },
+            null, material, PassOverride.NONE, 0f, 0f, liveCull(material), DrawState.liveLit(material), DrawState.liveLightmap());
     }
 
     private static void drawInBatch(RenderLayer layer, boolean culled) {
