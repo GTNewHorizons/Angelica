@@ -39,7 +39,7 @@ public class MixinEntityRenderer_Zoom {
             return settings.smoothCamera || Zoom.isZoomedIn();
         }
         else{
-            return false;
+            return settings.smoothCamera;
         }
     }
 
