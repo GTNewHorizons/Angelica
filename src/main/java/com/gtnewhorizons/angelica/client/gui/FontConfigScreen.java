@@ -57,6 +57,7 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optGlyphSpacing = new SliderClone.Option(-2f, 2f, 0.05f);
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 24, 1);
+    SliderClone.Option optFontBrightness = new SliderClone.Option(0, 1, 0.05f);
     SliderClone.Option optCustomFontScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optShadowOffsetUC = new SliderClone.Option(0, 2, 0.05f);
 
@@ -220,6 +221,16 @@ public class FontConfigScreen extends GuiScreen {
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
+            .option(optFontBrightness)
+            .initialValue(FontConfig.fontBrightness)
+            .setter(value -> FontConfig.fontBrightness = value)
+            .langKey("options.angelica.fontconfig.font_brightness")
+            .formatString("%3.2f")
+            .build()
+        );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
             .option(optCustomFontScale)
             .initialValue(FontConfig.customFontScale)
             .setter(value -> FontConfig.customFontScale = value)
@@ -338,9 +349,9 @@ public class FontConfigScreen extends GuiScreen {
         };
     }
 
-    private float lastMouseX = 0;
-    private float lastMouseY = 0;
-    private long lastStillTime = 0;
+    private int lastMouseX = 0;
+    private int lastMouseY = 0;
+    private long lastMovedTime = -1;
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
         drawBackground(0);
@@ -366,8 +377,9 @@ public class FontConfigScreen extends GuiScreen {
                 this.searchBox.yPosition + this.searchBox.height / 2 - 4, 0xFFFFFF);
         }
         drawCenteredString(this.fontRendererObj, this.title, (int) (this.width * 0.5), 8, 0xFFFFFF);
-        drawCenteredString(this.fontRendererObj, I18n.format("options.angelica.fontconfig.currentfonts",
-            FontConfig.customFontNamePrimary, FontConfig.customFontNameFallback), (int) (this.width * 0.5), this.height - 92, 0xFFFFFF);
+        final int fontInfoTextY = 92;
+        String currentFonts = I18n.format("options.angelica.fontconfig.currentfonts", FontConfig.customFontNamePrimary, FontConfig.customFontNameFallback);
+        drawCenteredString(this.fontRendererObj, currentFonts, (int) (this.width * 0.5), this.height - fontInfoTextY, 0xFFFFFF);
 
         if (this.testAreaInfo == null) {
             this.testAreaInfo = this.fontRendererObj.listFormattedStringToWidth(
@@ -398,6 +410,18 @@ public class FontConfigScreen extends GuiScreen {
 
         super.drawScreen(mouseX, mouseY, delta);
 
+        // tooltip code, can return
+
+        long timeMillis = System.currentTimeMillis();
+
+        if (mouseX != lastMouseX || mouseY != lastMouseY) {
+            lastMovedTime = timeMillis;
+            lastMouseX = mouseX;
+            lastMouseY = mouseY;
+        }
+
+        if (lastMovedTime + 500L > timeMillis) { return; }
+
         for (GuiButton guiButton : buttonList) {
             if (!(guiButton instanceof SliderClone slider)) { continue; }
             final int top = slider.yPosition;
@@ -405,20 +429,18 @@ public class FontConfigScreen extends GuiScreen {
             final int left = slider.xPosition;
             final int right = slider.xPosition + slider.width;
             if (mouseY < top || mouseY >= bot || mouseX < left || mouseX >= right) { continue; }
-            if (mouseX == lastMouseX && mouseY == lastMouseY) {
-                if (lastStillTime == 0) {
-                    lastStillTime = System.currentTimeMillis();
-                }
-                if (lastStillTime + 500L < System.currentTimeMillis()) {
-                    displayTooltip(mouseX, mouseY, slider.tooltipKey);
-                }
-            } else {
-                lastStillTime = 0;
-            }
-            break;
+            displayTooltip(mouseX, mouseY, slider.tooltipKey);
+            return;
         }
-        lastMouseX = mouseX;
-        lastMouseY = mouseY;
+
+        int fontInfoTextWidth = this.fontRendererObj.getStringWidth(currentFonts);
+        int top = this.height - fontInfoTextY - 8;
+        int bot = this.height - fontInfoTextY + 16;
+        int left = this.width / 2 - fontInfoTextWidth / 2 - 8;
+        int right = this.width / 2 + fontInfoTextWidth / 2 + 8;
+        if (top <= mouseY && mouseY < bot && left <= mouseX && mouseX < right) {
+            displayTooltip(mouseX, mouseY, "options.angelica.fontconfig.font_selection_info");
+        }
     }
 
     private void displayTooltip(int x, int y, String langKey) {

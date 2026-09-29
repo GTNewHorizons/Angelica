@@ -83,6 +83,7 @@ public class BatchingFontRenderer {
 
     private final int AAMode;
     private final int AAStrength;
+    private final int fontBrightness;
     private final int alphaTestRefLocation;
     private final int mvpMatrixLocation;
     private final int lightmapLocation;
@@ -126,10 +127,10 @@ public class BatchingFontRenderer {
         FontProviderMC.get(this.isSGA).charWidth = this.charWidth;
         FontProviderMC.get(this.isSGA).locationFontTexture = this.locationFontTexture;
 
-        //noinspection deprecation
         fontShaderId = FontAAShader.getProgram().getProgramId();
         AAMode = GLStateManager.glGetUniformLocation(fontShaderId, "aaMode");
         AAStrength = GLStateManager.glGetUniformLocation(fontShaderId, "strength");
+        fontBrightness = GLStateManager.glGetUniformLocation(fontShaderId, "fontBrightness");
         alphaTestRefLocation = GLStateManager.glGetUniformLocation(fontShaderId, "alphaTestRef");
         mvpMatrixLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_MVPMatrix");
         lightmapLocation = GLStateManager.glGetUniformLocation(fontShaderId, "u_Lightmap");
@@ -769,6 +770,7 @@ public class BatchingFontRenderer {
     private static final Matrix4f scratchModelView = new Matrix4f();
     private int fontAAModeLast = -1;
     private int fontAAStrengthLast = -1;
+    private float fontBrightnessLast = -1;
 
     private void flushBatch() {
         final boolean locked = GLStateManager.acquireDrawLock();
@@ -873,6 +875,10 @@ public class BatchingFontRenderer {
         if (FontConfig.fontAAStrength != fontAAStrengthLast) {
             fontAAStrengthLast = FontConfig.fontAAStrength;
             GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+        }
+        if (FontConfig.fontBrightness != fontBrightnessLast) {
+            fontBrightnessLast = FontConfig.fontBrightness;
+            GLStateManager.glUniform1f(fontBrightness, 0.625f * FontConfig.fontBrightness + 0.1875f);
         }
         GLStateManager.glUniform1f(alphaTestRefLocation, GLStateManager.getAlphaState().getReference());
         if (lightmapSamplerProgram != fontShaderId) {
