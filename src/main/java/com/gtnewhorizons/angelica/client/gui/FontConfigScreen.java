@@ -548,7 +548,7 @@ public class FontConfigScreen extends GuiScreen {
                 currentPrimaryFontName = getFontName(displayedFonts.get(index));
             } else {
                 selectedFallbackFontListPos = index;
-                currentFallbackFontName = getFontName(displayedFonts.get(index));;
+                currentFallbackFontName = getFontName(displayedFonts.get(index));
             }
             applyChanges(false);
         }
