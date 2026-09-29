@@ -14,6 +14,7 @@ import net.minecraft.util.MathHelper;
 
 import com.cardinalstar.cubicchunks.api.compat.CubicChunksVideoSettings;
 import com.google.common.collect.ImmutableList;
+import com.gtnewhorizons.angelica.client.gui.AtlasPackScreen;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
@@ -31,6 +32,7 @@ import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
 import me.jellysquid.mods.sodium.client.gui.options.OptionImpact;
 import me.jellysquid.mods.sodium.client.gui.options.OptionImpl;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
+import me.jellysquid.mods.sodium.client.gui.options.SubScreenOption;
 import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatter;
 import me.jellysquid.mods.sodium.client.gui.options.control.CyclingControl;
 import me.jellysquid.mods.sodium.client.gui.options.control.SliderControl;
@@ -556,6 +558,42 @@ public class SodiumGameOptionPages {
                         .setEnabled(GLStateManager.capabilities != null && GLStateManager.capabilities.OpenGL32)
                         .build())
 
+                .build());
+
+        groups.add(OptionGroup.createBuilder()
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.parallelAtlasDecode"))
+                        .setTooltip(I18n.format("options.angelica.parallelAtlasDecode.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableParallelAtlasDecode = value, opts -> AngelicaConfig.enableParallelAtlasDecode)
+                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.parallelAtlasMipmaps"))
+                        .setTooltip(I18n.format("options.angelica.parallelAtlasMipmaps.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableParallelAtlasMipmaps = value, opts -> AngelicaConfig.enableParallelAtlasMipmaps)
+                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.batchedAtlasUpload"))
+                        .setTooltip(I18n.format("options.angelica.batchedAtlasUpload.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setImpact(OptionImpact.LOW)
+                        .setBinding((opts, value) -> AngelicaConfig.enableBatchedAtlasUpload = value, opts -> AngelicaConfig.enableBatchedAtlasUpload)
+                        .setFlags(OptionFlag.REQUIRES_ASSET_RELOAD)
+                        .build())
+                .add(OptionImpl.createBuilder(int.class, angelicaOpts)
+                        .setName(I18n.format("options.angelica.workerThreads"))
+                        .setTooltip(I18n.format("options.angelica.workerThreads.tooltip"))
+                        .setControl(o -> new SliderControl(o, 0, 32, 1, ControlValueFormatter.quantityOrDisabled("sodium.options.threads.value", "sodium.options.default")))
+                        .setImpact(OptionImpact.MEDIUM)
+                        .setBinding((opts, value) -> AngelicaConfig.workerThreadCount = value, opts -> AngelicaConfig.workerThreadCount)
+                        .setFlags(OptionFlag.REQUIRES_GAME_RESTART)
+                        .build())
+                .add(new SubScreenOption(I18n.format("options.angelica.atlasPacks"), I18n.format("options.angelica.atlasPacks.tooltip"), AtlasPackScreen::new))
                 .build());
 
         if (Iris.enabled) {

@@ -15,6 +15,7 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import com.gtnewhorizons.angelica.sdlgpu.compute.ComputeBinder;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.device.SDLDrawable;
@@ -113,6 +114,8 @@ import com.gtnewhorizons.angelica.sdlgpu.compat.Lwjgl3GLCapabilitiesShim;
 import me.eigenraven.lwjgl3ify.api.GLCapabilitiesOverride;
 
 import static org.lwjgl.sdl.SDLGPU.*;
+import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_HORIZONTAL;
+import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_HORIZONTAL_AND_VERTICAL;
 import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_NONE;
 import static org.lwjgl.sdl.SDLSurface.SDL_FLIP_VERTICAL;
 
@@ -1110,17 +1113,26 @@ public class SDLGPURenderBackend extends RenderBackend {
                 if (db < 0 || db >= ContextState.MAX_COLOR_ATTACHMENTS) continue;
                 final long tex = fbo.colorTextures[db];
                 if (tex == 0) continue;
+                if (fbo.colorLevels[db] != 0) {
+                    fboClearTracker.clearColorLevel(tex, fbo.colorLevels[db], st.clearR, st.clearG, st.clearB, st.clearA);
+                    continue;
+                }
                 FBOClearTracker.recordPendingColorClear(st, tex, st.clearR, st.clearG, st.clearB, st.clearA);
                 if (passActive && tex == activeColor) affectsActivePass = true;
             }
         }
-        if (wantDepth && fbo.depthTexture != 0) {
-            FBOClearTracker.recordPendingDepthClear(st, fbo.depthTexture, st.depthClearValue);
-            if (passActive && fbo.depthTexture == activeDepth) affectsActivePass = true;
-        }
-        if (wantStencil && fbo.depthTexture != 0 && PixelOps.isDepthStencilFormat(fbo.depthFormat)) {
-            FBOClearTracker.recordPendingStencilClear(st, fbo.depthTexture, st.stencilClearValue);
-            if (passActive && fbo.depthTexture == activeDepth) affectsActivePass = true;
+        final boolean clearStencilAspect = wantStencil && fbo.depthTexture != 0 && PixelOps.isDepthStencilFormat(fbo.depthFormat);
+        if (fbo.depthTexture != 0 && fbo.depthLevel != 0) {
+            fboClearTracker.clearDepthStencilLevel(fbo.depthTexture, fbo.depthLevel, wantDepth, st.depthClearValue, clearStencilAspect, st.stencilClearValue);
+        } else {
+            if (wantDepth && fbo.depthTexture != 0) {
+                FBOClearTracker.recordPendingDepthClear(st, fbo.depthTexture, st.depthClearValue);
+                if (passActive && fbo.depthTexture == activeDepth) affectsActivePass = true;
+            }
+            if (clearStencilAspect) {
+                FBOClearTracker.recordPendingStencilClear(st, fbo.depthTexture, st.stencilClearValue);
+                if (passActive && fbo.depthTexture == activeDepth) affectsActivePass = true;
+            }
         }
 
         if (affectsActivePass) {
@@ -1622,6 +1634,37 @@ public class SDLGPURenderBackend extends RenderBackend {
             resourceManager.getTextureHandle(glId),
             staging.slice(), xoffset, yoffset, width, height, level, format, type);
     }
+    @Override public TextureStaging beginTextureStaging(int level, int x, int y, int width, int height) {
+        final int glId = boundTextureFor(s(), GL11.GL_TEXTURE_2D);
+        if (glId == 0) return null;
+        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(glId);
+        if (meta == null || level >= meta.levels()) return null;
+        final long texHandle = resourceManager.getTextureHandle(glId);
+        if (texHandle == 0 || frameManager.getCommandBuffer() == 0) return null;
+        return resourceManager.beginTextureStaging(glId, texHandle, PixelOps.isBgraSdlFormat(meta.sdlFormat()), level, x, y, width, height);
+    }
+
+    @Override public boolean commitTextureStaging(TextureStaging staging) {
+        final ResourceManager.TextureStagingRegion region = (ResourceManager.TextureStagingRegion) staging;
+        final ContextState st = s();
+        final boolean defer = resourceManager.shouldDeferTextureUpload(st, region.glId());
+        if (!defer || !resourceManager.commitTextureStagingDeferred(st, region)) {
+            final long cp = frameManager.ensureCopyPass();
+            if (cp == 0) {
+                resourceManager.abandonTextureStaging(region);
+                return false;
+            }
+            resourceManager.commitTextureStagingInline(cp, region);
+        }
+        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(region.glId());
+        if (meta != null) textureOps.trackMipUploadForTexture(region.glId(), region.level(), meta.levels());
+        return true;
+    }
+
+    @Override public void abandonTextureStaging(TextureStaging staging) {
+        resourceManager.abandonTextureStaging((ResourceManager.TextureStagingRegion) staging);
+    }
+
     @Override public void copyTexSubImage2D(int target, int level, int xoffset, int yoffset, int x, int y, int width, int height) {
         final ContextState cs = s();
         textureOps.copyTexSubImageImpl(cs, boundTextureFor(cs, target), level, xoffset, yoffset, x, y, width, height);
@@ -1836,13 +1879,14 @@ public class SDLGPURenderBackend extends RenderBackend {
             final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
             fbo.colorTextures[colorIdx] = handle;
             fbo.colorGlIds[colorIdx] = texture;
+            fbo.colorLevels[colorIdx] = level;
             resourceManager.markFboAttachment(texture);
             fbo.targetsDirty = true;
             if (meta != null) {
                 fbo.colorFormats[colorIdx] = meta.sdlFormat();
                 if (colorIdx == 0) {
-                    fbo.width = meta.width();
-                    fbo.height = meta.height();
+                    fbo.width = PixelOps.mipLevelSize(meta.width(), level);
+                    fbo.height = PixelOps.mipLevelSize(meta.height(), level);
                 }
             }
             fbo.colorAttachmentCount = Math.max(fbo.colorAttachmentCount, colorIdx + 1);
@@ -1870,6 +1914,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(texture);
             fbo.depthTexture = handle;
             fbo.depthGlId = texture;
+            fbo.depthLevel = level;
             resourceManager.markFboAttachment(texture);
             fbo.targetsDirty = true;
             if (meta != null) {
@@ -2044,6 +2089,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         int depthFormat = 0;
         final int srcWidth;
         final int srcHeight;
+        int srcLevel = 0;
         if (fromFbo0) {
             srcWidth = frameManager.getFbo0Width();
             srcHeight = frameManager.getFbo0Height();
@@ -2063,9 +2109,11 @@ public class SDLGPURenderBackend extends RenderBackend {
                 colorTex = resourceManager.getTextureHandle(colorGlId);
                 colorFormat = meta != null ? meta.sdlFormat() : SDL_GPU_TEXTUREFORMAT_R8G8B8A8_UNORM;
                 if (meta != null) colorBase = PixelPack.glBaseFormat(meta.glFormat());
-                srcWidth = meta != null ? meta.width() : fbo.width;
-                srcHeight = meta != null ? meta.height() : fbo.height;
+                srcLevel = fbo.colorLevels[fbo.readBufferIndex];
+                srcWidth = meta != null ? PixelOps.mipLevelSize(meta.width(), srcLevel) : fbo.width;
+                srcHeight = meta != null ? PixelOps.mipLevelSize(meta.height(), srcLevel) : fbo.height;
             } else {
+                if (fbo.depthLevel != 0) throw new UnsupportedOperationException("glReadPixels of a depth/stencil attachment at level " + fbo.depthLevel + " is not supported on SDL-GPU");
                 depthTex = fbo.depthTexture;
                 depthFormat = fbo.depthFormat;
                 srcWidth = fbo.width;
@@ -2079,7 +2127,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int w = CopyRectClip.width(clip);
         final int h = CopyRectClip.height(clip);
         final int dy = CopyRectClip.dstY(clip, srcY, 0);
-        readback(cs, true, kind, colorTex, colorFormat, colorBase, depthTex, depthFormat, 0, srcWidth, srcHeight,
+        readback(cs, true, kind, colorTex, colorFormat, colorBase, depthTex, depthFormat, srcLevel, srcWidth, srcHeight,
             CopyRectClip.srcX(clip), CopyRectClip.srcY(clip), w, h, fromFbo0,
             width, CopyRectClip.dstX(clip, x, 0), fromFbo0 ? height - h - dy : dy, format, type, dst, pbo, pboOffset);
     }
@@ -2211,6 +2259,9 @@ public class SDLGPURenderBackend extends RenderBackend {
         }
         if (pname == GL30.GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE) {
             return (colorPresent || depthPresent) ? GL11.GL_TEXTURE : GL11.GL_NONE;
+        }
+        if (pname == GL30.GL_FRAMEBUFFER_ATTACHMENT_TEXTURE_LEVEL) {
+            return colorPresent ? fbo.colorLevels[colorIdx] : depthPresent ? fbo.depthLevel : 0;
         }
         if (colorPresent) return colorAttachmentSize(fbo.colorFormats[colorIdx], pname);
         if (depthPresent) return depthAttachmentSize(fbo.depthFormat, pname);
@@ -3707,63 +3758,126 @@ public class SDLGPURenderBackend extends RenderBackend {
         final int fbo0Height = frameManager.getFbo0Height();
         if (anyFbo0 && fbo0Height <= 0) return;
 
-        final long colorSrcTex;
-        final long colorDstTex;
-        final int colorSrcGlId;
-        final int colorDstGlId;
-        if ((mask & GL11.GL_COLOR_BUFFER_BIT) != 0) {
-            colorSrcTex = srcIsFbo0 ? frameManager.getFbo0Texture() : srcFbo.colorTextures[srcFbo.readBufferIndex];
-            colorDstTex = dstIsFbo0 ? frameManager.getFbo0Texture() : dstFbo.colorTextures[0];
-            colorSrcGlId = srcIsFbo0 ? 0 : srcFbo.colorGlIds[srcFbo.readBufferIndex];
-            colorDstGlId = dstIsFbo0 ? 0 : dstFbo.colorGlIds[0];
-        } else {
-            colorSrcTex = 0L;
-            colorDstTex = 0L;
-            colorSrcGlId = 0;
-            colorDstGlId = 0;
-        }
-        final boolean blitColor = colorSrcTex != 0 && colorDstTex != 0 && colorSrcTex != colorDstTex;
+        final boolean colorRequested = (mask & GL11.GL_COLOR_BUFFER_BIT) != 0;
+        final long colorSrcTex = !colorRequested ? 0L : srcIsFbo0 ? frameManager.getFbo0Texture() : srcFbo.colorTextures[srcFbo.readBufferIndex];
+        final int colorSrcGlId = (!colorRequested || srcIsFbo0) ? 0 : srcFbo.colorGlIds[srcFbo.readBufferIndex];
+        final int colorSrcLevel = (!colorRequested || srcIsFbo0) ? 0 : srcFbo.colorLevels[srcFbo.readBufferIndex];
+        final boolean blitColor = colorSrcTex != 0 && (dstIsFbo0 ? frameManager.getFbo0Texture() != 0 : dstFbo.drawBuffers.length > 0);
 
         final boolean depthRequested = (mask & (GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT)) != 0;
         final long depthSrcTex = (depthRequested && !anyFbo0) ? srcFbo.depthTexture : 0L;
         final long depthDstTex = (depthRequested && !anyFbo0) ? dstFbo.depthTexture : 0L;
-        final boolean blitDepth = depthSrcTex != 0 && depthDstTex != 0 && depthSrcTex != depthDstTex;
+        final int depthSrcLevel = depthSrcTex != 0 ? srcFbo.depthLevel : 0;
+        final int depthDstLevel = depthDstTex != 0 ? dstFbo.depthLevel : 0;
+        final boolean blitDepth = depthSrcTex != 0 && depthDstTex != 0 && (depthSrcTex != depthDstTex || depthSrcLevel != depthDstLevel);
 
         if (!blitColor && !blitDepth) return;
+
+        final int srcX = Math.min(srcX0, srcX1);
+        final int dstX = Math.min(dstX0, dstX1);
+        final int srcW = Math.abs(srcX1 - srcX0);
+        final int srcH = Math.abs(srcY1 - srcY0);
+        final int dstW = Math.abs(dstX1 - dstX0);
+        final int dstH = Math.abs(dstY1 - dstY0);
+        if (srcW == 0 || srcH == 0 || dstW == 0 || dstH == 0) return;
+
+        final boolean mirrorX = (srcX1 < srcX0) != (dstX1 < dstX0);
+        final boolean mirrorY = (srcY1 < srcY0) != (dstY1 < dstY0);
+        if (blitDepth && (mirrorX || mirrorY)) {
+            throw new UnsupportedOperationException("glBlitFramebuffer: mirrored depth/stencil blit is not supported on SDL-GPU (src " + srcX0 + "," + srcY0 + "," + srcX1 + "," + srcY1 + " dst " + dstX0 + "," + dstY0 + "," + dstX1 + "," + dstY1 + ")");
+        }
 
         final ContextState cs = s();
         if (dstIsFbo0 || (srcIsFbo0 && (cs.pendingSwapchainClear || cs.pendingSwapchainDepthClear || cs.pendingSwapchainStencilClear))) {
             frameManager.ensureFbo0RenderPass(frameManager.frame(), cs);
         }
 
-        final int srcW = srcX1 - srcX0;
-        final int srcH = srcY1 - srcY0;
-        final int dstW = dstX1 - dstX0;
-        final int dstH = dstY1 - dstY0;
-        final int srcY = srcIsFbo0 ? (fbo0Height - srcY0 - srcH) : srcY0;
-        final int dstY = dstIsFbo0 ? (fbo0Height - dstY0 - dstH) : dstY0;
-        final int flipMode = (srcIsFbo0 != dstIsFbo0) ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE;
+        final int srcY = srcIsFbo0 ? (fbo0Height - Math.max(srcY0, srcY1)) : Math.min(srcY0, srcY1);
+        final int dstY = dstIsFbo0 ? (fbo0Height - Math.max(dstY0, dstY1)) : Math.min(dstY0, dstY1);
+        final boolean flipV = mirrorY != (srcIsFbo0 != dstIsFbo0);
+        final int flipMode = mirrorX ? (flipV ? SDL_FLIP_HORIZONTAL_AND_VERTICAL : SDL_FLIP_HORIZONTAL) : (flipV ? SDL_FLIP_VERTICAL : SDL_FLIP_NONE);
 
         if (blitColor) {
-            resolveBlitClears(cs, colorSrcTex, colorDstTex, colorDstGlId, dstX0, dstY, dstW, dstH, true);
             final ResourceManager.TextureMeta srcMeta = resourceManager.getTextureMeta(colorSrcGlId);
-            final ResourceManager.TextureMeta dstMeta = resourceManager.getTextureMeta(colorDstGlId);
-            if (flipMode == SDL_FLIP_NONE && TextureOps.canCopyInsteadOfBlit(srcMeta, dstMeta, srcW, srcH, dstW, dstH)) {
-                textureOps.copyTexture(colorSrcTex, srcX0, srcY, colorDstTex, 0, dstX0, dstY, srcW, srcH);
+            if (dstIsFbo0) {
+                blitColorTarget(cs, srcMeta, colorSrcTex, colorSrcLevel, srcX, srcY, srcW, srcH, frameManager.getFbo0Texture(), 0, 0, dstX, dstY, dstW, dstH, filter, flipMode, srcIsFbo0, true);
             } else {
-                textureOps.blitTexture(colorSrcTex, srcX0, srcY, srcW, srcH, colorDstTex, 0, dstX0, dstY, dstW, dstH, filter, flipMode);
+                final int[] drawBuffers = dstFbo.drawBuffers;
+                for (int i = 0; i < drawBuffers.length; i++) {
+                    final int db = drawBuffers[i];
+                    if (db < 0 || db >= ContextState.MAX_COLOR_ATTACHMENTS) continue;
+                    final long dstTex = dstFbo.colorTextures[db];
+                    if (dstTex == 0) continue;
+                    blitColorTarget(cs, srcMeta, colorSrcTex, colorSrcLevel, srcX, srcY, srcW, srcH, dstTex, dstFbo.colorGlIds[db], dstFbo.colorLevels[db], dstX, dstY, dstW, dstH, filter, flipMode, srcIsFbo0, false);
+                }
             }
         }
         if (blitDepth) {
             final boolean allAspects = !PixelOps.isDepthStencilFormat(dstFbo.depthFormat) || (mask & (GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT)) == (GL11.GL_DEPTH_BUFFER_BIT | GL11.GL_STENCIL_BUFFER_BIT);
-            resolveBlitClears(cs, depthSrcTex, depthDstTex, dstFbo.depthGlId, dstX0, dstY, dstW, dstH, allAspects);
-            textureOps.copyTexture(depthSrcTex, srcX0, srcY, depthDstTex, 0, dstX0, dstY, srcW, srcH);
+            copyClipped(cs, depthSrcTex, resourceManager.getTextureMeta(srcFbo.depthGlId), depthSrcLevel, srcX, srcY, depthDstTex, resourceManager.getTextureMeta(dstFbo.depthGlId), depthDstLevel, dstX, dstY, srcW, srcH, allAspects);
         }
     }
 
-    private void resolveBlitClears(ContextState cs, long srcTex, long dstTex, int dstGlId, int dstX, int dstY, int dstW, int dstH, boolean allAspects) {
+    private void copyClipped(ContextState cs, long srcTex, ResourceManager.TextureMeta srcMeta, int srcLevel, int sx, int sy, long dstTex, ResourceManager.TextureMeta dstMeta, int dstLevel, int dx, int dy, int w, int h, boolean allAspects) {
+        final long clip = CopyRectClip.clipCopyRect(sx, sy, dx, dy, w, h, TextureOps.levelWidth(srcMeta, srcLevel), TextureOps.levelHeight(srcMeta, srcLevel), TextureOps.levelWidth(dstMeta, dstLevel), TextureOps.levelHeight(dstMeta, dstLevel));
+        if (clip == CopyRectClip.EMPTY) return;
+        final int cw = CopyRectClip.width(clip);
+        final int ch = CopyRectClip.height(clip);
+        final int cdx = CopyRectClip.dstX(clip, sx, dx);
+        final int cdy = CopyRectClip.dstY(clip, sy, dy);
+        resolveBlitClears(cs, srcTex, dstTex, dstMeta, dstLevel, cdx, cdy, cw, ch, allAspects);
+        textureOps.copyTexture(srcTex, srcLevel, CopyRectClip.srcX(clip), CopyRectClip.srcY(clip), dstTex, dstLevel, cdx, cdy, cw, ch);
+    }
+
+    private void blitColorTarget(ContextState cs, ResourceManager.TextureMeta srcMeta, long srcTex, int srcLevel, int sx, int sy, int sw, int sh, long dstTex, int dstGlId, int dstLevel, int dx, int dy, int dw, int dh, int filter, int flipMode, boolean srcIsFbo0, boolean dstIsFbo0) {
+        if (srcTex == dstTex && srcLevel == dstLevel) return;
+        final ResourceManager.TextureMeta dstMeta = resourceManager.getTextureMeta(dstGlId);
+        if (flipMode == SDL_FLIP_NONE && TextureOps.canCopyInsteadOfBlit(srcMeta, dstMeta, sw, sh, dw, dh)) {
+            copyClipped(cs, srcTex, srcMeta, srcLevel, sx, sy, dstTex, dstMeta, dstLevel, dx, dy, sw, sh, true);
+            return;
+        }
+        final boolean flipH = (flipMode & SDL_FLIP_HORIZONTAL) != 0;
+        final boolean flipV = (flipMode & SDL_FLIP_VERTICAL) != 0;
+        final int[] r = cs.blitRect;
+        r[0] = sx; r[1] = sy; r[2] = sw; r[3] = sh;
+        r[4] = dx; r[5] = dy; r[6] = dw; r[7] = dh;
+        if (!clipScaled(r, 0, srcIsFbo0 ? frameManager.getFbo0Width() : TextureOps.levelWidth(srcMeta, srcLevel), srcIsFbo0 ? frameManager.getFbo0Height() : TextureOps.levelHeight(srcMeta, srcLevel), flipH, flipV)) return;
+        if (!clipScaled(r, 4, dstIsFbo0 ? frameManager.getFbo0Width() : TextureOps.levelWidth(dstMeta, dstLevel), dstIsFbo0 ? frameManager.getFbo0Height() : TextureOps.levelHeight(dstMeta, dstLevel), flipH, flipV)) return;
+        resolveBlitClears(cs, srcTex, dstTex, dstMeta, dstLevel, r[4], r[5], r[6], r[7], true);
+        textureOps.blitTexture(srcTex, srcLevel, r[0], r[1], r[2], r[3], dstTex, dstLevel, r[4], r[5], r[6], r[7], filter, flipMode);
+    }
+
+    static boolean clipScaled(int[] r, int a, int limW, int limH, boolean flipH, boolean flipV) {
+        final int b = 4 - a;
+        final int aw = r[a + 2];
+        final int ah = r[a + 3];
+        final int bw = r[b + 2];
+        final int bh = r[b + 3];
+        if (aw <= 0 || ah <= 0 || bw <= 0 || bh <= 0 || limW <= 0 || limH <= 0) return true;
+        final int left = Math.max(0, -r[a]);
+        final int right = Math.max(0, r[a] + aw - limW);
+        final int top = Math.max(0, -r[a + 1]);
+        final int bottom = Math.max(0, r[a + 1] + ah - limH);
+        if (left + right >= aw || top + bottom >= ah) return false;
+        if ((left | right | top | bottom) == 0) return true;
+        final int bLeft = (int) ((long) left * bw / aw);
+        final int bRight = (int) ((long) right * bw / aw);
+        final int bTop = (int) ((long) top * bh / ah);
+        final int bBottom = (int) ((long) bottom * bh / ah);
+        r[a] += left;
+        r[a + 2] -= left + right;
+        r[a + 1] += top;
+        r[a + 3] -= top + bottom;
+        r[b] += flipH ? bRight : bLeft;
+        r[b + 2] -= bLeft + bRight;
+        r[b + 1] += flipV ? bBottom : bTop;
+        r[b + 3] -= bTop + bBottom;
+        return r[b + 2] > 0 && r[b + 3] > 0;
+    }
+
+    private void resolveBlitClears(ContextState cs, long srcTex, long dstTex, ResourceManager.TextureMeta dstMeta, int dstLevel, int dstX, int dstY, int dstW, int dstH, boolean allAspects) {
         fboClearTracker.materializePendingClearForTexture(cs, srcTex);
-        fboClearTracker.resolveDestinationForWrite(cs, dstTex, resourceManager.getTextureMeta(dstGlId), 0, dstX, dstY, 0, dstW, dstH, allAspects);
+        fboClearTracker.resolveDestinationForWrite(cs, dstTex, dstMeta, dstLevel, dstX, dstY, 0, dstW, dstH, allAspects);
     }
     @Override public int createBuffers() { return resourceManager.genBuffer(); }
     @Override public void namedBufferData(int buffer, long size, int usage) {
@@ -4129,6 +4243,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         fboClearTracker.resolveDestinationForWrite(copySt, dstTex, resourceManager.getTextureMeta(dstName), dstLevel, dstX, dstY, dstZ, srcWidth, srcHeight, true);
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return;
+        resourceManager.flushBatchedUploads(cp);
         try (var stack = MemoryStack.stackPush()) {
             final var src = SDL_GPUTextureLocation.calloc(stack)
                 .texture(srcTex).mip_level(srcLevel).x(srcX).y(srcY).z(srcZ);
