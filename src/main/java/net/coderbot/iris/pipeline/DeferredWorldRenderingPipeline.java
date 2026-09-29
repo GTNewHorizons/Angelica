@@ -612,8 +612,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				this.shadowRenderer = new ShadowRenderer(programs.getShadow().orElse(null),
 					programs.getPackDirectives(), shadowRenderTargets, shadowCompositeRenderer,
 					() -> usesSampler(IrisSamplers.USAGE_SHADOWTEX1));
-				Program shadowProgram = table.match(RenderCondition.SHADOW, InputAvailability.of(true, true)).getProgram();
-				Program shadowWaterProgram = table.match(RenderCondition.SHADOW_TRANSLUCENT, InputAvailability.of(true, true)).getProgram();
+				Program shadowProgram = table.match(RenderCondition.SHADOW, SHADOW_INPUTS).getProgram();
+				Program shadowWaterProgram = table.match(RenderCondition.SHADOW_TRANSLUCENT, SHADOW_INPUTS).getProgram();
 				shadowRenderer.setUsesImages((shadowProgram != null && shadowProgram.getActiveImages() > 0) || (shadowWaterProgram != null && shadowWaterProgram.getActiveImages() > 0));
 				shadowRenderer.setPlayerReflectionCaptureEnabled((shadowProgram != null && GLStateManager.glGetUniformLocation(shadowProgram.getProgramId(), "playerAtlas_img") != -1) || (shadowWaterProgram != null && GLStateManager.glGetUniformLocation(shadowWaterProgram.getProgramId(), "playerAtlas_img") != -1));
 			} else {
@@ -1031,8 +1031,24 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 	private void matchPass(RenderCondition condition) {
 		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.COMPILE) return;
 		currentCondition = condition;
-		beginPass(table.match(condition, inputs));
+		beginPass(table.match(condition, inputsFor(condition)));
 	}
+
+	/**
+	 * Shadow passes always get the lightmap attribute: every vertex format they submit carries the lightmap
+	 * element, while the live {@code inputs} flag tracks whether unit 1 has GL_TEXTURE_2D enabled - which the
+	 * shadow pass never does. Keep this consistent with the shadow program lookups in the constructor.
+	 */
+	private InputAvailability inputsFor(RenderCondition condition) {
+		if (condition == RenderCondition.SHADOW || condition == RenderCondition.SHADOW_TRANSLUCENT) {
+			return SHADOW_INPUTS;
+		}
+
+		return inputs;
+	}
+
+	/** Availability used for every shadow pass draw and for the shadow program lookups at load time. */
+	private static final InputAvailability SHADOW_INPUTS = InputAvailability.of(true, true);
 
 	@Override
 	public void onEntityRenderBoundary() {
