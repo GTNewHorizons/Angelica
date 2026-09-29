@@ -21,6 +21,8 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static com.gtnewhorizons.angelica.client.font.FontStrategist.getFontName;
+
 public class FontConfigScreen extends GuiScreen {
 
     private static final Font[] availableFonts = FontStrategist.getAvailableFonts();
@@ -52,11 +54,12 @@ public class FontConfigScreen extends GuiScreen {
     SliderClone.Option optShadowCopies = new SliderClone.Option(1, 8, 1);
     SliderClone.Option optBoldCopies = new SliderClone.Option(1, 8, 1);
     SliderClone.Option optGlyphAspect = new SliderClone.Option(-1, 1, 0.05f);
-    SliderClone.Option optGlyphScale = new SliderClone.Option(0.1f, 3, 0.05f);
+    SliderClone.Option optGlyphScale = new SliderClone.Option(0.25f, 2, 0.01f);
     SliderClone.Option optWhitespaceScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optGlyphSpacing = new SliderClone.Option(-2f, 2f, 0.05f);
     SliderClone.Option optFontAAMode = new SliderClone.Option(0, 2, 1);
     SliderClone.Option optFontAAStrength = new SliderClone.Option(1, 24, 1);
+    SliderClone.Option optFontBrightness = new SliderClone.Option(0, 1, 0.05f);
     SliderClone.Option optCustomFontScale = new SliderClone.Option(0.1f, 3, 0.05f);
     SliderClone.Option optShadowOffsetUC = new SliderClone.Option(0, 2, 0.05f);
 
@@ -69,10 +72,11 @@ public class FontConfigScreen extends GuiScreen {
         this.currentFallbackFontName = FontConfig.customFontNameFallback;
         this.displayedFonts = new ArrayList<>(Arrays.asList(availableFonts));
         for (int i = 0; i < availableFonts.length; i++) {
-            if (Objects.equals(this.currentPrimaryFontName, availableFonts[i].getFontName())) {
+            String fontName = getFontName(availableFonts[i]);
+            if (Objects.equals(this.currentPrimaryFontName, fontName)) {
                 selectedPrimaryFontListPos = i;
             }
-            if (Objects.equals(this.currentFallbackFontName, availableFonts[i].getFontName())) {
+            if (Objects.equals(this.currentFallbackFontName, fontName)) {
                 selectedFallbackFontListPos = i;
             }
         }
@@ -220,6 +224,16 @@ public class FontConfigScreen extends GuiScreen {
         sliders.add(new SliderClone.SliderCloneBuilder()
             .width(sliderWidth)
             .height(sliderHeight)
+            .option(optFontBrightness)
+            .initialValue(FontConfig.fontBrightness)
+            .setter(value -> FontConfig.fontBrightness = value)
+            .langKey("options.angelica.fontconfig.font_brightness")
+            .formatString("%3.2f")
+            .build()
+        );
+        sliders.add(new SliderClone.SliderCloneBuilder()
+            .width(sliderWidth)
+            .height(sliderHeight)
             .option(optCustomFontScale)
             .initialValue(FontConfig.customFontScale)
             .setter(value -> FontConfig.customFontScale = value)
@@ -278,11 +292,11 @@ public class FontConfigScreen extends GuiScreen {
         int pos;
         pos = selectedPrimaryFontListPos;
         if (pos >= 0 && pos < displayedFonts.size()) {
-            FontConfig.customFontNamePrimary = displayedFonts.get(pos).getFontName();
+            FontConfig.customFontNamePrimary = getFontName(displayedFonts.get(pos));
         }
         pos = selectedFallbackFontListPos;
         if (pos >= 0 && pos < displayedFonts.size()) {
-            FontConfig.customFontNameFallback = displayedFonts.get(pos).getFontName();
+            FontConfig.customFontNameFallback = getFontName(displayedFonts.get(pos));
         }
 
         FontStrategist.reloadCustomFontProviders();
@@ -338,9 +352,9 @@ public class FontConfigScreen extends GuiScreen {
         };
     }
 
-    private float lastMouseX = 0;
-    private float lastMouseY = 0;
-    private long lastStillTime = 0;
+    private int lastMouseX = 0;
+    private int lastMouseY = 0;
+    private long lastMovedTime = -1;
     @Override
     public void drawScreen(int mouseX, int mouseY, float delta) {
         drawBackground(0);
@@ -366,8 +380,9 @@ public class FontConfigScreen extends GuiScreen {
                 this.searchBox.yPosition + this.searchBox.height / 2 - 4, 0xFFFFFF);
         }
         drawCenteredString(this.fontRendererObj, this.title, (int) (this.width * 0.5), 8, 0xFFFFFF);
-        drawCenteredString(this.fontRendererObj, I18n.format("options.angelica.fontconfig.currentfonts",
-            FontConfig.customFontNamePrimary, FontConfig.customFontNameFallback), (int) (this.width * 0.5), this.height - 92, 0xFFFFFF);
+        final int fontInfoTextY = 92;
+        String currentFonts = I18n.format("options.angelica.fontconfig.currentfonts", FontConfig.customFontNamePrimary, FontConfig.customFontNameFallback);
+        drawCenteredString(this.fontRendererObj, currentFonts, (int) (this.width * 0.5), this.height - fontInfoTextY, 0xFFFFFF);
 
         if (this.testAreaInfo == null) {
             this.testAreaInfo = this.fontRendererObj.listFormattedStringToWidth(
@@ -398,6 +413,18 @@ public class FontConfigScreen extends GuiScreen {
 
         super.drawScreen(mouseX, mouseY, delta);
 
+        // tooltip code, can return
+
+        long timeMillis = System.currentTimeMillis();
+
+        if (mouseX != lastMouseX || mouseY != lastMouseY) {
+            lastMovedTime = timeMillis;
+            lastMouseX = mouseX;
+            lastMouseY = mouseY;
+        }
+
+        if (lastMovedTime + 500L > timeMillis) { return; }
+
         for (GuiButton guiButton : buttonList) {
             if (!(guiButton instanceof SliderClone slider)) { continue; }
             final int top = slider.yPosition;
@@ -405,20 +432,18 @@ public class FontConfigScreen extends GuiScreen {
             final int left = slider.xPosition;
             final int right = slider.xPosition + slider.width;
             if (mouseY < top || mouseY >= bot || mouseX < left || mouseX >= right) { continue; }
-            if (mouseX == lastMouseX && mouseY == lastMouseY) {
-                if (lastStillTime == 0) {
-                    lastStillTime = System.currentTimeMillis();
-                }
-                if (lastStillTime + 500L < System.currentTimeMillis()) {
-                    displayTooltip(mouseX, mouseY, slider.tooltipKey);
-                }
-            } else {
-                lastStillTime = 0;
-            }
-            break;
+            displayTooltip(mouseX, mouseY, slider.tooltipKey);
+            return;
         }
-        lastMouseX = mouseX;
-        lastMouseY = mouseY;
+
+        int fontInfoTextWidth = this.fontRendererObj.getStringWidth(currentFonts);
+        int top = this.height - fontInfoTextY - 8;
+        int bot = this.height - fontInfoTextY + 16;
+        int left = this.width / 2 - fontInfoTextWidth / 2 - 8;
+        int right = this.width / 2 + fontInfoTextWidth / 2 + 8;
+        if (top <= mouseY && mouseY < bot && left <= mouseX && mouseX < right) {
+            displayTooltip(mouseX, mouseY, "options.angelica.fontconfig.font_selection_info");
+        }
     }
 
     private void displayTooltip(int x, int y, String langKey) {
@@ -477,16 +502,16 @@ public class FontConfigScreen extends GuiScreen {
         if (search == null || search.isEmpty()) {
             results = new ArrayList<>(Arrays.asList(availableFonts));
         } else {
-            results = Arrays.stream(availableFonts).filter((font -> font.getFontName().toLowerCase().contains(search))).collect(Collectors.toCollection(ArrayList::new));
+            results = Arrays.stream(availableFonts).filter((font -> getFontName(font).toLowerCase().contains(search))).collect(Collectors.toCollection(ArrayList::new));
         }
 
         selectedPrimaryFontListPos = -1;
         selectedFallbackFontListPos = -1;
         for (int i = 0; i < results.size(); i++) {
-            if (Objects.equals(currentPrimaryFontName, results.get(i).getFontName())) {
+            if (Objects.equals(currentPrimaryFontName, getFontName(results.get(i)))) {
                 selectedPrimaryFontListPos = i;
             }
-            if (Objects.equals(currentFallbackFontName, results.get(i).getFontName())) {
+            if (Objects.equals(currentFallbackFontName, getFontName(results.get(i)))) {
                 selectedFallbackFontListPos = i;
             }
         }
@@ -520,10 +545,10 @@ public class FontConfigScreen extends GuiScreen {
         protected void onElemClicked(int index, boolean rightClick) {
             if (!rightClick) {
                 selectedPrimaryFontListPos = index;
-                currentPrimaryFontName = displayedFonts.get(index).getFontName();
+                currentPrimaryFontName = getFontName(displayedFonts.get(index));
             } else {
                 selectedFallbackFontListPos = index;
-                currentFallbackFontName = displayedFonts.get(index).getFontName();
+                currentFallbackFontName = getFontName(displayedFonts.get(index));
             }
             applyChanges(false);
         }
@@ -566,7 +591,7 @@ public class FontConfigScreen extends GuiScreen {
             if (index == selectedFallbackFontListPos) {
                 color &= 0x55ffff;
             }
-            drawCenteredString(fontRendererObj, displayedFonts.get(index).getFontName(), this.width / 2, y + 1, color);
+            drawCenteredString(fontRendererObj, getFontName(displayedFonts.get(index)), this.width / 2, y + 1, color);
         }
     }
 }
