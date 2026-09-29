@@ -59,6 +59,30 @@ public final class BakedTransformCapture extends DirectTessellator {
         }
     }
 
+    // While capturing, Tessellator.instance is this tessellator, so vanilla code (e.g. RenderBlocks.renderBlockAsItem)
+    // writes vertices directly instead of going through interceptDraw; bake the transform in here as well.
+    @Override
+    public void addVertex(double x, double y, double z) {
+        final Matrix4fc direct = transform == null ? delta.deltaOrNull(deltaMatrix) : null;
+        if (direct == null) {
+            super.addVertex(x, y, z);
+            return;
+        }
+        scratch.set((float) (x + xOffset), (float) (y + yOffset), (float) (z + zOffset)).mulPosition(direct);
+        super.addVertex(scratch.x - xOffset, scratch.y - yOffset, scratch.z - zOffset);
+    }
+
+    @Override
+    public void setNormal(float nx, float ny, float nz) {
+        final Matrix4fc direct = transform == null ? delta.deltaOrNull(deltaMatrix) : null;
+        if (direct == null) {
+            super.setNormal(nx, ny, nz);
+            return;
+        }
+        scratch.set(nx, ny, nz).mulDirection(direct).normalize();
+        super.setNormal(scratch.x, scratch.y, scratch.z);
+    }
+
     @Override
     protected long writeVertexData(VertexFormat format, int[] rawBuffer, int rawBufferIndex) {
         if (transform != null) {
