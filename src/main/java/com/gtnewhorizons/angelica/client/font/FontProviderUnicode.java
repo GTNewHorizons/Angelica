@@ -3,6 +3,9 @@ package com.gtnewhorizons.angelica.client.font;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.client.renderer.texture.SimpleTexture;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
@@ -127,9 +130,17 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     }
 
     @Override
-    public ResourceLocation getTexture(char chr) {
+    public int getTexture(char chr) {
         final int uniPage = chr / 256;
-        return getUnicodePageLocation(uniPage);
+        ResourceLocation rl = getUnicodePageLocation(uniPage);
+        final TextureManager tm = Minecraft.getMinecraft().getTextureManager();
+        ITextureObject tex = tm.getTexture(rl);
+        if (tex == null) {
+            tex = new SimpleTexture(rl);
+            tm.loadTexture(rl, tex);
+            tex = tm.getTexture(rl);
+        }
+        return tex.getGlTextureId();
     }
 
     @Override
