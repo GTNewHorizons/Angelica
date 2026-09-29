@@ -39,7 +39,7 @@ class RetainedTesrGroupsTest {
     private RenderLayer layer;
 
     static RenderLayer testLayer() {
-        return RenderLayer.tesr(null, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
+        return RenderLayer.tesr(null, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
     }
 
     @BeforeEach

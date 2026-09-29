@@ -17,6 +17,7 @@ import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
+import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
@@ -261,6 +262,7 @@ public class BatchingFontRenderer {
 
     private int deferredCmdWatermark;
     private static final ObjectArrayList<TextSegment> deferredSegments = ObjectArrayList.wrap(new TextSegment[16], 0);
+    private static final BatchDrawDefaults DEFERRED_DRAW_DEFAULTS = new BatchDrawDefaults();
     private static final ObjectArrayList<TextSegment> deferredSegmentPool = ObjectArrayList.wrap(new TextSegment[16], 0);
 
     private final Matrix4f batchProj = new Matrix4f();
@@ -617,21 +619,26 @@ public class BatchingFontRenderer {
     public static void flushDeferredText() {
         if (deferredSegments.isEmpty()) return;
 
-        if (deferredSegments.getFirst().owner.shouldDrawThroughPipeline()) {
-            flushDeferredThroughPipeline();
-            return;
-        }
-
-        final boolean locked = GLStateManager.acquireDrawLock();
+        DEFERRED_DRAW_DEFAULTS.apply();
         try {
-            GLStateManager.beginForeignDraw();
+            if (deferredSegments.getFirst().owner.shouldDrawThroughPipeline()) {
+                flushDeferredThroughPipeline();
+                return;
+            }
+
+            final boolean locked = GLStateManager.acquireDrawLock();
             try {
-                flushDeferredTextInner();
+                GLStateManager.beginForeignDraw();
+                try {
+                    flushDeferredTextInner();
+                } finally {
+                    GLStateManager.endForeignDraw();
+                }
             } finally {
-                GLStateManager.endForeignDraw();
+                if (locked) GLStateManager.releaseDrawLock();
             }
         } finally {
-            if (locked) GLStateManager.releaseDrawLock();
+            DEFERRED_DRAW_DEFAULTS.restore();
         }
     }
 
@@ -641,6 +648,7 @@ public class BatchingFontRenderer {
 
         final int d = GLStateManager.pushState(StateSet.FONT_PIPELINE);
         try {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             GLStateManager.enableTexture();
             GLStateManager.enableAlphaTest();
             GLStateManager.enableBlend();
@@ -688,6 +696,7 @@ public class BatchingFontRenderer {
 
         final int d = GLStateManager.pushState(StateSet.FONT);
         try {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             deferredSegments.get(0).owner.setupFontDrawState();
             GLStateManager.glDepthMask(false);
             flushLastTexture = DUMMY_RESOURCE_LOCATION;

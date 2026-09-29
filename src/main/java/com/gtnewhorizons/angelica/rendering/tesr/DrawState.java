@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.states.PolygonState;
 import it.unimi.dsi.fastutil.Hash;
 import it.unimi.dsi.fastutil.objects.ObjectOpenCustomHashSet;
 import lombok.Getter;
@@ -15,12 +16,16 @@ public final class DrawState {
     public static final int CULL_BACK = 1;
     public static final int CULL_FRONT = 2;
     public static final int CULL_BOTH = 3;
+    public static final int FRONT_FACE_CLOCKWISE = 4;
+    private static final int CULL_FACE_MASK = 3;
 
     public static final int OPAQUE = 0;
     public static final int TRANSLUCENT = 1;
     public static final int ADDITIVE = 2;
     public static final int ADDITIVE_ALPHA = 3;
     public static final int GLINT = 4;
+
+    private static final int LIGHTMAP_UNIT = 1;
 
     private static final ObjectOpenCustomHashSet<DrawState> CACHE = new ObjectOpenCustomHashSet<>(HashStrategy.INSTANCE);
 
@@ -39,11 +44,12 @@ public final class DrawState {
     @Getter private final boolean colorWrite;
     @Getter private final float alphaCutoff;
     @Getter private final boolean lit;
+    @Getter private final boolean lightmap;
     @Getter private final float offsetFactor;
     @Getter private final float offsetUnits;
     private final int hash;
 
-    private DrawState(int cull, int blend, boolean depthEqual, boolean depthWrite, boolean colorWrite, float alphaCutoff, boolean lit, float offsetFactor, float offsetUnits) {
+    private DrawState(int cull, int blend, boolean depthEqual, boolean depthWrite, boolean colorWrite, float alphaCutoff, boolean lit, boolean lightmap, float offsetFactor, float offsetUnits) {
         this.cull = cull;
         this.blend = blend;
         this.depthEqual = depthEqual;
@@ -51,6 +57,7 @@ public final class DrawState {
         this.colorWrite = colorWrite;
         this.alphaCutoff = alphaCutoff;
         this.lit = lit;
+        this.lightmap = lightmap;
         this.offsetFactor = offsetFactor;
         this.offsetUnits = offsetUnits;
         int h = cull;
@@ -60,16 +67,17 @@ public final class DrawState {
         h = h * 31 + (colorWrite ? 1 : 0);
         h = h * 31 + Float.floatToIntBits(alphaCutoff);
         h = h * 31 + (lit ? 1 : 0);
+        h = h * 31 + (lightmap ? 1 : 0);
         h = h * 31 + Float.floatToIntBits(offsetFactor);
         h = h * 31 + Float.floatToIntBits(offsetUnits);
         this.hash = h;
     }
 
-    public static DrawState of(int cull, int blend, boolean depthEqual, boolean depthWrite, boolean colorWrite, float alphaCutoff, boolean lit, float offsetFactor, float offsetUnits) {
-        return CACHE.addOrGet(new DrawState(cull, blend, depthEqual, depthWrite, colorWrite, alphaCutoff, lit, offsetFactor, offsetUnits));
+    public static DrawState of(int cull, int blend, boolean depthEqual, boolean depthWrite, boolean colorWrite, float alphaCutoff, boolean lit, boolean lightmap, float offsetFactor, float offsetUnits) {
+        return CACHE.addOrGet(new DrawState(cull, blend, depthEqual, depthWrite, colorWrite, alphaCutoff, lit, lightmap, offsetFactor, offsetUnits));
     }
 
-    public static DrawState forMaterial(TesrMaterial material, int cull, boolean lit, float offsetFactor, float offsetUnits) {
+    public static DrawState forMaterial(TesrMaterial material, int cull, boolean lit, boolean lightmap, float offsetFactor, float offsetUnits) {
         return of(material.isNoCull() ? DISABLED : cull,
             blendFor(material.transparency()),
             material.isDepthEqual(),
@@ -77,6 +85,7 @@ public final class DrawState {
             !material.isDepthOnly(),
             material.cutoutAlpha(),
             lit && !material.isUnlit(),
+            lightmap,
             offsetFactor, offsetUnits);
     }
 
@@ -100,11 +109,17 @@ public final class DrawState {
     }
 
     public static int liveCull() {
-        return packCull(GLStateManager.getCullState().isEnabled(), GLStateManager.getPolygonState().getCullFaceMode());
+        final PolygonState polygon = GLStateManager.getPolygonState();
+        final int cull = packCull(GLStateManager.getCullState().isEnabled(), polygon.getCullFaceMode());
+        return cull != DISABLED && polygon.getFrontFace() == GL11.GL_CW ? cull | FRONT_FACE_CLOCKWISE : cull;
     }
 
     public static boolean liveLit(TesrMaterial material) {
         return GLStateManager.getLightingState().isEnabled() && !material.isUnlit();
+    }
+
+    public static boolean liveLightmap() {
+        return GLStateManager.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).isEnabled();
     }
 
     public void apply() {
@@ -145,8 +160,9 @@ public final class DrawState {
         } else {
             GLStateManager.disableLighting();
         }
+        GLStateManager.getTextures().getTextureUnitStates(LIGHTMAP_UNIT).setEnabled(lightmap);
 
-        switch (cull) {
+        switch (cull & CULL_FACE_MASK) {
             case CULL_BACK -> {
                 GLStateManager.enableCull();
                 GLStateManager.glCullFace(GL11.GL_BACK);
@@ -161,6 +177,7 @@ public final class DrawState {
             }
             default -> GLStateManager.disableCull();
         }
+        GLStateManager.glFrontFace((cull & FRONT_FACE_CLOCKWISE) != 0 ? GL11.GL_CW : GL11.GL_CCW);
 
         if (offsetFactor != 0.0f || offsetUnits != 0.0f) {
             GLStateManager.glEnable(GL11.GL_POLYGON_OFFSET_FILL);
@@ -183,7 +200,7 @@ public final class DrawState {
 
     @Override
     public String toString() {
-        return "DrawState[cull=" + cull + ", blend=" + blend + ", depthEqual=" + depthEqual + ", depthWrite=" + depthWrite + ", colorWrite=" + colorWrite + ", alphaCutoff=" + alphaCutoff + ", lit=" + lit + ", offset=" + offsetFactor + '/' + offsetUnits + ']';
+        return "DrawState[cull=" + cull + ", blend=" + blend + ", depthEqual=" + depthEqual + ", depthWrite=" + depthWrite + ", colorWrite=" + colorWrite + ", alphaCutoff=" + alphaCutoff + ", lit=" + lit + ", lightmap=" + lightmap + ", offset=" + offsetFactor + '/' + offsetUnits + ']';
     }
 
     private enum HashStrategy implements Hash.Strategy<DrawState> {
@@ -198,7 +215,7 @@ public final class DrawState {
         public boolean equals(@Nullable DrawState a, @Nullable DrawState b) {
             if (a == b) return true;
             if (a == null || b == null) return false;
-            return a.cull == b.cull && a.blend == b.blend && a.depthEqual == b.depthEqual && a.depthWrite == b.depthWrite && a.colorWrite == b.colorWrite && Float.floatToIntBits(a.alphaCutoff) == Float.floatToIntBits(b.alphaCutoff) && a.lit == b.lit && Float.floatToIntBits(a.offsetFactor) == Float.floatToIntBits(b.offsetFactor) && Float.floatToIntBits(a.offsetUnits) == Float.floatToIntBits(b.offsetUnits);
+            return a.cull == b.cull && a.blend == b.blend && a.depthEqual == b.depthEqual && a.depthWrite == b.depthWrite && a.colorWrite == b.colorWrite && Float.floatToIntBits(a.alphaCutoff) == Float.floatToIntBits(b.alphaCutoff) && a.lit == b.lit && a.lightmap == b.lightmap && Float.floatToIntBits(a.offsetFactor) == Float.floatToIntBits(b.offsetFactor) && Float.floatToIntBits(a.offsetUnits) == Float.floatToIntBits(b.offsetUnits);
         }
     }
 }

@@ -242,6 +242,9 @@ public class GLContextState {
     public int internalGlDepth;
     public int internalDrawDepth;
     public int savedFilterTextureId;
+    public int savedFilterMin = -1;
+    public int savedFilterMag = -1;
+    public float savedFilterAniso = -1.0f;
     public boolean wideLineEmulationActive = false;
     public boolean lineStippleActive = false;
     public Instancing ffpInstancing = Instancing.NONE;

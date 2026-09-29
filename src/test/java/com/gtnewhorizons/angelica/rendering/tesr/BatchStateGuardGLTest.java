@@ -10,6 +10,8 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL14;
+import org.lwjgl.opengl.GL30;
 
 import java.util.concurrent.atomic.AtomicInteger;
 
@@ -134,6 +136,133 @@ class BatchStateGuardGLTest {
         } finally {
             GLStateManager.glDeleteLists(list, 1);
         }
+    }
+
+    @Test
+    void perUnitCapsFlushExceptTheTexturesBatchLayersOwn() {
+        final AtomicInteger flushes = new AtomicInteger();
+        BatchStateGuard.flush = flushes::incrementAndGet;
+        try {
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+            GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            assertEquals(0, flushes.get(), "albedo and lightmap enables are stored with each layer");
+
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+            GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
+            flushes.set(0);
+            BatchStateGuard.flush = () -> {
+                assertFalse(GLStateManager.getTextures().getTextureUnitStates(2).isEnabled());
+                flushes.incrementAndGet();
+            };
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            assertEquals(1, flushes.get());
+            GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+            assertEquals(1, flushes.get(), "unchanged enable does not flush");
+
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            GLStateManager.glDisable(GL11.GL_TEXTURE_GEN_S);
+            flushes.set(0);
+            BatchStateGuard.flush = flushes::incrementAndGet;
+            GLStateManager.glEnable(GL11.GL_TEXTURE_GEN_S);
+            assertEquals(1, flushes.get());
+        } finally {
+            BatchStateGuard.flush = null;
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        }
+    }
+
+    @Test
+    void rasterStateNotStoredWithLayersFlushesBeforeChanging() {
+        final AtomicInteger flushes = new AtomicInteger();
+        try {
+            BatchStateGuard.flush = () -> {
+                assertEquals(GL11.GL_FILL, GLStateManager.getPolygonState().getFrontMode());
+                flushes.incrementAndGet();
+            };
+            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+            GLStateManager.glPolygonMode(GL11.GL_FRONT_AND_BACK, GL11.GL_LINE);
+            assertEquals(1, flushes.get());
+
+            flushes.set(0);
+            BatchStateGuard.flush = () -> {
+                assertEquals(1.0, GLStateManager.getViewportState().depthRangeFar);
+                flushes.incrementAndGet();
+            };
+            GLStateManager.glDepthRange(0.0, 0.5);
+            GLStateManager.glDepthRange(0.0, 0.5);
+            assertEquals(1, flushes.get());
+
+            flushes.set(0);
+            BatchStateGuard.flush = flushes::incrementAndGet;
+            GLStateManager.glEnable(GL11.GL_COLOR_LOGIC_OP);
+            GLStateManager.glLogicOp(GL11.GL_XOR);
+            GLStateManager.glEnable(GL14.GL_COLOR_SUM);
+            assertEquals(3, flushes.get());
+        } finally {
+            BatchStateGuard.flush = null;
+        }
+    }
+
+    @Test
+    void sampleDrawBufferAndDiscardStateFlushesBeforeChanging() {
+        final AtomicInteger flushes = new AtomicInteger();
+        BatchStateGuard.flush = flushes::incrementAndGet;
+        final int drawBuffer = GLStateManager.ctx().drawBuffer.getValue();
+        try {
+            GLStateManager.glEnable(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE);
+            GLStateManager.glDisable(GL13.GL_SAMPLE_ALPHA_TO_COVERAGE);
+            GLStateManager.glEnable(GL30.GL_RASTERIZER_DISCARD);
+            GLStateManager.glDisable(GL30.GL_RASTERIZER_DISCARD);
+            GLStateManager.glSampleCoverage(0.5f, false);
+            assertEquals(5, flushes.get());
+
+            flushes.set(0);
+            GLStateManager.glDrawBuffer(GL11.GL_NONE);
+            GLStateManager.glDrawBuffer(GL11.GL_NONE);
+            assertEquals(1, flushes.get(), "unchanged draw buffer does not flush");
+            GLStateManager.glDrawBuffers(GL11.GL_NONE);
+            assertEquals(2, flushes.get());
+        } finally {
+            BatchStateGuard.flush = null;
+            GLStateManager.glSampleCoverage(1.0f, false);
+            GLStateManager.glDrawBuffer(drawBuffer);
+        }
+    }
+
+    @Test
+    void secondaryColorFlushesOnlyWhileColorSumIsOn() {
+        final AtomicInteger flushes = new AtomicInteger();
+        GLStateManager.glSecondaryColor3f(0f, 0f, 0f);
+        BatchStateGuard.flush = flushes::incrementAndGet;
+        try {
+            GLStateManager.glSecondaryColor3f(0.5f, 0f, 0f);
+            assertEquals(0, flushes.get(), "secondary color is unused while color sum is off");
+            GLStateManager.glEnable(GL14.GL_COLOR_SUM);
+            flushes.set(0);
+            GLStateManager.glSecondaryColor3f(0.25f, 0f, 0f);
+            assertEquals(1, flushes.get());
+        } finally {
+            BatchStateGuard.flush = null;
+            GLStateManager.glDisable(GL14.GL_COLOR_SUM);
+            GLStateManager.glSecondaryColor3f(0f, 0f, 0f);
+        }
+    }
+
+    @Test
+    void lightingChangesDoNotDrainBatches() {
+        final AtomicInteger flushes = new AtomicInteger();
+        BatchStateGuard.flush = flushes::incrementAndGet;
+        GLStateManager.glEnable(GL11.GL_LIGHT0);
+        GLStateManager.glDisable(GL11.GL_LIGHT0);
+        GLStateManager.glEnable(GL11.GL_COLOR_MATERIAL);
+        GLStateManager.glDisable(GL11.GL_COLOR_MATERIAL);
+        GLStateManager.glEnable(GL11.GL_NORMALIZE);
+        GLStateManager.glLightf(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, 2.0f);
+        assertEquals(0, flushes.get(), "batches draw with the lighting captured when their pass began");
     }
 
     @Test
