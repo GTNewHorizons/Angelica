@@ -1343,6 +1343,9 @@ public class BatchingFontRenderer {
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             curShadowColor = (curShadowColor & 0xFF000000) | ((rgb & 0xFCFCFC) >> 2);
                             charIdx += SECTION_X_PAYLOAD;
+                            if (darkModeRecolorEnabled) {
+                                curShadow = false;
+                            }
                         }
                     } else {
                         final boolean is09 = charInRange(fmtCode, '0', '9');
@@ -1363,6 +1366,9 @@ public class BatchingFontRenderer {
                             curColor = (curColor & 0xFF000000) | (rgb & 0x00FFFFFF);
                             final int shadowRgb = this.colorCode[colorIdx + 16];
                             curShadowColor = (curShadowColor & 0xFF000000) | (shadowRgb & 0x00FFFFFF);
+                            if (darkModeRecolorEnabled) {
+                                curShadow = false;
+                            }
                         } else if (fmtCode == 'k') {
                             curRandom = true;
                         } else if (fmtCode == 'l') {
