@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import com.gtnewhorizons.angelica.iris.ImmediateExtendedAttribs;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
@@ -70,18 +71,9 @@ import java.nio.file.NoSuchFileException;
 import java.nio.file.Path;
 import java.util.HashMap;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.LinkedBlockingQueue;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.ThreadPoolExecutor;
-import java.util.concurrent.TimeUnit;
-import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
 import java.util.zip.ZipException;
@@ -148,90 +140,27 @@ public class Iris {
         }
     }
 
-    /**
-     * Lazy executor for parallelizing shader transformations during shader pack loading.
-     * Creates threads on demand and shuts down after a period of inactivity.
-     */
     public static final class ShaderTransformExecutor {
-        private static final long IDLE_TIMEOUT_SECONDS = 120;
-        private static final int THREAD_COUNT = Math.max(2, Math.min(12, Runtime.getRuntime().availableProcessors() / 2));
-
-        private static final Object lock = new Object();
-        private static ExecutorService executor;
-        private static ScheduledExecutorService scheduler;
-        private static volatile long lastActivityTime;
-        private static final AtomicInteger inFlight = new AtomicInteger(0);
-        private static boolean idleCheckScheduled;
-        private static final ThreadLocal<Boolean> ON_WORKER = ThreadLocal.withInitial(() -> Boolean.FALSE);
+        static {
+            AngelicaWorkers.onIdleShutdown(() -> {
+                TransformPatcher.clearCache();
+                ShaderTransformer.clearCache();
+                GlslVulkanPreprocess.clearCache();
+                if (RenderSystem.isGLES() || BackendManager.RENDER_BACKEND.isSDLGPU()) SpirvCompiler.clearCache();
+                SDLGPUGate.clearShaderPrewarmCache();
+            });
+        }
 
         private ShaderTransformExecutor() {}
 
         public static boolean isOnWorker() {
-            return ON_WORKER.get();
+            return AngelicaWorkers.isWorkerThread();
         }
 
-        private static void noteActivity() {
-            lastActivityTime = System.nanoTime();
-        }
-
-        public static ExecutorService get() {
-            synchronized (lock) {
-                noteActivity();
-
-                if (executor != null && !executor.isShutdown()) {
-                    return executor;
-                }
-
-                final AtomicInteger threadCounter = new AtomicInteger();
-                final ThreadFactory factory = r -> {
-                    final Thread t = new Thread(r, "Shader-Transform-" + threadCounter.getAndIncrement());
-                    t.setDaemon(true);
-                    return t;
-                };
-                final ThreadPoolExecutor tpe = new ThreadPoolExecutor(
-                    THREAD_COUNT,
-                    THREAD_COUNT,
-                    0L, TimeUnit.MILLISECONDS,
-                    new LinkedBlockingQueue<>(),
-                    factory);
-                tpe.prestartAllCoreThreads();
-                executor = tpe;
-                logger.debug("Created shader transform executor with " + THREAD_COUNT + " prestarted threads");
-
-                if (scheduler == null || scheduler.isShutdown()) {
-                    scheduler = Executors.newSingleThreadScheduledExecutor(r -> {
-                        Thread t = new Thread(r, "Shader-Transform-Scheduler");
-                        t.setDaemon(true);
-                        return t;
-                    });
-                }
-                if (!idleCheckScheduled) {
-                    idleCheckScheduled = true;
-                    scheduleIdleCheck(IDLE_TIMEOUT_SECONDS);
-                }
-
-                return executor;
-            }
-        }
-
-        private static void scheduleIdleCheck(long delaySeconds) {
-            try {
-                scheduler.schedule(ShaderTransformExecutor::checkIdleShutdown, delaySeconds, TimeUnit.SECONDS);
-            } catch (Exception e) {
-                // If scheduling fails, reset the flag so a future get() can try again
-                idleCheckScheduled = false;
-                logger.warn("Failed to schedule idle check", e);
-            }
-        }
-
-        /** Idempotent: ensures the pool is created. {@link #get()} prestarts all workers. */
         public static void prepare() {
-            get();
+            AngelicaWorkers.prestart();
         }
 
-        /**
-         * Warm up the threadpool by running a representative shader transformation.
-         */
         public static void warmup() {
             final String vertexShader = "#version 120\nvoid main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }";
             final String fragmentShader = "#version 120\nvoid main() { gl_FragColor = vec4(1.0); }";
@@ -246,83 +175,11 @@ public class Iris {
         }
 
         public static <T> CompletableFuture<T> submitTracked(Supplier<T> supplier) {
-            Objects.requireNonNull(supplier);
-            noteActivity();
-            inFlight.incrementAndGet();
-            try {
-                return CompletableFuture.supplyAsync(() -> {
-                    ON_WORKER.set(Boolean.TRUE);
-                    try {
-                        return supplier.get();
-                    } finally {
-                        ON_WORKER.set(Boolean.FALSE);
-                        noteActivity();
-                        inFlight.decrementAndGet();
-                    }
-                }, get());
-            } catch (Exception e) {
-                inFlight.decrementAndGet();
-                throw e;
-            }
+            return AngelicaWorkers.submit(supplier);
         }
 
         public static CompletableFuture<Void> submitTracked(Runnable runnable) {
-            Objects.requireNonNull(runnable);
-            noteActivity();
-            inFlight.incrementAndGet();
-            try {
-                return CompletableFuture.runAsync(() -> {
-                    ON_WORKER.set(Boolean.TRUE);
-                    try {
-                        runnable.run();
-                    } finally {
-                        ON_WORKER.set(Boolean.FALSE);
-                        noteActivity();
-                        inFlight.decrementAndGet();
-                    }
-                }, get());
-            } catch (Exception e) {
-                inFlight.decrementAndGet();
-                throw e;
-            }
-        }
-
-        private static void checkIdleShutdown() {
-            synchronized (lock) {
-                final ExecutorService current = executor;
-                if (current == null || current.isShutdown()) {
-                    // Executor already gone, shut down scheduler
-                    if (scheduler != null && !scheduler.isShutdown()) {
-                        scheduler.shutdown();
-                        scheduler = null;
-                    }
-                    idleCheckScheduled = false;
-                    return;
-                }
-
-                final long idleNanos = System.nanoTime() - lastActivityTime;
-                final long idleSeconds = TimeUnit.NANOSECONDS.toSeconds(idleNanos);
-
-                if (idleSeconds >= IDLE_TIMEOUT_SECONDS && inFlight.get() == 0) {
-                    logger.debug("Shutting down idle shader transform executor after " + idleSeconds + " seconds");
-                    current.shutdown();
-                    executor = null;
-                    scheduler.shutdown();
-                    scheduler = null;
-                    idleCheckScheduled = false;
-
-                    // Clear transformation caches - no longer needed after loading
-                    TransformPatcher.clearCache();
-                    ShaderTransformer.clearCache();
-                    GlslVulkanPreprocess.clearCache();
-                    if (RenderSystem.isGLES() || BackendManager.RENDER_BACKEND.isSDLGPU()) SpirvCompiler.clearCache();
-                    SDLGPUGate.clearShaderPrewarmCache();
-                } else {
-                    // Still active (or in-flight), schedule another check.
-                    final long remainingSeconds = Math.max(1, IDLE_TIMEOUT_SECONDS - idleSeconds + 1);
-                    scheduleIdleCheck(remainingSeconds);
-                }
-            }
+            return AngelicaWorkers.run(runnable);
         }
     }
 

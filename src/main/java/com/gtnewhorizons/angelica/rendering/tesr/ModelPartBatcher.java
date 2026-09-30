@@ -155,14 +155,16 @@ public final class ModelPartBatcher {
         int glintSlot;
         int cull;
         boolean lit;
+        boolean lightmap;
         boolean afterGlint;
 
-        boolean matches(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean afterGlint) {
+        boolean matches(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean lightmap, boolean afterGlint) {
             return this.texture == texture && this.material == material && pass.equals(this.pass) && this.offsetFactor == offsetFactor
-                && this.offsetUnits == offsetUnits && this.glintSlot == glintSlot && this.cull == cull && this.lit == lit && this.afterGlint == afterGlint;
+                && this.offsetUnits == offsetUnits && this.glintSlot == glintSlot && this.cull == cull && this.lit == lit && this.lightmap == lightmap
+                && this.afterGlint == afterGlint;
         }
 
-        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean afterGlint) {
+        LayerKey set(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean lightmap, boolean afterGlint) {
             this.texture = texture;
             this.material = material;
             this.pass = pass;
@@ -171,6 +173,7 @@ public final class ModelPartBatcher {
             this.glintSlot = glintSlot;
             this.cull = cull;
             this.lit = lit;
+            this.lightmap = lightmap;
             this.afterGlint = afterGlint;
             return this;
         }
@@ -182,7 +185,7 @@ public final class ModelPartBatcher {
                 && Objects.equals(pass, other.pass)
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
                 && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
-                && glintSlot == other.glintSlot && cull == other.cull && lit == other.lit && afterGlint == other.afterGlint;
+                && glintSlot == other.glintSlot && cull == other.cull && lit == other.lit && lightmap == other.lightmap && afterGlint == other.afterGlint;
         }
 
         @Override
@@ -193,6 +196,7 @@ public final class ModelPartBatcher {
             h = h * 31 + glintSlot;
             h = h * 31 + cull;
             h = h * 31 + (lit ? 1 : 0);
+            h = h * 31 + (lightmap ? 1 : 0);
             h = h * 31 + (afterGlint ? 1 : 0);
             return h;
         }
@@ -249,6 +253,8 @@ public final class ModelPartBatcher {
         activeGroups = shadow ? shadowGroups : entityPass ? entityGroups : groups;
         activeSource = entityPass ? entitySource : bufferSource;
         activeSource.setIdKind(mode == Mode.ENTITIES ? AngelicaBufferSource.GroupIdKind.ENTITY : AngelicaBufferSource.GroupIdKind.BLOCK_ENTITY);
+        activeSource.capturePassLighting();
+        BatchDrawDefaults.capturePassFramebuffer();
         activeGroups.beginPass(identity, 0, 0, 0, instancedThisCycle ? TesrBatchRenderer.INSTANCE.instancedRenderer : null, shaderPipeline);
         if (nowMs - lastSweepMs >= SWEEP_INTERVAL_MS) {
             lastSweepMs = nowMs;
@@ -440,7 +446,7 @@ public final class ModelPartBatcher {
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
         final int cullCode = EntityMaterials.ITEM_GLINT.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
-        final RenderLayer layer = layerFor(HeldItemGlint.texture(), EntityMaterials.ITEM_GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, ShaderGlint.NO_TINT, cullCode, false);
+        final RenderLayer layer = layerFor(HeldItemGlint.texture(), EntityMaterials.ITEM_GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, ShaderGlint.NO_TINT, cullCode, false, DrawState.liveLightmap());
         activeGroups.queueGlintLayers(template, layer, EntityMaterials.ITEM_GLINT, currentModelView(), GLSMConfig.packedLastBrightness(), VANILLA_GLINT_COLOR, currentOverlay(), currentEntityInfo(0),
             HeldItemGlint.firstMatrix(), HeldItemGlint.secondMatrix());
         parts++;
@@ -484,7 +490,7 @@ public final class ModelPartBatcher {
         final boolean offset = GLStateManager.glIsEnabled(GL11.GL_POLYGON_OFFSET_FILL);
         final PolygonState polygon = GLStateManager.getPolygonState();
         final int cullCode = EntityMaterials.GLINT.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
-        armorGlintLayer = layerFor(texture, EntityMaterials.GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, glintSlot, cullCode, lit);
+        armorGlintLayer = layerFor(texture, EntityMaterials.GLINT, PassOverride.NONE, offset ? polygon.getOffsetFactor() : 0, offset ? polygon.getOffsetUnits() : 0, glintSlot, cullCode, lit, DrawState.liveLightmap());
         armorGlintTexture.set(textureMatrix);
         armorGlintColor = color;
         armorGlintLight = GLSMConfig.packedLastBrightness();
@@ -605,7 +611,7 @@ public final class ModelPartBatcher {
         final int glintSlot = material.special() == TesrMaterial.SpecialRender.GLINT ? lastBoundGlintSlot : ShaderGlint.NO_TINT;
         final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
         final boolean lit = DrawState.liveLit(material);
-        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, afterGlint);
+        final RenderLayer layer = layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, DrawState.liveLightmap(), afterGlint);
         // Entities nested inside a TESR (mob spawner, OpenBlocks trophy) run in the block entity pass but carry an entity id
         final int entityId = groupId(shaderPipeline != null, mode == Mode.ENTITIES || pass.isEntityPhase(), CapturedRenderingState.INSTANCE.getCurrentRenderedEntity(), CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity());
         final Color4 color = GLStateManager.getColor();
@@ -705,24 +711,24 @@ public final class ModelPartBatcher {
         entry.cubes = cubes;
     }
 
-    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit) {
-        return layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, false);
+    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit, boolean lightmap) {
+        return layerFor(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, lightmap, false);
     }
 
-    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit, boolean afterGlint) {
+    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cullCode, boolean lit, boolean lightmap, boolean afterGlint) {
         for (int i = 0; i < RECENT_LAYERS; i++) {
             final RenderLayer recent = recentLayers[i];
-            if (recent != null && recentKeys[i].matches(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, afterGlint)) {
+            if (recent != null && recentKeys[i].matches(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, lightmap, afterGlint)) {
                 return lastLayer = recent;
             }
         }
-        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, afterGlint));
+        RenderLayer layer = layers.get(scratchKey.set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, lightmap, afterGlint));
         if (layer == null) {
-            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, afterGlint);
-            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, afterGlint), layer);
+            layer = RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, lightmap, afterGlint);
+            layers.put(new LayerKey().set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, lightmap, afterGlint), layer);
         }
         if (recentKeys[recentNext] == null) recentKeys[recentNext] = new LayerKey();
-        recentKeys[recentNext].set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, afterGlint);
+        recentKeys[recentNext].set(texture, material, pass, offsetFactor, offsetUnits, glintSlot, cullCode, lit, lightmap, afterGlint);
         recentLayers[recentNext] = layer;
         recentNext = (recentNext + 1) % RECENT_LAYERS;
         return lastLayer = layer;
@@ -754,7 +760,7 @@ public final class ModelPartBatcher {
         active = false;
         shaderPipeline = null;
         layers.clear();
-        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, false);
+        scratchKey.set(null, null, null, 0.0f, 0.0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, false, false);
         Arrays.fill(recentLayers, null);
         recentNext = 0;
         lastLayer = null;

@@ -88,10 +88,15 @@ public final class StateSet {
                 GLStateManager.getActiveTextureUnitStack(),
                 GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getDepthTest(),
                 GLStateManager.getLightingState(), GLStateManager.getCullState(), GLStateManager.getPolygonOffsetFillState(),
-                GLStateManager.getTextures().getTextureUnitStates(0)
+                GLStateManager.getTextures().getTextureUnitStates(0), GLStateManager.getTextures().getTextureUnitStates(1),
+                GLStateManager.getLightStates()[0], GLStateManager.getLightStates()[1],
+                GLStateManager.getLightDataStates()[0], GLStateManager.getLightDataStates()[1],
+                GLStateManager.getColorMaterial(), GLStateManager.getColorMaterialFace(), GLStateManager.getColorMaterialParameter(),
+                GLStateManager.getLightModel(), GLStateManager.getFrontMaterial(), GLStateManager.getBackMaterial(),
+                GLStateManager.getNormalizeState(), GLStateManager.getRescaleNormalState()
             ),
             R_BLEND | R_DEPTH | R_COLOR_MASK | R_POLYGON | R_TEXTURE | R_ACTIVE_UNIT,
-            B_FRAG_COLORBUF,
+            B_FRAG_COLORBUF | B_LIGHTING,
             true);
     }
 

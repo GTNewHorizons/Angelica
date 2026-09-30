@@ -553,7 +553,7 @@ class RetainedTesrGroupsGLTest {
 
     private void glintState() {
         GLStateManager.glViewport(0, 0, SIZE, SIZE);
-        layer = RenderLayer.tesr(GLINT_TEXTURE, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
+        layer = RenderLayer.tesr(GLINT_TEXTURE, TesrMaterial.CURRENT_STATE, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
 
         GlintClock.beginFrame(123456789L);
         final float u0 = Reflect.<Float>getStatic(GlintClock.class, "armorU0");
@@ -872,7 +872,7 @@ class RetainedTesrGroupsGLTest {
         final int[] reference = FfpFixture.readRegion(SIZE);
         assertTrue(reference[center] != blank[center], "the mirrored quad must survive glCullFace(GL_FRONT) when drawn immediately, otherwise the parity check is vacuous: " + describe(reference[center]));
 
-        final RenderLayer culled = RenderLayer.tesr(null, RetainedTesrGroupsTest.STREAM, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cullCode, false);
+        final RenderLayer culled = RenderLayer.tesr(null, RetainedTesrGroupsTest.STREAM, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, cullCode, false, true);
         FfpFixture.clear();
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
         groups.queue(quad, culled, RetainedTesrGroupsTest.STREAM, mirrored, 0, COLOR_ABGR, 0, 0L, 1, null);
@@ -930,7 +930,7 @@ class RetainedTesrGroupsGLTest {
 
         final TemplateBuffer quad = capturedQuad(0.5);
         final TesrMaterial opposite = TesrMaterial.builder().build();
-        final RenderLayer opposingLayer = RenderLayer.tesr(null, opposite, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false);
+        final RenderLayer opposingLayer = RenderLayer.tesr(null, opposite, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.DISABLED, false, true);
 
         groups.beginPass(new Matrix4f(), 0, 0, 0, instanced);
         groups.queue(quad, opposingLayer, RetainedTesrGroupsTest.STREAM, new Matrix4f(), 0, COLOR_ABGR, 0, 0L, 1, null);

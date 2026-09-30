@@ -649,7 +649,11 @@ public final class FrameManager {
 
     public void submitMidFrame() {
         final FrameState f = frame();
-        if (f.commandBuffer == 0) return;
+        if (f.commandBuffer == 0) {
+            if (f.wantFenceOnNextSubmit) getOrCreatePendingUploadCommandBuffer(f);
+            flushPendingUploadCommandBuffer(f);
+            return;
+        }
         endCopyPassIfActive(f);
         endRenderPassIfActive(f, PASS_END_FRAME_END);
         Tracy.beginZone(Z_SDL_SUBMIT);
@@ -749,7 +753,14 @@ public final class FrameManager {
             Tracy.beginZone(Z_SDL_SUBMIT);
             final boolean submitted;
             try {
-                submitted = SDL_SubmitGPUCommandBuffer(f.pendingUploadCommandBuffer);
+                if (f.wantFenceOnNextSubmit) {
+                    f.wantFenceOnNextSubmit = false;
+                    if (f.lastAcquiredFence != 0) SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
+                    f.lastAcquiredFence = SDL_SubmitGPUCommandBufferAndAcquireFence(f.pendingUploadCommandBuffer);
+                    submitted = f.lastAcquiredFence != 0;
+                } else {
+                    submitted = SDL_SubmitGPUCommandBuffer(f.pendingUploadCommandBuffer);
+                }
             } finally {
                 Tracy.endZone();
             }

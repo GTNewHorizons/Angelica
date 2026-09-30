@@ -20,8 +20,8 @@ class RenderLayerInterningTest {
     @Test
     void noCullMaterialInternsToOneLayerRegardlessOfCullCode() {
         final TesrMaterial noCull = TesrMaterial.builder().noCull().build();
-        final RenderLayer back = RenderLayer.tesr(TEX, noCull, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true);
-        final RenderLayer front = RenderLayer.tesr(TEX, noCull, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_FRONT, true);
+        final RenderLayer back = RenderLayer.tesr(TEX, noCull, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
+        final RenderLayer front = RenderLayer.tesr(TEX, noCull, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_FRONT, true, true);
         assertSame(back, front);
         assertEquals(DrawState.DISABLED, back.getState().getCull());
     }
@@ -29,25 +29,35 @@ class RenderLayerInterningTest {
     @Test
     void unlitMaterialRequestedLitYieldsUnlitState() {
         final TesrMaterial unlit = TesrMaterial.builder().unlit().build();
-        final RenderLayer layer = RenderLayer.tesr(TEX, unlit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true);
+        final RenderLayer layer = RenderLayer.tesr(TEX, unlit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
         assertFalse(layer.getState().isLit());
     }
 
     @Test
     void litMaterialRequestedUnlitYieldsUnlitStateAndDistinctLayer() {
         final TesrMaterial lit = TesrMaterial.builder().build();
-        final RenderLayer unlitRequest = RenderLayer.tesr(TEX, lit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, false);
-        final RenderLayer litRequest = RenderLayer.tesr(TEX, lit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true);
+        final RenderLayer unlitRequest = RenderLayer.tesr(TEX, lit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, false, true);
+        final RenderLayer litRequest = RenderLayer.tesr(TEX, lit, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
         assertFalse(unlitRequest.getState().isLit());
         assertTrue(litRequest.getState().isLit());
         assertNotSame(unlitRequest, litRequest);
     }
 
     @Test
+    void lightmapIsPartOfLayerIdentity() {
+        final TesrMaterial material = TesrMaterial.builder().build();
+        final RenderLayer withLightmap = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
+        final RenderLayer withoutLightmap = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, false);
+        assertTrue(withLightmap.getState().isLightmap());
+        assertFalse(withoutLightmap.getState().isLightmap());
+        assertNotSame(withLightmap, withoutLightmap);
+    }
+
+    @Test
     void noPassIsPartOfStructuredInterningIdentity() {
         final TesrMaterial material = TesrMaterial.builder().build();
-        final RenderLayer regular = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true);
-        final RenderLayer noPass = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true);
+        final RenderLayer regular = RenderLayer.tesr(TEX, material, PassOverride.NONE, 0f, 0f, ShaderGlint.NO_TINT, DrawState.CULL_BACK, true, true);
+        final RenderLayer noPass = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
 
         assertNotSame(regular, noPass);
     }
@@ -55,10 +65,10 @@ class RenderLayerInterningTest {
     @Test
     void cacheResetAllowsFreshCanonicalIdentity() {
         final TesrMaterial material = TesrMaterial.builder().build();
-        final RenderLayer before = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true);
+        final RenderLayer before = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
         RenderLayer.clearInterningAndHooks();
-        final RenderLayer first = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true);
-        final RenderLayer second = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true);
+        final RenderLayer first = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
+        final RenderLayer second = RenderLayer.tesrNoPass(TEX, material, DrawState.CULL_BACK, true, true);
 
         assertNotSame(before, first);
         assertSame(first, second);

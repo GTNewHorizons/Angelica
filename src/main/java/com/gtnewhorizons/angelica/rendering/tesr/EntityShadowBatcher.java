@@ -164,7 +164,7 @@ final class EntityShadowBatcher {
     private RenderLayer layer() {
         RenderLayer l = layer;
         if (l == null) {
-            l = RenderLayer.tesr(SHADOW_TEXTURE, EntityMaterials.SHADOW, PassOverride.NONE, 0.0F, 0.0F, ShaderGlint.NO_TINT, DrawState.CULL_BACK, false);
+            l = RenderLayer.tesr(SHADOW_TEXTURE, EntityMaterials.SHADOW, PassOverride.NONE, 0.0F, 0.0F, ShaderGlint.NO_TINT, DrawState.CULL_BACK, false, true);
             layer = l;
         }
         return l;

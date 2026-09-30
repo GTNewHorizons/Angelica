@@ -17,4 +17,8 @@ public interface SpriteExtension {
     int angelica$getGutterWidth();
 
     void angelica$setGutterWidth(int gutter);
+
+    void angelica$setUploaded(boolean uploaded);
+
+    boolean angelica$takeUploaded();
 }
