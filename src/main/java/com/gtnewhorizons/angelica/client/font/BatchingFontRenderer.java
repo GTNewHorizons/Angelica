@@ -16,6 +16,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
+import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
@@ -28,6 +29,7 @@ import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.MathHelper;
@@ -399,6 +401,18 @@ public class BatchingFontRenderer {
     /** Draw layers; see {@link FontDrawCmd#layer}. */
     private static final int LAYER_BACKGROUND = -1;
     private static final int LAYER_DEFAULT = 0;
+
+    /**
+     * FML's splash font renderer draws before the texture manager exists and binds its own
+     * font texture, so let it bind and read the id back.
+     */
+    private int textureFor(FontProvider fontProvider, char chr) {
+        if (fontProvider instanceof FontProviderCustom || Minecraft.getMinecraft().getTextureManager() != null) {
+            return fontProvider.getTexture(chr);
+        }
+        ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
+        return GLStateManager.getBoundTextureForServerState();
+    }
 
     private void pushDrawCmd(int startIdx, int idxCount, int texture, boolean isUnicode) {
         pushDrawCmd(startIdx, idxCount, texture, isUnicode, LAYER_DEFAULT);
@@ -1446,7 +1460,7 @@ public class BatchingFontRenderer {
                 final float shadowOffset = fontProvider.getShadowOffset();
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
-                final int texture = fontProvider.getTexture(chr);
+                final int texture = textureFor(fontProvider, chr);
 
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
