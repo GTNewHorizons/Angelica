@@ -5,7 +5,7 @@ import com.gtnewhorizons.angelica.glsm.hooks.BatchStateGuard;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
 import com.gtnewhorizons.angelica.glsm.recording.commands.DisplayListCommand;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
+import com.gtnewhorizons.angelica.rendering.BlockMaterialAttribute;
 import it.unimi.dsi.fastutil.booleans.BooleanArrayList;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
@@ -166,8 +166,8 @@ public final class IrisDisplayListState {
     private record BlockEntityAttributeCmd(Block block, int metadata) implements DisplayListCommand {
         @Override
         public void execute() {
-            if (block == null) FallingBlockRendering.resetEntityAttribute();
-            else FallingBlockRendering.setEntityAttribute(block, metadata);
+            if (block == null) BlockMaterialAttribute.reset();
+            else BlockMaterialAttribute.set(block, metadata);
         }
     }
 

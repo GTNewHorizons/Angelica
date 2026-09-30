@@ -826,6 +826,19 @@ public enum Mixins implements IMixins {
         .addRequiredMod(TargetedMod.DRACONIC_EVOLUTION)
         .addClientMixins("client.draconicevolution.MixinRenderTilePlacedItem")
     ),
+    MALISISDOORS_TERRAIN_DOORS(new MixinBuilder("Draw MalisisDoors doors, vanishing frames and mixed blocks with terrain shader materials")
+        .setPhase(Phase.LATE)
+        .addRequiredMod(TargetedMod.MALISIS_DOORS)
+        .setApplyIf(() -> AngelicaConfig.enableIris)
+        .addClientMixins(
+            "client.malisisdoors.AccessorFenceGateTileEntity",
+            "client.malisisdoors.MixinCustomDoorRenderer",
+            "client.malisisdoors.MixinCustomDoorTileEntity",
+            "client.malisisdoors.MixinMalisisRenderer",
+            "client.malisisdoors.MixinMixedBlockRenderer",
+            "client.malisisdoors.MixinVanishingBlockRenderer"
+        )
+    ),
     OPENBLOCKS_TROPHY_ENTITY_GBUFFER(new MixinBuilder("Render OpenBlocks trophies with the entity gbuffer programs")
         .setPhase(Phase.LATE)
         .addRequiredMod(TargetedMod.OPENBLOCKS)

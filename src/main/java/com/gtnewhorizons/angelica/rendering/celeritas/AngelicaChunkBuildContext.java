@@ -172,7 +172,6 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
         final short originalBlockId = blockRenderContext.blockId;
 
         int stateIdx = 0;
-        int facesAtBaseMaterial = 0;
         boolean hasCachedMaterial = false;
         TextureAtlasSprite lastSprite = null;
         Material lastMaterial = null;
@@ -182,6 +181,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             float uSum = 0, vSum = 0;
 
             int quadState = -1;
+            boolean hasVertexTransparency = false;
 
             for (int vIdx = 0; vIdx < 4; vIdx++) {
                 final var vertex = vertices[vIdx];
@@ -197,6 +197,7 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
                 vSum += v;
 
                 vertex.color = rawBuffer[ptr++];
+                hasVertexTransparency |= ColorABGR.unpackAlpha(vertex.color) != 255;
                 vertex.vanillaNormal = rawBuffer[ptr++];
                 vertex.light = rawBuffer[ptr++];
 
@@ -263,27 +264,22 @@ public class AngelicaChunkBuildContext extends ChunkBuildContext {
             // Apply RGB block light tint from provider
             applyBlockLightTint(worldX, worldY, worldZ, vertices);
 
-            final int faceBit = 1 << facing.ordinal();
             final Material correctMaterial;
-            if ((facesAtBaseMaterial & faceBit) != 0) {
+            if (material == AngelicaRenderPassConfiguration.TRANSLUCENT_MATERIAL && hasVertexTransparency) {
                 correctMaterial = material;
+            } else if (hasCachedMaterial && sprite == lastSprite) {
+                correctMaterial = lastMaterial;
             } else {
-                if (hasCachedMaterial && sprite == lastSprite) {
-                    correctMaterial = lastMaterial;
-                } else {
-                    correctMaterial = selectMaterial(material, sprite, isShaderPackOverride, useRenderPassOptimization);
-                    lastSprite = sprite;
-                    lastMaterial = correctMaterial;
-                    hasCachedMaterial = true;
-                }
-                if (correctMaterial == material) {
-                    facesAtBaseMaterial |= faceBit;
-                }
+                correctMaterial = selectMaterial(material, sprite, isShaderPackOverride, useRenderPassOptimization);
+                lastSprite = sprite;
+                lastMaterial = correctMaterial;
+                hasCachedMaterial = true;
             }
             final var builder = buffers.get(correctMaterial);
 
             final int shaderOverrideBlockId = shaderOverrideBlockIds[quadIdx * 4];
-            blockRenderContext.blockId = shaderOverrideBlockId != -1 ? (short) shaderOverrideBlockId : originalBlockId;
+            blockRenderContext.blockId = shaderOverrideBlockId == StateAwareTessellator.UNMAPPED_SHADER_BLOCK_ID
+                ? -1 : shaderOverrideBlockId != -1 ? (short) shaderOverrideBlockId : originalBlockId;
 
             if (correctMaterial != material && builder.getEncoder() instanceof IrisExtendedChunkVertexEncoder iris) {
                 iris.setContext(blockRenderContext);

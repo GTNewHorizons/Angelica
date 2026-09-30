@@ -55,6 +55,11 @@ public class MixinTessellator implements StateAwareTessellator, BiomeBlendTessel
         this.celeritasMeshing = active;
     }
 
+    @Override
+    public boolean angelica$isCeleritasMeshing() {
+        return this.celeritasMeshing;
+    }
+
     @Inject(method = "addVertex", at = @At("RETURN"))
     private void addElementState(CallbackInfo ci) {
         if (!celeritasMeshing) return;
@@ -99,5 +104,10 @@ public class MixinTessellator implements StateAwareTessellator, BiomeBlendTessel
     @Override
     public void angelica$setShaderOverrideBlockId(short blockId) {
         this.currentShaderOverrideBlockId = blockId;
+    }
+
+    @Override
+    public short angelica$getShaderOverrideBlockId() {
+        return this.currentShaderOverrideBlockId;
     }
 }

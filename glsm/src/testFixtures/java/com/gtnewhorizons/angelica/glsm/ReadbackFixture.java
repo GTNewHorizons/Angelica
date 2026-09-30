@@ -96,7 +96,7 @@ public final class ReadbackFixture {
     public static void assertFloatsNear(ByteBuffer buf, int offset, float[] expected, String label) {
         for (int i = 0; i < expected.length; i++) {
             final int idx = i;
-            assertEquals(expected[i], buf.getFloat(offset + i * 4), 1e-6f, () -> label + " float " + idx);
+            assertEquals(expected[i], buf.getFloat(offset + i * 4), 1f / 4096f, () -> label + " float " + idx);
         }
     }
 

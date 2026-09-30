@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.rendering.BlockMaterialAttribute;
 import com.gtnewhorizons.angelica.rendering.FallingBlockMetaAccess;
 import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
@@ -32,14 +33,14 @@ public class MixinRenderFallingBlock {
 
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
         GbufferPrograms.pushOverridePhase(WorldRenderingPhase.TERRAIN_SOLID);
-        FallingBlockRendering.setEntityAttribute(entity.func_145805_f(), entity.field_145814_a);
+        BlockMaterialAttribute.set(entity.func_145805_f(), entity.field_145814_a);
     }
 
     @Inject(method = "doRender(Lnet/minecraft/entity/item/EntityFallingBlock;DDDFF)V", at = @At("RETURN"))
     private void angelica$endFallingBlock(EntityFallingBlock entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
         FallingBlockRendering.active = false;
 
-        FallingBlockRendering.resetEntityAttribute();
+        BlockMaterialAttribute.reset();
         GbufferPrograms.popOverridePhase();
         CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
     }
