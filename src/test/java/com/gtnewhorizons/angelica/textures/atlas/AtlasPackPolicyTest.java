@@ -17,6 +17,8 @@ import java.util.Set;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 
 import net.minecraft.client.resources.FallbackResourceManager;
+import net.minecraft.client.resources.IResource;
+import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourcePack;
 import net.minecraft.client.resources.SimpleReloadableResourceManager;
 import net.minecraft.client.resources.data.IMetadataSection;
@@ -203,6 +205,41 @@ class AtlasPackPolicyTest {
         final Map<String, List<IResourcePack>> result = AtlasPackPolicy.eligibleDomains(manager);
         assertTrue(result.containsKey("domainB"));
         assertTrue(result.get("domainB").isEmpty());
+    }
+
+    private static final class ForeignDomainManager implements IResourceManager {
+
+        @Override
+        public Set<String> getResourceDomains() {
+            return Collections.emptySet();
+        }
+
+        @Override
+        public IResource getResource(ResourceLocation location) throws IOException {
+            throw new IOException("not used");
+        }
+
+        @Override
+        public List<IResource> getAllResources(ResourceLocation location) throws IOException {
+            throw new IOException("not used");
+        }
+    }
+
+    @Test
+    @SuppressWarnings({ "unchecked", "rawtypes" })
+    void eligibleDomainsSkipsForeignDomainManager() {
+        AngelicaConfig.atlasTrustedPacks = new String[] { FakePack.class.getName() };
+
+        final IMetadataSerializer serializer = new IMetadataSerializer();
+        final SimpleReloadableResourceManager manager = new SimpleReloadableResourceManager(serializer);
+        final FallbackResourceManager domain = new FallbackResourceManager(serializer);
+        domain.resourcePacks.add(new FakePack(new ResourceLocation("tinker", "unrelated.png")));
+        manager.domainResourceManagers.put("domainD", domain);
+        ((Map) manager.domainResourceManagers).put("sound_x", new ForeignDomainManager());
+
+        final Map<String, List<IResourcePack>> result = AtlasPackPolicy.eligibleDomains(manager);
+        assertTrue(result.containsKey("domainD"));
+        assertFalse(result.containsKey("sound_x"));
     }
 
     @Test
