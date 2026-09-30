@@ -35,6 +35,7 @@ public class DarkModeUtils {
 
     private static FontRecolorRule guiFontRule = null;
     private static ButtonFontRules buttonFontRules = null;
+    private static boolean shadowsGlobal = false;
 
     static {
         TexturePackChangeHandler.register(new TexturePackChangeHandler("Angelica Dark Mode Utils", 1) {
@@ -56,6 +57,7 @@ public class DarkModeUtils {
     private static void reload() {
         FontRecolorRule guiFont = null;
         ButtonFontRules buttonFont = null;
+        boolean shadowsGlobalValue = false;
         for (IResourcePack pack : TexturePackAPI.getResourcePacks(null)) {
             PackDarkModeRules rules = readPackRules(pack);
             if (rules == null) {
@@ -67,9 +69,13 @@ public class DarkModeUtils {
             if (rules.buttonFont() != null) {
                 buttonFont = rules.buttonFont();
             }
+            if (rules.shadowsGlobal() != null) {
+                shadowsGlobalValue = rules.shadowsGlobal();
+            }
         }
         guiFontRule = guiFont;
         buttonFontRules = buttonFont;
+        shadowsGlobal = shadowsGlobalValue;
     }
 
     // Mechanism similar to GTNHLib's PackMcmetaReader. Will be refactored into one common implementation if a third use case arises.
@@ -107,7 +113,11 @@ public class DarkModeUtils {
                 ? parseButtonFontRules(target.getAsJsonObject("button_font"), pack.getPackName())
                 : null;
 
-            return new PackDarkModeRules(guiFont, buttonFont);
+            Boolean shadowsGlobal = target.has("shadows_global")
+                ? target.get("shadows_global").getAsBoolean()
+                : null;
+
+            return new PackDarkModeRules(guiFont, buttonFont, shadowsGlobal);
         } catch (IOException e) {
             // pack.mcmeta missing/unreadable
             return null;
@@ -206,6 +216,10 @@ public class DarkModeUtils {
         return rule.tryRecolor(argbColor);
     }
 
+    public static boolean shadowsGlobal() {
+        return shadowsGlobal;
+    }
+
     // layout: newColor (32), shadowRgb (24, no alpha), zeroes (7), shadow (1)
     private static long packRecolor(int newColor, int shadowRgb, boolean shadow) {
         return ((long) newColor << 32) | ((long) (shadowRgb & 0xFFFFFF) << 8) | (shadow ? 1L : 0L);
@@ -253,7 +267,7 @@ public class DarkModeUtils {
         return 0x00FF0000 | animated;
     }
 
-    private record PackDarkModeRules(FontRecolorRule guiFont, ButtonFontRules buttonFont) {}
+    private record PackDarkModeRules(FontRecolorRule guiFont, ButtonFontRules buttonFont, Boolean shadowsGlobal) {}
 
     private record ButtonFontRules(ButtonColorRule enabled, ButtonColorRule hovered, ButtonColorRule disabled) {}
 
