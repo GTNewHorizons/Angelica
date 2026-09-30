@@ -78,7 +78,8 @@ public final class AtlasPackPolicy {
         final Trust trust = new Trust();
         final Map<String, List<IResourcePack>> eligible = new HashMap<>();
         final Map<String, List<String>> untrustedDomains = new HashMap<>();
-        for (Map.Entry<String, FallbackResourceManager> entry : manager.domainResourceManagers.entrySet()) {
+        final Map<String, ?> domainManagers = manager.domainResourceManagers;
+        for (Map.Entry<String, ?> entry : domainManagers.entrySet()) {
             final List<IResourcePack> claimChecked = eligiblePacks(entry.getKey(), entry.getValue(), trust, untrustedDomains);
             if (claimChecked != null) {
                 eligible.put(entry.getKey(), claimChecked);
@@ -88,9 +89,9 @@ public final class AtlasPackPolicy {
         return eligible;
     }
 
-    private static List<IResourcePack> eligiblePacks(String domainName, FallbackResourceManager domain, Trust trust,
+    private static List<IResourcePack> eligiblePacks(String domainName, Object domainManager, Trust trust,
         Map<String, List<String>> untrustedDomains) {
-        if (domain == null || domain.getClass() != FallbackResourceManager.class) {
+        if (!(domainManager instanceof FallbackResourceManager domain) || domain.getClass() != FallbackResourceManager.class) {
             return null;
         }
         boolean eligible = true;

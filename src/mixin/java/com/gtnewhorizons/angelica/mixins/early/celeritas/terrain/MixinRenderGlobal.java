@@ -138,7 +138,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         } else {
             pipeline = Iris.getPipelineManager().getPipelineNullable();
             if (pass == 0) {
-                pipeline.setPhase(WorldRenderingPhase.TERRAIN_CUTOUT);
+                pipeline.setPhase(WorldRenderingPhase.TERRAIN_SOLID);
             } else if (pass == 1) {
                 if (!ShadowRenderingState.areShadowsCurrentlyBeingRendered()) {
                     iris$beginTranslucents(pipeline, Camera.INSTANCE);
@@ -173,8 +173,10 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         try {
             if (pass == 0) {
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_SOLID : SECTION_SOLID);
+                iris$setTerrainPhase(pipeline, WorldRenderingPhase.TERRAIN_SOLID);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.SOLID, camX, camY, camZ);
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_CUTOUT_MIPPED : SECTION_CUTOUT_MIPPED);
+                iris$setTerrainPhase(pipeline, WorldRenderingPhase.TERRAIN_CUTOUT_MIPPED);
                 this.celeritas$renderer.drawChunkLayer(BlockRenderLayer.CUTOUT_MIPPED, camX, camY, camZ);
             } else {
                 mc.mcProfiler.endStartSection(shadow ? SECTION_SHADOW_TRANSLUCENT : SECTION_TRANSLUCENT);
@@ -321,6 +323,13 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
         AngelicaRenderQueue.recordFrameStats(tasksRan, System.nanoTime() - startTime, longestTaskNs);
         return true;
+    }
+
+    @Unique
+    private static void iris$setTerrainPhase(WorldRenderingPipeline pipeline, WorldRenderingPhase phase) {
+        if (pipeline != null) {
+            pipeline.setPhase(phase);
+        }
     }
 
     @Unique

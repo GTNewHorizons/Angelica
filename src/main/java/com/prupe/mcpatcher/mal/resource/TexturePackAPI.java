@@ -52,12 +52,10 @@ public class TexturePackAPI {
         List<IResourcePack> resourcePacks = new ArrayList<>();
         IResourceManager resourceManager = Minecraft.getMinecraft().getResourceManager();
         if (resourceManager instanceof SimpleReloadableResourceManager) {
-            @SuppressWarnings("unchecked")
-            Set<Map.Entry<String, FallbackResourceManager>> entrySet = ((SimpleReloadableResourceManager) resourceManager).domainResourceManagers
-                .entrySet();
-            for (Map.Entry<String, FallbackResourceManager> entry : entrySet) {
-                if (namespace == null || namespace.equals(entry.getKey())) {
-                    List<IResourcePack> packs = entry.getValue().resourcePacks;
+            final Map<String, ?> domainManagers = ((SimpleReloadableResourceManager) resourceManager).domainResourceManagers;
+            for (Map.Entry<String, ?> entry : domainManagers.entrySet()) {
+                if ((namespace == null || namespace.equals(entry.getKey())) && entry.getValue() instanceof FallbackResourceManager fallback) {
+                    List<IResourcePack> packs = fallback.resourcePacks;
                     if (packs != null) {
                         resourcePacks.removeAll(packs);
                         resourcePacks.addAll(packs);
