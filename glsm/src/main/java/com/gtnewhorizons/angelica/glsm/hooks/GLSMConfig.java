@@ -18,6 +18,7 @@ public final class GLSMConfig {
 
     public static boolean extendedAttribsExpected;
     public static volatile boolean expandVertexFormats;
+    public static int workerThreadCount;
 
     private GLSMConfig() {}
 }

@@ -10,12 +10,9 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.ShaderTransformPostProcessor;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderType;
 import org.taumc.glsl.grammar.GLSLParser;
-import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import net.coderbot.iris.Iris;
-import java.util.concurrent.CompletableFuture;
-import java.util.function.Supplier;
 import net.coderbot.iris.gbuffer_overrides.state.StateTracker;
 import net.coderbot.iris.gl.blending.AlphaTestStorage;
 import net.coderbot.iris.gl.blending.BlendModeStorage;
@@ -104,12 +101,6 @@ public class IrisGLSMBridge {
     public static void register() {
         GLSMConfig.expandVertexFormats = Iris.enabled;
         IrisSamplers.initRenderer();
-        GLSMHooks.shaderWorkSubmitter = new ShaderWorkSubmitter() {
-            @Override
-            public <T> CompletableFuture<T> submit(Supplier<T> work) {
-                return Iris.ShaderTransformExecutor.submitTracked(work);
-            }
-        };
         installPostTransformHook();
         GLSMHooks.blendHandler = new DeferredBlendHandler() {
             @Override

@@ -150,7 +150,6 @@ public enum Mixins implements IMixins {
         .addClientMixins(
             "angelica.fontrenderer.MixinGuiIngameForge"
             , "angelica.fontrenderer.MixinFontRenderer"
-            , "angelica.fontrenderer.MixinMCResourceAccessor"
         )
     ),
 
@@ -214,6 +213,14 @@ public enum Mixins implements IMixins {
             "angelica.MixinMinecraft_SkipEndFrameFlush"
         )
     ),
+
+    ANGELICA_PARALLEL_ATLAS_LOADING(new MixinBuilder("Decode atlas sprites and generate their mipmaps on worker threads")
+        .setPhase(Phase.EARLY)
+        .addClientMixins(
+            "angelica.textures.MixinTextureMap_ParallelLoad"
+        )
+    ),
+
 
     THAUMCRAFT_SCANNER_SCREEN(new MixinBuilder("Render the held Thaumometer screen after world transparency")
         .setPhase(Phase.LATE)

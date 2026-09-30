@@ -1,10 +1,14 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
 import com.gtnewhorizon.gtnhlib.bytebuf.MemoryUtilities;
+import com.gtnewhorizons.angelica.glsm.GLESFormatRemap;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
+import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import org.lwjgl.LWJGLException;
 import org.lwjgl.opengl.Display;
+import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL20;
 
 import java.nio.ByteBuffer;
@@ -66,6 +70,7 @@ public abstract class RenderBackend {
     public abstract void flush();
     public abstract void finish();
 
+    private final ByteBuffer[] clientStagingCache = new ByteBuffer[16];
     private VSyncMode effectiveVSyncMode = VSyncMode.ON;
     private VSyncMode preferredTearFreeMode;
 
@@ -351,6 +356,71 @@ public abstract class RenderBackend {
     public void texImage3D(int target, int level, int internalFormat, int width, int height, int depth, int border, int format, int type, IntBuffer pixels) {}
     public void texSubImage1D(int target, int level, int xoffset, int width, int format, int type, ByteBuffer pixels) {}
     public void texSubImage2D(int target, int level, int xoffset, int yoffset, int width, int height, int format, int type, long pboOffset) {}
+
+    public TextureStaging beginTextureStaging(int level, int x, int y, int width, int height) {
+        final int size = Math.multiplyExact(Math.multiplyExact(width, height), 4);
+        ByteBuffer buffer = null;
+        for (int i = 0; i < clientStagingCache.length; i++) {
+            final ByteBuffer cached = clientStagingCache[i];
+            if (cached != null && cached.capacity() == size) {
+                clientStagingCache[i] = null;
+                buffer = cached;
+                break;
+            }
+        }
+        if (buffer == null) buffer = MemoryUtilities.memAlloc(size);
+        buffer.clear();
+        return new ClientTextureStaging(buffer, level, x, y, width, height);
+    }
+
+    public boolean commitTextureStaging(TextureStaging staging) {
+        final int type = RenderSystem.isGLES() ? GLESFormatRemap.remapPixelType(GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV) : GL12.GL_UNSIGNED_INT_8_8_8_8_REV;
+        try {
+            final ClientTextureStaging s = (ClientTextureStaging) staging;
+            texSubImage2D(GL11.GL_TEXTURE_2D, s.level(), s.x(), s.y(), s.width(), s.height(), GL12.GL_BGRA, type, s.buffer());
+        } finally {
+            recycleClientStaging(staging.buffer());
+        }
+        return true;
+    }
+
+    public void abandonTextureStaging(TextureStaging staging) {
+        recycleClientStaging(staging.buffer());
+    }
+
+    public void trimTextureStaging() {
+        for (int i = 0; i < clientStagingCache.length; i++) {
+            MemoryUtilities.memFree(clientStagingCache[i]);
+            clientStagingCache[i] = null;
+        }
+    }
+
+    private record ClientTextureStaging(ByteBuffer buffer, int level, int x, int y, int width, int height) implements TextureStaging {
+        @Override
+        public boolean bgra() {
+            return true;
+        }
+    }
+
+    private void recycleClientStaging(ByteBuffer buffer) {
+        int victim = -1;
+        for (int i = 0; i < clientStagingCache.length; i++) {
+            final ByteBuffer cached = clientStagingCache[i];
+            if (cached == null) {
+                clientStagingCache[i] = buffer;
+                return;
+            }
+            if (cached.capacity() < buffer.capacity() && (victim < 0 || cached.capacity() < clientStagingCache[victim].capacity())) {
+                victim = i;
+            }
+        }
+        if (victim < 0) {
+            MemoryUtilities.memFree(buffer);
+            return;
+        }
+        MemoryUtilities.memFree(clientStagingCache[victim]);
+        clientStagingCache[victim] = buffer;
+    }
     public void texSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {}
     public void copyTexImage1D(int target, int level, int internalFormat, int x, int y, int width, int border) {}
     public void copyTexImage2D(int target, int level, int internalFormat, int x, int y, int width, int height, int border) {}

@@ -47,7 +47,7 @@ public final class TextureOps {
     public boolean uploadTextureRegion(ContextState st, int glId, ResourceManager.TextureMeta meta, long texHandle, ByteBuffer src, int x, int y, int w, int h, int level, int srcFormat, int srcType) {
         if (meta == null || level >= meta.levels()) return false;
         if (src == null || texHandle == 0 || frameManager.getCommandBuffer() == 0) return false;
-        final boolean defer = st.deferUploads && !resourceManager.isFboAttachment(glId);
+        final boolean defer = resourceManager.shouldDeferTextureUpload(st, glId);
         final long cp = defer ? 0L : frameManager.ensureCopyPass();
         if (!defer && cp == 0) return false;
         final ByteBuffer unpacked = PixelOps.applyUnpackPixelStore(src, w, h, srcFormat, srcType, st.pixelStore);
@@ -161,8 +161,9 @@ public final class TextureOps {
         if (srcTex == 0) return;
 
         final int srcGlId = isDepthDest ? fbo.depthGlId : fbo.colorGlIds[fbo.readBufferIndex];
+        final int srcLevel = isDepthDest ? fbo.depthLevel : fbo.colorLevels[fbo.readBufferIndex];
         final ResourceManager.TextureMeta srcMeta = srcGlId != 0 ? resourceManager.getTextureMeta(srcGlId) : null;
-        final long clip = CopyRectClip.clipCopyRect(x, y, xoffset, yoffset, width, height, srcMeta != null ? srcMeta.width() : fbo.width, srcMeta != null ? srcMeta.height() : fbo.height, levelWidth(destMeta, level), levelHeight(destMeta, level));
+        final long clip = CopyRectClip.clipCopyRect(x, y, xoffset, yoffset, width, height, srcMeta != null ? levelWidth(srcMeta, srcLevel) : fbo.width, srcMeta != null ? levelHeight(srcMeta, srcLevel) : fbo.height, levelWidth(destMeta, level), levelHeight(destMeta, level));
         if (clip == CopyRectClip.EMPTY) return;
         final int sx = CopyRectClip.srcX(clip);
         final int sy = CopyRectClip.srcY(clip);
@@ -175,17 +176,17 @@ public final class TextureOps {
         fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h, true);
 
         if (isDepthDest || (srcMeta != null && destMeta != null && srcMeta.sdlFormat() == destMeta.sdlFormat())) {
-            copyTexture(srcTex, sx, sy, destTex, level, dx, dy, w, h);
+            copyTexture(srcTex, srcLevel, sx, sy, destTex, level, dx, dy, w, h);
         } else {
-            blitTexture(srcTex, sx, sy, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST);
+            blitTexture(srcTex, srcLevel, sx, sy, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST);
         }
     }
 
-    private static int levelWidth(ResourceManager.TextureMeta meta, int level) {
+    public static int levelWidth(ResourceManager.TextureMeta meta, int level) {
         return meta != null ? PixelOps.mipLevelSize(meta.width(), level) : 0;
     }
 
-    private static int levelHeight(ResourceManager.TextureMeta meta, int level) {
+    public static int levelHeight(ResourceManager.TextureMeta meta, int level) {
         return meta != null ? PixelOps.mipLevelSize(meta.height(), level) : 0;
     }
 
@@ -213,31 +214,34 @@ public final class TextureOps {
         }
         fboClearTracker.resolveDestinationForWrite(st, destTex, destMeta, level, dx, dy, 0, w, h, true);
 
-        blitTexture(srcTex, sx, srcFullH - sy - h, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST, SDL_FLIP_VERTICAL);
+        blitTexture(srcTex, 0, sx, srcFullH - sy - h, w, h, destTex, level, dx, dy, w, h, GL11.GL_NEAREST, SDL_FLIP_VERTICAL);
     }
 
     public static boolean canCopyInsteadOfBlit(ResourceManager.TextureMeta src, ResourceManager.TextureMeta dst, int srcW, int srcH, int dstW, int dstH) {
         return src != null && dst != null && src.sdlFormat() == dst.sdlFormat() && srcW > 0 && srcH > 0 && srcW == dstW && srcH == dstH;
     }
 
-    public void copyTexture(long srcTex, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
-        copyTexture(frameManager.ensureCopyPass(), srcTex, srcX, srcY, dstTex, dstLevel, dstX, dstY, w, h);
+    public void copyTexture(long srcTex, int srcLevel, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
+        final long cp = frameManager.ensureCopyPass();
+        if (cp == 0) return;
+        resourceManager.flushBatchedUploads(cp);
+        copyTexture(cp, srcTex, srcLevel, srcX, srcY, dstTex, dstLevel, dstX, dstY, w, h);
     }
 
-    public static void copyTexture(long cp, long srcTex, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
+    public static void copyTexture(long cp, long srcTex, int srcLevel, int srcX, int srcY, long dstTex, int dstLevel, int dstX, int dstY, int w, int h) {
         if (cp == 0) return;
         try (var stack = MemoryStack.stackPush()) {
-            final var src = SDL_GPUTextureLocation.calloc(stack).texture(srcTex).x(srcX).y(srcY);
+            final var src = SDL_GPUTextureLocation.calloc(stack).texture(srcTex).mip_level(srcLevel).x(srcX).y(srcY);
             final var dst = SDL_GPUTextureLocation.calloc(stack).texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY);
             SDL_CopyGPUTextureToTexture(cp, src, dst, w, h, 1, false);
         }
     }
 
-    public void blitTexture(long srcTex, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter) {
-        blitTexture(srcTex, srcX, srcY, srcW, srcH, dstTex, dstLevel, dstX, dstY, dstW, dstH, glFilter, SDL_FLIP_NONE);
+    public void blitTexture(long srcTex, int srcLevel, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter) {
+        blitTexture(srcTex, srcLevel, srcX, srcY, srcW, srcH, dstTex, dstLevel, dstX, dstY, dstW, dstH, glFilter, SDL_FLIP_NONE);
     }
 
-    public void blitTexture(long srcTex, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter, int flipMode) {
+    public void blitTexture(long srcTex, int srcLevel, int srcX, int srcY, int srcW, int srcH, long dstTex, int dstLevel, int dstX, int dstY, int dstW, int dstH, int glFilter, int flipMode) {
         frameManager.endCopyPassIfActive();
         frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
         final long cb = frameManager.getCommandBuffer();
@@ -245,8 +249,8 @@ public final class TextureOps {
 
         try (var stack = MemoryStack.stackPush()) {
             final var info = SDL_GPUBlitInfo.calloc(stack);
-            info.source(s -> s.texture(srcTex).x(srcX).y(srcY).w(srcW).h(srcH));
-            info.destination(d -> d.texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY).w(dstW).h(dstH));
+            info.source().texture(srcTex).mip_level(srcLevel).x(srcX).y(srcY).w(srcW).h(srcH);
+            info.destination().texture(dstTex).mip_level(dstLevel).x(dstX).y(dstY).w(dstW).h(dstH);
             info.filter(glFilter == GL11.GL_LINEAR ? SDL_GPU_FILTER_LINEAR : SDL_GPU_FILTER_NEAREST);
             info.flip_mode(flipMode);
             frameManager.noteBlit();

@@ -4,10 +4,10 @@ import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
-import com.gtnewhorizons.angelica.glsm.hooks.ShaderWorkSubmitter;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.taumc.glsl.grammar.GLSLParser;
@@ -146,6 +146,7 @@ public final class ShaderManager {
     public void shaderSource(int shader, CharSequence source) {
         final ShaderObject obj = shaderObjects.get(shader);
         if (obj == null) return;
+        discardSpirvFuture(obj);
 
         String raw = source.toString();
         if (!raw.isEmpty() && raw.charAt(raw.length() - 1) == '\0') {
@@ -158,7 +159,7 @@ public final class ShaderManager {
             obj.reflection = hit.reflection();
             obj.graphicsBindingMap = hit.graphicsBindingMap();
             obj.boolUniforms = hit.boolUniforms();
-            obj.spirvFuture = CompletableFuture.completedFuture(new SpirvCompiler.Result(hit.spirv(), null, null));
+            obj.spirvFuture = CompletableFuture.completedFuture(new AsyncCompile(new SpirvCompiler.Result(hit.spirv(), null, null), hit.graphicsBindingMap(), hit.reflection()));
             return;
         }
 
@@ -186,22 +187,16 @@ public final class ShaderManager {
         obj.boolUniforms = transformed.boolUniforms();
         obj.source = transformed.source();
 
-        final ShaderWorkSubmitter submitter = GLSMHooks.shaderWorkSubmitter;
-        if (submitter != null) {
-            final int shaderKind = shaderKindFor(obj);
-            final int glType = obj.type;
-            final String finalSrc = obj.source;
-            obj.spirvFuture = submitter.submit(() -> {
-                final SpirvCompiler.Result r = SpirvCompiler.compile(finalSrc, shaderKind, "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
-                if (r.spirv() != null && (glType == GL20.GL_VERTEX_SHADER || glType == GL20.GL_FRAGMENT_SHADER)) {
-                    obj.graphicsBindingMap = remapSpirvForSDLGPU(r.spirv(), glType);
-                    obj.reflection = reflectStage(r.spirv(), glType == GL20.GL_VERTEX_SHADER);
-                }
-                return r;
-            });
-        } else {
-            obj.spirvFuture = null;
-        }
+        final int shaderKind = shaderKindFor(obj);
+        final int glType = obj.type;
+        final String finalSrc = obj.source;
+        obj.spirvFuture = AngelicaWorkers.submit(() -> {
+            final SpirvCompiler.Result r = SpirvCompiler.compile(finalSrc, shaderKind, "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
+            if (r.spirv() != null && (glType == GL20.GL_VERTEX_SHADER || glType == GL20.GL_FRAGMENT_SHADER)) {
+                return new AsyncCompile(r, remapSpirvForSDLGPU(r.spirv(), glType), reflectStage(r.spirv(), glType == GL20.GL_VERTEX_SHADER));
+            }
+            return new AsyncCompile(r, null, null);
+        });
     }
 
     private static int shaderKindFor(ShaderObject obj) {
@@ -312,8 +307,11 @@ public final class ShaderManager {
         final SpirvCompiler.Result r;
         final boolean alreadyRemapped;
         if (obj.spirvFuture != null) {
-            r = obj.spirvFuture.join();
+            final AsyncCompile compiled = obj.spirvFuture.join();
             obj.spirvFuture = null;
+            r = compiled.result();
+            if (compiled.graphicsBindingMap() != null) obj.graphicsBindingMap = compiled.graphicsBindingMap();
+            if (compiled.reflection() != null) obj.reflection = compiled.reflection();
             alreadyRemapped = true;
         } else {
             r = SpirvCompiler.compile(obj.source, shaderKindFor(obj), "shader" + shader, SpirvCompiler.Options.vulkanForced460Core());
@@ -325,6 +323,7 @@ public final class ShaderManager {
             LOG.error("Shader {} compilation failed: {} (dump={})", shader, obj.infoLog, r.dumpPath());
             return;
         }
+        if (obj.spirv != null && obj.spirv != r.spirv()) memFree(obj.spirv);
         obj.spirv = r.spirv();
         if (!alreadyRemapped && (obj.type == GL20.GL_VERTEX_SHADER || obj.type == GL20.GL_FRAGMENT_SHADER)) {
             obj.graphicsBindingMap = remapSpirvForSDLGPU(obj.spirv, obj.type);
@@ -342,6 +341,7 @@ public final class ShaderManager {
             return;
         }
         shaderObjects.remove(shader);
+        discardSpirvFuture(obj);
         if (obj.spirv != null) memFree(obj.spirv);
     }
 
@@ -352,9 +352,23 @@ public final class ShaderManager {
         if (obj.attachCount > 0) obj.attachCount--;
         if (obj.deletePending && obj.attachCount == 0) {
             shaderObjects.remove(shader);
+            discardSpirvFuture(obj);
             if (obj.spirv != null) memFree(obj.spirv);
         }
     }
+
+    private static void discardSpirvFuture(ShaderObject obj) {
+        final CompletableFuture<AsyncCompile> future = obj.spirvFuture;
+        if (future == null) return;
+        obj.spirvFuture = null;
+        future.thenAccept(ShaderManager::freeSpirvResult);
+    }
+
+    private static void freeSpirvResult(AsyncCompile compiled) {
+        if (compiled != null && compiled.result().spirv() != null) memFree(compiled.result().spirv());
+    }
+
+    private record AsyncCompile(SpirvCompiler.Result result, GraphicsBindingMap graphicsBindingMap, StageReflection reflection) {}
 
     public boolean isCompiled(int shader) {
         final ShaderObject obj = shaderObjects.get(shader);
@@ -1373,6 +1387,7 @@ public final class ShaderManager {
         }
         programObjects.clear();
         for (ShaderObject obj : shaderObjects.values()) {
+            discardSpirvFuture(obj);
             if (obj.spirv != null) memFree(obj.spirv);
         }
         shaderObjects.clear();
@@ -1386,7 +1401,7 @@ public final class ShaderManager {
         public String infoLog = "";
         public boolean deletePending;
         public int attachCount;
-        public CompletableFuture<SpirvCompiler.Result> spirvFuture;
+        public CompletableFuture<AsyncCompile> spirvFuture;
         public StageReflection reflection = StageReflection.EMPTY;
         public GraphicsBindingMap graphicsBindingMap = GraphicsBindingMap.EMPTY;
         public Set<String> boolUniforms = Set.of();

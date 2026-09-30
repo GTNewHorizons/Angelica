@@ -67,6 +67,7 @@ import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import lombok.Getter;
@@ -5988,6 +5989,42 @@ public class GLStateManager {
         RENDER_BACKEND.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixels_buffer_offset);
         TextureInfoCache.INSTANCE.onTexSubImage2D(target, level);
         maybeGenerateMipmap(target, level);
+    }
+
+    public static TextureStaging beginTextureStaging(int level, int x, int y, int width, int height) {
+        if (DisplayListManager.isRecording()) {
+            throw DisplayListManager.unsupportedInList("beginTextureStaging");
+        }
+        if (!ctx().pixelUnpackState.isDefault()) {
+            return null;
+        }
+        return RENDER_BACKEND.beginTextureStaging(level, x, y, width, height);
+    }
+
+    public static boolean commitTextureStaging(TextureStaging staging) {
+        if (DisplayListManager.isRecording()) {
+            throw DisplayListManager.unsupportedInList("commitTextureStaging");
+        }
+        suspendPixelUnpackBuffer();
+        final boolean committed;
+        try {
+            committed = RENDER_BACKEND.commitTextureStaging(staging);
+        } finally {
+            restorePixelUnpackBuffer();
+        }
+        if (committed) {
+            TextureInfoCache.INSTANCE.onTexSubImage2D(GL11.GL_TEXTURE_2D, staging.level());
+            maybeGenerateMipmap(GL11.GL_TEXTURE_2D, staging.level());
+        }
+        return committed;
+    }
+
+    public static void abandonTextureStaging(TextureStaging staging) {
+        RENDER_BACKEND.abandonTextureStaging(staging);
+    }
+
+    public static void trimTextureStaging() {
+        RENDER_BACKEND.trimTextureStaging();
     }
 
     public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {
