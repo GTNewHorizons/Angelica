@@ -1545,7 +1545,7 @@ public class BatchingFontRenderer {
                 // After the background, so this command covers only what is counted below.
                 final int idxId = idxWriterIndex;
 
-                final boolean drawShadow = enableShadow || curShadow;
+                final boolean drawShadow = enableShadow || curShadow || (darkModeRecolorEnabled && DarkModeUtils.shadowsGlobal());
                 if (drawShadow) {
                     final int effectiveShadowColor = curShadowCustomColor
                         ? ((glyphColor & 0xFF000000) | (curShadowColorOverride & 0x00FFFFFF))
