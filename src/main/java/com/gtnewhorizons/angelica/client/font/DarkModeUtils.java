@@ -9,7 +9,9 @@ import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.resources.IResourcePack;
+import net.minecraft.client.resources.ResourcePackRepository;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -18,7 +20,6 @@ import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.prupe.mcpatcher.mal.resource.TexturePackAPI;
 import com.prupe.mcpatcher.mal.resource.TexturePackChangeHandler;
 
 public class DarkModeUtils {
@@ -58,7 +59,9 @@ public class DarkModeUtils {
         FontRecolorRule guiFont = null;
         ButtonFontRules buttonFont = null;
         boolean shadowsGlobalValue = false;
-        for (IResourcePack pack : TexturePackAPI.getResourcePacks(null)) {
+        ResourcePackRepository repository = Minecraft.getMinecraft().getResourcePackRepository();
+        for (ResourcePackRepository.Entry entry : repository.getRepositoryEntries()) {
+            IResourcePack pack = entry.getResourcePack();
             PackDarkModeRules rules = readPackRules(pack);
             if (rules == null) {
                 continue;
