@@ -218,6 +218,40 @@ public class DarkModeFontTransform {
         RecolorTarget.includeMethod(
             new MethodInfo("de.eydamos.guiadvanced.form.Label draw(Lnet/minecraft/client/Minecraft;IIF)V")
         ),
+            // ModularUI 2. Targets each caller of TextRenderer individually; stack size and tooltip text
+            // share the same calls as wanted text, so they're left off this list rather than excluded.
+            // Possible change in the future on the mui2 side.
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.api.drawable.IKey drawAligned(Lcom/cleanroommc/modularui/screen/viewport/GuiContext;IIIILcom/cleanroommc/modularui/theme/WidgetTheme;Lcom/cleanroommc/modularui/utils/Alignment;)V"),
+            new MethodInfo("com.cleanroommc.modularui.drawable.text.TextRenderer draw(Ljava/lang/String;)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.widgets.TextWidget draw(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V"),
+            new MethodInfo("com.cleanroommc.modularui.drawable.text.TextRenderer draw(Ljava/lang/String;)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.widgets.textfield.BaseTextFieldWidget drawText(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/TextFieldTheme;)V"),
+            new MethodInfo("com.cleanroommc.modularui.widgets.textfield.TextFieldRenderer draw(Ljava/util/List;)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.drawable.graph.GraphAxis drawLabels(Lcom/cleanroommc/modularui/drawable/graph/GraphView;Lcom/cleanroommc/modularui/drawable/graph/GraphAxis;)V"),
+            new MethodInfo("com.cleanroommc.modularui.drawable.text.TextRenderer draw(Ljava/lang/String;)V")
+        ),
+        RecolorTarget.includeMethod(
+            new MethodInfo("com.cleanroommc.modularui.widgets.ScrollingTextWidget draw(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.widgets.AbstractFluidDisplayWidget drawOverlay(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V"),
+            new MethodInfo("com.cleanroommc.modularui.drawable.GuiDraw drawScaledAlignedTextInBox(Ljava/lang/String;IIIILcom/cleanroommc/modularui/utils/Alignment;F)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.widgets.ItemDisplayWidget draw(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V"),
+            new MethodInfo("com.cleanroommc.modularui.drawable.GuiDraw drawScaledAmountText(ILjava/lang/String;IIIILcom/cleanroommc/modularui/utils/Alignment;I)V")
+        ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("com.cleanroommc.modularui.widgets.RichTextWidget draw(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V"),
+            new MethodInfo("com.cleanroommc.modularui.drawable.text.RichText drawAtZeroPadded(Lcom/cleanroommc/modularui/screen/viewport/GuiContext;Lcom/cleanroommc/modularui/widget/sizer/Area;Lcom/cleanroommc/modularui/theme/WidgetTheme;)V")
+        ),
     //endregion
     //region Exclude Methods
             // Applied Energistics 2 
