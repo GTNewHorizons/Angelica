@@ -2,7 +2,9 @@ package net.coderbot.batchedentityrendering.impl;
 
 import com.gtnewhorizons.angelica.rendering.RenderFailures;
 import com.gtnewhorizons.angelica.compat.mojang.RenderLayer;
+import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.LightingSnapshot;
 import com.gtnewhorizons.angelica.glsm.StateSet;
 import it.unimi.dsi.fastutil.objects.Object2IntLinkedOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -45,12 +47,19 @@ public class AngelicaBufferSource implements Groupable {
     private int drawStateDepth = -1;
     private boolean irisStateSaved;
     private GroupIdKind idKind = GroupIdKind.BLOCK_ENTITY;
+    private LightingSnapshot passLighting;
+    private final BatchDrawDefaults drawDefaults = new BatchDrawDefaults();
 
     public AngelicaBufferSource() {
         for (int i = 0; i < builders.length; i++) {
             builders[i] = new SegmentedBufferBuilder();
         }
         affinities.defaultReturnValue(-1);
+    }
+
+    public void capturePassLighting() {
+        if (passLighting == null) passLighting = new LightingSnapshot();
+        GLStateManager.captureLighting(passLighting);
     }
 
     public SegmentedBufferBuilder getBuffer(RenderLayer type, int blockEntityId) {
@@ -188,6 +197,7 @@ public class AngelicaBufferSource implements Groupable {
 
     private void restoreDrawState() {
         if (drawStateDepth >= 0) {
+            drawDefaults.restore();
             GLStateManager.popStateTo(drawStateDepth);
             drawStateDepth = -1;
         }
@@ -221,6 +231,8 @@ public class AngelicaBufferSource implements Groupable {
         if (drawStateDepth < 0) {
             drawStateDepth = GLStateManager.pushState(StateSet.BATCH);
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+            if (passLighting != null) GLStateManager.applyLighting(passLighting);
+            drawDefaults.apply();
         }
         saveIrisState();
         layer.startDrawing();

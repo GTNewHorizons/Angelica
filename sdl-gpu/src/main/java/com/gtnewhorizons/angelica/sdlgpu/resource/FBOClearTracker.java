@@ -167,15 +167,7 @@ public final class FBOClearTracker {
                     final int idx = batchIdx[k];
                     final long handle = colorHandles.getLong(idx);
                     final float[] color = st.pendingColorValues.get(handle);
-                    final long addr = targets.get(k).address();
-                    MemoryAccess.putAddress(addr + SDL_GPUColorTargetInfo.TEXTURE, handle);
-                    MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.LOAD_OP, SDL_GPU_LOADOP_CLEAR);
-                    MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
-                    final long ccAddr = addr + SDL_GPUColorTargetInfo.CLEAR_COLOR;
-                    MemoryAccess.putFloat(ccAddr + SDL_FColor.R, color[0]);
-                    MemoryAccess.putFloat(ccAddr + SDL_FColor.G, color[1]);
-                    MemoryAccess.putFloat(ccAddr + SDL_FColor.B, color[2]);
-                    MemoryAccess.putFloat(ccAddr + SDL_FColor.A, color[3]);
+                    putColorClear(targets.get(k).address(), handle, 0, color[0], color[1], color[2], color[3]);
                     resourceManager.markTextureContentDefined(handle);
                     consumed[idx] = true;
                 }
@@ -194,25 +186,8 @@ public final class FBOClearTracker {
 
     private void emitDepthStencilClearPass(ContextState st, long handle, boolean clearDepth, boolean clearStencil, boolean materialized) {
         if (!clearDepth && !clearStencil) return;
-        try (var stack = MemoryStack.stackPush()) {
-            final SDL_GPUDepthStencilTargetInfo dt = SDL_GPUDepthStencilTargetInfo.calloc(stack);
-            final long addr = dt.address();
-            MemoryAccess.putAddress(addr + SDL_GPUDepthStencilTargetInfo.TEXTURE, handle);
-            MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, clearDepth ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
-            MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
-            if (clearDepth) {
-                MemoryAccess.putFloat(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, st.pendingDepthValues.get(handle));
-            }
-            if (clearStencil) {
-                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STENCIL_LOAD_OP, SDL_GPU_LOADOP_CLEAR);
-                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STENCIL_STORE_OP, SDL_GPU_STOREOP_STORE);
-                MemoryAccess.putByte(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_STENCIL, (byte) st.pendingStencilValues.get(handle));
-            }
-            frameManager.noteClearPass();
-            if (materialized) frameManager.noteMaterializedClearPass();
-            frameManager.beginRenderPass(null, dt);
-            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
-        }
+        if (materialized) frameManager.noteMaterializedClearPass();
+        depthStencilClearPass(handle, 0, clearDepth, clearDepth ? st.pendingDepthValues.get(handle) : 0f, clearStencil, clearStencil ? st.pendingStencilValues.get(handle) : 0);
         if (clearDepth) st.pendingDepthValues.remove(handle);
         if (clearStencil) st.pendingStencilValues.remove(handle);
         if (clearDepth && clearStencil) resourceManager.markTextureContentDefined(handle);
@@ -270,15 +245,7 @@ public final class FBOClearTracker {
             frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
             try (var stack = MemoryStack.stackPush()) {
                 final SDL_GPUColorTargetInfo.Buffer targets = SDL_GPUColorTargetInfo.calloc(1, stack);
-                final long addr = targets.get(0).address();
-                MemoryAccess.putAddress(addr + SDL_GPUColorTargetInfo.TEXTURE, handle);
-                MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.LOAD_OP, SDL_GPU_LOADOP_CLEAR);
-                MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
-                final long ccAddr = addr + SDL_GPUColorTargetInfo.CLEAR_COLOR;
-                MemoryAccess.putFloat(ccAddr + SDL_FColor.R, color != null ? color[0] : 0f);
-                MemoryAccess.putFloat(ccAddr + SDL_FColor.G, color != null ? color[1] : 0f);
-                MemoryAccess.putFloat(ccAddr + SDL_FColor.B, color != null ? color[2] : 0f);
-                MemoryAccess.putFloat(ccAddr + SDL_FColor.A, color != null ? color[3] : 0f);
+                putColorClear(targets.get(0).address(), handle, 0, color != null ? color[0] : 0f, color != null ? color[1] : 0f, color != null ? color[2] : 0f, color != null ? color[3] : 0f);
                 frameManager.noteClearPass();
                 frameManager.noteMaterializedClearPass();
                 frameManager.beginRenderPass(targets, null);
@@ -287,6 +254,68 @@ public final class FBOClearTracker {
             }
             st.pendingMutationGen++;
         }
+    }
+
+    public void materializePendingClearsForMipTargets(ContextState st, FboState fbo) {
+        for (int db : fbo.drawBuffers) {
+            if (db < 0 || db >= ContextState.MAX_COLOR_ATTACHMENTS || fbo.colorLevels[db] == 0) continue;
+            final long tex = fbo.colorTextures[db];
+            if (tex != 0 && st.pendingColorTextures.contains(tex)) materializePendingClearForTexture(st, tex);
+        }
+        if (fbo.depthLevel != 0 && fbo.depthTexture != 0 && (st.pendingDepthTextures.contains(fbo.depthTexture) || st.pendingStencilTextures.contains(fbo.depthTexture))) {
+            materializePendingClearForTexture(st, fbo.depthTexture);
+        }
+    }
+
+    public void clearColorLevel(long handle, int level, float r, float g, float b, float a) {
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
+        try (var stack = MemoryStack.stackPush()) {
+            final SDL_GPUColorTargetInfo.Buffer targets = SDL_GPUColorTargetInfo.calloc(1, stack);
+            putColorClear(targets.get(0).address(), handle, level, r, g, b, a);
+            frameManager.noteClearPass();
+            frameManager.beginRenderPass(targets, null);
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
+        }
+    }
+
+    public void clearDepthStencilLevel(long handle, int level, boolean clearDepth, float depth, boolean clearStencil, int stencil) {
+        if (!clearDepth && !clearStencil) return;
+        frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
+        depthStencilClearPass(handle, level, clearDepth, depth, clearStencil, stencil);
+    }
+
+    private void depthStencilClearPass(long handle, int level, boolean clearDepth, float depth, boolean clearStencil, int stencil) {
+        try (var stack = MemoryStack.stackPush()) {
+            final SDL_GPUDepthStencilTargetInfo dt = SDL_GPUDepthStencilTargetInfo.calloc(stack);
+            final long addr = dt.address();
+            MemoryAccess.putAddress(addr + SDL_GPUDepthStencilTargetInfo.TEXTURE, handle);
+            MemoryAccess.putByte(addr + SDL_GPUDepthStencilTargetInfo.MIP_LEVEL, (byte) level);
+            MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, clearDepth ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
+            MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
+            if (clearDepth) {
+                MemoryAccess.putFloat(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_DEPTH, depth);
+            }
+            if (clearStencil) {
+                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STENCIL_LOAD_OP, SDL_GPU_LOADOP_CLEAR);
+                MemoryAccess.putInt(addr + SDL_GPUDepthStencilTargetInfo.STENCIL_STORE_OP, SDL_GPU_STOREOP_STORE);
+                MemoryAccess.putByte(addr + SDL_GPUDepthStencilTargetInfo.CLEAR_STENCIL, (byte) stencil);
+            }
+            frameManager.noteClearPass();
+            frameManager.beginRenderPass(null, dt);
+            frameManager.endRenderPassIfActive(FrameManager.PASS_END_CLEAR);
+        }
+    }
+
+    private static void putColorClear(long addr, long handle, int level, float r, float g, float b, float a) {
+        MemoryAccess.putAddress(addr + SDL_GPUColorTargetInfo.TEXTURE, handle);
+        MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.MIP_LEVEL, level);
+        MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.LOAD_OP, SDL_GPU_LOADOP_CLEAR);
+        MemoryAccess.putInt(addr + SDL_GPUColorTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
+        final long ccAddr = addr + SDL_GPUColorTargetInfo.CLEAR_COLOR;
+        MemoryAccess.putFloat(ccAddr + SDL_FColor.R, r);
+        MemoryAccess.putFloat(ccAddr + SDL_FColor.G, g);
+        MemoryAccess.putFloat(ccAddr + SDL_FColor.B, b);
+        MemoryAccess.putFloat(ccAddr + SDL_FColor.A, a);
     }
 
     public void materializeAllPendingClears(ContextState st) {
@@ -319,6 +348,7 @@ public final class FBOClearTracker {
         if (fa == null || fb == null) return false;
         if (fa.depthTexture != fb.depthTexture) return false;
         if (fa.depthFormat != fb.depthFormat) return false;
+        if (fa.depthLevel != fb.depthLevel) return false;
         if (fa.colorAttachmentCount != fb.colorAttachmentCount) return false;
         if (fa.drawBuffers.length != fb.drawBuffers.length) return false;
         for (int i = 0; i < fa.drawBuffers.length; i++) {
@@ -327,6 +357,7 @@ public final class FBOClearTracker {
         for (int i = 0; i < ContextState.MAX_COLOR_ATTACHMENTS; i++) {
             if (fa.colorTextures[i] != fb.colorTextures[i]) return false;
             if (fa.colorFormats[i] != fb.colorFormats[i]) return false;
+            if (fa.colorLevels[i] != fb.colorLevels[i]) return false;
         }
         if (fboHasPendingClear(st, fb)) return false;
         return true;

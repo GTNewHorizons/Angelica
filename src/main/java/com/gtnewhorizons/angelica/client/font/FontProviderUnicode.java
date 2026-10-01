@@ -3,6 +3,9 @@ package com.gtnewhorizons.angelica.client.font;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import jss.util.RandomXoshiro256StarStar;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.client.renderer.texture.SimpleTexture;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.resources.IReloadableResourceManager;
 import net.minecraft.client.resources.IResourceManager;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
@@ -79,12 +82,12 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     @Override
     public float getUStart(char chr) {
         final float startColumnF = (float)((this.glyphWidth[chr] >>> 4) & 15);
-        return ((float) (chr % 16 * 16) + startColumnF + 0.21f) / 256.0f;
+        return ((float) (chr % 16 * 16) + startColumnF + 0.01f) / 256.0f;
     }
 
     @Override
     public float getVStart(char chr) {
-        return ((float) ((chr & 255) / 16 * 16) + 0.21f) / 256.0f;
+        return ((float) ((chr & 255) / 16 * 16) + 0.01f) / 256.0f;
     }
 
     @Override
@@ -113,12 +116,12 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
         final float startColumnF = (float) startColumn;
         final float endColumnF = (float) (endColumn + 1);
         final float chrWidth = endColumnF - startColumnF - 0.02F;
-        return (chrWidth - 0.42f) / 256.0f;
+        return (chrWidth - 0.02f) / 256.0f;
     }
 
     @Override
     public float getVSize(char chr) {
-        return (16.0f - 0.42f) / 256.0f;
+        return (16.0f - 0.02f) / 256.0f;
     }
 
     @Override
@@ -127,9 +130,17 @@ public final class FontProviderUnicode implements FontProvider, IResourceManager
     }
 
     @Override
-    public ResourceLocation getTexture(char chr) {
+    public int getTexture(char chr) {
         final int uniPage = chr / 256;
-        return getUnicodePageLocation(uniPage);
+        ResourceLocation rl = getUnicodePageLocation(uniPage);
+        final TextureManager tm = Minecraft.getMinecraft().getTextureManager();
+        ITextureObject tex = tm.getTexture(rl);
+        if (tex == null) {
+            tex = new SimpleTexture(rl);
+            tm.loadTexture(rl, tex);
+            tex = tm.getTexture(rl);
+        }
+        return tex.getGlTextureId();
     }
 
     @Override

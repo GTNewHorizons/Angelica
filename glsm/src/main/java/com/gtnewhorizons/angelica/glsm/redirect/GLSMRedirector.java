@@ -176,6 +176,7 @@ public class GLSMRedirector {
     private static final Map<Integer, String> glCapRedirects = new HashMap<>();
     private static final Map<String, String> typeRedirects = new HashMap<>();
     private static final ClassConstantPoolParser cstPoolParser;
+    private static final String[] CONSTANT_POOL_SEARCH_STRINGS;
 
     private static final String[] CORE_EXCLUSIONS = {
         "org.lwjgl",
@@ -826,11 +827,16 @@ public class GLSMRedirector {
         stringsToSearch.add(Display);
         stringsToSearch.addAll(typeRedirects.keySet());
         stringsToSearch.addAll(methodRedirects.keySet());
-        cstPoolParser = new ClassConstantPoolParser(stringsToSearch.toArray(new String[0]));
+        CONSTANT_POOL_SEARCH_STRINGS = stringsToSearch.toArray(new String[0]);
+        cstPoolParser = new ClassConstantPoolParser(CONSTANT_POOL_SEARCH_STRINGS);
     }
 
     public String[] getCoreExclusions() {
         return CORE_EXCLUSIONS.clone();
+    }
+
+    public String[] getConstantPoolSearchStrings() {
+        return CONSTANT_POOL_SEARCH_STRINGS.clone();
     }
 
     public static String getGLPrefix() { return GL_PREFIX; }

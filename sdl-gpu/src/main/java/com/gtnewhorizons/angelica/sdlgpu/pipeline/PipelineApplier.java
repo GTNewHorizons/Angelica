@@ -143,6 +143,8 @@ public final class PipelineApplier {
             return;
         }
 
+        fboClearTracker.materializePendingClearsForMipTargets(st, fbo);
+
         final int totalTargets = fbo.drawBuffers.length;
         final long dummyTex = totalTargets > 0 ? resourceManager.getOrCreateDummyColorTarget() : 0L;
 
@@ -151,17 +153,21 @@ public final class PipelineApplier {
         for (int i = 0; i < totalTargets; i++) {
             final int db = fbo.drawBuffers[i];
             final long tex;
+            final int level;
             if (db >= 0 && db < ContextState.MAX_COLOR_ATTACHMENTS && fbo.colorTextures[db] != 0) {
                 tex = fbo.colorTextures[db];
+                level = fbo.colorLevels[db];
             } else {
                 tex = dummyTex;
+                level = 0;
             }
             final boolean pendingClear = tex != dummyTex && st.pendingColorTextures.contains(tex);
             final boolean defined = tex != dummyTex && resourceManager.isTextureContentDefined(tex);
-            final boolean firstUse = !pendingClear && tex != dummyTex && !defined;
+            final boolean firstUse = !pendingClear && tex != dummyTex && !defined && level == 0;
             if (pendingClear || firstUse) proposedClearOps |= 1 << i;
             layoutHash = Hashing.fmix64(layoutHash, tex);
             layoutHash = Hashing.fmix64(layoutHash, db);
+            layoutHash = Hashing.fmix64(layoutHash, level);
             if (pendingClear || firstUse) {
                 final float[] c = pendingClear ? st.pendingColorValues.get(tex) : null;
                 layoutHash = foldClearColor(layoutHash, c != null ? c[0] : st.clearR, c != null ? c[1] : st.clearG, c != null ? c[2] : st.clearB, c != null ? c[3] : st.clearA);
@@ -173,10 +179,12 @@ public final class PipelineApplier {
         if (fbo.depthTexture != 0) {
             final boolean defined = resourceManager.isTextureContentDefined(fbo.depthTexture);
             final boolean pendingClear = st.pendingDepthTextures.contains(fbo.depthTexture);
-            proposedDepthClear = pendingClear || !defined;
+            final boolean firstUse = !defined && fbo.depthLevel == 0;
+            proposedDepthClear = pendingClear || firstUse;
             final boolean pendingStencil = depthHasStencil && st.pendingStencilTextures.contains(fbo.depthTexture);
-            proposedStencilClear = depthHasStencil && (pendingStencil || !defined);
+            proposedStencilClear = depthHasStencil && (pendingStencil || firstUse);
             layoutHash = Hashing.fmix64(layoutHash, fbo.depthTexture);
+            layoutHash = Hashing.fmix64(layoutHash, fbo.depthLevel);
             if (proposedDepthClear) {
                 layoutHash = foldClearDepth(layoutHash, pendingClear ? st.pendingDepthValues.get(fbo.depthTexture) : st.depthClearValue);
             }
@@ -204,15 +212,19 @@ public final class PipelineApplier {
                 for (int i = 0; i < totalTargets; i++) {
                     final int db = fbo.drawBuffers[i];
                     final long tex;
+                    final int level;
                     if (db >= 0 && db < ContextState.MAX_COLOR_ATTACHMENTS && fbo.colorTextures[db] != 0) {
                         tex = fbo.colorTextures[db];
+                        level = fbo.colorLevels[db];
                     } else {
                         tex = dummyTex;
+                        level = 0;
                     }
                     final boolean pendingClear = tex != dummyTex && st.pendingColorTextures.contains(tex);
                     final boolean clearThis = (proposedClearOps & (1 << i)) != 0;
                     final long ctAddr = colorTargets.address() + (long) i * SDL_GPUColorTargetInfo.SIZEOF;
                     MemoryAccess.putAddress(ctAddr + SDL_GPUColorTargetInfo.TEXTURE, tex);
+                    MemoryAccess.putInt(ctAddr + SDL_GPUColorTargetInfo.MIP_LEVEL, level);
                     MemoryAccess.putInt(ctAddr + SDL_GPUColorTargetInfo.LOAD_OP, clearThis ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
                     MemoryAccess.putInt(ctAddr + SDL_GPUColorTargetInfo.STORE_OP, db >= 0 ? SDL_GPU_STOREOP_STORE : SDL_GPU_STOREOP_DONT_CARE);
                     if (clearThis) {
@@ -237,6 +249,7 @@ public final class PipelineApplier {
                 depthTarget = fbo.cachedDepthTarget;
                 final long dtAddr = depthTarget.address();
                 MemoryAccess.putAddress(dtAddr + SDL_GPUDepthStencilTargetInfo.TEXTURE, fbo.depthTexture);
+                MemoryAccess.putByte(dtAddr + SDL_GPUDepthStencilTargetInfo.MIP_LEVEL, (byte) fbo.depthLevel);
                 MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.LOAD_OP, proposedDepthClear ? SDL_GPU_LOADOP_CLEAR : SDL_GPU_LOADOP_LOAD);
                 MemoryAccess.putInt(dtAddr + SDL_GPUDepthStencilTargetInfo.STORE_OP, SDL_GPU_STOREOP_STORE);
                 if (proposedDepthClear) {

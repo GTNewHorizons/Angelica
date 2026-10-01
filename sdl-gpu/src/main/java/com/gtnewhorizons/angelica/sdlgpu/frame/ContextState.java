@@ -138,6 +138,7 @@ public final class ContextState {
     public int logicOpMode = GL11.GL_COPY;
     public long appliedLogicOpKey;
     public LogicOpVariant activeLogicOpVariant;
+    public final int[] blitRect = new int[8];
     public final long[] logicOpScratch = new long[MAX_COLOR_ATTACHMENTS];
     public final int[] logicOpScratchFormat = new int[MAX_COLOR_ATTACHMENTS];
     public final int[] logicOpScratchWidth = new int[MAX_COLOR_ATTACHMENTS];

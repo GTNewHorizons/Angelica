@@ -67,6 +67,7 @@ import com.gtnewhorizons.angelica.glsm.states.TextureBinding;
 import com.gtnewhorizons.angelica.glsm.states.TextureUnitArray;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfo;
 import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
+import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import it.unimi.dsi.fastutil.ints.Int2IntMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import lombok.Getter;
@@ -157,12 +158,16 @@ public class GLStateManager {
 
     public static void beforeUncapturedCapabilityChange(int cap) {
         if (cap == GL11.GL_FOG || cap == GL11.GL_SCISSOR_TEST || cap == GL11.GL_STENCIL_TEST
-            || (cap == GL11.GL_TEXTURE_2D && getActiveTextureUnit() != 0)
-            || cap == GL11.GL_TEXTURE_1D || cap == GL12.GL_TEXTURE_3D || cap == GL13.GL_TEXTURE_CUBE_MAP
-            || (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES)
-            || (cap >= GL11.GL_TEXTURE_GEN_S && cap <= GL11.GL_TEXTURE_GEN_Q)) {
+            || cap == GL11.GL_COLOR_LOGIC_OP || cap == GL14.GL_COLOR_SUM || cap == GL30.GL_RASTERIZER_DISCARD
+            || cap == GL13.GL_SAMPLE_ALPHA_TO_COVERAGE || cap == GL13.GL_SAMPLE_ALPHA_TO_ONE || cap == GL13.GL_SAMPLE_COVERAGE
+            || (cap >= GL11.GL_CLIP_PLANE0 && cap < GL11.GL_CLIP_PLANE0 + MAX_CLIP_PLANES)) {
             beforeUncapturedStateChange();
         }
+    }
+
+    public static void beforeUncapturedTextureUnitChange(int cap, int unit) {
+        if (cap == GL11.GL_TEXTURE_2D && unit <= 1) return;
+        beforeUncapturedStateChange();
     }
 
     private static void beforeMatrixChange() {
@@ -1966,6 +1971,7 @@ public class GLStateManager {
     private static void changeSecondaryColor(float red, float green, float blue) {
         final GLContextState glCtx = ctx();
         if (!isCachingEnabled() || red != glCtx.secondaryColor.getRed() || green != glCtx.secondaryColor.getGreen() || blue != glCtx.secondaryColor.getBlue()) {
+            if (glCtx.colorSumState.isEnabled()) beforeUncapturedStateChange();
             mod(glCtx.secondaryColor);
             glCtx.secondaryColor.setRed(red);
             glCtx.secondaryColor.setGreen(green);
@@ -2840,6 +2846,7 @@ public class GLStateManager {
                 return;
             }
         }
+        if (!isCachingEnabled() || ctx().drawBuffer.getValue() != mode) beforeUncapturedStateChange();
         if (isCachingEnabled()) mod(ctx().drawBuffer).setValue(mode);
         RENDER_BACKEND.drawBuffer(mode);
     }
@@ -3398,6 +3405,7 @@ public class GLStateManager {
                 return;
             }
         }
+        if (!isCachingEnabled() || ctx().logicOpMode.getValue() != opcode) beforeUncapturedStateChange();
         if (isCachingEnabled()) mod(ctx().logicOpMode).setValue(opcode);
         RENDER_BACKEND.logicOp(opcode);
     }
@@ -5673,7 +5681,9 @@ public class GLStateManager {
     }
 
     public static void glDepthRange(double near, double far) {
-        if (isCachingEnabled()) mod(ctx().viewportState).setDepthRange(near, far);
+        final GLContextState glCtx = ctx();
+        if (!isCachingEnabled() || glCtx.viewportState.depthRangeNear != near || glCtx.viewportState.depthRangeFar != far) beforeUncapturedStateChange();
+        if (isCachingEnabled()) mod(glCtx.viewportState).setDepthRange(near, far);
         RENDER_BACKEND.depthRange(near, far);
     }
 
@@ -5981,6 +5991,42 @@ public class GLStateManager {
         maybeGenerateMipmap(target, level);
     }
 
+    public static TextureStaging beginTextureStaging(int level, int x, int y, int width, int height) {
+        if (DisplayListManager.isRecording()) {
+            throw DisplayListManager.unsupportedInList("beginTextureStaging");
+        }
+        if (!ctx().pixelUnpackState.isDefault()) {
+            return null;
+        }
+        return RENDER_BACKEND.beginTextureStaging(level, x, y, width, height);
+    }
+
+    public static boolean commitTextureStaging(TextureStaging staging) {
+        if (DisplayListManager.isRecording()) {
+            throw DisplayListManager.unsupportedInList("commitTextureStaging");
+        }
+        suspendPixelUnpackBuffer();
+        final boolean committed;
+        try {
+            committed = RENDER_BACKEND.commitTextureStaging(staging);
+        } finally {
+            restorePixelUnpackBuffer();
+        }
+        if (committed) {
+            TextureInfoCache.INSTANCE.onTexSubImage2D(GL11.GL_TEXTURE_2D, staging.level());
+            maybeGenerateMipmap(GL11.GL_TEXTURE_2D, staging.level());
+        }
+        return committed;
+    }
+
+    public static void abandonTextureStaging(TextureStaging staging) {
+        RENDER_BACKEND.abandonTextureStaging(staging);
+    }
+
+    public static void trimTextureStaging() {
+        RENDER_BACKEND.trimTextureStaging();
+    }
+
     public static void glTexSubImage3D(int target, int level, int xoffset, int yoffset, int zoffset, int width, int height, int depth, int format, int type, ByteBuffer pixels) {
         if (DisplayListManager.isRecording()) {
             throw DisplayListManager.unsupportedInList("glTexSubImage3D");
@@ -6120,24 +6166,19 @@ public class GLStateManager {
         }
         // Track front/back separately in cache (Mesa compat semantics), but always issue GL_FRONT_AND_BACK to the driver (core profile constraint).
         final boolean caching = isCachingEnabled();
-        final boolean needsUpdate;
-        if (face == GL11.GL_FRONT) {
-            needsUpdate = !caching || glCtx.polygonState.getFrontMode() != polygonMode;
-            if (caching && needsUpdate) mod(glCtx.polygonState).setFrontMode(polygonMode);
-        } else if (face == GL11.GL_BACK) {
-            needsUpdate = !caching || glCtx.polygonState.getBackMode() != polygonMode;
-            if (caching && needsUpdate) mod(glCtx.polygonState).setBackMode(polygonMode);
-        } else { // GL_FRONT_AND_BACK
-            needsUpdate = !caching || glCtx.polygonState.getFrontMode() != polygonMode || glCtx.polygonState.getBackMode() != polygonMode;
-            if (caching && needsUpdate) {
-                mod(glCtx.polygonState);
-                glCtx.polygonState.setFrontMode(polygonMode);
-                glCtx.polygonState.setBackMode(polygonMode);
-            }
+        final boolean front = face != GL11.GL_BACK;
+        final boolean back = face != GL11.GL_FRONT;
+        final boolean needsUpdate = !caching
+            || (front && glCtx.polygonState.getFrontMode() != polygonMode)
+            || (back && glCtx.polygonState.getBackMode() != polygonMode);
+        if (!needsUpdate) return;
+        beforeUncapturedStateChange();
+        if (caching) {
+            mod(glCtx.polygonState);
+            if (front) glCtx.polygonState.setFrontMode(polygonMode);
+            if (back) glCtx.polygonState.setBackMode(polygonMode);
         }
-        if (needsUpdate) {
-            RENDER_BACKEND.polygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
-        }
+        RENDER_BACKEND.polygonMode(GL11.GL_FRONT_AND_BACK, polygonMode);
     }
 
     public static void glPolygonOffset(float factor, float units) {
@@ -6356,6 +6397,7 @@ public class GLStateManager {
                 return;
             }
         }
+        beforeUncapturedStateChange();
         RENDER_BACKEND.drawBuffers(buffer);
     }
 
@@ -6367,6 +6409,7 @@ public class GLStateManager {
                 return;
             }
         }
+        beforeUncapturedStateChange();
         RENDER_BACKEND.drawBuffers(bufs);
     }
 
@@ -6375,6 +6418,7 @@ public class GLStateManager {
         if (DisplayListManager.isRecording()) {
             throw DisplayListManager.unsupportedInList("glSampleCoverage");
         }
+        beforeUncapturedStateChange();
         RENDER_BACKEND.sampleCoverage(value, invert);
     }
 
@@ -8509,6 +8553,56 @@ public class GLStateManager {
 
     public static MaterialStateStack getBackMaterial() {
         return ctx().backMaterial;
+    }
+
+    public static void captureLighting(LightingSnapshot out) {
+        final GLContextState glCtx = ctx();
+        for (int i = 0; i < out.lights.length; i++) {
+            out.lightEnabled[i] = glCtx.lightStates[i].isEnabled();
+            out.lights[i].set(glCtx.lightDataStates[i]);
+        }
+        out.lightModel.set(glCtx.lightModel);
+        out.frontMaterial.set(glCtx.frontMaterial);
+        out.backMaterial.set(glCtx.backMaterial);
+        out.colorMaterial = glCtx.colorMaterial.isEnabled();
+        out.colorMaterialFace = glCtx.colorMaterialFace.getValue();
+        out.colorMaterialParameter = glCtx.colorMaterialParameter.getValue();
+        out.normalize = glCtx.normalizeState.isEnabled();
+        out.rescaleNormal = glCtx.rescaleNormalState.isEnabled();
+    }
+
+    public static void applyLighting(LightingSnapshot in) {
+        final GLContextState glCtx = ctx();
+        boolean changed = false;
+        for (int i = 0; i < in.lights.length; i++) {
+            glCtx.lightStates[i].setEnabled(in.lightEnabled[i]);
+            if (!glCtx.lightDataStates[i].sameAs(in.lights[i])) {
+                mod(glCtx.lightDataStates[i]).set(in.lights[i]);
+                changed = true;
+            }
+        }
+        if (!glCtx.lightModel.sameAs(in.lightModel)) {
+            mod(glCtx.lightModel).set(in.lightModel);
+            changed = true;
+        }
+        if (!glCtx.frontMaterial.sameAs(in.frontMaterial)) {
+            mod(glCtx.frontMaterial).set(in.frontMaterial);
+            changed = true;
+        }
+        if (!glCtx.backMaterial.sameAs(in.backMaterial)) {
+            mod(glCtx.backMaterial).set(in.backMaterial);
+            changed = true;
+        }
+        if (glCtx.colorMaterialFace.getValue() != in.colorMaterialFace || glCtx.colorMaterialParameter.getValue() != in.colorMaterialParameter) {
+            mod(glCtx.colorMaterialFace).setValue(in.colorMaterialFace);
+            mod(glCtx.colorMaterialParameter).setValue(in.colorMaterialParameter);
+            changed = true;
+        }
+        // Direct set: glEnable(GL_COLOR_MATERIAL) would bake the current color over the captured material.
+        glCtx.colorMaterial.setEnabled(in.colorMaterial);
+        glCtx.normalizeState.setEnabled(in.normalize);
+        glCtx.rescaleNormalState.setEnabled(in.rescaleNormal);
+        if (changed) glCtx.lightingGeneration++;
     }
 
     public static ViewPortStateStack getViewportState() {

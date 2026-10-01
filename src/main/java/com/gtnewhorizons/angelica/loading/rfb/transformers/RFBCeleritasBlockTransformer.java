@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.loading.rfb.transformers;
 import com.gtnewhorizons.angelica.loading.shared.AngelicaClassDump;
 import com.gtnewhorizons.angelica.loading.shared.transformers.CeleritasBlockTransform;
 import com.gtnewhorizons.angelica.loading.shared.transformers.TileEntityMarkerTransform;
+import com.gtnewhorizons.retrofuturabootstrap.api.BytePatternMatcher;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassHeaderMetadata;
 import com.gtnewhorizons.retrofuturabootstrap.api.ClassNodeHandle;
 import com.gtnewhorizons.retrofuturabootstrap.api.ExtensibleClassLoader;
@@ -19,10 +20,12 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
 
     private final CeleritasBlockTransform inner;
     private final TileEntityMarkerTransform tileEntities;
+    private final BytePatternMatcher cstPoolMatcher;
 
     public RFBCeleritasBlockTransformer(boolean isObf) {
         inner = new CeleritasBlockTransform(isObf);
         tileEntities = new TileEntityMarkerTransform(isObf, RetroFuturaBootstrap.API.newestAsmVersion());
+        cstPoolMatcher = new BytePatternMatcher(inner.getConstantPoolSearchStrings(), BytePatternMatcher.Mode.Equals);
     }
 
     @Pattern("[a-z0-9-]+")
@@ -68,7 +71,7 @@ public class RFBCeleritasBlockTransformer implements RfbClassTransformer {
             tileEntities.track(thisName, superName);
             if (tileEntities.markersFor(thisName, originalBytes) != 0) return true;
         }
-        return inner.shouldTransform(originalBytes);
+        return metadata.matchesBytes(originalBytes, cstPoolMatcher);
     }
 
     @Override

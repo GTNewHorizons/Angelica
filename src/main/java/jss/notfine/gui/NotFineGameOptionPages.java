@@ -168,6 +168,7 @@ public class NotFineGameOptionPages {
             groups.add(OptionGroup.createBuilder()
                 .add(Settings.ZOOM_SMOOTH.option)
                 .add(Settings.ZOOM_SMOOTH_SPEED.option)
+                .add(Settings.ZOOM_CINEMATIC.option)
                 .build());
         }
 

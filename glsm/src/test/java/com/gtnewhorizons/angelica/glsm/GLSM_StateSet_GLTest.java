@@ -706,4 +706,48 @@ public class GLSM_StateSet_GLTest {
             GLStateManager.glColorMaterial(GL11.GL_FRONT_AND_BACK, GL11.GL_AMBIENT_AND_DIFFUSE);
         }
     }
+
+    @Test
+    void batchAppliesPassLightingAndRestoresLiveLighting() {
+        final boolean lightmapWas = GLStateManager.getTextures().getTextureUnitStates(1).isEnabled();
+        final LightingSnapshot pass = new LightingSnapshot();
+        try {
+            GLStateManager.glEnable(GL11.GL_LIGHT0);
+            GLStateManager.glEnable(GL11.GL_LIGHT1);
+            GLStateManager.enableColorMaterial();
+            GLStateManager.glLightf(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, 2.0f);
+            GLStateManager.captureLighting(pass);
+
+            GLStateManager.glDisable(GL11.GL_LIGHT0);
+            GLStateManager.glDisable(GL11.GL_LIGHT1);
+            GLStateManager.disableColorMaterial();
+            GLStateManager.glLightf(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, 1.0f);
+            GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(false);
+            final int liveGeneration = GLStateManager.getLightingGeneration();
+
+            final int d = GLStateManager.pushState(StateSet.BATCH);
+            GLStateManager.applyLighting(pass);
+            GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(true);
+            assertTrue(GLStateManager.getLightStates()[0].isEnabled(), "light 0 from the pass");
+            assertTrue(GLStateManager.getLightStates()[1].isEnabled(), "light 1 from the pass");
+            assertTrue(GLStateManager.getColorMaterial().isEnabled(), "color material from the pass");
+            assertEquals(2.0f, GLStateManager.getLightDataStates()[0].constantAttenuation, "light 0 data from the pass");
+            assertTrue(GLStateManager.getLightingGeneration() != liveGeneration, "lighting uniforms marked dirty");
+            final int passGeneration = GLStateManager.getLightingGeneration();
+            GLStateManager.popStateTo(d);
+
+            assertFalse(GLStateManager.getLightStates()[0].isEnabled(), "light 0 restored by BATCH pop");
+            assertFalse(GLStateManager.getLightStates()[1].isEnabled(), "light 1 restored by BATCH pop");
+            assertFalse(GLStateManager.getColorMaterial().isEnabled(), "color material restored by BATCH pop");
+            assertEquals(1.0f, GLStateManager.getLightDataStates()[0].constantAttenuation, "light 0 data restored by BATCH pop");
+            assertFalse(GLStateManager.getTextures().getTextureUnitStates(1).isEnabled(), "lightmap enable restored by BATCH pop");
+            assertTrue(GLStateManager.getLightingGeneration() != passGeneration, "lighting uniforms marked dirty after pop");
+        } finally {
+            GLStateManager.glDisable(GL11.GL_LIGHT0);
+            GLStateManager.glDisable(GL11.GL_LIGHT1);
+            GLStateManager.disableColorMaterial();
+            GLStateManager.glLightf(GL11.GL_LIGHT0, GL11.GL_CONSTANT_ATTENUATION, 1.0f);
+            GLStateManager.getTextures().getTextureUnitStates(1).setEnabled(lightmapWas);
+        }
+    }
 }

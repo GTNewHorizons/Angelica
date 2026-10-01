@@ -3,6 +3,10 @@ package com.gtnewhorizons.angelica.client.font;
 import com.gtnewhorizons.angelica.config.FontConfig;
 import it.unimi.dsi.fastutil.chars.Char2ShortOpenHashMap;
 import jss.util.RandomXoshiro256StarStar;
+import net.minecraft.client.Minecraft;
+import net.minecraft.client.renderer.texture.ITextureObject;
+import net.minecraft.client.renderer.texture.SimpleTexture;
+import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.util.ResourceLocation;
 
 public final class FontProviderMC implements FontProvider {
@@ -109,8 +113,15 @@ public final class FontProviderMC implements FontProvider {
     }
 
     @Override
-    public ResourceLocation getTexture(char chr) {
-        return locationFontTexture;
+    public int getTexture(char chr) {
+        final TextureManager tm = Minecraft.getMinecraft().getTextureManager();
+        ITextureObject tex = tm.getTexture(locationFontTexture);
+        if (tex == null) {
+            tex = new SimpleTexture(locationFontTexture);
+            tm.loadTexture(locationFontTexture, tex);
+            tex = tm.getTexture(locationFontTexture);
+        }
+        return tex.getGlTextureId();
     }
 
     @Override

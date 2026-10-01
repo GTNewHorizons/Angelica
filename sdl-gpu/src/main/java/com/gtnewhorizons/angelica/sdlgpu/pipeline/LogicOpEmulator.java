@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager.FrameState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
+import com.gtnewhorizons.angelica.sdlgpu.resource.PixelOps;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.TextureOps;
 import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpFormats;
@@ -70,8 +71,11 @@ public final class LogicOpEmulator {
                 st.logicOpScratchHeight[loc] = h;
                 st.samplerBindGen++;
             }
-            if (cp == 0L) cp = frameManager.ensureCopyPass(FrameManager.PASS_END_LOGIC_OP);
-            TextureOps.copyTexture(cp, tex, 0, 0, scratch, 0, 0, 0, w, h);
+            if (cp == 0L) {
+                cp = frameManager.ensureCopyPass(FrameManager.PASS_END_LOGIC_OP);
+                resourceManager.flushBatchedUploads(cp);
+            }
+            TextureOps.copyTexture(cp, tex, targetLevel(fbo, loc), 0, 0, scratch, 0, 0, 0, w, h);
         }
     }
 
@@ -109,15 +113,21 @@ public final class LogicOpEmulator {
         return fbo == null ? frameManager.getSwapchainFormat() : fbo.colorFormats[drawBuffer(fbo, loc)];
     }
 
+    private static int targetLevel(FboState fbo, int loc) {
+        return fbo == null ? 0 : fbo.colorLevels[drawBuffer(fbo, loc)];
+    }
+
     private int targetWidth(FboState fbo, int loc) {
         if (fbo == null) return frameManager.getFbo0Width();
-        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(fbo.colorGlIds[drawBuffer(fbo, loc)]);
-        return meta != null ? meta.width() : fbo.width;
+        final int db = drawBuffer(fbo, loc);
+        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(fbo.colorGlIds[db]);
+        return meta != null ? PixelOps.mipLevelSize(meta.width(), fbo.colorLevels[db]) : fbo.width;
     }
 
     private int targetHeight(FboState fbo, int loc) {
         if (fbo == null) return frameManager.getFbo0Height();
-        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(fbo.colorGlIds[drawBuffer(fbo, loc)]);
-        return meta != null ? meta.height() : fbo.height;
+        final int db = drawBuffer(fbo, loc);
+        final ResourceManager.TextureMeta meta = resourceManager.getTextureMeta(fbo.colorGlIds[db]);
+        return meta != null ? PixelOps.mipLevelSize(meta.height(), fbo.colorLevels[db]) : fbo.height;
     }
 }

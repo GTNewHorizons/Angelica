@@ -88,6 +88,8 @@ public final class TesrBatchRenderer {
             discardDeferred();
         }
         activePass = passKey;
+        bufferSource.capturePassLighting();
+        BatchDrawDefaults.capturePassFramebuffer();
         retained[passKey].beginPass(baseMV, camX, camY, camZ, instancedCapable() ? instancedRenderer : null, deferredPipeline());
         if (passKey == PASS_MAIN_0) {
             final long now = System.currentTimeMillis();
@@ -175,7 +177,7 @@ public final class TesrBatchRenderer {
             final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
             final boolean lit = DrawState.liveLit(material);
             final RenderLayer layer = layerFor(texture, material, pass,
-                offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f, cullCode, lit);
+                offset ? polygon.getOffsetFactor() : 0.0f, offset ? polygon.getOffsetUnits() : 0.0f, cullCode, lit, DrawState.liveLightmap());
             final int blockEntityId = pass.isEntityPhase()
                 ? CapturedRenderingState.INSTANCE.getCurrentRenderedEntity()
                 : CapturedRenderingState.INSTANCE.getCurrentRenderedBlockEntity();
@@ -209,8 +211,9 @@ public final class TesrBatchRenderer {
         float offsetUnits;
         int cull;
         boolean lit;
+        boolean lightmap;
 
-        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits, int cull, boolean lit) {
+        LayerKey set(ResourceLocation texture, TesrMaterial.Transparency transparency, boolean noCull, boolean unlit, boolean noDepthWrite, boolean depthOnly, float cutoutAlpha, boolean depthEqual, TesrMaterial.SpecialRender special, TesrShader shader, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits, int cull, boolean lit, boolean lightmap) {
             this.texture = texture;
             this.transparency = transparency;
             this.noCull = noCull;
@@ -227,11 +230,12 @@ public final class TesrBatchRenderer {
             this.offsetUnits = offsetUnits;
             this.cull = cull;
             this.lit = lit;
+            this.lightmap = lightmap;
             return this;
         }
 
         LayerKey copy() {
-            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader, noPass, pass, offsetFactor, offsetUnits, cull, lit);
+            return new LayerKey().set(texture, transparency, noCull, unlit, noDepthWrite, depthOnly, cutoutAlpha, depthEqual, special, shader, noPass, pass, offsetFactor, offsetUnits, cull, lit, lightmap);
         }
 
         @Override
@@ -245,7 +249,7 @@ public final class TesrBatchRenderer {
                 && Objects.equals(pass, other.pass)
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
                 && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
-                && cull == other.cull && lit == other.lit;
+                && cull == other.cull && lit == other.lit && lightmap == other.lightmap;
         }
 
         @Override
@@ -266,6 +270,7 @@ public final class TesrBatchRenderer {
             h = h * 31 + Float.floatToIntBits(offsetUnits);
             h = h * 31 + cull;
             h = h * 31 + (lit ? 1 : 0);
+            h = h * 31 + (lightmap ? 1 : 0);
             return h;
         }
     }
@@ -279,19 +284,22 @@ public final class TesrBatchRenderer {
     private float lastLayerOffsetUnits;
     private int lastLayerCull;
     private boolean lastLayerLit;
+    private boolean lastLayerLightmap;
     private RenderLayer lastLayer;
     private ResourceLocation lastImmediateTexture;
     private TesrMaterial lastImmediateMaterial;
     private int lastImmediateCull;
     private boolean lastImmediateLit;
+    private boolean lastImmediateLightmap;
     private RenderLayer lastImmediateLayer;
 
-    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit) {
+    private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit, boolean lightmap) {
         if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
-            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && cullCode == lastLayerCull && lit == lastLayerLit) {
+            && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && cullCode == lastLayerCull && lit == lastLayerLit
+            && lightmap == lastLayerLightmap) {
             return lastLayer;
         }
-        final RenderLayer layer = layerLookup(texture, material, false, pass, offsetFactor, offsetUnits, cullCode, lit);
+        final RenderLayer layer = layerLookup(texture, material, false, pass, offsetFactor, offsetUnits, cullCode, lit, lightmap);
         lastLayerTexture = texture;
         lastLayerMaterial = material;
         lastLayerPass = pass;
@@ -299,6 +307,7 @@ public final class TesrBatchRenderer {
         lastLayerOffsetUnits = offsetUnits;
         lastLayerCull = cullCode;
         lastLayerLit = lit;
+        lastLayerLightmap = lightmap;
         lastLayer = layer;
         return layer;
     }
@@ -306,23 +315,26 @@ public final class TesrBatchRenderer {
     private RenderLayer noPassLayerFor(ResourceLocation texture, TesrMaterial material) {
         final int cullCode = material.isNoCull() ? DrawState.DISABLED : DrawState.liveCull();
         final boolean lit = DrawState.liveLit(material);
-        if (texture == lastImmediateTexture && material == lastImmediateMaterial && cullCode == lastImmediateCull && lit == lastImmediateLit) {
+        final boolean lightmap = DrawState.liveLightmap();
+        if (texture == lastImmediateTexture && material == lastImmediateMaterial && cullCode == lastImmediateCull && lit == lastImmediateLit
+            && lightmap == lastImmediateLightmap) {
             return lastImmediateLayer;
         }
-        final RenderLayer layer = layerLookup(texture, material, true, PassOverride.NONE, 0.0f, 0.0f, cullCode, lit);
+        final RenderLayer layer = layerLookup(texture, material, true, PassOverride.NONE, 0.0f, 0.0f, cullCode, lit, lightmap);
         lastImmediateTexture = texture;
         lastImmediateMaterial = material;
         lastImmediateCull = cullCode;
         lastImmediateLit = lit;
+        lastImmediateLightmap = lightmap;
         lastImmediateLayer = layer;
         return layer;
     }
 
-    private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit) {
-        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader(), noPass, pass, offsetFactor, offsetUnits, cullCode, lit);
+    private RenderLayer layerLookup(ResourceLocation texture, TesrMaterial material, boolean noPass, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit, boolean lightmap) {
+        final LayerKey key = scratchKey.set(texture, material.transparency(), material.isNoCull(), material.isUnlit(), material.isNoDepthWrite(), material.isDepthOnly(), material.cutoutAlpha(), material.isDepthEqual(), material.special(), material.shader(), noPass, pass, offsetFactor, offsetUnits, cullCode, lit, lightmap);
         RenderLayer layer = layers.get(key);
         if (layer == null) {
-            layer = noPass ? RenderLayer.tesrNoPass(texture, material, cullCode, lit) : RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, ShaderGlint.NO_TINT, cullCode, lit);
+            layer = noPass ? RenderLayer.tesrNoPass(texture, material, cullCode, lit, lightmap) : RenderLayer.tesr(texture, material, pass, offsetFactor, offsetUnits, ShaderGlint.NO_TINT, cullCode, lit, lightmap);
             layers.put(key.copy(), layer);
         }
         return layer;

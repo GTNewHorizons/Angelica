@@ -11,6 +11,7 @@ public final class FboState {
     public final long[] colorTextures = new long[MAX_COLOR_ATTACHMENTS];
     public final int[] colorGlIds = new int[MAX_COLOR_ATTACHMENTS];
     public final int[] colorFormats = new int[MAX_COLOR_ATTACHMENTS];
+    public final int[] colorLevels = new int[MAX_COLOR_ATTACHMENTS];
     public int colorAttachmentCount;
 
     public int[] drawBuffers = {0};
@@ -19,6 +20,7 @@ public final class FboState {
     public long depthTexture;
     public int depthGlId;
     public int depthFormat;
+    public int depthLevel;
     public int width, height;
 
     public int[] cachedColorFormats;
@@ -62,8 +64,10 @@ public final class FboState {
             final long tex = (db >= 0 && db < MAX_COLOR_ATTACHMENTS) ? colorTextures[db] : 0L;
             h = Hashing.fmix64(h, tex);
             h = Hashing.fmix64(h, db);
+            h = Hashing.fmix64(h, tex != 0L ? colorLevels[db] : 0);
         }
         h = Hashing.fmix64(h, depthTexture);
+        h = Hashing.fmix64(h, depthLevel);
         if (h == 0L || h == FrameManager.FBO0_LAYOUT_HASH) h = 0xD1CE5EEDL;
         structuralLayoutHash = h;
     }
@@ -73,6 +77,7 @@ public final class FboState {
         colorTextures[colorIdx] = 0L;
         colorGlIds[colorIdx] = 0;
         colorFormats[colorIdx] = 0;
+        colorLevels[colorIdx] = 0;
         int newCount = 0;
         for (int i = 0; i < MAX_COLOR_ATTACHMENTS; i++) {
             if (colorTextures[i] != 0L) newCount = i + 1;
@@ -86,6 +91,7 @@ public final class FboState {
         depthTexture = 0L;
         depthGlId = 0;
         depthFormat = 0;
+        depthLevel = 0;
         targetsDirty = true;
     }
 

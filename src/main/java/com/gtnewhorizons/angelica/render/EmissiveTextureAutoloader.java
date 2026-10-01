@@ -57,8 +57,8 @@ public class EmissiveTextureAutoloader {
 
         final IResourceManager resMan = Minecraft.getMinecraft().getResourceManager();
         if (resMan instanceof SimpleReloadableResourceManager simple) {
-            FallbackResourceManager fallback = simple.domainResourceManagers.get(full.getResourceDomain());
-            if (fallback != null) {
+            final Map<String, ?> domainManagers = simple.domainResourceManagers;
+            if (domainManagers.get(full.getResourceDomain()) instanceof FallbackResourceManager fallback) {
                 for (IResourcePack rp : fallback.resourcePacks) {
                     if (rp != null && rp.resourceExists(full)) {
                         return true;
