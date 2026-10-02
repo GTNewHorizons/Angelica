@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.rendering;
 
+import com.gtnewhorizons.angelica.rendering.tesr.PassRebindGate;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -18,7 +19,9 @@ public final class EntityRenderScope {
         if (lightning) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
         }
-        return GbufferPrograms.beginNestedEntityPhase();
+        final boolean nested = GbufferPrograms.beginNestedEntityPhase();
+        PassRebindGate.rebindIfDirty();
+        return nested;
     }
 
     public static void end(Class<?> prevRenderable, boolean lightning, boolean nested) {
