@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.renderpass;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
@@ -39,16 +38,18 @@ public abstract class MixinEntityRenderer {
         return RenderPass.setAmbientOcclusion(this.mc.gameSettings.ambientOcclusion != 0);
     }
 
-    @WrapOperation(
+    @Surround(
         method = "renderWorld(FJ)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/RenderGlobal;sortAndRender(Lnet/minecraft/entity/EntityLivingBase;ID)I",
             ordinal = 0))
-    private int modifyRenderWorld3(RenderGlobal instance, EntityLivingBase entitylivingbase, int k, double i1, Operation<Integer> original) {
-        int returnValue = original.call(instance, entitylivingbase, k, i1);
+    private void modifyRenderWorld3() {}
+
+    @Surround.Return
+    private int modifyRenderWorld3Result(int result, RenderGlobal instance, EntityLivingBase entitylivingbase, int k, double i1) {
         instance.sortAndRender(entitylivingbase, 4, i1);
-        return returnValue;
+        return result;
     }
 
     @Inject(

@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.client.rendering.AngelicaFogService;
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
 import com.gtnewhorizons.angelica.compat.mojang.GameModeUtil;
 import com.gtnewhorizons.angelica.event.RenderChunkEvent;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderGlobalExt;
@@ -14,6 +15,7 @@ import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -30,6 +32,7 @@ import net.minecraft.client.renderer.texture.TextureManager;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.entity.Entity;
 import net.minecraft.entity.EntityLivingBase;
+import net.minecraft.tileentity.TileEntity;
 import org.embeddedt.embeddium.impl.gl.device.RenderDevice;
 import org.embeddedt.embeddium.impl.render.terrain.SimpleWorldRenderer;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
@@ -48,6 +51,8 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import java.util.Collections;
+import java.util.List;
 
 import static org.joml.Math.lerp;
 
@@ -264,8 +269,12 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
 
 
-    @Inject(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", shift = At.Shift.AFTER, ordinal = 0), cancellable = true)
-    public void celeritas$renderTileEntities(EntityLivingBase entity, ICamera camera, float partialTicks, CallbackInfo ci) {
+    @Surround(method = "renderEntities", id = "blockEntities",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderHelper;enableStandardItemLighting()V", ordinal = 0))
+    private void celeritas$enterBlockEntities() {}
+
+    @Surround.Return("blockEntities")
+    private void celeritas$renderTileEntities(@Surround.Local(argsOnly = true) float partialTicks) {
         if (Iris.enabled) {
             GbufferPrograms.beginBlockEntities();
             GbufferPrograms.setBlockEntityDefaults();
@@ -275,9 +284,11 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
         if (Iris.enabled) {
             GbufferPrograms.endBlockEntities();
         }
-        this.mc.entityRenderer.disableLightmap(partialTicks);
-        this.mc.mcProfiler.endSection();
-        ci.cancel();
+    }
+
+    @ModifyExpressionValue(method = "renderEntities", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;tileEntities:Ljava/util/List;", opcode = Opcodes.GETFIELD))
+    private List<TileEntity> celeritas$skipVanillaTileEntities(List<TileEntity> original) {
+        return Collections.emptyList();
     }
 
     /**

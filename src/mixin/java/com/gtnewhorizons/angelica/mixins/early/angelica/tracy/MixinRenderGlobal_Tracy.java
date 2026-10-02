@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.tracy;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.RenderClassTimings;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.client.renderer.RenderGlobal;
 import net.minecraft.client.renderer.entity.RenderManager;
 import net.minecraft.entity.Entity;
@@ -28,9 +27,12 @@ public class MixinRenderGlobal_Tracy {
         Tracy.endZone();
     }
 
-    @WrapOperation(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
-    private boolean angelica$timeEntityRender(RenderManager instance, Entity entity, float partialTicks, Operation<Boolean> original) {
-        final long start = System.nanoTime();
+    @Surround(method = "renderEntities", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderManager;renderEntitySimple(Lnet/minecraft/entity/Entity;F)Z"))
+    private void angelica$timeEntityRender(RenderManager instance, Entity entity) {
+        @Surround.Carry
+        long start = System.nanoTime();
+        @Surround.Carry
+        Class<?> prevRenderable = TesrAttribution.currentRenderable;
         if (TesrAttribution.currentRenderable == null && entity != null) {
             TesrAttribution.currentRenderable = entity.getClass();
         }
@@ -38,15 +40,15 @@ public class MixinRenderGlobal_Tracy {
             Tracy.setGpuZonesEnabled(false);
             Tracy.beginZone(Z_ENTITY_RENDER);
         }
-        try {
-            return original.call(instance, entity, partialTicks);
-        } finally {
-            if (Tracy.FINE_ZONES) {
-                Tracy.endZone();
-                Tracy.setGpuZonesEnabled(true);
-            }
-            TesrAttribution.currentRenderable = null;
-            RenderClassTimings.ENTITY.add(entity.getClass(), System.nanoTime() - start);
+    }
+
+    @Surround.Finally
+    private void angelica$endEntityRender(RenderManager instance, Entity entity, @Surround.Carry long start, @Surround.Carry Class<?> prevRenderable) {
+        if (Tracy.FINE_ZONES) {
+            Tracy.endZone();
+            Tracy.setGpuZonesEnabled(true);
         }
+        TesrAttribution.currentRenderable = prevRenderable;
+        RenderClassTimings.ENTITY.add(entity.getClass(), System.nanoTime() - start);
     }
 }

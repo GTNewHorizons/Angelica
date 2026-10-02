@@ -1,0 +1,11 @@
+{
+  "required": true,
+  "minVersion": "0.8",
+  "package": "com.gtnewhorizons.angelica.experimental.surround.integration.mixin",
+  "compatibilityLevel": "JAVA_8",
+  "mixins": [
+    "MixinCallTarget",
+    "MixinWholeTarget",
+    "MixinWholeTargetHigh"
+  ]
+}

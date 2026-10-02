@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.late.client.thaumcraft;
 
 import com.gtnewhorizons.angelica.compat.thaumcraft.ThaumometerScreen;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.minecraft.item.ItemStack;
 import net.minecraftforge.client.IItemRenderer.ItemRenderType;
@@ -33,15 +32,15 @@ public abstract class MixinItemThaumometerRenderer {
         }
     }
 
-    @WrapMethod(method = "renderItem")
-    private void angelica$cleanupCapture(ItemRenderType type, ItemStack item, Object[] data, Operation<Void> original) {
-        try {
-            original.call(type, item, data);
-        } finally {
-            if (angelica$screen != null) {
-                ThaumometerScreen.abort(angelica$screen);
-                angelica$screen = null;
-            }
+    @Surround(method = "renderItem")
+    private void angelica$guardCapture() {
+    }
+
+    @Surround.Finally
+    private void angelica$cleanupCapture() {
+        if (angelica$screen != null) {
+            ThaumometerScreen.abort(angelica$screen);
+            angelica$screen = null;
         }
     }
 }

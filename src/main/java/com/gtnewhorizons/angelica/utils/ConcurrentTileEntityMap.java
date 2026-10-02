@@ -68,13 +68,12 @@ public class ConcurrentTileEntityMap extends HashMap<ChunkPosition, TileEntity> 
         lock.readLock().unlock();
     }
 
-    public void withWriteLock(Runnable action) {
+    public void writeLock() {
         lock.writeLock().lock();
-        try {
-            action.run();
-        } finally {
-            lock.writeLock().unlock();
-        }
+    }
+
+    public void writeUnlock() {
+        lock.writeLock().unlock();
     }
 
     public TileEntity putDirect(ChunkPosition key, TileEntity value) {

@@ -1,11 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
+import com.gtnewhorizons.angelica.rendering.EntityRenderScope;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
-import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.EntityIdHelper;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.client.renderer.entity.RenderManager;
@@ -36,33 +34,21 @@ public class MixinRenderManager {
         }
     }
 
-    @WrapOperation(
+    @Surround(
         method = "func_147939_a",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/Render;doRender(Lnet/minecraft/entity/Entity;DDDFF)V")
     )
-    private void iris$wrapDoRender(Render render, Entity entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
-        CapturedRenderingState.INSTANCE.pushCurrentEntityColor();
-        final Class<?> prevRenderable = TesrAttribution.currentRenderable;
+    private void iris$wrapDoRender(Render render, Entity entity) {
+        @Surround.Carry
+        Class<?> prevRenderable = TesrAttribution.currentRenderable;
+        @Surround.Carry("lightning")
+        boolean lightning = EntityIdHelper.isLightningBolt(entity);
+        @Surround.Carry("nested")
+        boolean nested = EntityRenderScope.begin(entity, lightning);
+    }
 
-        CapturedRenderingState.INSTANCE.setCurrentRenderedEntity(entity);
-        TesrAttribution.currentRenderable = entity != null ? entity.getClass() : null;
-        final boolean lightning = EntityIdHelper.isLightningBolt(entity);
-        if (lightning) {
-            GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
-        }
-        final boolean nestedInBlockEntity = GbufferPrograms.beginNestedEntityPhase();
-
-        try {
-            original.call(render, entity, x, y, z, entityYaw, partialTicks);
-        } finally {
-            GbufferPrograms.endNestedEntityPhase(nestedInBlockEntity);
-            if (lightning) {
-                GbufferPrograms.teardownSpecialRenderCondition();
-            }
-            CapturedRenderingState.INSTANCE.popCurrentEntityColor();
-            CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
-            TesrAttribution.currentRenderable = prevRenderable;
-        }
+    @Surround.Finally
+    private void iris$restoreDoRender(@Surround.Carry Class<?> prevRenderable, @Surround.Carry("lightning") boolean lightning, @Surround.Carry("nested") boolean nested) {
+        EntityRenderScope.end(prevRenderable, lightning, nested);
     }
 }

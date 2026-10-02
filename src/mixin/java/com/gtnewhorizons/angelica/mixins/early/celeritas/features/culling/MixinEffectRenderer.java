@@ -1,20 +1,17 @@
 package com.gtnewhorizons.angelica.mixins.early.celeritas.features.culling;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.particles.ParticleCulling;
-import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.particle.EntityFX;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.Redirect;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(EffectRenderer.class)
 public class MixinEffectRenderer {
@@ -28,8 +25,8 @@ public class MixinEffectRenderer {
     @Unique
     private boolean particleVisible;
 
-    @Inject(method = {"renderParticles", "renderLitParticles"}, at = @At("HEAD"))
-    private void setupViewport(Entity player, float partialTickTime, CallbackInfo ci) {
+    @Surround(id = "viewport", method = {"renderParticles", "renderLitParticles"})
+    private void setupViewport(Entity player, float partialTickTime) {
         final boolean useCulling = ClientProxy.options().advanced.useParticleCulling;
         if(useCulling) {
             this.cullingRenderer = CeleritasWorldRenderer.getInstanceOrNull();
@@ -39,8 +36,8 @@ public class MixinEffectRenderer {
         if (Tracy.ENABLED) Tracy.beginZone(angelica$Z_PARTICLE_PASS);
     }
 
-    @Inject(method = {"renderParticles", "renderLitParticles"}, at = @At("RETURN"))
-    private void endParticlePass(Entity player, float partialTickTime, CallbackInfo ci) {
+    @Surround.Finally("viewport")
+    private void endParticlePass() {
         if (Tracy.ENABLED) Tracy.endZone();
     }
 
@@ -50,8 +47,9 @@ public class MixinEffectRenderer {
         return this.particleVisible ? particle.getBrightnessForRender(partialTicks) : 0;
     }
 
-    @WrapWithCondition(method = {"renderParticles", "renderLitParticles"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
-    private boolean renderParticles(EntityFX particle, Tessellator tessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
-        return this.particleVisible;
+    @Surround(id = "cull", method = {"renderParticles", "renderLitParticles"}, at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EntityFX;renderParticle(Lnet/minecraft/client/renderer/Tessellator;FFFFFF)V"))
+    private void cullInvisible() {
+        @Surround.Skip
+        boolean culled = !this.particleVisible;
     }
 }

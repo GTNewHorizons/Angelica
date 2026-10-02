@@ -64,6 +64,10 @@ public final class SystemProperties {
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
     public static final FlybyWeather FLYBY_WEATHER = parseEnum("angelica.flyby.weather", FlybyWeather.CLEAR, FlybyWeather.CLEAR, FlybyWeather.class);
     public static final boolean FLYBY_JFR = Boolean.getBoolean("angelica.flyby.jfr");
+    public static final float FLYBY_PITCH = parseFloat("angelica.flyby.pitch");
+    public static final int FLYBY_SCREENSHOTS = Integer.getInteger("angelica.flyby.screenshots", 0);
+    public static final boolean FLYBY_DEBUG_HUD = Boolean.getBoolean("angelica.flyby.debugHud");
+    public static final String FLYBY_CRASH_TEST = System.getProperty("angelica.flyby.crashTest", "");
 
     // Debug
     public static final boolean LWJGL_DEBUG = Boolean.getBoolean("org.lwjgl.util.Debug");
@@ -164,6 +168,16 @@ public final class SystemProperties {
             return Double.parseDouble(raw);
         } catch (NumberFormatException e) {
             return 0.0D;
+        }
+    }
+
+    private static float parseFloat(String key) {
+        final String raw = System.getProperty(key);
+        if (raw == null || raw.isEmpty()) return Float.NaN;
+        try {
+            return Float.parseFloat(raw);
+        } catch (NumberFormatException e) {
+            return Float.NaN;
         }
     }
 

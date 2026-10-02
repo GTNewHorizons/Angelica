@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrAttribution;
-import com.gtnewhorizons.angelica.rendering.tesr.TesrBlendScope;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import com.prupe.mcpatcher.ctm.CTMUtils;
 import net.coderbot.iris.Iris;
@@ -35,7 +34,6 @@ public final class RenderRecovery {
         HUDCaching.resetAfterCrash();
         mc.getFramebuffer().bindFramebuffer(false);
         TesrLifecycle.reset();
-        TesrBlendScope.reset();
         TesrAttribution.currentRenderable = null;
         CapturedRenderingState.INSTANCE.setCurrentBlockEntity(0);
         CTMUtils.clearCurrentCompact();

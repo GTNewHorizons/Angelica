@@ -41,20 +41,38 @@ public class BlockRenderListManager {
         return itemFrameDisplayLists[variant];
     }
 
-    public static int startCompiling() {
+    public static int callOrStartCompiling(int cached) {
+        if (cached != 0) {
+            GLStateManager.glCallList(cached);
+            return -1;
+        }
+        return startCompiling();
+    }
+
+    private static int startCompiling() {
         final int list = GLStateManager.glGenLists(1);
         GLStateManager.glNewList(list, GL11.GL_COMPILE);
         return list;
     }
 
     public static void endCompiling(int list, Block block, int meta) {
+        if (list <= 0) return;
         finishCompiling();
         displayListMap.put(new BlockMeta(block, meta), list);
+        GLStateManager.glCallList(list);
     }
 
     public static void endItemFrameCompiling(int list, int variant) {
+        if (list <= 0) return;
         finishCompiling();
         itemFrameDisplayLists[variant] = list;
+        GLStateManager.glCallList(list);
+    }
+
+    public static void abortCompiling(int list) {
+        if (list <= 0) return;
+        finishCompiling();
+        GLStateManager.glDeleteLists(list, 1);
     }
 
     private static void finishCompiling() {

@@ -178,6 +178,7 @@ val glCoreTest by tasks.registering(Test::class) {
 tasks.test { finalizedBy(glCoreTest) }
 
 apply(from = "gradle/angelica-shadow-common.gradle.kts")
+apply(from = "experimental-surround/surround.root.gradle.kts")
 
 tasks.withType<TaskPublishCurseForge>().configureEach {
     uploadArtifacts.forEach { it.addGameVersion("Client") }

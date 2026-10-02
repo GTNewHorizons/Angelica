@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.entity.RenderDragon;
-import net.minecraft.entity.EntityLivingBase;
 import net.minecraft.entity.boss.EntityDragon;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
@@ -31,9 +29,6 @@ public abstract class MixinRenderDragon {
 
     @Unique
     private boolean angelica$beamScope;
-
-    @Unique
-    private boolean angelica$deathBeamsActive = false;
 
     @Unique
     private int angelica$depthPassReplay = 0;
@@ -72,54 +67,55 @@ public abstract class MixinRenderDragon {
      * Pass 1: Write the depth buffer.
      * Pass 2: Write color.
     */
-    @Inject(method = "renderEquippedItems(Lnet/minecraft/entity/boss/EntityDragon;F)V", at = @At("HEAD"))
-    private void angelica$beginDeathBeamsLightningBuffer(EntityDragon dragon, float partialTicks, CallbackInfo ci) {
-        if (angelica$depthPassReplay > 0) return;
-        if (dragon.deathTicks > 0) {
+    @Surround(id = "deathBeams", method = "renderEquippedItems(Lnet/minecraft/entity/boss/EntityDragon;F)V")
+    private void angelica$beginDeathBeamsLightningBuffer(EntityDragon dragon, float partialTicks) {
+        @Surround.Carry
+        final boolean deathBeams = angelica$depthPassReplay == 0 && dragon.deathTicks > 0;
+        if (deathBeams) {
             GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.LIGHTNING);
-            angelica$deathBeamsActive = true;
-
             CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
             CapturedRenderingState.INSTANCE.setCurrentNamedEntity(DRAGON_DEATH_RAY);
 
             angelica$depthPassReplay++;
             GLStateManager.glColorMask(false, false, false, false);
-            angelica$invokeRenderEquippedItems(dragon, partialTicks);
-            GLStateManager.glColorMask(true, true, true, true);
-            angelica$depthPassReplay--;
+            try {
+                angelica$invokeRenderEquippedItems(dragon, partialTicks);
+            } catch (Throwable t) {
+                angelica$endDeathBeamsLighting(true);
+                throw t;
+            } finally {
+                GLStateManager.glColorMask(true, true, true, true);
+                angelica$depthPassReplay--;
+            }
         }
     }
 
     // Don't render items twice
-    @WrapOperation(
+    @Surround(
+        id = "skipSuper",
         method = "renderEquippedItems(Lnet/minecraft/entity/boss/EntityDragon;F)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderLiving;renderEquippedItems(Lnet/minecraft/entity/EntityLivingBase;F)V")
     )
-    private void angelica$skipSuperDuringReplay(RenderDragon self, EntityLivingBase entity, float partialTicks, Operation<Void> original) {
-        if (angelica$depthPassReplay == 0) {
-            original.call(self, entity, partialTicks);
-        }
+    private void angelica$skipSuperDuringReplay() {
+        @Surround.Skip
+        boolean skip = angelica$depthPassReplay != 0;
     }
 
     // No-op the depth buffer being set to false on first pass
-    @WrapOperation(
+    @Surround(
+        id = "keepDepthMask",
         method = "renderEquippedItems(Lnet/minecraft/entity/boss/EntityDragon;F)V",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glDepthMask(Z)V", ordinal = 0, remap = false)
     )
-    private void angelica$keepDepthMaskDuringReplay(boolean flag, Operation<Void> original) {
-        if (angelica$depthPassReplay == 0) {
-            original.call(flag);
-        }
+    private void angelica$keepDepthMaskDuringReplay() {
+        @Surround.Skip
+        boolean skip = angelica$depthPassReplay != 0;
     }
 
-    // End replay
-    @Inject(method = "renderEquippedItems(Lnet/minecraft/entity/boss/EntityDragon;F)V", at = @At("RETURN"))
-    private void angelica$endDeathBeamsLighting(EntityDragon dragon, float partialTicks, CallbackInfo ci) {
-        if (angelica$depthPassReplay > 0) return;
-        if (angelica$deathBeamsActive) {
-            CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
-            GbufferPrograms.teardownSpecialRenderCondition();
-            angelica$deathBeamsActive = false;
-        }
+    @Surround.Finally("deathBeams")
+    private void angelica$endDeathBeamsLighting(@Surround.Carry boolean deathBeams) {
+        if (!deathBeams) return;
+        CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
+        GbufferPrograms.teardownSpecialRenderCondition();
     }
 }

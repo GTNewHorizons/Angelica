@@ -11,6 +11,7 @@ import com.gtnewhorizons.angelica.debug.profiling.AsprofRecorder;
 import com.gtnewhorizons.angelica.debug.profiling.TracyCaptureNotifier;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
+import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import com.gtnewhorizons.angelica.rendering.RenderRecovery;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
@@ -42,7 +43,7 @@ public class AngelicaCommand extends CommandBase {
             help.put("flyby", helpLine("flyby <" + FlybyRoute.ids() + ">", "Run a deterministic benchmark route"));
             help.put("profile", helpLine("profile <start|stop|status>", "Control async-profiler (JFR) recording"));
             if (SystemProperties.isDeobf()) {
-                help.put("crashtest", helpLine("crashtest", "Arm a crash on the next tile entity render"));
+                help.put("crashtest", helpLine("crashtest [isbrh]", "Arm a crash on the next tile entity or test_isbrh render"));
             }
         }
         if (Tracy.ENABLED) {
@@ -109,6 +110,9 @@ public class AngelicaCommand extends CommandBase {
         if (args.length == 2 && "profile".equalsIgnoreCase(args[0])) {
             return getListOfStringsMatchingLastWord(args, "start", "stop", "status");
         }
+        if (args.length == 2 && "crashtest".equalsIgnoreCase(args[0]) && HELP.containsKey("crashtest")) {
+            return getListOfStringsMatchingLastWord(args, "isbrh");
+        }
         if (args.length == 2 && "tracy".equalsIgnoreCase(args[0])) {
             return getListOfStringsMatchingLastWord(args, "start", "stop", "status");
         }
@@ -139,7 +143,7 @@ public class AngelicaCommand extends CommandBase {
             case "flyby"     -> handleFlyby(sender, args);
             case "profile"   -> handleProfile(sender, args);
             case "tracy"     -> handleTracy(sender, args);
-            case "crashtest" -> handleCrashTest(sender);
+            case "crashtest" -> handleCrashTest(sender, args);
         }
     }
 
@@ -163,7 +167,12 @@ public class AngelicaCommand extends CommandBase {
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Chunk debug minimap: " + state));
     }
 
-    private void handleCrashTest(ICommandSender sender) {
+    private void handleCrashTest(ICommandSender sender, String[] args) {
+        if (args.length >= 2 && "isbrh".equalsIgnoreCase(args[1])) {
+            IsbrhTestRenderer.armCrashTest();
+            sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Crash test armed: fires on the next test_isbrh render"));
+            return;
+        }
         RenderRecovery.armCrashTest();
         sender.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + "Crash test armed: fires on the next tile entity render"));
     }

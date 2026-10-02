@@ -15,12 +15,10 @@ import com.gtnewhorizons.angelica.glsm.hooks.ImmediateExtendedAttribHandler;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.profiling.BailClassCounts;
 import com.gtnewhorizons.angelica.proxy.ClientProxy;
-import com.gtnewhorizons.angelica.rendering.OperationArgs;
 import com.gtnewhorizons.angelica.rendering.ParticleRunSplitter;
 import com.gtnewhorizons.angelica.rendering.tesr.InstanceRing;
 import com.gtnewhorizons.angelica.rendering.tesr.MeshBuffer;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
@@ -47,7 +45,6 @@ public final class ParticleInstancer {
     private static final ParticleRenderState STATE = new ParticleRenderState();
     private static int restoreDepth = -1;
     private static final Matrix4f LAYER_MV = new Matrix4f();
-    private static final Object[] ORIGINAL_ARGS = new Object[8];
 
     private static final ObjectArrayList<Group> GROUP_POOL = new ObjectArrayList<>();
     private static int groupCount;
@@ -116,16 +113,14 @@ public final class ParticleInstancer {
         }
     }
 
-    public static void renderParticle(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY, Operation<Void> original) {
+    public static boolean renderParticle(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
         if (!layerStarted) beginLayer();
-        if (!layerActive) {
-            call(fx, runTessellator, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY, original);
-            return;
-        }
-        renderActive(fx, runTessellator, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY, original);
+        if (!layerActive) return false;
+        renderActive(fx, runTessellator, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY);
+        return true;
     }
 
-    private static void renderActive(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY, Operation<Void> original) {
+    private static void renderActive(EntityFX fx, Tessellator runTessellator, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY) {
 
         run = runTessellator;
         rotX = rotationX;
@@ -148,7 +143,7 @@ public final class ParticleInstancer {
         }
 
         CAPTURE.begin(runTessellator.brightness, runTessellator, LAYER_MV);
-        call(fx, CAPTURE, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY, original);
+        fx.renderParticle(CAPTURE, partialTicks, rotationX, rotationXZ, rotationZ, rotationYZ, rotationXY);
         CAPTURE.propagateColor();
 
         if (CAPTURE.spilled()) {
@@ -266,24 +261,6 @@ public final class ParticleInstancer {
         CAPTURE.release();
         ParticleQuadMesh.delete();
         ParticleDescriptorRegistry.clearCache();
-    }
-
-    private static void call(EntityFX fx, Tessellator target, float partialTicks, float rotationX, float rotationXZ, float rotationZ, float rotationYZ, float rotationXY, Operation<Void> original) {
-        final Object[] args = ORIGINAL_ARGS;
-        args[0] = fx;
-        args[1] = target;
-        args[2] = OperationArgs.boxed(args[2], partialTicks);
-        args[3] = OperationArgs.boxed(args[3], rotationX);
-        args[4] = OperationArgs.boxed(args[4], rotationXZ);
-        args[5] = OperationArgs.boxed(args[5], rotationZ);
-        args[6] = OperationArgs.boxed(args[6], rotationYZ);
-        args[7] = OperationArgs.boxed(args[7], rotationXY);
-        try {
-            original.call(args);
-        } finally {
-            args[0] = null;
-            args[1] = null;
-        }
     }
 
     private static boolean available() {

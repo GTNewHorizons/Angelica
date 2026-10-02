@@ -1,14 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.entity;
 
-import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.GlintClock;
+import com.gtnewhorizons.angelica.rendering.SkippedGlintBlock;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
 import com.gtnewhorizons.angelica.rendering.items.HeldItemGlint;
 import com.gtnewhorizons.angelica.rendering.tesr.EntityMaterials;
 import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderBlocks;
@@ -46,15 +45,32 @@ public abstract class MixinItemRenderer_Instanced {
         if (stack != angelica$deferredGlintStack || pass <= angelica$deferredGlintPass) angelica$deferredGlintStack = null;
     }
 
-    @WrapOperation(
+    @Surround(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemIn2D(Lnet/minecraft/client/renderer/Tessellator;FFFFIIF)V",
-            ordinal = 0
-        )
+            ordinal = 0,
+            remap = true
+        ),
+        id = "icon",
+        remap = false
     )
-    private void angelica$instanceHeldIcon(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    private void angelica$instanceHeldIcon(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
+        @Surround.Carry
+        final long part = angelica$heldIcon(maxU, minV, minU, maxV, width, height, thickness);
+        @Surround.Skip
+        final boolean queued = part == DroppedItemInstancer.SKIP;
+    }
+
+    @Surround.Finally("icon")
+    private void angelica$endHeldIcon(@Surround.Carry long part) {
+        DroppedItemInstancer.endPart(part);
+        if (Tracy.FINE_ZONES) Tracy.endZone();
+    }
+
+    @Unique
+    private static long angelica$heldIcon(float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
         angelica$iconWidth = width;
         angelica$iconHeight = height;
         final ItemStack stack = angelica$stack;
@@ -62,9 +78,10 @@ public abstract class MixinItemRenderer_Instanced {
         try {
             // A later pass without glint covers the deferred glint of an earlier one, as vanilla draws it after that glint.
             final boolean afterGlint = angelica$deferredGlintStack != null && stack == angelica$deferredGlintStack && !stack.hasEffect(angelica$pass);
-            DroppedItemInstancer.icon(angelica$batchable(angelica$type) && !HeldItemGlint.needsImmediateBase(stack, angelica$pass) ? stack : null, afterGlint, tessellator, maxU, minV, minU, maxV, width, height, thickness, original);
-        } finally {
+            return DroppedItemInstancer.icon(angelica$batchable(angelica$type) && !HeldItemGlint.needsImmediateBase(stack, angelica$pass) ? stack : null, afterGlint, maxU, minV, minU, maxV, width, height, thickness);
+        } catch (Throwable t) {
             if (Tracy.FINE_ZONES) Tracy.endZone();
+            throw t;
         }
     }
 
@@ -81,39 +98,69 @@ public abstract class MixinItemRenderer_Instanced {
         return false;
     }
 
-    @WrapOperation(
+    @Surround(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
         at = {
             @At(
                 value = "INVOKE",
                 target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemIn2D(Lnet/minecraft/client/renderer/Tessellator;FFFFIIF)V",
-                ordinal = 1
+                ordinal = 1,
+                remap = true
             ),
             @At(
                 value = "INVOKE",
                 target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemIn2D(Lnet/minecraft/client/renderer/Tessellator;FFFFIIF)V",
-                ordinal = 2
+                ordinal = 2,
+                remap = true
             )
-        }
+        },
+        id = "glint",
+        remap = false
     )
-    private void angelica$instanceHeldGlint(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    private void angelica$instanceHeldGlint(Tessellator tessellator, float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
+        @Surround.Carry
+        final long part = angelica$heldGlint(maxU, minV, minU, maxV, thickness);
+        @Surround.Skip
+        final boolean queued = part == DroppedItemInstancer.SKIP;
+    }
+
+    @Surround.Finally("glint")
+    private void angelica$endHeldGlint(@Surround.Carry long part) {
+        DroppedItemInstancer.endPart(part);
+        if (Tracy.FINE_ZONES) Tracy.endZone();
+    }
+
+    @Unique
+    private static long angelica$heldGlint(float maxU, float minV, float minU, float maxV, float thickness) {
         if (Tracy.FINE_ZONES) Tracy.beginZone(angelica$Z_HELD_GLINT);
         try {
-            DroppedItemInstancer.glint(tessellator, maxU, minV, minU, maxV, angelica$iconWidth, angelica$iconHeight, thickness, EntityMaterials.ITEM_GLINT, original);
-        } finally {
+            return DroppedItemInstancer.glint(maxU, minV, minU, maxV, angelica$iconWidth, angelica$iconHeight, thickness, EntityMaterials.ITEM_GLINT);
+        } catch (Throwable t) {
             if (Tracy.FINE_ZONES) Tracy.endZone();
+            throw t;
         }
     }
 
-    @WrapOperation(
+    @Surround(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
         at = @At(
             value = "INVOKE",
-            target = "Lnet/minecraft/client/renderer/RenderBlocks;renderBlockAsItem(Lnet/minecraft/block/Block;IF)V"
-        )
+            target = "Lnet/minecraft/client/renderer/RenderBlocks;renderBlockAsItem(Lnet/minecraft/block/Block;IF)V",
+            remap = true
+        ),
+        id = "block",
+        remap = false
     )
-    private void angelica$instanceHeldBlock(RenderBlocks renderBlocks, Block block, int meta, float brightness, Operation<Void> original) {
-        DroppedItemInstancer.block(angelica$batchable(angelica$type) ? angelica$stack : null, renderBlocks, block, meta, brightness, false, original);
+    private void angelica$instanceHeldBlock(RenderBlocks renderBlocks, Block block, int meta, float brightness) {
+        @Surround.Carry
+        final long part = DroppedItemInstancer.block(angelica$batchable(angelica$type) ? angelica$stack : null, renderBlocks, block, meta, brightness, false);
+        @Surround.Skip
+        final boolean queued = part == DroppedItemInstancer.SKIP;
+    }
+
+    @Surround.Finally("block")
+    private void angelica$endHeldBlock(@Surround.Carry long part) {
+        DroppedItemInstancer.endPart(part);
     }
 
     @Redirect(
@@ -124,6 +171,7 @@ public abstract class MixinItemRenderer_Instanced {
         return GlintClock.millis();
     }
 
+    @Unique
     private static boolean angelica$batchable(ItemRenderType type) {
         return type == ItemRenderType.EQUIPPED || type == ItemRenderType.ENTITY;
     }

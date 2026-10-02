@@ -10,6 +10,7 @@ import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
+import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import cpw.mods.fml.common.eventhandler.SubscribeEvent;
 import cpw.mods.fml.common.gameevent.TickEvent;
 import net.minecraft.client.Minecraft;
@@ -20,7 +21,9 @@ import net.minecraft.server.MinecraftServer;
 import net.minecraft.util.ChatComponentText;
 import net.minecraft.util.ChunkCoordinates;
 import net.minecraft.util.EnumChatFormatting;
+import net.minecraft.util.IChatComponent;
 import net.minecraft.util.MathHelper;
+import net.minecraft.util.ScreenShotHelper;
 import net.minecraft.world.MinecraftException;
 import net.minecraft.world.World;
 import net.minecraft.world.WorldServer;
@@ -74,12 +77,18 @@ public final class FlybyRunner {
     private boolean pauseOnLostFocusSaved;
     private boolean pauseOnLostFocusOverridden;
     private boolean vsyncOverridden;
+    private boolean showDebugInfoSaved;
+    private boolean showDebugInfoOverridden;
+    private int shotEvery;
+    private int nextShot;
+    private int shot;
 
     private static volatile boolean sceneGuarded;
     private static volatile boolean worldChangesDiscarded;
 
     private double parkedX, parkedY, parkedZ;
     private float parkedYaw, parkedPitch;
+    private float flightPitch;
     private double originX, originZ;
     private float originYaw;
     private FlybyOrigin fixedOrigin;
@@ -291,6 +300,14 @@ public final class FlybyRunner {
             }
         }
         this.lastFrameNs = now;
+
+        if (this.shot < SystemProperties.FLYBY_SCREENSHOTS && this.tick >= this.nextShot) {
+            final Minecraft mc = Minecraft.getMinecraft();
+            final IChatComponent result = ScreenShotHelper.saveScreenshot(mc.mcDataDir, "flyby-shot-" + this.shot + ".png", mc.displayWidth, mc.displayHeight, mc.getFramebuffer());
+            LOGGER.info("Flyby screenshot {}", result.getUnformattedText());
+            this.shot++;
+            this.nextShot += this.shotEvery;
+        }
     }
 
     private void overridePauseOnLostFocus(Minecraft mc) {
@@ -311,6 +328,7 @@ public final class FlybyRunner {
         this.parkedZ = player.posZ;
         this.parkedYaw = player.rotationYaw;
         this.parkedPitch = player.rotationPitch;
+        this.flightPitch = Float.isNaN(SystemProperties.FLYBY_PITCH) ? this.parkedPitch : SystemProperties.FLYBY_PITCH;
         this.eyeOffset = player.yOffset;
 
         final boolean creative = player.capabilities.isCreativeMode;
@@ -333,6 +351,14 @@ public final class FlybyRunner {
 
         this.buildPath();
         this.suppressPacing();
+        if (SystemProperties.FLYBY_DEBUG_HUD && !this.showDebugInfoOverridden) {
+            this.showDebugInfoSaved = mc.gameSettings.showDebugInfo;
+            this.showDebugInfoOverridden = true;
+            mc.gameSettings.showDebugInfo = true;
+        }
+        if ("isbrh".equals(SystemProperties.FLYBY_CRASH_TEST)) {
+            IsbrhTestRenderer.armCrashTest();
+        }
 
         this.tick = 0;
         if (mc.getIntegratedServer() != null) {
@@ -472,6 +498,9 @@ public final class FlybyRunner {
         this.phaseCount = 0;
         this.lastFrameNs = 0L;
         this.runStartNs = System.nanoTime();
+        this.shot = 0;
+        this.shotEvery = SystemProperties.FLYBY_SCREENSHOTS > 0 ? this.runTicks / SystemProperties.FLYBY_SCREENSHOTS : 0;
+        this.nextShot = this.shotEvery / 2;
         FramePacer.beginStats();
 
         final String config = "backend=" + GLStateManager.getRenderBackendName() + " pacing=" + SystemProperties.FLYBY_PACING + " vsync=" + GLStateManager.getEffectiveVSyncMode() + " discard=" + (mc.getIntegratedServer() != null);
@@ -495,7 +524,7 @@ public final class FlybyRunner {
         player.prevPosZ = player.lastTickPosZ = this.pathZ[last];
         player.prevRotationYaw = player.rotationYaw = this.pathYaw[last];
         player.prevRotationYawHead = player.rotationYawHead = this.pathYaw[last];
-        player.prevRotationPitch = player.rotationPitch = this.parkedPitch;
+        player.prevRotationPitch = player.rotationPitch = this.flightPitch;
         player.setPosition(this.pathX[last], this.flightY, this.pathZ[last]);
     }
 
@@ -523,7 +552,7 @@ public final class FlybyRunner {
         player.rotationYaw = yaw;
         player.prevRotationYawHead = prevYaw;
         player.rotationYawHead = yaw;
-        player.prevRotationPitch = player.rotationPitch = this.parkedPitch;
+        player.prevRotationPitch = player.rotationPitch = this.flightPitch;
 
         player.setPosition(x, this.flightY, z);
     }
@@ -651,8 +680,10 @@ public final class FlybyRunner {
 
         this.clearScene(server);
 
-        final FlybyCommandSender sender = new FlybyCommandSender(player, new ChunkCoordinates(MathHelper.floor_double(request.originX()), MathHelper.floor_double(feetY + 0.5D), MathHelper.floor_double(request.originZ())));
-        for (String line : this.sceneCommands) {
+        final ChunkCoordinates anchor = new ChunkCoordinates(MathHelper.floor_double(request.originX()), MathHelper.floor_double(feetY + 0.5D), MathHelper.floor_double(request.originZ()));
+        final FlybyCommandSender sender = new FlybyCommandSender(player, anchor);
+        for (String raw : this.sceneCommands) {
+            final String line = FlybyScene.expand(raw, anchor.posX, anchor.posY, anchor.posZ);
             if (server.getCommandManager().executeCommand(sender, line) == 0) {
                 LOGGER.warn("flyby scene command did not execute: {}", line);
             }
@@ -723,6 +754,7 @@ public final class FlybyRunner {
 
         this.returnToOrigin(player);
         this.restorePauseOnLostFocus(mc);
+        this.restoreShowDebugInfo(mc);
         this.armed = false;
         sceneGuarded = false;
         this.sceneClearRequested = this.sceneCommands.length > 0;
@@ -747,6 +779,12 @@ public final class FlybyRunner {
         if (!this.pauseOnLostFocusOverridden) return;
         mc.gameSettings.pauseOnLostFocus = this.pauseOnLostFocusSaved;
         this.pauseOnLostFocusOverridden = false;
+    }
+
+    private void restoreShowDebugInfo(Minecraft mc) {
+        if (!this.showDebugInfoOverridden) return;
+        mc.gameSettings.showDebugInfo = this.showDebugInfoSaved;
+        this.showDebugInfoOverridden = false;
     }
 
     private void returnToOrigin(EntityClientPlayerMP player) {
@@ -807,6 +845,7 @@ public final class FlybyRunner {
             FramePacer.endStats();
             final Minecraft mc = Minecraft.getMinecraft();
             this.restorePauseOnLostFocus(mc);
+            this.restoreShowDebugInfo(mc);
             this.armed = false;
             this.stopRecording(mc);
             this.pendingRequest.set(null);

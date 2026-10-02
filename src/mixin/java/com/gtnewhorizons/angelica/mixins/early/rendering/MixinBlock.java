@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.rendering;
 import com.gtnewhorizons.angelica.client.rendering.ThreadedBlockData;
 import net.minecraft.block.Block;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 
 /**
  * Store thread-safe block data here.
@@ -15,14 +16,32 @@ import org.spongepowered.asm.mixin.Mixin;
 public class MixinBlock implements ThreadedBlockData.Getter {
     private final ThreadLocal<ThreadedBlockData> angelica$threadData = ThreadLocal.withInitial(() -> null);
     private volatile ThreadedBlockData angelica$initialData;
+    @Unique
+    private ThreadedBlockData angelica$mainData;
+    @Unique
+    private ThreadedBlockData angelica$serverData;
 
     @Override
     public ThreadedBlockData angelica$getThreadData() {
+        Thread t = Thread.currentThread();
+
+        if (t == ThreadedBlockData.MAIN_THREAD) {
+            ThreadedBlockData data = angelica$mainData;
+            return data != null ? data : (angelica$mainData = createThreadedBlockData());
+        }
+
+        if (t == ThreadedBlockData.serverThread) {
+            ThreadedBlockData data = angelica$serverData;
+            return (data == null || data.owner != t) ? (angelica$serverData = createThreadedBlockData()) : data;
+        }
+
         ThreadedBlockData data = angelica$threadData.get();
         if(data != null)
             return data;
 
-        return createThreadedBlockData();
+        data = createThreadedBlockData();
+        angelica$threadData.set(data);
+        return data;
     }
 
     private ThreadedBlockData createThreadedBlockData() {
@@ -35,8 +54,6 @@ public class MixinBlock implements ThreadedBlockData.Getter {
                 data = new ThreadedBlockData(angelica$initialData);
             }
         }
-
-        angelica$threadData.set(data);
 
         return data;
     }

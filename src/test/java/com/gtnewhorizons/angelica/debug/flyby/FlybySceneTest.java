@@ -12,6 +12,7 @@ import java.nio.file.Paths;
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class FlybySceneTest {
@@ -60,6 +61,13 @@ class FlybySceneTest {
     void preservesOrder() throws IOException {
         final String path = writeFile("scene.txt", "one\ntwo\nthree\n");
         assertArrayEquals(new String[] { "one", "two", "three" }, FlybyScene.load(path));
+    }
+
+    @Test
+    void expandsCoordinateTokens() {
+        assertEquals("setblock 94 63 -48 stone {TileX:100}", FlybyScene.expand("setblock $x-6 $y-1 $z+2 stone {TileX:$x}", 100, 64, -50));
+        final String plain = "setblock ~ ~-1 ~ stone";
+        assertSame(plain, FlybyScene.expand(plain, 100, 64, -50));
     }
 
     @Test

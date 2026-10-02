@@ -1,0 +1,54 @@
+# Surround smoke scene. ~ is the flight start; ground-standing level is ~-2. Yaw 0 faces south (+z).
+
+# setup
+gamerule doMobSpawning false
+gamerule doFireTick false
+gamerule mobGriefing false
+difficulty 1
+clear @p
+give @p Thaumcraft:ItemThaumometer 1
+give @p minecraft:glass 64
+give @p minecraft:chest 3
+give @p minecraft:diamond_sword 1 0 {ench:[{id:16s,lvl:1s}]}
+
+# south: glass wall, stained glass, test ISBRH, torch
+setblock ~-1 ~-2 ~7 minecraft:glass
+setblock ~0 ~-2 ~7 minecraft:glass
+setblock ~1 ~-2 ~7 minecraft:glass
+setblock ~-1 ~-1 ~7 minecraft:glass
+setblock ~0 ~-1 ~7 minecraft:glass
+setblock ~1 ~-1 ~7 minecraft:glass
+setblock ~-1 ~0 ~7 minecraft:glass
+setblock ~0 ~0 ~7 minecraft:glass
+setblock ~1 ~0 ~7 minecraft:glass
+setblock ~2 ~-2 ~7 minecraft:stained_glass 3
+setblock ~3 ~-2 ~7 minecraft:stained_glass 14
+setblock ~-3 ~-2 ~5 angelica:test_isbrh
+setblock ~-3 ~-1 ~5 angelica:test_isbrh
+setblock ~3 ~-2 ~5 minecraft:torch
+setblock ~4 ~-2 ~6 minecraft:leaves
+setblock ~5 ~-2 ~6 minecraft:leaves
+setblock ~4 ~-3 ~4 minecraft:water
+
+# west: chests, ender chest, item frames
+setblock ~-5 ~-2 ~-1 minecraft:chest
+setblock ~-5 ~-2 ~0 minecraft:chest
+setblock ~-5 ~-2 ~2 minecraft:ender_chest
+setblock ~-6 ~-1 ~-3 minecraft:stone
+setblock ~-6 ~-1 ~-5 minecraft:stone
+summon ItemFrame ~-4.7 ~-0.5 ~-2.5 {TileX:$x-6,TileY:$y-1,TileZ:$z-3,Direction:3b,Item:{id:264s,Count:1b},ForgeData:{flyby:1b}}
+summon ItemFrame ~-4.7 ~-0.5 ~-4.5 {TileX:$x-6,TileY:$y-1,TileZ:$z-5,Direction:3b,Item:{id:358s,Count:1b,Damage:0s},ForgeData:{flyby:1b}}
+
+# east: mobs and dropped items
+summon Spider ~6 ~-2 ~-3 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Enderman ~6 ~-2 ~0 {PersistenceRequired:1b,Attributes:[{Name:"generic.movementSpeed",Base:0.0d}],ForgeData:{flyby:1b}}
+summon Zombie ~6 ~-2 ~3 {PersistenceRequired:1b,HealF:200.0f,Attributes:[{Name:"generic.maxHealth",Base:200.0d},{Name:"generic.movementSpeed",Base:0.0d}],ActiveEffects:[{Id:19b,Amplifier:0b,Duration:1000000}],ForgeData:{flyby:1b}}
+summon Item ~4 ~-2 ~-1 {Item:{id:20s,Count:1b},Age:-32768s,ForgeData:{flyby:1b}}
+summon Item ~4 ~-2 ~1 {Item:{id:264s,Count:1b},Age:-32768s,ForgeData:{flyby:1b}}
+summon Item ~4 ~-2 ~3 {Item:{id:276s,Count:1b,tag:{ench:[{id:16s,lvl:1s}]}},Age:-32768s,ForgeData:{flyby:1b}}
+
+# north: falling sand, dying dragon
+summon FallingSand ~0 ~150 ~-6 {TileID:12,Time:1b,ForgeData:{flyby:1b}}
+summon FallingSand ~1 ~200 ~-6 {TileID:12,Time:1b,ForgeData:{flyby:1b}}
+summon FallingSand ~-1 ~240 ~-6 {TileID:12,Time:1b,ForgeData:{flyby:1b}}
+summon EnderDragon ~0 ~6 ~-24 {HealF:0.0f,ForgeData:{flyby:1b}}
