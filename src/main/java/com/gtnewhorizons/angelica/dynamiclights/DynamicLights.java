@@ -30,6 +30,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.item.ItemBlock;
 import net.minecraft.item.ItemStack;
 import net.minecraft.util.MathHelper;
+import net.minecraft.world.IBlockAccess;
 import org.embeddedt.embeddium.impl.render.viewport.Viewport;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
@@ -366,6 +367,15 @@ public class DynamicLights {
 
     public int getLightmapWithDynamicLight(int x, int y, int z, int lightmap) {
         return this.getLightmapWithDynamicLight(this.getDynamicLightLevel(x, y, z), lightmap);
+    }
+
+    public static int addDynamicLight(IBlockAccess world, int x, int y, int z, int lightmap) {
+        if (!isEnabled()) return lightmap;
+        final DynamicLights dl = get();
+        if (!dl.hasLightSources()) return lightmap;
+        final double dynamicLightLevel = dl.getDynamicLightLevel(x, y, z);
+        if (dynamicLightLevel > 0 && !world.getBlock(x, y, z).isOpaqueCube()) return dl.getLightmapWithDynamicLight(dynamicLightLevel, lightmap);
+        return lightmap;
     }
 
     public List<IDynamicLightSource> getSourcesForChunk(int chunkMinX, int chunkMinY, int chunkMinZ) {
