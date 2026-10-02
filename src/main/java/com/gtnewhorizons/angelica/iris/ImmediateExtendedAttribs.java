@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.rendering.items.ItemRenderListManager;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import it.unimi.dsi.fastutil.ints.Int2IntOpenHashMap;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.ITextureObject;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -94,6 +95,23 @@ public final class ImmediateExtendedAttribs implements ImmediateExtendedAttribHa
     @Override
     public boolean wantsExtendedCapture() {
         return Iris.enabled && Iris.getCurrentPack().isPresent();
+    }
+
+    @Override
+    public boolean wantsFaceNormals() {
+        return ItemIdManager.isWorldRenderActive();
+    }
+
+    @Override
+    public void writeFaceNormals(int[] rawBuffer, int vertexCount) {
+        for (int v = 0; v < vertexCount; v += 4) {
+            quad.setup(rawBuffer, v, RAW_NORMAL_INDEX);
+            NormalHelper.computeFaceNormal(normal, quad);
+            final int packed = NormI8.pack(normal.x, normal.y, normal.z, 0.0f);
+            for (int i = 0; i < 4; i++) {
+                rawBuffer[(v + i) * VERTEX_SIZE + RAW_NORMAL_INDEX] = packed;
+            }
+        }
     }
 
     @Override

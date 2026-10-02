@@ -21,6 +21,10 @@ public interface ImmediateExtendedAttribHandler {
 
     boolean wantsExtendedCapture();
 
+    boolean wantsFaceNormals();
+
+    void writeFaceNormals(int[] rawBuffer, int vertexCount);
+
     void build(int[] rawBuffer, int vertexCount, int vertsPerPrim, int normalIntIndex, long dstAddr, int dstStride);
 
     void buildPacked(long srcBase, int stride, int posOffset, int texOffset, int normalOffset,

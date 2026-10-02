@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
+import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
 import com.gtnewhorizons.angelica.api.ExtCeleritasRenderBlocks;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.loading.AngelicaClientTweaker;
@@ -122,6 +123,7 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
 
     @Override
     public boolean angelica$shouldApplyCeleritasAO() {
+        if (!((StateAwareTessellator) TessellatorManager.get()).angelica$isCeleritasMeshing()) return false;
         return (this.isRenderingByType && Minecraft.isAmbientOcclusionEnabled() && ClientProxy.options().quality.useCeleritasSmoothLighting) ||
             (Iris.enabled && BlockRenderingSettings.INSTANCE.shouldUseSeparateAo());
     }

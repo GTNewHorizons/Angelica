@@ -1,13 +1,13 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
+import com.gtnewhorizons.angelica.rendering.BlockMaterialAttribute;
 import net.minecraft.client.renderer.RenderBlocks;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 
 /**
- * Replace vanilla's baked per-face directional shading while a falling block is rendering.
+ * Honor shader directional shading for blocks drawn as terrain outside chunk meshing.
  */
 @Mixin(RenderBlocks.class)
 public class MixinRenderBlocks_FallingShading {
@@ -21,7 +21,7 @@ public class MixinRenderBlocks_FallingShading {
         },
         constant = @Constant(floatValue = 0.5F))
     private float angelica$flattenBottomShading(float original) {
-        return FallingBlockRendering.skipDirectionalShading() ? 1.0F : original;
+        return BlockMaterialAttribute.skipDirectionalShading() ? 1.0F : original;
     }
 
     @ModifyConstant(
@@ -33,7 +33,7 @@ public class MixinRenderBlocks_FallingShading {
         },
         constant = @Constant(floatValue = 0.8F))
     private float angelica$flattenNorthSouthShading(float original) {
-        return FallingBlockRendering.skipDirectionalShading() ? 1.0F : original;
+        return BlockMaterialAttribute.skipDirectionalShading() ? 1.0F : original;
     }
 
     @ModifyConstant(
@@ -45,6 +45,6 @@ public class MixinRenderBlocks_FallingShading {
         },
         constant = @Constant(floatValue = 0.6F))
     private float angelica$flattenEastWestShading(float original) {
-        return FallingBlockRendering.skipDirectionalShading() ? 1.0F : original;
+        return BlockMaterialAttribute.skipDirectionalShading() ? 1.0F : original;
     }
 }

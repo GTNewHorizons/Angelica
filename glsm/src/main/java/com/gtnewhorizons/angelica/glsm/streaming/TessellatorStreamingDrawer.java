@@ -121,8 +121,13 @@ public class TessellatorStreamingDrawer {
                     defaultBrightness = 0;
                 }
 
+                final ImmediateExtendedAttribHandler normalHandler = GLSMHooks.immediateExtendedHandler;
+                final boolean faceNormals = !tess.hasNormals && normalHandler != null
+                    && ImmediateExtendedAttribHandler.extPrimVerts(tess.drawMode, vertexCount) == 4 && normalHandler.wantsFaceNormals();
+                final boolean fillNormal = !tess.hasNormals && !faceNormals;
+
                 final int defaultNormal;
-                if (!tess.hasNormals) {
+                if (fillNormal) {
                     final var n = ShaderManager.getCurrentNormal();
                     defaultNormal = ((int)(clamp(-1f, 1f, n.z) * 127) << 16) | (((int)(clamp(-1f, 1f, n.y) * 127) & 0xFF) << 8) | ((int)(clamp(-1f, 1f, n.x) * 127) & 0xFF);
                 } else {
@@ -142,9 +147,10 @@ public class TessellatorStreamingDrawer {
                     final int base = i * 8;
                     if (!tess.hasTexture)    { rawBuffer[base + 3] = defaultTexU; rawBuffer[base + 4] = defaultTexV; }
                     if (!tess.hasColor)      { rawBuffer[base + 5] = defaultColor; }
-                    if (!tess.hasNormals)    { rawBuffer[base + 6] = defaultNormal; }
+                    if (fillNormal)          { rawBuffer[base + 6] = defaultNormal; }
                     if (!tess.hasBrightness) { rawBuffer[base + 7] = defaultBrightness; }
                 }
+                if (faceNormals) normalHandler.writeFaceNormals(rawBuffer, vertexCount);
             }
         } else {
             effectiveFlags = flags;
