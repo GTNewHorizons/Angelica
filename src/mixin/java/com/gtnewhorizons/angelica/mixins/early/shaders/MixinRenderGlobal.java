@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.ITessellatorInstance;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import net.coderbot.iris.Iris;
@@ -62,63 +61,68 @@ public class MixinRenderGlobal {
     }
 
     // Sky disc: wrap the glCallList(glSkyList) call — the first glCallList in the surface world branch
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipSkyDisc", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", ordinal = 0, remap = false),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getSkyColor(Lnet/minecraft/entity/Entity;F)Lnet/minecraft/util/Vec3;")))
-    private void iris$skipSkyDisc(int list, Operation<Void> original) {
+    private void iris$skipSkyDisc() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderSkyDisc()) {
-            original.call(list);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderSkyDisc());
     }
 
     // Sun: wrap Tessellator.draw() after sun texture bind, before moon texture bind
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipSun", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 0),
         slice = @Slice(
             from = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationSunPng:Lnet/minecraft/util/ResourceLocation;"),
             to = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationMoonPhasesPng:Lnet/minecraft/util/ResourceLocation;")))
-    private int iris$skipSun(Tessellator instance, Operation<Integer> original) {
+    private void iris$skipSun() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderSun()) {
-            return original.call(instance);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderSun());
+    }
+
+    @Surround.Skipped("skipSun")
+    private int iris$skipSunSkipped(Tessellator instance) {
         ((ITessellatorInstance) instance).discard();
         return 0;
     }
 
     // Moon: wrap Tessellator.draw() after moon texture bind, before getStarBrightness
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipMoon", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/Tessellator;draw()I", ordinal = 0),
         slice = @Slice(
             from = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationMoonPhasesPng:Lnet/minecraft/util/ResourceLocation;"),
             to = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getStarBrightness(F)F")))
-    private int iris$skipMoon(Tessellator instance, Operation<Integer> original) {
+    private void iris$skipMoon() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderMoon()) {
-            return original.call(instance);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderMoon());
+    }
+
+    @Surround.Skipped("skipMoon")
+    private int iris$skipMoonSkipped(Tessellator instance) {
         ((ITessellatorInstance) instance).discard();
         return 0;
     }
 
     // Stars: wrap glCallList(starGLCallList) — the glCallList after getStarBrightness
-    @WrapOperation(method = "renderSky",
+    @Surround(id = "skipStars", method = "renderSky",
         at = @At(value = "INVOKE", target = "Lorg/lwjgl/opengl/GL11;glCallList(I)V", ordinal = 0, remap = false),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getStarBrightness(F)F")))
-    private void iris$skipStars(int list, Operation<Void> original) {
+    private void iris$skipStars() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderStars()) {
-            original.call(list);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderStars());
     }
 
-    @Inject(method="drawSelectionBox", at=@At(value="HEAD"))
-    private void iris$startOutline(EntityPlayer player, MovingObjectPosition pos, int p_72731_3_, float p_72731_4_, CallbackInfo ci) {
+    @Surround(id = "startOutline", method = "drawSelectionBox")
+    private void iris$startOutline(EntityPlayer player, MovingObjectPosition pos, int p_72731_3_, float p_72731_4_) {
         GbufferPrograms.beginOutline();
     }
-    @Inject(method="drawSelectionBox", at=@At(value="RETURN"))
-    private void iris$endOutline(EntityPlayer player, MovingObjectPosition pos, int p_72731_3_, float p_72731_4_, CallbackInfo ci) {
+
+    @Surround.Finally("startOutline")
+    private void iris$endOutline() {
         GbufferPrograms.endOutline();
     }
 

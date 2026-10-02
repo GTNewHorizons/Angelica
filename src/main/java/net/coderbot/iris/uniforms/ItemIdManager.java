@@ -1,6 +1,9 @@
 package net.coderbot.iris.uniforms;
 
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.StateSet;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.minecraft.block.Block;
@@ -16,6 +19,24 @@ public class ItemIdManager {
 
     public static void popItemId() {
         CapturedRenderingState.INSTANCE.popCurrentRenderedItem();
+    }
+
+    public static int beginCutout(ItemStack stack) {
+        pushItemId();
+        final int depth = GLStateManager.pushState(StateSet.CUTOUT);
+        try {
+            GbufferPrograms.setCutoutDefaults();
+            setItemId(stack);
+        } catch (Throwable t) {
+            endCutout(depth);
+            throw t;
+        }
+        return depth;
+    }
+
+    public static void endCutout(int depth) {
+        popItemId();
+        GLStateManager.popStateTo(depth);
     }
 
     /**

@@ -6,7 +6,6 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.states.Color4;
-import com.gtnewhorizons.angelica.rendering.OperationArgs;
 import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager.BlockMeta;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
 import com.gtnewhorizons.angelica.rendering.tesr.BakedTransformCapture;
@@ -16,14 +15,17 @@ import com.gtnewhorizons.angelica.rendering.tesr.GlintCapture;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TemplateBuffer;
 import com.gtnewhorizons.angelica.utils.AnimationsRenderUtils;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import net.minecraft.block.Block;
+import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.item.ItemStack;
 
 public final class DroppedItemInstancer {
+
+    public static final long SKIP = -2L;
+    public static final long RUN = -1L;
 
     private static final int CAPTURE_BYTES = 64 * 1024;
 
@@ -31,9 +33,6 @@ public final class DroppedItemInstancer {
     private static final Object2ObjectOpenHashMap<BlockMeta, BlockMesh> blocks = new Object2ObjectOpenHashMap<>();
     private static final BlockMeta blockKey = new BlockMeta();
     private static final AngelicaTesrMeshCache.GtnhMeshBackend iconBackend = new AngelicaTesrMeshCache.GtnhMeshBackend();
-    private static final Object[] ICON_ARGS = new Object[8];
-    private static final Object[] GLINT_ARGS = new Object[8];
-    private static final Object[] BLOCK_ARGS = new Object[4];
     private static BakedTransformCapture blockBackend;
     private static boolean basePart;
     private static final GlintCapture glintCapture = new GlintCapture();
@@ -108,62 +107,59 @@ public final class DroppedItemInstancer {
         return material;
     }
 
-    public static void icon(ItemStack stack, boolean afterGlint, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    public static long icon(ItemStack stack, boolean afterGlint, float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
         glintCapture.reset();
         glintSeen = false;
         final TesrMaterial material = material(stack, true);
         if (material == null) {
             basePart = false;
-            callIcon(ICON_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
-            return;
+            return RUN;
         }
-        basePart = batchIcon(material, afterGlint, t, maxU, minV, minU, maxV, width, height, thickness, original);
+        final long part = batchIcon(material, afterGlint, maxU, minV, minU, maxV, width, height, thickness);
+        basePart = part == SKIP;
+        return part;
     }
 
-    static boolean batchIcon(TesrMaterial material, boolean afterGlint, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    static long batchIcon(TesrMaterial material, boolean afterGlint, float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
         final long drawsBefore = GLStateManager.drawCalls;
         if (BatchEligibility.batchingAllowed()) {
-            final TemplateBuffer template = iconTemplate(ICON_ARGS, maxU, minV, minU, maxV, width, height, thickness, original);
+            final TemplateBuffer template = iconTemplate(maxU, minV, minU, maxV, width, height, thickness);
             if (template == null) {
-                callIcon(ICON_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
                 fallback++;
                 bail(BailReason.TEMPLATE);
-                return false;
+                return RUN;
             }
             if (ModelPartBatcher.INSTANCE.queueTemplate(template, material, afterGlint)) {
                 instanced++;
                 BatchEligibility.onPartQueued();
-                return true;
+                return SKIP;
             }
             fallback++;
             bail(BailReason.QUEUE);
         } else {
             bail(BailReason.NOT_ALLOWED);
         }
-        callIcon(ICON_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
-        BatchEligibility.onPartFallback(drawsBefore, GLStateManager.drawCalls);
-        return false;
+        return drawsBefore;
     }
 
     /** Held glints use ITEM_GLINT for its stencil guard; dropped items draw with culling on and need none. */
-    public static void glint(Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, TesrMaterial material, Operation<Void> original) {
+    public static long glint(float maxU, float minV, float minU, float maxV, int width, int height, float thickness, TesrMaterial material) {
         if (!basePart) {
-            callIcon(GLINT_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
-            return;
+            return RUN;
         }
         final boolean allowed = BatchEligibility.batchingAllowed();
         if (allowed && ModelPartBatcher.INSTANCE.isShadowPass()) {
             BatchEligibility.onPartQueued();
-            return;
+            return SKIP;
         }
         final long drawsBefore = GLStateManager.drawCalls;
         if (allowed) {
             currentGlintProperties.set(maxU, minV, minU, maxV, width, height, thickness);
             if (glintSeen && glintProperties.equals(currentGlintProperties) && ModelPartBatcher.INSTANCE.replayGlint(glintCapture)) {
                 glintInstanced++;
-                return;
+                return SKIP;
             }
-            final TemplateBuffer template = iconTemplate(GLINT_ARGS, maxU, minV, minU, maxV, width, height, thickness, original);
+            final TemplateBuffer template = iconTemplate(maxU, minV, minU, maxV, width, height, thickness);
             final boolean capture = !glintSeen && ModelPartBatcher.INSTANCE.beginGlintCapture(glintCapture);
             if (capture) glintProperties.set(currentGlintProperties);
             glintSeen = true;
@@ -176,15 +172,14 @@ public final class DroppedItemInstancer {
             if (queued) {
                 glintInstanced++;
                 BatchEligibility.onPartQueued();
-                return;
+                return SKIP;
             }
             fallback++;
             bail(template == null ? BailReason.TEMPLATE : BailReason.QUEUE);
         } else {
             bail(BailReason.NOT_ALLOWED);
         }
-        callIcon(GLINT_ARGS, original, t, maxU, minV, minU, maxV, width, height, thickness);
-        BatchEligibility.onPartFallback(drawsBefore, GLStateManager.drawCalls);
+        return drawsBefore;
     }
 
     public static boolean queueSkippedGlint(int iconWidth, int iconHeight) {
@@ -203,50 +198,52 @@ public final class DroppedItemInstancer {
         return true;
     }
 
-    public static void block(ItemStack stack, RenderBlocks rb, Block block, int meta, float brightness, boolean unfilteredAtlas, Operation<Void> original) {
+    public static long block(ItemStack stack, RenderBlocks rb, Block block, int meta, float brightness, boolean unfilteredAtlas) {
         final TesrMaterial material = material(stack, unfilteredAtlas);
         if (material == null) {
-            callBlock(original, rb, block, meta, brightness);
-            return;
+            return RUN;
         }
         final BailReason stateBail = blockStateBail(rb, block, brightness);
         if (stateBail != null) {
             fallback++;
             bail(stateBail);
-            callBlock(original, rb, block, meta, brightness);
-            return;
+            return RUN;
         }
-        batchBlock(material, rb, block, meta, brightness, original);
+        return batchBlock(material, rb, block, meta, brightness);
     }
 
-    static void batchBlock(TesrMaterial material, RenderBlocks rb, Block block, int meta, float brightness, Operation<Void> original) {
+    static long batchBlock(TesrMaterial material, RenderBlocks rb, Block block, int meta, float brightness) {
         final long drawsBefore = GLStateManager.drawCalls;
         if (BatchEligibility.batchingAllowed()) {
             BlockMesh mesh = lookupBlock(block, meta);
             if (mesh == null) {
-                mesh = captureBlock(rb, block, meta, brightness, original);
+                mesh = captureBlock(rb, block, meta, brightness);
             } else if (mesh.template() != null) {
                 GLStateManager.glColor4f(mesh.red(), mesh.green(), mesh.blue(), mesh.alpha());
             }
             if (mesh.template() == null) {
-                callBlock(original, rb, block, meta, brightness);
                 fallback++;
                 bail(BailReason.TEMPLATE);
-                return;
+                return RUN;
             }
             if (ModelPartBatcher.INSTANCE.queueTemplate(mesh.template(), material)) {
                 mesh.sprites().markUsed();
                 instanced++;
                 BatchEligibility.onPartQueued();
-                return;
+                return SKIP;
             }
             fallback++;
             bail(BailReason.QUEUE);
         } else {
             bail(BailReason.NOT_ALLOWED);
         }
-        callBlock(original, rb, block, meta, brightness);
-        BatchEligibility.onPartFallback(drawsBefore, GLStateManager.drawCalls);
+        return drawsBefore;
+    }
+
+    public static void endPart(long part) {
+        if (part >= 0L) {
+            BatchEligibility.onPartFallback(part, GLStateManager.drawCalls);
+        }
     }
 
     public static void clear() {
@@ -263,43 +260,13 @@ public final class DroppedItemInstancer {
         }
     }
 
-    private static void callIcon(Object[] args, Operation<Void> original, Tessellator t, float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
-        args[0] = t;
-        args[1] = OperationArgs.boxed(args[1], maxU);
-        args[2] = OperationArgs.boxed(args[2], minV);
-        args[3] = OperationArgs.boxed(args[3], minU);
-        args[4] = OperationArgs.boxed(args[4], maxV);
-        args[5] = OperationArgs.boxed(args[5], width);
-        args[6] = OperationArgs.boxed(args[6], height);
-        args[7] = OperationArgs.boxed(args[7], thickness);
-        try {
-            original.call(args);
-        } finally {
-            args[0] = null;
-        }
-    }
-
-    private static void callBlock(Operation<Void> original, RenderBlocks rb, Block block, int meta, float brightness) {
-        final Object[] args = BLOCK_ARGS;
-        args[0] = rb;
-        args[1] = block;
-        args[2] = OperationArgs.boxed(args[2], meta);
-        args[3] = OperationArgs.boxed(args[3], brightness);
-        try {
-            original.call(args);
-        } finally {
-            args[0] = null;
-            args[1] = null;
-        }
-    }
-
-    private static TemplateBuffer iconTemplate(Object[] args, float maxU, float minV, float minU, float maxV, int width, int height, float thickness, Operation<Void> original) {
+    private static TemplateBuffer iconTemplate(float maxU, float minV, float minU, float maxV, int width, int height, float thickness) {
         final IconMesh hit = icons.get(maxU, minV, minU, maxV, width, height, thickness);
         if (hit != null) return hit.template;
         final Tessellator capture = iconBackend.beginCapture(DefaultVertexFormat.POSITION_TEXTURE_NORMAL);
         final TemplateBuffer template;
         try {
-            callIcon(args, original, capture, maxU, minV, minU, maxV, width, height, thickness);
+            ItemRenderer.renderItemIn2D(capture, maxU, minV, minU, maxV, width, height, thickness);
         } finally {
             template = iconBackend.endCaptureToTemplate();
         }
@@ -308,7 +275,7 @@ public final class DroppedItemInstancer {
         return template;
     }
 
-    private static BlockMesh captureBlock(RenderBlocks rb, Block block, int meta, float brightness, Operation<Void> original) {
+    private static BlockMesh captureBlock(RenderBlocks rb, Block block, int meta, float brightness) {
         if (blockBackend == null) {
             blockBackend = new BakedTransformCapture(CAPTURE_BYTES);
         }
@@ -318,7 +285,7 @@ public final class DroppedItemInstancer {
         try {
             blockBackend.begin();
             try {
-                callBlock(original, rb, block, meta, brightness);
+                rb.renderBlockAsItem(block, meta, brightness);
             } finally {
                 template = blockBackend.end();
             }

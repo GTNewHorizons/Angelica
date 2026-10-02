@@ -1,13 +1,10 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizons.angelica.compat.mojang.Camera;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.llamalad7.mixinextras.sugar.Local;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import jss.notfine.core.SettingsManager;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.CloudSetting;
@@ -22,16 +19,11 @@ import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import net.irisshaders.iris.api.v0.IrisApi;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.particle.EffectRenderer;
 import net.minecraft.client.renderer.EntityRenderer;
-import net.minecraft.client.renderer.ItemRenderer;
 import net.minecraft.client.renderer.RenderGlobal;
-import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.culling.Frustrum;
 import net.minecraft.client.resources.IResourceManagerReloadListener;
 import net.minecraft.client.settings.GameSettings;
-import net.minecraft.entity.Entity;
-import net.minecraft.entity.EntityLivingBase;
 import org.embeddedt.embeddium.impl.render.viewport.ViewportProvider;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
@@ -48,7 +40,7 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
     @Shadow public Minecraft mc;
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/culling/ClippingHelperImpl;getInstance()Lnet/minecraft/client/renderer/culling/ClippingHelper;", shift = At.Shift.AFTER, ordinal = 0), method = "renderWorld(FJ)V")
-    private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    private void iris$beginRender(float partialTicks, long startTime, CallbackInfo ci) {
         mc.mcProfiler.endStartSection("iris_begin");
         DHCompat.checkFrame();
         Iris.tryLoadShaderpackWhenPossible();
@@ -61,22 +53,22 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         Program.unbind();
 
         mc.mcProfiler.startSection("iris_prepare_pipeline");
-        pipeline.set(Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName()));
+        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
         mc.mcProfiler.endSection();
 
         GLStateManager.setShaderColor(1f, 1f, 1f, 1f);
 
-        pipeline.get().beginLevelRendering();
+        pipeline.beginLevelRendering();
     }
 
     @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraftforge/client/ForgeHooksClient;dispatchRenderLast(Lnet/minecraft/client/renderer/RenderGlobal;F)V", remap = false))
-    private void iris$endLevelRender(float partialTicks, long limitTime, CallbackInfo callback, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    private void iris$endLevelRender(float partialTicks, long limitTime, CallbackInfo callback) {
         // TODO: Iris
-        HandRenderer.INSTANCE.renderTranslucent(partialTicks, Camera.INSTANCE, mc.renderGlobal, pipeline.get());
-        ThaumometerScreen.render(pipeline.get());
+        final WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        HandRenderer.INSTANCE.renderTranslucent(partialTicks, Camera.INSTANCE, mc.renderGlobal, pipeline);
+        ThaumometerScreen.render(pipeline);
         Minecraft.getMinecraft().mcProfiler.endStartSection("iris_final");
-        pipeline.get().finalizeLevelRendering();
-        pipeline.set(null);
+        pipeline.finalizeLevelRendering();
         Program.unbind();
         GLStateManager.glDepthMask(true);
         GLStateManager.disableBlend();
@@ -84,20 +76,19 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         GLStateManager.enableAlphaTest();
     }
 
-    @WrapOperation(method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
-    private void iris$disableVanillaRenderHand(ItemRenderer instance, float partialTicks, Operation<Void> original) {
-        if (!IrisApi.getInstance().isShaderPackInUse()) {
-            original.call(instance, partialTicks);
-        }
+    @Surround(id = "disableVanillaRenderHand", method = "renderHand", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/ItemRenderer;renderItemInFirstPerson(F)V"))
+    private void iris$disableVanillaRenderHand() {
+        @Surround.Skip
+        boolean skip = IrisApi.getInstance().isShaderPackInUse();
     }
 
     @Inject(at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;clipRenderersByFrustum(Lnet/minecraft/client/renderer/culling/ICamera;F)V"), method = "renderWorld(FJ)V")
-    private void iris$renderShadows(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline, @Local Frustrum playerFrustum) {
+    private void iris$renderShadows(float partialTicks, long startTime, CallbackInfo ci, @Local Frustrum playerFrustum) {
         final CeleritasWorldRenderer renderer = CeleritasWorldRenderer.getInstanceOrNull();
         if (renderer != null) {
             renderer.setShadowPassPlayerViewport(((ViewportProvider) playerFrustum).sodium$createViewport());
         }
-        pipeline.get().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
+        Iris.getPipelineManager().getPipelineNullable().renderShadows((EntityRenderer) (Object) this, Camera.INSTANCE);
     }
 
 
@@ -113,72 +104,87 @@ public abstract class MixinEntityRenderer implements IResourceManagerReloadListe
         return SettingsManager.cloudRenderOrderHeight() - Camera.INSTANCE.getOffset().y;
     }
 
-    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V"))
-    private void iris$beginSky(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    @Surround(id = "renderSky", method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V"))
+    private void iris$beginSky() {
+        @Surround.Carry
+        WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
         // Use CUSTOM_SKY until levelFogColor is called as a heuristic to catch FabricSkyboxes.
-        pipeline.get().setPhase(WorldRenderingPhase.CUSTOM_SKY);
+        pipeline.setPhase(WorldRenderingPhase.CUSTOM_SKY);
+    }
+
+    @Surround.Finally("renderSky")
+    private void iris$endSky(@Surround.Carry WorldRenderingPipeline pipeline) {
+        pipeline.setPhase(WorldRenderingPhase.NONE);
+    }
+
+    @Surround(id = "clouds", method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
+    private void iris$clouds() {
+        @Surround.Carry
+        WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        pipeline.setPhase(WorldRenderingPhase.CLOUDS);
+        @Surround.Skip
+        boolean skip = pipeline.getCloudSetting() == CloudSetting.OFF;
+    }
+
+    @Surround.Finally("clouds")
+    private void iris$cloudsEnd(@Surround.Carry WorldRenderingPipeline pipeline) {
+        pipeline.setPhase(WorldRenderingPhase.NONE);
     }
 
 
-    @Inject(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;renderSky(F)V", shift = At.Shift.AFTER))
-    private void iris$endSky(float partialTicks, long startTime, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.NONE);
-    }
-
-    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderCloudsCheck(Lnet/minecraft/client/renderer/RenderGlobal;F)V"))
-    private void iris$clouds(EntityRenderer instance, RenderGlobal rg, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.CLOUDS);
-        if (pipeline.get().getCloudSetting() != CloudSetting.OFF) {
-            original.call(instance, rg, partialTicks);
-        }
-        pipeline.get().setPhase(WorldRenderingPhase.NONE);
-    }
-
-
-    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V"))
-    private void iris$wrapWeather(EntityRenderer instance, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.RAIN_SNOW);
-        if (pipeline.get().shouldWriteRainAndSnowToDepthBuffer()) {
+    @Surround(id = "wrapWeather", method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;renderRainSnow(F)V"))
+    private void iris$wrapWeather() {
+        @Surround.Carry
+        WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        pipeline.setPhase(WorldRenderingPhase.RAIN_SNOW);
+        if (pipeline.shouldWriteRainAndSnowToDepthBuffer()) {
             GLStateManager.glDepthMask(true);
         }
-        if (pipeline.get().shouldRenderWeather()) {
-            original.call(instance, partialTicks);
-        }
-        pipeline.get().setPhase(WorldRenderingPhase.NONE);
+        @Surround.Skip
+        boolean skip = !pipeline.shouldRenderWeather();
     }
 
-    @WrapOperation(method = "updateRenderer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;addRainParticles()V"))
-    private void iris$wrapRainParticles(EntityRenderer instance, Operation<Void> original) {
+    @Surround.Finally("wrapWeather")
+    private void iris$wrapWeatherEnd(@Surround.Carry WorldRenderingPipeline pipeline) {
+        pipeline.setPhase(WorldRenderingPhase.NONE);
+    }
+
+    @Surround(id = "wrapRainParticles", method = "updateRenderer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/EntityRenderer;addRainParticles()V"))
+    private void iris$wrapRainParticles() {
         WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
-        if (pipeline == null || pipeline.shouldRenderWeatherParticles()) {
-            original.call(instance);
-        }
+        @Surround.Skip
+        boolean skip = !(pipeline == null || pipeline.shouldRenderWeatherParticles());
     }
 
-    @WrapOperation(method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V", remap = false))
-    private void iris$blockDamageTexture(RenderGlobal instance, Tessellator tessellator, EntityLivingBase entity, float partialTicks, Operation<Void> original, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.DESTROY);
-        original.call(instance, tessellator, entity, partialTicks);
-        pipeline.get().setPhase(WorldRenderingPhase.NONE);
+    @Surround(id = "blockDamageTexture", method = "renderWorld", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderGlobal;drawBlockDamageTexture(Lnet/minecraft/client/renderer/Tessellator;Lnet/minecraft/entity/EntityLivingBase;F)V", remap = false))
+    private void iris$blockDamageTexture() {
+        @Surround.Carry
+        WorldRenderingPipeline pipeline = Iris.getPipelineManager().getPipelineNullable();
+        pipeline.setPhase(WorldRenderingPhase.DESTROY);
     }
 
-    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EffectRenderer;renderLitParticles(Lnet/minecraft/entity/Entity;F)V"))
-    private void iris$litParticlePhase(EffectRenderer instance, Entity viewer, float partialTicks, Operation<Void> original) {
-        final int depth = GbufferPrograms.beginParticles();
-        try {
-            original.call(instance, viewer, partialTicks);
-        } finally {
-            GbufferPrograms.endParticles(depth);
-        }
+    @Surround.Finally("blockDamageTexture")
+    private void iris$blockDamageTextureEnd(@Surround.Carry WorldRenderingPipeline pipeline) {
+        pipeline.setPhase(WorldRenderingPhase.NONE);
     }
 
-    @WrapOperation(method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EffectRenderer;renderParticles(Lnet/minecraft/entity/Entity;F)V"))
-    private void iris$particlePhase(EffectRenderer instance, Entity viewer, float partialTicks, Operation<Void> original) {
-        final int depth = GbufferPrograms.beginParticles();
-        try {
-            original.call(instance, viewer, partialTicks);
-        } finally {
-            GbufferPrograms.endParticles(depth);
-        }
+    @Surround(id = "litParticlePhase", method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EffectRenderer;renderLitParticles(Lnet/minecraft/entity/Entity;F)V"))
+    private void iris$litParticlePhase() {
+        @Surround.Carry int depth = GbufferPrograms.beginParticles();
+    }
+
+    @Surround.Finally("litParticlePhase")
+    private void iris$litParticlePhaseEnd(@Surround.Carry int depth) {
+        GbufferPrograms.endParticles(depth);
+    }
+
+    @Surround(id = "particlePhase", method = "renderWorld(FJ)V", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/particle/EffectRenderer;renderParticles(Lnet/minecraft/entity/Entity;F)V"))
+    private void iris$particlePhase() {
+        @Surround.Carry int depth = GbufferPrograms.beginParticles();
+    }
+
+    @Surround.Finally("particlePhase")
+    private void iris$particlePhaseEnd(@Surround.Carry int depth) {
+        GbufferPrograms.endParticles(depth);
     }
 }

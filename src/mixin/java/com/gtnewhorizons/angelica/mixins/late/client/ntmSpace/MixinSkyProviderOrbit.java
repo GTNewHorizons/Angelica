@@ -1,24 +1,23 @@
 package com.gtnewhorizons.angelica.mixins.late.client.ntmSpace;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.utils.WorkaroundUtils;
-import com.hbm.dim.CelestialBody;
 import com.hbm.dim.orbit.SkyProviderOrbit;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
 import net.minecraft.client.Minecraft;
-import net.minecraft.client.multiplayer.WorldClient;
 import org.lwjgl.opengl.GL11;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 @Mixin(value = SkyProviderOrbit.class, priority = 100, remap = false)
 public class MixinSkyProviderOrbit {
+	
+	@Unique
+	private int angelica$previousProgram;
 	
 	/**
 	 * Avoid program rebinding due to pipeline.setInputs
@@ -41,24 +40,27 @@ public class MixinSkyProviderOrbit {
 			, at = @At(value = "INVOKE"
 				, target = "Lnet/minecraft/client/renderer/RenderHelper;disableStandardItemLighting()V"
 				, remap = true))
-	public void iris$main$renderInDefaultProgram(CallbackInfo ci, @Share("main$previousProgram") LocalIntRef main$previousProgram) {
-		main$previousProgram.set(GLStateManager.getActiveProgram());
+	public void iris$main$renderInDefaultProgram(CallbackInfo ci) {
+		angelica$previousProgram = GLStateManager.getActiveProgram();
 		GLStateManager.glUseProgram(0);
 	}
 	
-	@WrapOperation(method = "render"
+	@Surround(method = "render"
 			, at = @At(value = "INVOKE"
 				, target = "Lcom/hbm/dim/orbit/SkyProviderOrbit;renderSun(FLnet/minecraft/client/multiplayer/WorldClient;Lnet/minecraft/client/Minecraft;Lcom/hbm/dim/CelestialBody;DDFF)V"))
-	private void iris$main$renderSunInShaderProgram(SkyProviderOrbit instance, float partialTicks, WorldClient world, Minecraft mc, CelestialBody sun, double sunSize, double coronaSize, float visibility, float pressure, Operation<Void> original, @Share("main$previousProgram") LocalIntRef main$previousProgram){
-		GLStateManager.glUseProgram(main$previousProgram.get());
-		original.call(instance, partialTicks, world, mc, sun, sunSize, coronaSize, visibility, pressure);
+	private void iris$main$renderSunInShaderProgram(){
+		GLStateManager.glUseProgram(angelica$previousProgram);
+	}
+
+	@Surround.Finally
+	private void iris$main$renderSunInShaderProgramEnd() {
 		GLStateManager.glUseProgram(0);
 	}
 
 	@Inject(method = "render"
 			, at = @At(value = "TAIL"))
-	public void iris$main$restorePreviousProgram(CallbackInfo ci, @Share("main$previousProgram") LocalIntRef main$previousProgram) {
-		GLStateManager.glUseProgram(main$previousProgram.get());
+	public void iris$main$restorePreviousProgram(CallbackInfo ci) {
+		GLStateManager.glUseProgram(angelica$previousProgram);
 	}
 
 }

@@ -4,6 +4,7 @@ lwjgl2 = "2.9.4-nightly-20150209"
 guava = "18.0"
 log4j = "2.0-beta9"
 asmCompile = "5.0.3"
+launchwrapper = "1.12"
 # End Frozen
 
 lwjgl3 = "3.4.2-SNAPSHOT"
@@ -15,6 +16,7 @@ eventbus = "7.0-beta.15"
 glslTransformLib = "0.2.0-33.g3ec381e"
 antlr4Runtime = "4.13.2"
 jcpp = "1.4.14"
+commonsIo = "2.11.0"
 tracy = "0.14.1"
 asyncProfiler = "4.4"
 retroFuturaBootstrap = "1.1.0"
@@ -48,6 +50,8 @@ guava = { module = "com.google.guava:guava", version.ref = "guava" }
 fastutil = { module = "it.unimi.dsi:fastutil", version.ref = "fastutil" }
 joml = { module = "org.joml:joml", version.ref = "joml" }
 commons-lang3 = { module = "org.apache.commons:commons-lang3", version.ref = "commonsLang3" }
+launchwrapper = { module = "net.minecraft:launchwrapper", version.ref = "launchwrapper" }
+commons-io = { module = "commons-io:commons-io", version.ref = "commonsIo" }
 junit-bom = { module = "org.junit:junit-bom", version.ref = "junit" }
 
 # Versions come from junit-bom via platform()

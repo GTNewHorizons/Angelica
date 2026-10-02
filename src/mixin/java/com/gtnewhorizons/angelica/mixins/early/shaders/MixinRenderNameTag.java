@@ -1,14 +1,12 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.coderbot.iris.shaderpack.materialmap.NamespacedId;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.minecraft.client.renderer.entity.Render;
 import net.minecraft.entity.Entity;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
-import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Mixin to set the entity ID to "name_tag" when rendering entity name tags.
@@ -21,26 +19,16 @@ public class MixinRenderNameTag {
     private static final NamespacedId NAME_TAG_ID = new NamespacedId("minecraft", "name_tag");
 
     /**
-     * Inject at the HEAD of func_147906_a to set the special name_tag entity ID before rendering.
      * func_147906_a is the method that renders entity name tags.
      */
-    @Inject(
-        method = "func_147906_a",
-        at = @At("HEAD")
-    )
-    private void iris$setNameTagEntityId(Entity entity, String name, double x, double y, double z, int maxDistance, CallbackInfo ci) {
+    @Surround(method = "func_147906_a")
+    private void iris$setNameTagEntityId(Entity entity, String name, double x, double y, double z, int maxDistance) {
         CapturedRenderingState.INSTANCE.pushCurrentEntityAndItem();
         CapturedRenderingState.INSTANCE.setCurrentNamedEntity(NAME_TAG_ID);
     }
 
-    /**
-     * Inject at the RETURN of func_147906_a to restore the previous entity ID after rendering.
-     */
-    @Inject(
-        method = "func_147906_a",
-        at = @At("RETURN")
-    )
-    private void iris$restoreEntityId(Entity entity, String name, double x, double y, double z, int maxDistance, CallbackInfo ci) {
+    @Surround.Finally
+    private void iris$restoreEntityId() {
         CapturedRenderingState.INSTANCE.popCurrentEntityAndItem();
     }
 }

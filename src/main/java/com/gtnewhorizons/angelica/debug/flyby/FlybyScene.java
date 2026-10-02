@@ -12,11 +12,14 @@ import java.nio.file.Files;
 import java.nio.file.Paths;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 final class FlybyScene {
 
     private static final Logger LOGGER = LogManager.getLogger("Angelica/Flyby");
     private static final String[] NO_COMMANDS = new String[0];
+    private static final Pattern COORD_TOKEN = Pattern.compile("\\$([xyz])([+-]\\d+)?");
 
     static final String MARKER = "flyby";
 
@@ -42,6 +45,23 @@ final class FlybyScene {
         final String[] trimmed = new String[n];
         System.arraycopy(commands, 0, trimmed, 0, n);
         return trimmed;
+    }
+
+    static String expand(String line, int x, int y, int z) {
+        if (line.indexOf('$') < 0) return line;
+        final Matcher matcher = COORD_TOKEN.matcher(line);
+        final StringBuilder sb = new StringBuilder(line.length() + 16);
+        while (matcher.find()) {
+            final int base = switch (matcher.group(1).charAt(0)) {
+                case 'x' -> x;
+                case 'y' -> y;
+                default -> z;
+            };
+            final String offset = matcher.group(2);
+            matcher.appendReplacement(sb, Integer.toString(offset == null ? base : base + Integer.parseInt(offset)));
+        }
+        matcher.appendTail(sb);
+        return sb.toString();
     }
 
     static int count(WorldServer world) {

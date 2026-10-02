@@ -1,54 +1,55 @@
 package com.gtnewhorizons.angelica.mixins.early.rendering;
 
-import com.gtnewhorizons.angelica.api.ThreadSafeISBRH;
-import com.gtnewhorizons.angelica.api.ThreadSafeISBRHFactory;
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.mixins.interfaces.IRenderingRegistryExt;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.gtnewhorizons.angelica.rendering.IsbrhDispatch;
 import cpw.mods.fml.client.registry.ISimpleBlockRenderingHandler;
 import cpw.mods.fml.client.registry.RenderingRegistry;
-import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
+import net.minecraft.block.Block;
+import net.minecraft.client.renderer.RenderBlocks;
+import net.minecraft.world.IBlockAccess;
 import org.spongepowered.asm.mixin.Mixin;
+import org.spongepowered.asm.mixin.Overwrite;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
+import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-import java.lang.reflect.InvocationTargetException;
 import java.util.Map;
 
 @Mixin(value = RenderingRegistry.class, remap = false)
 public class MixinRenderingRegistry implements IRenderingRegistryExt {
     @Shadow private Map<Integer, ISimpleBlockRenderingHandler> blockRenderers;
 
-    private ThreadLocal<Map<Class<?>, Object>> THREAD_LOCAL_MAP = ThreadLocal.withInitial(Reference2ObjectOpenHashMap::new);
     @Override
     public ISimpleBlockRenderingHandler getISBRH(int modelId) {
         return this.blockRenderers.get(modelId);
     }
 
-    @WrapOperation(method = { "renderWorldBlock", "renderInventoryBlock", "renderItemAsFull3DBlock" }, at = @At(value="INVOKE", target="Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
-    private Object getWrapped(Map<Integer, ISimpleBlockRenderingHandler> instance, Object modelId, Operation<ISimpleBlockRenderingHandler> original) {
-        // TODO: Move this to BlockRenderer
+    /**
+     * @author Angelica
+     * @reason zero-alloc dispatch
+     */
+    @Overwrite
+    public boolean renderWorldBlock(RenderBlocks renderer, IBlockAccess world, int x, int y, int z, Block block, int modelId) {
+        ISimpleBlockRenderingHandler h = IsbrhDispatch.resolve(this.blockRenderers, modelId);
+        return h != null && h.renderWorldBlock(world, x, y, z, block, modelId, renderer);
+    }
 
-        // Get the main thread handler
-        final ISimpleBlockRenderingHandler mainThreadHandler = original.call(instance, modelId);
-        if(Thread.currentThread() != GLStateManager.getMainThread()) {
-            ThreadSafeISBRH annotation = mainThreadHandler.getClass().getAnnotation(ThreadSafeISBRH.class);
-            if (annotation != null && annotation.perThread()) {
-                return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> {
-                    try {
-                        // Won't work with non-default constructors, use ThreadSafeISBRHFactory instead
-                        return mainThreadHandler.getClass().getDeclaredConstructor().newInstance();
-                    } catch (InstantiationException | IllegalAccessException | NoSuchMethodException e) {
-                        throw new RuntimeException(e);
-                    } catch(InvocationTargetException e) {
-                        throw new RuntimeException(e.getCause());
-                    }
-                });
-            } else if (ThreadSafeISBRHFactory.class.isAssignableFrom(mainThreadHandler.getClass())) {
-                return THREAD_LOCAL_MAP.get().computeIfAbsent(mainThreadHandler.getClass(), k -> ((ThreadSafeISBRHFactory) mainThreadHandler).newInstance());
-            }
-        }
-        return mainThreadHandler;
+    @Surround(method = { "renderInventoryBlock", "renderItemAsFull3DBlock" }, at = @At(value="INVOKE", target="Ljava/util/Map;get(Ljava/lang/Object;)Ljava/lang/Object;"))
+    private void angelica$resolveHandler() {
+        @Surround.Skip final boolean skip = true;
+    }
+
+    @Surround.Skipped
+    private Object angelica$resolvedHandler(Map<Integer, ISimpleBlockRenderingHandler> map, Object modelId) {
+        return IsbrhDispatch.resolve(map, (Integer) modelId);
+    }
+
+    @Inject(method = {
+        "registerBlockHandler(Lcpw/mods/fml/client/registry/ISimpleBlockRenderingHandler;)V",
+        "registerBlockHandler(ILcpw/mods/fml/client/registry/ISimpleBlockRenderingHandler;)V" }, at = @At("TAIL"))
+    private static void angelica$invalidateOnRegister(CallbackInfo ci) {
+        IsbrhDispatch.invalidate();
     }
 }
