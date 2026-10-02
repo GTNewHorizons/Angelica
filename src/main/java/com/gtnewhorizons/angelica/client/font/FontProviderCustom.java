@@ -221,7 +221,7 @@ public final class FontProviderCustom implements FontProvider {
                 pixelBuffer.limit(image.getHeight() * image.getWidth());
             }
 
-            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL12.GL_BGRA, image.getWidth(), image.getHeight(), 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixelBuffer);
+            GLStateManager.glTexImage2D(GL11.GL_TEXTURE_2D, 0, GL11.GL_RGBA, image.getWidth(), image.getHeight(), 0, GL12.GL_BGRA, GL12.GL_UNSIGNED_INT_8_8_8_8_REV, pixelBuffer);
             memFree(pixelBuffer);
 
             this.texture = id;
