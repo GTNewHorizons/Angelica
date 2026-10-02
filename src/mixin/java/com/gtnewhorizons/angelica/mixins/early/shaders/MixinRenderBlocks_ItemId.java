@@ -1,8 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.ItemIdManager;
 import net.minecraft.block.Block;
@@ -12,30 +11,31 @@ import org.spongepowered.asm.mixin.Mixin;
 /**
  * Sets the currentRenderedItem ID for blocks drawn outside of terrain.
  */
-@Mixin(value = RenderBlocks.class, priority = 1500)
+@Mixin(RenderBlocks.class)
 public class MixinRenderBlocks_ItemId {
 
-    @WrapMethod(method = "renderBlockAsItem")
-    private void iris$blockItemId(Block block, int metadata, float brightness, Operation<Void> original) {
-        // renderBlockAsItem is shared with GUI and HUD item rendering
-        if (!ItemIdManager.isWorldRenderActive() || !TessellatorManager.isOnMainThread()) {
-            original.call(block, metadata, brightness);
-            return;
+    // renderBlockAsItem is shared with GUI and HUD item rendering
+    @Surround(method = "renderBlockAsItem")
+    private void iris$blockItemId(Block block, int metadata, float brightness) {
+        @Surround.Carry
+        final boolean active = ItemIdManager.isWorldRenderActive() && TessellatorManager.isOnMainThread();
+
+        if (active) {
+            final int prevItemId = ItemIdManager.getItemId();
+            ItemIdManager.pushItemId();
+            CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
+
+            CapturedRenderingState.INSTANCE.setCurrentBlockEntity(1);
+
+            if (prevItemId <= 0) {
+                ItemIdManager.setBlockId(block, metadata);
+            }
         }
+    }
 
-        final int prevItemId = ItemIdManager.getItemId();
-        ItemIdManager.pushItemId();
-        CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
-
-        CapturedRenderingState.INSTANCE.setCurrentBlockEntity(1);
-
-        if (prevItemId <= 0) {
-            ItemIdManager.setBlockId(block, metadata);
-        }
-
-        try {
-            original.call(block, metadata, brightness);
-        } finally {
+    @Surround.Finally
+    private void iris$blockItemIdRestore(@Surround.Carry boolean active) {
+        if (active) {
             ItemIdManager.popItemId();
             CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
         }

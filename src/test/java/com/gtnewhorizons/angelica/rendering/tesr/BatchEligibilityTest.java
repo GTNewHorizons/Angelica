@@ -2,8 +2,6 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.rendering.items.DroppedItemInstancer;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import net.minecraft.client.renderer.Tessellator;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -247,17 +245,11 @@ class BatchEligibilityTest {
 
             final long glintBefore = DroppedItemInstancer.statGlintInstanced();
             final long fallbackBefore = DroppedItemInstancer.statFallback();
-            final boolean[] originalCalled = { false };
-            final Operation<Void> original = args -> {
-                originalCalled[0] = true;
-                return null;
-            };
-
             BatchEligibility.begin(SAFE, 0L);
-            DroppedItemInstancer.glint(new Tessellator(), 1f, 0f, 0f, 1f, 16, 16, 0.0625f, EntityMaterials.GLINT, original);
+            final long part = DroppedItemInstancer.glint(1f, 0f, 0f, 1f, 16, 16, 0.0625f, EntityMaterials.GLINT);
             assertEquals(SAFE, BatchEligibility.end(SAFE, 0L));
 
-            assertFalse(originalCalled[0], "the shadow-pass early return must not fall back to the original draw");
+            assertEquals(DroppedItemInstancer.SKIP, part, "the shadow-pass early return must not fall back to the original draw");
             assertEquals(glintBefore, DroppedItemInstancer.statGlintInstanced(), "no instanced draw was queued");
             assertEquals(fallbackBefore, DroppedItemInstancer.statFallback(), "no fallback was recorded");
         } finally {

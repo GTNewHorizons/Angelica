@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.itemrenderer;
 
 import com.gtnewhorizon.gtnhlib.client.renderer.TessellatorManager;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.items.BlockRenderListManager;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.minecraft.block.Block;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
@@ -13,7 +12,8 @@ import net.minecraft.world.IBlockAccess;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 
-@Mixin(RenderBlocks.class)
+// Innermost: shaders.MixinRenderBlocks_ItemId must also cover a cache hit
+@Mixin(value = RenderBlocks.class, priority = 900)
 public abstract class MixinRenderBlocks {
 
 
@@ -35,9 +35,9 @@ public abstract class MixinRenderBlocks {
     @Shadow public int uvRotateTop;
     @Shadow public int uvRotateBottom;
 
-    @WrapMethod(method = "renderBlockAsItem")
-    private void angelica$cacheBlockItemRenderer(Block block, int meta, float brightness, Operation<Void> original) {
-        if (BlockRenderListManager.isISBRH(block.getRenderType())
+    @Surround(method = "renderBlockAsItem")
+    private void angelica$cacheBlockItemRenderer(Block block, int meta, float brightness) {
+        final boolean uncacheable = BlockRenderListManager.isISBRH(block.getRenderType())
             || enableAO
             || this.overrideBlockTexture != null
             || brightness != 1.0F
@@ -46,18 +46,20 @@ public abstract class MixinRenderBlocks {
             || (uvRotateEast | uvRotateWest | uvRotateSouth | uvRotateNorth | uvRotateTop | uvRotateBottom) != 0
             || GLStateManager.isRecordingDisplayList()
             || TessellatorManager.isCurrentlyCapturing()
-            || TessellatorManager.shouldInterceptDraw(Tessellator.instance)
-        ) {
-            // Do not cache those
-            original.call(block, meta, brightness);
-            return;
-        }
-        int list = BlockRenderListManager.getDisplayList(block, meta);
-        if (list == 0) {
-            list = BlockRenderListManager.startCompiling();
-            original.call(block, meta, brightness);
-            BlockRenderListManager.endCompiling(list, block, meta);
-        }
-        GLStateManager.glCallList(list);
+            || TessellatorManager.shouldInterceptDraw(Tessellator.instance);
+        @Surround.Carry
+        final int list = uncacheable ? 0 : BlockRenderListManager.callOrStartCompiling(BlockRenderListManager.getDisplayList(block, meta));
+        @Surround.Skip
+        final boolean cached = list < 0;
+    }
+
+    @Surround.Return
+    private void angelica$endBlockItemRenderer(Block block, int meta, float brightness, @Surround.Carry int list) {
+        BlockRenderListManager.endCompiling(list, block, meta);
+    }
+
+    @Surround.Catch
+    private void angelica$abortBlockItemRenderer(Throwable error, @Surround.Carry int list) {
+        BlockRenderListManager.abortCompiling(list);
     }
 }

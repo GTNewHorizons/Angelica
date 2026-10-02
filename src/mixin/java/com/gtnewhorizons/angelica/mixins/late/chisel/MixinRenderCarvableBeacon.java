@@ -1,9 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.late.chisel;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.StateSet;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.minecraft.client.renderer.Tessellator;
@@ -22,17 +21,18 @@ import org.spongepowered.asm.mixin.injection.Redirect;
 @Mixin(targets = { "team.chisel.client.render.tile.RenderCarvableBeacon" }, remap = false)
 public class MixinRenderCarvableBeacon {
 
-    @WrapMethod(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", require = 1)
-    private void angelica$wrapBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks, Operation<Void> original) {
-        // Chisel's beam leaves GL_CULL_FACE disabled behind it
+    // Chisel's beam leaves GL_CULL_FACE disabled behind it
+    @Surround(method = "renderBeam(FLnet/minecraft/world/World;DDDIF)V", require = 1)
+    private void angelica$wrapBeaconBeam(float f1, World world, double x, double y, double z, int meta, float partialTicks) {
+        @Surround.Carry
         final int stateDepth = GLStateManager.pushState(StateSet.CULL);
-        try {
-            GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
-            original.call(f1, world, x, y, z, meta, partialTicks);
-        } finally {
-            GbufferPrograms.teardownSpecialRenderCondition();
-            GLStateManager.popStateTo(stateDepth);
-        }
+        GbufferPrograms.setupSpecialRenderCondition(SpecialCondition.BEACON_BEAM);
+    }
+
+    @Surround.Finally
+    private void angelica$wrapBeaconBeamRestore(@Surround.Carry int stateDepth) {
+        GbufferPrograms.teardownSpecialRenderCondition();
+        GLStateManager.popStateTo(stateDepth);
     }
 
     @Redirect(

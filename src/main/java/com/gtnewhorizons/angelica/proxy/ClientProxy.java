@@ -41,6 +41,7 @@ import com.gtnewhorizons.angelica.client.font.DarkModeUtils;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.common.BlockError;
+import com.gtnewhorizons.angelica.common.BlockIsbrhTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
 import com.gtnewhorizons.angelica.compat.bettercrashes.BetterCrashesCompat;
 import com.gtnewhorizons.angelica.compat.mojang.CompatMathHelper;
@@ -69,6 +70,7 @@ import com.gtnewhorizons.angelica.render.EmissiveTextureAutoloader;
 import com.gtnewhorizons.angelica.rendering.AngelicaBlockSafetyRegistry;
 import com.gtnewhorizons.angelica.rendering.FpsReducer;
 import com.gtnewhorizons.angelica.rendering.FramePacer;
+import com.gtnewhorizons.angelica.rendering.IsbrhTestRenderer;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasDebugScreenHandler;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasSetup;
 import com.gtnewhorizons.angelica.rendering.celeritas.CeleritasWorldRenderer;
@@ -81,6 +83,7 @@ import com.gtnewhorizons.angelica.rendering.tesr.TesrLifecycle;
 import com.gtnewhorizons.angelica.utils.AnimationMode;
 import com.gtnewhorizons.angelica.utils.ManagedEnum;
 import com.gtnewhorizons.angelica.zoom.Zoom;
+import cpw.mods.fml.client.registry.RenderingRegistry;
 import cpw.mods.fml.common.FMLCommonHandler;
 import cpw.mods.fml.common.event.FMLInitializationEvent;
 import cpw.mods.fml.common.event.FMLPostInitializationEvent;
@@ -141,6 +144,10 @@ public final class ClientProxy extends CommonProxy {
         MinecraftForge.EVENT_BUS.register(new AngelicaTesrMeshCache.ReloadListener());
         ModelRegistry.registerModid(MOD_ID);
         blockError = new BlockError();
+        if (AngelicaConfig.enableTestBlocks) {
+            BlockIsbrhTest.renderId = RenderingRegistry.getNextAvailableRenderId();
+            RenderingRegistry.registerBlockHandler(BlockIsbrhTest.renderId, new IsbrhTestRenderer());
+        }
         if (AngelicaConfig.enableIris) {
             IrisGLSMBridge.installImmediateExtendedHandler();
             Iris.warmupShaderTransforms();

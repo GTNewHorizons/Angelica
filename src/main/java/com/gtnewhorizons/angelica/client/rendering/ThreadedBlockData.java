@@ -7,7 +7,11 @@ import net.minecraft.block.Block;
  * on multiple threads.
  */
 public class ThreadedBlockData {
+    public static final Thread MAIN_THREAD = Thread.currentThread();
+    public static Thread serverThread;
+
     public double minX, minY, minZ, maxX, maxY, maxZ;
+    public final Thread owner = Thread.currentThread();
 
     public ThreadedBlockData() {}
 

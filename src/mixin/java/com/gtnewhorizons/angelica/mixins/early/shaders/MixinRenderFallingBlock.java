@@ -1,10 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.rendering.BlockMaterialAttribute;
 import com.gtnewhorizons.angelica.rendering.FallingBlockMetaAccess;
 import com.gtnewhorizons.angelica.rendering.FallingBlockRendering;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
@@ -17,8 +16,6 @@ import net.minecraft.world.IBlockAccess;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
-import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 /**
  * Renders falling blocks through terrain.
@@ -26,8 +23,8 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(RenderFallingBlock.class)
 public class MixinRenderFallingBlock {
 
-    @Inject(method = "doRender(Lnet/minecraft/entity/item/EntityFallingBlock;DDDFF)V", at = @At("HEAD"))
-    private void angelica$beginFallingBlock(EntityFallingBlock entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+    @Surround(id = "beginFallingBlock", method = "doRender(Lnet/minecraft/entity/item/EntityFallingBlock;DDDFF)V")
+    private void angelica$beginFallingBlock(EntityFallingBlock entity, double x, double y, double z, float entityYaw, float partialTicks) {
         FallingBlockRendering.active = true;
         CapturedRenderingState.INSTANCE.pushCurrentBlockEntity();
 
@@ -36,8 +33,8 @@ public class MixinRenderFallingBlock {
         BlockMaterialAttribute.set(entity.func_145805_f(), entity.field_145814_a);
     }
 
-    @Inject(method = "doRender(Lnet/minecraft/entity/item/EntityFallingBlock;DDDFF)V", at = @At("RETURN"))
-    private void angelica$endFallingBlock(EntityFallingBlock entity, double x, double y, double z, float entityYaw, float partialTicks, CallbackInfo ci) {
+    @Surround.Finally("beginFallingBlock")
+    private void angelica$endFallingBlock() {
         FallingBlockRendering.active = false;
 
         BlockMaterialAttribute.reset();
@@ -45,16 +42,18 @@ public class MixinRenderFallingBlock {
         CapturedRenderingState.INSTANCE.popCurrentBlockEntity();
     }
 
-    @WrapOperation(
+    @Surround(
+        id = "aoFallingBlock",
         method = "doRender(Lnet/minecraft/entity/item/EntityFallingBlock;DDDFF)V",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/RenderBlocks;renderBlockSandFalling(Lnet/minecraft/block/Block;Lnet/minecraft/world/World;IIII)V")
     )
-    private void angelica$aoFallingBlock(RenderBlocks renderBlocks, Block block, World world, int x, int y, int z, int metadata, Operation<Void> original) {
-        if (!FallingBlockRendering.isActive()) {
-            original.call(renderBlocks, block, world, x, y, z, metadata);
-            return;
-        }
+    private void angelica$aoFallingBlock() {
+        @Surround.Skip
+        boolean skip = FallingBlockRendering.isActive();
+    }
 
+    @Surround.Skipped("aoFallingBlock")
+    private void angelica$renderFallingBlockAo(RenderBlocks renderBlocks, Block block, World world, int x, int y, int z, int metadata) {
         final IBlockAccess prevAccess = renderBlocks.blockAccess;
         final boolean prevRenderAllFaces = renderBlocks.renderAllFaces;
         final FallingBlockMetaAccess access = FallingBlockRendering.metaAccess(world, x, y, z, metadata);

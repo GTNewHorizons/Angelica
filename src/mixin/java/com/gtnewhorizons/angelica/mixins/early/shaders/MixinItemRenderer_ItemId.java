@@ -1,11 +1,8 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.mixins.interfaces.ItemRendererAccessor;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
@@ -33,29 +30,24 @@ public class MixinItemRenderer_ItemId implements ItemRendererAccessor {
         return itemToRender;
     }
 
-    @WrapMethod(
+    @Surround(
         method = "renderItem(Lnet/minecraft/entity/EntityLivingBase;Lnet/minecraft/item/ItemStack;ILnet/minecraftforge/client/IItemRenderer$ItemRenderType;)V",
         remap = false
     )
-    private void iris$entityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type, Operation<Void> original) {
-        ItemIdManager.pushItemId();
-        final int stateDepth = GLStateManager.pushState(StateSet.CUTOUT);
-        Boolean prevTranslucency = null;
-        boolean translucencyDeclared = false;
-        try {
-            GbufferPrograms.setCutoutDefaults();
+    private void iris$entityItemId(EntityLivingBase entity, ItemStack itemStack, int renderPass, IItemRenderer.ItemRenderType type) {
+        final boolean translucent = HandRenderer.INSTANCE.isItemTranslucent(itemStack);
 
-            prevTranslucency = GbufferPrograms.beginTranslucencyDeclaration(
-                HandRenderer.INSTANCE.isItemTranslucent(itemStack));
-            translucencyDeclared = true;
+        @Surround.Carry
+        final int stateDepth = ItemIdManager.beginCutout(itemStack);
 
-            ItemIdManager.setItemId(itemStack);
-            original.call(entity, itemStack, renderPass, type);
-        } finally {
-            if (translucencyDeclared) GbufferPrograms.endTranslucencyDeclaration(prevTranslucency);
-            ItemIdManager.popItemId();
-            GLStateManager.popStateTo(stateDepth);
-        }
+        @Surround.Carry
+        final Boolean prevTranslucency = GbufferPrograms.beginTranslucencyDeclaration(translucent);
+    }
+
+    @Surround.Finally
+    private void iris$entityItemRestore(@Surround.Carry Boolean prevTranslucency, @Surround.Carry int stateDepth) {
+        GbufferPrograms.endTranslucencyDeclaration(prevTranslucency);
+        ItemIdManager.endCutout(stateDepth);
     }
 
     @Inject(

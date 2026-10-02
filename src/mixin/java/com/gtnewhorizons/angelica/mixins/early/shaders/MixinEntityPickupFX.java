@@ -1,7 +1,6 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
-import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.HandRenderer;
 import net.minecraft.client.particle.EntityPickupFX;
@@ -20,22 +19,22 @@ import org.spongepowered.asm.mixin.injection.At;
 @Mixin(EntityPickupFX.class)
 public class MixinEntityPickupFX {
 
-    @WrapOperation(
+    @Surround(
         method = "renderParticle",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/renderer/entity/RenderManager;renderEntityWithPosYaw(Lnet/minecraft/entity/Entity;DDDFF)Z")
     )
-    private boolean iris$wrapPickupRender(RenderManager renderManager, Entity entity, double x, double y, double z, float yaw, float partialTicks, Operation<Boolean> original) {
+    private void iris$wrapPickupRender(RenderManager renderManager, Entity entity) {
         final Boolean translucent = entity instanceof EntityItem item
             ? HandRenderer.INSTANCE.isItemTranslucent(item.getEntityItem())
             : null;
 
-        final Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(translucent);
+        @Surround.Carry Boolean previous = GbufferPrograms.beginTranslucencyDeclaration(translucent);
         GbufferPrograms.beginEntities();
-        try {
-            return original.call(renderManager, entity, x, y, z, yaw, partialTicks);
-        } finally {
-            GbufferPrograms.endEntities();
-            GbufferPrograms.endTranslucencyDeclaration(previous);
-        }
+    }
+
+    @Surround.Finally
+    private void iris$wrapPickupRenderEnd(@Surround.Carry Boolean previous) {
+        GbufferPrograms.endEntities();
+        GbufferPrograms.endTranslucencyDeclaration(previous);
     }
 }

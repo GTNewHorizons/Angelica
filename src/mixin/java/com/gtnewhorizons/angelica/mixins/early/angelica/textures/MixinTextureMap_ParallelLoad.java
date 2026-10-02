@@ -1,9 +1,9 @@
 package com.gtnewhorizons.angelica.mixins.early.angelica.textures;
 
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.textures.atlas.AtlasLoadSession;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
-import com.llamalad7.mixinextras.sugar.Local;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
 import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.client.resources.IResource;
@@ -35,21 +35,24 @@ public abstract class MixinTextureMap_ParallelLoad {
         this.angelica$atlasSession = AtlasLoadSession.begin((TextureMap) (Object) this, manager);
     }
 
-    @WrapOperation(
+    @Surround(
         method = "loadTextureAtlas",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/resources/IResourceManager;getResource(Lnet/minecraft/util/ResourceLocation;)Lnet/minecraft/client/resources/IResource;",
-            ordinal = 0))
-    private IResource angelica$takePrefetchedResource(IResourceManager manager, ResourceLocation location, Operation<IResource> original, @Local(ordinal = 0) TextureAtlasSprite sprite) {
+            ordinal = 0),
+        id = "resource")
+    private void angelica$takePrefetchedResource(IResourceManager manager, ResourceLocation location, @Surround.Local(ordinal = 0) TextureAtlasSprite sprite) {
         final AtlasLoadSession session = this.angelica$atlasSession;
-        if (session != null) {
-            final IResource resource = session.takeResource(manager, sprite, location);
-            if (resource != null) {
-                return resource;
-            }
-        }
-        return original.call(manager, location);
+        @Surround.Carry
+        final IResource resource = session == null ? null : session.takeResource(manager, sprite, location);
+        @Surround.Skip
+        final boolean prefetched = resource != null;
+    }
+
+    @Surround.Skipped("resource")
+    private IResource angelica$prefetchedResource(@Surround.Carry IResource resource) {
+        return resource;
     }
 
     @WrapOperation(
@@ -86,17 +89,17 @@ public abstract class MixinTextureMap_ParallelLoad {
         }
     }
 
-    @WrapOperation(
+    @Surround(
         method = "loadTextureAtlas",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/texture/TextureAtlasSprite;generateMipmaps(I)V",
-            ordinal = 0))
-    private void angelica$joinMipmaps(TextureAtlasSprite sprite, int levels, Operation<Void> original) {
+            ordinal = 0),
+        id = "mipmaps")
+    private void angelica$joinMipmaps(TextureAtlasSprite sprite, int levels) {
         final AtlasLoadSession session = this.angelica$atlasSession;
-        if (session == null || !session.joinMipmaps(sprite, levels)) {
-            original.call(sprite, levels);
-        }
+        @Surround.Skip
+        final boolean joined = session != null && session.joinMipmaps(sprite, levels);
     }
 
     @Inject(method = "loadTextureAtlas", at = @At("RETURN"))

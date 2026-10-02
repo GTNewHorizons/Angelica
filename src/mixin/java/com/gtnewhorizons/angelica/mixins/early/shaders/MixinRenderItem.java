@@ -1,10 +1,7 @@
 package com.gtnewhorizons.angelica.mixins.early.shaders;
 
-import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.gtnewhorizons.angelica.glsm.StateSet;
+import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.shadercompat.ShaderGlint;
-import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
-import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.uniforms.ItemIdManager;
@@ -24,19 +21,15 @@ public class MixinRenderItem {
     /**
      * Item ID and cutout draw state for dropped items.
      */
-    @WrapMethod(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
-    private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks, Operation<Void> original) {
-        ItemIdManager.pushItemId();
-        final int stateDepth = GLStateManager.pushState(StateSet.CUTOUT);
-        try {
-            GbufferPrograms.setCutoutDefaults();
+    @Surround(method = "doRender(Lnet/minecraft/entity/item/EntityItem;DDDFF)V")
+    private void iris$droppedItemRender(EntityItem entity, double x, double y, double z, float entityYaw, float partialTicks) {
+        @Surround.Carry
+        final int stateDepth = ItemIdManager.beginCutout(entity.getEntityItem());
+    }
 
-            ItemIdManager.setItemId(entity.getEntityItem());
-            original.call(entity, x, y, z, entityYaw, partialTicks);
-        } finally {
-            ItemIdManager.popItemId();
-            GLStateManager.popStateTo(stateDepth);
-        }
+    @Surround.Finally
+    private void iris$droppedItemRestore(@Surround.Carry int stateDepth) {
+        ItemIdManager.endCutout(stateDepth);
     }
 
     /**
