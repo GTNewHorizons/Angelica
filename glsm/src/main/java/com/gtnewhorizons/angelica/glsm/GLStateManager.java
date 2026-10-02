@@ -1539,6 +1539,10 @@ public class GLStateManager {
         return ctx().depthState.isEffectiveMaskEnabled();
     }
 
+    public static ColorMask getEffectiveColorMask(ColorMask out) {
+        return ctx().colorMask.readEffective(out);
+    }
+
     public static boolean isEffectiveAlphaTestEnabled() {
         return ctx().alphaTest.isEffectivelyEnabled();
     }

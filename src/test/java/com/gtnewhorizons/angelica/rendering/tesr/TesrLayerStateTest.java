@@ -52,6 +52,7 @@ class TesrLayerStateTest {
         GLStateManager.enableDepthTest();
         GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
         GLStateManager.glDepthMask(true);
+        GLStateManager.glColorMask(true, true, true, true);
         GLStateManager.disableBlend();
         GLStateManager.enableCull();
         GLStateManager.enableLighting();
@@ -64,6 +65,7 @@ class TesrLayerStateTest {
         GLStateManager.getAlphaTest().setVanillaLayer(null);
         GLStateManager.getAlphaState().setVanillaLayer(null);
         GLStateManager.getDepthState().setVanillaLayer(null);
+        GLStateManager.getColorMask().setVanillaLayer(null);
 
         ModelPartBatcher.INSTANCE.clear();
         GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
@@ -520,6 +522,7 @@ class TesrLayerStateTest {
     @Test
     void effectiveDepthMaskSurvivesAnotherPassHoldingItOff() {
         GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+        GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
 
         GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
         GLStateManager.enableBlend();
@@ -530,6 +533,25 @@ class TesrLayerStateTest {
         DepthColorStorage.disableDepthColor();
 
         assertSame(EntityMaterials.TRANSLUCENT_DEPTH_WRITE, EntityMaterials.fromCurrentState(true), "raw depth mask held off by another pass; the effective vanilla mask must pick the depth-write variant");
+    }
+
+    @Test
+    void effectiveColorMaskPicksDepthOnlyWhileAnotherPassHoldsIt() {
+        GLStateManager.getDepthState().setVanillaLayer(DepthColorStorage.DEPTH_LAYER);
+        GLStateManager.getColorMask().setVanillaLayer(DepthColorStorage.COLOR_LAYER);
+
+        GLStateManager.glEnable(GL11.GL_TEXTURE_2D);
+        GLStateManager.disableBlend();
+        GLStateManager.enableAlphaTest();
+        GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+        GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+        GLStateManager.glDepthMask(true);
+
+        DepthColorStorage.disableDepthColor();
+        assertSame(EntityMaterials.CUTOUT, EntityMaterials.fromCurrentState(true), "raw color mask held off by another pass is not a depth-only draw");
+
+        DepthColorStorage.deferColorMask(false, false, false, false);
+        assertSame(EntityMaterials.DEPTH_ONLY_CUTOUT, EntityMaterials.fromCurrentState(true), "vanilla color mask off while held must pick depth-only");
     }
 
     private static boolean unitTexIdentity() {
