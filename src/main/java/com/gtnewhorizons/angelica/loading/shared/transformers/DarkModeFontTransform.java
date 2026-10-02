@@ -294,6 +294,9 @@ public class DarkModeFontTransform {
         RecolorTarget.excludeMethod(
             new MethodInfo("thaumcraft.client.gui.GuiResearchTable drawAspects(II)V")
         ),
+        RecolorTarget.excludeMethod(
+            new MethodInfo("thaumcraft.client.lib.UtilsFX drawTag(DDLthaumcraft/api/aspects/Aspect;FIDIFZ)V")
+        ),
             // Steve's Carts 2
         RecolorTarget.excludeMethod(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiBase drawMouseOver(Ljava/lang/String;II)V")
