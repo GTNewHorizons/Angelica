@@ -11,6 +11,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Redirect;
 
+import com.gtnewhorizons.angelica.rendering.celeritas.BiomeVertexBlender;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalFloatRef;
 import com.llamalad7.mixinextras.sugar.ref.LocalIntRef;
@@ -39,7 +40,7 @@ public abstract class MixinRenderBlocksNoCTM {
     private IIcon mcpatcherforge$obtainFloatsAndRedirectToGetBlockIcon(RenderBlocks instance, Block block, int side,
         int meta, Block specializedBlock, int x, int y, int z, @Share("red") LocalFloatRef red,
         @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        int l = block.colorMultiplier(this.blockAccess, x, y, z);
+        int l = BiomeVertexBlender.isRendering() ? 0xFFFFFF : block.colorMultiplier(this.blockAccess, x, y, z);
         red.set((float) (l >> 16 & 255) / 255.0F);
         blue.set((float) (l >> 8 & 255) / 255.0F);
         green.set((float) (l & 255) / 255.0F);

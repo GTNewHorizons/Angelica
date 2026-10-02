@@ -2,7 +2,6 @@ package com.gtnewhorizons.angelica.mixins.early.mcpatcherforge.cc.client.rendere
 
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockCauldron;
-import net.minecraft.client.renderer.EntityRenderer;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.world.IBlockAccess;
@@ -24,6 +23,7 @@ import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
 import com.llamalad7.mixinextras.sugar.Share;
 import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
+import com.llamalad7.mixinextras.sugar.Local;
 import com.llamalad7.mixinextras.sugar.ref.LocalFloatRef;
 import com.prupe.mcpatcher.cc.ColorizeBlock;
 import com.prupe.mcpatcher.cc.Colorizer;
@@ -194,24 +194,10 @@ public abstract class MixinRenderBlocks {
     @Inject(
         method = "renderStandardBlock(Lnet/minecraft/block/Block;III)Z",
         at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Minecraft;isAmbientOcclusionEnabled()Z"))
-    private void modifyRenderStandardBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir) {
-
-        // TODO: capture local variables to prevent double math
-        int l = block.colorMultiplier(this.blockAccess, x, y, z);
-        float f = (float) (l >> 16 & 255) / 255.0F;
-        float f1 = (float) (l >> 8 & 255) / 255.0F;
-        float f2 = (float) (l & 255) / 255.0F;
-
-        if (EntityRenderer.anaglyphEnable) {
-            float f3 = (f * 30.0F + f1 * 59.0F + f2 * 11.0F) / 100.0F;
-            float f4 = (f * 30.0F + f1 * 70.0F) / 100.0F;
-            float f5 = (f * 30.0F + f2 * 70.0F) / 100.0F;
-            f = f3;
-            f1 = f4;
-            f2 = f5;
-        }
+    private void modifyRenderStandardBlock(Block block, int x, int y, int z, CallbackInfoReturnable<Boolean> cir,
+        @Local(ordinal = 0) float red, @Local(ordinal = 1) float green, @Local(ordinal = 2) float blue) {
         RenderBlocksUtils
-            .setupColorMultiplier(block, this.blockAccess, x, y, z, this.hasOverrideBlockTexture(), f, f1, f2);
+            .setupColorMultiplier(block, this.blockAccess, x, y, z, this.hasOverrideBlockTexture(), red, green, blue);
     }
 
     @ModifyConstant(
