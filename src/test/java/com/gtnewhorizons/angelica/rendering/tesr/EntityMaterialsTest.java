@@ -3,8 +3,10 @@ package com.gtnewhorizons.angelica.rendering.tesr;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL11;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class EntityMaterialsTest {
 
@@ -102,6 +104,22 @@ class EntityMaterialsTest {
         assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, false), "depth mask off must stay live");
         assertNull(EntityMaterials.itemFromState(true, false, SA, OMSA, true, GL11.GL_GREATER, 0.1f, GL11.GL_ALWAYS, true), "non-LEQUAL/LESS depth func must stay live");
         assertNull(EntityMaterials.itemFromState(true, true, GL11.GL_ONE, GL11.GL_ONE, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true), "additive blend has no item material");
+    }
+
+    @Test
+    void colorMaskedOffMapsToDepthOnly() {
+        assertSame(EntityMaterials.DEPTH_ONLY_CUTOUT, EntityMaterials.depthOnlyFromState(true, true, GL11.GL_GREATER, 0.1f, GL11.GL_LEQUAL, true));
+        assertSame(EntityMaterials.DEPTH_ONLY, EntityMaterials.depthOnlyFromState(true, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true));
+        assertFalse(DrawState.forMaterial(EntityMaterials.DEPTH_ONLY, DrawState.CULL_BACK, true, true, 0f, 0f).isColorWrite(), "depth-only must replay with color writes off");
+        assertTrue(DrawState.forMaterial(EntityMaterials.DEPTH_ONLY, DrawState.CULL_BACK, true, true, 0f, 0f).isDepthWrite(), "depth-only must replay with depth writes on");
+    }
+
+    @Test
+    void unrepresentableDepthOnlyStaysLive() {
+        assertNull(EntityMaterials.depthOnlyFromState(true, true, GL11.GL_GREATER, 0.5f, GL11.GL_LEQUAL, true), "nonstandard alpha ref must stay live");
+        assertNull(EntityMaterials.depthOnlyFromState(true, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, false), "no color and no depth writes must stay live");
+        assertNull(EntityMaterials.depthOnlyFromState(true, false, GL11.GL_ALWAYS, 0f, GL11.GL_EQUAL, true), "non-LEQUAL/LESS depth func must stay live");
+        assertNull(EntityMaterials.depthOnlyFromState(false, false, GL11.GL_ALWAYS, 0f, GL11.GL_LEQUAL, true), "texture off must stay live");
     }
 
     @Test
