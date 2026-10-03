@@ -217,9 +217,8 @@ public class FontStrategist {
     private static final Map<ResourceLocation, Integer> resourceLocationToInt = new HashMap<>();
 
     static int getIntFromResourceLocation(ResourceLocation rl) {
-        if (resourceLocationToInt.containsKey(rl)) {
-            return resourceLocationToInt.get(rl);
-        }
+        Integer i = resourceLocationToInt.get(rl);
+        if (i != null) { return i; }
         int idx = remap(intToResourceLocation.size());
         resourceLocationToInt.put(rl, idx);
         intToResourceLocation.add(rl);
