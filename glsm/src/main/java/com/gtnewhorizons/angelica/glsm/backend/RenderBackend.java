@@ -36,6 +36,9 @@ public abstract class RenderBackend {
     /** Returns true if the current thread has a valid render context. */
     public abstract boolean hasContext();
 
+    /** Returns true if the calling thread may issue render commands. */
+    public boolean hasContextOnThread() { return hasContext(); }
+
     /** Returns true if the calling thread owns the "GL Context" */
     public abstract boolean isCurrent();
 

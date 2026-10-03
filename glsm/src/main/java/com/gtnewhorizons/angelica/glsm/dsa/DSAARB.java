@@ -133,11 +133,13 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int createFramebuffer() {
+        GLStateManager.requireContext("glCreateFramebuffers");
         return RENDER_BACKEND.createFramebuffers();
     }
 
     @Override
     public int createTexture(int target) {
+        GLStateManager.requireContext("glCreateTextures");
         return RENDER_BACKEND.createTextures(target);
     }
 }
