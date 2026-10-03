@@ -107,6 +107,20 @@ class PrewarmTreeHandoffEquivalenceTest {
     }
 
     @Test
+    void cppKeywordLocal() {
+        assertHandoffEquivalent("cpp-keyword-local",
+            "layout(location = 0) in vec4 v_Color;\n"
+                + "layout(location = 0) out vec4 fragColor;\n"
+                + "vec4 trace(vec4 c) {\n"
+                + "    vec4 try = c * 0.5;\n"
+                + "    if (try.a > -0.5) return try;\n"
+                + "    return c;\n"
+                + "}\n"
+                + "void main() { fragColor = trace(v_Color); }\n",
+            GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
     void geometryStage() {
         assertHandoffEquivalent("geometry",
             "layout(triangles) in;\n"

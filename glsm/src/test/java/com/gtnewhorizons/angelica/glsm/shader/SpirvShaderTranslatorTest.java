@@ -298,6 +298,30 @@ class SpirvShaderTranslatorTest {
     }
 
     @Test
+    void cppKeywordsAsIdentifiers_areRenamed() {
+        final String src = """
+            #version 330 core
+            in vec2 texCoord;
+            out vec4 fragColor;
+            void main() {
+                vec4 try = vec4(texCoord, 0.0, 1.0);
+                float catch = try.x;
+                bvec2 flipped = not(lessThan(texCoord, vec2(0.5)));
+                fragColor = flipped.x ? try : vec4(catch);
+            }
+            """;
+
+        final String es = SpirvShaderTranslator.glslToGlslEs(src, GL20.GL_FRAGMENT_SHADER, "reserved.frag");
+        dumpOnFailure("reserved.frag", src, es);
+
+        assertNotNull(es);
+        assertTrue(es.contains("angelica_renamed_try"), es);
+        assertTrue(es.contains("angelica_renamed_catch"), es);
+        assertTrue(es.contains("not("), "the not() builtin must not be touched by the rename\n" + es);
+        assertFalse(es.contains("angelica_renamed_not"), es);
+    }
+
+    @Test
     void uniformBool_multiDeclarator_allRestored() {
         final String src = """
             #version 330 core

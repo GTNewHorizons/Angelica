@@ -1,5 +1,6 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.msl;
 
+import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders;
@@ -21,6 +22,7 @@ import java.util.regex.Pattern;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
 
@@ -193,6 +195,38 @@ class MslCrossCompileTest {
                     "vertex stage must not be emitted with void return when gl_Position is written:\n" + msl);
                 assertTrue(msl.contains("[[position]]"),
                     "vertex output struct should include [[position]] decoration:\n" + msl);
+            } finally {
+                MemoryUtil.memFree(out.code());
+            }
+        } finally {
+            MemoryUtil.memFree(spirv);
+        }
+    }
+
+    private static final String CPP_KEYWORD_LOCAL_GLSL = """
+        #version 460 core
+        layout(location = 0) in vec4 v_Color;
+        layout(location = 0) out vec4 fragColor;
+        vec4 trace(vec4 c) {
+            vec4 try = c * 0.5;
+            if (try.a > -0.5) return try;
+            return c;
+        }
+        void main() { fragColor = trace(v_Color); }
+        """;
+
+    @Test
+    void cppKeywordLocalIsRenamedBeforeMsl() {
+        final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(CPP_KEYWORD_LOCAL_GLSL, GL20.GL_FRAGMENT_SHADER, "test", true);
+        assertNotNull(pre);
+        final ByteBuffer spirv = compile(pre.rewrittenSource(), Shaderc.shaderc_fragment_shader);
+        try {
+            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
+            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+            try {
+                final String msl = decode(out.code());
+                assertTrue(msl.contains("angelica_renamed_try"), "the local must keep a renamed identifier:\n" + msl);
+                assertFalse(Pattern.compile("\\btry\\b").matcher(msl).find(), "try is reserved in MSL:\n" + msl);
             } finally {
                 MemoryUtil.memFree(out.code());
             }

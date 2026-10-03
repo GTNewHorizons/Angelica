@@ -1,8 +1,11 @@
 package net.coderbot.iris.pipeline.transform;
 
+import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import net.coderbot.iris.pipeline.transform.parameter.TextureStageParameters;
+import net.coderbot.iris.shaderpack.texture.TextureStage;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -11,6 +14,7 @@ import org.taumc.glsl.ShaderParser;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.ArrayList;
+import java.util.EnumMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.Callable;
@@ -217,6 +221,55 @@ class ShaderTransformerTest {
         final String out = transformed.get(PatchShaderType.FRAGMENT);
         assertNotNull(out);
         assertTrue(out.contains("gtexture"), "the pack's own sampler name must survive off SDL-GPU\n\n" + out);
+    }
+
+    private static final String IMAGE_STORE_FRAGMENT = String.join("\n",
+        "#version 330 core",
+        "layout(r16ui) writeonly uniform uimage3D voxel_img;",
+        "in vec2 uv;",
+        "void main(){",
+        "    imageStore(voxel_img, ivec3(0), uvec4(1u, 0u, 0u, 0u));",
+        "    gl_FragColor = vec4(uv, 0.0, 1.0);",
+        "}",
+        "");
+
+    private static final String PLAIN_VERTEX = "#version 330 core\nout vec2 uv;\nvoid main(){ uv = vec2(0.5); gl_Position = vec4(0.0); }";
+
+    @Test
+    void extractedStageDropsItsArtifact() {
+        TransformPatcher.clearCache();
+        ShaderTransformer.clearCache();
+        final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
+        final Map<PatchShaderType, String> out = ShaderTransformer.transform(PLAIN_VERTEX, null, null, null, IMAGE_STORE_FRAGMENT, new TextureStageParameters(Patch.COMPOSITE, TextureStage.COMPOSITE_AND_FINAL, null), artifacts);
+        assertNotNull(out);
+        assertTrue(artifacts.containsKey(PatchShaderType.VERTEX) && artifacts.containsKey(PatchShaderType.FRAGMENT), "fixture must start with both artifacts");
+
+        final EnumMap<PatchShaderType, String> result = new EnumMap<>(out);
+        final String fragmentBefore = result.get(PatchShaderType.FRAGMENT);
+        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, artifacts);
+
+        assertNotNull(result.get(PatchShaderType.COMPUTE), "fixture must actually exercise the extraction");
+        assertFalse(fragmentBefore.equals(result.get(PatchShaderType.FRAGMENT)), "fixture must actually rewrite the fragment stage");
+        assertFalse(artifacts.containsKey(PatchShaderType.FRAGMENT), "a rewritten stage must not keep the tree of its old text");
+        assertTrue(artifacts.containsKey(PatchShaderType.VERTEX), "an untouched stage keeps its artifact");
+    }
+
+    @Test
+    void survivingArtifactsMatchTheirSource() {
+        TransformPatcher.clearCache();
+        ShaderTransformer.clearCache();
+        final EnumMap<PatchShaderType, ShaderTransformer.StageArtifact> artifacts = new EnumMap<>(PatchShaderType.class);
+        final Map<PatchShaderType, String> out = ShaderTransformer.transform(PLAIN_VERTEX, null, null, null, IMAGE_STORE_FRAGMENT, new TextureStageParameters(Patch.COMPOSITE, TextureStage.COMPOSITE_AND_FINAL, null), artifacts);
+        assertNotNull(out);
+
+        final EnumMap<PatchShaderType, String> result = new EnumMap<>(out);
+        ShaderTransformer.extractRwImageStores(result, Patch.COMPOSITE, artifacts);
+
+        assertFalse(artifacts.isEmpty(), "fixture must leave at least one artifact to check");
+        for (Map.Entry<PatchShaderType, ShaderTransformer.StageArtifact> e : artifacts.entrySet()) {
+            final String body = result.get(e.getKey()).substring(e.getValue().headerLen());
+            assertEquals(GlslTransformUtils.getFormattedShaderRebased(e.getValue().tree(), ""), body, "artifact tree must describe the emitted " + e.getKey() + " body");
+        }
     }
 
     @Test

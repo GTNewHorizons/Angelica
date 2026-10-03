@@ -501,14 +501,13 @@ public class ShaderTransformer {
                 artifactsOut.put(shaderType, new StageArtifact(treeHolder[0], formattedShader.length() - printedBody.length()));
             }
         }
-        maybeExtractRwImageStores(result, patchType);
+        if (BackendManager.RENDER_BACKEND.isSDLGPU()) extractRwImageStores(result, patchType, artifactsOut);
         watch.stop();
         Iris.logger.info("[Load #{}] Transformed shader for {} in {}", Iris.getShaderPackLoadId(), patchType.name(), watch);
         return result;
     }
 
-    private static void maybeExtractRwImageStores(EnumMap<PatchShaderType, String> result, Patch patchType) {
-        if (!BackendManager.RENDER_BACKEND.isSDLGPU()) return;
+    static void extractRwImageStores(EnumMap<PatchShaderType, String> result, Patch patchType, EnumMap<PatchShaderType, StageArtifact> artifactsOut) {
         if (result.containsKey(PatchShaderType.COMPUTE)) return;
 
         final String vsh = result.get(PatchShaderType.VERTEX);
@@ -522,10 +521,12 @@ public class ShaderTransformer {
         if (vshResult != null) {
             result.put(PatchShaderType.VERTEX, vshResult.strippedSource());
             result.put(PatchShaderType.COMPUTE, vshResult.computeSource());
+            if (artifactsOut != null) artifactsOut.remove(PatchShaderType.VERTEX);
             Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), vshResult.mode(), vshResult.writtenImages());
         } else if (fshResult != null) {
             result.put(PatchShaderType.FRAGMENT, fshResult.strippedSource());
             result.put(PatchShaderType.COMPUTE, fshResult.computeSource());
+            if (artifactsOut != null) artifactsOut.remove(PatchShaderType.FRAGMENT);
             Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), fshResult.mode(), fshResult.writtenImages());
         }
     }
