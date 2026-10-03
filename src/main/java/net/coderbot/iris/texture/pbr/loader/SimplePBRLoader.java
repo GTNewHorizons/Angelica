@@ -1,5 +1,6 @@
 package net.coderbot.iris.texture.pbr.loader;
 
+import net.coderbot.iris.texture.pbr.PBRResourceIndex;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.minecraft.client.renderer.texture.AbstractTexture;
 import net.minecraft.client.renderer.texture.SimpleTexture;
@@ -28,6 +29,10 @@ public class SimplePBRLoader implements PBRTextureLoader<SimpleTexture> {
 	@Nullable
 	protected AbstractTexture createPBRTexture(ResourceLocation imageLocation, IResourceManager resourceManager, PBRType pbrType) {
 		ResourceLocation pbrImageLocation = pbrType.appendToFileLocation(imageLocation);
+
+		if (!PBRResourceIndex.mayExist(resourceManager, pbrImageLocation)) {
+			return null;
+		}
 
 		SimpleTexture pbrTexture = new SimpleTexture(pbrImageLocation);
 		try {

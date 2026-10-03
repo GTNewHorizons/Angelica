@@ -353,6 +353,7 @@ public class CTMUtils {
     }
 
     private static void setBlankResourceWithoutLock() {
+        if (tileLoader == null) return;
         RenderBlocksUtils.blankIcon = tileLoader.getIcon(RenderPassAPI.instance.getBlankResource());
     }
 
