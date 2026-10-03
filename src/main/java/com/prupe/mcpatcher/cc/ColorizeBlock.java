@@ -427,6 +427,11 @@ public class ColorizeBlock {
         }
     }
 
+    public static float[] getRedstoneWireColor(int meta) {
+        float[][] rc = redstoneColor;
+        return rc == null ? null : rc[meta & 0xf];
+    }
+
     public static int colorizeRedstoneWire(IBlockAccess blockAccess, int x, int y, int z, int defaultColor) {
         if (redstoneColor == null) {
             return defaultColor;

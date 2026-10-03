@@ -1040,4 +1040,28 @@ public abstract class MixinRenderBlocks {
         return getBlockIcon(block, blockAccess, x, y, z, side);
     }
 
+    @Redirect(
+        method = "renderBlockLiquid(Lnet/minecraft/block/Block;III)Z",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;",
+            ordinal = 0))
+    private IIcon mcpatcherforge$liquidTopIcon(RenderBlocks instance, Block block, int side, int meta,
+        Block specializedBlock, int x, int y, int z) {
+        return (this.blockAccess == null) ? this.getBlockIconFromSideAndMetadata(block, side, meta)
+            : this.getBlockIcon(block, this.blockAccess, x, y, z, side);
+    }
+
+    @Redirect(
+        method = "renderBlockLiquid(Lnet/minecraft/block/Block;III)Z",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/RenderBlocks;getBlockIconFromSideAndMetadata(Lnet/minecraft/block/Block;II)Lnet/minecraft/util/IIcon;",
+            ordinal = 2))
+    private IIcon mcpatcherforge$liquidSideIcon(RenderBlocks instance, Block block, int side, int meta,
+        Block specializedBlock, int x, int y, int z) {
+        return (this.blockAccess == null) ? this.getBlockIconFromSideAndMetadata(block, side, meta)
+            : this.getBlockIcon(block, this.blockAccess, x, y, z, side);
+    }
+
 }

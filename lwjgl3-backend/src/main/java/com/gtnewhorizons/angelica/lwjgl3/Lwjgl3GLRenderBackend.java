@@ -1450,31 +1450,6 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void textureStorage2D(int texture, int levels, int internalFormat, int width, int height) {
-        GL45C.glTextureStorage2D(texture, levels, internalFormat, width, height);
-    }
-
-    @Override
-    public void texStorage1D(int target, int levels, int internalFormat, int width) {
-        GL42C.glTexStorage1D(target, levels, internalFormat, width);
-    }
-
-    @Override
-    public void texStorage3D(int target, int levels, int internalFormat, int width, int height, int depth) {
-        GL42C.glTexStorage3D(target, levels, internalFormat, width, height, depth);
-    }
-
-    @Override
-    public void textureStorage1D(int texture, int levels, int internalFormat, int width) {
-        GL45C.glTextureStorage1D(texture, levels, internalFormat, width);
-    }
-
-    @Override
-    public void textureStorage3D(int texture, int levels, int internalFormat, int width, int height, int depth) {
-        GL45C.glTextureStorage3D(texture, levels, internalFormat, width, height, depth);
-    }
-
-    @Override
     public void generateTextureMipmap(int texture) {
         GL45C.glGenerateTextureMipmap(texture);
     }

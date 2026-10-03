@@ -138,19 +138,4 @@ public class DSAARB extends DSAUnsupported {
     public int createTexture(int target) {
         return RENDER_BACKEND.createTextures(target);
     }
-
-    @Override
-    public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
-        RENDER_BACKEND.textureStorage1D(texture, levels, internalFormat, width);
-    }
-
-    @Override
-    public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
-        RENDER_BACKEND.textureStorage2D(texture, levels, internalFormat, width, height);
-    }
-
-    @Override
-    public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
-        RENDER_BACKEND.textureStorage3D(texture, levels, internalFormat, width, height, depth);
-    }
 }
