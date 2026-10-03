@@ -44,12 +44,17 @@ public class BooleanStateStack extends BooleanState implements CowStateStack<Boo
     public BooleanStateStack(int glCap, boolean initialState, boolean ffpStateOnly) {
         super(glCap, ffpStateOnly);
         this.enabled = initialState;
-        stack = new boolean[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
+        stack = new boolean[GLStateManager.STATE_SLOTS];
     }
 
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return stateUnknown || (vanillaLayer != null && vanillaLayer.isOverrideHeld()) || enabled != stack[slot];
     }
 
     @Override

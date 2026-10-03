@@ -17,8 +17,8 @@ public final class DepthStateStack extends DepthState implements CowStateStack<D
 
     public DepthStateStack(int id) {
         cow.id = id;
-        stack = new DepthState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new DepthState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new DepthState();
         }
     }
@@ -26,6 +26,11 @@ public final class DepthStateStack extends DepthState implements CowStateStack<D
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return VanillaStateLayer.isHeld(vanillaLayer) || !sameAs(stack[slot]);
     }
 
     @Override

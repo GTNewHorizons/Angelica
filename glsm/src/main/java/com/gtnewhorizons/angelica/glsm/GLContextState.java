@@ -21,6 +21,7 @@ import com.gtnewhorizons.angelica.glsm.stacks.MaterialStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.MatrixModeStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PointStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.PolygonStateStack;
+import com.gtnewhorizons.angelica.glsm.stacks.RetainedState;
 import com.gtnewhorizons.angelica.glsm.stacks.ScissorStateStack;
 import com.gtnewhorizons.angelica.glsm.stacks.StackIdAllocator;
 import com.gtnewhorizons.angelica.glsm.stacks.StencilStateStack;
@@ -106,6 +107,7 @@ public class GLContextState {
     public int maxBoundTextureUnit = 0;
     public int maxBoundImageUnit = 0;
     public final StateSet[] attribSets = new StateSet[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
+    public RetainedState retainedOwner;
     public int attribDepth = 0;
 
     public boolean savesState(int id) {

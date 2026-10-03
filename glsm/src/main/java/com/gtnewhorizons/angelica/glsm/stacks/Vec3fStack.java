@@ -15,12 +15,17 @@ public final class Vec3fStack implements CowStateStack<Vec3fStack> {
     public Vec3fStack(Vector3f value, int id) {
         this.value = value;
         cow.id = id;
-        stack = new float[GLStateManager.MAX_ATTRIB_STACK_DEPTH][3];
+        stack = new float[GLStateManager.STATE_SLOTS][3];
     }
 
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return value.x != stack[slot][0] || value.y != stack[slot][1] || value.z != stack[slot][2];
     }
 
     @Override

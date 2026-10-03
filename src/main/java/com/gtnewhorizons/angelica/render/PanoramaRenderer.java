@@ -94,7 +94,7 @@ public class PanoramaRenderer {
         blurProgram.unbind();
     }
 
-    private static <T> GlProgram<T> loadProgram(String name, String vertBase, String fragBase, Function<ShaderBindingContext, T> factory) {
+    public static <T> GlProgram<T> loadProgram(String name, String vertBase, String fragBase, Function<ShaderBindingContext, T> factory) {
         final GlShader vert = ShaderLoader.loadShader(ShaderType.VERTEX, vertBase + ".vert", ShaderConstants.EMPTY);
         final GlShader frag = ShaderLoader.loadShader(ShaderType.FRAGMENT, fragBase + ".frag", ShaderConstants.EMPTY);
         try {

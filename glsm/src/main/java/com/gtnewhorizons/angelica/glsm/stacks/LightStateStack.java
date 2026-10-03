@@ -11,8 +11,8 @@ public final class LightStateStack extends LightState implements CowStateStack<L
     public LightStateStack(int light, int id) {
         super(light);
         cow.id = id;
-        stack = new LightState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new LightState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new LightState(light);
         }
     }
@@ -20,6 +20,11 @@ public final class LightStateStack extends LightState implements CowStateStack<L
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

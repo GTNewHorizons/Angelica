@@ -11,8 +11,8 @@ public final class LineStateStack extends LineState implements CowStateStack<Lin
 
     public LineStateStack(int id) {
         cow.id = id;
-        stack = new LineState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new LineState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new LineState();
         }
     }
@@ -20,6 +20,11 @@ public final class LineStateStack extends LineState implements CowStateStack<Lin
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

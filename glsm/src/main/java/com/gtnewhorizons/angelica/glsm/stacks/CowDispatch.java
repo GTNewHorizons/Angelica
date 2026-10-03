@@ -101,6 +101,36 @@ public final class CowDispatch {
         };
     }
 
+    public static boolean slotChanged(byte kind, CowStateStack<?> s, int slot) {
+        return switch (kind) {
+            case BLEND -> ((BlendStateStack) s).slotChanged(slot);
+            case BOOLEAN -> ((BooleanStateStack) s).slotChanged(slot);
+            case CLIP_PLANE_BOOLEAN -> ((ClipPlaneBooleanState) s).slotChanged(slot);
+            case TEXTURE_UNIT_BOOLEAN -> ((TextureUnitBooleanStateStack) s).slotChanged(slot);
+            case COLOR_MASK -> ((ColorMaskStack) s).slotChanged(slot);
+            case LIGHT_STATE -> ((LightStateStack) s).slotChanged(slot);
+            case MATERIAL -> ((MaterialStateStack) s).slotChanged(slot);
+            case STENCIL -> ((StencilStateStack) s).slotChanged(slot);
+            case MATRIX_MODE -> ((MatrixModeStack) s).slotChanged(slot);
+            case LIGHT_MODEL -> ((LightModelStateStack) s).slotChanged(slot);
+            case ALPHA -> ((AlphaStateStack) s).slotChanged(slot);
+            case POINT -> ((PointStateStack) s).slotChanged(slot);
+            case FOG -> ((FogStateStack) s).slotChanged(slot);
+            case VEC4F -> ((Vec4fStack) s).slotChanged(slot);
+            case VEC3F -> ((Vec3fStack) s).slotChanged(slot);
+            case INTEGER -> ((IntegerStateStack) s).slotChanged(slot);
+            case DEPTH -> ((DepthStateStack) s).slotChanged(slot);
+            case VIEWPORT -> ((ViewPortStateStack) s).slotChanged(slot);
+            case POLYGON -> ((PolygonStateStack) s).slotChanged(slot);
+            case COLOR4 -> ((Color4Stack) s).slotChanged(slot);
+            case LINE -> ((LineStateStack) s).slotChanged(slot);
+            case TEXTURE_BINDING -> ((TextureBindingStack) s).slotChanged(slot);
+            case TEX_ENV -> ((TexEnvState) s).slotChanged(slot);
+            case SCISSOR -> ((ScissorStateStack) s).slotChanged(slot);
+            default -> throw new IllegalStateException("Unknown kind: " + kind);
+        };
+    }
+
     public static void restoreSlot(byte kind, CowStateStack<?> s, int slot) {
         switch (kind) {
             case BLEND -> ((BlendStateStack) s).restoreSlot(slot);

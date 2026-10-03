@@ -6,6 +6,8 @@ import com.gtnewhorizons.angelica.glsm.stacks.CowStateStack;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
 
+import java.util.Arrays;
+
 /**
  * Per-texture-unit GL_TEXTURE_ENV state for FFP emulation. Tracks the simple texenv mode and all GL_COMBINE sub-parameters.
  */
@@ -45,8 +47,8 @@ public final class TexEnvState implements CowStateStack<TexEnvState> {
             stack = null;
             cow = null;
         } else {
-            stack = new TexEnvState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-            for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+            stack = new TexEnvState[GLStateManager.STATE_SLOTS];
+            for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
                 stack[i] = new TexEnvState(true);
             }
             cow = new CowDepths();
@@ -70,6 +72,14 @@ public final class TexEnvState implements CowStateStack<TexEnvState> {
         this.envColorA = other.envColorA;
     }
 
+    private boolean sameAs(TexEnvState other) {
+        return mode == other.mode && combineRgb == other.combineRgb && combineAlpha == other.combineAlpha
+            && Arrays.equals(sourceRgb, other.sourceRgb) && Arrays.equals(sourceAlpha, other.sourceAlpha)
+            && Arrays.equals(operandRgb, other.operandRgb) && Arrays.equals(operandAlpha, other.operandAlpha)
+            && scaleRgb == other.scaleRgb && scaleAlpha == other.scaleAlpha
+            && envColorR == other.envColorR && envColorG == other.envColorG && envColorB == other.envColorB && envColorA == other.envColorA;
+    }
+
     public void reset() {
         mode = GL11.GL_MODULATE;
         combineRgb = GL11.GL_MODULATE;
@@ -87,6 +97,11 @@ public final class TexEnvState implements CowStateStack<TexEnvState> {
     public CowDepths cowDepths() {
         if (cow == null) throw new IllegalStateException("Cannot push/pop a stack entry");
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

@@ -11,8 +11,8 @@ public final class ScissorStateStack extends ScissorState implements CowStateSta
 
     public ScissorStateStack(int id) {
         cow.id = id;
-        stack = new ScissorState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new ScissorState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new ScissorState();
         }
     }
@@ -20,6 +20,11 @@ public final class ScissorStateStack extends ScissorState implements CowStateSta
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override
