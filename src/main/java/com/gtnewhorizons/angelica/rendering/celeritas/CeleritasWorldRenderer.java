@@ -119,6 +119,10 @@ public class CeleritasWorldRenderer extends SimpleWorldRenderer<WorldClient, Ang
         return this.renderSectionManager;
     }
 
+    public WorldClient getWorld() {
+        return this.world;
+    }
+
     private long asyncEwmaNanos;
     private long uploadEwmaNanos;
 

@@ -319,8 +319,6 @@ public class Iris {
         // See: https://github.com/IrisShaders/Iris/issues/323
         lastDimensionName = "Overworld";
         Iris.getPipelineManager().preparePipeline("Overworld");
-
-        BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
     }
 
     public static void toggleShaders(Minecraft minecraft, boolean enabled) throws IOException {
@@ -667,8 +665,6 @@ public class Iris {
         // https://github.com/IrisShaders/Iris/issues/1330
         if (Minecraft.getMinecraft().theWorld != null) {
             Iris.getPipelineManager().preparePipeline(Iris.getCurrentDimensionName());
-
-            BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
         }
 
         if (loadedIncompatiblePack() && Minecraft.getMinecraft().thePlayer != null) {

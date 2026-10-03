@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import lombok.Getter;
 import net.coderbot.iris.Iris;
+import net.coderbot.iris.block_rendering.BlockRenderingSettings;
 import net.coderbot.iris.uniforms.SystemTimeUniforms;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
@@ -43,6 +44,7 @@ public class PipelineManager {
 			Iris.logger.info("Creating pipeline for dimension '{}'", currentDimension);
 			pipeline = pipelineFactory.apply(currentDimension);
 			pipelinesPerDimension.put(currentDimension, pipeline);
+			BlockRenderingSettings.INSTANCE.reloadRendererIfRequired();
 			if (Tracy.ENABLED) {
 				shaderSection = Tracy.sectionEnter(Tracy.SECTION_SHADERS, "shaders " + Iris.getCurrentPackName() + " / " + currentDimension);
 			}
