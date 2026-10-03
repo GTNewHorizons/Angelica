@@ -51,7 +51,7 @@ public final class TracyFramePlots {
     private static final long P_TERRAIN_DRAW_COMMANDS = Tracy.plotHandle("terrain.drawCommands");
     private static final long P_TERRAIN_REGIONS_DRAWN = Tracy.plotHandle("terrain.regionsDrawn");
     private static final long P_VOX_ENCODERS = Tracy.plotHandle("voxelization.encoders");
-    private static final long P_VOX_DISPATCHES = Tracy.plotHandle("voxelization.dispatches");
+    private static final long P_VOX_RANGES = Tracy.plotHandle("voxelization.ranges");
     private static final long P_VOX_REGIONS = Tracy.plotHandle("voxelization.regions");
     private static final long P_DRAW_BATCH_REBUILDS = Tracy.plotHandle("draw.batchRebuilds");
     private static final PlotDelta P_DRAW_INDEX_BUFFER_GROWTHS = new PlotDelta("draw.indexBufferGrowths");
@@ -201,7 +201,7 @@ public final class TracyFramePlots {
         Tracy.plotInt(P_TERRAIN_REGIONS_DRAWN, TerrainDrawStats.takeRegionsDrawn());
         Tracy.plotInt(P_DRAW_BATCH_REBUILDS, TerrainDrawStats.takeBatchRebuilds());
         Tracy.plotInt(P_VOX_ENCODERS, SdlShadowVoxelizationSink.takeEncoders());
-        Tracy.plotInt(P_VOX_DISPATCHES, SdlShadowVoxelizationSink.takeDispatches());
+        Tracy.plotInt(P_VOX_RANGES, SdlShadowVoxelizationSink.takeRanges());
         Tracy.plotInt(P_VOX_REGIONS, SdlShadowVoxelizationSink.takeRegions());
         Tracy.plotInt(P_CULL_REGIONS_DRAWN, TerrainDrawStats.takeCullRegionsDrawn());
         Tracy.plotInt(P_CULL_MAX_REGION_COMMANDS, TerrainDrawStats.takeCullMaxRegionCommands());

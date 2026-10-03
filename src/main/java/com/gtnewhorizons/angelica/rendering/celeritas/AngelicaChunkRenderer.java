@@ -73,10 +73,10 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private int packTerrainSamplerAnisotropy = -1;
     private boolean terrainSamplerBound;
     private final GpuTerrainCuller culler;
+    private final SdlShadowVoxelizationSink shadowVoxelSink = new SdlShadowVoxelizationSink();
     private final ReusableCachedBatch gpuBatch = new ReusableCachedBatch();
 
     private static final ShadowVoxelizer shadowVoxelizer = new ShadowVoxelizer();
-    private static final SdlShadowVoxelizationSink shadowVoxelSink = new SdlShadowVoxelizationSink();
     private static int loggedVoxelizationSkips;
     private static MultiDrawMode installedBatchMode;
 
@@ -277,6 +277,7 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         if (culler != null) {
             culler.delete();
         }
+        shadowVoxelSink.delete();
 
         unbindTerrainSampler();
         RenderSystem.destroySampler(terrainSampler);
@@ -423,7 +424,9 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         deferred.prepareShadowVoxelizationCompute(matrices.modelView());
         try {
             shadowVoxelizer.walkPass(renderLists, renderPass, renderPass.vertexType().getVertexFormat(), camera, occlusionCamera, useBlockFaceCulling(), shadowVoxelSink);
+            shadowVoxelSink.flush();
         } finally {
+            shadowVoxelSink.discard();
             if (prevProgram != 0) GLStateManager.glUseProgram(prevProgram);
         }
     }

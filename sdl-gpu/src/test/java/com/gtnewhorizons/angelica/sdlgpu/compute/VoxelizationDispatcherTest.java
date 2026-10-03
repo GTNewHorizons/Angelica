@@ -8,7 +8,6 @@ import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
-import static org.junit.jupiter.api.Assertions.assertTrue;
 
 class VoxelizationDispatcherTest {
 
@@ -42,25 +41,29 @@ class VoxelizationDispatcherTest {
         assertFalse(sink.lastCycleRwBuffers, "voxelization must open the batched pass with cycle=false on rw SSBO bindings");
     }
 
-    @Test
-    void dispatchRange_pushesUniformsBeforeEachDispatch() {
-        final RecordingSink sink = new RecordingSink();
-        final VoxelizationDispatcher d = new VoxelizationDispatcher(sink);
-        final ContextState st = new ContextState();
-        d.dispatchRange(PASS_HANDLE, -1, -1, 0, 64, st);
-        d.dispatchRange(PASS_HANDLE, -1, -1, 64, 64, st);
-        assertEquals(2, sink.dispatches.size());
-        assertTrue(sink.uniformPushCount >= sink.dispatches.size(), "pushPendingComputeUniforms must run at least once per dispatchInBatch so per-range uniforms land; pushes=" + sink.uniformPushCount + " dispatches=" + sink.dispatches.size());
+    private static void region(VoxelizationDispatcher d, int rangeCount, int vertexTotal, ContextState st) {
+        d.dispatchRegion(PASS_HANDLE, -1, -1, -1, -1, 0, rangeCount, vertexTotal, st);
     }
 
     @Test
-    void dispatchRange_roundsGroupsUpToWorkgroupSize() {
+    void dispatchRegion_pushesUniformsBeforeEachDispatch() {
         final RecordingSink sink = new RecordingSink();
         final VoxelizationDispatcher d = new VoxelizationDispatcher(sink);
         final ContextState st = new ContextState();
-        d.dispatchRange(PASS_HANDLE, -1, -1, 0, 1, st);
-        d.dispatchRange(PASS_HANDLE, -1, -1, 0, 64, st);
-        d.dispatchRange(PASS_HANDLE, -1, -1, 0, 65, st);
+        region(d, 1, 64, st);
+        region(d, 3, 200, st);
+        assertEquals(2, sink.dispatches.size());
+        assertEquals(sink.dispatches.size(), sink.uniformPushCount);
+    }
+
+    @Test
+    void dispatchRegion_roundsGroupsUpToWorkgroupSize() {
+        final RecordingSink sink = new RecordingSink();
+        final VoxelizationDispatcher d = new VoxelizationDispatcher(sink);
+        final ContextState st = new ContextState();
+        region(d, 1, 1, st);
+        region(d, 1, 64, st);
+        region(d, 1, 65, st);
         assertEquals(1, sink.dispatches.get(0)[0]);
         assertEquals(1, sink.dispatches.get(1)[0]);
         assertEquals(2, sink.dispatches.get(2)[0]);
@@ -71,24 +74,14 @@ class VoxelizationDispatcherTest {
     }
 
     @Test
-    void dispatchRange_ignoresEmptyRangeAndNullPass() {
+    void dispatchRegion_splitsAboveMaxGroups() {
         final RecordingSink sink = new RecordingSink();
         final VoxelizationDispatcher d = new VoxelizationDispatcher(sink);
-        final ContextState st = new ContextState();
-        d.dispatchRange(PASS_HANDLE, -1, -1, 0, 0, st);
-        d.dispatchRange(0, -1, -1, 0, 64, st);
-        assertEquals(0, sink.dispatches.size());
-        assertEquals(0, sink.uniformPushCount);
-    }
-
-    @Test
-    void endBatch_ignoresNullPass() {
-        final RecordingSink sink = new RecordingSink();
-        final VoxelizationDispatcher d = new VoxelizationDispatcher(sink);
-        d.endBatch(0);
-        assertEquals(0, sink.endCount);
-        d.endBatch(PASS_HANDLE);
-        assertEquals(1, sink.endCount);
+        region(d, 1, VoxelizationDispatcher.MAX_GROUPS_PER_DISPATCH * 64 + 1, new ContextState());
+        assertEquals(2, sink.dispatches.size());
+        assertEquals(VoxelizationDispatcher.MAX_GROUPS_PER_DISPATCH, sink.dispatches.get(0)[0]);
+        assertEquals(1, sink.dispatches.get(1)[0]);
+        assertEquals(2, sink.uniformPushCount);
     }
 
     @Test
@@ -98,10 +91,5 @@ class VoxelizationDispatcherTest {
         d.rebindVertexBuffer(new ContextState(), PASS_HANDLE);
         assertEquals(1, sink.rebindCount, "a region change inside one encoder must rebind the vertex buffer");
         assertEquals(0, sink.beginCount, "rebinding must not open a second pass");
-    }
-
-    @Test
-    void constants_matchExpectations() {
-        assertEquals(64, VoxelizationDispatcher.workgroupSize());
     }
 }
