@@ -4,6 +4,7 @@ import lombok.Getter;
 import it.unimi.dsi.fastutil.objects.ObjectArrayList;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gbuffer_overrides.matching.SpecialCondition;
+import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.ffp.FfpExtendedAttribs;
 import com.gtnewhorizons.angelica.iris.IrisDisplayListState;
@@ -150,6 +151,10 @@ public class GbufferPrograms {
 		GLStateManager.enableAlphaTest();
 		GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1F);
 
+		if (DisplayListManager.getRecordMode() == DisplayListManager.RecordMode.NONE) {
+			GLStateManager.getTextures().getTextureUnitStates(1).enable();
+			return;
+		}
 		final int previousUnit = GLStateManager.getActiveTextureUnitForServerState();
 		GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
 		GLStateManager.enableTexture();
