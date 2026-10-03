@@ -139,7 +139,8 @@ public class MixinGuiIngameForge_ModernF3 {
             final int x = right ? width - panelWidth - 4 : 4;
             angelica$drawDebugPanel(x, y, panelWidth, panelHeight, 0x90505050, true);
             angelica$drawDebugPanel(x, y, panelWidth, lineHeight + 6, 0xA0606060, false);
-            fontrenderer.drawString(title, x + 3, y + (lineHeight + 6 - fontrenderer.FONT_HEIGHT) / 2 + 1, 0xFFFFFF);
+            final int titleX = right ? x + panelWidth - 3 - fontrenderer.getStringWidth(title) : x + 3;
+            fontrenderer.drawString(title, titleX, y + (lineHeight + 6 - fontrenderer.FONT_HEIGHT) / 2 + 1, 0xFFFFFF);
             final boolean scaleText = target && lines.size() > 3;
             if (scaleText) GLStateManager.glPushMatrix();
             try {
@@ -150,7 +151,8 @@ public class MixinGuiIngameForge_ModernF3 {
                 }
                 int textY = scaleText ? 0 : y + lineHeight + 10;
                 for (String line : lines) {
-                    fontrenderer.drawString(line, scaleText ? 0 : x + 3, textY, 0xE0E0E0);
+                    final int textX = right ? x + panelWidth - 3 - fontrenderer.getStringWidth(line) : (scaleText ? 0 : x + 3);
+                    fontrenderer.drawString(line, textX, textY, 0xE0E0E0);
                     textY += lineHeight;
                 }
             } finally {
