@@ -137,8 +137,8 @@ public class MixinGuiIngameForge_ModernF3 {
             for (String line : lines) panelWidth = Math.max(panelWidth, fontrenderer.getStringWidth(line));
             panelWidth += 6;
             final int x = right ? width - panelWidth - 4 : 4;
-            angelica$drawDebugPanel(x, y, panelWidth, panelHeight, 0x90505050, true);
-            angelica$drawDebugPanel(x, y, panelWidth, lineHeight + 6, 0xA0606060, false);
+            Gui.drawRect(x, y, x + panelWidth, y + panelHeight, 0x90505050);
+            Gui.drawRect(x, y, x + panelWidth, y + lineHeight + 6, 0xA0606060);
             final int titleX = right ? x + panelWidth - 3 - fontrenderer.getStringWidth(title) : x + 3;
             fontrenderer.drawString(title, titleX, y + (lineHeight + 6 - fontrenderer.FONT_HEIGHT) / 2 + 1, 0xFFFFFF);
             final boolean scaleText = target && lines.size() > 3;
@@ -159,17 +159,6 @@ public class MixinGuiIngameForge_ModernF3 {
                 if (scaleText) GLStateManager.glPopMatrix();
             }
             y += panelHeight + 6;
-        }
-    }
-
-    @Unique
-    private void angelica$drawDebugPanel(int x, int y, int width, int height, int color, boolean roundBottom) {
-        Gui.drawRect(x + 3, y, x + width - 3, y + 1, color);
-        Gui.drawRect(x + 1, y + 1, x + width - 1, y + 3, color);
-        Gui.drawRect(x, y + 3, x + width, y + height - (roundBottom ? 3 : 0), color);
-        if (roundBottom) {
-            Gui.drawRect(x + 1, y + height - 3, x + width - 1, y + height - 1, color);
-            Gui.drawRect(x + 3, y + height - 1, x + width - 3, y + height, color);
         }
     }
 
