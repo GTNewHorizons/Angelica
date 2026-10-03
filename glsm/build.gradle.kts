@@ -320,6 +320,7 @@ val spirvTest by tasks.registering(Test::class) {
     filter {
         includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvShaderTranslator*Test")
         includeTestsMatching("com.gtnewhorizons.angelica.glsm.ffp.FFPUniformBlockSpirvLayoutTest")
+        includeTestsMatching("com.gtnewhorizons.angelica.glsm.shader.SpirvCompilerDiskCacheTest")
     }
 
     // libshaderc.so / libspirv-cross.so are extracted by extractNatives3.

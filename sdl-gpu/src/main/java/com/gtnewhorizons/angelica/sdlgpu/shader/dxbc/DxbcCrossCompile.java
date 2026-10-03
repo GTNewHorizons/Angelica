@@ -2,8 +2,9 @@ package com.gtnewhorizons.angelica.sdlgpu.shader.dxbc;
 
 import org.lwjgl.system.MemoryUtil;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache.Output;
 import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileUtil;
-import it.unimi.dsi.fastutil.objects.Object2ObjectLinkedOpenHashMap;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
@@ -17,11 +18,9 @@ import org.lwjgl.util.spvc.SpvcReflectedResource;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
-import java.util.Arrays;
 
 import static org.lwjgl.system.MemoryStack.stackPush;
 import static org.lwjgl.system.MemoryUtil.memAddress;
-import static org.lwjgl.system.MemoryUtil.memAlloc;
 import static org.lwjgl.system.MemoryUtil.memByteBufferNT1;
 import static org.lwjgl.system.MemoryUtil.memUTF8;
 
@@ -30,56 +29,23 @@ public final class DxbcCrossCompile {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
     private static final String BACKEND = "DXBC";
 
-    public record Output(ByteBuffer code, String entrypoint) {}
-
-    private static final int CACHE_MAX = 256;
-    private static final Object2ObjectLinkedOpenHashMap<CacheKey, CacheValue> CACHE = new Object2ObjectLinkedOpenHashMap<>();
-
-    private static final class CacheKey {
-        public final byte[] spirvBytes;
-        public final int glShaderType;
-        public final int hash;
-        public CacheKey(byte[] b, int t) {
-            this.spirvBytes = b;
-            this.glShaderType = t;
-            this.hash = Arrays.hashCode(b) * 31 + t;
-        }
-        @Override public int hashCode() { return hash; }
-        @Override public boolean equals(Object o) {
-            if (!(o instanceof CacheKey k)) return false;
-            return k.glShaderType == glShaderType && k.hash == hash && Arrays.equals(k.spirvBytes, spirvBytes);
-        }
-    }
-
-    private record CacheValue(byte[] codeBytes, String entrypoint) {}
-
-    public static void clearCache() {
-        synchronized (CACHE) { CACHE.clear(); }
-    }
+    private static final CrossCompileCache CACHE = new CrossCompileCache("dxbc", () -> CrossCompileUtil.spvcId() + '|' + D3DCompiler.LIBRARY_ID, DxbcCrossCompile::crossCompileUncached);
 
     private DxbcCrossCompile() {}
 
     public static Output compile(ByteBuffer spirv, int glShaderType) {
-        final boolean isCompute = (glShaderType == GL43.GL_COMPUTE_SHADER);
-        final String target;
-        if (glShaderType == GL20.GL_VERTEX_SHADER) target = "vs_5_1";
-        else if (glShaderType == GL20.GL_FRAGMENT_SHADER) target = "ps_5_1";
-        else if (isCompute) target = "cs_5_1";
-        else throw new UnsupportedOperationException("Unsupported shader type for DXBC cross-compile: 0x" + Integer.toHexString(glShaderType));
+        return CACHE.compile(spirv, glShaderType);
+    }
 
-        final byte[] spirvHeap = new byte[spirv.remaining()];
-        spirv.duplicate().get(spirvHeap);
-        final CacheKey key = new CacheKey(spirvHeap, glShaderType);
-        final CacheValue cached;
-        synchronized (CACHE) {
-            cached = CACHE.getAndMoveToFirst(key);
-        }
-        if (cached != null) {
-            final ByteBuffer copy = memAlloc(cached.codeBytes.length);
-            copy.put(cached.codeBytes).flip();
-            return new Output(copy, cached.entrypoint);
-        }
+    private static String targetFor(int glShaderType) {
+        if (glShaderType == GL20.GL_VERTEX_SHADER) return "vs_5_1";
+        if (glShaderType == GL20.GL_FRAGMENT_SHADER) return "ps_5_1";
+        if (glShaderType == GL43.GL_COMPUTE_SHADER) return "cs_5_1";
+        throw new UnsupportedOperationException("Unsupported shader type for DXBC cross-compile: 0x" + Integer.toHexString(glShaderType));
+    }
 
+    private static Output crossCompileUncached(ByteBuffer spirv, int glShaderType) {
+        final String target = targetFor(glShaderType);
         final int dumpId = SystemProperties.dumpShaders() ? CrossCompileUtil.SHADER_DUMP_COUNTER.getAndIncrement() : -1;
         if (dumpId >= 0) CrossCompileUtil.dumpSpirv(spirv, dumpId, glShaderType);
 
@@ -90,12 +56,6 @@ public final class DxbcCrossCompile {
         try {
             final ByteBuffer dxbc = D3DCompiler.compile(memAddress(hlslNative), hlslNative.remaining(), "main", target, D3DCompiler.D3DCOMPILE_OPTIMIZATION_LEVEL3 | D3DCompiler.D3DCOMPILE_ENABLE_STRICTNESS, 0);
             if (dumpId >= 0) CrossCompileUtil.dumpBytes(dxbc, dumpId, glShaderType, "dxbc");
-            final byte[] dxbcHeap = new byte[dxbc.remaining()];
-            dxbc.duplicate().get(dxbcHeap);
-            synchronized (CACHE) {
-                CACHE.putAndMoveToFirst(key, new CacheValue(dxbcHeap, "main"));
-                while (CACHE.size() > CACHE_MAX) CACHE.removeLast();
-            }
             return new Output(dxbc, "main");
         } finally {
             MemoryUtil.memFree(hlslNative);

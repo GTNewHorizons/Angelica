@@ -57,6 +57,10 @@ public final class RwImageStoreExtractor {
 
     private static volatile Map<String, ImageInformation> activeCustomImages = Map.of();
 
+    static Map<String, ImageInformation> activeCustomImages() {
+        return activeCustomImages;
+    }
+
     public static void setActiveCustomImages(Map<String, ImageInformation> images) {
         activeCustomImages = (images == null) ? Map.of() : Map.copyOf(images);
     }

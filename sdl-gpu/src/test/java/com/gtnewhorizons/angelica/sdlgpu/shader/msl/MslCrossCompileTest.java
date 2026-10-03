@@ -1,9 +1,15 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.msl;
 
+import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.system.MemoryUtil;
@@ -15,6 +21,7 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -28,6 +35,13 @@ import static org.junit.jupiter.api.Assertions.fail;
  * Tests SPIR-V → MSL cross-compilation for the macOS/Metal backend.
  */
 class MslCrossCompileTest {
+    private static CrossCompileCache cache() { return Reflect.getStatic(MslCrossCompile.class, "CACHE"); }
+
+    @AfterEach
+    void resetDiskCache() {
+        Reflect.setStatic(ShaderDiskCache.class, "root", null);
+        Reflect.<Map<?, ?>>get(cache(), "cache").clear();
+    }
 
 
 
@@ -36,7 +50,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertTrue(msl.length() > 0, "MSL output non-empty");
@@ -59,7 +73,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(SpirvTestShaders.FRAGMENT_GLSL, Shaderc.shaderc_fragment_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertTrue(msl.contains("fragment "), "MSL should contain fragment stage qualifier:\n" + msl);
@@ -98,7 +112,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(SpirvTestShaders.LDS_MULTI_MIP_GLSL, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertTrue(msl.contains("kernel "), "Compute MSL should contain kernel stage qualifier:\n" + msl);
@@ -130,7 +144,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(glsl, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertTrue(msl.contains("kernel "), "compute MSL should contain kernel stage qualifier:\n" + msl);
@@ -151,7 +165,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(CHUNK_CULL_GLSL, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertTrue(msl.contains("kernel "), "Compute MSL should contain kernel stage qualifier:\n" + msl);
@@ -186,7 +200,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(VERTEX_WRITES_IMAGE_GLSL, Shaderc.shaderc_vertex_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertFalse(msl.contains("vertex void main0"),
@@ -207,7 +221,7 @@ class MslCrossCompileTest {
             final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
             try {
                 ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-                final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+                final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
                 MemoryUtil.memFree(out.code());
             } finally {
                 MemoryUtil.memFree(spirv);
@@ -320,7 +334,7 @@ class MslCrossCompileTest {
         final ByteBuffer spirv = compile(glsl, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
             try {
                 final String msl = decode(out.code());
                 assertUniqueBufferSlots(msl);
@@ -375,7 +389,7 @@ class MslCrossCompileTest {
             final ByteBuffer spirv = compile(glsl, Shaderc.shaderc_compute_shader);
             try {
                 ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-                final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+                final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
                 try {
                     assertTrue(decode(out.code()).contains("kernel "), name + " should produce compute MSL");
                 } finally {
@@ -384,6 +398,29 @@ class MslCrossCompileTest {
             } finally {
                 MemoryUtil.memFree(spirv);
             }
+        }
+    }
+
+    @Test
+    void diskCacheHitReturnsStoredBlob(@TempDir Path dir) {
+        ShaderDiskCache.configure(dir, "t");
+        Reflect.<Map<?, ?>>get(cache(), "cache").clear();
+        final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
+        try {
+            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
+            final byte[] heap = ShaderCacheIO.toHeap(spirv);
+            MemoryUtil.memFree(MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER).code());
+            Reflect.<Map<?, ?>>get(cache(), "cache").clear();
+            ShaderDiskCache.putBlob(cache().diskKey(heap, GL20.GL_VERTEX_SHADER), "poison_entry", "poison".getBytes(StandardCharsets.UTF_8));
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+            try {
+                assertEquals("poison_entry", out.entrypoint());
+                assertEquals("poison", new String(ShaderCacheIO.toHeap(out.code()), StandardCharsets.UTF_8));
+            } finally {
+                MemoryUtil.memFree(out.code());
+            }
+        } finally {
+            MemoryUtil.memFree(spirv);
         }
     }
 

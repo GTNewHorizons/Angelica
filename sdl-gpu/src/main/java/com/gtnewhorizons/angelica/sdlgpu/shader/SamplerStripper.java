@@ -17,27 +17,12 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
-import static com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.applyEdits;
 
 public final class SamplerStripper {
 
     private static final Logger LOGGER = LogManager.getLogger("Angelica-SDLGPU");
 
     private SamplerStripper() {}
-
-    public static String stripUnused(String source) {
-        if (!source.contains("sampler")) return source;
-
-        final GLSLParser.Translation_unitContext root;
-        try {
-            root = GlslTransformUtils.parseFullQuiet(source);
-        } catch (Exception e) {
-            return source;
-        }
-        final List<Edit> edits = new ArrayList<>();
-        collectEdits(root, source, edits);
-        return edits.isEmpty() ? source : applyEdits(source, edits);
-    }
 
     public static void collectEdits(GLSLParser.Translation_unitContext root, String source, List<Edit> edits) {
         record SamplerDecl(String name, int start, int stop) {}
