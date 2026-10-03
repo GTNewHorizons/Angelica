@@ -3637,14 +3637,6 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void textureParameteriv(int texture, int target, int pname, IntBuffer params) {
         if (params.remaining() > 0) textureParameteri(texture, target, pname, params.get(params.position()));
     }
-    @Override public void texStorage1D(int target, int levels, int internalFormat, int width) {
-        final ContextState st = s();
-        if (isProxyTarget(target)) {
-            recordProxyTexImage(st, target, 0, internalFormat, width, 1, 1);
-            return;
-        }
-        texStorageImpl(st, st.boundTextures[st.activeTextureUnit], target, internalFormat, width, 1, 1, levels);
-    }
     @Override public void texStorage2D(int target, int levels, int internalFormat, int width, int height) {
         final ContextState st = s();
         if (isProxyTarget(target)) {
@@ -3652,23 +3644,6 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
         texStorageImpl(st, st.boundTextures[st.activeTextureUnit], target, internalFormat, width, height, 1, levels);
-    }
-    @Override public void texStorage3D(int target, int levels, int internalFormat, int width, int height, int depth) {
-        final ContextState st = s();
-        if (isProxyTarget(target)) {
-            recordProxyTexImage(st, target, 0, internalFormat, width, height, depth);
-            return;
-        }
-        texStorageImpl(st, st.boundTextures[st.activeTextureUnit], target, internalFormat, width, height, depth, levels);
-    }
-    @Override public void textureStorage1D(int texture, int levels, int internalFormat, int width) {
-        texStorageImpl(s(), texture, GL11.GL_TEXTURE_2D, internalFormat, width, 1, 1, levels);
-    }
-    @Override public void textureStorage2D(int texture, int levels, int internalFormat, int width, int height) {
-        texStorageImpl(s(), texture, GL11.GL_TEXTURE_2D, internalFormat, width, height, 1, levels);
-    }
-    @Override public void textureStorage3D(int texture, int levels, int internalFormat, int width, int height, int depth) {
-        texStorageImpl(s(), texture, GL11.GL_TEXTURE_2D, internalFormat, width, height, depth, levels);
     }
 
     private void texStorageImpl(ContextState st, int glId, int target, int internalFormat, int w, int h, int d, int levels) {
@@ -3991,7 +3966,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL43.GL_MAX_DEBUG_MESSAGE_LENGTH -> 1024;
             case GL11.GL_DRAW_BUFFER -> drawBufferEnum(cs.boundFboId, cs.defaultFboId);
             case GL11.GL_READ_BUFFER -> readBufferEnum(cs.boundReadFboId, cs.defaultFboId);
-            case GL11.GL_TEXTURE_BINDING_2D -> boundTextureOf(cs.activeTextureUnit, cs.boundTextures);
+            case GL11.GL_TEXTURE_BINDING_2D, GL11.GL_TEXTURE_BINDING_1D, GL12.GL_TEXTURE_BINDING_3D, GL13.GL_TEXTURE_BINDING_CUBE_MAP, GL30.GL_TEXTURE_BINDING_1D_ARRAY, GL30.GL_TEXTURE_BINDING_2D_ARRAY, GL31.GL_TEXTURE_BINDING_RECTANGLE, GL40.GL_TEXTURE_BINDING_CUBE_MAP_ARRAY -> boundTextureOf(cs.activeTextureUnit, cs.boundTextures);
             case GL11.GL_DEPTH_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_DEPTH, GL30.GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE);
             case GL11.GL_STENCIL_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
             case GL11.GL_PACK_ALIGNMENT -> cs.pixelStore.packAlignment;

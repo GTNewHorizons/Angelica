@@ -76,7 +76,7 @@ public class ProgramUniforms {
 			hasDeferredUploads = true;
 			return;
 		}
-		if (active != null) {
+		if (active != null && active != this) {
 			active.removeListeners();
 		}
 

@@ -614,6 +614,7 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.ARCHAICFIX)
         .addExcludedMod(TargetedMod.SUPERNOVA)
+        .addExcludedMod(TargetedMod.LUMI)
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
@@ -989,32 +990,11 @@ public enum Mixins implements IMixins {
             "MixinRenderGlobal"
         ))
     ),
-    MCPATCHER_FORGE_CC_NO_CTM(new MixinBuilder("MCP:F Custom Colors, no Connected Textures")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && !MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCTM")
-    ),
-    MCPATCHER_FORGE_CTM_NO_CC(new MixinBuilder("MCP:F Connected Textures, no Custom Colours")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && !MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCC")
-    ),
-    MCPATCHER_FORGE_CTM_AND_CC(new MixinBuilder("MCP:F Connected Textures and Custom Colors")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocks")
-    ),
     MCPATCHER_FORGE_CTM_OR_CC(new MixinBuilder("MCP:F Connected Textures or Custom Colors")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          || MCPatcherForgeConfig.CustomColors.enabled)
+                          && (MCPatcherForgeConfig.ConnectedTextures.enabled
+                          || MCPatcherForgeConfig.CustomColors.enabled))
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine

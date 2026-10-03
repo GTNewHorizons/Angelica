@@ -586,18 +586,6 @@ public class RenderSystem {
         RENDER_BACKEND.clearTexImage(texture, level, format, type);
     }
 
-    public static void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
-        dsaState.textureStorage1D(texture, target, levels, internalFormat, width);
-    }
-
-    public static void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
-        dsaState.textureStorage2D(texture, target, levels, internalFormat, width, height);
-    }
-
-    public static void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
-        dsaState.textureStorage3D(texture, target, levels, internalFormat, width, height, depth);
-    }
-
     public static int getMaxGlslVersion() {
         return maxGlslVersion;
     }

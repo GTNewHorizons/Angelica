@@ -13,18 +13,13 @@ import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Constant;
 import org.spongepowered.asm.mixin.injection.Inject;
-import org.spongepowered.asm.mixin.injection.ModifyArgs;
 import org.spongepowered.asm.mixin.injection.ModifyConstant;
 import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
-import org.spongepowered.asm.mixin.injection.invoke.arg.Args;
 
 import com.llamalad7.mixinextras.injector.v2.WrapWithCondition;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalBooleanRef;
 import com.llamalad7.mixinextras.sugar.Local;
-import com.llamalad7.mixinextras.sugar.ref.LocalFloatRef;
 import com.prupe.mcpatcher.cc.ColorizeBlock;
 import com.prupe.mcpatcher.cc.Colorizer;
 import com.prupe.mcpatcher.mal.block.RenderBlocksUtils;
@@ -99,96 +94,70 @@ public abstract class MixinRenderBlocks {
         Tessellator.instance.setColorOpaque_F(Colorizer.setColor[0], Colorizer.setColor[1], Colorizer.setColor[2]);
     }
 
-    @Inject(method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z", at = @At("HEAD"))
-    private void calculateComputeRedstoneWireColor(Block block, int x, int y, int z,
-        CallbackInfoReturnable<Boolean> cir,
-        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
-        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        computeRedstoneWireColor
-            .set(ColorizeBlock.computeRedstoneWireColor(this.blockAccess.getBlockMetadata(x, y, z)));
-        red.set(Math.max(Colorizer.setColor[0], 0.0f));
-        green.set(Math.max(Colorizer.setColor[1], 0.0f));
-        blue.set(Math.max(Colorizer.setColor[2], 0.0f));
+    @Unique
+    private void mcpatcherforge$redirectRedstoneWireColor(Tessellator tessellator, float red, float green,
+        float blue, Block block, int x, int y, int z) {
+        float[] c = ColorizeBlock.getRedstoneWireColor(this.blockAccess.getBlockMetadata(x, y, z));
+        if (c != null) {
+            tessellator.setColorOpaque_F(Math.max(c[0], 0.0f), Math.max(c[1], 0.0f), Math.max(c[2], 0.0f));
+        } else {
+            tessellator.setColorOpaque_F(red, green, blue);
+        }
     }
 
-    @ModifyArgs(
+    @Redirect(
         method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 0))
-    private void modifyColorRedstoneWire1(Args args,
-        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
-        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        if (computeRedstoneWireColor.get()) {
-            args.set(0, red.get());
-            args.set(1, green.get());
-            args.set(2, blue.get());
-        }
+    private void modifyColorRedstoneWire1(Tessellator tessellator, float red, float green, float blue, Block block,
+        int x, int y, int z) {
+        mcpatcherforge$redirectRedstoneWireColor(tessellator, red, green, blue, block, x, y, z);
     }
 
-    @ModifyArgs(
+    @Redirect(
         method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 4))
-    private void modifyColorRedstoneWire2(Args args,
-        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
-        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        if (computeRedstoneWireColor.get()) {
-            args.set(0, red.get());
-            args.set(1, green.get());
-            args.set(2, blue.get());
-        }
+    private void modifyColorRedstoneWire2(Tessellator tessellator, float red, float green, float blue, Block block,
+        int x, int y, int z) {
+        mcpatcherforge$redirectRedstoneWireColor(tessellator, red, green, blue, block, x, y, z);
     }
 
-    @ModifyArgs(
+    @Redirect(
         method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 6))
-    private void modifyColorRedstoneWire3(Args args,
-        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
-        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        if (computeRedstoneWireColor.get()) {
-            args.set(0, red.get());
-            args.set(1, green.get());
-            args.set(2, blue.get());
-        }
+    private void modifyColorRedstoneWire3(Tessellator tessellator, float red, float green, float blue, Block block,
+        int x, int y, int z) {
+        mcpatcherforge$redirectRedstoneWireColor(tessellator, red, green, blue, block, x, y, z);
     }
 
-    @ModifyArgs(
+    @Redirect(
         method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 8))
-    private void modifyColorRedstoneWire4(Args args,
-        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
-        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        if (computeRedstoneWireColor.get()) {
-            args.set(0, red.get());
-            args.set(1, green.get());
-            args.set(2, blue.get());
-        }
+    private void modifyColorRedstoneWire4(Tessellator tessellator, float red, float green, float blue, Block block,
+        int x, int y, int z) {
+        mcpatcherforge$redirectRedstoneWireColor(tessellator, red, green, blue, block, x, y, z);
     }
 
-    @ModifyArgs(
+    @Redirect(
         method = "renderBlockRedstoneWire(Lnet/minecraft/block/Block;III)Z",
         at = @At(
             value = "INVOKE",
             target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
             ordinal = 10))
-    private void modifyColorRedstoneWire5(Args args,
-        @Share("computeRedstoneWireColor") LocalBooleanRef computeRedstoneWireColor, @Share("red") LocalFloatRef red,
-        @Share("green") LocalFloatRef green, @Share("blue") LocalFloatRef blue) {
-        if (computeRedstoneWireColor.get()) {
-            args.set(0, red.get());
-            args.set(1, green.get());
-            args.set(2, blue.get());
-        }
+    private void modifyColorRedstoneWire5(Tessellator tessellator, float red, float green, float blue, Block block,
+        int x, int y, int z) {
+        mcpatcherforge$redirectRedstoneWireColor(tessellator, red, green, blue, block, x, y, z);
     }
 
     @Inject(
@@ -451,6 +420,37 @@ public abstract class MixinRenderBlocks {
         if (!(ColorizeBlock.isSmooth = ColorizeBlock
             .setupBlockSmoothing((RenderBlocks) (Object) this, block, this.blockAccess, x, y, z, 1 + 6))) {
             tessellator.setColorOpaque_F(red, green, blue);
+        }
+    }
+
+    @Redirect(
+        method = "renderBlockLiquid(Lnet/minecraft/block/Block;III)Z",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
+            ordinal = 2))
+    private void mcpatcherforge$redirectColor10(Tessellator tessellator, float red, float green, float blue,
+        Block block, int x, int y, int z, @Local(name = "k1") int k1) {
+        if (!(ColorizeBlock.isSmooth = ColorizeBlock
+            .setupBlockSmoothing((RenderBlocks) (Object) this, block, this.blockAccess, x, y, z, k1 + 8))) {
+            tessellator.setColorOpaque_F(red, green, blue);
+        }
+    }
+
+    @Redirect(
+        method = "renderBlockLiquid(Lnet/minecraft/block/Block;III)Z",
+        at = @At(
+            value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/Tessellator;setColorOpaque_F(FFF)V",
+            ordinal = 1))
+    private void mcpatcherforge$redirectColor9(Tessellator tessellator, float red, float green, float blue, Block block,
+        int x, int y, int z, @Local(name = "f") float f, @Local(name = "f1") float f1, @Local(name = "f2") float f2) {
+        if (!(ColorizeBlock.isSmooth = ColorizeBlock
+            .setupBlockSmoothing((RenderBlocks) (Object) this, block, this.blockAccess, x, y, z, 6))) {
+            tessellator.setColorOpaque_F(red * f, green * f1, blue * f2);
+        }
+        if (ColorizeBlock.isSmooth) {
+            this.enableAO = true;
         }
     }
 
