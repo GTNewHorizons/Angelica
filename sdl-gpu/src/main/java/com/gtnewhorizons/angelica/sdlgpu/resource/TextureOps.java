@@ -1,15 +1,13 @@
 package com.gtnewhorizons.angelica.sdlgpu.resource;
 
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.opengl.EXTTextureFilterAnisotropic;
 import org.lwjgl.opengl.GL11;
-import org.lwjgl.opengl.GL12;
-import org.lwjgl.opengl.GL14;
 import org.lwjgl.sdl.SDLError;
 import org.lwjgl.sdl.SDL_GPUBlitInfo;
 import org.lwjgl.sdl.SDL_GPUTextureLocation;
@@ -70,38 +68,13 @@ public final class TextureOps {
     public void texParameteri(ContextState st, int pname, int param, int glId) {
         if (glId == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateTexSamplerState(glId);
-        switch (pname) {
-            case GL11.GL_TEXTURE_MIN_FILTER -> ss.minFilter = param;
-            case GL11.GL_TEXTURE_MAG_FILTER -> ss.magFilter = param;
-            case GL11.GL_TEXTURE_WRAP_S -> ss.wrapS = param;
-            case GL11.GL_TEXTURE_WRAP_T -> ss.wrapT = param;
-            case GL12.GL_TEXTURE_WRAP_R -> ss.wrapR = param;
-            case GL12.GL_TEXTURE_MAX_LEVEL -> {
-                ss.maxLevel = param; return;
-            }
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = (float) param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = (float) param;
-            case GL14.GL_TEXTURE_COMPARE_MODE -> ss.compareMode = param;
-            case GL14.GL_TEXTURE_COMPARE_FUNC -> ss.compareFunc = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { return; }
-        }
-        ss.sdlSampler = 0;
-        st.samplerBindGen++;
+        if (ss.invalidate(ss.seti(pname, param))) st.samplerBindGen++;
     }
 
     public void texParameterf(ContextState st, int pname, float param, int glId) {
         if (glId == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateTexSamplerState(glId);
-        switch (pname) {
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = param;
-            case GL14.GL_TEXTURE_LOD_BIAS -> ss.lodBias = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { texParameteri(st, pname, (int) param, glId); return; }
-        }
-        ss.sdlSampler = 0;
-        st.samplerBindGen++;
+        if (ss.invalidate(ss.setf(pname, param))) st.samplerBindGen++;
     }
 
     /// requires a flush + submit to not read stale data
@@ -291,7 +264,7 @@ public final class TextureOps {
             SDL_GenerateMipmapsForGPUTexture(uploadCb, handle);
         }
 
-        if (!SDL_SubmitGPUCommandBuffer(uploadCb)) {
+        if (!Submits.submit(uploadCb)) {
             device.reportGpuFailure("submit mipmap generation CB");
         }
         frameManager.noteMipGenSubmit();

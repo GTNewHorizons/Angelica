@@ -2,17 +2,14 @@ package com.gtnewhorizons.angelica.sdlgpu.frame;
 
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.FenceWait;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import it.unimi.dsi.fastutil.longs.Long2IntOpenHashMap;
 import it.unimi.dsi.fastutil.longs.Long2LongOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
-import org.lwjgl.PointerBuffer;
 import org.lwjgl.opengl.GL32;
-import org.lwjgl.system.MemoryStack;
-
-import static org.lwjgl.sdl.SDLGPU.*;
 
 public final class FenceTracker {
     private static final Logger LOG = LogManager.getLogger("Angelica-SDLGPU");
@@ -87,16 +84,16 @@ public final class FenceTracker {
             fence = flushForUnresolved(sync);
             if (fence == 0) return GL32.GL_TIMEOUT_EXPIRED;
         }
-        if (SDL_QueryGPUFence(device.getDevice(), fence)) return GL32.GL_ALREADY_SIGNALED;
+        if (FenceWait.isSignaled(device, fence)) return GL32.GL_ALREADY_SIGNALED;
         if (timeout == 0) return GL32.GL_TIMEOUT_EXPIRED;
+        final boolean signaled;
         Tracy.beginZone(Z_SDL_FENCE_WAIT);
-        try (var stack = MemoryStack.stackPush()) {
-            final PointerBuffer fences = stack.mallocPointer(1).put(0, fence);
-            SDL_WaitForGPUFences(device.getDevice(), true, fences);
+        try {
+            signaled = FenceWait.await(device, fence, timeout);
         } finally {
             Tracy.endZone();
         }
-        return GL32.GL_CONDITION_SATISFIED;
+        return signaled ? GL32.GL_CONDITION_SATISFIED : GL32.GL_TIMEOUT_EXPIRED;
     }
 
     public void deleteSync(long sync) {
@@ -105,15 +102,14 @@ public final class FenceTracker {
         final int newCount = fenceRefcounts.addTo(fence, -1) - 1;
         if (newCount <= 0) {
             fenceRefcounts.remove(fence);
-            SDL_ReleaseGPUFence(device.getDevice(), fence);
+            device.fenceReleaser().release(fence);
         }
     }
 
     public void dispose() {
-        final long dev = device.getDevice();
-        if (dev != 0) {
+        if (device.getDevice() != 0) {
             for (long fence : fenceRefcounts.keySet()) {
-                SDL_ReleaseGPUFence(dev, fence);
+                device.fenceReleaser().release(fence);
             }
         }
         fenceRefcounts.clear();
@@ -125,7 +121,7 @@ public final class FenceTracker {
         if (!fenceMap.containsKey(sync)) return true;
         final long fence = fenceMap.get(sync);
         if (fence == 0) return false;
-        return SDL_QueryGPUFence(device.getDevice(), fence);
+        return FenceWait.isSignaled(device, fence);
     }
 
     public int getSyncStatus(long sync) {
@@ -139,11 +135,9 @@ public final class FenceTracker {
             flushForUnresolved(sync);
             return;
         }
-        if (SDL_QueryGPUFence(device.getDevice(), fence)) return;
         Tracy.beginZone(Z_SDL_FENCE_WAIT);
-        try (var stack = MemoryStack.stackPush()) {
-            final PointerBuffer fences = stack.mallocPointer(1).put(0, fence);
-            SDL_WaitForGPUFences(device.getDevice(), true, fences);
+        try {
+            FenceWait.await(device, fence, FenceWait.FOREVER);
         } finally {
             Tracy.endZone();
         }
