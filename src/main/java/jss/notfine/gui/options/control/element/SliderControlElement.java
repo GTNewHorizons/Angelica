@@ -6,6 +6,7 @@ import me.jellysquid.mods.sodium.client.util.Dim2i;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.MathHelper;
+import org.lwjgl.input.Keyboard;
 
 public class SliderControlElement extends NotFineControlElement<Integer> {
     private final ControlValueFormatter formatter;
@@ -66,6 +67,29 @@ public class SliderControlElement extends NotFineControlElement<Integer> {
             onOptionValueChanged();
             dirty = false;
         }
+    }
+
+    public boolean keyTyped(int keyCode) {
+        if(!option.isAvailable()) {
+            return false;
+        }
+
+        final int step;
+        if(keyCode == Keyboard.KEY_LEFT) {
+            step = -interval;
+        } else if(keyCode == Keyboard.KEY_RIGHT) {
+            step = interval;
+        } else {
+            return false;
+        }
+
+        final int stepped = MathHelper.clamp_int(option.getValue() + step, min, max);
+        if(stepped != option.getValue()) {
+            option.setValue(stepped);
+            value = MathHelper.clamp_float((float)(stepped - min) / (max - min), 0f, 1f);
+            onOptionValueChanged();
+        }
+        return true;
     }
 
     private void updateSlider(int mouseX) {

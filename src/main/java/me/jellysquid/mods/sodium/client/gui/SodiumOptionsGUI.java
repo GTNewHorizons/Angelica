@@ -54,6 +54,7 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
     protected boolean hasPendingChanges;
     protected ControlElement<?> hoveredElement;
+    private Element focusedElement;
 
     protected OptionPage shaderPacks;
 
@@ -97,13 +98,20 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
 
     @Override
     public void initGui() {
+        Keyboard.enableRepeatEvents(true);
         this.rebuildGUI();
+    }
+
+    @Override
+    public void onGuiClosed() {
+        Keyboard.enableRepeatEvents(false);
     }
 
     protected void rebuildGUI() {
         this.controls.clear();
         this.children.clear();
         this.drawable.clear();
+        this.focusedElement = null;
 
         if (this.currentPage == null) {
             if (this.pages.isEmpty()) {
@@ -298,6 +306,10 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
                 SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(),
                 SodiumGameOptionPages.appearance()));
         }
+
+        if (this.focusedElement != null) {
+            this.focusedElement.keyTyped(typedChar, keyCode);
+        }
     }
 
     public boolean shouldCloseOnEsc() {
@@ -314,7 +326,11 @@ public class SodiumOptionsGUI extends ScrollableGuiScreen {
     protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
         super.mouseClicked(mouseX, mouseY, mouseButton);
 
-        this.children.forEach(element -> element.mouseClicked(mouseX, mouseY, mouseButton));
+        this.children.forEach(element -> {
+            if (element.mouseClicked(mouseX, mouseY, mouseButton)) {
+                this.focusedElement = element;
+            }
+        });
     }
 
     @Override

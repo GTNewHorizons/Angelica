@@ -4,6 +4,7 @@ import com.google.common.collect.Lists;
 import cpw.mods.fml.relauncher.Side;
 import cpw.mods.fml.relauncher.SideOnly;
 import jss.notfine.gui.options.control.element.NotFineControlElementFactory;
+import jss.notfine.gui.options.control.element.SliderControlElement;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
@@ -20,6 +21,7 @@ import java.util.List;
 public class GuiCustomOptionsRowList extends GuiListExtended {
     private static final NotFineControlElementFactory factory = new NotFineControlElementFactory();
     private final List<Row> settingsList = Lists.newArrayList();
+    private GuiButton focusedButton;
 
     public GuiCustomOptionsRowList(Minecraft mc, int width, int height, int top, int bottom, int slotHeight, OptionPage optionPage, OptionPage... subPages)  {
         super(mc, width, height, top, bottom, slotHeight);
@@ -64,8 +66,14 @@ public class GuiCustomOptionsRowList extends GuiListExtended {
         return super.getScrollBarX() + 32;
     }
 
+    public void keyTyped(int keyCode) {
+        if(focusedButton instanceof SliderControlElement slider) {
+            slider.keyTyped(keyCode);
+        }
+    }
+
     @SideOnly(Side.CLIENT)
-    public static class Row implements GuiListExtended.IGuiListEntry {
+    public class Row implements GuiListExtended.IGuiListEntry {
         private final Minecraft mc = Minecraft.getMinecraft();
         private final GuiButton buttonOne, buttonTwo;
 
@@ -93,9 +101,11 @@ public class GuiCustomOptionsRowList extends GuiListExtended {
         @Override
         public boolean mousePressed(int index, int x, int y, int mouseEvent, int relativeX, int relativeY) {
             if(buttonOne.mousePressed(mc, x, y)) {
+                focusedButton = buttonOne;
                 return true;
             }
             if(buttonTwo != null && buttonTwo.mousePressed(mc, x, y)) {
+                focusedButton = buttonTwo;
                 return true;
             }
             return false;
