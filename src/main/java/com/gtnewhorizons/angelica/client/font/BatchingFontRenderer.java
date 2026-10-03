@@ -15,7 +15,6 @@ import com.gtnewhorizons.angelica.glsm.hooks.GLSMConfig;
 import com.gtnewhorizons.angelica.glsm.streaming.PersistentStreamingBuffer;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
-import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import com.gtnewhorizons.angelica.rendering.tesr.BatchDrawDefaults;
 import com.gtnewhorizons.angelica.rendering.tesr.ModelPartBatcher;
 import com.gtnewhorizons.angelica.rendering.tesr.TesrBatchRenderer;
@@ -28,7 +27,6 @@ import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.PipelineManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
-import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.MathHelper;
@@ -61,6 +59,8 @@ import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.FORMATTING_C
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.GRADIENT_PAYLOAD;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_LENGTH;
 import static com.gtnewhorizons.angelica.client.font.ColorCodeUtils.SECTION_X_PAYLOAD;
+import static com.gtnewhorizons.angelica.client.font.FontStrategist.INVALID_TEXTURE;
+import static com.gtnewhorizons.angelica.client.font.FontStrategist.bindIntTexture;
 
 /**
  * A batching replacement for {@code FontRenderer}
@@ -403,18 +403,6 @@ public class BatchingFontRenderer {
     private static final int LAYER_BACKGROUND = -1;
     private static final int LAYER_DEFAULT = 0;
 
-    /**
-     * FML's splash font renderer draws before the texture manager exists and binds its own
-     * font texture, so let it bind and read the id back.
-     */
-    private int textureFor(FontProvider fontProvider, char chr) {
-        if (fontProvider instanceof FontProviderCustom || Minecraft.getMinecraft().getTextureManager() != null) {
-            return fontProvider.getTexture(chr);
-        }
-        ((FontRendererAccessor) underlying).angelica$bindTexture(locationFontTexture);
-        return GLStateManager.getBoundTextureForServerState();
-    }
-
     private void pushDrawCmd(int startIdx, int idxCount, int texture, boolean isUnicode) {
         pushDrawCmd(startIdx, idxCount, texture, isUnicode, LAYER_DEFAULT);
     }
@@ -718,7 +706,7 @@ public class BatchingFontRenderer {
         try {
             GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
             deferredSegments.get(0).owner.setupFontDrawState();
-            flushLastTexture = -1;
+            flushLastTexture = INVALID_TEXTURE;
             resetFlushLightmap();
             boolean curDepthTest = GLStateManager.getDepthTest().isEnabled();
             boolean curDepthMask = GLStateManager.isEffectiveDepthMaskEnabled();
@@ -844,7 +832,7 @@ public class BatchingFontRenderer {
         final int d = GLStateManager.pushState(StateSet.FONT);
         try {
             setupFontDrawState();
-            flushLastTexture = -1;
+            flushLastTexture = INVALID_TEXTURE;
             resetFlushLightmap();
             try {
                 for (int i = 0; i < segmentCount; i++) {
@@ -977,7 +965,7 @@ public class BatchingFontRenderer {
                     GLStateManager.glDisable(GL11.GL_TEXTURE_2D);
                 }
                 if (cmd.texture != 0) {
-                    GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, cmd.texture);
+                    bindIntTexture(owner, cmd.texture);
                 }
                 flushLastTexture = cmd.texture;
             }
@@ -1048,7 +1036,7 @@ public class BatchingFontRenderer {
     private static void emitRangeThroughPipeline(BatchingFontRenderer owner, FontDrawCmd[] cmdsData, int from, int to,
         int packedLight, float normalX, float normalY, float normalZ) {
         final Tessellator tessellator = Tessellator.instance;
-        int lastTexture = -1;
+        int lastTexture = INVALID_TEXTURE;
         boolean drawing = false;
         try {
             for (int i = from; i < to; i++) {
@@ -1062,7 +1050,7 @@ public class BatchingFontRenderer {
                         GLStateManager.disableTexture();
                     } else {
                         GLStateManager.enableTexture();
-                        GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, cmd.texture);
+                        bindIntTexture(owner, cmd.texture);
                     }
                     lastTexture = cmd.texture;
                 }
@@ -1501,7 +1489,7 @@ public class BatchingFontRenderer {
                 final float shadowOffset = fontProvider.getShadowOffset();
                 final int shadowCopies = FontConfig.shadowCopies;
                 final int boldCopies = FontConfig.boldCopies;
-                final int texture = textureFor(fontProvider, chr);
+                final int texture = fontProvider.getTexture(chr);
 
                 // Wave: Y offset via sine wave
                 float renderY = heightNorth;
