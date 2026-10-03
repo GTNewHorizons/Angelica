@@ -44,7 +44,7 @@ public class MixinGuiIngameForge_ModernF3 {
         @Local(argsOnly = true, ordinal = 0) int width, @Local(argsOnly = true, ordinal = 1) int height) {
         final boolean canceled = original.call(bus, event);
         final Minecraft mc = Minecraft.getMinecraft();
-        if (canceled || !AngelicaConfig.modernizeF3Screen || !mc.gameSettings.showDebugInfo
+        if (canceled || !AngelicaConfig.modernizeF3Screen || !AngelicaConfig.enableGroupedF3 || !mc.gameSettings.showDebugInfo
             || !(event instanceof RenderGameOverlayEvent.Text text) || text.left.isEmpty()) return canceled;
 
         final int columnWidth = Math.max(20, (width - 16) / 2);

@@ -344,6 +344,8 @@ sodium.options.use_render_pass_optimization.tooltip=Analyzes sprite transparency
 
 options.angelica.aggressiveChunkLoading=Aggressive Chunk Loading
 options.angelica.aggressiveChunkLoading.tooltip=Renders chunks immediately when loaded, even if neighbors aren't ready yet. Improves perceived loading speed at render distance edges. Chunks rebuild automatically when neighbors load. Useful for low render distance servers.
+options.angelica.groupedf3=Grouped F3 Screen
+options.angelica.groupedf3.tooltip=Show grouped panels on the F3 debug screen.
 options.angelica.disablef3=Disable F3 Additions
 options.angelica.disablef3.tooltip=Disables Angelica's additions to the F3 debug screen.
 options.angelica.verbosef3=Verbose F3
