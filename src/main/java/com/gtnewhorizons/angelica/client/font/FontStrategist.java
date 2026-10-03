@@ -2,13 +2,17 @@ package com.gtnewhorizons.angelica.client.font;
 
 import com.google.common.collect.HashMultiset;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.mixins.interfaces.FontRendererAccessor;
 import cpw.mods.fml.client.SplashProgress;
 import cpw.mods.fml.common.versioning.DefaultArtifactVersion;
 import lombok.Getter;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.FontRenderer;
+import net.minecraft.util.ResourceLocation;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.lwjgl.opengl.GL11;
 
 import java.awt.Font;
 import java.awt.FontFormatException;
@@ -19,9 +23,11 @@ import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
+import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
@@ -195,5 +201,35 @@ public class FontStrategist {
         }
 
         return active;
+    }
+
+    /*
+     * We want to refer to either a texture or a resource location using a single integer. Int space allocation:
+     * Integer.MIN_VALUE - reserved invalid texture
+     * (Integer.MIN_VALUE, -1] - ResourceLocations, values -1, -2, -3 map to indices 0, 1, 2 etc. in the below structures
+     * 0 - untextured (underline, strikethrough...)
+     * [1, Integer.MAX_VALUE] - regular OpenGL texture IDs
+     */
+    static final int INVALID_TEXTURE = Integer.MIN_VALUE;
+    private static int remap(int n) { return -1 - n; } // involution
+
+    private static final List<ResourceLocation> intToResourceLocation = new ArrayList<>();
+    private static final Map<ResourceLocation, Integer> resourceLocationToInt = new HashMap<>();
+
+    static int getIntFromResourceLocation(ResourceLocation rl) {
+        Integer i = resourceLocationToInt.get(rl);
+        if (i != null) { return i; }
+        int idx = remap(intToResourceLocation.size());
+        resourceLocationToInt.put(rl, idx);
+        intToResourceLocation.add(rl);
+        return idx;
+    }
+
+    static void bindIntTexture(BatchingFontRenderer owner, int texture) {
+        if (texture > 0) {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
+        } else if (texture < 0) {
+            ((FontRendererAccessor) owner.underlying).angelica$bindTexture(intToResourceLocation.get(remap(texture)));
+        }
     }
 }
