@@ -225,12 +225,22 @@ class MslCrossCompileTest {
         layout(local_size_x = 64) in;
         layout(binding = 0, r32i) uniform iimage2D endcrystal_img;
         layout(binding = 1, r16ui) writeonly uniform uimage3D voxel_img;
-        uniform int _vg_startVertex;
-        uniform int _vg_vertexCount;
+        uniform int _vg_rangeBase;
+        uniform int _vg_rangeCount;
+        uniform int _vg_vertexTotal;
+        uniform int _vg_invocationBase;
         layout(std430, binding = 9) readonly buffer _VgVbuf { uint data[]; } _vg_vbuf;
+        layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;
         void main() {
-            int id = _vg_startVertex + int(gl_GlobalInvocationID.x);
-            if (id >= _vg_startVertex + _vg_vertexCount) return;
+            uint _vg_g = uint(_vg_invocationBase) + gl_GlobalInvocationID.x;
+            if (_vg_g >= uint(_vg_vertexTotal)) return;
+            int _vg_lo = _vg_rangeBase;
+            int _vg_hi = _vg_rangeBase + _vg_rangeCount - 1;
+            while (_vg_lo < _vg_hi) {
+                int _vg_mid = (_vg_lo + _vg_hi + 1) >> 1;
+                if (_vg_ranges.r[_vg_mid].y <= _vg_g) _vg_lo = _vg_mid; else _vg_hi = _vg_mid - 1;
+            }
+            int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));
             imageAtomicAdd(endcrystal_img, ivec2(id, 0), 1);
             imageStore(voxel_img, ivec3(0), uvec4(uint(id), 0u, 0u, 0u));
         }
@@ -301,9 +311,12 @@ class MslCrossCompileTest {
         #version 460 core
         layout(local_size_x = 64) in;
         layout(binding = 0, r32i) uniform iimage2D endcrystal_img;
-        uniform int _vg_startVertex;
-        uniform int _vg_vertexCount;
+        uniform int _vg_rangeBase;
+        uniform int _vg_rangeCount;
+        uniform int _vg_vertexTotal;
+        uniform int _vg_invocationBase;
         layout(std430, binding = 9) readonly buffer _VgVbuf { uint data[]; } _vg_vbuf;
+        layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;
         void main() {
             { int _vg_prev = imageLoad(endcrystal_img, ivec2(0, 0)).x;
               imageStore(endcrystal_img, ivec2(0, 0), ivec4(_vg_prev + 1, 0, 0, 0)); }

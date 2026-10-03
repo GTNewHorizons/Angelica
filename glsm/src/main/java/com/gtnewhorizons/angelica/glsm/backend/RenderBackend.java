@@ -268,9 +268,8 @@ public abstract class RenderBackend {
 
     public String getTransferDebugInfo() { return null; }
 
-    public boolean bindVoxelizationRegion(int ssboBinding, long openPass, float x, float y, float z) { return false; }
     public long beginVoxelizationBatch(int ssboBinding) { return 0L; }
-    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {}
+    public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {}
     public void endVoxelizationBatch(long pass) {}
 
     public abstract void enable(int cap);
