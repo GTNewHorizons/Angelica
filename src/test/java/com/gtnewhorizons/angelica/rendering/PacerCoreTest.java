@@ -173,6 +173,51 @@ class PacerCoreTest {
     }
 
     @Test
+    void anAbandonedGateStaysRetiredThroughAnotherOnGridRun() {
+        final Rig rig = new Rig(P60, true, 120);
+        rig.feedRun(PacerCore.LOCK_PAIRS + 1, 20 * MS, 5 * MS, P60);
+        assertTrue(rig.core.locked());
+        assertEquals(60, rig.core.effectiveCapHz());
+
+        long end = 20 * MS + (PacerCore.LOCK_PAIRS + 1) * P60;
+        for (int i = 0; i < PacerCore.LOCK_WINDOW + 1; i++) {
+            end += P60 / 2;
+            rig.feed(end, 5 * MS, end);
+        }
+        assertFalse(rig.core.locked());
+        assertFalse(rig.core.probing());
+
+        for (int i = 0; i < PacerCore.LOCK_PAIRS + 1; i++) {
+            end += P60;
+            rig.feed(end, 5 * MS, end);
+        }
+        assertFalse(rig.core.locked(), "a retired inconsistent gate must not lock again");
+        assertFalse(rig.core.probing());
+    }
+
+    @Test
+    void invalidateClearsAnAbandonedGate() {
+        final Rig rig = new Rig(P60, true, 120);
+        rig.feedRun(PacerCore.LOCK_PAIRS + 1, 20 * MS, 5 * MS, P60);
+
+        long end = 20 * MS + (PacerCore.LOCK_PAIRS + 1) * P60;
+        for (int i = 0; i < PacerCore.LOCK_WINDOW + 1; i++) {
+            end += P60 / 2;
+            rig.feed(end, 5 * MS, end);
+        }
+        assertFalse(rig.core.locked());
+        assertFalse(rig.core.probing());
+
+        rig.core.invalidate();
+        for (int i = 0; i < PacerCore.LOCK_PAIRS + 1; i++) {
+            end += P60;
+            rig.feed(end, 5 * MS, end);
+        }
+        assertTrue(rig.core.locked());
+        assertFalse(rig.core.probing());
+    }
+
+    @Test
     void samplesFurtherApartThanTheLockWindowNeverPairUp() {
         final Rig rig = new Rig(P60, true, 0);
         long end = 20 * MS;
@@ -370,6 +415,18 @@ class PacerCoreTest {
 
         assertEquals(P60 - lead, rig.presents.get(10) - rig.presents.get(9), "the probe must present ahead of the panel");
         assertEquals(P60, rig.presents.get(300) - rig.presents.get(299), "an expired probe must fall back to the exact cadence");
+    }
+
+    @Test
+    void anExpiredProbeLeadStillLocksWhenTheGateArrives() {
+        final Rig rig = new Rig(P60, true, 0);
+        for (int i = 0; i < 20; i++) rig.frame(4 * MS);
+        assertFalse(rig.core.locked());
+        assertFalse(rig.core.probing());
+
+        rig.feedRun(PacerCore.LOCK_PAIRS + 1, 20 * MS, 5 * MS, P60);
+        assertTrue(rig.core.locked());
+        assertFalse(rig.core.probing());
     }
 
     @Test
