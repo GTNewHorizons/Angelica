@@ -9,7 +9,6 @@ import com.gtnewhorizons.angelica.mixins.interfaces.ITexturesCache;
 import it.unimi.dsi.fastutil.objects.ReferenceOpenHashSet;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.texture.TextureAtlasSprite;
-import net.minecraft.client.renderer.texture.TextureMap;
 import net.minecraft.util.IIcon;
 import net.minecraft.world.IBlockAccess;
 
@@ -63,8 +62,8 @@ public class AnimationsRenderUtils {
     }
 
     public static void markBlockTextureForUpdate(IIcon icon, IBlockAccess blockAccess) {
-        final TextureMap textureMap = Minecraft.getMinecraft().getTextureMapBlocks();
-        final TextureAtlasSprite textureAtlasSprite = textureMap.getAtlasSprite(icon.getIconName());
+        final TextureAtlasSprite textureAtlasSprite = icon instanceof TextureAtlasSprite s ? s
+            : Minecraft.getMinecraft().getTextureMapBlocks().getAtlasSprite(icon.getIconName());
 
         if (textureAtlasSprite != null && textureAtlasSprite.hasAnimationMetadata()) {
             // null if called by anything but chunk render cache update (for example to get blocks rendered as items in

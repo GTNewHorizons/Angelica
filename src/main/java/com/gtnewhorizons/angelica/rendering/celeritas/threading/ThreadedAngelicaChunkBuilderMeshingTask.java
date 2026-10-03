@@ -102,6 +102,10 @@ public class ThreadedAngelicaChunkBuilderMeshingTask extends AngelicaChunkBuilde
         return renderContext != null;
     }
 
+    public void releaseUnstartedContext() {
+        if (this.renderContext != null) this.renderContext.release();
+    }
+
     @Override
     protected void onEnterExecute() {
         enteredLocalMode = !TessellatorManager.isOnMainThread();

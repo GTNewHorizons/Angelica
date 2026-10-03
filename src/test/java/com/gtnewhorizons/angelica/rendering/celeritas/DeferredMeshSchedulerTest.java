@@ -101,6 +101,7 @@ class DeferredMeshSchedulerTest {
         assertEquals(0, scheduler.pendingCount());
         assertSame(buffers, scheduler.acquireBuffers());
         assertSame(slice, scheduler.acquireSlice());
+        Mockito.verify(slice).releaseContext();
     }
 
     @Test
@@ -178,5 +179,6 @@ class DeferredMeshSchedulerTest {
         queue.poll().run();
 
         assertSame(slice, scheduler.acquireSlice());
+        Mockito.verify(slice).releaseContext();
     }
 }

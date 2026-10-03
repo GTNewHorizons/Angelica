@@ -97,6 +97,7 @@ public class DeferredMeshScheduler {
             results.add(m.complete(mainContext()));
         } finally {
             releaseBuffers(m.buffers);
+            m.slice.releaseContext();
             slices.release(m.slice);
             pending.decrementAndGet();
         }

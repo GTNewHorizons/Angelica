@@ -92,6 +92,8 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     // Local section copies
     private ClonedChunkSection[] sections;
 
+    private ChunkRenderContext context;
+
     // Biome data for each chunk section
     private final BiomeGenBase[][] biomeData;
 
@@ -146,13 +148,18 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
 
         final ClonedChunkSection[] sections = new ClonedChunkSection[SECTION_TABLE_ARRAY_SIZE];
 
-        for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
-            for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
-                for (int chunkY = minChunkY; chunkY <= maxChunkY; chunkY++) {
-                    sections[getLocalSectionIndex(chunkX - minChunkX, chunkY - minChunkY, chunkZ - minChunkZ)] =
-                        sectionCache.acquire(chunkX, chunkY, chunkZ);
+        try {
+            for (int chunkX = minChunkX; chunkX <= maxChunkX; chunkX++) {
+                for (int chunkZ = minChunkZ; chunkZ <= maxChunkZ; chunkZ++) {
+                    for (int chunkY = minChunkY; chunkY <= maxChunkY; chunkY++) {
+                        sections[getLocalSectionIndex(chunkX - minChunkX, chunkY - minChunkY, chunkZ - minChunkZ)] =
+                            sectionCache.acquire(chunkX, chunkY, chunkZ);
+                    }
                 }
             }
+        } catch (RuntimeException e) {
+            sectionCache.release(sections);
+            throw e;
         }
 
         return new ChunkRenderContext(origin, sections, volume);
@@ -197,6 +204,10 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
     }
 
     public void copyData(ChunkRenderContext context) {
+        if (this.context != context) {
+            releaseContext();
+        }
+        this.context = context;
         this.origin = context.getOrigin();
         this.sections = context.getSections();
         this.volume = context.getVolume();
@@ -239,6 +250,14 @@ public class WorldSlice implements IBlockAccessExtended, FLBlockAccess {
                     this.sectionLightData[idx] = section.getSectionLightData();
                 }
             }
+        }
+    }
+
+    public void releaseContext() {
+        final ChunkRenderContext c = this.context;
+        if (c != null) {
+            this.context = null;
+            c.release();
         }
     }
 

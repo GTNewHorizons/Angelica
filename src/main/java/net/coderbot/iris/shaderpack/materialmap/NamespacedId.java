@@ -5,6 +5,7 @@ import java.util.Objects;
 public class NamespacedId {
 	private final String namespace;
 	private final String name;
+	private final int hash;
 
 	public NamespacedId(String combined) {
 		int colonIdx = combined.indexOf(':');
@@ -16,11 +17,17 @@ public class NamespacedId {
 			namespace = combined.substring(0, colonIdx);
 			name = combined.substring(colonIdx + 1);
 		}
+		hash = hash(namespace, name);
 	}
 
 	public NamespacedId(String namespace, String name) {
 		this.namespace = Objects.requireNonNull(namespace);
 		this.name = Objects.requireNonNull(name);
+		this.hash = hash(namespace, name);
+	}
+
+	private static int hash(String namespace, String name) {
+		return 31 * (31 + namespace.hashCode()) + name.hashCode();
 	}
 
 	public String getNamespace() {
@@ -43,12 +50,12 @@ public class NamespacedId {
 
 		NamespacedId that = (NamespacedId) o;
 
-		return namespace.equals(that.namespace) && name.equals(that.name);
+		return hash == that.hash && namespace.equals(that.namespace) && name.equals(that.name);
 	}
 
 	@Override
 	public int hashCode() {
-		return Objects.hash(namespace, name);
+		return hash;
 	}
 
 	@Override

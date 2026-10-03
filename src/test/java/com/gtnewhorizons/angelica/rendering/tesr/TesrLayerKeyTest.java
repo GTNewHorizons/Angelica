@@ -11,6 +11,7 @@ import org.junit.jupiter.api.Test;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotSame;
+import static org.junit.jupiter.api.Assertions.assertSame;
 
 class TesrLayerKeyTest {
 
@@ -18,8 +19,8 @@ class TesrLayerKeyTest {
     private static final TesrShader SHADER = TesrShaders.register("test:layer_key", () -> {}, () -> {});
     private static final TesrMaterial.SpecialRender NONE = TesrMaterial.SpecialRender.NONE;
     private static final PassOverride NO_PASS = PassOverride.NONE;
-    private static final PassOverride EYES = new PassOverride(SpecialCondition.ENTITY_EYES, null);
-    private static final PassOverride TRANSLUCENT = new PassOverride(null, Boolean.TRUE);
+    private static final PassOverride EYES = PassOverride.of(SpecialCondition.ENTITY_EYES, null, null);
+    private static final PassOverride TRANSLUCENT = PassOverride.of(null, Boolean.TRUE, null);
 
     @Test
     void scratchProbeMatchesCopiedKey() {
@@ -91,5 +92,18 @@ class TesrLayerKeyTest {
         final TesrBatchRenderer.LayerKey key = new TesrBatchRenderer.LayerKey().set(null, null, false, false, false, false, 0f, false, null, null, false, NO_PASS, 0.0f, 0.0f, DrawState.DISABLED, false, true);
         assertEquals(key, key.copy());
         assertEquals(key.hashCode(), key.copy().hashCode());
+    }
+
+    @Test
+    void passOverridesAreInterned() {
+        assertSame(EYES, PassOverride.of(SpecialCondition.ENTITY_EYES, null, null));
+        assertSame(TRANSLUCENT, PassOverride.of(null, Boolean.TRUE, null));
+        assertSame(PassOverride.NONE, PassOverride.of(null, null, null));
+        assertNotSame(PassOverride.of(null, Boolean.TRUE, null), PassOverride.of(null, Boolean.FALSE, null));
+
+        final TesrBatchRenderer.LayerKey a = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, PassOverride.of(SpecialCondition.GLINT, Boolean.FALSE, null), 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        final TesrBatchRenderer.LayerKey b = new TesrBatchRenderer.LayerKey().set(TEX, TesrMaterial.Transparency.OPAQUE, false, false, false, false, 0f, false, NONE, null, false, PassOverride.of(SpecialCondition.GLINT, Boolean.FALSE, null), 0.0f, 0.0f, DrawState.DISABLED, false, true);
+        assertEquals(a, b);
+        assertEquals(a.hashCode(), b.hashCode());
     }
 }

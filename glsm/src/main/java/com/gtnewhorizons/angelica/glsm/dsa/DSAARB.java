@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -73,7 +74,8 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        return GLStateManager.getTexParameterOrDefault(texture, pname, () -> RENDER_BACKEND.getTextureParameteri(texture, target, pname));
+        final long v = GLStateManager.lookupTexParameteri(TextureInfoCache.INSTANCE.getInfo(texture), pname);
+        return v != GLStateManager.TEX_PARAM_MISS ? (int) v : RENDER_BACKEND.getTextureParameteri(texture, target, pname);
     }
 
     @Override

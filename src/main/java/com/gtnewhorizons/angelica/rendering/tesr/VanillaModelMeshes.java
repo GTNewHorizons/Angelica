@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMaterial;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshBuilder;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.minecraft.client.model.ModelChest;
 import net.minecraft.client.model.ModelRenderer;
@@ -13,7 +14,6 @@ import net.minecraft.client.model.ModelSkeletonHead;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.util.ResourceLocation;
 
-import java.util.HashMap;
 import java.util.Map;
 
 /** Cached-mesh entry points for the vanilla chest/sign/skull TESR mixins. */
@@ -36,9 +36,7 @@ public final class VanillaModelMeshes {
     private static final Object KEY_SIGN_STANDING = new Object();
     private static final Object KEY_SIGN_WALL = new Object();
 
-    private record SkullKey(ModelSkeletonHead model, ResourceLocation texture) {}
-
-    private static final Map<SkullKey, Object> SKULL_KEYS = new HashMap<>();
+    private static final Map<ModelSkeletonHead, Map<ResourceLocation, Object>> SKULL_KEYS = new Reference2ObjectOpenHashMap<>();
 
     private static final Builder BUILDER = new Builder();
 
@@ -87,7 +85,7 @@ public final class VanillaModelMeshes {
         if (texture == null) {
             return false;
         }
-        final Object key = SKULL_KEYS.computeIfAbsent(new SkullKey(model, texture), k -> new Object());
+        final Object key = SKULL_KEYS.computeIfAbsent(model, m -> new Object2ObjectOpenHashMap<>()).computeIfAbsent(texture, t -> new Object());
         GLStateManager.glPushMatrix();
         if (yawDegrees != 0.0f) {
             GLStateManager.glRotatef(yawDegrees, 0.0f, 1.0f, 0.0f);
