@@ -4338,19 +4338,11 @@ public class SDLGPURenderBackend extends RenderBackend {
         return frameManager.getFrameNumber();
     }
 
-    private int voxLocStart = -1;
-    private int voxLocCount = -1;
-
-    @Override public boolean bindVoxelizationRegion(int ssboBinding, long openPass, float x, float y, float z) {
-        if (ssboBinding < 0 || ssboBinding >= ContextState.MAX_INDEXED_BUFFERS) return false;
-        final ContextState st = s();
-        if (st.boundProgram == 0) return false;
-        if (st.boundSsboByIndex[ssboBinding] == 0) return false;
-        final int loc = shaderManager.getUniformLocation(st.boundProgram, "u_RegionOffset");
-        if (loc >= 0) GLStateManager.glUniform3f(loc, x, y, z);
-        if (openPass != 0) voxelizationDispatcher.rebindVertexBuffer(st, openPass);
-        return true;
-    }
+    private int voxLocRangeBase = -1;
+    private int voxLocRangeCount = -1;
+    private int voxLocVertexTotal = -1;
+    private int voxLocInvocationBase = -1;
+    private int voxLocRegionOffset = -1;
 
     /** Reflected at link time, so it names exactly the images the compute writes rather than everything bound. */
     public String[] getComputeWrittenImageNames(int programId) {
@@ -4365,13 +4357,19 @@ public class SDLGPURenderBackend extends RenderBackend {
         final ContextState st = s();
         final int program = st.boundProgram;
         if (program == 0 || st.boundSsboByIndex[ssboBinding] == 0) return 0;
-        voxLocStart = shaderManager.getUniformLocation(program, "_vg_startVertex");
-        voxLocCount = shaderManager.getUniformLocation(program, "_vg_vertexCount");
+        voxLocRangeBase = shaderManager.getUniformLocation(program, "_vg_rangeBase");
+        voxLocRangeCount = shaderManager.getUniformLocation(program, "_vg_rangeCount");
+        voxLocVertexTotal = shaderManager.getUniformLocation(program, "_vg_vertexTotal");
+        voxLocInvocationBase = shaderManager.getUniformLocation(program, "_vg_invocationBase");
+        voxLocRegionOffset = shaderManager.getUniformLocation(program, "u_RegionOffset");
         return voxelizationDispatcher.beginBatch(st);
     }
 
-    @Override public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {
-        voxelizationDispatcher.dispatchRange(pass, voxLocStart, voxLocCount, vertexOffset, vertexCount, s());
+    @Override public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {
+        final ContextState st = s();
+        if (voxLocRegionOffset >= 0) GLStateManager.glUniform3f(voxLocRegionOffset, x, y, z);
+        if (rebindVertexBuffer) voxelizationDispatcher.rebindVertexBuffer(st, pass);
+        voxelizationDispatcher.dispatchRegion(pass, voxLocRangeBase, voxLocRangeCount, voxLocVertexTotal, voxLocInvocationBase, rangeBase, rangeCount, vertexTotal, st);
     }
 
     @Override public void endVoxelizationBatch(long pass) {

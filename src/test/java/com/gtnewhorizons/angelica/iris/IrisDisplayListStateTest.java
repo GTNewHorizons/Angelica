@@ -134,6 +134,31 @@ class IrisDisplayListStateTest {
     }
 
     @Test
+    void cutoutDefaultsOutsideListEnableLightmapWithoutSwitchingUnit() {
+        GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+        try {
+            GLStateManager.enableAlphaTest();
+            GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.1f);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+            GLStateManager.disableTexture();
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE3);
+            final int d = GLStateManager.pushState(StateSet.CUTOUT);
+            try {
+                final long savedBefore = GLStateManager.attribSlotsSaved;
+                GbufferPrograms.setCutoutDefaults();
+                assertEquals(1, GLStateManager.attribSlotsSaved - savedBefore);
+                assertTrue(GLStateManager.getTextures().getTextureUnitStates(1).isEnabled());
+                assertEquals(3, GLStateManager.getActiveTextureUnit());
+            } finally {
+                GLStateManager.popStateTo(d);
+            }
+            assertFalse(GLStateManager.getTextures().getTextureUnitStates(1).isEnabled());
+        } finally {
+            GLStateManager.glPopAttrib();
+        }
+    }
+
+    @Test
     void nestedBlendScopesRestorePlaybackValuesEvenIfCompileTimePopWasANoop() {
         GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
         try {

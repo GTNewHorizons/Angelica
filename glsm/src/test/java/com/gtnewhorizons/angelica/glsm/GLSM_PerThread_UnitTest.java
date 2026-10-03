@@ -79,6 +79,22 @@ public class GLSM_PerThread_UnitTest {
     }
 
     @Test
+    void ctxFollowsTheBindingOnTheMainThread() {
+        assertSame(GLStateManager.getMainThread(), Thread.currentThread(), "test must run on the GLSM main thread");
+        final GLContextState primary = GLStateManager.ctx();
+        assertSame(primary, GLStateManager.ctx());
+        final GLContextState worker = GLStateManager.enterWorkerContext();
+        try {
+            assertNotSame(primary, worker);
+            assertSame(worker, GLStateManager.ctx());
+            assertSame(worker, GLStateManager.ctx());
+        } finally {
+            GLStateManager.exitWorkerContext();
+        }
+        assertSame(primary, GLStateManager.ctx());
+    }
+
+    @Test
     void matrixStackAndMvGenerationArePerThread() throws Throwable {
         final int n = 6;
         runThreaded(n, (tid, barrier) -> {
