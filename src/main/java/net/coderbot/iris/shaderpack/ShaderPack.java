@@ -489,9 +489,13 @@ public class ShaderPack {
 			path = path.substring(1);
 		}
 
-		// Read mcmeta for filtering data
-		boolean blur = false;
-		boolean clamp = false;
+		// Read mcmeta for filtering data.
+		// Upstream Iris semantics: raw textures default to bilinear filtering and clamping
+		// ("By default, image files will use nearest neighbor and wrapping, and raw textures
+		// will use bilinear filtering and clamping." -- Iris docs, Custom Textures / .mcmeta File).
+		// Only an explicit .mcmeta should override these defaults.
+		boolean blur = true;
+		boolean clamp = true;
 
 		String mcMetaPath = path + ".mcmeta";
 		Path mcMetaResolvedPath = root.resolve(mcMetaPath);
