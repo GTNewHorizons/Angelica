@@ -66,6 +66,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
     @Unique private static final Tracy.ZoneId Z_MT_QUEUE = Tracy.zoneId("mtQueue", Tracy.COLOR_TERRAIN);
 
     @Shadow public Minecraft mc;
+    @Shadow public WorldClient theWorld;
     @Shadow @Final private TextureManager renderEngine;
 
     @Unique private static final String SECTION_SOLID = "draw_chunk_layer_solid";
@@ -264,6 +265,7 @@ public class MixinRenderGlobal implements IRenderGlobalExt {
 
     @Inject(method = "loadRenderers", at = @At("RETURN"))
     private void onReload(CallbackInfo ci) {
+        if (this.celeritas$renderer.getWorld() != this.theWorld) return;
         angelica$reload();
     }
 

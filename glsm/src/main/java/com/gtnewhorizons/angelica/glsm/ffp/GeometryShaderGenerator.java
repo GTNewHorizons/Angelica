@@ -54,9 +54,17 @@ public final class GeometryShaderGenerator {
         sb.append("    vec4 c0 = gl_in[0].gl_Position;\n");
         sb.append("    vec4 c1 = gl_in[1].gl_Position;\n\n");
 
+        sb.append("    float d0 = c0.z + c0.w;\n");
+        sb.append("    float d1 = c1.z + c1.w;\n");
+        sb.append("    if (d0 < 0.0 && d1 < 0.0) return;\n");
+        sb.append("    float t0 = d0 < 0.0 ? d0 / (d0 - d1) : 0.0;\n");
+        sb.append("    float t1 = d1 < 0.0 ? d0 / (d0 - d1) : 1.0;\n");
+        sb.append("    vec4 p0 = mix(c0, c1, t0);\n");
+        sb.append("    vec4 p1 = mix(c0, c1, t1);\n\n");
+
         sb.append("    // NDC positions\n");
-        sb.append("    vec2 n0 = c0.xy / c0.w;\n");
-        sb.append("    vec2 n1 = c1.xy / c1.w;\n\n");
+        sb.append("    vec2 n0 = p0.xy / p0.w;\n");
+        sb.append("    vec2 n1 = p1.xy / p1.w;\n\n");
 
         sb.append("    // Screen-space direction and perpendicular\n");
         sb.append("    vec2 dir = normalize((n1 - n0) * u_ViewportSize);\n");
@@ -74,22 +82,22 @@ public final class GeometryShaderGenerator {
     }
 
     private static void emitVertex(StringBuilder sb, VertexKey key, int endpointIdx, String offsetExpr) {
-        final String ci = "c" + endpointIdx;
+        final String pi = "p" + endpointIdx;
         final String ni = "n" + endpointIdx;
-        final String idx = "[" + endpointIdx + "]";
+        final String ti = "t" + endpointIdx;
 
         sb.append("    // Endpoint ").append(endpointIdx).append(' ').append(offsetExpr).append('\n');
 
-        sb.append("    v_Color = v_Color_gs").append(idx).append(";\n");
+        sb.append("    v_Color = ").append(lerp("v_Color_gs", ti)).append(";\n");
         if (key.separateSpecular()) {
-            sb.append("    v_SpecularColor = v_SpecularColor_gs").append(idx).append(";\n");
+            sb.append("    v_SpecularColor = ").append(lerp("v_SpecularColor_gs", ti)).append(";\n");
         }
-        if (key.unitTexCoordEnabled(0) || key.texGenEnabled()) sb.append("    v_TexCoord0 = v_TexCoord0_gs").append(idx).append(";\n");
-        if (key.lightmapEnabled())            sb.append("    v_TexCoord1 = v_TexCoord1_gs").append(idx).append(";\n");
-        if (key.unitTexCoordEnabled(2))       sb.append("    v_TexCoord2 = v_TexCoord2_gs").append(idx).append(";\n");
-        if (key.unitTexCoordEnabled(3))       sb.append("    v_TexCoord3 = v_TexCoord3_gs").append(idx).append(";\n");
+        if (key.unitTexCoordEnabled(0) || key.texGenEnabled()) sb.append("    v_TexCoord0 = ").append(lerp("v_TexCoord0_gs", ti)).append(";\n");
+        if (key.lightmapEnabled())            sb.append("    v_TexCoord1 = ").append(lerp("v_TexCoord1_gs", ti)).append(";\n");
+        if (key.unitTexCoordEnabled(2))       sb.append("    v_TexCoord2 = ").append(lerp("v_TexCoord2_gs", ti)).append(";\n");
+        if (key.unitTexCoordEnabled(3))       sb.append("    v_TexCoord3 = ").append(lerp("v_TexCoord3_gs", ti)).append(";\n");
         if (key.fogEnabled()) {
-            sb.append("    v_FogCoord = v_FogCoord_gs").append(idx).append(";\n");
+            sb.append("    v_FogCoord = ").append(lerp("v_FogCoord_gs", ti)).append(";\n");
         }
         if (key.lineStipple()) {
             sb.append("    v_LineStart = v_LineStart_gs[0];\n");
@@ -97,11 +105,15 @@ public final class GeometryShaderGenerator {
 
         if (key.clipPlanesEnabled()) {
             for (int i = 0; i < 8; i++) {
-                sb.append("    gl_ClipDistance[").append(i).append("] = gl_in").append(idx).append(".gl_ClipDistance[").append(i).append("];\n");
+                sb.append("    gl_ClipDistance[").append(i).append("] = mix(gl_in[0].gl_ClipDistance[").append(i).append("], gl_in[1].gl_ClipDistance[").append(i).append("], ").append(ti).append(");\n");
             }
         }
 
-        sb.append("    gl_Position = vec4((").append(ni).append(' ').append(offsetExpr).append(") * ").append(ci).append(".w, ").append(ci).append(".z, ").append(ci).append(".w);\n");
+        sb.append("    gl_Position = vec4((").append(ni).append(' ').append(offsetExpr).append(") * ").append(pi).append(".w, ").append(pi).append(".z, ").append(pi).append(".w);\n");
         sb.append("    EmitVertex();\n\n");
+    }
+
+    private static String lerp(String input, String t) {
+        return "mix(" + input + "[0], " + input + "[1], " + t + ")";
     }
 }

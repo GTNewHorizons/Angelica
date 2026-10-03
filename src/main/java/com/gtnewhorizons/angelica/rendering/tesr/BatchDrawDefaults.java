@@ -25,6 +25,11 @@ public final class BatchDrawDefaults {
         passFramebuffer = GLStateManager.getDrawFramebuffer();
     }
 
+    public static boolean drawsToPassFramebuffer() {
+        return passFramebuffer < 0 || TesrBatchRenderer.deferredPipeline() != null
+            || GLStateManager.getDrawFramebuffer() == passFramebuffer;
+    }
+
     public void apply() {
         if (passFramebuffer >= 0 && TesrBatchRenderer.deferredPipeline() == null) {
             final int framebuffer = GLStateManager.getDrawFramebuffer();

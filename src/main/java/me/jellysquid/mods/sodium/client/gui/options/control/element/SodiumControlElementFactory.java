@@ -7,6 +7,7 @@ import me.jellysquid.mods.sodium.client.gui.options.control.ControlValueFormatte
 import me.jellysquid.mods.sodium.client.gui.utils.Rect2i;
 import me.jellysquid.mods.sodium.client.util.Dim2i;
 import net.minecraft.util.MathHelper;
+import org.lwjgl.input.Keyboard;
 
 public class SodiumControlElementFactory implements ControlElementFactory {
     @Override
@@ -193,6 +194,30 @@ public class SodiumControlElementFactory implements ControlElementFactory {
             }
 
             return false;
+        }
+
+        @Override
+        public boolean keyTyped(char typedChar, int keyCode) {
+            if (!this.option.isAvailable()) {
+                return false;
+            }
+
+            final int step;
+            if (keyCode == Keyboard.KEY_LEFT) {
+                step = -this.interval;
+            } else if (keyCode == Keyboard.KEY_RIGHT) {
+                step = this.interval;
+            } else {
+                return false;
+            }
+
+            final int value = MathHelper.clamp_int(this.option.getValue() + step, this.min, this.min + this.range);
+
+            if (this.option.getValue() != value) {
+                this.option.setValue(value);
+            }
+
+            return true;
         }
     }
 

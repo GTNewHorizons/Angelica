@@ -3,7 +3,6 @@ package jss.notfine.gui;
 import me.jellysquid.mods.sodium.client.gui.options.OptionPage;
 import me.jellysquid.mods.sodium.client.gui.options.storage.OptionStorage;
 import net.minecraft.client.gui.GuiButton;
-import net.minecraft.client.gui.GuiListExtended;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.gui.ScaledResolution;
 import net.minecraft.client.resources.I18n;
@@ -19,7 +18,7 @@ public class GuiCustomMenu extends GuiScreen {
     private final OptionPage[] subPages;
     protected String screenTitle;
 
-    private GuiListExtended optionsRowList;
+    private GuiCustomOptionsRowList optionsRowList;
 
     public GuiCustomMenu(GuiScreen parentGuiScreen, OptionPage optionPage, OptionPage... subPages) {
         this.parentGuiScreen = parentGuiScreen;
@@ -30,6 +29,7 @@ public class GuiCustomMenu extends GuiScreen {
 
     @Override
     public void initGui() {
+        Keyboard.enableRepeatEvents(true);
         buttonList.clear();
         buttonList.add(new GuiButton(200, width / 2 - 110, height - 27, I18n.format("gui.done")));
         optionsRowList = new GuiCustomOptionsRowList(mc, width, height, 32, height - 32, 25, optionPage, subPages);
@@ -88,7 +88,13 @@ public class GuiCustomMenu extends GuiScreen {
         if(keyCode == Keyboard.KEY_ESCAPE && !(parentGuiScreen instanceof GuiCustomMenu)) {
             saveChanges();
         }
+        optionsRowList.keyTyped(keyCode);
         super.keyTyped(typedChar, keyCode);
+    }
+
+    @Override
+    public void onGuiClosed() {
+        Keyboard.enableRepeatEvents(false);
     }
 
     private void saveChanges() {

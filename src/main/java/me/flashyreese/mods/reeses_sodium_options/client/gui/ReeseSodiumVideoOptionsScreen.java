@@ -78,6 +78,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
 
     @Override
     public void initGui() {
+        Keyboard.enableRepeatEvents(true);
         this.frame = this.parentFrameBuilder().build();
         this.children.add(this.frame);
 
@@ -284,6 +285,18 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
 
         if(focused != null) {
             focused.keyTyped(typedChar, keyCode);
+        }
+    }
+
+    @Override
+    protected void mouseClicked(int mouseX, int mouseY, int mouseButton) {
+        final boolean onSearchField = this.searchTextField.isMouseOver(mouseX, mouseY);
+
+        super.mouseClicked(mouseX, mouseY, mouseButton);
+
+        if (!onSearchField) {
+            this.searchTextField.setFocused(false);
+            this.setFocused(this.frame);
         }
     }
 

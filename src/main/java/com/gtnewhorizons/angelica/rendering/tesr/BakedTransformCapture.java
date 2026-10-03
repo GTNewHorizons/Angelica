@@ -43,6 +43,16 @@ public final class BakedTransformCapture extends DirectTessellator {
 
     @Override
     protected int interceptDraw(Tessellator tessellator) {
+        transform = delta.deltaOrNull(deltaMatrix);
+        try {
+            return super.interceptDraw(tessellator);
+        } finally {
+            transform = null;
+        }
+    }
+
+    @Override
+    public int draw() {
         final Color4 color = GLStateManager.getColor();
         final int packed = ColorABGR.pack(color.getRed(), color.getGreen(), color.getBlue(), color.getAlpha());
         if (!sawRun) {
@@ -51,12 +61,7 @@ public final class BakedTransformCapture extends DirectTessellator {
         } else if (packed != firstColor) {
             colorUniform = false;
         }
-        transform = delta.deltaOrNull(deltaMatrix);
-        try {
-            return super.interceptDraw(tessellator);
-        } finally {
-            transform = null;
-        }
+        return super.draw();
     }
 
     // While capturing, Tessellator.instance is this tessellator, so vanilla code (e.g. RenderBlocks.renderBlockAsItem)
