@@ -176,11 +176,6 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean shaderParityFlip;
 
-    @Config.Comment("Skip the end-of-frame glFlush before the buffer swap [Experimental]")
-    @Config.DefaultBoolean(false)
-    @Config.RequiresMcRestart
-    public static boolean skipEndOfFrameFlush;
-
     @Config.Comment("Cache the vanilla skull mesh per skull type/player skin and batch skull draws")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart

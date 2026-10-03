@@ -107,6 +107,14 @@ public class GLContextState {
     public int maxBoundImageUnit = 0;
     public final StateSet[] attribSets = new StateSet[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
     public int attribDepth = 0;
+
+    public boolean savesState(int id) {
+        for (int i = attribDepth - 1; i >= 0; i--) {
+            if (attribSets[i].contains(id)) return true;
+        }
+        return false;
+    }
+
     public int batchStateGeneration;
     public final int[] savedBatchStateGen = new int[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
     public CowStateStack<?>[] stackById;

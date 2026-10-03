@@ -206,9 +206,8 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip the end-of-frame glFlush before the buffer swap")
+    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip vanilla's end-of-frame glFlush; the buffer swap flushes")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.skipEndOfFrameFlush)
         .addClientMixins(
             "angelica.MixinMinecraft_SkipEndFrameFlush"
         )

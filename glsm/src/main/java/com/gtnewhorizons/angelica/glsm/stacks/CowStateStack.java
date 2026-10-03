@@ -51,11 +51,10 @@ public interface CowStateStack<T> extends IStateStack<T> {
         final CowDepths d = cowDepths();
         final GLContextState o = d.owner;
         if (o == null) return;
-        final int s = d.claim(o.attribDepth);
-        if (s >= 0) {
-            captureSlot(s);
-            GLStateManager.registerModifiedState(o, d.id);
-        }
+        final int depth = o.attribDepth;
+        if (depth == 0 || d.claimedAt(depth) || !o.savesState(d.id)) return;
+        captureSlot(d.claim(depth));
+        GLStateManager.registerModifiedState(o, d.id);
     }
 
     @Override
