@@ -107,9 +107,11 @@ public final class StateSet {
                 GLStateManager.getTextures().getTextureUnitBindings(0), GLStateManager.getTextures().getTextureUnitBindings(1),
                 GLStateManager.getActiveTextureUnitStack(), GLStateManager.getProgramStack(),
                 GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getDepthTest(),
-                GLStateManager.getTextures().getTextureUnitStates(0)
+                GLStateManager.getTextures().getTextureUnitStates(0),
+                GLStateManager.getColorMask(), GLStateManager.getCullState(),
+                GLStateManager.getPolygonState(), GLStateManager.getPolygonOffsetFillState()
             ),
-            R_BLEND | R_DEPTH | R_TEXTURE | R_ACTIVE_UNIT | R_PROGRAM,
+            R_BLEND | R_DEPTH | R_COLOR_MASK | R_TEXTURE | R_ACTIVE_UNIT | R_PROGRAM | R_POLYGON,
             0,
             true);
     }
@@ -121,9 +123,11 @@ public final class StateSet {
                 GLStateManager.getTextures().getTextureUnitBindings(0), GLStateManager.getTextures().getTextureUnitBindings(1),
                 GLStateManager.getActiveTextureUnitStack(),
                 GLStateManager.getBlendMode(), GLStateManager.getAlphaTest(), GLStateManager.getDepthTest(),
-                GLStateManager.getTextures().getTextureUnitStates(0)
+                GLStateManager.getTextures().getTextureUnitStates(0),
+                GLStateManager.getColorMask(), GLStateManager.getCullState(),
+                GLStateManager.getPolygonState(), GLStateManager.getPolygonOffsetFillState()
             ),
-            R_BLEND | R_DEPTH | R_TEXTURE | R_ACTIVE_UNIT,
+            R_BLEND | R_DEPTH | R_COLOR_MASK | R_TEXTURE | R_ACTIVE_UNIT | R_POLYGON,
             0,
             true);
     }
