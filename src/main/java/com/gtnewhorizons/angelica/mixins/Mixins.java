@@ -432,6 +432,7 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinWorld"
             , "celeritas.biome_blending.MixinRenderBlocks"
             , "celeritas.threading.MixinForgeHooksClient"
+            , "celeritas.threading.MixinChunkJobTyped"
             , "celeritas.terrain.MixinChunk"
             , "celeritas.terrain.MixinWorldClient_WorkerAccess"
             , "celeritas.terrain.MixinWorld_WorkerMutationGuard"
@@ -439,10 +440,16 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinNetHandlerPlayClient_DescriptorRepair"
             , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
+            , "celeritas.terrain.MixinChunkRenderList"
+            , "celeritas.terrain.MixinVisibleChunkCollector"
+            , "celeritas.terrain.MixinRenderListManager"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
             , "celeritas.terrain.MixinSharedQuadIndexBuffer"
             , "celeritas.terrain.MixinRenderRegionManager"
             , "celeritas.terrain.MixinShaderLoader"
+            , "celeritas.terrain.MixinGlUniformMatrix4f"
+            , "celeritas.terrain.MixinGlUniformMatrix3f"
+            , "celeritas.terrain.MixinDefaultChunkRenderer"
         )
     ),
 

@@ -246,7 +246,7 @@ public final class TesrBatchRenderer {
                 && depthOnly == other.depthOnly
                 && Float.floatToIntBits(cutoutAlpha) == Float.floatToIntBits(other.cutoutAlpha)
                 && depthEqual == other.depthEqual && special == other.special && shader == other.shader && noPass == other.noPass
-                && Objects.equals(pass, other.pass)
+                && pass == other.pass
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
                 && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
                 && cull == other.cull && lit == other.lit && lightmap == other.lightmap;
@@ -265,7 +265,7 @@ public final class TesrBatchRenderer {
             h = h * 31 + Objects.hashCode(special);
             h = h * 31 + System.identityHashCode(shader);
             h = h * 31 + (noPass ? 1 : 0);
-            h = h * 31 + Objects.hashCode(pass);
+            h = h * 31 + System.identityHashCode(pass);
             h = h * 31 + Float.floatToIntBits(offsetFactor);
             h = h * 31 + Float.floatToIntBits(offsetUnits);
             h = h * 31 + cull;
@@ -294,7 +294,7 @@ public final class TesrBatchRenderer {
     private RenderLayer lastImmediateLayer;
 
     private RenderLayer layerFor(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int cullCode, boolean lit, boolean lightmap) {
-        if (texture == lastLayerTexture && material == lastLayerMaterial && pass.equals(lastLayerPass)
+        if (texture == lastLayerTexture && material == lastLayerMaterial && pass == lastLayerPass
             && offsetFactor == lastLayerOffsetFactor && offsetUnits == lastLayerOffsetUnits && cullCode == lastLayerCull && lit == lastLayerLit
             && lightmap == lastLayerLightmap) {
             return lastLayer;

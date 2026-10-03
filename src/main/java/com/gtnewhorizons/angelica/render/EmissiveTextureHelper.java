@@ -13,6 +13,11 @@ import java.util.concurrent.ConcurrentHashMap;
 @SideOnly(Side.CLIENT)
 public final class EmissiveTextureHelper {
     private static final ConcurrentHashMap<String, IIcon> EMISSIVE_ICON_CACHE = new ConcurrentHashMap<>();
+    private static volatile boolean anyEmissive;
+
+    public static boolean hasAnyEmissive() {
+        return anyEmissive;
+    }
 
     public static IIcon getEmissiveIcon(Block block, int side, int metadata) {
         IIcon baseIcon = block.getIcon(side, metadata);
@@ -26,10 +31,12 @@ public final class EmissiveTextureHelper {
 
     public static void clearCache() {
         EMISSIVE_ICON_CACHE.clear();
+        anyEmissive = false;
     }
 
     public static void cacheEmissive(String baseIconName, IIcon emissiveIcon) {
         EMISSIVE_ICON_CACHE.put(baseIconName, emissiveIcon);
+        anyEmissive = true;
     }
 
     public static void renderEmissiveBlockOverlay(RenderBlocks renderer, Block block, int x, int y, int z, int metadata) {

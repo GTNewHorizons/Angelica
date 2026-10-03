@@ -3,8 +3,6 @@ package com.gtnewhorizons.angelica.mixins.early.shaders;
 import com.gtnewhorizon.gtnhlib.client.renderer.ITessellatorInstance;
 import com.gtnewhorizons.angelica.experimental.surround.Surround;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
-import com.llamalad7.mixinextras.sugar.Share;
-import com.llamalad7.mixinextras.sugar.ref.LocalRef;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.layer.GbufferPrograms;
 import net.coderbot.iris.pipeline.WorldRenderingPhase;
@@ -23,41 +21,40 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 public class MixinRenderGlobal {
 
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/Tessellator;instance:Lnet/minecraft/client/renderer/Tessellator;"))
-    private void iris$renderSky$beginNormalSky(float partialTicks, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
+    private void iris$renderSky$beginNormalSky(float partialTicks, CallbackInfo ci) {
         // None of the vanilla sky is rendered until after this call, so if anything is rendered before, it's CUSTOM_SKY.
-        pipeline.set(Iris.getPipelineManager().getPipelineNullable());
-        pipeline.get().setPhase(WorldRenderingPhase.SKY);
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.SKY);
     }
 
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationSunPng:Lnet/minecraft/util/ResourceLocation;"))
-    private void iris$setSunRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.SUN);
+    private void iris$setSunRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.SUN);
     }
 
     @Inject(method = "renderSky", at = @At(value = "FIELD", target = "Lnet/minecraft/client/renderer/RenderGlobal;locationMoonPhasesPng:Lnet/minecraft/util/ResourceLocation;"))
-    private void iris$setMoonRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.MOON);
+    private void iris$setMoonRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.MOON);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/world/WorldProvider;calcSunriseSunsetColors(FF)[F"))
-    private void iris$setSunsetRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.SUNSET);
+    private void iris$setSunsetRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.SUNSET);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getStarBrightness(F)F"))
-    private void iris$setStarRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.STARS);
+    private void iris$setStarRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.STARS);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/entity/EntityClientPlayerMP;getPosition(F)Lnet/minecraft/util/Vec3;"))
-    private void iris$setVoidRenderStage(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        pipeline.get().setPhase(WorldRenderingPhase.VOID);
+    private void iris$setVoidRenderStage(float p_72714_1_, CallbackInfo ci) {
+        Iris.getPipelineManager().getPipelineNullable().setPhase(WorldRenderingPhase.VOID);
     }
 
     @Inject(method = "renderSky", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getCelestialAngle(F)F"),
         slice = @Slice(from = @At(value = "INVOKE", target = "Lnet/minecraft/client/multiplayer/WorldClient;getRainStrength(F)F")))
-    private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci, @Share("pipeline") LocalRef<WorldRenderingPipeline> pipeline) {
-        GLStateManager.glRotatef(pipeline.get().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
+    private void iris$renderSky$tiltSun(float p_72714_1_, CallbackInfo ci) {
+        GLStateManager.glRotatef(Iris.getPipelineManager().getPipelineNullable().getSunPathRotation(), 0.0F, 0.0F, 1.0F);
     }
 
     // Sky disc: wrap the glCallList(glSkyList) call — the first glCallList in the surface world branch

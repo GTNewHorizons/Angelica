@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.glsm;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
+import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
 
 import java.nio.IntBuffer;
@@ -143,5 +144,20 @@ public class GLSM_StateQueryRoundTrip_UnitTest {
         assertEquals(viewport[1], restored[1]);
         assertEquals(viewport[2], restored[2]);
         assertEquals(viewport[3], restored[3]);
+    }
+
+    @Test
+    void uncachedTexParameterFallsThroughToTheDriver() {
+        final int tex = GLStateManager.glGenTextures();
+        try {
+            GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, tex);
+
+            GLStateManager.glTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R, GL12.GL_CLAMP_TO_EDGE);
+            assertEquals(GL12.GL_CLAMP_TO_EDGE, GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R), "uncached pname must fall through to the driver");
+            assertEquals(GL11.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R),
+                GLStateManager.glGetTexParameteri(GL11.GL_TEXTURE_2D, GL12.GL_TEXTURE_WRAP_R), "uncached pname must match the driver");
+        } finally {
+            GLStateManager.glDeleteTextures(tex);
+        }
     }
 }

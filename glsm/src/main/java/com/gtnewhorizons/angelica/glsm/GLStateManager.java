@@ -125,7 +125,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.locks.ReentrantLock;
-import java.util.function.IntSupplier;
 
 import static com.gtnewhorizons.angelica.glsm.Vendor.AMD;
 import static com.gtnewhorizons.angelica.glsm.Vendor.INTEL;
@@ -5061,18 +5060,16 @@ public class GLStateManager {
         RENDER_BACKEND.texParameterf(target, pname, param);
     }
 
-    public static int getTexParameterOrDefault(int texture, int pname, IntSupplier defaultSupplier) {
-        return getTexParameterOrDefault(TextureInfoCache.INSTANCE.getInfo(texture), pname, defaultSupplier);
-    }
+    public static final long TEX_PARAM_MISS = Long.MIN_VALUE;
 
-    static int getTexParameterOrDefault(TextureInfo info, int pname, IntSupplier defaultSupplier) {
+    public static long lookupTexParameteri(TextureInfo info, int pname) {
         if (info == null) {
             if (isRecordingDisplayList()) {
                 throw new IllegalStateException(
                     "glGetTexParameteri called during display list recording with no cached TextureInfo. " +
                         "Cannot query OpenGL state during compilation!");
             }
-            return defaultSupplier.getAsInt();
+            return TEX_PARAM_MISS;
         }
         return switch (pname) {
             case GL11.GL_TEXTURE_MIN_FILTER -> info.getMinFilter();
@@ -5090,7 +5087,7 @@ public class GLStateManager {
                         "glGetTexParameteri called during display list recording with uncached pname 0x%s. " +
                             "Cannot query OpenGL state during compilation!", Integer.toHexString(pname)));
                 }
-                yield defaultSupplier.getAsInt();
+                yield TEX_PARAM_MISS;
             }
         };
     }
@@ -5099,7 +5096,8 @@ public class GLStateManager {
         if (target != GL11.GL_TEXTURE_2D || !isCachingEnabled()) {
             return RENDER_BACKEND.getTexParameteri(target, pname);
         }
-        return getTexParameterOrDefault(getBoundTextureInfo(), pname, () -> RENDER_BACKEND.getTexParameteri(target, pname));
+        final long v = lookupTexParameteri(getBoundTextureInfo(), pname);
+        return v != TEX_PARAM_MISS ? (int) v : RENDER_BACKEND.getTexParameteri(target, pname);
     }
 
     public static float glGetTexParameterf(int target, int pname) {

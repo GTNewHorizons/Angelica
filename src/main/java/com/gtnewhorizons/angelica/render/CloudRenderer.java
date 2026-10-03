@@ -42,6 +42,7 @@ import net.minecraft.util.Vec3;
 import net.minecraftforge.client.IRenderHandler;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
@@ -65,6 +66,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
     private final Map<String, CloudLayerRenderer> layers = new HashMap<>();
     private final List<CloudLayerRenderer> drawOrder = new ArrayList<>();
     private final Set<String> activeIds = new HashSet<>();
+    private double sortCameraY;
+    private final Comparator<CloudLayerRenderer> farthestFirst = (a, b) -> Double.compare(distanceToLayer(b.layer, sortCameraY), distanceToLayer(a.layer, sortCameraY));
     private WorldClient world;
     private int cloudMode = MODE_FAST, renderDistance, scaleMult = 1, lastCloudTicks;
     private boolean enabled;
@@ -144,7 +147,7 @@ public class CloudRenderer implements IResourceManagerReloadListener {
             renderer.configure(description, cloudMode, renderDistance, scaleMult);
             if (description.alpha() > 0.0f) drawOrder.add(renderer);
         }
-        layers.entrySet().removeIf(entry -> {
+        if (layers.size() != activeIds.size()) layers.entrySet().removeIf(entry -> {
             if (activeIds.contains(entry.getKey())) return false;
             entry.getValue().delete();
             return true;
@@ -154,7 +157,8 @@ public class CloudRenderer implements IResourceManagerReloadListener {
         cloudView.update(GLStateManager.getProjectionMatrix(), GLStateManager.getModelViewMatrix(), viewport.width, viewport.height);
         final Entity view = mc.renderViewEntity;
         final double cameraY = view.lastTickPosY + (view.posY - view.lastTickPosY) * partialTicks + cloudView.offsetY;
-        drawOrder.sort((a, b) -> Double.compare(distanceToLayer(b.layer, cameraY), distanceToLayer(a.layer, cameraY)));
+        sortCameraY = cameraY;
+        drawOrder.sort(farthestFirst);
         boolean rendered = descriptions.isEmpty();
         for (CloudLayerRenderer renderer : drawOrder) rendered |= renderer.render(partialTicks, cloudView);
         return rendered;

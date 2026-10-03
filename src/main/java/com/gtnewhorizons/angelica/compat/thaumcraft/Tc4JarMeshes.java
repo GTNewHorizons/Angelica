@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.api.tesr.TesrMeshBuilder;
 import com.gtnewhorizons.angelica.api.tesr.TesrMeshSink;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.rendering.tesr.AngelicaTesrMeshCache;
+import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import net.minecraft.client.renderer.RenderBlocks;
 import net.minecraft.client.renderer.Tessellator;
 import net.minecraft.client.renderer.texture.TextureMap;
@@ -27,8 +28,6 @@ public final class Tc4JarMeshes {
     private static final double MIN_X = 0.25, MIN_Y = 0.0625, MIN_Z = 0.25, MAX_X = 0.75, MAX_Z = 0.75;
     private static final double OFF_X = -0.5, OFF_Y = 0.0, OFF_Z = -0.5;
 
-    private record LiquidKey(int color, int level64) {}
-
     private static final class Holder {
         final Object cacheKey = new Object();
         final TesrMaterial material;
@@ -40,7 +39,7 @@ public final class Tc4JarMeshes {
         }
     }
 
-    private static final Map<LiquidKey, Holder> HOLDERS = new HashMap<>();
+    private static final Long2ObjectOpenHashMap<Holder> HOLDERS = new Long2ObjectOpenHashMap<>();
     private static final RenderBlocks FALLBACK_RENDER_BLOCKS = new RenderBlocks();
 
     private static final ResourceLocation LABEL_TEXTURE = new ResourceLocation("thaumcraft", "textures/models/label.png");
@@ -118,7 +117,12 @@ public final class Tc4JarMeshes {
 
         applyBrightness(jarBrightness(te));
 
-        final Holder holder = HOLDERS.computeIfAbsent(new LiquidKey(color, level64), k -> new Holder(k.color()));
+        final long liquidKey = ((long) color << 32) | (level64 & 0xFFFFFFFFL);
+        Holder holder = HOLDERS.get(liquidKey);
+        if (holder == null) {
+            holder = new Holder(color);
+            HOLDERS.put(liquidKey, holder);
+        }
         GLStateManager.glPushMatrix();
         GLStateManager.glRotatef(180.0f, 1.0f, 0.0f, 0.0f);
         BUILDER.material = holder.material;

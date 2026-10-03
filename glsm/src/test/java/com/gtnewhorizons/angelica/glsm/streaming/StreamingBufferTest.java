@@ -74,6 +74,32 @@ class StreamingBufferTest {
     }
 
     @Test
+    void persistent_uploadAlignment_nonPow2Stride() {
+        Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
+
+        final int stride = 44;
+        PersistentStreamingBuffer buf = PersistentStreamingBuffer.createOrNull(4096);
+        assertNotNull(buf);
+        try {
+            ByteBuffer first = memAlloc(3 * stride);
+            fillPattern(first);
+            first.flip();
+            assertTrue(buf.upload(first, stride) >= 0, "Upload should succeed");
+            memFree(first);
+
+            ByteBuffer second = memAlloc(3 * stride);
+            fillPattern(second);
+            second.flip();
+            int firstVertex = buf.upload(second, stride, 4);
+            assertTrue(firstVertex >= 0, "Upload should succeed");
+            assertEquals(0, firstVertex % 4, "firstVertex must be quad-aligned even for a non-power-of-2 stride");
+            memFree(second);
+        } finally {
+            buf.destroy();
+        }
+    }
+
+    @Test
     void persistent_dataIntegrity() {
         Assumptions.assumeTrue(RenderSystem.supportsBufferStorage(), "GL4.4+ required");
 

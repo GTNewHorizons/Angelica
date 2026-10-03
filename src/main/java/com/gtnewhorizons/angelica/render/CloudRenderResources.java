@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.render;
 
 import java.nio.ByteBuffer;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 
@@ -20,20 +21,28 @@ import org.lwjgl.opengl.GL13;
 final class CloudRenderResources {
 
     private final Map<ResourceLocation, Texture> textures = new HashMap<>();
-    private final Map<Integer, GlProgram<CloudUniforms>> programs = new HashMap<>(4);
+    @SuppressWarnings("unchecked")
+    private final GlProgram<CloudUniforms>[] programs = (GlProgram<CloudUniforms>[]) new GlProgram[4];
 
     Texture texture(ResourceLocation location) {
         return textures.computeIfAbsent(location, Texture::new);
     }
 
     GlProgram<CloudUniforms> program(boolean faces, boolean untextured) {
-        int key = (faces ? 2 : 0) | (untextured ? 1 : 0);
-        return programs.computeIfAbsent(key, ignored -> buildProgram(faces, untextured));
+        final int key = (faces ? 2 : 0) | (untextured ? 1 : 0);
+        GlProgram<CloudUniforms> program = programs[key];
+        if (program == null) {
+            program = buildProgram(faces, untextured);
+            programs[key] = program;
+        }
+        return program;
     }
 
     void clear() {
-        for (GlProgram<CloudUniforms> program : programs.values()) program.delete();
-        programs.clear();
+        for (GlProgram<CloudUniforms> program : programs) {
+            if (program != null) program.delete();
+        }
+        Arrays.fill(programs, null);
         textures.clear();
     }
 
