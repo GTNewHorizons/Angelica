@@ -146,6 +146,8 @@ public final class ShaderManager {
     public void shaderSource(int shader, CharSequence source) {
         final ShaderObject obj = shaderObjects.get(shader);
         if (obj == null) return;
+        final Runnable barrier = GLSMHooks.uniformBlockBarrier;
+        if (barrier != null && !AngelicaWorkers.isWorkerThread()) barrier.run();
         discardSpirvFuture(obj);
 
         String raw = source.toString();

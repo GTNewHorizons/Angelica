@@ -1013,8 +1013,8 @@ public enum Mixins implements IMixins {
     MCPATCHER_FORGE_CTM_OR_CC(new MixinBuilder("MCP:F Connected Textures or Custom Colors")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          || MCPatcherForgeConfig.CustomColors.enabled)
+                          && (MCPatcherForgeConfig.ConnectedTextures.enabled
+                          || MCPatcherForgeConfig.CustomColors.enabled))
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine

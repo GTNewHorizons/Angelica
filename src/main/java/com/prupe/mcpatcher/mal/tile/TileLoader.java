@@ -92,6 +92,9 @@ public class TileLoader {
     }
 
     public static void registerIcons(TextureMap textureMap, String mapName, Map<String, TextureAtlasSprite> map) {
+        if (TexturePackChangeHandler.isBootDeferred()) {
+            return;
+        }
         mapName = mapName.replaceFirst("/$", "");
         logger.fine("before registerIcons(%s) %d icons", mapName, map.size());
         if (!changeHandlerCalled) {
