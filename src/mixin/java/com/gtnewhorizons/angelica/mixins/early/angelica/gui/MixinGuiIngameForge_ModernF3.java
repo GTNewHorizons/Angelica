@@ -139,7 +139,7 @@ public class MixinGuiIngameForge_ModernF3 {
             final int x = right ? width - panelWidth - 4 : 4;
             angelica$drawDebugPanel(x, y, panelWidth, panelHeight, 0x90505050, true);
             angelica$drawDebugPanel(x, y, panelWidth, lineHeight + 6, 0xA0606060, false);
-            fontrenderer.drawString(title, x + 3, y + 3, 0xFFFFFF);
+            fontrenderer.drawString(title, x + 3, y + (lineHeight + 6 - fontrenderer.FONT_HEIGHT) / 2 + 1, 0xFFFFFF);
             final boolean scaleText = target && lines.size() > 3;
             if (scaleText) GLStateManager.glPushMatrix();
             try {
