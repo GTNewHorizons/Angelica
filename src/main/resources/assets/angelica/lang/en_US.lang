@@ -344,6 +344,8 @@ sodium.options.use_render_pass_optimization.tooltip=Analyzes sprite transparency
 
 options.angelica.aggressiveChunkLoading=Aggressive Chunk Loading
 options.angelica.aggressiveChunkLoading.tooltip=Renders chunks immediately when loaded, even if neighbors aren't ready yet. Improves perceived loading speed at render distance edges. Chunks rebuild automatically when neighbors load. Useful for low render distance servers.
+options.angelica.groupedf3=Grouped F3 Screen
+options.angelica.groupedf3.tooltip=Show grouped panels on the F3 debug screen.
 options.angelica.disablef3=Disable F3 Additions
 options.angelica.disablef3.tooltip=Disables Angelica's additions to the F3 debug screen.
 options.angelica.verbosef3=Verbose F3
@@ -379,3 +381,12 @@ sodium.options.upload_method.buffer_subdata=BufferSubData
 sodium.options.upload_method.map_buffer=MapBufferRange
 sodium.options.enable_deferred_batching.name=Particle Batching
 sodium.options.enable_deferred_batching.tooltip=Draws particles as instanced quads, or merged draws where instancing is unavailable. Disable if particles render incorrectly.
+
+angelica.debug.game=Game
+angelica.debug.position=Position
+angelica.debug.world=World
+angelica.debug.memory=Memory
+angelica.debug.system=System Specs
+angelica.debug.rendering=Rendering
+angelica.debug.target=Targeted Block
+angelica.debug.other=Additional Info
