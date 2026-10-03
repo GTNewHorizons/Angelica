@@ -239,3 +239,12 @@ sodium.options.upload_method.buffer_subdata=部分更新 (BufferSubData)
 sodium.options.upload_method.map_buffer=内存映射 (MapBufferRange)
 sodium.options.enable_deferred_batching.name=延迟粒子渲染
 sodium.options.enable_deferred_batching.tooltip=按层合并粒子绘制调用，减少绘制次数。如果粒子渲染不正确请禁用此项
+
+angelica.debug.game=游戏
+angelica.debug.position=位置
+angelica.debug.world=世界
+angelica.debug.memory=内存
+angelica.debug.system=系统信息
+angelica.debug.rendering=渲染
+angelica.debug.target=指向的方块
+angelica.debug.other=其他信息

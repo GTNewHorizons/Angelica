@@ -379,3 +379,12 @@ sodium.options.upload_method.buffer_subdata=BufferSubData
 sodium.options.upload_method.map_buffer=MapBufferRange
 sodium.options.enable_deferred_batching.name=Particle Batching
 sodium.options.enable_deferred_batching.tooltip=Draws particles as instanced quads, or merged draws where instancing is unavailable. Disable if particles render incorrectly.
+
+angelica.debug.game=Game
+angelica.debug.position=Position
+angelica.debug.world=World
+angelica.debug.memory=Memory
+angelica.debug.system=System Specs
+angelica.debug.rendering=Rendering
+angelica.debug.target=Targeted Block
+angelica.debug.other=Additional Info
