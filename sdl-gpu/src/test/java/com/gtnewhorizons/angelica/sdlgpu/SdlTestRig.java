@@ -14,6 +14,7 @@ import java.lang.reflect.Field;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
 import static org.lwjgl.sdl.SDLGPU.SDL_CreateGPUDevice;
 import static org.lwjgl.sdl.SDLGPU.SDL_DestroyGPUDevice;
+import static org.lwjgl.sdl.SDLGPU.SDL_GetGPUDeviceDriver;
 import static org.lwjgl.sdl.SDLGPU.SDL_GetGPUShaderFormats;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_SHADERFORMAT_DXBC;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_SHADERFORMAT_DXIL;
@@ -21,6 +22,7 @@ import static org.lwjgl.sdl.SDLGPU.SDL_GPU_SHADERFORMAT_MSL;
 import static org.lwjgl.sdl.SDLGPU.SDL_GPU_SHADERFORMAT_SPIRV;
 import static org.lwjgl.sdl.SDLGPU.SDL_WaitForGPUIdle;
 import static org.lwjgl.sdl.SDLInit.SDL_INIT_VIDEO;
+import static org.lwjgl.sdl.SDLVersion.SDL_GetVersion;
 
 public final class SdlTestRig {
 
@@ -39,6 +41,8 @@ public final class SdlTestRig {
             final Field formatsField = Device.class.getDeclaredField("supportedShaderFormats");
             formatsField.setAccessible(true);
             formatsField.setInt(this.device, SDL_GetGPUShaderFormats(sdlHandle));
+            Reflect.set(this.device, "driverName", SDL_GetGPUDeviceDriver(sdlHandle));
+            Reflect.invoke(this.device, "probeFences", new Class<?>[] { int.class }, SDL_GetVersion());
         }
         this.frameManager = new FrameManager(device);
         this.resourceManager = new ResourceManager(device, frameManager);

@@ -4,7 +4,7 @@ import java.util.function.LongConsumer;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.Hashing;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.lwjgl.PointerBuffer;
+import com.gtnewhorizons.angelica.sdlgpu.device.FenceWait;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
 import org.lwjgl.opengl.GL13;
@@ -47,6 +47,7 @@ import static org.lwjgl.system.MemoryUtil.memFree;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.texture.TextureStaging;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import com.gtnewhorizons.angelica.sdlgpu.frame.FrameManager;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.EBOSplitScanner;
@@ -1561,7 +1562,7 @@ public final class ResourceManager {
         f.arenaCopyPass = SDL_BeginGPUCopyPass(f.arenaCommandBuffer);
         if (f.arenaCopyPass == 0) {
             LOG.error("Failed to begin arena copy pass: {}", SDLError.SDL_GetError());
-            SDL_SubmitGPUCommandBuffer(f.arenaCommandBuffer);
+            Submits.submit(f.arenaCommandBuffer);
             f.arenaCommandBuffer = 0;
             unmapArena(f);
             return false;
@@ -1589,7 +1590,7 @@ public final class ResourceManager {
             f.arenaCopyPass = 0;
         }
         if (f.arenaCommandBuffer != 0) {
-            if (!SDL_SubmitGPUCommandBuffer(f.arenaCommandBuffer)) {
+            if (!Submits.submit(f.arenaCommandBuffer)) {
                 device.reportGpuFailure("submit arena upload command buffer");
             }
             f.arenaCommandBuffer = 0;
@@ -1884,17 +1885,16 @@ public final class ResourceManager {
             SDL_DownloadFromGPUTexture(copyPass, src, dst);
             SDL_EndGPUCopyPass(copyPass);
 
-            final long fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commandBuffer);
+            final long fence = Submits.submitAndAcquireFence(commandBuffer);
             if (fence == 0) {
                 LOG.error("Failed to submit download command buffer: {}", SDLError.SDL_GetError());
                 SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
                 return;
             }
             try {
-                final PointerBuffer fences = stack.pointers(fence);
-                SDL_WaitForGPUFences(device.getDevice(), true, fences);
+                FenceWait.await(device, fence, FenceWait.FOREVER);
             } finally {
-                SDL_ReleaseGPUFence(device.getDevice(), fence);
+                device.fenceReleaser().release(fence);
             }
 
             final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
@@ -1937,17 +1937,16 @@ public final class ResourceManager {
             SDL_DownloadFromGPUBuffer(copyPass, src, dst);
             SDL_EndGPUCopyPass(copyPass);
 
-            final long fence = SDL_SubmitGPUCommandBufferAndAcquireFence(commandBuffer);
+            final long fence = Submits.submitAndAcquireFence(commandBuffer);
             if (fence == 0) {
                 LOG.error("Failed to submit buffer download command buffer: {}", SDLError.SDL_GetError());
                 SDL_ReleaseGPUTransferBuffer(device.getDevice(), xfer);
                 return;
             }
             try {
-                final PointerBuffer fences = stack.pointers(fence);
-                SDL_WaitForGPUFences(device.getDevice(), true, fences);
+                FenceWait.await(device, fence, FenceWait.FOREVER);
             } finally {
-                SDL_ReleaseGPUFence(device.getDevice(), fence);
+                device.fenceReleaser().release(fence);
             }
 
             final long mappedPtr = nSDL_MapGPUTransferBuffer(device.getDevice(), xfer, false);
@@ -2124,7 +2123,7 @@ public final class ResourceManager {
                 SDL_UploadToGPUTexture(copyPass, src, dst, false);
                 SDL_EndGPUCopyPass(copyPass);
             }
-            SDL_SubmitGPUCommandBuffer(cb);
+            Submits.submit(cb);
         }
         releaseTransferBuffer(xfer);
     }
@@ -2151,7 +2150,7 @@ public final class ResourceManager {
                 SDL_UploadToGPUBuffer(copyPass, src, dst, false);
                 SDL_EndGPUCopyPass(copyPass);
             }
-            SDL_SubmitGPUCommandBuffer(cb);
+            Submits.submit(cb);
         }
         releaseTransferBuffer(xfer);
     }
@@ -2264,7 +2263,7 @@ public final class ResourceManager {
                     final var dst = SDL_GPUBufferRegion.calloc(stack).buffer(dummyVertexBuffer).offset(0).size(DUMMY_VBO_SIZE);
                     SDL_UploadToGPUBuffer(copyPass, src, dst, false);
                     SDL_EndGPUCopyPass(copyPass);
-                    SDL_SubmitGPUCommandBuffer(cb);
+                    Submits.submit(cb);
                 }
                 releaseTransferBufferHandle(xfer);
             }

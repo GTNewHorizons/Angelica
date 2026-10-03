@@ -2,8 +2,11 @@ package com.gtnewhorizons.angelica.sdlgpu.frame;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
+import com.gtnewhorizons.angelica.glsm.profiling.DebugCounters;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.resource.FboState;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import com.gtnewhorizons.angelica.sdlgpu.util.MemoryAccess;
@@ -584,14 +587,7 @@ public final class FrameManager {
         if (f.commandBuffer != 0) {
             Tracy.beginZone(Z_SDL_SUBMIT);
             try {
-                if (f.wantFenceOnNextSubmit) {
-                    f.wantFenceOnNextSubmit = false;
-                    if (f.lastAcquiredFence != 0) SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
-                    f.lastAcquiredFence = SDL_SubmitGPUCommandBufferAndAcquireFence(f.commandBuffer);
-                    if (f.lastAcquiredFence == 0) {
-                        device.reportGpuFailure("submit+acquireFence GPU command buffer");
-                    }
-                } else if (!SDL_SubmitGPUCommandBuffer(f.commandBuffer)) {
+                if (!submitTracked(f, f.commandBuffer)) {
                     device.reportGpuFailure("submit GPU command buffer");
                 }
             } finally {
@@ -658,14 +654,7 @@ public final class FrameManager {
         endRenderPassIfActive(f, PASS_END_FRAME_END);
         Tracy.beginZone(Z_SDL_SUBMIT);
         try {
-            if (f.wantFenceOnNextSubmit) {
-                f.wantFenceOnNextSubmit = false;
-                if (f.lastAcquiredFence != 0) SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
-                f.lastAcquiredFence = SDL_SubmitGPUCommandBufferAndAcquireFence(f.commandBuffer);
-                if (f.lastAcquiredFence == 0) {
-                    device.reportGpuFailure("mid-frame submit+acquireFence");
-                }
-            } else if (!SDL_SubmitGPUCommandBuffer(f.commandBuffer)) {
+            if (!submitTracked(f, f.commandBuffer)) {
                 device.reportGpuFailure("mid-frame submit");
             }
         } finally {
@@ -737,6 +726,14 @@ public final class FrameManager {
         flushPendingUploadCommandBuffer(frame());
     }
 
+    private boolean submitTracked(FrameState f, long cb) {
+        if (!f.wantFenceOnNextSubmit) return Submits.submit(cb);
+        f.wantFenceOnNextSubmit = false;
+        if (f.lastAcquiredFence != 0) device.fenceReleaser().release(f.lastAcquiredFence);
+        f.lastAcquiredFence = Submits.submitAndAcquireFence(cb);
+        return f.lastAcquiredFence != 0;
+    }
+
     private void flushPendingUploadCommandBuffer(FrameState f) {
         final boolean sync = f.syncOnNextFlush;
         if (f.pendingUploadCommandBuffer == 0) {
@@ -753,14 +750,7 @@ public final class FrameManager {
             Tracy.beginZone(Z_SDL_SUBMIT);
             final boolean submitted;
             try {
-                if (f.wantFenceOnNextSubmit) {
-                    f.wantFenceOnNextSubmit = false;
-                    if (f.lastAcquiredFence != 0) SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
-                    f.lastAcquiredFence = SDL_SubmitGPUCommandBufferAndAcquireFence(f.pendingUploadCommandBuffer);
-                    submitted = f.lastAcquiredFence != 0;
-                } else {
-                    submitted = SDL_SubmitGPUCommandBuffer(f.pendingUploadCommandBuffer);
-                }
+                submitted = submitTracked(f, f.pendingUploadCommandBuffer);
             } finally {
                 Tracy.endZone();
             }
@@ -907,7 +897,7 @@ public final class FrameManager {
         f.uboPushViewSource.clear();
 
         if (f.lastAcquiredFence != 0) {
-            SDL_ReleaseGPUFence(device.getDevice(), f.lastAcquiredFence);
+            device.fenceReleaser().release(f.lastAcquiredFence);
             f.lastAcquiredFence = 0;
         }
     }
@@ -947,7 +937,11 @@ public final class FrameManager {
         final Presenter p = presenter;
         if (p != null) {
             f.presentedThisFrame = true;
-            p.requestPresent(srcTexture, srcW, srcH, flipMode);
+            if (!splash && BackendManager.RENDER_BACKEND.getEffectiveVSyncMode() == VSyncMode.OFF) {
+                if (!p.tryRequestPresent(srcTexture, srcW, srcH, flipMode)) notePresentSkip(f);
+            } else {
+                p.requestPresent(srcTexture, srcW, srcH, flipMode);
+            }
         } else {
             presentBlit(f, srcTexture, srcW, srcH, flipMode);
         }
@@ -1027,7 +1021,7 @@ public final class FrameManager {
             final IntBuffer pHeight = stack.ints(0);
             Tracy.beginZone(Z_SDL_ACQUIRE_WAIT);
             try {
-                callOk = SDL_AcquireGPUSwapchainTexture(cb, window, pTexture, pWidth, pHeight);
+                callOk = device.isFenceQueryInverted() ? SDL_WaitAndAcquireGPUSwapchainTexture(cb, window, pTexture, pWidth, pHeight) : SDL_AcquireGPUSwapchainTexture(cb, window, pTexture, pWidth, pHeight);
             } finally {
                 Tracy.endZone();
             }
@@ -1042,6 +1036,7 @@ public final class FrameManager {
         final long tEnd = System.nanoTime();
 
         if (!callOk || tex == 0) {
+            if (callOk) DebugCounters.EMPTY_ACQUIRES.increment();
             SDL_CancelGPUCommandBuffer(cb);
             f.swapchainUnavailable = true;
             notePresentSkip(f);
@@ -1060,10 +1055,11 @@ public final class FrameManager {
             nSDL_BlitGPUTexture(cb, info);
         }
 
-        if (!SDL_SubmitGPUCommandBuffer(cb)) {
+        if (!Submits.submit(cb)) {
             device.reportGpuFailure("submit present blit");
             return false;
         }
+        DebugCounters.PRESENTS.increment();
         f.presentedThisFrame = true;
         if (afterPresent != null) afterPresent.run();
         return true;

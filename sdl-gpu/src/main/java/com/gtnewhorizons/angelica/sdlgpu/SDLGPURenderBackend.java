@@ -62,6 +62,7 @@ import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -143,6 +144,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
 
     private final FenceTracker fenceTracker = new FenceTracker(device, frameManager);
+    private final LongArrayFIFOQueue frameSyncs = new LongArrayFIFOQueue();
     private final FBOClearTracker fboClearTracker = new FBOClearTracker(frameManager, resourceManager, shaderManager);
     private final SamplerBinder samplerBinder = new SamplerBinder(device, resourceManager, shaderManager);
     private final StorageTextureBinder storageTextureBinder = new StorageTextureBinder(resourceManager, shaderManager);
@@ -331,7 +333,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         fenceTracker.setUnresolvedFenceFlush(this::midFrameFenceFlush);
         frameManager.setMainThread(GLStateManager.getMainThread());
         if (!SystemProperties.DISABLE_SDL_PRESENTER_THREAD) {
-            presenter = new Presenter(frameManager, MainStartOnFirstThread.instance());
+            presenter = new Presenter(frameManager, MainStartOnFirstThread.instance(), Pump.INSTANCE);
             frameManager.setPresenter(presenter);
             LOG.info("SDL presenter thread enabled: presents run on '{}'", device.getWindowThread() != null ? device.getWindowThread().getName() : "window thread");
         }
@@ -488,6 +490,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         SDL_WaitForGPUIdle(dev);
         frameManager.endFrame();
         readbackShadows.dispose();
+        frameSyncs.clear();
         fenceTracker.dispose();
         frameManager.releaseAllRegisteredFrames();
         resourceManager.shutdownTexSamplerStates();
@@ -714,7 +717,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private void drainDeferredPersistentRegions(ContextState st) {
         if (!st.deferUploads) return;
         st.drawsSincePersistentDrain = 0;
-        persistentSync.enqueueDirtyPersistentRegions();
+        if (persistentSync.enqueueDirtyPersistentRegions() > 0) wakeTransferThread();
     }
 
     private void awaitUploadFlush() {
@@ -733,8 +736,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void onFrameEnd() {
         if (shutdown) return;
-        requestUploadFlush();
         endFrameUploadFlushNoWait();
+        requestUploadFlush();
 
         final FrameState f = frameManager.frame();
         if (f.frameActive && !f.fbo0UsedThisFrame) {
@@ -748,9 +751,19 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (f.frameActive) fboClearTracker.materializeAllPendingClears(s());
         awaitUploadFlush();
         if (SystemProperties.FFP_TRACE) ffpTrace.frameEnd(f);
+        final long frameSync = f.frameActive ? fenceTracker.fenceSync() : 0L;
         frameManager.endFrame();
         frameManager.presentFinalTarget();
         fenceTracker.resolvePendingFences();
+        device.fenceReleaser().drain();
+        if (frameSync != 0L) {
+            frameSyncs.enqueue(frameSync);
+            while (frameSyncs.size() > Device.MAX_FRAMES_IN_FLIGHT - 1) {
+                final long sync = frameSyncs.dequeueLong();
+                fenceTracker.clientWaitSync(sync, 0, Long.MAX_VALUE);
+                fenceTracker.deleteSync(sync);
+            }
+        }
         resourceManager.flushDeferredReleases();
         resourceManager.recycleGpuBufferPool(frameManager.getFrameNumber());
     }
@@ -1777,34 +1790,12 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void samplerParameteri(int sampler, int pname, int param) {
         if (sampler == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateSamplerObject(sampler);
-        switch (pname) {
-            case GL11.GL_TEXTURE_MIN_FILTER -> ss.minFilter = param;
-            case GL11.GL_TEXTURE_MAG_FILTER -> ss.magFilter = param;
-            case GL11.GL_TEXTURE_WRAP_S -> ss.wrapS = param;
-            case GL11.GL_TEXTURE_WRAP_T -> ss.wrapT = param;
-            case GL12.GL_TEXTURE_WRAP_R -> ss.wrapR = param;
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = (float) param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = (float) param;
-            case GL14.GL_TEXTURE_COMPARE_MODE -> ss.compareMode = param;
-            case GL14.GL_TEXTURE_COMPARE_FUNC -> ss.compareFunc = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { return; }
-        }
-        ss.sdlSampler = 0;
-        s().samplerBindGen++;
+        if (ss.invalidate(ss.seti(pname, param))) s().samplerBindGen++;
     }
     @Override public void samplerParameterf(int sampler, int pname, float param) {
         if (sampler == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateSamplerObject(sampler);
-        switch (pname) {
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = param;
-            case GL14.GL_TEXTURE_LOD_BIAS -> ss.lodBias = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { samplerParameteri(sampler, pname, (int) param); return; }
-        }
-        ss.sdlSampler = 0;
-        s().samplerBindGen++;
+        if (ss.invalidate(ss.setf(pname, param))) s().samplerBindGen++;
     }
 
     @Override public int genFramebuffers() {

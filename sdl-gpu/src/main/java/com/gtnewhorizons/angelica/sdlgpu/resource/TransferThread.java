@@ -10,13 +10,15 @@ import org.lwjgl.sdl.SDL_GPUTransferBufferLocation;
 import org.lwjgl.sdl.SDLError;
 
 import java.nio.ByteBuffer;
-import java.util.concurrent.ConcurrentLinkedQueue;
+import java.util.ArrayDeque;
 import java.util.concurrent.atomic.AtomicLong;
 import java.util.concurrent.locks.LockSupport;
 
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.profiling.DebugCounters;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyBackend;
 import com.gtnewhorizons.angelica.sdlgpu.device.Device;
+import com.gtnewhorizons.angelica.sdlgpu.device.Submits;
 import com.gtnewhorizons.angelica.sdlgpu.device.GpuDeviceLostException;
 import com.gtnewhorizons.angelica.sdlgpu.resource.ResourceManager;
 import it.unimi.dsi.fastutil.longs.LongArrayList;
@@ -44,7 +46,7 @@ public final class TransferThread {
     private final Device device;
     private final ResourceManager resourceManager;
     private final Thread thread;
-    private final ConcurrentLinkedQueue<DeferredUpload> queue = new ConcurrentLinkedQueue<>();
+    private final ArrayDeque<DeferredUpload> queue = new ArrayDeque<>();
     private volatile long submittedSeq;
     private volatile long flushRequestedSeq;
     private volatile boolean shutdown;
@@ -71,6 +73,7 @@ public final class TransferThread {
     private static final long FLUSH_COALESCE_BYTES = 8L * 1024 * 1024;
     private static final int FLUSH_COALESCE_COMMANDS = 128;
     private static final long WAKE_COALESCE_ENQUEUES = 16;
+    private static final long AWAIT_SPIN_NS = 30_000L;
 
     private long openCB;
     private long openCopyPass;
@@ -87,8 +90,8 @@ public final class TransferThread {
     private final SDL_GPUTextureTransferInfo texXferInfo = SDL_GPUTextureTransferInfo.calloc();
     private final SDL_GPUTextureRegion texRegion = SDL_GPUTextureRegion.calloc();
 
-    private static final ConcurrentLinkedQueue<PendingFree> FREE_POOL = new ConcurrentLinkedQueue<>();
-    private final ConcurrentLinkedQueue<PendingFree> pendingFrees = new ConcurrentLinkedQueue<>();
+    private final ArrayDeque<PendingFree> freePool = new ArrayDeque<>();
+    private final ArrayDeque<PendingFree> pendingFrees = new ArrayDeque<>();
 
     public TransferThread(Device device, ResourceManager resourceManager) {
         this.device = device;
@@ -103,8 +106,16 @@ public final class TransferThread {
     public long getSubmittedSeq() { return submittedSeq; }
 
     public void enqueue(DeferredUpload upload) {
-        queue.offer(upload);
+        synchronized (queue) { queue.addLast(upload); }
         if (shouldWakeOnEnqueue(upload.seq())) wake();
+    }
+
+    private DeferredUpload pollUpload() {
+        synchronized (queue) { return queue.pollFirst(); }
+    }
+
+    private boolean queueEmpty() {
+        synchronized (queue) { return queue.isEmpty(); }
     }
 
     static boolean shouldWakeOnEnqueue(long seq) {
@@ -123,32 +134,38 @@ public final class TransferThread {
     public void freeAfterSeq(ByteBuffer buf, long seq) {
         if (buf == null) return;
         if (seq <= submittedSeq) { MemoryUtil.memFree(buf); return; }
-        PendingFree pf = FREE_POOL.poll();
-        if (pf == null) pf = new PendingFree();
-        pf.seq = seq;
-        pf.buf = buf;
-        pendingFrees.offer(pf);
+        synchronized (pendingFrees) {
+            PendingFree pf = freePool.pollLast();
+            if (pf == null) pf = new PendingFree();
+            pf.seq = seq;
+            pf.buf = buf;
+            pendingFrees.addLast(pf);
+        }
         wake();
     }
 
     private void drainDuePendingFrees() {
         final long sub = submittedSeq;
-        PendingFree head = pendingFrees.peek();
-        while (head != null && head.seq <= sub) {
-            pendingFrees.poll();
-            MemoryUtil.memFree(head.buf);
-            head.buf = null;
-            FREE_POOL.offer(head);
-            head = pendingFrees.peek();
+        synchronized (pendingFrees) {
+            PendingFree head = pendingFrees.peekFirst();
+            while (head != null && head.seq <= sub) {
+                pendingFrees.pollFirst();
+                MemoryUtil.memFree(head.buf);
+                head.buf = null;
+                freePool.addLast(head);
+                head = pendingFrees.peekFirst();
+            }
         }
     }
 
     private void drainAllPendingFreesOnShutdown() {
-        PendingFree pf;
-        while ((pf = pendingFrees.poll()) != null) {
-            MemoryUtil.memFree(pf.buf);
-            pf.buf = null;
-            FREE_POOL.offer(pf);
+        synchronized (pendingFrees) {
+            PendingFree pf;
+            while ((pf = pendingFrees.pollFirst()) != null) {
+                MemoryUtil.memFree(pf.buf);
+                pf.buf = null;
+                freePool.addLast(pf);
+            }
         }
     }
 
@@ -165,19 +182,31 @@ public final class TransferThread {
         if (seq > flushRequestedSeq) flushRequestedSeq = seq;
         LockSupport.unpark(thread);
         final long startNs = System.nanoTime();
-        synchronized (submittedLock) {
-            while (submittedSeq < seq) {
-                try {
-                    submittedLock.wait();
-                } catch (InterruptedException e) {
-                    Thread.currentThread().interrupt();
-                    break;
+        if (!spinUntilSubmitted(seq)) {
+            synchronized (submittedLock) {
+                while (submittedSeq < seq) {
+                    try {
+                        submittedLock.wait();
+                    } catch (InterruptedException e) {
+                        Thread.currentThread().interrupt();
+                        break;
+                    }
                 }
             }
         }
         final long waitNs = System.nanoTime() - startNs;
         if (waitNs > maxWaitNs) maxWaitNs = waitNs;
         pendingFrameWaitNanos += waitNs;
+        DebugCounters.TRANSFER_WAIT_NANOS.add(waitNs);
+    }
+
+    private boolean spinUntilSubmitted(long seq) {
+        final long start = System.nanoTime();
+        while (submittedSeq < seq) {
+            if (System.nanoTime() - start >= AWAIT_SPIN_NS) return false;
+            Thread.onSpinWait();
+        }
+        return true;
     }
 
     public void shutdown() {
@@ -234,11 +263,11 @@ public final class TransferThread {
             while (!shutdown) {
                 final long workStart = Tracy.ENABLED ? System.nanoTime() : 0L;
                 // Drain all pending uploads
-                DeferredUpload upload = queue.poll();
+                DeferredUpload upload = pollUpload();
                 if (upload != null) {
                     do {
                         processOne(upload);
-                        upload = queue.poll();
+                        upload = pollUpload();
                     } while (upload != null);
                 }
 
@@ -251,9 +280,9 @@ public final class TransferThread {
 
                 if (Tracy.ENABLED) pendingActiveNanos += System.nanoTime() - workStart;
 
-                if (queue.isEmpty() && !shutdown) {
+                if (queueEmpty() && !shutdown) {
                     parked = true;
-                    if (queue.isEmpty() && !shutdown && flushRequestedSeq <= submittedSeq) {
+                    if (queueEmpty() && !shutdown && flushRequestedSeq <= submittedSeq) {
                         LockSupport.parkNanos(1_000_000L); // 1ms
                     }
                     parked = false;
@@ -405,7 +434,7 @@ public final class TransferThread {
         if (openCB == 0) return;
 
         SDL_EndGPUCopyPass(openCopyPass);
-        if (!SDL_SubmitGPUCommandBuffer(openCB)) {
+        if (!Submits.submit(openCB)) {
             device.reportGpuFailure("submit transfer command buffer");
         }
 
@@ -459,7 +488,7 @@ public final class TransferThread {
     }
 
     public static final class StagingReadUpload implements DeferredUpload {
-        private static final ConcurrentLinkedQueue<StagingReadUpload> POOL = new ConcurrentLinkedQueue<>();
+        private static final ArrayDeque<StagingReadUpload> POOL = new ArrayDeque<>();
 
         public ByteBuffer stagingBuffer;
         public long srcOffset;
@@ -471,8 +500,8 @@ public final class TransferThread {
 
         private StagingReadUpload() {}
 
-        public static StagingReadUpload acquire(ByteBuffer stagingBuffer, long srcOffset, long size, long dstGpuBuffer, long dstOffset, long seq, boolean cycle) {
-            StagingReadUpload obj = POOL.poll();
+        public static synchronized StagingReadUpload acquire(ByteBuffer stagingBuffer, long srcOffset, long size, long dstGpuBuffer, long dstOffset, long seq, boolean cycle) {
+            StagingReadUpload obj = POOL.pollLast();
             if (obj == null) obj = new StagingReadUpload();
             obj.stagingBuffer = stagingBuffer;
             obj.srcOffset = srcOffset;
@@ -484,16 +513,16 @@ public final class TransferThread {
             return obj;
         }
 
-        public static void release(StagingReadUpload obj) {
+        public static synchronized void release(StagingReadUpload obj) {
             obj.stagingBuffer = null;
-            POOL.offer(obj);
+            POOL.addLast(obj);
         }
 
         @Override public long seq() { return seq; }
     }
 
     public static final class PreCopiedUpload implements DeferredUpload {
-        private static final ConcurrentLinkedQueue<PreCopiedUpload> POOL = new ConcurrentLinkedQueue<>();
+        private static final ArrayDeque<PreCopiedUpload> POOL = new ArrayDeque<>();
 
         public long transferBuffer;
         public long size;
@@ -504,8 +533,8 @@ public final class TransferThread {
 
         private PreCopiedUpload() {}
 
-        public static PreCopiedUpload acquire(long transferBuffer, long size, long dstGpuBuffer, long dstOffset, long seq, boolean cycle) {
-            PreCopiedUpload obj = POOL.poll();
+        public static synchronized PreCopiedUpload acquire(long transferBuffer, long size, long dstGpuBuffer, long dstOffset, long seq, boolean cycle) {
+            PreCopiedUpload obj = POOL.pollLast();
             if (obj == null) obj = new PreCopiedUpload();
             obj.transferBuffer = transferBuffer;
             obj.size = size;
@@ -516,15 +545,15 @@ public final class TransferThread {
             return obj;
         }
 
-        public static void release(PreCopiedUpload obj) {
-            POOL.offer(obj);
+        public static synchronized void release(PreCopiedUpload obj) {
+            POOL.addLast(obj);
         }
 
         @Override public long seq() { return seq; }
     }
 
     public static final class GpuCopyUpload implements DeferredUpload {
-        private static final ConcurrentLinkedQueue<GpuCopyUpload> POOL = new ConcurrentLinkedQueue<>();
+        private static final ArrayDeque<GpuCopyUpload> POOL = new ArrayDeque<>();
 
         public long srcHandle;
         public long dstHandle;
@@ -535,9 +564,9 @@ public final class TransferThread {
 
         private GpuCopyUpload() {}
 
-        public static GpuCopyUpload acquire(long srcHandle, long dstHandle, long readOffset,
+        public static synchronized GpuCopyUpload acquire(long srcHandle, long dstHandle, long readOffset,
                                      long writeOffset, long size, long seq) {
-            GpuCopyUpload obj = POOL.poll();
+            GpuCopyUpload obj = POOL.pollLast();
             if (obj == null) obj = new GpuCopyUpload();
             obj.srcHandle = srcHandle;
             obj.dstHandle = dstHandle;
@@ -548,15 +577,15 @@ public final class TransferThread {
             return obj;
         }
 
-        public static void release(GpuCopyUpload obj) {
-            POOL.offer(obj);
+        public static synchronized void release(GpuCopyUpload obj) {
+            POOL.addLast(obj);
         }
 
         @Override public long seq() { return seq; }
     }
 
     public static final class TextureRegionUpload implements DeferredUpload {
-        private static final ConcurrentLinkedQueue<TextureRegionUpload> POOL = new ConcurrentLinkedQueue<>();
+        private static final ArrayDeque<TextureRegionUpload> POOL = new ArrayDeque<>();
 
         public long transferBuffer;
         public long texHandle;
@@ -570,8 +599,8 @@ public final class TransferThread {
 
         private TextureRegionUpload() {}
 
-        public static TextureRegionUpload acquire(long transferBuffer, long texHandle, int x, int y, int w, int h, int level, long size, long seq) {
-            TextureRegionUpload obj = POOL.poll();
+        public static synchronized TextureRegionUpload acquire(long transferBuffer, long texHandle, int x, int y, int w, int h, int level, long size, long seq) {
+            TextureRegionUpload obj = POOL.pollLast();
             if (obj == null) obj = new TextureRegionUpload();
             obj.transferBuffer = transferBuffer;
             obj.texHandle = texHandle;
@@ -585,8 +614,8 @@ public final class TransferThread {
             return obj;
         }
 
-        public static void release(TextureRegionUpload obj) {
-            POOL.offer(obj);
+        public static synchronized void release(TextureRegionUpload obj) {
+            POOL.addLast(obj);
         }
 
         @Override public long seq() { return seq; }

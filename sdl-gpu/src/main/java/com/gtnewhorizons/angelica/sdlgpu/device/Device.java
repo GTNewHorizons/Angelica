@@ -44,6 +44,9 @@ public final class Device {
     private boolean claimed;
     private int supportedShaderFormats;
     private String driverName;
+    private boolean fencePollEnabled;
+    private boolean fenceQueryInverted;
+    private final FenceReleaser fenceReleaser = new FenceReleaser(fence -> device == 0 || FenceWait.isSignaled(this, fence), fence -> { if (device != 0) SDL_ReleaseGPUFence(device, fence); });
     private String deviceName;
     private String driverVersion;
     private String driverInfo;
@@ -84,8 +87,12 @@ public final class Device {
         return userHint.isEmpty() && windows ? "vulkan" : null;
     }
 
+    static boolean isMetal(String driverName) {
+        return "metal".equalsIgnoreCase(driverName);
+    }
+
     static boolean metalNeedsNewerSdl(String driverName, int sdlVersion) {
-        return "metal".equalsIgnoreCase(driverName) && sdlVersion < SDLVersion.SDL_VERSIONNUM(3, 4, 6);
+        return isMetal(driverName) && sdlVersion < SDLVersion.SDL_VERSIONNUM(3, 4, 6);
     }
 
     public boolean createDevice() {
@@ -129,7 +136,19 @@ public final class Device {
             return false;
         }
 
+        probeFences(ver);
+
         return true;
+    }
+
+    private void probeFences(int ver) {
+        fencePollEnabled = FenceWait.pollEnabled(driverName, ver);
+        final boolean expectInverted = isMetal(driverName) && ver == SDLVersion.SDL_VERSIONNUM(3, 4, 14);
+        fenceQueryInverted = FenceProbe.queryInverted(device, driverName, expectInverted);
+        LOG.info("SDL {}.{}.{} driver={} fenceQueryInverted={} fencePoll={}", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver), driverName, fenceQueryInverted, fencePollEnabled);
+        if (fenceQueryInverted != expectInverted) {
+            LOG.warn("Fence query probe disagrees with the SDL version table: inverted={}, expected {}", fenceQueryInverted, expectInverted);
+        }
     }
 
     private long createGPUDevice(boolean gpuDebug, String forcedDriver) {
@@ -204,9 +223,12 @@ public final class Device {
             if (window != 0) SDL_ReleaseWindowFromGPUDevice(device, window);
             claimed = false;
         }
+        fenceReleaser.releaseAll();
         SDL_DestroyGPUDevice(device);
         device = 0;
         driverName = null;
+        fencePollEnabled = false;
+        fenceQueryInverted = false;
         deviceName = null;
         driverVersion = null;
         driverInfo = null;
@@ -266,6 +288,18 @@ public final class Device {
 
     public String getDriverName() {
         return driverName;
+    }
+
+    public boolean isFencePollEnabled() {
+        return fencePollEnabled;
+    }
+
+    public boolean isFenceQueryInverted() {
+        return fenceQueryInverted;
+    }
+
+    public FenceReleaser fenceReleaser() {
+        return fenceReleaser;
     }
 
     public Thread getWindowThread() {
