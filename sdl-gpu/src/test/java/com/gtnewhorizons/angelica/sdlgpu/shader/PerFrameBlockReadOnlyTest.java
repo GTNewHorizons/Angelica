@@ -30,7 +30,7 @@ class PerFrameBlockReadOnlyTest {
 
     @Test
     void injectedBlocksAreDecoratedNonWritable() {
-        final String injected = PerFrameBlockInjector.inject(DUAL_SOURCE, BLOCK, PER_PASS);
+        final String injected = ShaderTransformChain.inject(DUAL_SOURCE, BLOCK, PER_PASS);
         final SpirvCompiler.Result r = SpirvCompiler.compile(injected, Shaderc.shaderc_fragment_shader, "readonly.frag", SpirvCompiler.Options.vulkanForced460Core());
         assertNotNull(r.spirv(), () -> "compile failed: " + r.error());
 

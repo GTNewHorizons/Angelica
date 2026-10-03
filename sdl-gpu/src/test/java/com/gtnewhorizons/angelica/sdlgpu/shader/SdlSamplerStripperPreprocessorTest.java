@@ -18,7 +18,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "    float a = textureLod(u_S, vec2(0), 0.0).r;\n"
             + "#endif\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertTrue(out.contains("uniform sampler2D u_S"), "ref inside #if must keep the decl; output:\n" + out);
     }
 
@@ -33,7 +33,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "    float a = t * 2.0;\n"
             + "#endif\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertTrue(out.contains("uniform sampler2D u_S"),
             "unconditional ref must keep the decl; output:\n" + out);
     }
@@ -50,7 +50,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "    float b = textureLod(u_S, vec2(0), 0.0).r;\n"
             + "#endif\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertTrue(out.contains("uniform sampler2D u_S"), "refs in both branches must keep the decl; output:\n" + out);
     }
 
@@ -72,7 +72,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "    fragColor = texture(u_BlockTex, v_TexCoord);\n"
             + "#endif\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertTrue(out.contains("uniform sampler2D u_BlockTex"), "terrain sampler must survive; output:\n" + out);
     }
 
@@ -86,7 +86,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "    float a = 1.0;\n"
             + "#endif\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertFalse(out.contains("uniform sampler2D iris_centerDepthSmooth"), "an unreferenced sampler must still be stripped; output:\n" + out);
     }
 
@@ -101,7 +101,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "    float a = 1.0;\n"
             + "#endif\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertFalse(out.contains("uniform sampler2D u_S"), "a comment mention must not keep the decl; output:\n" + out);
     }
 
@@ -112,7 +112,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "void main() {\n"
             + "    gl_Position = vec4(v_Position, 1.0);\n"
             + "}\n";
-        assertSame(src, SamplerStripper.stripUnused(src));
+        assertSame(src, ShaderTransformChain.stripUnused(src));
     }
 
     @Test
@@ -123,7 +123,7 @@ class SdlSamplerStripperPreprocessorTest {
             + "void main() {\n"
             + "    float a = SAMPLE_IT();\n"
             + "}\n";
-        final String out = SamplerStripper.stripUnused(src);
+        final String out = ShaderTransformChain.stripUnused(src);
         assertTrue(out.contains("uniform sampler2D u_S"), "a macro-body ref must keep the decl; output:\n" + out);
     }
 }

@@ -1,8 +1,13 @@
 package com.gtnewhorizons.angelica.glsm;
 
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.ValueSource;
+
+import java.nio.file.Path;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -871,5 +876,29 @@ class CompatShaderTransformerTest {
         assertTrue(c.contains("layout(location=0x1)invec4a_x"), "hex explicit location preserved\n\n" + c);
         assertNoLoc(c, 1, "vec4 a_y");   // must not collide with the hex-reserved slot
         assertLoc(c, 0, "vec4 a_y");
+    }
+
+    @Test
+    void diskCacheHitReplacesTransform(@TempDir Path dir) {
+        final String src = """
+            #version 120
+            void main() {
+                gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex;
+            }
+            """;
+        try {
+            ShaderDiskCache.configure(dir, "t");
+            CompatShaderTransformer.clearCache();
+            final String first = CompatShaderTransformer.transform(src, false);
+            assertTrue(first.contains("angelica_ProjectionMatrix"));
+            CompatShaderTransformer.clearCache();
+            assertEquals(first, CompatShaderTransformer.transform(src, false));
+            CompatShaderTransformer.clearCache();
+            ShaderDiskCache.putString(CompatShaderTransformer.diskKey(src, false), "POISON");
+            assertEquals("POISON", CompatShaderTransformer.transform(src, false));
+        } finally {
+            CompatShaderTransformer.clearCache();
+            Reflect.setStatic(ShaderDiskCache.class, "root", null);
+        }
     }
 }

@@ -1,17 +1,26 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader.dxbc;
 
+import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
+import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
 import com.gtnewhorizons.angelica.sdlgpu.shader.SpirvTestShaders;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledOnOs;
 import org.junit.jupiter.api.condition.OS;
+import org.junit.jupiter.api.io.TempDir;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL43;
 import org.lwjgl.system.MemoryUtil;
 import org.lwjgl.util.shaderc.Shaderc;
 
 import java.nio.ByteBuffer;
+import java.nio.charset.StandardCharsets;
+import java.nio.file.Path;
+import java.util.Map;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -21,6 +30,13 @@ import static org.junit.jupiter.api.Assertions.fail;
 
 @EnabledOnOs(OS.WINDOWS)
 class DxbcCompileTest {
+    private static CrossCompileCache cache() { return Reflect.getStatic(DxbcCrossCompile.class, "CACHE"); }
+
+    @AfterEach
+    void resetDiskCache() {
+        Reflect.setStatic(ShaderDiskCache.class, "root", null);
+        Reflect.<Map<?, ?>>get(cache(), "cache").clear();
+    }
 
     private static final byte DXBC_MAGIC_D = 'D';
     private static final byte DXBC_MAGIC_X = 'X';
@@ -34,7 +50,7 @@ class DxbcCompileTest {
         final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-            final DxbcCrossCompile.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
             try {
                 assertNotNull(out.code());
                 assertTrue(out.code().remaining() >= 4, "DXBC output too short");
@@ -53,7 +69,7 @@ class DxbcCompileTest {
         final ByteBuffer spirv = compile(SpirvTestShaders.FRAGMENT_GLSL, Shaderc.shaderc_fragment_shader);
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
-            final DxbcCrossCompile.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
             try {
                 assertNotNull(out.code());
                 assertTrue(out.code().remaining() >= 4, "DXBC output too short");
@@ -73,7 +89,7 @@ class DxbcCompileTest {
         final ByteBuffer spirv = compile(SpirvTestShaders.HIZ_INIT_GLSL, Shaderc.shaderc_compute_shader);
         try {
             ShaderManager.remapSpirvForComputeSDLGPU(spirv);
-            final DxbcCrossCompile.Output out = DxbcCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
+            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL43.GL_COMPUTE_SHADER);
             try {
                 assertNotNull(out.code());
                 assertTrue(out.code().remaining() >= 4, "DXBC compute output too short");
@@ -105,11 +121,34 @@ class DxbcCompileTest {
             final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
             try {
                 ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
-                final DxbcCrossCompile.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+                final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
                 MemoryUtil.memFree(out.code());
             } finally {
                 MemoryUtil.memFree(spirv);
             }
+        }
+    }
+
+    @Test
+    void diskCacheHitReturnsStoredBlob(@TempDir Path dir) {
+        ShaderDiskCache.configure(dir, "t");
+        Reflect.<Map<?, ?>>get(cache(), "cache").clear();
+        final ByteBuffer spirv = compile(SpirvTestShaders.VERTEX_GLSL, Shaderc.shaderc_vertex_shader);
+        try {
+            ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_VERTEX_SHADER);
+            final byte[] heap = ShaderCacheIO.toHeap(spirv);
+            MemoryUtil.memFree(DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER).code());
+            Reflect.<Map<?, ?>>get(cache(), "cache").clear();
+            ShaderDiskCache.putBlob(cache().diskKey(heap, GL20.GL_VERTEX_SHADER), "poison_entry", "poison".getBytes(StandardCharsets.UTF_8));
+            final CrossCompileCache.Output out = DxbcCrossCompile.compile(spirv, GL20.GL_VERTEX_SHADER);
+            try {
+                assertEquals("poison_entry", out.entrypoint());
+                assertEquals("poison", new String(ShaderCacheIO.toHeap(out.code()), StandardCharsets.UTF_8));
+            } finally {
+                MemoryUtil.memFree(out.code());
+            }
+        } finally {
+            MemoryUtil.memFree(spirv);
         }
     }
 

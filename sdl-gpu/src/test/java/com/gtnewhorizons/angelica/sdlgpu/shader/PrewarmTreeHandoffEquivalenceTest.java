@@ -34,9 +34,9 @@ class PrewarmTreeHandoffEquivalenceTest {
         final String finalSource = HEADER + printedBody;
 
         GlslVulkanPreprocess.clearCache();
-        final ShaderManager.PrewarmTransformResult reparse = ShaderManager.applyPrewarmTransformsFull(finalSource, glShaderType);
+        final ShaderManager.PrewarmTransformResult reparse = ShaderManager.applyPrewarmTransformsFull(finalSource, glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
         GlslVulkanPreprocess.clearCache();
-        final ShaderManager.PrewarmTransformResult treeFed = ShaderManager.applyPrewarmTransformsFull(finalSource, tree, HEADER.length(), glShaderType);
+        final ShaderManager.PrewarmTransformResult treeFed = ShaderManager.applyPrewarmTransformsFull(finalSource, tree, HEADER.length(), glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
 
         assertEquals(reparse.source(), treeFed.source(), "tree handoff diverged from re-parse for " + label);
         assertEquals(reparse.boolUniforms(), treeFed.boolUniforms(), "bool uniforms diverged for " + label);

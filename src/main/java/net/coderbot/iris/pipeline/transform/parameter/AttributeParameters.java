@@ -1,6 +1,7 @@
 package net.coderbot.iris.pipeline.transform.parameter;
 
 import com.gtnewhorizons.angelica.glsm.ffp.Instancing;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import net.coderbot.iris.gbuffer_overrides.matching.InputAvailability;
 import net.coderbot.iris.pipeline.transform.Patch;
 import net.coderbot.iris.shaderpack.texture.TextureStage;
@@ -25,6 +26,12 @@ public class AttributeParameters extends Parameters {
 	@Override
 	public TextureStage getTextureStage() {
 		return TextureStage.GBUFFERS_AND_SHADOW;
+	}
+
+	@Override
+	public void appendDiskKey(ShaderDiskCache.Key k) {
+		super.appendDiskKey(k);
+		k.b(hasGeometry).b(hasTesselation).str(inputs == null ? null : inputs.name()).b(scrollGlint).str(instancing.name());
 	}
 
 	@Override
