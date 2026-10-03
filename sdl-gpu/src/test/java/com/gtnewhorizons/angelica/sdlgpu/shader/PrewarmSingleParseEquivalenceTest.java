@@ -27,7 +27,7 @@ class PrewarmSingleParseEquivalenceTest {
         GlslVulkanPreprocess.clearCache();
         final String legacyOut = ShaderTransformChain.run(source, glShaderType);
         GlslVulkanPreprocess.clearCache();
-        final String parseOnceOut = ShaderManager.applyPrewarmTransforms(source, glShaderType);
+        final String parseOnceOut = ShaderManager.applyPrewarmTransformsFull(source, glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         assertEquals(legacyOut, parseOnceOut, "single-parse vs chained pipeline diverged for " + label);
     }
 
@@ -35,7 +35,7 @@ class PrewarmSingleParseEquivalenceTest {
         GlslVulkanPreprocess.clearCache();
         final String legacyOut = ShaderTransformChain.run(source, glShaderType);
         GlslVulkanPreprocess.clearCache();
-        final String parseOnceOut = ShaderManager.applyPrewarmTransforms(source, glShaderType);
+        final String parseOnceOut = ShaderManager.applyPrewarmTransformsFull(source, glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         assertEquals(legacyOut.replaceAll("\\s+", " "), parseOnceOut.replaceAll("\\s+", " "), "single-parse vs chained pipeline diverged beyond whitespace for " + label);
     }
 
@@ -139,6 +139,29 @@ class PrewarmSingleParseEquivalenceTest {
             + "    EndPrimitive();\n"
             + "}\n";
         assertEquivalent("geometry-passthrough", src, GL32.GL_GEOMETRY_SHADER);
+    }
+
+    @Test
+    void readOnlyImage_rewrittenToTextureWithSamplerlessExtension() {
+        final String src = "#version 460 core\n"
+            + "layout(binding = 2, rgba8) uniform readonly image2D u_Img;\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() {\n"
+            + "    fragColor = imageLoad(u_Img, ivec2(1, 2)) + vec4(imageSize(u_Img), 0.0, 1.0);\n"
+            + "}\n";
+        assertEquivalent("readonly-image", src, GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
+    void samplerlessTexture_extensionInserted() {
+        final String src = "#version 460 core\n"
+            + "uniform texture2D u_Tex;\n"
+            + "uniform sampler u_Smp;\n"
+            + "layout(location = 0) out vec4 fragColor;\n"
+            + "void main() {\n"
+            + "    fragColor = texelFetch(u_Tex, ivec2(0), 0) + texture(sampler2D(u_Tex, u_Smp), vec2(0.5));\n"
+            + "}\n";
+        assertEquivalent("samplerless-texture", src, GL20.GL_FRAGMENT_SHADER);
     }
 
     @Test

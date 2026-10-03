@@ -38,7 +38,7 @@ class PerFrameBlockLocationRoutingTest {
         """;
 
     private static ShaderManager.ProgramObject linkedProgram() {
-        final String injected = PerFrameBlockInjector.inject(SOURCE, PER_FRAME, PER_PASS);
+        final String injected = ShaderTransformChain.inject(SOURCE, PER_FRAME, PER_PASS);
         final SpirvCompiler.Result r = SpirvCompiler.compile(injected, Shaderc.shaderc_fragment_shader, "routing.frag", SpirvCompiler.Options.vulkanForced460Core());
         assertNotNull(r.spirv(), () -> "compile failed: " + r.error());
 

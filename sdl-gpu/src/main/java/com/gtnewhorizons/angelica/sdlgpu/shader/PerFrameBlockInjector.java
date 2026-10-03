@@ -1,6 +1,5 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock.Member;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
@@ -22,28 +21,12 @@ import java.util.Map;
 import java.util.List;
 import java.util.Set;
 
-import static com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.applyEdits;
 
 public final class PerFrameBlockInjector {
 
     private static final String SHADOWED_PREFIX = "angelica_pfb_unused_";
 
     private PerFrameBlockInjector() {}
-
-    public static String inject(String source, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
-        if (normalize(perFrame) == null && normalize(perPass) == null) return source;
-
-        final GLSLParser.Translation_unitContext root;
-        try {
-            root = GlslTransformUtils.parseFullQuiet(source);
-        } catch (Exception e) {
-            return source;
-        }
-
-        final List<Edit> edits = new ArrayList<>();
-        collectEdits(root, perFrame, perPass, edits);
-        return edits.isEmpty() ? source : applyEdits(source, edits);
-    }
 
     public static void collectEdits(GLSLParser.Translation_unitContext root, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass, List<Edit> out) {
         final PerFrameUniformBlock[] blocks = new PerFrameUniformBlock[ShaderManager.BLOCK_COUNT];

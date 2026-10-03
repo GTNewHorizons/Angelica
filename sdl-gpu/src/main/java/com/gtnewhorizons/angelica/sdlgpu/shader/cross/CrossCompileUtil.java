@@ -2,6 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu.shader.cross;
 
 import org.lwjgl.system.MemoryUtil;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderCacheIO;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.lwjgl.PointerBuffer;
@@ -27,7 +28,15 @@ public final class CrossCompileUtil {
 
     public static final AtomicInteger SHADER_DUMP_COUNTER = new AtomicInteger();
 
+    private static final class SpvcId {
+        static final String VALUE = ShaderCacheIO.libraryId(Spvc.getLibrary());
+    }
+
     private CrossCompileUtil() {}
+
+    public static String spvcId() {
+        return SpvcId.VALUE;
+    }
 
     public static String stageSuffix(int glShaderType) {
         if (glShaderType == GL20.GL_VERTEX_SHADER) return "vert";

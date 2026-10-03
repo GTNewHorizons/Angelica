@@ -27,7 +27,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void dropsLooseDeclarationsAndInjectsTheBlock() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform vec3 cameraPosition;
             uniform float rainStrength;
@@ -43,7 +43,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void declaresEveryMemberEvenWhenUnused() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform float rainStrength;
             out vec4 fragColor;
@@ -57,7 +57,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void blockGoesAfterTheVersionDirective() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform float rainStrength;
             void main() {}
@@ -67,7 +67,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void leavesMixedDeclarationAlone() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform float rainStrength, packOwnedValue;
             void main() {}
@@ -78,19 +78,19 @@ class PerFrameBlockInjectorTest {
     @Test
     void emptyMemberListIsANoOp() {
         final String src = "#version 330 core\nvoid main() {}\n";
-        assertEquals(src, PerFrameBlockInjector.inject(src, new PerFrameUniformBlock(List.of()), null));
+        assertEquals(src, ShaderTransformChain.inject(src, new PerFrameUniformBlock(List.of()), null));
     }
 
     @Test
     void noBlocksReturnsTheSourceInstance() {
         final String src = "#version 330 core\nuniform float frameTimeCounter;\nvoid main() {}\n";
-        assertSame(src, PerFrameBlockInjector.inject(src, null, null));
-        assertSame(src, PerFrameBlockInjector.inject(src, new PerFrameUniformBlock(List.of()), new PerFrameUniformBlock(List.of())));
+        assertSame(src, ShaderTransformChain.inject(src, null, null));
+        assertSame(src, ShaderTransformChain.inject(src, new PerFrameUniformBlock(List.of()), new PerFrameUniformBlock(List.of())));
     }
 
     @Test
     void memberShadowedByAPackDeclarationIsRenamedNotRedeclared() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             const float rainStrength = 3.14159265359;
             out vec4 fragColor;
@@ -108,7 +108,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void functionLocalRedeclarationDoesNotShadowTheMember() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform vec3 cameraPosition;
             vec3 ambient = pow(cameraPosition, vec3(0.75));
@@ -131,12 +131,12 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void shadowingDoesNotChangeAnyOffset() {
-        final String plain = PerFrameBlockInjector.inject("""
+        final String plain = ShaderTransformChain.inject("""
             #version 330 core
             out vec4 fragColor;
             void main() { fragColor = vec4(cameraPosition, rainStrength); }
             """, BLOCK, null);
-        final String shadowed = PerFrameBlockInjector.inject("""
+        final String shadowed = ShaderTransformChain.inject("""
             #version 330 core
             const float rainStrength = 1.0;
             out vec4 fragColor;
@@ -152,7 +152,7 @@ class PerFrameBlockInjectorTest {
             new Member("cameraPosition", UniformType.VEC3),
             new Member("isRightHanded", UniformType.INT)));
 
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform bool isRightHanded;
             out vec4 fragColor;
@@ -170,7 +170,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void uniformDeclaredWithTheMatchingTypeIsStillReplaced() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform float rainStrength;
             out vec4 fragColor;
@@ -188,12 +188,12 @@ class PerFrameBlockInjectorTest {
             out vec4 fragColor;
             void main() { fragColor = packOwnedColor; }
             """;
-        assertEquals(src, PerFrameBlockInjector.inject(src, BLOCK, null));
+        assertEquals(src, ShaderTransformChain.inject(src, BLOCK, null));
     }
 
     @Test
     void oneReferenceStillDeclaresEveryMember() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             out vec4 fragColor;
             void main() { fragColor = vec4(rainStrength); }
@@ -209,7 +209,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void bothBlocksInjectInOneParse() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform vec3 cameraPosition;
             uniform mat4 gbufferModelView;
@@ -226,7 +226,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void unreferencedBlockIsNotInjected() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             out vec4 fragColor;
             void main() { fragColor = vec4(cameraPosition, 1.0); }
@@ -253,7 +253,7 @@ class PerFrameBlockInjectorTest {
 
     @Test
     void injectedSourceCompilesAndReflects() {
-        final String out = PerFrameBlockInjector.inject("""
+        final String out = ShaderTransformChain.inject("""
             #version 330 core
             uniform vec3 cameraPosition;
             uniform float rainStrength;

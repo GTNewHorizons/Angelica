@@ -1,33 +1,17 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
-import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.taumc.glsl.grammar.GLSLParser;
 import org.taumc.glsl.grammar.GLSLParserBaseListener;
 
-import java.util.ArrayList;
 import java.util.List;
-
-import static com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.applyEdits;
 
 public final class ClipZRemap {
 
     private static final String INJECTION_STD = "gl_Position.z = gl_Position.z * 0.5 + gl_Position.w * 0.5;\n";
 
     private ClipZRemap() {}
-
-    public static String injectGLToVulkanClipZ(String source) {
-        final GLSLParser.Translation_unitContext root;
-        try {
-            root = GlslTransformUtils.parseFullQuiet(source);
-        } catch (Exception e) {
-            return source;
-        }
-        final ArrayList<Edit> edits = new ArrayList<>(1);
-        collectEdits(root, edits);
-        return edits.isEmpty() ? source : applyEdits(source, edits);
-    }
 
     public static void collectEdits(GLSLParser.Translation_unitContext root, List<Edit> edits) {
         final int[] mainCloseBraceIdx = { -1 };

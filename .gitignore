@@ -47,3 +47,4 @@ dist/tracy-natives/
 *.jfr
 
 tracy-client/angelica/
+shaderc_failures/
