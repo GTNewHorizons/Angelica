@@ -14,8 +14,8 @@ public final class AlphaStateStack extends AlphaState implements CowStateStack<A
 
     public AlphaStateStack(int id) {
         cow.id = id;
-        stack = new AlphaState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new AlphaState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new AlphaState();
         }
     }
@@ -23,6 +23,11 @@ public final class AlphaStateStack extends AlphaState implements CowStateStack<A
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return VanillaStateLayer.isHeld(vanillaLayer) || !sameAs(stack[slot]);
     }
 
     @Override

@@ -11,8 +11,8 @@ public final class MaterialStateStack extends MaterialState implements CowStateS
     public MaterialStateStack(int face, int id) {
         super(face);
         cow.id = id;
-        stack = new MaterialState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new MaterialState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new MaterialState(face);
         }
     }
@@ -20,6 +20,11 @@ public final class MaterialStateStack extends MaterialState implements CowStateS
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

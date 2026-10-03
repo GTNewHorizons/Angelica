@@ -20,6 +20,8 @@ public interface CowStateStack<T> extends IStateStack<T> {
 
     void restoreSlot(int slot);
 
+    boolean slotChanged(int slot);
+
     default int stackId() {
         return cowDepths().id;
     }

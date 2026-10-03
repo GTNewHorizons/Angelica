@@ -11,8 +11,8 @@ public final class PolygonStateStack extends PolygonState implements CowStateSta
 
     public PolygonStateStack(int id) {
         cow.id = id;
-        stack = new PolygonState[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new PolygonState[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new PolygonState();
         }
     }
@@ -20,6 +20,11 @@ public final class PolygonStateStack extends PolygonState implements CowStateSta
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

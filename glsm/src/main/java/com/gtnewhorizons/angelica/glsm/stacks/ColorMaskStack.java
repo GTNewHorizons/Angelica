@@ -15,8 +15,8 @@ public final class ColorMaskStack extends ColorMask implements CowStateStack<Col
 
     public ColorMaskStack(int id) {
         cow.id = id;
-        stack = new ColorMask[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new ColorMask[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new ColorMask();
         }
     }
@@ -24,6 +24,11 @@ public final class ColorMaskStack extends ColorMask implements CowStateStack<Col
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return VanillaStateLayer.isHeld(vanillaLayer) || !sameAs(stack[slot]);
     }
 
     @Override

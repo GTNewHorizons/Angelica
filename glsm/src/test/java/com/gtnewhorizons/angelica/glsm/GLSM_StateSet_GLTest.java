@@ -45,7 +45,7 @@ public class GLSM_StateSet_GLTest {
     private static final String TRIVIAL_VS = "#version 330 core\nvoid main(){ gl_Position = vec4(0.0); }\n";
     private static final String TRIVIAL_FS = "#version 330 core\nout vec4 o;\nvoid main(){ o = vec4(1.0); }\n";
 
-    private static int linkTrivialProgram() {
+    static int linkTrivialProgram() {
         final int v = compileShader(GL20.GL_VERTEX_SHADER, TRIVIAL_VS);
         final int f = compileShader(GL20.GL_FRAGMENT_SHADER, TRIVIAL_FS);
         final int p = GL20.glCreateProgram();

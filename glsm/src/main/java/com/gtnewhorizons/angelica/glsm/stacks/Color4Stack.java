@@ -10,8 +10,8 @@ public final class Color4Stack extends Color4 implements CowStateStack<Color4Sta
 
     public Color4Stack(int id) {
         cow.id = id;
-        stack = new Color4[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new Color4[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new Color4();
         }
     }
@@ -31,6 +31,11 @@ public final class Color4Stack extends Color4 implements CowStateStack<Color4Sta
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

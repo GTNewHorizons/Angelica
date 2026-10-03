@@ -10,8 +10,8 @@ public final class MatrixModeStack extends MatrixMode implements CowStateStack<M
 
     public MatrixModeStack(int id) {
         cow.id = id;
-        stack = new MatrixMode[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new MatrixMode[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new MatrixMode();
         }
     }
@@ -19,6 +19,11 @@ public final class MatrixModeStack extends MatrixMode implements CowStateStack<M
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override

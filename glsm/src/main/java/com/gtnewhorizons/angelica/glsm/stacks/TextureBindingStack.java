@@ -12,8 +12,8 @@ public final class TextureBindingStack extends TextureBinding implements CowStat
     public TextureBindingStack(int id, int unit) {
         cow = new CowDepths(StateSet.R_TEXTURE, unit);
         cow.id = id;
-        stack = new TextureBinding[GLStateManager.MAX_ATTRIB_STACK_DEPTH];
-        for (int i = 0; i < GLStateManager.MAX_ATTRIB_STACK_DEPTH; i++) {
+        stack = new TextureBinding[GLStateManager.STATE_SLOTS];
+        for (int i = 0; i < GLStateManager.STATE_SLOTS; i++) {
             stack[i] = new TextureBinding();
         }
     }
@@ -21,6 +21,11 @@ public final class TextureBindingStack extends TextureBinding implements CowStat
     @Override
     public CowDepths cowDepths() {
         return cow;
+    }
+
+    @Override
+    public boolean slotChanged(int slot) {
+        return !sameAs(stack[slot]);
     }
 
     @Override
