@@ -2,6 +2,7 @@ package net.coderbot.iris.pipeline.transform.parameter;
 
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import net.coderbot.iris.gl.blending.AlphaTest;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.glsm.texture.TextureType;
 import net.coderbot.iris.helpers.Tri;
 import net.coderbot.iris.pipeline.transform.Patch;
@@ -19,6 +20,12 @@ public class TextureStageParameters extends Parameters {
 	@Override
 	public TextureStage getTextureStage() {
 		return stage;
+	}
+
+	@Override
+	public void appendDiskKey(ShaderDiskCache.Key k) {
+		super.appendDiskKey(k);
+		k.str(stage == null ? null : stage.name());
 	}
 
 	@Override

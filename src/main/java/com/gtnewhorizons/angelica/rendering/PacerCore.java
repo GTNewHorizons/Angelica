@@ -63,6 +63,7 @@ final class PacerCore {
     private boolean locked;
     private boolean probing;
     private boolean probeExhausted;
+    private boolean gateAbandoned;
     private long probeLeadNanos;
     private boolean haveCandidate;
     private long candidateEndNanos;
@@ -336,7 +337,7 @@ final class PacerCore {
             if (locked && framesSinceCandidate >= LOCK_FRAMES) dropLock();
             return;
         }
-        if (haveCandidate && framesSinceCandidate <= LOCK_WINDOW) {
+        if (!gateAbandoned && haveCandidate && framesSinceCandidate <= LOCK_WINDOW) {
             final long delta = sampleEnd - candidateEndNanos;
             final long k = (delta + refreshPeriodNanos / 2) / refreshPeriodNanos;
             if (k >= 1L && Math.abs(delta - k * refreshPeriodNanos) <= refreshPeriodNanos / LOCK_TOL_DIVISOR) {
@@ -347,6 +348,7 @@ final class PacerCore {
                 if (++inconsistentPairs >= LOCK_WINDOW) {
                     dropLock();
                     probeExhausted = true;
+                    gateAbandoned = true;
                 }
             }
         }
@@ -358,6 +360,7 @@ final class PacerCore {
     private void armProbe() {
         probeLeadNanos = 0L;
         probeExhausted = false;
+        gateAbandoned = false;
     }
 
     private void dropLock() {

@@ -34,9 +34,9 @@ class PrewarmTreeHandoffEquivalenceTest {
         final String finalSource = HEADER + printedBody;
 
         GlslVulkanPreprocess.clearCache();
-        final ShaderManager.PrewarmTransformResult reparse = ShaderManager.applyPrewarmTransformsFull(finalSource, glShaderType);
+        final ShaderManager.PrewarmTransformResult reparse = ShaderManager.applyPrewarmTransformsFull(finalSource, glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
         GlslVulkanPreprocess.clearCache();
-        final ShaderManager.PrewarmTransformResult treeFed = ShaderManager.applyPrewarmTransformsFull(finalSource, tree, HEADER.length(), glShaderType);
+        final ShaderManager.PrewarmTransformResult treeFed = ShaderManager.applyPrewarmTransformsFull(finalSource, tree, HEADER.length(), glShaderType, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
 
         assertEquals(reparse.source(), treeFed.source(), "tree handoff diverged from re-parse for " + label);
         assertEquals(reparse.boolUniforms(), treeFed.boolUniforms(), "bool uniforms diverged for " + label);
@@ -103,6 +103,20 @@ class PrewarmTreeHandoffEquivalenceTest {
             "uniform sampler2D u_Data;\n"
                 + "layout(location = 0) out vec4 fragColor;\n"
                 + "void main() { fragColor = texelFetch(u_Data, ivec2(0), 0); }\n",
+            GL20.GL_FRAGMENT_SHADER);
+    }
+
+    @Test
+    void cppKeywordLocal() {
+        assertHandoffEquivalent("cpp-keyword-local",
+            "layout(location = 0) in vec4 v_Color;\n"
+                + "layout(location = 0) out vec4 fragColor;\n"
+                + "vec4 trace(vec4 c) {\n"
+                + "    vec4 try = c * 0.5;\n"
+                + "    if (try.a > -0.5) return try;\n"
+                + "    return c;\n"
+                + "}\n"
+                + "void main() { fragColor = trace(v_Color); }\n",
             GL20.GL_FRAGMENT_SHADER);
     }
 

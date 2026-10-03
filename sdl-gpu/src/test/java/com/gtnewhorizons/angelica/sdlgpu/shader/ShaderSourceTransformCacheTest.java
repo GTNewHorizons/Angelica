@@ -66,8 +66,8 @@ class ShaderSourceTransformCacheTest {
     }
 
     @Test
-    void repeatedSourceReusesTheChainedTransform() {
-        final String expected = ShaderTransformChain.run(FRAG, GL20.GL_FRAGMENT_SHADER);
+    void repeatedSourceReusesTheTransform() {
+        final String expected = ShaderManager.applyPrewarmTransformsFull(FRAG, GL20.GL_FRAGMENT_SHADER, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         GlslVulkanPreprocess.clearCache();
 
         final ShaderManager sm = new ShaderManager(null);
@@ -81,8 +81,8 @@ class ShaderSourceTransformCacheTest {
     }
 
     @Test
-    void vertexSourceMatchesTheChainAndCarriesClipZ() {
-        final String expected = ShaderTransformChain.run(VERT, GL20.GL_VERTEX_SHADER);
+    void vertexSourceMatchesTheSingleParseAndCarriesClipZ() {
+        final String expected = ShaderManager.applyPrewarmTransformsFull(VERT, GL20.GL_VERTEX_SHADER, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         GlslVulkanPreprocess.clearCache();
 
         final ShaderManager sm = new ShaderManager(null);
@@ -104,7 +104,7 @@ class ShaderSourceTransformCacheTest {
 
         GLSMHooks.perFrameUniformBlock = null;
         GlslVulkanPreprocess.clearCache();
-        final String expected = ShaderTransformChain.run(PFB_FRAG, GL20.GL_FRAGMENT_SHADER);
+        final String expected = ShaderManager.applyPrewarmTransformsFull(PFB_FRAG, GL20.GL_FRAGMENT_SHADER, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock).source();
         GlslVulkanPreprocess.clearCache();
 
         final int withoutBlock = sm.createShader(GL20.GL_FRAGMENT_SHADER);

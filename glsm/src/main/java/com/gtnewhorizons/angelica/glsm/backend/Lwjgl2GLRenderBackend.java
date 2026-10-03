@@ -1255,31 +1255,6 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     }
 
     @Override
-    public void textureStorage2D(int texture, int levels, int internalFormat, int width, int height) {
-        ARBDirectStateAccess.glTextureStorage2D(texture, levels, internalFormat, width, height);
-    }
-
-    @Override
-    public void texStorage1D(int target, int levels, int internalFormat, int width) {
-        GL42.glTexStorage1D(target, levels, internalFormat, width);
-    }
-
-    @Override
-    public void texStorage3D(int target, int levels, int internalFormat, int width, int height, int depth) {
-        GL42.glTexStorage3D(target, levels, internalFormat, width, height, depth);
-    }
-
-    @Override
-    public void textureStorage1D(int texture, int levels, int internalFormat, int width) {
-        ARBDirectStateAccess.glTextureStorage1D(texture, levels, internalFormat, width);
-    }
-
-    @Override
-    public void textureStorage3D(int texture, int levels, int internalFormat, int width, int height, int depth) {
-        ARBDirectStateAccess.glTextureStorage3D(texture, levels, internalFormat, width, height, depth);
-    }
-
-    @Override
     public void generateTextureMipmap(int texture) {
         ARBDirectStateAccess.glGenerateTextureMipmap(texture);
     }

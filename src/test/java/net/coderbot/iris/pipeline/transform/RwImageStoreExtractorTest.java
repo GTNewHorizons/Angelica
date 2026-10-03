@@ -79,8 +79,14 @@ class RwImageStoreExtractorTest {
     @Test void compute_hasUniformsAndSsboBinding() {
         final var result = RwImageStoreExtractor.tryExtract(MINIMAL_VOX_VSH, PatchShaderType.VERTEX, "shadow");
         final String s = result.computeSource();
-        assertTrue(s.contains("uniform int _vg_startVertex;"));
-        assertTrue(s.contains("uniform int _vg_vertexCount;"));
+        assertTrue(s.contains("uniform int _vg_rangeBase;"));
+        assertTrue(s.contains("uniform int _vg_rangeCount;"));
+        assertTrue(s.contains("uniform int _vg_vertexTotal;"));
+        assertTrue(s.contains("uniform int _vg_invocationBase;"));
+        assertTrue(s.contains("layout(std430, binding = 10) readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;"));
+        assertTrue(s.contains("int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));"));
+        assertFalse(s.contains("_vg_startVertex"));
+        assertFalse(s.contains("_vg_vertexCount"));
         assertTrue(s.contains("readonly buffer _VgVbuf"));
         assertTrue(s.contains("layout(std430, binding = " + RwImageStoreExtractor.VG_VBUF_SSBO_BINDING + ") readonly buffer _VgVbuf"), "VBO SSBO must bind at the dedicated voxelization slot (not 0..8 which shaderpacks claim via buffer.N)");
     }

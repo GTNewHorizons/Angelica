@@ -206,9 +206,8 @@ public enum Mixins implements IMixins {
         )
     ),
 
-    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip the end-of-frame glFlush before the buffer swap")
+    ANGELICA_SKIP_END_FRAME_FLUSH(new MixinBuilder("Skip vanilla's end-of-frame glFlush; the buffer swap flushes")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.skipEndOfFrameFlush)
         .addClientMixins(
             "angelica.MixinMinecraft_SkipEndFrameFlush"
         )
@@ -433,6 +432,7 @@ public enum Mixins implements IMixins {
             , "celeritas.biome_blending.MixinWorld"
             , "celeritas.biome_blending.MixinRenderBlocks"
             , "celeritas.threading.MixinForgeHooksClient"
+            , "celeritas.threading.MixinChunkJobTyped"
             , "celeritas.terrain.MixinChunk"
             , "celeritas.terrain.MixinWorldClient_WorkerAccess"
             , "celeritas.terrain.MixinWorld_WorkerMutationGuard"
@@ -440,10 +440,16 @@ public enum Mixins implements IMixins {
             , "celeritas.terrain.MixinNetHandlerPlayClient_DescriptorRepair"
             , "celeritas.terrain.MixinWorld_AwaitingDescriptor"
             , "celeritas.terrain.MixinRenderRegion"
+            , "celeritas.terrain.MixinChunkRenderList"
+            , "celeritas.terrain.MixinVisibleChunkCollector"
+            , "celeritas.terrain.MixinRenderListManager"
             , "celeritas.terrain.MixinSectionRenderDataStorage"
             , "celeritas.terrain.MixinSharedQuadIndexBuffer"
             , "celeritas.terrain.MixinRenderRegionManager"
             , "celeritas.terrain.MixinShaderLoader"
+            , "celeritas.terrain.MixinGlUniformMatrix4f"
+            , "celeritas.terrain.MixinGlUniformMatrix3f"
+            , "celeritas.terrain.MixinDefaultChunkRenderer"
         )
     ),
 
@@ -614,6 +620,7 @@ public enum Mixins implements IMixins {
         .setPhase(Phase.EARLY)
         .addExcludedMod(TargetedMod.ARCHAICFIX)
         .addExcludedMod(TargetedMod.SUPERNOVA)
+        .addExcludedMod(TargetedMod.LUMI)
         .setApplyIf(() -> AngelicaConfig.optimizeWorldUpdateLight)
         .addCommonMixins("angelica.lighting.MixinWorld_FixLightUpdateLag")),
 
@@ -989,32 +996,11 @@ public enum Mixins implements IMixins {
             "MixinRenderGlobal"
         ))
     ),
-    MCPATCHER_FORGE_CC_NO_CTM(new MixinBuilder("MCP:F Custom Colors, no Connected Textures")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && !MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCTM")
-    ),
-    MCPATCHER_FORGE_CTM_NO_CC(new MixinBuilder("MCP:F Connected Textures, no Custom Colours")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && !MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocksNoCC")
-    ),
-    MCPATCHER_FORGE_CTM_AND_CC(new MixinBuilder("MCP:F Connected Textures and Custom Colors")
-        .setPhase(Phase.EARLY)
-        .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          && MCPatcherForgeConfig.CustomColors.enabled)
-        .addClientMixins("mcpatcherforge.ctm_cc.MixinRenderBlocks")
-    ),
     MCPATCHER_FORGE_CTM_OR_CC(new MixinBuilder("MCP:F Connected Textures or Custom Colors")
         .setPhase(Phase.EARLY)
         .setApplyIf(() -> AngelicaConfig.enableMCPatcherForgeFeatures
-                          && MCPatcherForgeConfig.ConnectedTextures.enabled
-                          || MCPatcherForgeConfig.CustomColors.enabled)
+                          && (MCPatcherForgeConfig.ConnectedTextures.enabled
+                          || MCPatcherForgeConfig.CustomColors.enabled))
         .addClientMixins("mcpatcherforge.ctm_cc.MixinTextureMap")
     ),
     //End from NotFine

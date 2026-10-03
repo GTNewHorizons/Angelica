@@ -14,6 +14,7 @@ import net.coderbot.iris.texture.mipmap.ChannelMipmapGenerator;
 import net.coderbot.iris.texture.mipmap.CustomMipmapGenerator;
 import net.coderbot.iris.texture.mipmap.LinearBlendFunction;
 import net.coderbot.iris.texture.pbr.PBRAtlasTexture;
+import net.coderbot.iris.texture.pbr.PBRResourceIndex;
 import net.coderbot.iris.texture.pbr.PBRSpriteHolder;
 import net.coderbot.iris.texture.pbr.PBRType;
 import net.coderbot.iris.texture.pbr.TextureAtlasSpriteExtension;
@@ -118,6 +119,10 @@ public class AtlasPBRLoader implements PBRTextureLoader<TextureMap> {
         final ResourceLocation spriteName = new ResourceLocation(sprite.getIconName());
         final ResourceLocation imageLocation = texMap.completeResourceLocation(spriteName, 0);
         final ResourceLocation pbrImageLocation = pbrType.appendToFileLocation(imageLocation);
+
+        if (!PBRResourceIndex.mayExist(resourceManager, pbrImageLocation)) {
+            return null;
+        }
 
         TextureAtlasSprite pbrSprite = null;
 

@@ -41,11 +41,11 @@ public final class PersistentBufferSync {
     }
 
     public void uploadDirtyPersistentRegion()   { processDirtyPersistentRegions(false); }
-    public void enqueueDirtyPersistentRegions() { processDirtyPersistentRegions(true); }
+    public int enqueueDirtyPersistentRegions()  { return processDirtyPersistentRegions(true); }
 
-    private void processDirtyPersistentRegions(boolean defer) {
-        if (!resourceManager.hasDirtyPersistentRegions()) return;
-        if (!defer && frameManager.getCommandBuffer() == 0) return;
+    private int processDirtyPersistentRegions(boolean defer) {
+        if (!resourceManager.hasDirtyPersistentRegions()) return 0;
+        if (!defer && frameManager.getCommandBuffer() == 0) return 0;
         final Snapshot snap = snapshotTL.get();
         final IntArrayList keys = snap.keys;
         final ArrayList<PersistentMapping> vals = snap.vals;
@@ -55,6 +55,7 @@ public final class PersistentBufferSync {
             snap.version = version;
         }
         final int n = keys.size();
+        int enqueued = 0;
         for (int i = 0; i < n; i++) {
             final PersistentMapping pm = vals.get(i);
             if (!pm.isDirty()) continue;
@@ -69,6 +70,7 @@ public final class PersistentBufferSync {
                 final long seq = sink.nextSeq();
                 pm.lastEnqueuedSeq = seq;
                 sink.enqueue(TransferThread.StagingReadUpload.acquire(pm.staging, off, size, gpuHandle, off, seq, false));
+                enqueued++;
             } else {
                 pm.staging.position((int) off).limit((int) (off + size));
                 resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), pm.staging, gpuHandle, off, false);
@@ -76,6 +78,7 @@ public final class PersistentBufferSync {
             }
             resourceManager.clearPersistentDirty();
         }
+        return enqueued;
     }
 
     public static void mirrorPersistentCopy(ByteBuffer srcStaging, long srcOffset, ByteBuffer dstStaging, long dstOffset, long size) {

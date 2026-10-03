@@ -62,6 +62,7 @@ import com.gtnewhorizons.angelica.sdlgpu.util.ThreadRegistry;
 
 import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
+import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
@@ -143,6 +144,7 @@ public class SDLGPURenderBackend extends RenderBackend {
 
 
     private final FenceTracker fenceTracker = new FenceTracker(device, frameManager);
+    private final LongArrayFIFOQueue frameSyncs = new LongArrayFIFOQueue();
     private final FBOClearTracker fboClearTracker = new FBOClearTracker(frameManager, resourceManager, shaderManager);
     private final SamplerBinder samplerBinder = new SamplerBinder(device, resourceManager, shaderManager);
     private final StorageTextureBinder storageTextureBinder = new StorageTextureBinder(resourceManager, shaderManager);
@@ -331,7 +333,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         fenceTracker.setUnresolvedFenceFlush(this::midFrameFenceFlush);
         frameManager.setMainThread(GLStateManager.getMainThread());
         if (!SystemProperties.DISABLE_SDL_PRESENTER_THREAD) {
-            presenter = new Presenter(frameManager, MainStartOnFirstThread.instance());
+            presenter = new Presenter(frameManager, MainStartOnFirstThread.instance(), Pump.INSTANCE);
             frameManager.setPresenter(presenter);
             LOG.info("SDL presenter thread enabled: presents run on '{}'", device.getWindowThread() != null ? device.getWindowThread().getName() : "window thread");
         }
@@ -488,6 +490,7 @@ public class SDLGPURenderBackend extends RenderBackend {
         SDL_WaitForGPUIdle(dev);
         frameManager.endFrame();
         readbackShadows.dispose();
+        frameSyncs.clear();
         fenceTracker.dispose();
         frameManager.releaseAllRegisteredFrames();
         resourceManager.shutdownTexSamplerStates();
@@ -714,7 +717,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     private void drainDeferredPersistentRegions(ContextState st) {
         if (!st.deferUploads) return;
         st.drawsSincePersistentDrain = 0;
-        persistentSync.enqueueDirtyPersistentRegions();
+        if (persistentSync.enqueueDirtyPersistentRegions() > 0) wakeTransferThread();
     }
 
     private void awaitUploadFlush() {
@@ -733,8 +736,8 @@ public class SDLGPURenderBackend extends RenderBackend {
 
     @Override public void onFrameEnd() {
         if (shutdown) return;
-        requestUploadFlush();
         endFrameUploadFlushNoWait();
+        requestUploadFlush();
 
         final FrameState f = frameManager.frame();
         if (f.frameActive && !f.fbo0UsedThisFrame) {
@@ -748,9 +751,19 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (f.frameActive) fboClearTracker.materializeAllPendingClears(s());
         awaitUploadFlush();
         if (SystemProperties.FFP_TRACE) ffpTrace.frameEnd(f);
+        final long frameSync = f.frameActive ? fenceTracker.fenceSync() : 0L;
         frameManager.endFrame();
         frameManager.presentFinalTarget();
         fenceTracker.resolvePendingFences();
+        device.fenceReleaser().drain();
+        if (frameSync != 0L) {
+            frameSyncs.enqueue(frameSync);
+            while (frameSyncs.size() > Device.MAX_FRAMES_IN_FLIGHT - 1) {
+                final long sync = frameSyncs.dequeueLong();
+                fenceTracker.clientWaitSync(sync, 0, Long.MAX_VALUE);
+                fenceTracker.deleteSync(sync);
+            }
+        }
         resourceManager.flushDeferredReleases();
         resourceManager.recycleGpuBufferPool(frameManager.getFrameNumber());
     }
@@ -1777,34 +1790,12 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void samplerParameteri(int sampler, int pname, int param) {
         if (sampler == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateSamplerObject(sampler);
-        switch (pname) {
-            case GL11.GL_TEXTURE_MIN_FILTER -> ss.minFilter = param;
-            case GL11.GL_TEXTURE_MAG_FILTER -> ss.magFilter = param;
-            case GL11.GL_TEXTURE_WRAP_S -> ss.wrapS = param;
-            case GL11.GL_TEXTURE_WRAP_T -> ss.wrapT = param;
-            case GL12.GL_TEXTURE_WRAP_R -> ss.wrapR = param;
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = (float) param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = (float) param;
-            case GL14.GL_TEXTURE_COMPARE_MODE -> ss.compareMode = param;
-            case GL14.GL_TEXTURE_COMPARE_FUNC -> ss.compareFunc = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { return; }
-        }
-        ss.sdlSampler = 0;
-        s().samplerBindGen++;
+        if (ss.invalidate(ss.seti(pname, param))) s().samplerBindGen++;
     }
     @Override public void samplerParameterf(int sampler, int pname, float param) {
         if (sampler == 0) return;
         final TextureSamplerState ss = resourceManager.getOrCreateSamplerObject(sampler);
-        switch (pname) {
-            case GL12.GL_TEXTURE_MIN_LOD -> ss.minLod = param;
-            case GL12.GL_TEXTURE_MAX_LOD -> ss.maxLod = param;
-            case GL14.GL_TEXTURE_LOD_BIAS -> ss.lodBias = param;
-            case EXTTextureFilterAnisotropic.GL_TEXTURE_MAX_ANISOTROPY_EXT -> ss.maxAnisotropy = param;
-            default -> { samplerParameteri(sampler, pname, (int) param); return; }
-        }
-        ss.sdlSampler = 0;
-        s().samplerBindGen++;
+        if (ss.invalidate(ss.setf(pname, param))) s().samplerBindGen++;
     }
 
     @Override public int genFramebuffers() {
@@ -3637,14 +3628,6 @@ public class SDLGPURenderBackend extends RenderBackend {
     @Override public void textureParameteriv(int texture, int target, int pname, IntBuffer params) {
         if (params.remaining() > 0) textureParameteri(texture, target, pname, params.get(params.position()));
     }
-    @Override public void texStorage1D(int target, int levels, int internalFormat, int width) {
-        final ContextState st = s();
-        if (isProxyTarget(target)) {
-            recordProxyTexImage(st, target, 0, internalFormat, width, 1, 1);
-            return;
-        }
-        texStorageImpl(st, st.boundTextures[st.activeTextureUnit], target, internalFormat, width, 1, 1, levels);
-    }
     @Override public void texStorage2D(int target, int levels, int internalFormat, int width, int height) {
         final ContextState st = s();
         if (isProxyTarget(target)) {
@@ -3652,23 +3635,6 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
         texStorageImpl(st, st.boundTextures[st.activeTextureUnit], target, internalFormat, width, height, 1, levels);
-    }
-    @Override public void texStorage3D(int target, int levels, int internalFormat, int width, int height, int depth) {
-        final ContextState st = s();
-        if (isProxyTarget(target)) {
-            recordProxyTexImage(st, target, 0, internalFormat, width, height, depth);
-            return;
-        }
-        texStorageImpl(st, st.boundTextures[st.activeTextureUnit], target, internalFormat, width, height, depth, levels);
-    }
-    @Override public void textureStorage1D(int texture, int levels, int internalFormat, int width) {
-        texStorageImpl(s(), texture, GL11.GL_TEXTURE_2D, internalFormat, width, 1, 1, levels);
-    }
-    @Override public void textureStorage2D(int texture, int levels, int internalFormat, int width, int height) {
-        texStorageImpl(s(), texture, GL11.GL_TEXTURE_2D, internalFormat, width, height, 1, levels);
-    }
-    @Override public void textureStorage3D(int texture, int levels, int internalFormat, int width, int height, int depth) {
-        texStorageImpl(s(), texture, GL11.GL_TEXTURE_2D, internalFormat, width, height, depth, levels);
     }
 
     private void texStorageImpl(ContextState st, int glId, int target, int internalFormat, int w, int h, int d, int levels) {
@@ -3991,7 +3957,7 @@ public class SDLGPURenderBackend extends RenderBackend {
             case GL43.GL_MAX_DEBUG_MESSAGE_LENGTH -> 1024;
             case GL11.GL_DRAW_BUFFER -> drawBufferEnum(cs.boundFboId, cs.defaultFboId);
             case GL11.GL_READ_BUFFER -> readBufferEnum(cs.boundReadFboId, cs.defaultFboId);
-            case GL11.GL_TEXTURE_BINDING_2D -> boundTextureOf(cs.activeTextureUnit, cs.boundTextures);
+            case GL11.GL_TEXTURE_BINDING_2D, GL11.GL_TEXTURE_BINDING_1D, GL12.GL_TEXTURE_BINDING_3D, GL13.GL_TEXTURE_BINDING_CUBE_MAP, GL30.GL_TEXTURE_BINDING_1D_ARRAY, GL30.GL_TEXTURE_BINDING_2D_ARRAY, GL31.GL_TEXTURE_BINDING_RECTANGLE, GL40.GL_TEXTURE_BINDING_CUBE_MAP_ARRAY -> boundTextureOf(cs.activeTextureUnit, cs.boundTextures);
             case GL11.GL_DEPTH_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_DEPTH, GL30.GL_FRAMEBUFFER_ATTACHMENT_DEPTH_SIZE);
             case GL11.GL_STENCIL_BITS -> getFramebufferAttachmentParameteri(GL30.GL_DRAW_FRAMEBUFFER, GL11.GL_STENCIL, GL30.GL_FRAMEBUFFER_ATTACHMENT_STENCIL_SIZE);
             case GL11.GL_PACK_ALIGNMENT -> cs.pixelStore.packAlignment;
@@ -4338,19 +4304,11 @@ public class SDLGPURenderBackend extends RenderBackend {
         return frameManager.getFrameNumber();
     }
 
-    private int voxLocStart = -1;
-    private int voxLocCount = -1;
-
-    @Override public boolean bindVoxelizationRegion(int ssboBinding, long openPass, float x, float y, float z) {
-        if (ssboBinding < 0 || ssboBinding >= ContextState.MAX_INDEXED_BUFFERS) return false;
-        final ContextState st = s();
-        if (st.boundProgram == 0) return false;
-        if (st.boundSsboByIndex[ssboBinding] == 0) return false;
-        final int loc = shaderManager.getUniformLocation(st.boundProgram, "u_RegionOffset");
-        if (loc >= 0) GLStateManager.glUniform3f(loc, x, y, z);
-        if (openPass != 0) voxelizationDispatcher.rebindVertexBuffer(st, openPass);
-        return true;
-    }
+    private int voxLocRangeBase = -1;
+    private int voxLocRangeCount = -1;
+    private int voxLocVertexTotal = -1;
+    private int voxLocInvocationBase = -1;
+    private int voxLocRegionOffset = -1;
 
     /** Reflected at link time, so it names exactly the images the compute writes rather than everything bound. */
     public String[] getComputeWrittenImageNames(int programId) {
@@ -4365,13 +4323,19 @@ public class SDLGPURenderBackend extends RenderBackend {
         final ContextState st = s();
         final int program = st.boundProgram;
         if (program == 0 || st.boundSsboByIndex[ssboBinding] == 0) return 0;
-        voxLocStart = shaderManager.getUniformLocation(program, "_vg_startVertex");
-        voxLocCount = shaderManager.getUniformLocation(program, "_vg_vertexCount");
+        voxLocRangeBase = shaderManager.getUniformLocation(program, "_vg_rangeBase");
+        voxLocRangeCount = shaderManager.getUniformLocation(program, "_vg_rangeCount");
+        voxLocVertexTotal = shaderManager.getUniformLocation(program, "_vg_vertexTotal");
+        voxLocInvocationBase = shaderManager.getUniformLocation(program, "_vg_invocationBase");
+        voxLocRegionOffset = shaderManager.getUniformLocation(program, "u_RegionOffset");
         return voxelizationDispatcher.beginBatch(st);
     }
 
-    @Override public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {
-        voxelizationDispatcher.dispatchRange(pass, voxLocStart, voxLocCount, vertexOffset, vertexCount, s());
+    @Override public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {
+        final ContextState st = s();
+        if (voxLocRegionOffset >= 0) GLStateManager.glUniform3f(voxLocRegionOffset, x, y, z);
+        if (rebindVertexBuffer) voxelizationDispatcher.rebindVertexBuffer(st, pass);
+        voxelizationDispatcher.dispatchRegion(pass, voxLocRangeBase, voxLocRangeCount, voxLocVertexTotal, voxLocInvocationBase, rangeBase, rangeCount, vertexTotal, st);
     }
 
     @Override public void endVoxelizationBatch(long pass) {

@@ -159,7 +159,7 @@ public final class ModelPartBatcher {
         boolean afterGlint;
 
         boolean matches(ResourceLocation texture, TesrMaterial material, PassOverride pass, float offsetFactor, float offsetUnits, int glintSlot, int cull, boolean lit, boolean lightmap, boolean afterGlint) {
-            return this.texture == texture && this.material == material && pass.equals(this.pass) && this.offsetFactor == offsetFactor
+            return this.texture == texture && this.material == material && pass == this.pass && this.offsetFactor == offsetFactor
                 && this.offsetUnits == offsetUnits && this.glintSlot == glintSlot && this.cull == cull && this.lit == lit && this.lightmap == lightmap
                 && this.afterGlint == afterGlint;
         }
@@ -182,7 +182,7 @@ public final class ModelPartBatcher {
         public boolean equals(Object o) {
             if (!(o instanceof LayerKey other)) return false;
             return Objects.equals(texture, other.texture) && Objects.equals(material, other.material)
-                && Objects.equals(pass, other.pass)
+                && pass == other.pass
                 && Float.floatToIntBits(offsetFactor) == Float.floatToIntBits(other.offsetFactor)
                 && Float.floatToIntBits(offsetUnits) == Float.floatToIntBits(other.offsetUnits)
                 && glintSlot == other.glintSlot && cull == other.cull && lit == other.lit && lightmap == other.lightmap && afterGlint == other.afterGlint;
@@ -190,7 +190,7 @@ public final class ModelPartBatcher {
 
         @Override
         public int hashCode() {
-            int h = (Objects.hashCode(texture) * 31 + Objects.hashCode(material)) * 31 + Objects.hashCode(pass);
+            int h = (Objects.hashCode(texture) * 31 + Objects.hashCode(material)) * 31 + System.identityHashCode(pass);
             h = h * 31 + Float.floatToIntBits(offsetFactor);
             h = h * 31 + Float.floatToIntBits(offsetUnits);
             h = h * 31 + glintSlot;

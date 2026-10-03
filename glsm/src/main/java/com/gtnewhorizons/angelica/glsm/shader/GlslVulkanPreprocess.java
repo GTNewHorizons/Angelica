@@ -28,6 +28,15 @@ public final class GlslVulkanPreprocess {
 
     public static final String SAMPLER_RENAMED = "angelica_sampler_renamed";
 
+    public static final String RESERVED_RENAMED_PREFIX = "angelica_renamed_";
+
+    private static final Set<String> TARGET_RESERVED = Set.of(
+        "try", "catch", "throw", "delete", "operator", "private", "protected", "friend", "virtual", "explicit",
+        "mutable", "typename", "typeid", "register", "signed", "char", "auto", "nullptr", "constexpr", "decltype",
+        "noexcept", "alignas", "alignof", "static_assert", "thread_local", "wchar_t", "char16_t", "char32_t",
+        "const_cast", "dynamic_cast", "reinterpret_cast", "static_cast", "export",
+        "and", "or", "xor", "bitand", "bitor", "compl", "and_eq", "or_eq", "xor_eq", "not_eq");
+
     public static final String SAMPLERLESS_EXTENSION = "#extension GL_EXT_samplerless_texture_functions : require";
 
     private static final int MAX_VS_INPUT_LOCATIONS = 16;
@@ -211,7 +220,9 @@ public final class GlslVulkanPreprocess {
                     case "sampler" -> edits.add(new Edit(tok.getStartIndex(), tok.getStopIndex(), SAMPLER_RENAMED));
                     case "gl_VertexID" -> edits.add(new Edit(tok.getStartIndex(), tok.getStopIndex(), "gl_VertexIndex"));
                     case "gl_InstanceID" -> edits.add(new Edit(tok.getStartIndex(), tok.getStopIndex(), "gl_InstanceIndex"));
-                    default -> {}
+                    default -> {
+                        if (TARGET_RESERVED.contains(text)) edits.add(new Edit(tok.getStartIndex(), tok.getStopIndex(), RESERVED_RENAMED_PREFIX + text));
+                    }
                 }
             }
         }, root);

@@ -367,6 +367,127 @@ public class GLSM_StateSet_GLTest {
     }
 
     @Test
+    void nonMemberMutationsInsideBracketSaveAndDiscardNothing() {
+        try {
+            GLStateManager.enableAlphaTest();
+            GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+
+            final int d = GLStateManager.pushState(StateSet.CUTOUT);
+            final long discardsBefore = GLStateManager.attribDiscards;
+            try {
+                final long savedBefore = GLStateManager.attribSlotsSaved;
+                GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_ZERO, GL11.GL_DST_COLOR, GL11.GL_ZERO);
+                GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE2);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+                assertEquals(savedBefore, GLStateManager.attribSlotsSaved, "non-member mutations must not save slots");
+            } finally {
+                GLStateManager.popStateTo(d);
+            }
+
+            assertEquals(discardsBefore, GLStateManager.attribDiscards, "non-member mutations must not leave slots to discard");
+            assertEquals(GL11.GL_DST_COLOR, GLStateManager.getBlendState().getSrcRgb(), "cache blend src rgb - not a CUTOUT member, must stay toggled");
+        } finally {
+            GLStateManager.disableAlphaTest();
+            GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
+            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLStateManager.glDepthFunc(GL11.GL_LESS);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        }
+    }
+
+    @Test
+    void unchangedSettersSaveNothing() {
+        try {
+            GLStateManager.enableAlphaTest();
+            GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+            GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+            GLStateManager.glDepthMask(true);
+            GLStateManager.glColorMask(true, true, true, true);
+            GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+            GLStateManager.glBlendColor(0.1f, 0.2f, 0.3f, 0.4f);
+            GLStateManager.glBlendEquation(GL14.GL_FUNC_ADD);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+            GLStateManager.enableTexture();
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+
+            final int d = GLStateManager.pushState(StateSet.forMask(GL11.GL_ALL_ATTRIB_BITS));
+            try {
+                final long savedBefore = GLStateManager.attribSlotsSaved;
+                GLStateManager.glAlphaFunc(GL11.GL_GREATER, 0.5f);
+                GLStateManager.glDepthFunc(GL11.GL_LEQUAL);
+                GLStateManager.glDepthMask(true);
+                GLStateManager.glColorMask(true, true, true, true);
+                GLStateManager.tryBlendFuncSeparate(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA, GL11.GL_ONE, GL11.GL_ZERO);
+                GLStateManager.glBlendColor(0.1f, 0.2f, 0.3f, 0.4f);
+                GLStateManager.glBlendEquation(GL14.GL_FUNC_ADD);
+                GLStateManager.glBlendEquationSeparate(GL14.GL_FUNC_ADD, GL14.GL_FUNC_ADD);
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+                GLStateManager.enableTexture();
+                GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+                assertEquals(1, GLStateManager.attribSlotsSaved - savedBefore, "only the active unit change may save a slot");
+            } finally {
+                GLStateManager.popStateTo(d);
+            }
+
+            GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+            final int d2 = GLStateManager.pushState(StateSet.forMask(GL11.GL_ALL_ATTRIB_BITS));
+            try {
+                final long savedBefore = GLStateManager.attribSlotsSaved;
+                GLStateManager.glBlendFunc(GL11.GL_SRC_ALPHA, GL11.GL_ONE_MINUS_SRC_ALPHA);
+                assertEquals(0, GLStateManager.attribSlotsSaved - savedBefore, "unchanged glBlendFunc must not save a slot");
+            } finally {
+                GLStateManager.popStateTo(d2);
+            }
+        } finally {
+            GLStateManager.disableAlphaTest();
+            GLStateManager.glAlphaFunc(GL11.GL_ALWAYS, 0.0f);
+            GLStateManager.disableBlend();
+            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLStateManager.glDepthFunc(GL11.GL_LESS);
+            GLStateManager.glDepthMask(true);
+            GLStateManager.glColorMask(true, true, true, true);
+            GLStateManager.glBlendColor(0.0f, 0.0f, 0.0f, 0.0f);
+            GLStateManager.glBlendEquation(GL14.GL_FUNC_ADD);
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE1);
+            GLStateManager.disableTexture();
+            GLStateManager.glActiveTexture(GL13.GL_TEXTURE0);
+        }
+    }
+
+    @Test
+    void bracketDoesNotInheritMembersOfAnEarlierBracketAtItsDepth() {
+        try {
+            for (boolean nested : new boolean[] {false, true}) {
+                GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+                GLStateManager.glDepthFunc(GL11.GL_LESS);
+                final int outer = nested ? GLStateManager.pushState(StateSet.CULL) : GLStateManager.getAttribDepth();
+                try {
+                    GLStateManager.glPushAttrib(GL11.GL_ALL_ATTRIB_BITS);
+                    GLStateManager.glPopAttrib();
+                    final int d = GLStateManager.pushState(StateSet.CUTOUT);
+                    try {
+                        final long savedBefore = GLStateManager.attribSlotsSaved;
+                        GLStateManager.tryBlendFuncSeparate(GL11.GL_DST_COLOR, GL11.GL_ZERO, GL11.GL_DST_COLOR, GL11.GL_ZERO);
+                        GLStateManager.glDepthFunc(GL11.GL_ALWAYS);
+                        assertEquals(savedBefore, GLStateManager.attribSlotsSaved, "nested=" + nested);
+                    } finally {
+                        GLStateManager.popStateTo(d);
+                    }
+                } finally {
+                    GLStateManager.popStateTo(outer);
+                }
+            }
+        } finally {
+            GLStateManager.tryBlendFuncSeparate(GL11.GL_ONE, GL11.GL_ZERO, GL11.GL_ONE, GL11.GL_ZERO);
+            GLStateManager.glDepthFunc(GL11.GL_LESS);
+        }
+    }
+
+    @Test
     void cullFaceModeRestoredThroughCullBracket() {
         try {
             GLStateManager.glCullFace(GL11.GL_BACK);

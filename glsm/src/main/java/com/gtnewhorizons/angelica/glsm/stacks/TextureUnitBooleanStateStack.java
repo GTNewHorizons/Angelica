@@ -26,8 +26,8 @@ public final class TextureUnitBooleanStateStack extends BooleanStateStack {
     public void setEnabled(boolean enabled) {
         if (!GLStateManager.isCachingEnabled() || enabled != this.enabled) {
             GLStateManager.beforeUncapturedTextureUnitChange(glCap, unitIndex);
+            beforeModify();
         }
-        beforeModify();
         setEnabledWithUnitSwitch(enabled);
     }
 

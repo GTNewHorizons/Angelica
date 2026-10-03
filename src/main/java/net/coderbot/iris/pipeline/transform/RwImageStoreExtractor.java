@@ -52,10 +52,15 @@ public final class RwImageStoreExtractor {
     private RwImageStoreExtractor() {}
 
     public static final int VG_VBUF_SSBO_BINDING = 9;
+    public static final int VG_RANGES_SSBO_BINDING = 10;
     private static final int STRIDE_BYTES = 48;
     private static final int STRIDE_UINTS = STRIDE_BYTES / 4;
 
     private static volatile Map<String, ImageInformation> activeCustomImages = Map.of();
+
+    static Map<String, ImageInformation> activeCustomImages() {
+        return activeCustomImages;
+    }
 
     public static void setActiveCustomImages(Map<String, ImageInformation> images) {
         activeCustomImages = (images == null) ? Map.of() : Map.copyOf(images);
@@ -561,9 +566,12 @@ public final class RwImageStoreExtractor {
     private static void emitChunkPrelude(StringBuilder out, Set<String> writtenImages, Set<String> nonWriteonlyImages, Map<String, ImageDecl> declared, List<AttributeSlot> attrs) {
         out.append("layout(local_size_x = 64) in;\n\n");
         emitImageDecls(out, writtenImages, nonWriteonlyImages, declared);
-        out.append("\nuniform int _vg_startVertex;\n");
-        out.append("uniform int _vg_vertexCount;\n\n");
-        out.append("layout(std430, binding = ").append(VG_VBUF_SSBO_BINDING).append(") readonly buffer _VgVbuf { uint data[]; } _vg_vbuf;\n\n");
+        out.append("\nuniform int _vg_rangeBase;\n");
+        out.append("uniform int _vg_rangeCount;\n");
+        out.append("uniform int _vg_vertexTotal;\n");
+        out.append("uniform int _vg_invocationBase;\n\n");
+        out.append("layout(std430, binding = ").append(VG_VBUF_SSBO_BINDING).append(") readonly buffer _VgVbuf { uint data[]; } _vg_vbuf;\n");
+        out.append("layout(std430, binding = ").append(VG_RANGES_SSBO_BINDING).append(") readonly buffer _VgRanges { uvec2 r[]; } _vg_ranges;\n\n");
         out.append("vec4 _vg_sink_pos;\n");
         out.append("float _vg_sink_psize;\n");
         out.append("int _vg_id_global;\n");
@@ -626,8 +634,15 @@ public final class RwImageStoreExtractor {
         out.append("void main() {\n");
         switch (mode) {
             case CHUNK -> {
-                out.append("    int id = _vg_startVertex + int(gl_GlobalInvocationID.x);\n");
-                out.append("    if (id >= _vg_startVertex + _vg_vertexCount) return;\n");
+                out.append("    uint _vg_g = uint(_vg_invocationBase) + gl_GlobalInvocationID.x;\n");
+                out.append("    if (_vg_g >= uint(_vg_vertexTotal)) return;\n");
+                out.append("    int _vg_lo = _vg_rangeBase;\n");
+                out.append("    int _vg_hi = _vg_rangeBase + _vg_rangeCount - 1;\n");
+                out.append("    while (_vg_lo < _vg_hi) {\n");
+                out.append("        int _vg_mid = (_vg_lo + _vg_hi + 1) >> 1;\n");
+                out.append("        if (_vg_ranges.r[_vg_mid].y <= _vg_g) _vg_lo = _vg_mid; else _vg_hi = _vg_mid - 1;\n");
+                out.append("    }\n");
+                out.append("    int id = int(_vg_ranges.r[_vg_lo].x + (_vg_g - _vg_ranges.r[_vg_lo].y));\n");
                 out.append("    _vg_id_global = id;\n");
                 out.append("    _vg_unpack(uint(id));\n");
                 emitVertexDecode(out, attrs);

@@ -268,9 +268,8 @@ public abstract class RenderBackend {
 
     public String getTransferDebugInfo() { return null; }
 
-    public boolean bindVoxelizationRegion(int ssboBinding, long openPass, float x, float y, float z) { return false; }
     public long beginVoxelizationBatch(int ssboBinding) { return 0L; }
-    public void voxelizeRange(long pass, int vertexOffset, int vertexCount) {}
+    public void voxelizeRegion(long pass, boolean rebindVertexBuffer, float x, float y, float z, int rangeBase, int rangeCount, int vertexTotal) {}
     public void endVoxelizationBatch(long pass) {}
 
     public abstract void enable(int cap);
@@ -613,12 +612,7 @@ public abstract class RenderBackend {
     public abstract void textureParameteri(int texture, int target, int pname, int param);
     public abstract void textureParameterf(int texture, int target, int pname, float param);
     public abstract void textureParameteriv(int texture, int target, int pname, IntBuffer params);
-    public abstract void texStorage1D(int target, int levels, int internalFormat, int width);
     public abstract void texStorage2D(int target, int levels, int internalFormat, int width, int height);
-    public abstract void texStorage3D(int target, int levels, int internalFormat, int width, int height, int depth);
-    public abstract void textureStorage1D(int texture, int levels, int internalFormat, int width);
-    public abstract void textureStorage2D(int texture, int levels, int internalFormat, int width, int height);
-    public abstract void textureStorage3D(int texture, int levels, int internalFormat, int width, int height, int depth);
     public abstract void generateTextureMipmap(int texture);
     public abstract void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, ByteBuffer pixels);
     public abstract void textureImage2DEXT(int texture, int target, int level, int internalformat, int width, int height, int border, int format, int type, IntBuffer pixels);

@@ -3,8 +3,6 @@ package com.gtnewhorizons.angelica.glsm.streaming;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
-import it.unimi.dsi.fastutil.ints.IntArrayFIFOQueue;
-import it.unimi.dsi.fastutil.longs.LongArrayFIFOQueue;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL44;
@@ -28,8 +26,7 @@ final class GlStreamingRing {
     private static final long SYNC_WAIT_SLICE_NANOS = 10_000_000L;
     private static final long SYNC_WAIT_TOTAL_NANOS = 5_000_000_000L;
 
-    private final LongArrayFIFOQueue fenceIds = new LongArrayFIFOQueue();
-    private final IntArrayFIFOQueue fenceBytes = new IntArrayFIFOQueue();
+    private final FenceQueue fences = new FenceQueue();
     private int writePos;
     private int remaining;
     private int pendingBytes;
@@ -93,7 +90,7 @@ final class GlStreamingRing {
 
     private boolean ensureRemaining(int needed) {
         while (remaining < needed) {
-            if (fenceIds.isEmpty()) {
+            if (fences.isEmpty()) {
                 if (pendingBytes == 0) return false;
                 fence();
             }
@@ -104,8 +101,7 @@ final class GlStreamingRing {
 
     private void fence() {
         if (pendingBytes > 0) {
-            fenceIds.enqueue(GLStateManager.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0));
-            fenceBytes.enqueue(pendingBytes);
+            fences.enqueue(GLStateManager.glFenceSync(GL32.GL_SYNC_GPU_COMMANDS_COMPLETE, 0), pendingBytes);
             pendingBytes = 0;
             fencesIssued++;
         }
@@ -116,18 +112,19 @@ final class GlStreamingRing {
     }
 
     private void reclaim() {
-        while (!fenceIds.isEmpty()) {
-            final long fenceId = fenceIds.firstLong();
+        while (!fences.isEmpty()) {
+            final long fenceId = fences.firstId();
             if (!signaled(GLStateManager.glClientWaitSync(fenceId, 0, 0L))) break;
             GLStateManager.glDeleteSync(fenceId);
-            fenceIds.dequeueLong();
-            remaining += fenceBytes.dequeueInt();
+            remaining += fences.firstBytes();
+            fences.dequeue();
         }
     }
 
     private void syncOldest() {
-        final long fenceId = fenceIds.dequeueLong();
-        final int bytes = fenceBytes.dequeueInt();
+        final long fenceId = fences.firstId();
+        final int bytes = fences.firstBytes();
+        fences.dequeue();
         forcedReclaims++;
         final long deadline = System.nanoTime() + SYNC_WAIT_TOTAL_NANOS;
         long remainingNanos = SYNC_WAIT_TOTAL_NANOS;
@@ -160,10 +157,10 @@ final class GlStreamingRing {
     int forcedReclaims() { return forcedReclaims; }
 
     void destroy() {
-        while (!fenceIds.isEmpty()) {
-            GLStateManager.glDeleteSync(fenceIds.dequeueLong());
+        while (!fences.isEmpty()) {
+            GLStateManager.glDeleteSync(fences.firstId());
+            fences.dequeue();
         }
-        fenceBytes.clear();
         if (bufferId != 0) {
             GLStateManager.glBindBuffer(target, bufferId);
             GLStateManager.glUnmapBuffer(target);

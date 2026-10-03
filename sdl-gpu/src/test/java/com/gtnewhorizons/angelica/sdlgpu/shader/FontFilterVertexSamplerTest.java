@@ -24,8 +24,8 @@ class FontFilterVertexSamplerTest {
     private static String runSdlPipeline(String raw) {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(raw, GL20.GL_VERTEX_SHADER, "fontFilter.vsh", true);
         String src = pre != null ? pre.rewrittenSource() : raw;
-        src = ClipZRemap.injectGLToVulkanClipZ(src);
-        src = SamplerStripper.stripUnused(src);
+        src = ShaderTransformChain.clipZ(src);
+        src = ShaderTransformChain.stripUnused(src);
         return src;
     }
 

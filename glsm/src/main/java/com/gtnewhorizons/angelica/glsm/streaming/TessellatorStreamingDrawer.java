@@ -191,7 +191,7 @@ public class TessellatorStreamingDrawer {
         }
 
         // Shrink rawBuffer if oversized
-        if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize << 3)) {
+        if (tess.rawBufferSize > 0x20000 && tess.rawBufferIndex < (tess.rawBufferSize >> 3)) {
             tess.rawBufferSize = 0x10000;
             tess.rawBuffer = new int[tess.rawBufferSize];
         }
@@ -383,7 +383,7 @@ public class TessellatorStreamingDrawer {
         int firstVertex = -1;
 
         if (persistentBuffer != null) {
-            firstVertex = persistentBuffer.upload(combined, combinedStride);
+            firstVertex = persistentBuffer.upload(combined, combinedStride, drawMode == GL11.GL_QUADS ? 4 : 1);
         }
 
         if (firstVertex >= 0) {

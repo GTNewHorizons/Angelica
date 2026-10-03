@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.testutil.Reflect;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
+import com.gtnewhorizons.angelica.sdlgpu.shader.cross.CrossCompileCache;
 import org.junit.jupiter.api.Test;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.system.MemoryUtil;
@@ -56,7 +57,7 @@ class FragmentStorageTextureSlotTest {
         final ByteBuffer spirv = r.spirv();
         try {
             ShaderManager.remapSpirvForSDLGPU(spirv, GL20.GL_FRAGMENT_SHADER);
-            final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+            final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
             try {
                 final String msl = StandardCharsets.UTF_8.decode(out.code().duplicate()).toString();
                 final boolean[] seen = new boolean[samplerCount];
@@ -135,7 +136,7 @@ class FragmentStorageTextureSlotTest {
         final ByteBuffer spirv = Reflect.get(obj, "spirv");
         final ShaderManager.StageReflection refl = Reflect.get(obj, "reflection");
 
-        final MslCrossCompile.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
+        final CrossCompileCache.Output out = MslCrossCompile.compile(spirv, GL20.GL_FRAGMENT_SHADER);
         try {
             final String msl = StandardCharsets.UTF_8.decode(out.code().duplicate()).toString();
             final int samplerCount = refl.counts().numSamplers();

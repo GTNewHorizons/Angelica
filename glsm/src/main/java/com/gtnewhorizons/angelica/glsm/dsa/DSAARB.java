@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.dsa;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.texture.TextureInfoCache;
 import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
@@ -73,7 +74,8 @@ public class DSAARB extends DSAUnsupported {
 
     @Override
     public int getTexParameteri(int texture, int target, int pname) {
-        return GLStateManager.getTexParameterOrDefault(texture, pname, () -> RENDER_BACKEND.getTextureParameteri(texture, target, pname));
+        final long v = GLStateManager.lookupTexParameteri(TextureInfoCache.INSTANCE.getInfo(texture), pname);
+        return v != GLStateManager.TEX_PARAM_MISS ? (int) v : RENDER_BACKEND.getTextureParameteri(texture, target, pname);
     }
 
     @Override
@@ -137,20 +139,5 @@ public class DSAARB extends DSAUnsupported {
     @Override
     public int createTexture(int target) {
         return RENDER_BACKEND.createTextures(target);
-    }
-
-    @Override
-    public void textureStorage1D(int texture, int target, int levels, int internalFormat, int width) {
-        RENDER_BACKEND.textureStorage1D(texture, levels, internalFormat, width);
-    }
-
-    @Override
-    public void textureStorage2D(int texture, int target, int levels, int internalFormat, int width, int height) {
-        RENDER_BACKEND.textureStorage2D(texture, levels, internalFormat, width, height);
-    }
-
-    @Override
-    public void textureStorage3D(int texture, int target, int levels, int internalFormat, int width, int height, int depth) {
-        RENDER_BACKEND.textureStorage3D(texture, levels, internalFormat, width, height, depth);
     }
 }

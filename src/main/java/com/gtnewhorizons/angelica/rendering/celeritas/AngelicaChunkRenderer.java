@@ -15,6 +15,7 @@ import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
 import me.jellysquid.mods.sodium.client.gui.options.named.MultiDrawMode;
 import com.gtnewhorizons.angelica.rendering.voxelization.SdlShadowVoxelizationSink;
 import com.gtnewhorizons.angelica.rendering.voxelization.ShadowVoxelizer;
+import it.unimi.dsi.fastutil.objects.Reference2ObjectOpenHashMap;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.gl.program.ComputeProgram;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
@@ -40,7 +41,9 @@ import org.embeddedt.embeddium.impl.render.chunk.lists.ChunkRenderListIterable;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.BatchAssembler;
 import org.embeddedt.embeddium.impl.render.chunk.multidraw.CachedBatch;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
+import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkFogMode;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderBindingPoints;
+import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderComponent;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderInterface;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderOptions;
 import org.embeddedt.embeddium.impl.render.chunk.shader.ChunkShaderTextureSlot;
@@ -73,10 +76,11 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     private int packTerrainSamplerAnisotropy = -1;
     private boolean terrainSamplerBound;
     private final GpuTerrainCuller culler;
+    private final SdlShadowVoxelizationSink shadowVoxelSink = new SdlShadowVoxelizationSink();
     private final ReusableCachedBatch gpuBatch = new ReusableCachedBatch();
+    private final Reference2ObjectOpenHashMap<TerrainRenderPass, GlProgram<ChunkShaderInterface>[]> programsByPass = new Reference2ObjectOpenHashMap<>();
 
     private static final ShadowVoxelizer shadowVoxelizer = new ShadowVoxelizer();
-    private static final SdlShadowVoxelizationSink shadowVoxelSink = new SdlShadowVoxelizationSink();
     private static int loggedVoxelizationSkips;
     private static MultiDrawMode installedBatchMode;
 
@@ -172,10 +176,36 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
             // Fall back to default shader
             this.usingIrisProgram = false;
             this.irisProgram = null;
-            super.begin(pass);
+            beginDefault(pass);
             bindTerrainSampler();
         } finally {
             if (Tracy.ENABLED) Tracy.endZone();
+        }
+    }
+
+    @SuppressWarnings("unchecked")
+    private void beginDefault(TerrainRenderPass pass) {
+        final ChunkShaderComponent.Factory<?> fog = this.environment.fogService().getFogMode();
+        if (!(fog instanceof ChunkFogMode mode)) {
+            super.begin(pass);
+            return;
+        }
+        GlProgram<ChunkShaderInterface>[] programs = this.programsByPass.get(pass);
+        if (programs == null) {
+            programs = (GlProgram<ChunkShaderInterface>[]) new GlProgram[ChunkFogMode.values().length];
+            this.programsByPass.put(pass, programs);
+        }
+        GlProgram<ChunkShaderInterface> program = programs[mode.ordinal()];
+        if (program == null) {
+            final List<ChunkShaderComponent.Factory<?>> components = getShaderComponents();
+            program = compileProgram(new ChunkShaderOptions(components, pass));
+            programs[mode.ordinal()] = program;
+        }
+        pass.startDrawing();
+        this.activeProgram = program;
+        if (program != null) {
+            program.bind();
+            program.getInterface().setupState(pass);
         }
     }
 
@@ -273,10 +303,12 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
     @Override
     public void delete(CommandList commandList) {
         super.delete(commandList);
+        programsByPass.clear();
 
         if (culler != null) {
             culler.delete();
         }
+        shadowVoxelSink.delete();
 
         unbindTerrainSampler();
         RenderSystem.destroySampler(terrainSampler);
@@ -423,7 +455,9 @@ class AngelicaChunkRenderer extends DefaultChunkRenderer {
         deferred.prepareShadowVoxelizationCompute(matrices.modelView());
         try {
             shadowVoxelizer.walkPass(renderLists, renderPass, renderPass.vertexType().getVertexFormat(), camera, occlusionCamera, useBlockFaceCulling(), shadowVoxelSink);
+            shadowVoxelSink.flush();
         } finally {
+            shadowVoxelSink.discard();
             if (prevProgram != 0) GLStateManager.glUseProgram(prevProgram);
         }
     }

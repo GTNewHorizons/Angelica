@@ -1,8 +1,16 @@
 package com.gtnewhorizons.angelica.sdlgpu.shader;
 
+import com.gtnewhorizons.angelica.glsm.GlslTransformUtils;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
+import com.gtnewhorizons.angelica.glsm.hooks.PerFrameUniformBlock;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
+import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess.Edit;
 import org.lwjgl.opengl.GL20;
+import org.taumc.glsl.grammar.GLSLParser;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.function.BiConsumer;
 
 final class ShaderTransformChain {
 
@@ -12,12 +20,37 @@ final class ShaderTransformChain {
         final GlslVulkanPreprocess.Result pre = GlslVulkanPreprocess.run(source, glShaderType, "test", true);
         String src = pre != null ? pre.rewrittenSource() : source;
         if (glShaderType == GL20.GL_VERTEX_SHADER) {
-            src = ClipZRemap.injectGLToVulkanClipZ(src);
+            src = clipZ(src);
         }
-        src = SamplerStripper.stripUnused(src);
+        src = stripUnused(src);
         if (glShaderType == GL20.GL_VERTEX_SHADER || glShaderType == GL20.GL_FRAGMENT_SHADER) {
-            src = PerFrameBlockInjector.inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
+            src = inject(src, GLSMHooks.perFrameUniformBlock, GLSMHooks.perPassUniformBlock);
         }
         return src;
+    }
+
+    static String clipZ(String source) {
+        return edit(source, ClipZRemap::collectEdits);
+    }
+
+    static String stripUnused(String source) {
+        if (!source.contains("sampler")) return source;
+        return edit(source, (root, edits) -> SamplerStripper.collectEdits(root, source, edits));
+    }
+
+    static String inject(String source, PerFrameUniformBlock perFrame, PerFrameUniformBlock perPass) {
+        return edit(source, (root, edits) -> PerFrameBlockInjector.collectEdits(root, perFrame, perPass, edits));
+    }
+
+    private static String edit(String source, BiConsumer<GLSLParser.Translation_unitContext, List<Edit>> collect) {
+        final GLSLParser.Translation_unitContext root;
+        try {
+            root = GlslTransformUtils.parseFullQuiet(source);
+        } catch (Exception e) {
+            return source;
+        }
+        final List<Edit> edits = new ArrayList<>();
+        collect.accept(root, edits);
+        return edits.isEmpty() ? source : GlslVulkanPreprocess.applyEdits(source, edits);
     }
 }

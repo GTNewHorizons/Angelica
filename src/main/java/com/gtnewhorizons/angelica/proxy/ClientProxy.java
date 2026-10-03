@@ -4,6 +4,7 @@ import com.gtnewhorizons.angelica.debug.DebugKeyHandler;
 import com.gtnewhorizons.angelica.rendering.culling.GpuCulling;
 import static com.gtnewhorizons.angelica.AngelicaMod.MOD_ID;
 
+import java.io.File;
 import java.io.IOException;
 import java.lang.management.ManagementFactory;
 import java.util.Locale;
@@ -40,6 +41,7 @@ import com.gtnewhorizon.gtnhlib.client.renderer.vao.VAOManager;
 import com.gtnewhorizons.angelica.client.font.DarkModeUtils;
 import com.gtnewhorizons.angelica.commands.AngelicaCommand;
 import com.gtnewhorizons.angelica.AngelicaMod;
+import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.common.BlockError;
 import com.gtnewhorizons.angelica.common.BlockIsbrhTest;
 import com.gtnewhorizons.angelica.compat.ModStatus;
@@ -62,6 +64,7 @@ import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
 import com.gtnewhorizons.angelica.hudcaching.HUDCaching;
 import com.gtnewhorizons.angelica.iris.IrisGLSMBridge;
 import com.gtnewhorizons.angelica.mixins.interfaces.IGameSettingsExt;
@@ -147,6 +150,11 @@ public final class ClientProxy extends CommonProxy {
         if (AngelicaConfig.enableTestBlocks) {
             BlockIsbrhTest.renderId = RenderingRegistry.getNextAvailableRenderId();
             RenderingRegistry.registerBlockHandler(BlockIsbrhTest.renderId, new IsbrhTestRenderer());
+        }
+        final File source = event.getSourceFile();
+        if (source != null && source.isFile()) {
+            ShaderDiskCache.configure(Minecraft.getMinecraft().mcDataDir.toPath().resolve("angelica").resolve("shadercache"),
+                Tags.VERSION + "|" + source.length() + "|" + source.lastModified());
         }
         if (AngelicaConfig.enableIris) {
             IrisGLSMBridge.installImmediateExtendedHandler();

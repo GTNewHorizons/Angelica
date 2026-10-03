@@ -36,9 +36,7 @@ class ShadowVoxelizerTest {
     private static class RecordingSink implements ShadowVoxelizer.Sink {
         final List<float[]> regions = new ArrayList<>();
         final List<int[]> ranges = new ArrayList<>();
-        int finishes;
         boolean refuseRegion;
-        boolean refuseRange;
 
         @Override
         public boolean region(RenderRegion region, GlVertexFormat format, float x, float y, float z) {
@@ -48,15 +46,8 @@ class ShadowVoxelizerTest {
         }
 
         @Override
-        public boolean range(int vertexOffset, int vertexCount) {
-            if (refuseRange) return false;
+        public void range(int vertexOffset, int vertexCount) {
             ranges.add(new int[]{vertexOffset, vertexCount});
-            return true;
-        }
-
-        @Override
-        public void finish() {
-            finishes++;
         }
     }
 
@@ -300,7 +291,6 @@ class ShadowVoxelizerTest {
 
         assertTrue(sink.regions.isEmpty(), "an empty region must not open an encoder");
         assertTrue(sink.ranges.isEmpty());
-        assertEquals(1, sink.finishes);
     }
 
     @Test
@@ -311,7 +301,6 @@ class ShadowVoxelizerTest {
         final RecordingSink sink = walk(lists(renderList(region, 0)), renderPass, new CameraTransform(0, 0, 0), false);
 
         assertTrue(sink.ranges.isEmpty());
-        assertEquals(1, sink.finishes);
     }
 
     @Test
@@ -334,33 +323,6 @@ class ShadowVoxelizerTest {
             new CameraTransform(0, 0, 0), new CameraTransform(0, 0, 0), false, sink);
 
         assertTrue(sink.ranges.isEmpty(), "a region that cannot be bound emits nothing");
-        assertEquals(1, sink.finishes, "the encoder is still closed exactly once");
-    }
-
-    @Test
-    void refusedRangeSkipsOnlyThatRegion() {
-        final TerrainRenderPass renderPass = pass("solid");
-        final RenderRegion regionA = region(0, 0, 0);
-        final RenderRegion regionB = region(1, 0, 0);
-        final long heapA = heap();
-        final long heapB = heap();
-        final SectionRenderDataStorage storageA = storage(heapA);
-        final SectionRenderDataStorage storageB = storage(heapB);
-        writeSection(heapA, 0, 0, 4, 0, 4, 0, 0, 0, 0);
-        writeSection(heapB, 0, 0, 4, 0, 0, 0, 0, 0, 0);
-        attachStorage(regionA, renderPass, storageA);
-        attachStorage(regionB, renderPass, storageB);
-
-        final RecordingSink sink = new RecordingSink() {
-            @Override public boolean range(int vertexOffset, int vertexCount) {
-                return regions.size() != 1 && super.range(vertexOffset, vertexCount);
-            }
-        };
-        new ShadowVoxelizer().walkPass(lists(renderList(regionA, 0), renderList(regionB, 0)), renderPass, null, new CameraTransform(0, 0, 0), new CameraTransform(0, 0, 0), false, sink);
-
-        assertEquals(2, sink.regions.size(), "the second region is still attempted after the first is refused");
-        assertEquals(1, sink.ranges.size(), "only the second region's range lands");
-        assertEquals(1, sink.finishes);
     }
 
     @Test

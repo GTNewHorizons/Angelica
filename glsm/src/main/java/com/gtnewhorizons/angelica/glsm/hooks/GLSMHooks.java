@@ -14,6 +14,7 @@ public final class GLSMHooks {
     public static ShaderTransformPostProcessor postTransformProcessor;
     public static PerFrameUniformBlock perFrameUniformBlock;
     public static PerFrameUniformBlock perPassUniformBlock;
+    public static Runnable uniformBlockBarrier;
     public static PendingProgramSelection pendingProgramSelection;
 
     public static void resolvePendingProgram() {

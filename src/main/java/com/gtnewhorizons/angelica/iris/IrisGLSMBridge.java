@@ -19,6 +19,7 @@ import net.coderbot.iris.gl.blending.BlendModeStorage;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.gl.program.ProgramUniforms;
 import net.coderbot.iris.gl.program.Program;
+import net.coderbot.iris.gl.state.MultiListenerNotifier;
 import net.coderbot.iris.gl.state.StateUpdateNotifiers;
 import net.coderbot.iris.pipeline.DeferredWorldRenderingPipeline;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
@@ -30,8 +31,8 @@ import org.lwjgl.opengl.GL11;
 
 public class IrisGLSMBridge {
 
+    private static final MultiListenerNotifier alphaTestNotifier = new MultiListenerNotifier();
     private static Runnable alphaFuncListener = null;
-    private static Runnable alphaTestListener = null;
     private static Runnable blendFuncListener = null;
     private static Runnable fogModeListener = null;
     private static Runnable fogStartListener = null;
@@ -51,8 +52,8 @@ public class IrisGLSMBridge {
 
     static {
         programLastUpdatedFrame.defaultReturnValue(-1);
+        StateUpdateNotifiers.alphaTestNotifier = alphaTestNotifier;
         StateUpdateNotifiers.alphaFuncNotifier = listener -> alphaFuncListener = listener;
-        StateUpdateNotifiers.alphaTestNotifier = listener -> alphaTestListener = listener;
         StateUpdateNotifiers.blendFuncNotifier = listener -> blendFuncListener = listener;
         StateUpdateNotifiers.fogModeNotifier = listener -> fogModeListener = listener;
         StateUpdateNotifiers.fogStartNotifier = listener -> fogStartListener = listener;
@@ -173,7 +174,7 @@ public class IrisGLSMBridge {
         GLSMHooks.ALPHA_STATE_CHANGE.addListener(event -> {
             if (Iris.enabled) {
                 if (alphaFuncListener != null) alphaFuncListener.run();
-                if (alphaTestListener != null) alphaTestListener.run();
+                alphaTestNotifier.run();
             }
         });
 

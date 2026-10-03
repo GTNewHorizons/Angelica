@@ -17,21 +17,25 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
 
     public ExtendedBlockStorageExt(Chunk chunk, ExtendedBlockStorage storage) {
         super(storage.yBase, storage.getSkylightArray() != null);
+        copyFrom(chunk, storage);
+    }
+
+    public void copyFrom(Chunk chunk, ExtendedBlockStorage storage) {
+        this.yBase = storage.yBase;
+        final boolean srcHasSky = storage.getSkylightArray() != null;
+        this.hasSky = srcHasSky;
 
         if (ModStatus.isChunkAPILoaded) {
-            if (storage.getSkylightArray() != null) {
-                hasSky = true;
-            }
+            // ChunkAPI BlocklightManager.cloneSubChunk repoints the source at our array
+            final NibbleArray liveBlocklight = storage.getBlocklightArray();
             DataRegistry.cloneSubChunk(chunk, storage, this);
+            storage.setBlocklightArray(liveBlocklight);
         } else {
             int arrayLen;
             if (ModStatus.isNEIDLoaded){
                 final short[] block16BArray = ((IExtendedBlockStorageMixin)(Object)this).getBlock16BArray();
                 System.arraycopy(((IExtendedBlockStorageMixin)(Object)storage).getBlock16BArray(), 0, block16BArray, 0, block16BArray.length);
-                if(storage.getBlockMSBArray() != null) {
-                    this.setBlockMSBArray(new NibbleArray(block16BArray.length, 4));
-                    copyNibbleArray(storage.getBlockMSBArray(), this.getBlockMSBArray());
-                }
+                copyMSB(storage, block16BArray.length);
                 arrayLen = block16BArray.length;
                 if (ModStatus.isNEIDMetadataExtended) {
                     final short[] block16BMetaArray = ((IExtendedBlockStorageMixin)(Object)this).getBlock16BMetaArray();
@@ -41,25 +45,35 @@ public class ExtendedBlockStorageExt extends ExtendedBlockStorage {
             else {
                 final byte[] blockLSBArray = this.getBlockLSBArray();
                 System.arraycopy(storage.getBlockLSBArray(), 0, blockLSBArray, 0, blockLSBArray.length);
-                if(storage.getBlockMSBArray() != null) {
-                    this.setBlockMSBArray(new NibbleArray(blockLSBArray.length, 4));
-                    copyNibbleArray(storage.getBlockMSBArray(), this.getBlockMSBArray());
-                }
+                copyMSB(storage, blockLSBArray.length);
                 arrayLen = blockLSBArray.length;
             }
 
 
             if (!ModStatus.isNEIDMetadataExtended) copyNibbleArray(storage.getMetadataArray(), this.getMetadataArray());
             copyNibbleArray(storage.getBlocklightArray(), this.getBlocklightArray());
-            if(storage.getSkylightArray() != null) {
-                hasSky = true;
+            if (srcHasSky) {
                 if(this.getSkylightArray() == null) {
                     this.setSkylightArray(new NibbleArray(arrayLen, 4));
                 }
                 copyNibbleArray(storage.getSkylightArray(), this.getSkylightArray());
+            } else {
+                this.setSkylightArray(null);
             }
         }
         this.blockRefCount = storage.blockRefCount;
+    }
+
+    private void copyMSB(ExtendedBlockStorage storage, int len) {
+        final NibbleArray src = storage.getBlockMSBArray();
+        if (src == null) {
+            this.setBlockMSBArray(null);
+            return;
+        }
+        if (this.getBlockMSBArray() == null) {
+            this.setBlockMSBArray(new NibbleArray(len, 4));
+        }
+        copyNibbleArray(src, this.getBlockMSBArray());
     }
 
 

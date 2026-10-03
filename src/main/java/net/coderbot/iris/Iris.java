@@ -6,6 +6,7 @@ import com.gtnewhorizons.angelica.Tags;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
+import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
@@ -97,6 +98,7 @@ public class Iris {
     private static ShaderpackDirectoryManager shaderpacksDirectoryManager;
 
     private static ShaderPack currentPack;
+    private static CompletableFuture<Void> programSetWarmup;
     @Getter
     private static String currentPackName;
     @Getter
@@ -164,14 +166,13 @@ public class Iris {
         public static void warmup() {
             final String vertexShader = "#version 120\nvoid main() { gl_Position = gl_ModelViewProjectionMatrix * gl_Vertex; }";
             final String fragmentShader = "#version 120\nvoid main() { gl_FragColor = vec4(1.0); }";
-            try {
-                submitTracked(() -> {
-                    TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
-                    TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, InputAvailability.of(true, true));
-                }).get();
-            } catch (Exception e) {
+            submitTracked(() -> {
+                TransformPatcher.patchComposite(vertexShader, null, fragmentShader);
+                TransformPatcher.patchAttributes(vertexShader, null, fragmentShader, InputAvailability.of(true, true));
+            }).exceptionally(e -> {
                 logger.warn("Warmup failed", e);
-            }
+                return null;
+            });
         }
 
         public static <T> CompletableFuture<T> submitTracked(Supplier<T> supplier) {
@@ -392,16 +393,32 @@ public class Iris {
     }
 
     public static void warmupShaderTransforms() {
-        if (currentPack == null) return;
+        final ShaderPack pack = currentPack;
+        if (pack == null) return;
         try {
             if (BackendManager.RENDER_BACKEND.isSDLGPU()) {
                 IrisGLSMBridge.installPostTransformHook();
             }
-            final ProgramSet programs = currentPack.getProgramSet(lastDimensionName != null ? lastDimensionName : "Overworld");
-            PerFrameUniformBlockHarvester.harvest(programs);
-            DeferredWorldRenderingPipeline.warmupTransforms(programs);
+            final String dimensionName = lastDimensionName != null ? lastDimensionName : "Overworld";
+            GLSMHooks.uniformBlockBarrier = Iris::awaitProgramSetWarmup;
+            programSetWarmup = ShaderTransformExecutor.submitTracked(() -> {
+                final ProgramSet programs = pack.getProgramSet(dimensionName);
+                PerFrameUniformBlockHarvester.harvest(programs);
+                DeferredWorldRenderingPipeline.warmupTransforms(programs);
+            });
         } catch (Throwable t) {
             logger.warn("Early shader transform warmup failed; transforms will run at pipeline creation", t);
+        }
+    }
+
+    private static void awaitProgramSetWarmup() {
+        final CompletableFuture<Void> warmup = programSetWarmup;
+        if (warmup == null) return;
+        programSetWarmup = null;
+        try {
+            warmup.join();
+        } catch (RuntimeException e) {
+            logger.warn("Early shader transform warmup failed; transforms will run at pipeline creation", e);
         }
     }
 
@@ -678,6 +695,7 @@ public class Iris {
      * Destroys and deallocates all created OpenGL resources. Useful as part of a reload.
      */
     private static void destroyEverything() {
+        awaitProgramSetWarmup();
         currentPack = null;
 
         getPipelineManager().destroyPipeline();
@@ -742,6 +760,7 @@ public class Iris {
      * Supports dimension.properties mappings with wildcard fallback.
      */
     private static WorldRenderingPipeline createPipeline(String dimensionName) {
+        awaitProgramSetWarmup();
         if (currentPack == null) {
             // Completely disables shader-based rendering
             PerFrameUniformBlockHarvester.clear();

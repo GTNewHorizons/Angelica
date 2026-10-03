@@ -35,6 +35,11 @@ public final class SpirvCompiler {
     private static final int CACHE_MAX = 256;
     private static final Object2ObjectLinkedOpenHashMap<CacheKey, byte[]> CACHE = new Object2ObjectLinkedOpenHashMap<>();
 
+    @Lwjgl3Aware
+    private static final class Toolchain {
+        static final String ID = ShaderCacheIO.libraryId(Shaderc.getLibrary());
+    }
+
     private record CacheKey(String source, int shaderKind, Options opts) {}
 
     private SpirvCompiler() {}
@@ -53,6 +58,10 @@ public final class SpirvCompiler {
     public record Result(@Nullable ByteBuffer spirv, @Nullable String error, @Nullable Path dumpPath) {}
 
     public static Result compile(String source, int shaderKind, String debugName, Options opts) {
+        return compile(source, shaderKind, debugName, opts, true);
+    }
+
+    public static Result compile(String source, int shaderKind, String debugName, Options opts, boolean diskCache) {
         final String cleanSrc = source.indexOf('\0') >= 0 ? source.replace("\0", "") : source;
 
         final CacheKey key = new CacheKey(cleanSrc, shaderKind, opts);
@@ -60,12 +69,37 @@ public final class SpirvCompiler {
         synchronized (CACHE) {
             cached = CACHE.getAndMoveToFirst(key);
         }
-        if (cached != null) {
-            final ByteBuffer copy = MemoryUtil.memAlloc(cached.length);
-            copy.put(cached).flip();
-            return new Result(copy, null, null);
+        if (cached != null) return new Result(ShaderCacheIO.toNative(cached), null, null);
+
+        ShaderDiskCache.Key diskKey = null;
+        if (diskCache && ShaderDiskCache.isEnabled()) {
+            diskKey = diskKey(cleanSrc, shaderKind, opts);
+            final byte[] disk = ShaderDiskCache.get(diskKey);
+            if (disk != null) {
+                ShaderCacheIO.lruPut(CACHE, key, disk, CACHE_MAX);
+                return new Result(ShaderCacheIO.toNative(disk), null, null);
+            }
         }
 
+        final Result result = compileUncached(cleanSrc, shaderKind, debugName, opts);
+        final ByteBuffer spirv = result.spirv();
+        if (spirv != null) {
+            final byte[] heap = ShaderCacheIO.toHeap(spirv);
+            ShaderCacheIO.lruPut(CACHE, key, heap, CACHE_MAX);
+            if (diskKey != null) ShaderDiskCache.put(diskKey, heap);
+        }
+        return result;
+    }
+
+    public static String toolchainId() {
+        return Toolchain.ID;
+    }
+
+    static ShaderDiskCache.Key diskKey(String cleanSrc, int shaderKind, Options opts) {
+        return ShaderDiskCache.key("spirv").str(toolchainId()).str(cleanSrc).i(shaderKind).str(opts.toString());
+    }
+
+    private static Result compileUncached(String cleanSrc, int shaderKind, String debugName, Options opts) {
         final long compiler = COMPILER.get();
         final long optionsHandle = Shaderc.shaderc_compile_options_initialize();
         if (optionsHandle == 0L) {
@@ -98,12 +132,6 @@ public final class SpirvCompiler {
                 final ByteBuffer copy = MemoryUtil.memAlloc(spirv.remaining());
                 copy.put(spirv);
                 copy.flip();
-                final byte[] heap = new byte[copy.remaining()];
-                copy.duplicate().get(heap);
-                synchronized (CACHE) {
-                    CACHE.putAndMoveToFirst(key, heap);
-                    while (CACHE.size() > CACHE_MAX) CACHE.removeLast();
-                }
                 return new Result(copy, null, null);
             } finally {
                 if (result != 0L) Shaderc.shaderc_result_release(result);

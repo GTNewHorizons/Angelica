@@ -29,6 +29,7 @@ import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
@@ -126,6 +127,13 @@ public abstract class MixinRenderBlocks implements ExtCeleritasRenderBlocks {
         } finally {
             this.applyingCeleritasAO = false;
         }
+    }
+
+    @Redirect(method = "renderStandardBlockWithColorMultiplier",
+        at = @At(value = "INVOKE", target = "Lnet/minecraft/block/Block;getMixedBrightnessForBlock(Lnet/minecraft/world/IBlockAccess;III)I"),
+        require = 1)
+    private int angelica$skipDiscardedBrightness(Block block, IBlockAccess world, int x, int y, int z, @Local(ordinal = 0) Tessellator tessellator) {
+        return this.applyingCeleritasAO && ((StateAwareTessellator) tessellator).angelica$isCeleritasMeshing() ? 0 : block.getMixedBrightnessForBlock(world, x, y, z);
     }
 
     @Override

@@ -28,6 +28,7 @@ public final class SamplerBinder {
     private final Device device;
     private final ResourceManager resourceManager;
     private final ShaderManager shaderManager;
+    private final SamplerCache.Factory samplerFactory = this::createSamplerForKey;
 
     public SamplerBinder(Device device, ResourceManager resourceManager, ShaderManager shaderManager) {
         this.device = device;
@@ -58,7 +59,7 @@ public final class SamplerBinder {
             ss.minLod, ss.maxLod, ss.lodBias,
             ss.maxAnisotropy, ss.compareMode, ss.compareFunc);
 
-        final long handle = resourceManager.samplerCache().getOrCreate(key, this::createSamplerForKey);
+        final long handle = resourceManager.samplerCache().getOrCreate(key, samplerFactory);
         ss.sdlSampler = handle;
         return handle != 0 ? handle : resourceManager.getOrCreateDefaultSampler();
     }
