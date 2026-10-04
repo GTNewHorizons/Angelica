@@ -27,6 +27,7 @@ import java.util.Collection;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -214,6 +215,36 @@ public final class ShaderDiskCache {
     }
 
     public record Blob(String tag, byte[] data) {}
+
+    public static void remove(Key key) {
+        final Path r = root;
+        if (r == null) return;
+        try {
+            Files.deleteIfExists(key.path(r));
+        } catch (IOException ignored) {}
+    }
+
+    public static void retainLayer(String layer, Set<String> keep) {
+        final Path r = root;
+        if (r == null) return;
+        final Path dir = r.resolve(layer);
+        if (!Files.isDirectory(dir)) return;
+        final List<Path> files = new ArrayList<>();
+        try (Stream<Path> list = Files.list(dir)) {
+            list.forEach(files::add);
+        } catch (IOException e) {
+            LOGGER.warn("Shader disk cache could not list {}", dir, e);
+            return;
+        }
+        for (Path p : files) {
+            final String name = p.getFileName().toString();
+            if (!name.endsWith(".bin")) continue; // in-flight writes are still .tmp
+            if (keep != null && keep.contains(name.substring(0, name.length() - 4))) continue;
+            try {
+                Files.deleteIfExists(p);
+            } catch (IOException ignored) {}
+        }
+    }
 
     static void enforceCap(Path dir, long maxBytes) {
         try {

@@ -10,6 +10,7 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Set;
 import java.util.stream.Stream;
 
 import static org.junit.jupiter.api.Assertions.assertArrayEquals;
@@ -121,5 +122,28 @@ class ShaderDiskCacheTest {
         assertTrue(Files.isRegularFile(dir.resolve("salt")));
         ShaderDiskCache.put(ShaderDiskCache.key("t").i(9), new byte[] {5});
         assertArrayEquals(new byte[] {5}, ShaderDiskCache.get(ShaderDiskCache.key("t").i(9)));
+    }
+
+    @Test
+    void retainLayerKeepsListedEntriesOtherLayersAndInFlightWrites() throws IOException {
+        ShaderDiskCache.configure(dir, "a");
+        final ShaderDiskCache.Key kept = ShaderDiskCache.key("p").str("kept");
+        final ShaderDiskCache.Key dropped = ShaderDiskCache.key("p").str("dropped");
+        final ShaderDiskCache.Key otherLayer = ShaderDiskCache.key("q").str("dropped");
+        ShaderDiskCache.put(kept, new byte[] {1});
+        ShaderDiskCache.put(dropped, new byte[] {2});
+        ShaderDiskCache.put(otherLayer, new byte[] {3});
+        final Path inFlight = dir.resolve("p").resolve(dropped.hex() + ".7.tmp");
+        Files.write(inFlight, new byte[] {4});
+
+        ShaderDiskCache.retainLayer("p", Set.of(kept.hex()));
+        assertArrayEquals(new byte[] {1}, ShaderDiskCache.get(kept));
+        assertNull(ShaderDiskCache.get(dropped));
+        assertArrayEquals(new byte[] {3}, ShaderDiskCache.get(otherLayer));
+        assertTrue(Files.exists(inFlight));
+
+        ShaderDiskCache.retainLayer("p", null);
+        assertNull(ShaderDiskCache.get(kept));
+        assertArrayEquals(new byte[] {3}, ShaderDiskCache.get(otherLayer));
     }
 }

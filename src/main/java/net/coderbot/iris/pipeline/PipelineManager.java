@@ -91,6 +91,11 @@ public class PipelineManager {
 		versionCounterForSodiumShaderReload++;
 	}
 
+	public void discardPipeline(WorldRenderingPipeline unused) {
+		resetTextureState();
+		unused.destroy();
+	}
+
 	private void resetTextureState() {
 		// Unbind all textures
 		//

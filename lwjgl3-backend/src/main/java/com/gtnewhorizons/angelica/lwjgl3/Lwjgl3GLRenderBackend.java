@@ -28,6 +28,7 @@ import org.lwjgl.opengl.GL31C;
 import org.lwjgl.opengl.GL32C;
 import org.lwjgl.opengl.GL33C;
 import org.lwjgl.opengl.GL40C;
+import org.lwjgl.opengl.GL41C;
 import org.lwjgl.opengl.GL42C;
 import org.lwjgl.opengl.GL43C;
 import org.lwjgl.opengl.GL44C;
@@ -963,6 +964,27 @@ public final class Lwjgl3GLRenderBackend extends RenderBackend {
     @Override
     public boolean isProgram(int obj) {
         return GL20C.glIsProgram(obj);
+    }
+
+    @Override
+    public boolean supportsProgramBinary() {
+        return !RenderSystem.isGLES() && (caps.OpenGL41 || caps.GL_ARB_get_program_binary)
+            && GL11C.glGetInteger(GL41C.GL_NUM_PROGRAM_BINARY_FORMATS) > 0;
+    }
+
+    @Override
+    public void programParameteri(int program, int pname, int value) {
+        GL41C.glProgramParameteri(program, pname, value);
+    }
+
+    @Override
+    public void getProgramBinary(int program, IntBuffer length, IntBuffer binaryFormat, ByteBuffer binary) {
+        GL41C.glGetProgramBinary(program, length, binaryFormat, binary);
+    }
+
+    @Override
+    public void programBinary(int program, int binaryFormat, ByteBuffer binary) {
+        GL41C.glProgramBinary(program, binaryFormat, binary);
     }
 
     @Override
