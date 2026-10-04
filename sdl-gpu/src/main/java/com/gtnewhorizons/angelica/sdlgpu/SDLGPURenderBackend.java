@@ -3402,21 +3402,10 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private void downloadBufferBlocking(long handle, int offset, int size, ByteBuffer out) {
-        flushDeferredUploadsForRead();
-        frameManager.endCopyPassIfActive();
-        frameManager.endRenderPassIfActive(FrameManager.PASS_END_COPY);
+        flushAndSubmitMidFrame();
         final long cb = SDL_AcquireGPUCommandBuffer(device.getDevice());
         if (cb == 0) return;
         resourceManager.downloadFromBuffer(cb, handle, offset, size, out);
-    }
-
-    private void flushDeferredUploadsForRead() {
-        final ContextState st = s();
-        drainDeferredPersistentRegions(st);
-        resourceManager.flushUploadArena();
-        if (transferThread != null && st.frameHighestEnqueuedSeq > transferThread.getSubmittedSeq()) {
-            transferThread.awaitSubmittedUpTo(st.frameHighestEnqueuedSeq);
-        }
     }
 
     private static void serveFromShadow(ByteBuffer shadow, int srcOffset, ByteBuffer data, int rem) {

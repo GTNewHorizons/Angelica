@@ -8,6 +8,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL13;
+import org.lwjgl.opengl.GL15;
+import org.lwjgl.opengl.GL43;
 
 import java.nio.ByteBuffer;
 
@@ -43,6 +45,30 @@ class GlsmSdlReadbackTest {
 
         assertPixels(dst, TEX_SIZE * TEX_SIZE);
         GLStateManager.glDeleteTextures(texture);
+    }
+
+    @Test
+    void getBufferSubDataSeesSameFrameStorageBufferWrite() {
+        final int size = 64;
+        final int ssbo = GLStateManager.glGenBuffers();
+        GLStateManager.glBindBuffer(GL43.GL_SHADER_STORAGE_BUFFER, ssbo);
+
+        final ByteBuffer initial = BufferUtils.createByteBuffer(size);
+        final ByteBuffer update = BufferUtils.createByteBuffer(size);
+        for (int i = 0; i < size; i++) {
+            initial.put(i, (byte) 0x11);
+            update.put(i, (byte) (i + 1));
+        }
+        GLStateManager.glBufferData(GL43.GL_SHADER_STORAGE_BUFFER, initial, GL15.GL_DYNAMIC_DRAW);
+        GLStateManager.glBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0, update);
+
+        final ByteBuffer dst = BufferUtils.createByteBuffer(size);
+        GLStateManager.glGetBufferSubData(GL43.GL_SHADER_STORAGE_BUFFER, 0, dst);
+
+        for (int i = 0; i < size; i++) {
+            assertEquals((byte) (i + 1), dst.get(i), "byte " + i + " should hold the same-frame sub-data write");
+        }
+        GLStateManager.glDeleteBuffers(ssbo);
     }
 
     @Test
