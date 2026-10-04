@@ -33,11 +33,14 @@ public final class PersistentBufferSync {
         this.sink = sink;
     }
 
-    public void onPersistentBufferWrite(int glId, long offset, long size) {
+    public boolean onPersistentBufferWrite(int glId, long offset, long size) {
         final PersistentMapping pm = resourceManager.getPersistentMapping(glId);
-        if (pm != null && pm.markDirty(offset, size)) {
+        if (pm == null || size == 0) return true;
+        if (offset < 0 || size < 0 || offset > pm.length || size > pm.length - offset) return false;
+        if (pm.markDirty(offset, size)) {
             resourceManager.trackPersistentDirty();
         }
+        return true;
     }
 
     public void uploadDirtyPersistentRegion()   { processDirtyPersistentRegions(false); }
@@ -59,30 +62,41 @@ public final class PersistentBufferSync {
         for (int i = 0; i < n; i++) {
             final PersistentMapping pm = vals.get(i);
             if (!pm.isDirty()) continue;
-            final long gpuHandle = resourceManager.getBufferHandle(keys.getInt(i));
-            if (gpuHandle == 0) continue;
-            final long claimed = pm.claimDirty();
-            if (PersistentMapping.isClean(claimed)) continue;
-            final long off = PersistentMapping.rangeOffset(claimed);
-            final long size = PersistentMapping.rangeSize(claimed);
-            if (Tracy.ENABLED) frameManager.notePersistentDrain();
-            if (defer) {
-                final long seq = sink.nextSeq();
-                pm.lastEnqueuedSeq = seq;
-                sink.enqueue(TransferThread.StagingReadUpload.acquire(pm.staging, off, size, gpuHandle, off, seq, false));
-                enqueued++;
-            } else {
-                pm.staging.position((int) off).limit((int) (off + size));
-                resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), pm.staging, gpuHandle, off, false);
-                pm.staging.clear();
+            final int glId = keys.getInt(i);
+            long copyPass = 0L;
+            if (!defer) {
+                if (resourceManager.getBufferHandle(glId) == 0) continue;
+                copyPass = frameManager.ensureCopyPass();
             }
-            resourceManager.clearPersistentDirty();
+            resourceManager.beginPersistentDrain();
+            try {
+                if (resourceManager.getPersistentMapping(glId) != pm) continue;
+                final long gpuHandle = resourceManager.getBufferHandle(glId);
+                if (gpuHandle == 0) continue;
+                final long claimed = pm.claimDirty();
+                if (PersistentMapping.isClean(claimed)) continue;
+                resourceManager.clearPersistentDirty();
+                final long off = PersistentMapping.rangeOffset(claimed);
+                final long size = PersistentMapping.rangeSize(claimed);
+                if (Tracy.ENABLED) frameManager.notePersistentDrain();
+                if (defer) {
+                    final long seq = sink.nextSeq();
+                    pm.lastEnqueuedSeq = seq;
+                    sink.enqueue(TransferThread.StagingReadUpload.acquire(pm.staging, off, size, gpuHandle, pm.offset + off, seq, false));
+                    enqueued++;
+                } else {
+                    resourceManager.uploadRangeToBuffer(copyPass, pm.staging, off, size, gpuHandle, pm.offset + off, false);
+                }
+            } finally {
+                resourceManager.endPersistentDrain();
+            }
         }
         return enqueued;
     }
 
-    public static void mirrorPersistentCopy(ByteBuffer srcStaging, long srcOffset, ByteBuffer dstStaging, long dstOffset, long size) {
-        ByteRegionCopy.copyByteRegion(srcStaging, (int) srcOffset, dstStaging, (int) dstOffset, (int) size);
+    public static void mirrorPersistentCopy(PersistentMapping src, long readOffset, PersistentMapping dst, long writeOffset, long size) {
+        if (!src.covers(readOffset, size) || !dst.covers(writeOffset, size)) return;
+        ByteRegionCopy.copyByteRegion(src.staging, (int) src.stagingIndex(readOffset), dst.staging, (int) dst.stagingIndex(writeOffset), (int) size);
     }
 
     public void mirrorEboShadow(int glId, ByteBuffer src, int dstOffset, int len) {

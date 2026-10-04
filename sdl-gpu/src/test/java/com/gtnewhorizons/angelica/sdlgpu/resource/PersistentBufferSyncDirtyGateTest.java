@@ -40,7 +40,7 @@ class PersistentBufferSyncDirtyGateTest {
 
         final ByteBuffer staging = MemoryUtil.memCalloc(64);
         try {
-            rm.putPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, 64, 0);
 
             assertFalse(rm.hasDirtyPersistentRegions(), "a mapping with no writes is not dirty");
@@ -70,7 +70,7 @@ class PersistentBufferSyncDirtyGateTest {
 
         final ByteBuffer staging = MemoryUtil.memCalloc(64);
         try {
-            rm.putPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, 64, 0);
 
             sync.onPersistentBufferWrite(1, 0, 16);
@@ -95,7 +95,7 @@ class PersistentBufferSyncDirtyGateTest {
         try {
             final int atStart = rm.getMappingsVersion();
 
-            rm.putPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             final int afterPut = rm.getMappingsVersion();
             assertNotEquals(atStart, afterPut, "adding a mapping must move the version");
 
@@ -107,7 +107,8 @@ class PersistentBufferSyncDirtyGateTest {
             sync.enqueueDirtyPersistentRegions();
             assertEquals(afterPut, rm.getMappingsVersion(), "dirtying and draining is not a mapping change");
 
-            rm.swapPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.removePersistentMapping(1);
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             final int afterSwap = rm.getMappingsVersion();
             assertNotEquals(afterPut, afterSwap, "swapping a mapping must move the version");
 
@@ -129,7 +130,7 @@ class PersistentBufferSyncDirtyGateTest {
 
         final ByteBuffer staging = MemoryUtil.memCalloc(256);
         try {
-            rm.putPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, 256, 0);
 
             for (int i = 0; i < 10; i++) {
@@ -156,13 +157,14 @@ class PersistentBufferSyncDirtyGateTest {
         final ByteBuffer first = MemoryUtil.memCalloc(64);
         final ByteBuffer second = MemoryUtil.memCalloc(64);
         try {
-            rm.putPersistentMapping(1, new PersistentMapping(first, 0L, first.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(first, 0L, first.capacity(), 0));
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, 64, 0);
             sync.onPersistentBufferWrite(1, 0, 16);
             sync.enqueueDirtyPersistentRegions();
             assertEquals(1, sink.enqueued);
 
-            rm.swapPersistentMapping(1, new PersistentMapping(second, 0L, second.capacity(), 0));
+            rm.removePersistentMapping(1);
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(second, 0L, second.capacity(), 0));
             sync.onPersistentBufferWrite(1, 0, 16);
             sync.enqueueDirtyPersistentRegions();
             assertEquals(2, sink.enqueued, "the drain must see the replacement, not a stale snapshot");
@@ -184,7 +186,7 @@ class PersistentBufferSyncDirtyGateTest {
 
         final ByteBuffer staging = MemoryUtil.memCalloc(4096);
         try {
-            rm.putPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, 4096, 0);
 
             final int writers = 6;
@@ -235,7 +237,7 @@ class PersistentBufferSyncDirtyGateTest {
         final ByteBuffer staging = MemoryUtil.memCalloc(64);
         try {
             final PersistentMapping pm = new PersistentMapping(staging, 0L, staging.capacity(), 0);
-            rm.putPersistentMapping(1, pm);
+            rm.putPersistentMappingIfAbsent(1, pm);
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, 64, 0);
 
             final long[] stampAtEnqueue = {-1L};
@@ -267,7 +269,7 @@ class PersistentBufferSyncDirtyGateTest {
         final int seedCount = 100;
         for (int i = 0; i < seedCount; i++) {
             final ByteBuffer b = MemoryUtil.memAlloc(64);
-            rm.putPersistentMapping(i, new PersistentMapping(b, 0L, b.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(i, new PersistentMapping(b, 0L, b.capacity(), 0));
         }
 
         final AtomicBoolean stop = new AtomicBoolean(false);
@@ -279,7 +281,7 @@ class PersistentBufferSyncDirtyGateTest {
             int next = seedCount;
             while (!stop.get()) {
                 final ByteBuffer b = MemoryUtil.memAlloc(64);
-                rm.putPersistentMapping(next, new PersistentMapping(b, 0L, b.capacity(), 0));
+                rm.putPersistentMappingIfAbsent(next, new PersistentMapping(b, 0L, b.capacity(), 0));
                 rm.removePersistentMapping(next - 50);
                 next++;
                 if (next > seedCount + 10000) next = seedCount;

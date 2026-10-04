@@ -18,14 +18,14 @@ class ReleasePersistentStagingTest {
     @Test
     void nullPmAndNullStagingNoOp() {
         final ResourceManager rm = SdlTestRig.resourceManager();
-        rm.releasePersistentStaging(null);
-        rm.releasePersistentStaging(new PersistentMapping(null, 0L, 0L, 0));
+        rm.releasePersistentStaging(null, 7, "unmap");
+        rm.releasePersistentStaging(new PersistentMapping(null, 0L, 0L, 0), 7, "unmap");
     }
 
     @Test
     void noTransferThreadFreesInline() {
         final ResourceManager rm = SdlTestRig.resourceManager();
-        rm.releasePersistentStaging(new PersistentMapping(MemoryUtil.memAlloc(24), 0L, 24L, 0));
+        rm.releasePersistentStaging(new PersistentMapping(MemoryUtil.memAlloc(24), 0L, 24L, 0), 7, "unmap");
     }
 
     @Test
@@ -39,7 +39,7 @@ class ReleasePersistentStagingTest {
         try {
             final PersistentMapping pm = new PersistentMapping(MemoryUtil.memAlloc(24), 0L, 24L, 0);
             pm.lastEnqueuedSeq = 0L;
-            rm.releasePersistentStaging(pm);
+            rm.releasePersistentStaging(pm, 7, "unmap");
             assertEquals(0, SdlReflect.pendingFreeCount(tt));
         } finally { shutdown(tt); }
     }
@@ -55,7 +55,7 @@ class ReleasePersistentStagingTest {
         try {
             final PersistentMapping pm = new PersistentMapping(MemoryUtil.memAlloc(24), 0L, 24L, 0);
             pm.lastEnqueuedSeq = 50L;
-            rm.releasePersistentStaging(pm);
+            rm.releasePersistentStaging(pm, 7, "unmap");
             assertEquals(1, SdlReflect.pendingFreeCount(tt));
         } finally { shutdown(tt); }
     }
@@ -64,7 +64,7 @@ class ReleasePersistentStagingTest {
     void deleteBufferReleasesPersistentStaging() {
         final ResourceManager rm = SdlTestRig.resourceManager();
         SdlReflect.recordBuffer(rm, 7, 0xDEADBEEFL, 64, 0);
-        rm.putPersistentMapping(7, new PersistentMapping(MemoryUtil.memCalloc(64), 0L, 64L, 0));
+        rm.putPersistentMappingIfAbsent(7, new PersistentMapping(MemoryUtil.memCalloc(64), 0L, 64L, 0));
 
         rm.deleteBuffer(7);
 
@@ -84,7 +84,7 @@ class ReleasePersistentStagingTest {
             final PersistentMapping pm = new PersistentMapping(staging, 0L, staging.capacity(), 0);
             pm.lastEnqueuedSeq = 99L;
             SdlReflect.recordBuffer(rm, 7, 0xDEADBEEFL, 64, 0);
-            rm.putPersistentMapping(7, pm);
+            rm.putPersistentMappingIfAbsent(7, pm);
 
             rm.deleteBuffer(7);
 

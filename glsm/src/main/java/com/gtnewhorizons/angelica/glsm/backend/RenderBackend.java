@@ -59,6 +59,7 @@ public abstract class RenderBackend {
 
     public boolean framebufferCompletenessIsMeaningful() { return true; }
     public void onPersistentBufferWrite(int glId, long offset, long size) {}
+    public boolean isBufferImmutable(int glId) { return false; }
 
     public boolean isAnisotropicSupported() { return true; }
 

@@ -329,11 +329,15 @@ public final class TransferThread {
             final ByteBuffer mapped = SDL_MapGPUTransferBuffer(device.getDevice(), xfer, true, mapSize);
             if (mapped != null) {
                 final ByteBuffer src = sr.stagingBuffer;
-                final int prevPos = src.position();
-                final int prevLim = src.limit();
-                src.limit((int) (sr.srcOffset + size)).position((int) sr.srcOffset);
-                mapped.put(src);
-                src.limit(prevLim).position(prevPos);
+                if (sr.srcOffset < 0 || sr.srcOffset + size > src.capacity() || size > mapped.capacity()) {
+                    LOG.error("StagingReadUpload out of bounds: srcOffset={} size={} src.capacity={} mapped.capacity={}; upload dropped", sr.srcOffset, size, src.capacity(), mapped.capacity());
+                    SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+                    resourceManager.returnTransferBufferThreadSafe(xfer, size);
+                    retireSeq(sr.seq);
+                    StagingReadUpload.release(sr);
+                    return;
+                }
+                MemoryUtil.memCopy(MemoryUtil.memAddress0(src) + sr.srcOffset, MemoryUtil.memAddress0(mapped), size);
             }
             SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
             recordBufferUpload(xfer, size, sr.dstGpuBuffer, sr.dstOffset, sr.seq, sr.cycle);

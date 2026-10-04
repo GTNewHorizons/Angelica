@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.sdlgpu.frame;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPURenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.pipeline.PipelineCache;
+import com.gtnewhorizons.angelica.sdlgpu.resource.MappedRange;
 import com.gtnewhorizons.angelica.sdlgpu.resource.PackState;
 import com.gtnewhorizons.angelica.sdlgpu.shader.LogicOpVariant;
 import com.gtnewhorizons.angelica.sdlgpu.shader.ShaderManager;
@@ -314,12 +315,7 @@ public final class ContextState {
     public final long[] computeBatchRwTexs = new long[MAX_IMAGE_UNITS];
     public final int[] computeBatchRwTexLevels = new int[MAX_IMAGE_UNITS];
 
-    public int mappedBufferGlId;
-    public ByteBuffer mappedStagingBuffer;
-    public long mappedOffset;
-    public long mappedLength;
-    public boolean mappedInvalidate;
-    public int mappedAccessFlags;
+    public final MappedRange mappingScratch = new MappedRange();
 
     public final SDL_GPUTextureSamplerBinding.Buffer fragSamplerBindings = SDL_GPUTextureSamplerBinding.calloc(MAX_SAMPLERS);
     public final SDL_GPUTextureSamplerBinding.Buffer vertSamplerBindings = SDL_GPUTextureSamplerBinding.calloc(MAX_SAMPLERS);

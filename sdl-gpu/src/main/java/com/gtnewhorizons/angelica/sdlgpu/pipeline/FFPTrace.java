@@ -173,8 +173,9 @@ public final class FFPTrace {
             sb.append(" | ffpUbo=buffer").append(glId).append(" noStaging");
             return;
         }
-        final int base = st.uboRangeOffset[binding];
-        sb.append(" | ffpUbo=buffer").append(glId).append(" base=").append(base);
+        final int rangeOffset = st.uboRangeOffset[binding];
+        final int base = pm != null ? (int) pm.stagingIndex(rangeOffset) : rangeOffset;
+        sb.append(" | ffpUbo=buffer").append(glId).append(" base=").append(rangeOffset);
         appendUboFloat(buf, base, FFPUniformBlock.ALPHA_REF, " u_AlphaRef=");
         appendUboMatrix(buf, base, FFPUniformBlock.MVP_MATRIX, " u_MVPMatrix=");
         appendUboMatrix(buf, base, FFPUniformBlock.LIGHTMAP_TEXTURE_MATRIX, " u_LightmapTextureMatrix=");

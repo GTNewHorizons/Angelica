@@ -6987,7 +6987,7 @@ public class GLStateManager {
 
     private static void onBufferStorage(int target, int flags) {
         if ((flags & MAP_PERSISTENT_BIT) != 0) {
-            markPersistentlyMapped(target);
+            if (!RENDER_BACKEND.isBufferImmutable(bufferForTarget(ctx(), target))) markPersistentlyMapped(target);
             return;
         }
         onBufferRespec(target);
@@ -7070,14 +7070,27 @@ public class GLStateManager {
 
     public static void nglBufferSubData(int target, long offset, long size, long data) { glBufferSubData(target, offset, MemoryUtilities.memByteBuffer(data, checkedSize(size))); }
 
-    public static ByteBuffer glMapBuffer(int target, int access) { onBufferMap(target, access); return RENDER_BACKEND.mapBuffer(target, access); }
+    public static ByteBuffer glMapBuffer(int target, int access) {
+        final ByteBuffer buf = RENDER_BACKEND.mapBuffer(target, access);
+        if (buf != null) onBufferMap(target, access);
+        return buf;
+    }
     public static ByteBuffer glMapBuffer(int target, int access, ByteBuffer old_buffer) { return glMapBuffer(target, access); }
-    public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) { onBufferMap(target, access); return RENDER_BACKEND.mapBuffer(target, access, length, old_buffer); }
-    public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access) { onBufferMapRange(target, access); return RENDER_BACKEND.mapBufferRange(target, offset, length, access); }
+    public static ByteBuffer glMapBuffer(int target, int access, long length, ByteBuffer old_buffer) {
+        final ByteBuffer buf = RENDER_BACKEND.mapBuffer(target, access, length, old_buffer);
+        if (buf != null) onBufferMap(target, access);
+        return buf;
+    }
+    public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access) {
+        final ByteBuffer buf = RENDER_BACKEND.mapBufferRange(target, offset, length, access);
+        if (buf != null) onBufferMapRange(target, access);
+        return buf;
+    }
     public static ByteBuffer glMapBufferRange(int target, long offset, long length, int access, ByteBuffer old_buffer) { return glMapBufferRange(target, offset, length, access); }
     public static long glMapBufferRangeAddress(int target, long offset, long length, int access) {
-        onBufferMapRange(target, access);
-        return RENDER_BACKEND.mapBufferRangeAddress(target, offset, length, access);
+        final long address = RENDER_BACKEND.mapBufferRangeAddress(target, offset, length, access);
+        if (address != 0L) onBufferMapRange(target, access);
+        return address;
     }
     public static void glFlushMappedBufferRange(int target, long offset, long length) { RENDER_BACKEND.flushMappedBufferRange(target, offset, length); }
     public static boolean glUnmapBuffer(int target) { onBufferUnmap(target); return RENDER_BACKEND.unmapBuffer(target); }
@@ -7466,8 +7479,8 @@ public class GLStateManager {
         }
     }
     public static long nglMapBuffer(int target, int access) {
-        onBufferMap(target, access);
         final ByteBuffer buf = RENDER_BACKEND.mapBuffer(target, access);
+        if (buf != null) onBufferMap(target, access);
         return buf == null ? 0L : MemoryUtilities.memAddress0(buf);
     }
     public static void nglMultiDrawElementsBaseVertex(int mode, long count, int type, long indices, int primcount, long basevertex) {
