@@ -543,26 +543,12 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 			this.shadowComputes = createShadowComputes(programs.getShadowCompute());
 
+			final Map<SharedProgramKey, BuiltProgram> builtPrograms = new HashMap<>();
+
 			this.table = new ProgramTable<>((condition, availability) -> {
-				final int idx;
+				final ProgramId finalId = gbufferProgramId(ids, condition, availability);
 
-				if (availability.texture && availability.lightmap) {
-					idx = 2;
-				} else if (availability.texture) {
-					idx = 1;
-				} else {
-					idx = 0;
-				}
-
-				ProgramId id = ids[condition.ordinal() * 3 + idx];
-
-				if (id == null) {
-					id = ids[idx];
-				}
-
-				final ProgramId finalId = id;
-
-				return cachedPasses.computeIfAbsent(Pair.of(id, availability), p -> {
+				return cachedPasses.computeIfAbsent(Pair.of(finalId, availability), p -> {
 					final ProgramSource source = resolver.resolveNullable(p.getLeft());
 
 					if (condition == RenderCondition.SHADOW || condition == RenderCondition.SHADOW_TRANSLUCENT) {
@@ -583,7 +569,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 					try {
 						return createPass(source, availability,
-							condition == RenderCondition.SHADOW || condition == RenderCondition.SHADOW_TRANSLUCENT, finalId);
+							condition == RenderCondition.SHADOW || condition == RenderCondition.SHADOW_TRANSLUCENT, finalId, builtPrograms);
 					} catch (Exception e) {
 						throw new RuntimeException("Failed to create pass for " + source.getName() + " for rendering condition "
 							+ condition + " specialized to input availability " + availability, e);
@@ -1131,6 +1117,25 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			null, Collections.emptyList(), false);
 	}
 
+	private static ProgramId gbufferProgramId(ProgramId[] ids, RenderCondition condition, InputAvailability availability) {
+		final int idx;
+
+		if (availability.texture && availability.lightmap) {
+			idx = 2;
+		} else if (availability.texture) {
+			idx = 1;
+		} else {
+			idx = 0;
+		}
+
+		final ProgramId id = ids[condition.ordinal() * 3 + idx];
+		return id != null ? id : ids[idx];
+	}
+
+	private record SharedProgramKey(String sourceName, InputAvailability availability, boolean shadow) {}
+
+	private record BuiltProgram(Program program, Pass firstPass) {}
+
 	private static ProgramBuilder beginBuilder(String name, Map<PatchShaderType, String> transformed) {
 		final String vertex = transformed.get(PatchShaderType.VERTEX);
 		final String geometry = transformed.get(PatchShaderType.GEOMETRY);
@@ -1143,10 +1148,21 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		return ProgramBuilder.begin(name, vertex, geometry, tessControl, tessEval, fragment, IrisSamplers.WORLD_RESERVED_TEXTURE_UNITS);
 	}
 
-	private Pass createPass(ProgramSource source, InputAvailability availability, boolean shadow, ProgramId id) {
+	private Pass createPass(ProgramSource source, InputAvailability availability, boolean shadow, ProgramId id,
+							Map<SharedProgramKey, BuiltProgram> builtPrograms) {
 		// Use pre-computed transform if available, otherwise transform synchronously
 		Pair<String, InputAvailability> key = Pair.of(source.getName(), availability);
 		Map<PatchShaderType, String> transformed = attributeTransforms.get(key);
+
+		// The synchronous fallback below depends on the program id, so only precomputed programs are shared
+		final SharedProgramKey shareKey = transformed != null ? new SharedProgramKey(source.getName(), availability, shadow) : null;
+		final BuiltProgram shared = shareKey != null ? builtPrograms.get(shareKey) : null;
+		if (shared != null) {
+			final Pass pass = createPassInner(shared.program(), source.getDirectives(), shadow, id);
+			this.customUniforms.mapPassLike(shared.firstPass(), pass);
+			pass.setInstancingKey(source.getName(), availability, shadow);
+			return pass;
+		}
 
 		if (transformed == null) {
 			// Fallback to synchronous transform if not pre-computed
@@ -1163,9 +1179,15 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 
 		ProgramBuilder builder = beginBuilder(source.getName(), transformed);
+		wireGbufferProgram(builder, availability, shadow);
+		final Program program = builder.build();
 
-		final Pass pass = createPassInner(builder, source.getDirectives(), availability, shadow, id);
+		final Pass pass = createPassInner(program, source.getDirectives(), shadow, id);
+		this.customUniforms.mapholderToPass(builder, pass);
 		pass.setInstancingKey(source.getName(), availability, shadow);
+		if (shareKey != null) {
+			builtPrograms.put(shareKey, new BuiltProgram(program, pass));
+		}
 		return pass;
 	}
 
@@ -1212,10 +1234,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
-	private Pass createPassInner(ProgramBuilder builder, ProgramDirectives programDirectives, InputAvailability availability, boolean shadow, ProgramId id) {
-
-		wireGbufferProgram(builder, availability, shadow);
-
+	private Pass createPassInner(Program program, ProgramDirectives programDirectives, boolean shadow, ProgramId id) {
 		GlFramebuffer framebufferBeforeTranslucents;
 		GlFramebuffer framebufferAfterTranslucents;
 
@@ -1240,12 +1259,8 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			}
 		});
 
-        Pass pass = new Pass(builder.build(), framebufferBeforeTranslucents, framebufferAfterTranslucents, alphaTestOverride,
+        return new Pass(program, framebufferBeforeTranslucents, framebufferAfterTranslucents, alphaTestOverride,
             programDirectives.getBlendModeOverride().orElse(id.getBlendModeOverride()), bufferOverrides, shadow);
-
-        this.customUniforms.mapholderToPass(builder, pass);
-
-		return pass;
 	}
 
 	public void addGbufferOrShadowSamplers(SamplerHolder samplers, ImageHolder images, Supplier<ImmutableSet<Integer>> flipped,
@@ -1468,7 +1483,7 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 			if (!instancedVariantAttempted[i]) {
 				instancedVariantAttempted[i] = true;
 				if (instancingSourceName != null && supportsInstancing[i]) {
-					instancedVariants[i] = buildInstancedVariant(instancingSourceName, instancingAvailability, instancingShadow, kind);
+					instancedVariants[i] = sharedInstancedVariant(instancingSourceName, instancingAvailability, instancingShadow, kind);
 				}
 			}
 			return instancedVariants[i];
@@ -1485,6 +1500,20 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 				}
 			}
 		}
+	}
+
+	private record InstancedVariantKey(String sourceName, InputAvailability availability, boolean shadow, Instancing kind) {}
+
+	// Passes sharing a program also share its instanced variants
+	private final Map<InstancedVariantKey, Program> instancedVariantPrograms = new HashMap<>();
+
+	@Nullable
+	private Program sharedInstancedVariant(String sourceName, InputAvailability availability, boolean shadow, Instancing kind) {
+		final InstancedVariantKey key = new InstancedVariantKey(sourceName, availability, shadow, kind);
+		if (instancedVariantPrograms.containsKey(key)) return instancedVariantPrograms.get(key);
+		final Program variant = buildInstancedVariant(sourceName, availability, shadow, kind);
+		instancedVariantPrograms.put(key, variant);
+		return variant;
 	}
 
 	@Nullable
@@ -2438,6 +2467,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 
 	static boolean referencesMvBuiltins(String source) {
 		if (source == null) {
+			return false;
+		}
+		boolean mentioned = false;
+		for (String builtin : MV_BUILTINS) {
+			if (source.contains(builtin)) {
+				mentioned = true;
+				break;
+			}
+		}
+		if (!mentioned) {
 			return false;
 		}
 		try {

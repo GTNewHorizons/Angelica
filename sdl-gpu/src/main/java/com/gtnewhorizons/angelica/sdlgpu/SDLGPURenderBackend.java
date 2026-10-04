@@ -4108,6 +4108,15 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     private static final int CLEAR_CHUNK_BYTES = 64 * 1024;
+    private static final int FILL_CHUNK_BYTES = 4 * 1024 * 1024;
+
+    private static boolean isAllZero(ByteBuffer data, int elemBytes) {
+        final int n = Math.min(elemBytes, data.remaining());
+        for (int i = 0; i < n; i++) {
+            if (data.get(data.position() + i) != 0) return false;
+        }
+        return true;
+    }
     @Override public void clearBufferSubData(int target, int internalFormat, long offset, long size, int format, int type, ByteBuffer data) {
         final int glId = getBoundBuffer(target);
         if (glId == 0 || size <= 0) return;
@@ -4115,29 +4124,32 @@ public class SDLGPURenderBackend extends RenderBackend {
         if (handle == 0 || frameManager.getCommandBuffer() == 0) return;
 
         final int elemBytes = Math.max(1, PixelOps.glPixelSize(format, type));
-        final int chunkBytes = (int) Math.min(size, CLEAR_CHUNK_BYTES);
+        final boolean defer = s().deferUploads && target != GL43.GL_SHADER_STORAGE_BUFFER;
+        // Undeferred clears stage one large pattern and upload it repeatedly
+        final int chunkBytes = (int) Math.min(size, defer ? CLEAR_CHUNK_BYTES : FILL_CHUNK_BYTES);
         final int alignedChunk = (chunkBytes / elemBytes) * elemBytes;
         if (alignedChunk == 0) return;
         resourceManager.markBufferContentsDefined(glId);
-        final ByteBuffer chunk = MemoryUtil.memAlloc(alignedChunk);
+        final boolean zero = data == null || isAllZero(data, elemBytes);
+        final ByteBuffer chunk = zero ? MemoryUtil.memCalloc(alignedChunk) : MemoryUtil.memAlloc(alignedChunk);
         try {
-            for (int i = 0; i < alignedChunk; i++) {
-                final byte v = (data != null && (i % elemBytes) < data.remaining())
-                    ? data.get(data.position() + (i % elemBytes)) : 0;
-                chunk.put(i, v);
+            if (!zero) {
+                for (int i = 0; i < alignedChunk; i++) {
+                    final byte v = (i % elemBytes) < data.remaining() ? data.get(data.position() + (i % elemBytes)) : 0;
+                    chunk.put(i, v);
+                }
             }
             chunk.position(0).limit(alignedChunk);
+            if (!defer) {
+                resourceManager.fillBuffer(frameManager.ensureCopyPass(), chunk, handle, offset, size);
+                return;
+            }
             long remaining = size;
             long writeOffset = offset;
-            final boolean defer = s().deferUploads && target != GL43.GL_SHADER_STORAGE_BUFFER;
             while (remaining > 0) {
                 final int n = (int) Math.min(remaining, alignedChunk);
                 chunk.position(0).limit(n);
-                if (defer) {
-                    enqueuePreCopied(chunk, handle, writeOffset, false);
-                } else {
-                    resourceManager.uploadToBuffer(frameManager.ensureCopyPass(), chunk, handle, writeOffset, false);
-                }
+                enqueuePreCopied(chunk, handle, writeOffset, false);
                 remaining -= n;
                 writeOffset += n;
             }
@@ -4162,11 +4174,14 @@ public class SDLGPURenderBackend extends RenderBackend {
             return;
         }
 
-        // Volume-sized staging, so it is only reached for 3D formats the compute clear cannot address.
-        final long totalBytes = (long) mipW * mipH * mipD * bpp;
-        if (totalBytes <= 0 || totalBytes > Integer.MAX_VALUE) return;
         final long cp = frameManager.ensureCopyPass();
         if (cp == 0) return;
+        // A volume-sized staging buffer would allocate and upload each byte (1 GB for Euphoria Patches' floodfill!!)
+        if (mipD > 1 && resourceManager.zeroTexture3D(cp, texHandle, mipW, mipH, mipD, level, bpp)) {
+            return;
+        }
+        final long totalBytes = (long) mipW * mipH * mipD * bpp;
+        if (totalBytes <= 0 || totalBytes > Integer.MAX_VALUE) return;
         final ByteBuffer zeros = MemoryUtil.memCalloc((int) totalBytes);
         try {
             if (mipD > 1) {

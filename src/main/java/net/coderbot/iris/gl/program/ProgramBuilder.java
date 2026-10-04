@@ -21,6 +21,7 @@ import java.util.function.IntSupplier;
 
 public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHolder, ImageHolder {
 	private final int program;
+	private RetainedPrograms.Sources sources;
 	private final ProgramSamplers.Builder samplers;
 	private final ProgramImages.Builder images;
 
@@ -44,17 +45,29 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	public static ProgramBuilder begin(String name, @Nullable String vertexSource, @Nullable String geometrySource,
 									   @Nullable String tessControlSource, @Nullable String tessEvalSource,
 									   @Nullable String fragmentSource, ImmutableSet<Integer> reservedTextureUnits) {
-		final ProgramBinaryCache.Key cacheKey = ProgramCreator.cacheKey();
+		final RetainedPrograms.Sources sources = new RetainedPrograms.Sources(vertexSource, geometrySource, tessControlSource, tessEvalSource, fragmentSource, null);
+		final int retained = RetainedPrograms.take(sources);
+		final ProgramBinaryCache.Key cacheKey = retained != 0 && !ProgramBinaryCache.isFullCompileRunning() ? null : ProgramCreator.cacheKey();
 		if (cacheKey != null) {
 			cacheKey.stage(ShaderType.VERTEX.id, vertexSource);
 			if (geometrySource != null) cacheKey.stage(ShaderType.GEOMETRY.id, geometrySource);
 			if (tessControlSource != null) cacheKey.stage(ShaderType.TESSELATION_CONTROL.id, tessControlSource);
 			if (tessEvalSource != null) cacheKey.stage(ShaderType.TESSELATION_EVAL.id, tessEvalSource);
 			cacheKey.stage(ShaderType.FRAGMENT.id, fragmentSource);
+		}
+		if (retained != 0) {
+			if (cacheKey == null || ProgramBinaryCache.saveRetained(cacheKey, retained)) {
+				initializeFallbackUniforms(retained);
+				return new ProgramBuilder(name, retained, reservedTextureUnits).retainAs(sources);
+			}
+			GLStateManager.glDeleteProgram(retained);
+		}
+
+		if (cacheKey != null) {
 			final int saved = ProgramCreator.load(name, cacheKey);
 			if (saved != 0) {
 				initializeFallbackUniforms(saved);
-				return new ProgramBuilder(name, saved, reservedTextureUnits);
+				return new ProgramBuilder(name, saved, reservedTextureUnits).retainAs(sources);
 			}
 		}
 
@@ -78,7 +91,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 			shader.destroy();
 		}
 
-		return new ProgramBuilder(name, programId, reservedTextureUnits);
+		return new ProgramBuilder(name, programId, reservedTextureUnits).retainAs(sources);
 	}
 
 	/** Initialize alpha and color uniforms to neutral values until the first pass update. */
@@ -122,12 +135,23 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 			throw new IllegalStateException("This PC does not support compute shaders, but it's attempting to be used???");
 		}
 
-		final ProgramBinaryCache.Key cacheKey = ProgramCreator.cacheKey();
+		final RetainedPrograms.Sources sources = new RetainedPrograms.Sources(null, null, null, null, null, source);
+		final int retained = RetainedPrograms.take(sources);
+		final ProgramBinaryCache.Key cacheKey = retained != 0 && !ProgramBinaryCache.isFullCompileRunning() ? null : ProgramCreator.cacheKey();
 		if (cacheKey != null) {
 			cacheKey.stage(ShaderType.COMPUTE.id, source);
+		}
+		if (retained != 0) {
+			if (cacheKey == null || ProgramBinaryCache.saveRetained(cacheKey, retained)) {
+				return new ProgramBuilder(name, retained, reservedTextureUnits).retainAs(sources);
+			}
+			GLStateManager.glDeleteProgram(retained);
+		}
+
+		if (cacheKey != null) {
 			final int saved = ProgramCreator.load(name, cacheKey);
 			if (saved != 0) {
-				return new ProgramBuilder(name, saved, reservedTextureUnits);
+				return new ProgramBuilder(name, saved, reservedTextureUnits).retainAs(sources);
 			}
 		}
 
@@ -137,15 +161,20 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 
 		compute.destroy();
 
-		return new ProgramBuilder(name, programId, reservedTextureUnits);
+		return new ProgramBuilder(name, programId, reservedTextureUnits).retainAs(sources);
+	}
+
+	private ProgramBuilder retainAs(RetainedPrograms.Sources sources) {
+		this.sources = sources;
+		return this;
 	}
 
 	public Program build() {
-		return new Program(program, super.buildUniforms(), this.samplers.build(), this.images.build());
+		return new Program(program, sources, super.buildUniforms(), this.samplers.build(), this.images.build());
 	}
 
 	public ComputeProgram buildCompute() {
-		return new ComputeProgram(program, super.buildUniforms(), this.samplers.build(), this.images.build());
+		return new ComputeProgram(program, sources, super.buildUniforms(), this.samplers.build(), this.images.build());
 	}
 
 	private static GlShader buildShader(ShaderType shaderType, String name, @Nullable String source) {

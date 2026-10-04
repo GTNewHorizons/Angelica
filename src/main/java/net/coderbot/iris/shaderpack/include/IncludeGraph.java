@@ -2,6 +2,7 @@ package net.coderbot.iris.shaderpack.include;
 
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.ImmutableMap;
+import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.shaderpack.error.RusticError;
 import net.coderbot.iris.shaderpack.transform.line.LineTransform;
@@ -18,6 +19,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Function;
 
 /**
@@ -75,14 +77,18 @@ public class IncludeGraph {
 		List<AbsolutePackPath> queue = new ArrayList<>(startingPaths);
 		Set<AbsolutePackPath> seen = new HashSet<>(startingPaths);
 
+		Map<AbsolutePackPath, CompletableFuture<ReadResult>> reads = new HashMap<>();
+		for (AbsolutePackPath start : startingPaths) {
+			reads.put(start, readLater(root, start));
+		}
+
 		while (!queue.isEmpty()) {
 			AbsolutePackPath next = queue.remove(queue.size() - 1);
 
-			String source;
+			final ReadResult read = reads.remove(next).join();
+			final IOException e = read.failure();
 
-			try {
-				source = readFile(next.resolved(root));
-			} catch (IOException e) {
+			if (e != null) {
 				AbsolutePackPath src = cameFrom.get(next);
 
 				if (src == null) {
@@ -110,7 +116,7 @@ public class IncludeGraph {
 				continue;
 			}
 
-			ImmutableList<String> lines = ImmutableList.copyOf(source.split("\\R"));
+			ImmutableList<String> lines = read.lines();
 
 			FileNode node = new FileNode(next, lines);
 			boolean selfInclude = false;
@@ -128,6 +134,7 @@ public class IncludeGraph {
 				} else if (!seen.contains(included)) {
 					queue.add(included);
 					seen.add(included);
+					reads.put(included, readLater(root, included));
 					cameFrom.put(included, next);
 					lineNumberInclude.put(included, line);
 				}
@@ -252,6 +259,18 @@ public class IncludeGraph {
 
 	public ImmutableMap<AbsolutePackPath, RusticError> getFailures() {
 		return failures;
+	}
+
+	private record ReadResult(ImmutableList<String> lines, IOException failure) {}
+
+	private static CompletableFuture<ReadResult> readLater(Path root, AbsolutePackPath path) {
+		return AngelicaWorkers.submit(() -> {
+			try {
+				return new ReadResult(ImmutableList.copyOf(readFile(path.resolved(root)).split("\\R")), null);
+			} catch (IOException e) {
+				return new ReadResult(null, e);
+			}
+		});
 	}
 
 	private static String readFile(Path path) throws IOException {

@@ -6,6 +6,7 @@ import net.coderbot.iris.gl.GlResource;
 import net.coderbot.iris.gl.blending.DepthColorStorage;
 import net.coderbot.iris.pipeline.WorldRenderingPipeline;
 import net.coderbot.iris.shaderpack.FilledIndirectPointer;
+import org.jetbrains.annotations.Nullable;
 import org.joml.Vector2f;
 import org.joml.Vector3i;
 import org.lwjgl.BufferUtils;
@@ -27,8 +28,13 @@ public final class ComputeProgram extends GlResource {
 	private float cachedHeight;
 	private Vector3i cachedWorkGroups;
 
-	ComputeProgram(int program, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
+	@Nullable
+	private final RetainedPrograms.Sources sources;
+
+	ComputeProgram(int program, @Nullable RetainedPrograms.Sources sources, ProgramUniforms uniforms, ProgramSamplers samplers, ProgramImages images) {
 		super(program);
+
+		this.sources = sources;
 
         localSizeBuffer = BufferUtils.createIntBuffer(3);
 		RenderSystem.getProgramiv(program, GL43.GL_COMPUTE_WORK_GROUP_SIZE, localSizeBuffer);
@@ -93,7 +99,11 @@ public final class ComputeProgram extends GlResource {
 	@Override
     public void destroyInternal() {
 		DepthColorStorage.unregisterOwnedProgram(getGlId());
-		GLStateManager.glDeleteProgram(getGlId());
+		if (sources != null) {
+			RetainedPrograms.retain(sources, getGlId());
+		} else {
+			GLStateManager.glDeleteProgram(getGlId());
+		}
 	}
 
 	/**

@@ -81,8 +81,18 @@ public class IdMap {
 	 * Detects whether a pack's block.properties has a dedicated 1.7.10 section.
 	 */
 	public static boolean detectLegacySection(Path shaderPath) {
-		String rawBlockProperties = readProperties(shaderPath, "block.properties");
-		return rawBlockProperties != null && LEGACY_DIRECTIVE_PATTERN.matcher(rawBlockProperties).find();
+		final String rawBlockProperties = readProperties(shaderPath, "block.properties");
+		if (rawBlockProperties == null) return false;
+		int from = 0;
+		while (true) {
+			final int match = rawBlockProperties.indexOf("10710", from);
+			if (match < 0) return false;
+			final int start = rawBlockProperties.lastIndexOf('\n', match) + 1;
+			int end = rawBlockProperties.indexOf('\n', match);
+			if (end < 0) end = rawBlockProperties.length();
+			if (LEGACY_DIRECTIVE_PATTERN.matcher(rawBlockProperties.substring(start, end)).find()) return true;
+			from = end;
+		}
 	}
 
 	public static String modernFallbackMcVersion() {
@@ -90,9 +100,8 @@ public class IdMap {
 			? String.valueOf(AngelicaConfig.modernFallbackMcVersion) : "260101";
 	}
 
-	IdMap(Path shaderPath, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
-		// Check if block.properties has a dedicated 1.7.10 section
-		this.hasLegacySection = detectLegacySection(shaderPath);
+	IdMap(Path shaderPath, boolean hasLegacySection, ShaderPackOptions shaderPackOptions, Iterable<StringPair> environmentDefines) {
+		this.hasLegacySection = hasLegacySection;
 
 		Iterable<StringPair> resolvedDefines;
 		if (this.hasLegacySection) {

@@ -53,7 +53,10 @@ public final class ShaderDiskCache {
 
     private ShaderDiskCache() {}
 
-    public static void configure(Path dir, String salt) {
+    private static String configuredSalt;
+
+    public static synchronized void configure(Path dir, String salt) {
+        if (dir.equals(root) && salt.equals(configuredSalt)) return;
         try {
             Files.createDirectories(dir);
             final Path saltFile = dir.resolve("salt");
@@ -63,6 +66,7 @@ public final class ShaderDiskCache {
                 Files.write(saltFile, salt.getBytes(StandardCharsets.UTF_8));
             }
             root = dir;
+            configuredSalt = salt;
             AngelicaWorkers.run(() -> enforceCap(dir, MAX_BYTES));
             LOGGER.info("Shader disk cache at {}", dir);
         } catch (IOException | RuntimeException e) {

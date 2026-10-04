@@ -109,7 +109,7 @@ class ProgramBindingRegressionTest {
         int id = linkedProgram();
         int other = linkedProgram();
         ProgramUniforms uniforms = mock(ProgramUniforms.class);
-        Program program = new Program(id, uniforms, mock(ProgramSamplers.class), mock(ProgramImages.class));
+        Program program = new Program(id, null, uniforms, mock(ProgramSamplers.class), mock(ProgramImages.class));
         DeferredWorldRenderingPipeline pipeline = mock(DeferredWorldRenderingPipeline.class);
         DeferredWorldRenderingPipeline.Pass pass = Reflect.allocate(DeferredWorldRenderingPipeline.Pass.class);
         Reflect.set(pass, "program", program);

@@ -27,6 +27,7 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.EnumSet;
 import java.util.Enumeration;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.IdentityHashMap;
 import java.util.List;
@@ -46,6 +47,7 @@ public final class PBRResourceIndex {
     private static IResourceManager owner;
     private static CompletableFuture<Map<IResourcePack, PackIndex>> pending;
     private static Map<IResourcePack, PackIndex> built;
+    private static final Map<ResourceLocation, Boolean> answers = new HashMap<>();
     private static boolean disabled;
     private static boolean warned;
 
@@ -75,6 +77,7 @@ public final class PBRResourceIndex {
         owner = null;
         pending = null;
         built = null;
+        answers.clear();
     }
 
     public static synchronized boolean mayExist(IResourceManager resourceManager, ResourceLocation location) {
@@ -99,6 +102,16 @@ public final class PBRResourceIndex {
                 return true;
             }
         }
+        final Boolean known = answers.get(location);
+        if (known != null) {
+            return known;
+        }
+        final boolean present = lookUp(manager, location, path);
+        answers.put(location, present);
+        return present;
+    }
+
+    private static boolean lookUp(SimpleReloadableResourceManager manager, ResourceLocation location, String path) {
         final Object domain = manager.domainResourceManagers.get(location.getResourceDomain());
         if (domain == null) {
             return false;

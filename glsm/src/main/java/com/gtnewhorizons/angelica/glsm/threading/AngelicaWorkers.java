@@ -8,6 +8,7 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Objects;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.LinkedBlockingQueue;
@@ -16,6 +17,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 
 public final class AngelicaWorkers {
@@ -151,6 +153,51 @@ public final class AngelicaWorkers {
             inFlight.decrementAndGet();
             throw e;
         }
+    }
+
+    /**
+     * Runs every task and returns the results in task order.
+     */
+    public static <T> List<T> invokeAll(List<? extends Supplier<? extends T>> tasks) {
+        final int count = tasks.size();
+        final Object[] results = new Object[count];
+        if (count == 0) return new ArrayList<>();
+        final AtomicInteger next = new AtomicInteger();
+        final CountDownLatch finished = new CountDownLatch(count);
+        final AtomicReference<Throwable> failure = new AtomicReference<>();
+        final Runnable drain = () -> {
+            int i;
+            while ((i = next.getAndIncrement()) < count) {
+                try {
+                    results[i] = tasks.get(i).get();
+                } catch (Throwable t) {
+                    failure.compareAndSet(null, t);
+                } finally {
+                    finished.countDown();
+                }
+            }
+        };
+        final int helpers = Math.min(threads(), count - 1);
+        for (int h = 0; h < helpers; h++) {
+            run(drain);
+        }
+        drain.run();
+        try {
+            finished.await();
+        } catch (InterruptedException e) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted waiting for worker tasks", e);
+        }
+        final Throwable t = failure.get();
+        if (t instanceof RuntimeException re) throw re;
+        if (t instanceof Error err) throw err;
+        if (t != null) throw new IllegalStateException(t);
+        final List<T> out = new ArrayList<>(count);
+        for (Object result : results) {
+            @SuppressWarnings("unchecked") final T typed = (T) result;
+            out.add(typed);
+        }
+        return out;
     }
 
     private static void checkIdleShutdown() {
