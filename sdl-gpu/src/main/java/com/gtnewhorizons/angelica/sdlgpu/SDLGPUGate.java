@@ -2,7 +2,7 @@ package com.gtnewhorizons.angelica.sdlgpu;
 
 import static org.lwjgl.sdl.SDLVideo.SDL_PROP_WINDOW_CREATE_METAL_BOOLEAN;
 
-import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
@@ -83,7 +83,7 @@ public final class SDLGPUGate {
 
     private static synchronized boolean probe() {
         if (deviceReady != null) return deviceReady;
-        if (!SystemProperties.USE_SDL_GPU || !isSDLGPUAvailable()) {
+        if (!BackendOptions.sdlGpuRequested() || !isSDLGPUAvailable()) {
             deviceReady = false;
             return false;
         }

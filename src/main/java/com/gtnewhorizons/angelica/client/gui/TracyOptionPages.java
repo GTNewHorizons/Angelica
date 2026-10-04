@@ -34,7 +34,7 @@ public class TracyOptionPages {
             default -> startLabel;
         };
 
-        final String restartLabel = I18n.format("options.angelica.tracy.status.restart");
+        final String restartLabel = I18n.format("options.angelica.status.restart");
         final String runningLabel = I18n.format("options.angelica.tracy.status.running");
         final String runningForcedLabel = I18n.format("options.angelica.tracy.status.runningForced");
         final String failedLabel = I18n.format("options.angelica.tracy.status.failed");
@@ -87,8 +87,7 @@ public class TracyOptionPages {
                         .build())
                 .build(),
             OptionGroup.createBuilder()
-                .add(new ActionOption(I18n.format("options.angelica.tracy.status"), I18n.format("options.angelica.tracy.status.tooltip"),
-                        statusLabel, () -> {}, () -> false))
+                .add(ActionOption.label(I18n.format("options.angelica.tracy.status"), I18n.format("options.angelica.tracy.status.tooltip"), statusLabel))
                 .build(),
             OptionGroup.createBuilder()
                 .add(OptionImpl.createBuilder(int.class, angelicaOpts)
@@ -104,7 +103,6 @@ public class TracyOptionPages {
     }
 
     private static String overrideTooltip(String baseKey, String flag, boolean overridden) {
-        final String base = I18n.format(baseKey);
-        return overridden ? base + " " + I18n.format("options.angelica.tracy.overriddenBy", flag) : base;
+        return RendererOptionPages.overrideTooltip(I18n.format(baseKey), flag, overridden);
     }
 }

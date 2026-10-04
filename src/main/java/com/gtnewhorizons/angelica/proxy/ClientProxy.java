@@ -62,6 +62,7 @@ import com.gtnewhorizons.angelica.debug.TPSGraph;
 import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
 import com.gtnewhorizons.angelica.dynamiclights.config.EntityLightConfig;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.backend.BackendStartGuard;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
 import com.gtnewhorizons.angelica.glsm.shader.ShaderDiskCache;
@@ -97,13 +98,10 @@ import cpw.mods.fml.common.gameevent.TickEvent;
 import cpw.mods.fml.common.registry.GameData;
 import cpw.mods.fml.relauncher.ReflectionHelper;
 import jss.notfine.core.Settings;
-import jss.notfine.gui.GuiCustomMenu;
-import jss.notfine.gui.NotFineGameOptionPages;
 import jss.notfine.gui.options.named.FOVMode;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
 import me.jellysquid.mods.sodium.client.gui.FrameRateOptions;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
-import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import net.coderbot.iris.Iris;
 import net.coderbot.iris.client.IrisDebugScreenHandler;
 
@@ -388,6 +386,7 @@ public final class ClientProxy extends CommonProxy {
 
     @SubscribeEvent(priority = EventPriority.LOWEST)
     public void onGuiOpen(GuiOpenEvent event) {
+        BackendStartGuard.finish();
         if (!event.isCanceled()) {
             if (event.gui instanceof GuiMainMenu && gameStartTime == -1) {
                 gameStartTime = ManagementFactory.getRuntimeMXBean().getUptime() / 1000f;
@@ -403,19 +402,7 @@ public final class ClientProxy extends CommonProxy {
     public void onGuiInit(GuiScreenEvent.InitGuiEvent.Pre event) {
         if (event.gui instanceof GuiVideoSettings eventGui) {
             event.setCanceled(true);
-            if (AngelicaConfig.enableNotFineOptions || GuiScreen.isShiftKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new GuiCustomMenu(
-                        eventGui.parentGuiScreen,
-                        NotFineGameOptionPages.general(),
-                        NotFineGameOptionPages.detail(),
-                        NotFineGameOptionPages.atmosphere(),
-                        NotFineGameOptionPages.particles(),
-                        NotFineGameOptionPages.other()));
-            } else if (!AngelicaConfig.enableReesesSodiumOptions || GuiScreen.isCtrlKeyDown()) {
-                Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(eventGui.parentGuiScreen));
-            } else {
-                Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));
-            }
+            Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(eventGui.parentGuiScreen));
         }
     }
 

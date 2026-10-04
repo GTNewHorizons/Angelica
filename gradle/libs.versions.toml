@@ -8,6 +8,8 @@ launchwrapper = "1.12"
 # End Frozen
 
 lwjgl3 = "3.4.2-SNAPSHOT"
+# Must equal the LWJGL release shipped by lwjgl3ify. Do not bump without bumping lwjgl3ify.
+lwjgl3Release = "3.4.2"
 lwjgl3ify = "3.0.31"
 
 celeritas = "2.5.12-GTNH"
@@ -75,6 +77,7 @@ lwjgl3-opengl = { module = "org.lwjgl:lwjgl-opengl", version.ref = "lwjgl3" }
 lwjgl3-sdl = { module = "org.lwjgl:lwjgl-sdl", version.ref = "lwjgl3" }
 lwjgl3-spvc = { module = "org.lwjgl:lwjgl-spvc", version.ref = "lwjgl3" }
 lwjgl3-shaderc = { module = "org.lwjgl:lwjgl-shaderc", version.ref = "lwjgl3" }
+lwjgl3-vulkan = { module = "org.lwjgl:lwjgl-vulkan", version.ref = "lwjgl3Release" }
 
 # Consumed with an explicit :dev / :universal / :downgraded-8 classifier at the call site.
 gtnhlib = { module = "com.github.GTNewHorizons:GTNHLib", version.ref = "gtnhlib" }

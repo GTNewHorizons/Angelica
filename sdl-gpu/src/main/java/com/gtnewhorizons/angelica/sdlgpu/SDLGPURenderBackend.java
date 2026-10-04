@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.glsm.CaptureGate;
 import com.gtnewhorizons.angelica.glsm.GLContextState;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.profiling.Tracy;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.backend.GLDebugMessageListener;
 import com.gtnewhorizons.angelica.glsm.backend.MainThreadPump;
 import me.eigenraven.lwjgl3ify.client.MainThreadExec;
@@ -532,7 +533,7 @@ public class SDLGPURenderBackend extends RenderBackend {
     }
 
     @Override public boolean isAvailable() {
-        return SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable() && SDLGPUGate.isEngaged();
+        return BackendOptions.sdlGpuRequested() && SDLGPUGate.isSDLGPUAvailable() && SDLGPUGate.isEngaged();
     }
 
     @Override public String getName() {

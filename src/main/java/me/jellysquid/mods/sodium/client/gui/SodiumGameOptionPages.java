@@ -24,6 +24,7 @@ import com.gtnewhorizons.angelica.config.GpuCullingMode;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import cpw.mods.fml.common.Optional.Method;
 import com.gtnewhorizons.angelica.glsm.streaming.StreamingUploader;
+import jss.notfine.config.NotFineConfig;
 import jss.notfine.core.Settings;
 import jss.notfine.core.SettingsManager;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.ReeseSodiumVideoOptionsScreen;
@@ -130,9 +131,6 @@ public class SodiumGameOptionPages {
                             // Resizing our window
                             if(Minecraft.getMinecraft().currentScreen instanceof ReeseSodiumVideoOptionsScreen oldGui) {
                                 Minecraft.getMinecraft().displayGuiScreen(new ReeseSodiumVideoOptionsScreen(oldGui.prevScreen));
-                            }
-                            else if(Minecraft.getMinecraft().currentScreen instanceof SodiumOptionsGUI oldGui) {
-                                Minecraft.getMinecraft().displayGuiScreen(new SodiumOptionsGUI(oldGui.prevScreen));
                             }
                         }, opts -> opts.guiScale)
                         .build())
@@ -812,6 +810,21 @@ public class SodiumGameOptionPages {
         groups.add(OptionGroup.createBuilder()
                 .add(Settings.MODE_GUI_BACKGROUND.option)
                 .add(Settings.GUI_BACKGROUND.option)
+                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
+                        .setName(I18n.format("options.showCape"))
+                        .setTooltip(I18n.format("sodium.options.show_cape.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> opts.showCape = value, opts -> opts.showCape)
+                        .build())
+                .add(OptionImpl.createBuilder(boolean.class, vanillaOpts)
+                        .setName(I18n.format("options.anaglyph"))
+                        .setTooltip(I18n.format("sodium.options.anaglyph.tooltip"))
+                        .setControl(TickBoxControl::new)
+                        .setBinding((opts, value) -> opts.anaglyph = value, opts -> opts.anaglyph)
+                        .setImpact(OptionImpact.HIGH)
+                        .setFlags(OptionFlag.REQUIRES_RENDERER_RELOAD)
+                        .setEnabled(NotFineConfig.allowToggle3DAnaglyph)
+                        .build())
                 .add(OptionImpl.createBuilder(boolean.class, angelicaOpts)
                         .setName(I18n.format("options.angelica.disablef3"))
                         .setTooltip(I18n.format("options.angelica.disablef3.tooltip"))

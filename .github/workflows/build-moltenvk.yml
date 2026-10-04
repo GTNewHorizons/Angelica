@@ -1,0 +1,53 @@
+name: Build angelica-moltenvk
+
+on:
+  push:
+    tags:
+      - "moltenvk-v*"
+  workflow_dispatch:
+    inputs:
+      publish:
+        description: Publish angelica-moltenvk.jar to the GTNH maven
+        type: boolean
+        required: false
+        default: false
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: 21
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compute version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          version="$(bash .github/scripts/companion-version.sh moltenvk lwjgl3Release)"
+          echo "MOLTENVK_VERSION=$version" >> "$GITHUB_ENV"
+      - name: Build angelica-moltenvk.jar
+        run: ./gradlew -PmoltenvkVersion="$MOLTENVK_VERSION" :moltenvk:distJar
+      - uses: actions/upload-artifact@v4
+        with:
+          name: angelica-moltenvk
+          path: moltenvk/build/libs/angelica-moltenvk-*.jar
+          if-no-files-found: error
+      - name: Publish to GTNH maven
+        if: github.ref_type == 'tag' || inputs.publish
+        env:
+          MAVEN_USER: ${{ secrets.MAVEN_USER }}
+          MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
+        run: ./gradlew -PpublishMoltenVK=true -PmoltenvkVersion="$MOLTENVK_VERSION" :moltenvk:publish
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: bash .github/scripts/release-companion-jar.sh moltenvk/build/libs/angelica-moltenvk-*.jar "MoltenVK for the SDL GPU Vulkan driver on macOS."

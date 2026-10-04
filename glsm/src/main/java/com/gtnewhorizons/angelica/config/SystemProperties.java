@@ -17,7 +17,7 @@ public final class SystemProperties {
 
     // Backend selection
     public static final String KEY_USE_SDL_GPU = "angelica.sdlgpu.enable";
-    public static final boolean USE_SDL_GPU = Boolean.getBoolean(KEY_USE_SDL_GPU);
+    public static final Boolean SDL_GPU_OVERRIDE = parseBooleanOverride(KEY_USE_SDL_GPU);
     public static final String GL_PROFILE = System.getProperty("angelica.glProfile", "");
     public static final boolean DISABLE_NVIDIA_WORKAROUND = Boolean.getBoolean("angelica.disableNvidiaWorkaround");
     public static final boolean DISABLE_LTW_WORKAROUND = Boolean.getBoolean("angelica.disableLtwWorkaround");
@@ -28,7 +28,8 @@ public final class SystemProperties {
 
     // SDL-GPU
     public static final String KEY_SDL_GPU_DRIVER = "angelica.sdlgpu.driver";
-    public static final String SDL_GPU_DRIVER = System.getProperty(KEY_SDL_GPU_DRIVER, "");
+    public static final String SDL_GPU_DRIVER_OVERRIDE = parseStringOverride(KEY_SDL_GPU_DRIVER);
+    public static final String MOLTENVK_DIR = System.getProperty("angelica.moltenvk.dir", "angelica" + File.separator + "natives" + File.separator + "moltenvk");
     public static final boolean SDL_GPU_DEBUG = Boolean.getBoolean("angelica.sdlgpu.debug");
     private static final SdlAssertionMode ENCODER_ASSERTIONS = parseEnum("angelica.sdlgpu.encoderAssertions", SdlAssertionMode.OFF, SdlAssertionMode.WARN, SdlAssertionMode.class);
     public static final boolean SDL_ENCODER_ASSERTIONS = ENCODER_ASSERTIONS != SdlAssertionMode.OFF;
@@ -165,7 +166,12 @@ public final class SystemProperties {
 
     private static Boolean parseBooleanOverride(String key) {
         final String raw = System.getProperty(key);
-        return raw == null ? null : Boolean.parseBoolean(raw);
+        return raw == null || raw.isEmpty() ? null : Boolean.parseBoolean(raw);
+    }
+
+    private static String parseStringOverride(String key) {
+        final String raw = System.getProperty(key);
+        return raw == null || raw.isEmpty() ? null : raw;
     }
 
     private static double parseDouble(String key) {

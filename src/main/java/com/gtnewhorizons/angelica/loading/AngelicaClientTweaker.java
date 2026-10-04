@@ -8,7 +8,10 @@ import com.gtnewhorizon.gtnhmixins.builders.ITransformers;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.FontConfig;
+import com.gtnewhorizons.angelica.config.RenderBackendChoice;
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
+import com.gtnewhorizons.angelica.glsm.backend.BackendStartGuard;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
 import com.gtnewhorizons.angelica.glsm.loading.Lwjgl3ifyExclusions;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
@@ -33,6 +36,7 @@ import org.apache.logging.log4j.core.config.LoggerConfig;
 import org.spongepowered.asm.launch.GlobalProperties;
 import org.spongepowered.asm.service.mojang.MixinServiceLaunchWrapper;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -68,6 +72,12 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             // Angelica Config
             ConfigurationManager.registerConfig(AngelicaConfig.class);
             TracyOptions.latch(AngelicaConfig.enableTracy, AngelicaConfig.tracyAllowRemote, AngelicaConfig.tracyFineZones, AngelicaConfig.tracyMaxSrcLocs);
+            if (BackendStartGuard.begin(new File(Launch.minecraftHome, "angelica" + File.separator + "sdlgpu-starting"), AngelicaConfig.sdlGpuConfigured(), SystemProperties.SDL_GPU_OVERRIDE != null)) {
+                LOGGER.warn("The last start with SDL GPU did not reach the main menu; resetting the render backend to OpenGL");
+                AngelicaConfig.renderBackend = RenderBackendChoice.OPENGL;
+                ConfigurationManager.save(AngelicaConfig.class);
+            }
+            BackendOptions.latch(AngelicaConfig.sdlGpuConfigured(), AngelicaConfig.sdlGpuDriverName(), AngelicaConfig.glVersion);
             ConfigurationManager.registerConfig(CompatConfig.class);
             ConfigurationManager.registerConfig(FontConfig.class);
             MCPatcherForgeConfig.registerConfig();
@@ -89,7 +99,7 @@ public final class AngelicaClientTweaker implements IFMLLoadingPlugin, IEarlyMix
             DependencyVerifier.gtnhLibChecks("Angelica"), LOGGER,
             (title, message) -> MissingDependencySdl.showFatal(title, message));
 
-        if (SystemProperties.USE_SDL_GPU) {
+        if (BackendOptions.sdlGpuRequested()) {
             if (SDLGPUGate.isSDLGPUAvailable()) {
                 LOGGER.info("SDL GPU window mode enabled");
             } else {

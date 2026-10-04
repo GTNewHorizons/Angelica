@@ -2,7 +2,7 @@ package com.gtnewhorizons.umbra.loading;
 
 import com.gtnewhorizon.gtnhmixins.IEarlyMixinLoader;
 import com.gtnewhorizon.gtnhmixins.builders.IMixins;
-import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.loading.DependencyVerifier;
 import com.gtnewhorizons.angelica.glsm.loading.Lwjgl3ifyExclusions;
 import com.gtnewhorizons.angelica.lwjgl3.MissingDependencySdl;
@@ -54,7 +54,7 @@ public class UmbraClientTweaker implements IFMLLoadingPlugin, IEarlyMixinLoader 
             DependencyVerifier.gtnhLibChecks("Umbra"), LOGGER,
             (title, message) -> MissingDependencySdl.showFatal(title, message));
 
-        if (SystemProperties.USE_SDL_GPU) {
+        if (BackendOptions.sdlGpuRequested()) {
             if (SDLGPUGate.isSDLGPUAvailable()) {
                 LOGGER.info("SDL GPU window mode enabled");
             } else {

@@ -26,6 +26,7 @@ configurations {
 
 val lwjglNatives: String by extra
 val tracyVersion = libs.versions.tracy.get()
+val tracyJarVersion = (findProperty("tracyJarVersion") as String?) ?: tracyVersion
 
 repositories {
     mavenLocal()
@@ -118,7 +119,7 @@ tasks.named<Jar>("jar") {
 
 val distJar = tasks.register<Jar>("distJar") {
     archiveBaseName.set("angelica-tracy")
-    archiveVersion.set(tracyVersion)
+    archiveVersion.set(tracyJarVersion)
     from(sourceSets["main"].output)
     manifest {
         attributes(
@@ -133,7 +134,7 @@ publishing {
         create<MavenPublication>("mavenJava") {
             groupId = "com.gtnewhorizons.angelica"
             artifactId = "angelica-tracy"
-            version = tracyVersion
+            version = tracyJarVersion
             artifact(distJar)
         }
     }

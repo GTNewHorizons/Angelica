@@ -3,7 +3,7 @@ name: Release tagged build
 
 on:
   push:
-    tags: [ '*', '!tracy-v*' ]
+    tags: [ '*', '!tracy-v*', '!moltenvk-v*' ]
 
 permissions:
   contents: write

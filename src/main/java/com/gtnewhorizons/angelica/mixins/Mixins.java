@@ -7,6 +7,7 @@ import com.gtnewhorizons.angelica.config.AngelicaConfig;
 import com.gtnewhorizons.angelica.config.CompatConfig;
 import com.gtnewhorizons.angelica.config.SystemProperties;
 import com.gtnewhorizons.angelica.glsm.CaptureGate;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
 import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import com.gtnewhorizons.angelica.sdlgpu.SDLGPUGate;
 import jss.notfine.config.MCPatcherForgeConfig;
@@ -104,7 +105,7 @@ public enum Mixins implements IMixins {
 
     ANGELICA_SDL_GPU_DISPLAY(new MixinBuilder("SDL-GPU-aware Display.create path")
         .setPhase(Phase.EARLY)
-        .setApplyIf(() -> SystemProperties.USE_SDL_GPU && SDLGPUGate.isSDLGPUAvailable())
+        .setApplyIf(() -> BackendOptions.sdlGpuRequested() && SDLGPUGate.isSDLGPUAvailable())
         .addClientMixins(
             "sdlgpu.MixinForgeHooksClient_SDLGPUDisplay",
             "sdlgpu.MixinMinecraft_SDLGPUIcons"
