@@ -1,6 +1,6 @@
 package com.gtnewhorizons.angelica.glsm;
 
-import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
+import com.gtnewhorizons.angelica.glsm.states.PixelStoreState;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL12;
@@ -25,10 +25,10 @@ public final class LTWWorkaround {
             oneTexel = BufferUtils.createByteBuffer(4);
         }
         oneTexel.clear();
-        GLStateManager.forcePixelUnpackState(PixelUnpackState.DEFAULT);
+        GLStateManager.forcePixelUnpackState(PixelStoreState.DEFAULT);
         GLStateManager.suspendPixelUnpackBuffer();
         RENDER_BACKEND.texSubImage2D(target, level, 0, 0, 1, 1, GL11.GL_RGBA, GL11.GL_UNSIGNED_BYTE, oneTexel);
         GLStateManager.restorePixelUnpackBuffer();
-        GLStateManager.restorePixelUnpackState(PixelUnpackState.DEFAULT);
+        GLStateManager.restorePixelUnpackState(PixelStoreState.DEFAULT);
     }
 }
