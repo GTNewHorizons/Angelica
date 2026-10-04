@@ -626,6 +626,7 @@ public class GLSMRedirector {
             .add("glGenRenderbuffers")
             .add("glRenderbufferStorage")
             .add("glFramebufferRenderbuffer")
+            .add("glGenerateMipmap")
         );
         methodRedirects.put(EXTFramebufferObject, RedirectMap.newMap()
             .add("glBindFramebufferEXT", "glBindFramebuffer")
@@ -638,6 +639,7 @@ public class GLSMRedirector {
             .add("glGenRenderbuffersEXT", "glGenRenderbuffers")
             .add("glRenderbufferStorageEXT", "glRenderbufferStorage")
             .add("glFramebufferRenderbufferEXT", "glFramebufferRenderbuffer")
+            .add("glGenerateMipmapEXT", "glGenerateMipmap")
         );
         methodRedirects.put(ARBOcclusionQuery, RedirectMap.newMap()
             .add("glGenQueriesARB", "glGenQueries")

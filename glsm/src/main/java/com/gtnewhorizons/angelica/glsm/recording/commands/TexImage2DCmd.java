@@ -3,7 +3,7 @@ package com.gtnewhorizons.angelica.glsm.recording.commands;
 import com.gtnewhorizons.angelica.glsm.GLDebug;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.GLTypes;
-import com.gtnewhorizons.angelica.glsm.states.PixelUnpackState;
+import com.gtnewhorizons.angelica.glsm.states.PixelStoreState;
 import org.jetbrains.annotations.NotNull;
 import org.jetbrains.annotations.Nullable;
 
@@ -28,7 +28,7 @@ public record TexImage2DCmd(
     int format,
     int type,
     @Nullable ByteBuffer pixels,
-    @Nullable PixelUnpackState unpack
+    @Nullable PixelStoreState unpack
 ) implements DisplayListCommand {
 
     public TexImage2DCmd {
@@ -37,19 +37,19 @@ public record TexImage2DCmd(
         }
     }
 
-    public static TexImage2DCmd fromIntBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels, PixelUnpackState unpack) {
+    public static TexImage2DCmd fromIntBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable IntBuffer pixels, PixelStoreState unpack) {
         return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
-    public static TexImage2DCmd fromFloatBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable FloatBuffer pixels, PixelUnpackState unpack) {
+    public static TexImage2DCmd fromFloatBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable FloatBuffer pixels, PixelStoreState unpack) {
         return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
-    public static TexImage2DCmd fromDoubleBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable DoubleBuffer pixels, PixelUnpackState unpack) {
+    public static TexImage2DCmd fromDoubleBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable DoubleBuffer pixels, PixelStoreState unpack) {
         return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
-    public static TexImage2DCmd fromByteBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels, PixelUnpackState unpack) {
+    public static TexImage2DCmd fromByteBuffer(int target, int level, int internalformat, int width, int height, int border, int format, int type, @Nullable ByteBuffer pixels, PixelStoreState unpack) {
         return new TexImage2DCmd(target, level, internalformat, width, height, border, format, type, PixelDataSnapshot.copy(pixels), unpack);
     }
 
