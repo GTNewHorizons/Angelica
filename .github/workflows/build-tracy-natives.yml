@@ -12,6 +12,9 @@ on:
         required: false
         default: false
 
+permissions:
+  contents: write
+
 jobs:
   build:
     strategy:
@@ -66,8 +69,15 @@ jobs:
             cp "$d"/* "$dest/"
           done
           find tracy-client/src/main/resources/natives -type f
+      - name: Compute version
+        shell: bash
+        env:
+          TAG: ${{ github.ref_type == 'tag' && github.ref_name || '' }}
+        run: |
+          version="$(bash .github/scripts/companion-version.sh tracy tracy)"
+          echo "TRACY_JAR_VERSION=$version" >> "$GITHUB_ENV"
       - name: Build angelica-tracy.jar
-        run: ./gradlew :tracy-client:distJar
+        run: ./gradlew -PtracyJarVersion="$TRACY_JAR_VERSION" :tracy-client:distJar
       - uses: actions/upload-artifact@v4
         with:
           name: angelica-tracy
@@ -78,4 +88,10 @@ jobs:
         env:
           MAVEN_USER: ${{ secrets.MAVEN_USER }}
           MAVEN_PASSWORD: ${{ secrets.MAVEN_PASSWORD }}
-        run: ./gradlew -PpublishTracy=true :tracy-client:publish
+        run: ./gradlew -PpublishTracy=true -PtracyJarVersion="$TRACY_JAR_VERSION" :tracy-client:publish
+      - name: Create GitHub release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: bash .github/scripts/release-companion-jar.sh tracy-client/build/libs/angelica-tracy-*.jar "Tracy profiler backend for Angelica."

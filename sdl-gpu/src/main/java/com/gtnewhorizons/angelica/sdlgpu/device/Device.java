@@ -1,6 +1,8 @@
 package com.gtnewhorizons.angelica.sdlgpu.device;
 
 import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.glsm.backend.BackendOptions;
+import com.gtnewhorizons.angelica.glsm.backend.MoltenVK;
 import com.gtnewhorizons.angelica.glsm.backend.VSyncMode;
 import com.gtnewhorizons.angelica.glsm.backend.RenderBackend;
 import com.gtnewhorizons.angelica.sdlgpu.util.DebugMessageRelay;
@@ -20,11 +22,12 @@ import org.lwjgl.system.Platform;
 import org.lwjglx.opengl.Display;
 
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.function.Supplier;
 
 import static org.lwjgl.sdl.SDLGPU.*;
-import static org.lwjgl.sdl.SDLHints.SDL_HINT_GPU_DRIVER;
+import static org.lwjgl.sdl.SDLHints.SDL_HINT_VULKAN_LIBRARY;
 import static org.lwjgl.sdl.SDLHints.SDL_SetHint;
 import static org.lwjgl.sdl.SDLVideo.*;
 import static org.lwjgl.system.MemoryUtil.memUTF8;
@@ -82,9 +85,23 @@ public final class Device {
         throw new GpuDeviceLostException(operation, err);
     }
 
-    // Default to vulkan for now until D3D is more tested
-    static String resolveDriverName(String userHint, boolean windows) {
-        return userHint.isEmpty() && windows ? "vulkan" : null;
+    static String[] driverCandidates(String requested, Platform platform) {
+        final String[] platformOrder = switch (platform) {
+            case MACOSX -> new String[] { "metal", "vulkan" };
+            case WINDOWS -> new String[] { "vulkan", "direct3d12" };
+            default -> new String[] { "vulkan" };
+        };
+        if (requested.isEmpty()) return platformOrder;
+        final List<String> candidates = new ArrayList<>(platformOrder.length + 1);
+        candidates.add(requested);
+        for (final String driver : platformOrder) {
+            if (!driver.equalsIgnoreCase(requested)) candidates.add(driver);
+        }
+        return candidates.toArray(new String[0]);
+    }
+
+    static boolean isVulkan(String driverName) {
+        return "vulkan".equalsIgnoreCase(driverName);
     }
 
     static boolean isMetal(String driverName) {
@@ -103,17 +120,16 @@ public final class Device {
         final int ver = SDLVersion.SDL_GetVersion();
         LOG.info("SDL runtime version {}.{}.{} (raw {})", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver), ver);
 
-        final String driverHint = SystemProperties.SDL_GPU_DRIVER;
-        if (!driverHint.isEmpty()) {
-            SDL_SetHint(SDL_HINT_GPU_DRIVER, driverHint);
-            LOG.info("SDL GPU driver hint set to '{}'", driverHint);
+        final String requestedDriver = BackendOptions.sdlGpuDriver();
+        final String[] candidates = driverCandidates(requestedDriver, Platform.get());
+        if (!requestedDriver.isEmpty()) {
+            LOG.info("SDL GPU driver requested: '{}'", requestedDriver);
         }
 
         final boolean gpuDebug = SystemProperties.LWJGL_DEBUG || SystemProperties.SDL_GPU_DEBUG;
-        final String forcedDriver = resolveDriverName(driverHint, Platform.get() == Platform.WINDOWS);
-        device = createGPUDevice(gpuDebug, forcedDriver);
+        device = createGPUDevice(gpuDebug, candidates);
         if (device == 0 && VideoDriverRecovery.shouldRetryOnX11(SDL_GetCurrentVideoDriver(), vulkanLoaderAvailable(), System.getenv("DISPLAY"))) {
-            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, forcedDriver));
+            device = VideoDriverRecovery.retryUnderX11(() -> createGPUDevice(gpuDebug, candidates));
         }
         if (device == 0) {
             logDeviceCreationFailure(REQUESTED_SHADER_FORMATS);
@@ -128,7 +144,7 @@ public final class Device {
         driverVersion = SDLProperties.SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_VERSION_STRING, "");
         driverInfo = SDLProperties.SDL_GetStringProperty(props, SDL_PROP_GPU_DEVICE_DRIVER_INFO_STRING, "");
 
-        LOG.info("SDL GPU device created: gpu={}, driver={} {}, video={}, formats=0x{}, debug={}, forcedDriver={}", deviceName, driverName, driverVersion, SDL_GetCurrentVideoDriver(), Integer.toHexString(supportedShaderFormats), gpuDebug, forcedDriver);
+        LOG.info("SDL GPU device created: gpu={}, driver={} {}, video={}, formats=0x{}, debug={}, requestedDriver={}", deviceName, driverName, driverVersion, SDL_GetCurrentVideoDriver(), Integer.toHexString(supportedShaderFormats), gpuDebug, requestedDriver);
 
         if (metalNeedsNewerSdl(driverName, ver)) {
             LOG.error("SDL GPU on Metal requires SDL 3.4.6 or newer (have {}.{}.{}); falling back to OpenGL", SDLVersion.SDL_VERSIONNUM_MAJOR(ver), SDLVersion.SDL_VERSIONNUM_MINOR(ver), SDLVersion.SDL_VERSIONNUM_MICRO(ver));
@@ -151,13 +167,29 @@ public final class Device {
         }
     }
 
-    private long createGPUDevice(boolean gpuDebug, String forcedDriver) {
-        long dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, forcedDriver);
-        if (dev == 0 && forcedDriver != null) {
-            LOG.warn("Failed to create a '{}' SDL GPU device ({}); falling back to SDL's default backend. Set -D{} to pin one.", forcedDriver, SDLError.SDL_GetError(), SystemProperties.KEY_SDL_GPU_DRIVER);
-            dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, (CharSequence) null);
+    private static void useMoltenVk() {
+        final String path = MoltenVK.locate();
+        if (path == null || MoltenVK.source() == MoltenVK.Source.ENV) return;
+        if (SDL_SetHint(SDL_HINT_VULKAN_LIBRARY, path)) {
+            LOG.info("MoltenVK: {}", path);
+        } else {
+            LOG.warn("Could not point SDL at MoltenVK {}: {}", path, SDLError.SDL_GetError());
         }
-        return dev;
+    }
+
+    private long createGPUDevice(boolean gpuDebug, String[] candidates) {
+        final boolean macos = Platform.get() == Platform.MACOSX;
+        for (final String driver : candidates) {
+            final boolean macVulkan = macos && isVulkan(driver);
+            if (macVulkan) useMoltenVk();
+            final long dev = SDL_CreateGPUDevice(REQUESTED_SHADER_FORMATS, gpuDebug, driver);
+            if (dev != 0) return dev;
+            LOG.warn("Failed to create a '{}' SDL GPU device: {}", driver, SDLError.SDL_GetError());
+            if (macVulkan && MoltenVK.locate() == null) {
+                LOG.warn("Vulkan on macOS needs MoltenVK. Add {} to the mods folder or install MoltenVK.", MoltenVK.JAR_NAME);
+            }
+        }
+        return 0;
     }
 
     public void claimWindow(long window) {
@@ -213,7 +245,7 @@ public final class Device {
                 }
             }
         }
-        LOG.error("Continuing on OpenGL. Set -D{}=false to skip this probe entirely.", SystemProperties.KEY_USE_SDL_GPU);
+        LOG.error("Continuing on OpenGL. Set Video Settings > Renderer > Backend to OpenGL, or -D{}=false, to skip this probe entirely.", SystemProperties.KEY_USE_SDL_GPU);
     }
 
     public void destroyDevice() {

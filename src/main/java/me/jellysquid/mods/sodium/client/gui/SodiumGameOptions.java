@@ -204,7 +204,6 @@ public class SodiumGameOptions {
     public static class AdvancedSettings {
         public VSyncMode vsyncMode;
         public boolean useVertexArrayObjects = true;
-        public boolean useChunkMultidraw = true;
         public MultiDrawMode multiDrawMode = MultiDrawMode.DIRECT;
 
         public boolean useParticleCulling = true;

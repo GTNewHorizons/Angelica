@@ -3,6 +3,7 @@ package com.gtnewhorizons.angelica.mixins.early.angelica;
 import com.gtnewhorizon.gtnhlib.config.ConfigurationManager;
 import com.gtnewhorizons.angelica.AngelicaMod;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
+import com.gtnewhorizons.angelica.config.GLVersionChoice;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import net.minecraftforge.client.ForgeHooksClient;
@@ -80,9 +81,24 @@ public abstract class MixinForgeHooksClient_CoreProfile {
 
         int maxProbe = platformMax;
 
+        final int requested = GLVersionChoice.of(AngelicaConfig.glVersion, platformMax).version();
+        if (requested >= 33) {
+            final Exception e = angelica$tryCreate(attribs, format, setMajor, setMinor, requested / 10, requested % 10);
+            if (e == null) {
+                final int cap = angelica$validateContext(requested / 10, requested % 10);
+                if (cap == 0) {
+                    LOGGER.info("Created GL {}.{} core profile context (requested)", requested / 10, requested % 10);
+                    return;
+                }
+                maxProbe = Math.min(maxProbe, cap);
+            } else {
+                LOGGER.warn("Requested GL version {}.{} failed", requested / 10, requested % 10);
+            }
+        }
+
         // Try pinned version first if configured
         final int pinned = angelica$clampPinned(AngelicaConfig.pinnedGLVersion, platformMax);
-        if (pinned >= 33) {
+        if (pinned >= 33 && pinned != requested) {
             final Exception e = angelica$tryCreate(attribs, format, setMajor, setMinor, pinned / 10, pinned % 10);
             if (e == null) {
                 final int cap = angelica$validateContext(pinned / 10, pinned % 10);

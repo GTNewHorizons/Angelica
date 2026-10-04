@@ -40,6 +40,10 @@ public abstract class ButtonOption implements Option<Void> {
 
     protected abstract void invoke();
 
+    protected boolean clickable() {
+        return true;
+    }
+
     @Override
     public String getName() {
         return this.name;
@@ -127,12 +131,12 @@ public abstract class ButtonOption implements Option<Void> {
 
             final String label = this.target.label();
             final int width = this.font.getStringWidth(label);
-            this.drawString(label, this.dim.getLimitX() - width - 6, this.dim.getCenterY() - 4, this.hovered ? LABEL_HOVERED : LABEL_IDLE);
+            this.drawString(label, this.dim.getLimitX() - width - 6, this.dim.getCenterY() - 4, this.hovered && this.target.clickable() ? LABEL_HOVERED : LABEL_IDLE);
         }
 
         @Override
         public boolean mouseClicked(double mouseX, double mouseY, int button) {
-            if (!this.target.isAvailable() || button != 0 || !this.dim.containsCursor(mouseX, mouseY)) return false;
+            if (!this.target.clickable() || !this.target.isAvailable() || button != 0 || !this.dim.containsCursor(mouseX, mouseY)) return false;
 
             this.playClickSound();
             this.target.invoke();

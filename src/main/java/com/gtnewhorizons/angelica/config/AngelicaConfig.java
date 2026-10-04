@@ -55,14 +55,6 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static int workerThreadCount;
 
-    @Config.Comment("Enable NotFine Options")
-    @Config.DefaultBoolean(false)
-    public static boolean enableNotFineOptions;
-
-    @Config.Comment("Enable Reese's Sodium Options")
-    @Config.DefaultBoolean(true)
-    public static boolean enableReesesSodiumOptions;
-
     @Config.Comment("Inject BakedModel rendering into some vanilla blocks")
     @Config.DefaultBoolean(false)
     @Config.RequiresMcRestart
@@ -468,6 +460,22 @@ public class AngelicaConfig {
     @Config.RequiresMcRestart
     public static boolean disableGLVersionPinning;
 
+    @Config.Comment("Requested OpenGL context version as an integer (e.g. 46, 41, 33). 0 = highest available. Falls back to probing when the version cannot be created.")
+    @Config.DefaultInt(0)
+    @Config.RangeInt(min = 0, max = 46)
+    @Config.RequiresMcRestart
+    public static int glVersion;
+
+    @Config.Comment("Render backend: OPENGL, or SDL_GPU (experimental; Vulkan/Metal/Direct3D 12 through SDL3, falls back to OpenGL when no device can be created). -Dangelica.sdlgpu.enable=true|false overrides this.")
+    @Config.DefaultEnum("OPENGL")
+    @Config.RequiresMcRestart
+    public static RenderBackendChoice renderBackend;
+
+    @Config.Comment("SDL GPU driver: AUTO, VULKAN, METAL (macOS), D3D12 (Windows). Vulkan on macOS needs MoltenVK and uses Metal without it. -Dangelica.sdlgpu.driver overrides this.")
+    @Config.DefaultEnum("AUTO")
+    @Config.RequiresMcRestart
+    public static SdlGpuDriver sdlGpuDriver;
+
     @Config.Comment("Disables GL Error checks. Always set to false in dev env or if LWJGL debug is on. Improves performance.")
     @Config.DefaultBoolean(true)
     @Config.RequiresMcRestart
@@ -534,6 +542,14 @@ public class AngelicaConfig {
 
     public static boolean cubeInstancingEnabled() {
         return enableEntityBatching && enableCubeInstancing;
+    }
+
+    public static boolean sdlGpuConfigured() {
+        return renderBackend == RenderBackendChoice.SDL_GPU;
+    }
+
+    public static String sdlGpuDriverName() {
+        return sdlGpuDriver == null ? "" : sdlGpuDriver.sdlName();
     }
 
     public static GLProfile getEffectiveGlProfile() {

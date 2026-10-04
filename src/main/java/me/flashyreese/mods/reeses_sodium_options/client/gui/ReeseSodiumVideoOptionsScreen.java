@@ -1,9 +1,15 @@
 package me.flashyreese.mods.reeses_sodium_options.client.gui;
 
+import com.gtnewhorizons.angelica.client.gui.DynamicLightsOptionPages;
 import com.gtnewhorizons.angelica.client.gui.FontConfigScreen;
+import com.gtnewhorizons.angelica.client.gui.RendererOptionPages;
+import com.gtnewhorizons.angelica.client.gui.ScrollableGuiScreen;
+import com.gtnewhorizons.angelica.client.gui.TracyOptionPages;
 import com.gtnewhorizons.angelica.compat.mojang.Element;
 import com.gtnewhorizons.angelica.config.AngelicaConfig;
-import jss.notfine.gui.GuiCustomMenu;
+import com.gtnewhorizons.angelica.config.SystemProperties;
+import com.gtnewhorizons.angelica.dynamiclights.DynamicLights;
+import com.gtnewhorizons.angelica.glsm.profiling.TracyOptions;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.AbstractFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.BasicFrame;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.components.SearchTextFieldComponent;
@@ -11,7 +17,6 @@ import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab.Tab;
 import me.flashyreese.mods.reeses_sodium_options.client.gui.frame.tab.TabFrame;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptionPages;
 import me.jellysquid.mods.sodium.client.gui.SodiumGameOptions;
-import me.jellysquid.mods.sodium.client.gui.SodiumOptionsGUI;
 import me.jellysquid.mods.sodium.client.gui.options.Option;
 import me.jellysquid.mods.sodium.client.gui.options.OptionFlag;
 import me.jellysquid.mods.sodium.client.gui.options.OptionGroup;
@@ -27,13 +32,16 @@ import net.minecraft.client.resources.I18n;
 import org.jetbrains.annotations.Nullable;
 import org.lwjgl.input.Keyboard;
 
+import java.util.ArrayList;
 import java.util.EnumSet;
 import java.util.HashSet;
+import java.util.List;
+import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Predicate;
 import java.util.stream.Stream;
 
-public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
+public class ReeseSodiumVideoOptionsScreen extends ScrollableGuiScreen {
     private static final float ASPECT_RATIO = 5f / 4f;
     private static final int MINIMUM_WIDTH = 550;
 
@@ -46,15 +54,63 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
 
     private static final AtomicReference<String> lastSearch = new AtomicReference<>("");
 
+    private final List<Element> children = new CopyOnWriteArrayList<>();
+    private final List<OptionPage> pages = new ArrayList<>();
+
+    public final GuiScreen prevScreen;
+
+    private FlatButtonWidget applyButton, closeButton, undoButton;
+    private boolean hasPendingChanges;
+    private String pendingPage;
+
     private AbstractFrame frame;
     private SearchTextFieldComponent searchTextField;
 
     public ReeseSodiumVideoOptionsScreen(GuiScreen prevScreen) {
-        super(prevScreen);
+        this.prevScreen = prevScreen;
+
+        this.pages.add(RendererOptionPages.withLink(SodiumGameOptionPages.general(), this));
+        this.pages.add(RendererOptionPages.renderer());
+        this.pages.add(SodiumGameOptionPages.quality());
+        this.pages.add(SodiumGameOptionPages.advanced());
+        this.pages.add(SodiumGameOptionPages.performance());
+        this.pages.add(SodiumGameOptionPages.fpsReducer());
+        this.pages.add(SodiumGameOptionPages.appearance());
+        this.pages.add(SodiumGameOptionPages.text());
+
+        if (DynamicLights.configEnabled) {
+            this.pages.add(DynamicLightsOptionPages.dynamicLights());
+        }
+
+        if (SystemProperties.debugTooling() || TracyOptions.backendPresent()) {
+            this.pages.add(TracyOptionPages.tracy());
+        }
+    }
+
+    public void showPage(String name) {
+        this.pendingPage = name;
+    }
+
+    private void applyPendingPage() {
+        if (this.pendingPage == null) return;
+        lastSearch.set("");
+        tabFrameSelectedTab.set(this.pendingPage);
+        optionPageScrollBarOffset.set(0);
+        this.pendingPage = null;
+        this.rebuildGUI();
+    }
+
+    @Override
+    public List<? extends Element> children() {
+        return children;
+    }
+
+    @Override
+    public void onGuiClosed() {
+        Keyboard.enableRepeatEvents(false);
     }
 
     // Hackalicious! Rebuild UI
-    @Override
     public void rebuildGUI() {
         // Preserve search focus state across rebuilds
         boolean wasSearchFocused = this.searchTextField != null && this.searchTextField.isFocused();
@@ -196,6 +252,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
 
     @Override
     public void drawScreen(int mouseX, int mouseY, float partialTicks) {
+        this.applyPendingPage();
         super.drawDefaultBackground();
         handleMouseScroll(mouseX, mouseY, partialTicks);
         this.updateControls();
@@ -275,14 +332,6 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
             onClose();
             return;
         }
-        if (keyCode == Keyboard.KEY_P) {
-            if(isShiftKeyDown()){
-                this.mc.displayGuiScreen(new GuiCustomMenu(this.prevScreen, SodiumGameOptionPages.general(), SodiumGameOptionPages.quality(), SodiumGameOptionPages.advanced(), SodiumGameOptionPages.performance(), SodiumGameOptionPages.appearance()));
-            } else if (isCtrlKeyDown()) {
-                this.mc.displayGuiScreen(new SodiumOptionsGUI(this.prevScreen));
-            }
-        }
-
         if(focused != null) {
             focused.keyTyped(typedChar, keyCode);
         }
@@ -293,6 +342,7 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
         final boolean onSearchField = this.searchTextField.isMouseOver(mouseX, mouseY);
 
         super.mouseClicked(mouseX, mouseY, mouseButton);
+        this.children.forEach(element -> element.mouseClicked(mouseX, mouseY, mouseButton));
 
         if (!onSearchField) {
             this.searchTextField.setFocused(false);
@@ -301,13 +351,20 @@ public class ReeseSodiumVideoOptionsScreen extends SodiumOptionsGUI {
     }
 
     @Override
+    protected void mouseClickMove(int mouseX, int mouseY, int mouseButton, long timeSinceLastClick) {
+        super.mouseClickMove(mouseX, mouseY, mouseButton, timeSinceLastClick);
+
+        this.children.forEach(element -> element.mouseDragged(mouseX, mouseY, mouseButton));
+    }
+
     public boolean shouldCloseOnEsc() {
         return !this.hasPendingChanges;
     }
 
-    @Override
+    // We can't override onGuiClosed due to StackOverflow
     public void onClose() {
         lastSearch.set("");
-        super.onClose();
+        this.mc.displayGuiScreen(this.prevScreen);
+        super.onGuiClosed();
     }
 }
