@@ -48,6 +48,7 @@ public class RenderSystem {
     private static boolean supportsClearTexture;
     private static boolean supportsTesselation;
     private static boolean supportsSamplerObjects;
+    private static boolean supportsProgramBinary;
     private static int maxImageUnits;
     @Getter private static int maxCombinedTextureImageUnits;
     private static int maxSSBOBindings;
@@ -158,6 +159,9 @@ public class RenderSystem {
         if (supportsSamplerObjects) {
             maxCombinedTextureImageUnits = RENDER_BACKEND.getInteger(GL20.GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS);
         }
+
+        supportsProgramBinary = RENDER_BACKEND.supportsProgramBinary();
+        GLStateManager.LOGGER.info("Program Binary: {}", supportsProgramBinary);
 
         maxGlslVersion = Integer.parseInt(parseGlVersionString(RENDER_BACKEND.getString(GL20.GL_SHADING_LANGUAGE_VERSION)));
         supportsGpuShader4 = GLStateManager.capabilities.GL_EXT_gpu_shader4;
@@ -609,6 +613,10 @@ public class RenderSystem {
 
     public static boolean supportsSamplerObjects() {
         return supportsSamplerObjects;
+    }
+
+    public static boolean supportsProgramBinary() {
+        return supportsProgramBinary;
     }
 
     public static int genSampler() {

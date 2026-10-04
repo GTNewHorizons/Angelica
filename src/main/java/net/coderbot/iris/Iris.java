@@ -8,6 +8,7 @@ import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.backend.BackendManager;
 import com.gtnewhorizons.angelica.glsm.hooks.GLSMHooks;
 import com.gtnewhorizons.angelica.glsm.shader.GlslVulkanPreprocess;
+import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
 import com.gtnewhorizons.angelica.glsm.shader.SpirvCompiler;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import com.gtnewhorizons.angelica.iris.ImmediateExtendedAttribs;
@@ -39,6 +40,7 @@ import net.coderbot.iris.pipeline.transform.TransformPatcher;
 import net.coderbot.iris.shaderpack.OptionalBoolean;
 import net.coderbot.iris.shaderpack.ProgramSet;
 import net.coderbot.iris.shaderpack.ShaderPack;
+import net.coderbot.iris.shaderpack.StringPair;
 import net.coderbot.iris.shaderpack.discovery.ShaderpackDirectoryManager;
 import net.coderbot.iris.shaderpack.option.OptionSet;
 import net.coderbot.iris.shaderpack.option.Profile;
@@ -48,6 +50,7 @@ import net.coderbot.iris.texture.pbr.PBRTextureManager;
 import net.coderbot.iris.uniforms.CapturedRenderingState;
 import net.coderbot.iris.uniforms.PerFrameUniformBlockHarvester;
 import net.minecraft.block.Block;
+import net.minecraft.client.LoadingScreenRenderer;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiScreen;
 import net.minecraft.client.multiplayer.WorldClient;
@@ -63,6 +66,7 @@ import org.lwjgl.input.Keyboard;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
@@ -74,6 +78,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Properties;
+import java.util.TreeMap;
 import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import java.util.stream.Stream;
@@ -101,6 +106,7 @@ public class Iris {
     private static CompletableFuture<Void> programSetWarmup;
     @Getter
     private static String currentPackName;
+    private static String currentPackSettings;
     @Getter
     private static boolean initialized;
     @Getter
@@ -319,6 +325,7 @@ public class Iris {
         // the player is in the overworld.
         // See: https://github.com/IrisShaders/Iris/issues/323
         lastDimensionName = "Overworld";
+        compileEveryShaderFolder();
         Iris.getPipelineManager().preparePipeline("Overworld");
     }
 
@@ -491,7 +498,8 @@ public class Iris {
         resetShaderPackOptions = false;
 
         try {
-            currentPack = new ShaderPack(shaderPackPath, changedConfigs, StandardMacros.createStandardEnvironmentDefines());
+            final Iterable<StringPair> environmentDefines = StandardMacros.createStandardEnvironmentDefines();
+            currentPack = new ShaderPack(shaderPackPath, changedConfigs, environmentDefines);
 
             final MutableOptionValues changedConfigsValues = currentPack.getShaderPackOptions().getOptionValues().mutableCopy();
 
@@ -501,6 +509,7 @@ public class Iris {
             changedConfigsValues.getStringValues().forEach(configsToSave::setProperty);
 
             tryUpdateConfigPropertiesFile(shaderPackConfigTxt, configsToSave);
+            currentPackSettings = describeSettings(name, shaderPackRoot, configsToSave, environmentDefines);
         } catch (Exception e) {
             logger.error("Failed to load the shaderpack \"{}\"!", name);
             logger.error("", e);
@@ -510,6 +519,7 @@ public class Iris {
 
         fallback = false;
         currentPackName = name;
+        ProgramBinaryCache.usePack(name);
 
         logger.info("Using shaderpack: " + name);
 
@@ -542,6 +552,8 @@ public class Iris {
 
     private static void setShadersDisabled() {
         currentPack = null;
+        currentPackSettings = null;
+        ProgramBinaryCache.usePack(null);
         fallback = false;
         currentPackName = "(off)";
 
@@ -678,6 +690,8 @@ public class Iris {
         // Drop the stale program probe and cached item geometry
         ImmediateExtendedAttribs.onShaderPackChanged();
 
+        compileEveryShaderFolder();
+
         // Very important - we need to re-create the pipeline straight away.
         // https://github.com/IrisShaders/Iris/issues/1330
         if (Minecraft.getMinecraft().theWorld != null) {
@@ -697,6 +711,8 @@ public class Iris {
     private static void destroyEverything() {
         awaitProgramSetWarmup();
         currentPack = null;
+        currentPackSettings = null;
+        ProgramBinaryCache.usePack(null);
 
         getPipelineManager().destroyPipeline();
         PBRTextureManager.INSTANCE.clear();
@@ -754,6 +770,86 @@ public class Iris {
         return lastDimensionId;
     }
 
+
+    private static void compileEveryShaderFolder() {
+        if (currentPack == null || !irisConfig.shouldSaveCompiledShaders()) return;
+        if (currentPackSettings != null && ProgramBinaryCache.wasCompiledFor(currentPackSettings)) return;
+        awaitProgramSetWarmup();
+
+        final Map<String, ProgramSet> programSets = currentPack.getEveryProgramSet();
+        final LoadingScreenRenderer progress = Minecraft.getMinecraft().loadingScreen;
+        if (progress != null) progress.resetProgressAndMessage(I18n.format("options.iris.saveCompiledShaders.progress"));
+        boolean everyFolderCompiled = true;
+        boolean loopFinished = false;
+        ProgramBinaryCache.beginFullCompile();
+        try {
+            int i = 0;
+            for (Map.Entry<String, ProgramSet> entry : programSets.entrySet()) {
+                final String folder = entry.getKey() != null ? entry.getKey() : I18n.format("options.iris.saveCompiledShaders.baseFolder");
+                if (progress != null) {
+                    progress.resetProgresAndWorkingMessage(I18n.format("options.iris.saveCompiledShaders.progressStep", i + 1, programSets.size(), folder));
+                    progress.setLoadingProgress(i * 100 / programSets.size());
+                }
+                i++;
+                final ProgramSet programs = entry.getValue();
+                try {
+                    shaderPackLoadId++;
+                    ShaderTransformExecutor.prepare();
+                    PerFrameUniformBlockHarvester.harvest(programs);
+                    final DeferredWorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
+                    try {
+                        // Both are otherwise built lazily on first draw, after this pipeline is gone
+                        pipeline.compileInstancedVariants();
+                        if (IrisShaderProviderHolder.getProvider() instanceof IrisCeleritasShaderProvider terrain) {
+                            terrain.compileTerrainPrograms(pipeline.getCeleritasTerrainPipeline());
+                        }
+                    } finally {
+                        getPipelineManager().discardPipeline(pipeline);
+                    }
+                } catch (Exception e) {
+                    everyFolderCompiled = false;
+                    logger.error("Failed to compile shader folder '{}' for saving", folder, e);
+                }
+            }
+            loopFinished = true;
+        } finally {
+            ProgramBinaryCache.finishFullCompile(loopFinished && everyFolderCompiled ? currentPackSettings : null);
+            PerFrameUniformBlockHarvester.clear();
+        }
+    }
+
+    @Nullable
+    private static String describeSettings(String packName, Path packRoot, Properties options, Iterable<StringPair> environmentDefines) {
+        final StringBuilder settings = new StringBuilder(packName).append('\n');
+        if (Files.isRegularFile(packRoot)) {
+            try {
+                settings.append(Files.size(packRoot)).append('|').append(Files.getLastModifiedTime(packRoot).toMillis());
+            } catch (IOException e) {
+                return null;
+            }
+        } else if (Files.isDirectory(packRoot)) {
+            try (Stream<Path> files = Files.walk(packRoot)) {
+                files.filter(Files::isRegularFile).sorted().forEach(file -> {
+                    try {
+                        settings.append(packRoot.relativize(file)).append('|').append(Files.size(file)).append('|')
+                            .append(Files.getLastModifiedTime(file).toMillis()).append('\n');
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
+                });
+            } catch (IOException | UncheckedIOException e) {
+                return null;
+            }
+        } else {
+            return null;
+        }
+        settings.append('\n');
+        new TreeMap<>(options).forEach((key, value) -> settings.append(key).append('=').append(value).append('\n'));
+        for (StringPair define : environmentDefines) {
+            settings.append('#').append(define.getKey()).append(' ').append(define.getValue()).append('\n');
+        }
+        return settings.toString();
+    }
 
     /**
      * Creates a pipeline for a dimension using the dimension name from WorldProvider.getDimensionName().

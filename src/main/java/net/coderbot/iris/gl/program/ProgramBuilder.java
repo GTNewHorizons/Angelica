@@ -5,6 +5,7 @@ import com.gtnewhorizons.angelica.glsm.DisplayListManager;
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
 import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import com.gtnewhorizons.angelica.glsm.recording.CommandRecorder;
+import com.gtnewhorizons.angelica.glsm.shader.ProgramBinaryCache;
 import net.coderbot.iris.gl.image.ImageHolder;
 import net.coderbot.iris.gl.sampler.GlSampler;
 import net.coderbot.iris.gl.sampler.SamplerHolder;
@@ -43,6 +44,20 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 	public static ProgramBuilder begin(String name, @Nullable String vertexSource, @Nullable String geometrySource,
 									   @Nullable String tessControlSource, @Nullable String tessEvalSource,
 									   @Nullable String fragmentSource, ImmutableSet<Integer> reservedTextureUnits) {
+		final ProgramBinaryCache.Key cacheKey = ProgramCreator.cacheKey();
+		if (cacheKey != null) {
+			cacheKey.stage(ShaderType.VERTEX.id, vertexSource);
+			if (geometrySource != null) cacheKey.stage(ShaderType.GEOMETRY.id, geometrySource);
+			if (tessControlSource != null) cacheKey.stage(ShaderType.TESSELATION_CONTROL.id, tessControlSource);
+			if (tessEvalSource != null) cacheKey.stage(ShaderType.TESSELATION_EVAL.id, tessEvalSource);
+			cacheKey.stage(ShaderType.FRAGMENT.id, fragmentSource);
+			final int saved = ProgramCreator.load(name, cacheKey);
+			if (saved != 0) {
+				initializeFallbackUniforms(saved);
+				return new ProgramBuilder(name, saved, reservedTextureUnits);
+			}
+		}
+
 		GlShader vertex = buildShader(ShaderType.VERTEX, name + ".vsh", vertexSource);
 		GlShader geometry = geometrySource != null ? buildShader(ShaderType.GEOMETRY, name + ".gsh", geometrySource) : null;
 		GlShader tessControl = tessControlSource != null ? buildShader(ShaderType.TESSELATION_CONTROL, name + ".tcs", tessControlSource) : null;
@@ -56,7 +71,7 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 		if (tessEval != null) shaders.add(tessEval);
 		shaders.add(fragment);
 
-		int programId = ProgramCreator.create(name, shaders.toArray(new GlShader[0]));
+		int programId = ProgramCreator.create(name, cacheKey, shaders.toArray(new GlShader[0]));
 		initializeFallbackUniforms(programId);
 
 		for (GlShader shader : shaders) {
@@ -107,9 +122,18 @@ public class ProgramBuilder extends ProgramUniforms.Builder implements SamplerHo
 			throw new IllegalStateException("This PC does not support compute shaders, but it's attempting to be used???");
 		}
 
+		final ProgramBinaryCache.Key cacheKey = ProgramCreator.cacheKey();
+		if (cacheKey != null) {
+			cacheKey.stage(ShaderType.COMPUTE.id, source);
+			final int saved = ProgramCreator.load(name, cacheKey);
+			if (saved != 0) {
+				return new ProgramBuilder(name, saved, reservedTextureUnits);
+			}
+		}
+
 		GlShader compute = buildShader(ShaderType.COMPUTE, name + ".csh", source);
 
-		int programId = ProgramCreator.create(name, compute);
+		int programId = ProgramCreator.create(name, cacheKey, compute);
 
 		compute.destroy();
 

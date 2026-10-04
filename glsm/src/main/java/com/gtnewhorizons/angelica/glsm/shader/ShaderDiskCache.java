@@ -19,14 +19,18 @@ import java.nio.file.SimpleFileVisitor;
 import java.nio.file.StandardCopyOption;
 import java.nio.file.StandardOpenOption;
 import java.nio.file.attribute.BasicFileAttributes;
+import java.nio.file.attribute.FileTime;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collection;
+import java.util.Collections;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.stream.Stream;
@@ -116,9 +120,9 @@ public final class ShaderDiskCache {
         }
     }
 
-    public static void put(Key key, byte[] payload) {
+    public static boolean put(Key key, byte[] payload) {
         final Path r = root;
-        if (r == null) return;
+        if (r == null) return false;
         final Path target = key.path(r);
         final Path tmp = target.resolveSibling(key.hex() + '.' + TMP_SEQ.getAndIncrement() + ".tmp");
         try {
@@ -129,11 +133,13 @@ public final class ShaderDiskCache {
                 write(tmp, payload);
             }
             Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            return true;
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(tmp);
             } catch (IOException ignored) {}
             if (writeWarned.compareAndSet(false, true)) LOGGER.warn("Shader disk cache write failed for {}", target, e);
+            return false;
         }
     }
 
@@ -202,7 +208,7 @@ public final class ShaderDiskCache {
         }
     }
 
-    public static void putBlob(Key key, String tag, byte[] data) {
+    public static boolean putBlob(Key key, String tag, byte[] data) {
         final ByteArrayOutputStream bytes = new ByteArrayOutputStream(data.length + 64);
         try (DataOutputStream out = new DataOutputStream(bytes)) {
             writeStr(out, tag);
@@ -210,10 +216,100 @@ public final class ShaderDiskCache {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        put(key, bytes.toByteArray());
+        return put(key, bytes.toByteArray());
     }
 
     public record Blob(String tag, byte[] data) {}
+
+    public static void remove(Key key) {
+        final Path r = root;
+        if (r == null) return;
+        try {
+            Files.deleteIfExists(key.path(r));
+        } catch (IOException ignored) {}
+    }
+
+    public static void retainLayer(String layer, Set<String> keep) {
+        final Path r = root;
+        if (r == null) return;
+        final Path dir = r.resolve(layer);
+        if (!Files.isDirectory(dir)) return;
+        final List<Path> files = new ArrayList<>();
+        try (Stream<Path> list = Files.list(dir)) {
+            list.forEach(files::add);
+        } catch (IOException e) {
+            LOGGER.warn("Shader disk cache could not list {}", dir, e);
+            return;
+        }
+        for (Path p : files) {
+            final String name = p.getFileName().toString();
+            if (!name.endsWith(".bin")) continue; // in-flight writes are still .tmp
+            if (keep != null && keep.contains(name.substring(0, name.length() - 4))) continue;
+            try {
+                Files.deleteIfExists(p);
+            } catch (IOException ignored) {}
+        }
+    }
+
+    public static void touchLayer(String layer) {
+        final Path r = root;
+        if (r == null) return;
+        final Path dir = r.resolve(layer);
+        try {
+            Files.createDirectories(dir);
+            Files.setLastModifiedTime(dir, FileTime.fromMillis(System.currentTimeMillis()));
+        } catch (IOException e) {
+            LOGGER.warn("Shader disk cache could not mark {} as used", dir, e);
+        }
+    }
+
+    public static void keepNewestSubLayers(String layer, int keep) {
+        final Path r = root;
+        if (r == null) return;
+        final Path dir = r.resolve(layer);
+        if (!Files.isDirectory(dir)) return;
+        final List<Path> subLayers = new ArrayList<>();
+        try (Stream<Path> list = Files.list(dir)) {
+            list.filter(Files::isDirectory).forEach(subLayers::add);
+        } catch (IOException e) {
+            LOGGER.warn("Shader disk cache could not list {}", dir, e);
+            return;
+        }
+        subLayers.sort(Comparator.comparingLong(ShaderDiskCache::lastModifiedMillis).reversed());
+        for (int i = keep; i < subLayers.size(); i++) {
+            deleteRecursively(subLayers.get(i));
+        }
+    }
+
+    public static void deleteLayer(String layer) {
+        final Path r = root;
+        if (r != null) deleteRecursively(r.resolve(layer));
+    }
+
+    private static long lastModifiedMillis(Path path) {
+        try {
+            return Files.getLastModifiedTime(path).toMillis();
+        } catch (IOException e) {
+            return 0L;
+        }
+    }
+
+    private static void deleteRecursively(Path dir) {
+        if (!Files.exists(dir)) return;
+        final List<Path> paths = new ArrayList<>();
+        try (Stream<Path> walk = Files.walk(dir)) {
+            walk.forEach(paths::add);
+        } catch (IOException e) {
+            LOGGER.warn("Shader disk cache could not list {}", dir, e);
+            return;
+        }
+        Collections.reverse(paths);
+        for (Path p : paths) {
+            try {
+                Files.deleteIfExists(p);
+            } catch (IOException ignored) {}
+        }
+    }
 
     static void enforceCap(Path dir, long maxBytes) {
         try {

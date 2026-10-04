@@ -1,6 +1,7 @@
 package com.gtnewhorizons.angelica.glsm.backend;
 
 import com.gtnewhorizons.angelica.glsm.GLStateManager;
+import com.gtnewhorizons.angelica.glsm.RenderSystem;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.AMDDebugOutput;
 import org.lwjgl.opengl.AMDDebugOutputCallback;
@@ -23,6 +24,7 @@ import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL30;
 import org.lwjgl.opengl.GL31;
 import org.lwjgl.opengl.GL40;
+import org.lwjgl.opengl.GL41;
 import org.lwjgl.opengl.GL32;
 import org.lwjgl.opengl.GL33;
 import org.lwjgl.opengl.GL42;
@@ -805,6 +807,28 @@ public final class Lwjgl2GLRenderBackend extends RenderBackend {
     @Override
     public boolean isProgram(int obj) {
         return GL20.glIsProgram(obj);
+    }
+
+    @Override
+    public boolean supportsProgramBinary() {
+        final ContextCapabilities caps = GLStateManager.capabilities;
+        return !RenderSystem.isGLES() && (caps.OpenGL41 || caps.GL_ARB_get_program_binary)
+            && GL11.glGetInteger(GL41.GL_NUM_PROGRAM_BINARY_FORMATS) > 0;
+    }
+
+    @Override
+    public void programParameteri(int program, int pname, int value) {
+        GL41.glProgramParameteri(program, pname, value);
+    }
+
+    @Override
+    public void getProgramBinary(int program, IntBuffer length, IntBuffer binaryFormat, ByteBuffer binary) {
+        GL41.glGetProgramBinary(program, length, binaryFormat, binary);
+    }
+
+    @Override
+    public void programBinary(int program, int binaryFormat, ByteBuffer binary) {
+        GL41.glProgramBinary(program, binaryFormat, binary);
     }
 
     @Override

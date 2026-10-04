@@ -12,6 +12,8 @@ import net.minecraft.client.resources.I18n;
 import net.minecraft.util.ResourceLocation;
 import org.lwjgl.opengl.GL11;
 
+import java.util.List;
+
 /**
  * Class serving as abstraction and
  * centralization for common GUI
@@ -112,6 +114,17 @@ public final class GuiUtil {
 	public static void drawTextPanel(FontRenderer font, String text, int x, int y) {
 		drawPanel(x, y, font.getStringWidth(text) + 8, 16);
 		font.drawStringWithShadow(text, x + 4, y + 4, 0xFFFFFF);
+	}
+
+	public static void drawTextPanel(FontRenderer font, List<String> lines, int x, int y) {
+		int width = 0;
+		for (String line : lines) {
+			width = Math.max(width, font.getStringWidth(line));
+		}
+		drawPanel(x, y, width + 8, lines.size() * 10 + 6);
+		for (int i = 0; i < lines.size(); i++) {
+			font.drawStringWithShadow(lines.get(i), x + 4, y + 4 + i * 10, 0xFFFFFF);
+		}
 	}
 
 	public static void drawScrollingText(FontRenderer font, String text, int centerX, int minX, int maxX, int minY, int maxY, int color) {

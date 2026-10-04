@@ -46,6 +46,7 @@ import java.util.EnumMap;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.TreeSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -689,27 +690,7 @@ public class ShaderPack {
 		String folderName = resolveDimensionFolder(dimensionMap, foldersWithShaderFiles, legacyDefaultFolder, dimensionName, Iris.getCurrentDimensionId());
 
 		if (folderName != null) {
-			ProgramSet programSet = dimensionProgramSets.get(folderName);
-
-			if (programSet == null) {
-				// Create ProgramSet on-demand for dimension folder
-				try {
-					programSet = new ProgramSet(
-						AbsolutePackPath.fromAbsolutePath("/" + folderName),
-						sourceProvider,
-						shaderProperties,
-						this
-					);
-					dimensionProgramSets.put(folderName, programSet);
-
-					// Check cache size limit and evict LRU dimensions if needed
-					evictOldDimensions();
-				} catch (Exception e) {
-					// This shouldn't happen but just in case.
-					Iris.logger.error("Failed to create ProgramSet for dimension folder '{}', falling back to base", folderName, e);
-					programSet = null;
-				}
-			}
+			final ProgramSet programSet = getFolderProgramSet(folderName);
 
 			if (programSet != null) {
 				return programSet;
@@ -732,6 +713,53 @@ public class ShaderPack {
 		//     sense to bring it back as a configurable option, and have a more maintainable set of code backing it.
 
 		return base;
+	}
+
+	private ProgramSet getFolderProgramSet(String folderName) {
+		ProgramSet programSet = dimensionProgramSets.get(folderName);
+
+		if (programSet == null) {
+			// Create ProgramSet on-demand for dimension folder
+			try {
+				programSet = new ProgramSet(
+					AbsolutePackPath.fromAbsolutePath("/" + folderName),
+					sourceProvider,
+					shaderProperties,
+					this
+				);
+				dimensionProgramSets.put(folderName, programSet);
+
+				// Check cache size limit and evict LRU dimensions if needed
+				evictOldDimensions();
+			} catch (Exception e) {
+				// This shouldn't happen but just in case.
+				Iris.logger.error("Failed to create ProgramSet for dimension folder '{}', falling back to base", folderName, e);
+				programSet = null;
+			}
+		}
+
+		return programSet;
+	}
+
+	// Keyed by folder name in sorted order; the base shaders are under null
+	public Map<String, ProgramSet> getEveryProgramSet() {
+		final Map<String, ProgramSet> sets = new LinkedHashMap<>();
+		for (String folderName : new TreeSet<>(foldersWithShaderFiles)) {
+			final ProgramSet programSet = getFolderProgramSet(folderName);
+			if (programSet != null) sets.put(folderName, programSet);
+		}
+		if (canFallBackToBase(dimensionMap, foldersWithShaderFiles, legacyDefaultFolder)) {
+			sets.put(null, base);
+		}
+		return sets;
+	}
+
+	static boolean canFallBackToBase(Map<String, String> dimensionMap, Set<String> foldersWithShaderFiles, String legacyDefaultFolder) {
+		for (String folderName : dimensionMap.values()) {
+			if (!foldersWithShaderFiles.contains(folderName)) return true;
+		}
+		// A dimension that is named nowhere and has no world<id> folder of its own
+		return resolveDimensionFolder(dimensionMap, foldersWithShaderFiles, legacyDefaultFolder, "\0", Integer.MIN_VALUE) == null;
 	}
 
 	static String resolveDimensionFolder(Map<String, String> dimensionMap, Set<String> foldersWithShaderFiles,
