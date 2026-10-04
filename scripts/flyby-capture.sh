@@ -9,6 +9,7 @@
 #   route  - straight | pan | circuit | static
 #   length - Units: blocks (straight), blocks per leg (circuit), degrees (pan), ticks (static).
 #   extra  - passed through to gradle; -Dangelica.* reaches the client (e.g. -Dangelica.flyby.timeOfDay=1500).
+#            -Dangelica.flyby.camera=FIRST_PERSON|THIRD_PERSON_BACK|THIRD_PERSON_FRONT (default FIRST_PERSON).
 #
 #   FLYBY_SPEED     - blocks per tick. (0.5 ~= creative flight).
 #   FLYBY_PACING    - UNCAPPED | CONFIGURED. Passed through when set.

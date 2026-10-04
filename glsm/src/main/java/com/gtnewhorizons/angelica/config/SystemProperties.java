@@ -63,6 +63,7 @@ public final class SystemProperties {
     public static final String FLYBY_ORIGIN = System.getProperty("angelica.flyby.origin", "");
     public static final FlybyPacing FLYBY_PACING = parseEnum("angelica.flyby.pacing", FlybyPacing.UNCAPPED, FlybyPacing.UNCAPPED, FlybyPacing.class);
     public static final FlybyWeather FLYBY_WEATHER = parseEnum("angelica.flyby.weather", FlybyWeather.CLEAR, FlybyWeather.CLEAR, FlybyWeather.class);
+    public static final FlybyCamera FLYBY_CAMERA = parseEnum("angelica.flyby.camera", FlybyCamera.FIRST_PERSON, FlybyCamera.FIRST_PERSON, FlybyCamera.class);
     public static final boolean FLYBY_JFR = Boolean.getBoolean("angelica.flyby.jfr");
     public static final float FLYBY_PITCH = parseFloat("angelica.flyby.pitch");
     public static final int FLYBY_SCREENSHOTS = Integer.getInteger("angelica.flyby.screenshots", 0);
@@ -129,6 +130,12 @@ public final class SystemProperties {
     public enum FlybyPacing {
         UNCAPPED,
         CONFIGURED
+    }
+
+    public enum FlybyCamera {
+        FIRST_PERSON,
+        THIRD_PERSON_BACK,
+        THIRD_PERSON_FRONT
     }
 
     public enum FlybyWeather {
