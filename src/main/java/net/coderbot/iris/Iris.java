@@ -517,6 +517,7 @@ public class Iris {
 
         fallback = false;
         currentPackName = name;
+        ProgramBinaryCache.usePack(name);
 
         logger.info("Using shaderpack: " + name);
 
@@ -550,6 +551,7 @@ public class Iris {
     private static void setShadersDisabled() {
         currentPack = null;
         currentPackSettings = null;
+        ProgramBinaryCache.usePack(null);
         fallback = false;
         currentPackName = "(off)";
 
@@ -708,6 +710,7 @@ public class Iris {
         awaitProgramSetWarmup();
         currentPack = null;
         currentPackSettings = null;
+        ProgramBinaryCache.usePack(null);
 
         getPipelineManager().destroyPipeline();
         PBRTextureManager.INSTANCE.clear();

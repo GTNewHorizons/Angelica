@@ -26,10 +26,12 @@ import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACK
 public final class ProgramBinaryCache {
     private static final Logger LOGGER = LogManager.getLogger("ProgramBinaryCache");
     static final String LAYER = "gl-program";
-    static final String COMPILED_SETTINGS_LAYER = "gl-program-settings";
+    private static final int PACKS_KEPT = 3;
 
     private static volatile boolean enabled;
+    private static volatile String packLayer;
     private static String driverId;
+    private static String fullCompileLayer;
     private static Set<String> keysInUse;
     private static final AtomicBoolean rejectWarned = new AtomicBoolean();
 
@@ -40,15 +42,23 @@ public final class ProgramBinaryCache {
     }
 
     public static boolean isEnabled() {
-        return enabled && RenderSystem.supportsProgramBinary() && ShaderDiskCache.isEnabled();
+        return enabled && packLayer != null && RenderSystem.supportsProgramBinary() && ShaderDiskCache.isEnabled();
+    }
+
+    public static void usePack(String packName) {
+        if (packName == null) {
+            packLayer = null;
+            return;
+        }
+        final String layer = LAYER + '/' + folderName(packName);
+        packLayer = layer;
+        if (!enabled) return;
+        ShaderDiskCache.touchLayer(layer);
+        AngelicaWorkers.run(() -> ShaderDiskCache.keepNewestSubLayers(LAYER, PACKS_KEPT));
     }
 
     public static Key key() {
-        return key(driverId(), ShaderManager.isEnabled());
-    }
-
-    static Key key(String driver, boolean ffpEnabled) {
-        return new Key(ShaderDiskCache.key(LAYER).str(driver).b(ffpEnabled));
+        return new Key(ShaderDiskCache.key(packLayer).str(driverId()).b(ShaderManager.isEnabled()));
     }
 
     public static void markRetrievable(int program) {
@@ -107,32 +117,46 @@ public final class ProgramBinaryCache {
     }
 
     public static void beginFullCompile() {
+        fullCompileLayer = packLayer;
         keysInUse = new HashSet<>();
     }
 
     public static void finishFullCompile() {
+        final String layer = fullCompileLayer;
         final Set<String> used = keysInUse;
+        fullCompileLayer = null;
         keysInUse = null;
-        if (used != null) AngelicaWorkers.run(() -> ShaderDiskCache.retainLayer(LAYER, used));
+        if (layer != null && used != null) AngelicaWorkers.run(() -> ShaderDiskCache.retainLayer(layer, used));
     }
 
     public static void deleteAll() {
-        ShaderDiskCache.retainLayer(COMPILED_SETTINGS_LAYER, null);
-        AngelicaWorkers.run(() -> ShaderDiskCache.retainLayer(LAYER, null));
+        ShaderDiskCache.deleteLayer(LAYER);
     }
 
     public static boolean wasCompiledFor(String settings) {
-        return ShaderDiskCache.getString(compiledSettingsKey(settings)) != null;
+        final String layer = packLayer;
+        return layer != null && ShaderDiskCache.getString(compiledSettingsKey(layer, settings)) != null;
     }
 
     public static void rememberCompiledFor(String settings) {
-        final ShaderDiskCache.Key key = compiledSettingsKey(settings);
-        ShaderDiskCache.retainLayer(COMPILED_SETTINGS_LAYER, Collections.singleton(key.hex()));
+        final String layer = packLayer;
+        if (layer == null) return;
+        final ShaderDiskCache.Key key = compiledSettingsKey(layer, settings);
+        ShaderDiskCache.retainLayer(layer + "/settings", Collections.singleton(key.hex()));
         ShaderDiskCache.putString(key, "");
     }
 
-    private static ShaderDiskCache.Key compiledSettingsKey(String settings) {
-        return ShaderDiskCache.key(COMPILED_SETTINGS_LAYER).str(driverId()).b(ShaderManager.isEnabled()).str(settings);
+    private static ShaderDiskCache.Key compiledSettingsKey(String layer, String settings) {
+        return ShaderDiskCache.key(layer + "/settings").str(driverId()).b(ShaderManager.isEnabled()).str(settings);
+    }
+
+    private static String folderName(String packName) {
+        final StringBuilder name = new StringBuilder(Math.min(packName.length(), 64));
+        for (int i = 0; i < packName.length() && name.length() < 64; i++) {
+            final char c = packName.charAt(i);
+            name.append(c < 128 && (Character.isLetterOrDigit(c) || c == '.' || c == '-' || c == '_') ? c : '_');
+        }
+        return name.toString();
     }
 
     private static void keep(ShaderDiskCache.Key diskKey) {
