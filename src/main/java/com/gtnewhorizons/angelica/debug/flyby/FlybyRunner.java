@@ -84,6 +84,8 @@ public final class FlybyRunner {
     private boolean vsyncOverridden;
     private boolean showDebugInfoSaved;
     private boolean showDebugInfoOverridden;
+    private int cameraSaved;
+    private boolean cameraOverridden;
     private int shotEvery;
     private int nextShot;
     private int shot;
@@ -375,6 +377,11 @@ public final class FlybyRunner {
             this.showDebugInfoOverridden = true;
             mc.gameSettings.showDebugInfo = true;
         }
+        if (!this.cameraOverridden) {
+            this.cameraSaved = mc.gameSettings.thirdPersonView;
+            this.cameraOverridden = true;
+            mc.gameSettings.thirdPersonView = SystemProperties.FLYBY_CAMERA.ordinal();
+        }
         if ("isbrh".equals(SystemProperties.FLYBY_CRASH_TEST)) {
             IsbrhTestRenderer.armCrashTest();
         }
@@ -535,7 +542,7 @@ public final class FlybyRunner {
         this.nextShot = this.shotEvery / 2;
         FramePacer.beginStats();
 
-        final String config = "backend=" + GLStateManager.getRenderBackendName() + " pacing=" + SystemProperties.FLYBY_PACING + " vsync=" + GLStateManager.getEffectiveVSyncMode() + " discard=" + (mc.getIntegratedServer() != null);
+        final String config = "backend=" + GLStateManager.getRenderBackendName() + " pacing=" + SystemProperties.FLYBY_PACING + " vsync=" + GLStateManager.getEffectiveVSyncMode() + " discard=" + (mc.getIntegratedServer() != null) + " camera=" + SystemProperties.FLYBY_CAMERA;
         if (Tracy.ENABLED) {
             Tracy.message("flyby start route=" + this.route.id() + " length=" + this.runLength + this.route.lengthUnit() + " speed=" + this.route.speedOr(this.speed) + "b/t ticks=" + this.runTicks + " " + config);
         }
@@ -757,6 +764,9 @@ public final class FlybyRunner {
         final String summary = this.summarise(elapsedNs, player);
         LOGGER.info(summary);
         LOGGER.info(FramePacer.endStats());
+        if (mc.gameSettings.thirdPersonView != SystemProperties.FLYBY_CAMERA.ordinal()) {
+            LOGGER.warn("Flyby: camera left {} during the run (thirdPersonView={}), screenshots are not comparable", SystemProperties.FLYBY_CAMERA, mc.gameSettings.thirdPersonView);
+        }
         if (mc.thePlayer != null) {
             mc.thePlayer.addChatMessage(new ChatComponentText(EnumChatFormatting.AQUA + "[Angelica] " + EnumChatFormatting.WHITE + summary));
         }
@@ -787,6 +797,7 @@ public final class FlybyRunner {
         this.returnToOrigin(player);
         this.restorePauseOnLostFocus(mc);
         this.restoreShowDebugInfo(mc);
+        this.restoreCamera(mc);
         this.armed = false;
         sceneGuarded = false;
         this.sceneClearRequested = this.sceneCommands.length > 0;
@@ -817,6 +828,12 @@ public final class FlybyRunner {
         if (!this.showDebugInfoOverridden) return;
         mc.gameSettings.showDebugInfo = this.showDebugInfoSaved;
         this.showDebugInfoOverridden = false;
+    }
+
+    private void restoreCamera(Minecraft mc) {
+        if (!this.cameraOverridden) return;
+        mc.gameSettings.thirdPersonView = this.cameraSaved;
+        this.cameraOverridden = false;
     }
 
     private void returnToOrigin(EntityClientPlayerMP player) {
@@ -969,6 +986,7 @@ public final class FlybyRunner {
             final Minecraft mc = Minecraft.getMinecraft();
             this.restorePauseOnLostFocus(mc);
             this.restoreShowDebugInfo(mc);
+            this.restoreCamera(mc);
             this.armed = false;
             this.stopRecording(mc);
             this.pendingRequest.set(null);

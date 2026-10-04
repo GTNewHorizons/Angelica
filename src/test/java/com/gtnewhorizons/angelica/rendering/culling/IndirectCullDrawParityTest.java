@@ -26,6 +26,7 @@ import org.embeddedt.embeddium.impl.gl.device.IndirectMultiDrawBatch;
 import org.embeddedt.embeddium.impl.gl.device.MultiDrawBatch;
 import org.embeddedt.embeddium.impl.gl.device.MultiDrawBatchFactory;
 import org.embeddedt.embeddium.impl.render.chunk.region.RenderRegion;
+import org.embeddedt.embeddium.impl.render.viewport.CameraTransform;
 import org.joml.Matrix4f;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.AfterEach;
@@ -433,11 +434,10 @@ class IndirectCullDrawParityTest {
         }
     }
 
-    private static ByteBuffer frustumUbo(int indexPointerMask) {
+    private static ByteBuffer frustumUbo() {
         final ByteBuffer ubo = FrustumExtractor.allocateUboByteBuffer();
         final Matrix4f identity = new Matrix4f();
-        FrustumExtractor.writeStd140(identity, 0, indexPointerMask, ubo);
-        FrustumExtractor.patchCameraWorld(0f, 0f, 0f, ubo);
+        FrustumExtractor.writeFrustum(identity, identity, new CameraTransform(0.0, 0.0, 0.0), new Matrix4f(), ubo);
         FrustumExtractor.patchBypassFrustum(true, ubo);
         FrustumExtractor.patchPrimitiveRatio(QuadPrimitiveType.TRIANGULATED.getVerticesPerPrimitive(), QuadPrimitiveType.TRIANGULATED.getIndexBufferElementsPerPrimitive(), ubo);
         return ubo;
@@ -528,7 +528,7 @@ class IndirectCullDrawParityTest {
 
         gpu.beginCombinedPasses(0, 0);
         assertTrue(gpu.isComputeActiveThisPass(), "compute path unexpectedly inactive");
-        setFrustumUbo(gpu, frustumUbo(0));
+        setFrustumUbo(gpu, frustumUbo());
         gpu.syncSectionMetaIfDirty();
 
         int outputBase = 0;
@@ -549,7 +549,7 @@ class IndirectCullDrawParityTest {
         assertIndirectBufferMatches(result.combinedIndirectBuffer, result.expectedCombined, frameLabel + " combined solid+cutout pass");
 
         gpu.beginCullPass(0xFFFFFFFF);
-        setFrustumUbo(gpu, frustumUbo(0xFFFFFFFF));
+        setFrustumUbo(gpu, frustumUbo());
         gpu.syncSectionMetaIfDirty();
         walkSections(scene.sorted, gpu, region1, 0, result.expectedSorted, 0xFFFFFFFF);
         executeRegion(gpu, region1, tessSorted);
@@ -757,12 +757,12 @@ class IndirectCullDrawParityTest {
 
                     gpu.beginCullPass(0);
                     assertTrue(gpu.isComputeActiveThisPass(), "compute path unexpectedly inactive");
-                    setFrustumUbo(gpu, frustumUbo(0));
+                    setFrustumUbo(gpu, frustumUbo());
                     gpu.syncSectionMetaIfDirty();
                     final int afterSolid = walkSections(unsorted, gpu, solidRegion, 0, new ArrayList<>(), 0);
 
                     gpu.startSortedPass(0xFFFFFFFF);
-                    setFrustumUbo(gpu, frustumUbo(0xFFFFFFFF));
+                    setFrustumUbo(gpu, frustumUbo());
                     gpu.syncSectionMetaIfDirty();
                     walkSections(scene.sorted, gpu, sortedRegion, afterSolid, new ArrayList<>(), 0xFFFFFFFF);
                     gpu.finishSortedPass();
