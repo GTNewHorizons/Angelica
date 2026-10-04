@@ -31,6 +31,7 @@ import java.nio.ByteOrder;
 import java.nio.FloatBuffer;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicLong;
@@ -96,6 +97,9 @@ public final class ResourceManager {
 
     private final Int2ObjectOpenHashMap<ContextState.VAOState> vaoStates = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<PersistentMapping> persistentMappings = new Int2ObjectOpenHashMap<>();
+    private final Int2ObjectOpenHashMap<MappedRange> plainMappings = new Int2ObjectOpenHashMap<>();
+    private MappedRange[] plainMappingPool = new MappedRange[4];
+    private int plainMappingPoolCount;
     private final Int2ObjectOpenHashMap<ByteBuffer> uboShadows = new Int2ObjectOpenHashMap<>();
     private final Int2ObjectOpenHashMap<ByteBuffer> eboShadows = new Int2ObjectOpenHashMap<>();
     private final IntOpenHashSet eboShadowWanted = new IntOpenHashSet();
@@ -752,6 +756,7 @@ public final class ResourceManager {
 
     public void deleteBuffer(int glId) {
         final ByteBuffer droppedPboStaging;
+        final ByteBuffer droppedPlainStaging;
         final PersistentMapping droppedPm;
         wLock.lock();
         try {
@@ -763,6 +768,7 @@ public final class ResourceManager {
             undefinedContentBuffers.remove(glId);
             droppedPm = persistentMappings.remove(glId);
             if (droppedPm != null) mappingsVersion++;
+            droppedPlainStaging = removePlainMappingLocked(glId);
             droppedPboStaging = pboStagingData.remove(glId);
             deleteUboShadow(glId);
             deleteEboShadow(glId);
@@ -777,8 +783,11 @@ public final class ResourceManager {
         if (droppedPboStaging != null) {
             memFree(droppedPboStaging);
         }
+        if (droppedPlainStaging != null) {
+            memFree(droppedPlainStaging);
+        }
         untrackPersistentDirty(droppedPm);
-        releasePersistentStaging(droppedPm);
+        releasePersistentStaging(droppedPm, glId, "delete");
     }
 
     public void flushDeferredReleases() {
@@ -953,10 +962,81 @@ public final class ResourceManager {
         try { vaoStates.remove(glId); } finally { wLock.unlock(); }
     }
 
-    public void putPersistentMapping(int bufferGlId, PersistentMapping m) {
+    public boolean putPersistentMappingIfAbsent(int glId, PersistentMapping pm) {
         wLock.lock();
-        try { persistentMappings.put(bufferGlId, m); mappingsVersion++; } finally { wLock.unlock(); }
+        try {
+            if (plainMappings.containsKey(glId) || persistentMappings.putIfAbsent(glId, pm) != null) return false;
+            mappingsVersion++;
+            return true;
+        } finally { wLock.unlock(); }
     }
+
+    public boolean putPlainMappingIfAbsent(int glId, ByteBuffer staging, long offset, long length, boolean invalidate, int accessFlags) {
+        wLock.lock();
+        try {
+            if (plainMappings.containsKey(glId) || persistentMappings.containsKey(glId)) return false;
+            final MappedRange m;
+            if (plainMappingPoolCount > 0) {
+                m = plainMappingPool[--plainMappingPoolCount];
+                plainMappingPool[plainMappingPoolCount] = null;
+            } else {
+                m = new MappedRange();
+            }
+            m.glId = glId;
+            m.staging = staging;
+            m.offset = offset;
+            m.length = length;
+            m.invalidate = invalidate;
+            m.accessFlags = accessFlags;
+            plainMappings.put(glId, m);
+            return true;
+        } finally { wLock.unlock(); }
+    }
+
+    public boolean takePlainMapping(int glId, MappedRange out) {
+        wLock.lock();
+        try {
+            final MappedRange m = plainMappings.get(glId);
+            if (m == null) return false;
+            copyMappedRange(m, out);
+            removePlainMappingLocked(glId);
+            return true;
+        } finally { wLock.unlock(); }
+    }
+
+    public ByteBuffer takePlainStaging(int glId) {
+        wLock.lock();
+        try { return removePlainMappingLocked(glId); } finally { wLock.unlock(); }
+    }
+
+    public boolean peekPlainMapping(int glId, MappedRange out) {
+        if (fastRead()) return copyMappedRange(plainMappings.get(glId), out);
+        rLock.lock();
+        try { return copyMappedRange(plainMappings.get(glId), out); } finally { rLock.unlock(); }
+    }
+
+    private static boolean copyMappedRange(MappedRange m, MappedRange out) {
+        if (m == null) return false;
+        out.glId = m.glId;
+        out.staging = m.staging;
+        out.offset = m.offset;
+        out.length = m.length;
+        out.invalidate = m.invalidate;
+        out.accessFlags = m.accessFlags;
+        return true;
+    }
+
+    private ByteBuffer removePlainMappingLocked(int glId) {
+        final MappedRange m = plainMappings.remove(glId);
+        if (m == null) return null;
+        final ByteBuffer staging = m.staging;
+        m.staging = null;
+        if (plainMappingPoolCount == plainMappingPool.length) plainMappingPool = Arrays.copyOf(plainMappingPool, plainMappingPoolCount * 2);
+        plainMappingPool[plainMappingPoolCount++] = m;
+        return staging;
+    }
+    public void beginPersistentDrain() { rLock.lock(); }
+    public void endPersistentDrain() { rLock.unlock(); }
     public PersistentMapping getPersistentMapping(int bufferGlId) {
         if (fastRead()) return persistentMappings.get(bufferGlId);
         rLock.lock();
@@ -965,16 +1045,12 @@ public final class ResourceManager {
     public PersistentMapping removePersistentMapping(int bufferGlId) {
         final PersistentMapping dropped;
         wLock.lock();
-        try { dropped = persistentMappings.remove(bufferGlId); mappingsVersion++; } finally { wLock.unlock(); }
+        try {
+            dropped = persistentMappings.remove(bufferGlId);
+            if (dropped != null) mappingsVersion++;
+        } finally { wLock.unlock(); }
         untrackPersistentDirty(dropped);
         return dropped;
-    }
-    public PersistentMapping swapPersistentMapping(int bufferGlId, PersistentMapping fresh) {
-        final PersistentMapping prior;
-        wLock.lock();
-        try { prior = persistentMappings.put(bufferGlId, fresh); mappingsVersion++; } finally { wLock.unlock(); }
-        untrackPersistentDirty(prior);
-        return prior;
     }
 
     private volatile int mappingsVersion;
@@ -989,8 +1065,9 @@ public final class ResourceManager {
         if (pm != null && !PersistentMapping.isClean(pm.claimDirty())) persistentDirtyCount.decrementAndGet();
     }
 
-    public void releasePersistentStaging(PersistentMapping pm) {
+    public void releasePersistentStaging(PersistentMapping pm, int glId, String cause) {
         if (pm == null || pm.staging == null) return;
+        if (LOG.isDebugEnabled()) LOG.debug("Persistent mapping released: buffer {} ({} KiB) via {}", glId, pm.length >> 10, cause);
         final TransferThread tt = transferThread;
         final long seq = pm.lastEnqueuedSeq;
         if (tt != null && seq > tt.getSubmittedSeq()) tt.freeAfterSeq(pm.staging, seq);
@@ -1001,24 +1078,20 @@ public final class ResourceManager {
         rLock.lock();
         try {
             final PersistentMapping srcPm = persistentMappings.get(srcGlId);
-            if (srcPm == null) return false;
-            final ByteBuffer slice = srcPm.staging.duplicate();
-            slice.position((int) readOffset).limit((int) (readOffset + size));
-            uploadToBuffer(copyPass, slice, dstHandle, writeOffset, false);
+            if (srcPm == null || !srcPm.covers(readOffset, size)) return false;
+            uploadRangeToBuffer(copyPass, srcPm.staging, srcPm.stagingIndex(readOffset), size, dstHandle, writeOffset, false);
             final PersistentMapping dstPm = persistentMappings.get(dstGlId);
-            if (dstPm != null) {
-                PersistentBufferSync.mirrorPersistentCopy(srcPm.staging, readOffset, dstPm.staging, writeOffset, size);
-            }
+            if (dstPm != null) PersistentBufferSync.mirrorPersistentCopy(srcPm, readOffset, dstPm, writeOffset, size);
             return true;
         } finally { rLock.unlock(); }
     }
 
-    public boolean enqueuePersistentCopyDeferred(int srcGlId, int dstGlId, long seq,
+    public boolean enqueuePersistentCopyDeferred(int srcGlId, int dstGlId, long seq, long readOffset, long size,
             BiConsumer<PersistentMapping, PersistentMapping> inLock) {
         rLock.lock();
         try {
             final PersistentMapping srcPm = persistentMappings.get(srcGlId);
-            if (srcPm == null) return false;
+            if (srcPm == null || !srcPm.covers(readOffset, size)) return false;
             final PersistentMapping dstPm = persistentMappings.get(dstGlId);
             srcPm.lastEnqueuedSeq = seq;
             inLock.accept(srcPm, dstPm);
@@ -1192,7 +1265,7 @@ public final class ResourceManager {
     public void mirrorArrayShadowFull(int glId, ByteBuffer data) {
         final int len = data.remaining();
         final ByteBuffer shadow = getOrAllocArrayShadow(glId, len);
-        copyShadowRegion(data, data.position(), shadow, 0, len);
+        ByteRegionCopy.copyByteRegion(data, data.position(), shadow, 0, len);
         shadow.position(0).limit(len);
     }
 
@@ -1206,7 +1279,7 @@ public final class ResourceManager {
                 removeArrayShadowLocked(glId);
                 return;
             }
-            copyShadowRegion(data, data.position(), shadow, dstOffset, len);
+            ByteRegionCopy.copyByteRegion(data, data.position(), shadow, dstOffset, len);
         } finally { wLock.unlock(); }
     }
 
@@ -1224,18 +1297,6 @@ public final class ResourceManager {
         final ByteBuffer existing = arrayShadows.remove(glId);
         if (existing != null) memFree(existing);
         arrayShadowWanted.remove(glId);
-    }
-
-    private static void copyShadowRegion(ByteBuffer src, int srcOff, ByteBuffer dst, int dstOff, int len) {
-        if (src.isDirect() && dst.isDirect()) {
-            MemoryUtil.memCopy(MemoryUtil.memAddress(src) + srcOff, MemoryUtil.memAddress(dst) + dstOff, len);
-            return;
-        }
-        final ByteBuffer s = src.duplicate();
-        s.position(srcOff).limit(srcOff + len);
-        final ByteBuffer d = dst.duplicate();
-        d.position(dstOff);
-        d.put(s);
     }
 
     public EBOSplitScanner.EboSplit[] getOrScanSplits(int glId, int indexType, int sentinel) {
@@ -1502,10 +1563,10 @@ public final class ResourceManager {
         }
     }
 
-    public static final int COPY_CALLSITE_UPLOAD_BUFFER = 1;
     public static final int COPY_CALLSITE_UPLOAD_TEX_BATCH = 2;
     public static final int COPY_CALLSITE_UPLOAD_TEX_DIRECT = 3;
     public static final int COPY_CALLSITE_ARENA = 4;
+    public static final int COPY_CALLSITE_FILL_BUFFER = 5;
 
     public boolean arenaUpload(ByteBuffer data, long dstHandle, long dstOffset, boolean cycle) {
         final FrameManager.FrameState f = frameManager.frame();
@@ -1600,7 +1661,13 @@ public final class ResourceManager {
     }
 
     public void uploadToBuffer(long copyPass, ByteBuffer data, long gpuBuffer, long offset, boolean cycle) {
-        final long size = data.remaining();
+        uploadRangeToBuffer(copyPass, data, data.position(), data.remaining(), gpuBuffer, offset, cycle);
+    }
+
+    public void uploadRangeToBuffer(long copyPass, ByteBuffer src, long srcOff, long size, long gpuBuffer, long dstOff, boolean cycle) {
+        if (srcOff < 0 || size < 0 || srcOff + size > src.capacity()) {
+            throw new IllegalStateException("uploadRangeToBuffer: bad source range srcOff=" + srcOff + " size=" + size + " src.capacity=" + src.capacity());
+        }
         final long xfer = acquireTransferBuffer(size);
         if (xfer == 0) return;
 
@@ -1609,22 +1676,26 @@ public final class ResourceManager {
         if (mapped == null || mapped.capacity() < size) {
             SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
             returnTransferBuffer(xfer, size);
-            throw new IllegalStateException("uploadToBuffer: bad mapping size=" + size + " mapSize=" + mapSize + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
+            throw new IllegalStateException("uploadRangeToBuffer: bad mapping size=" + size + " mapSize=" + mapSize + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
         }
-        copyMappedFromData(mapped, data, (int) size, COPY_CALLSITE_UPLOAD_BUFFER);
+        if (src.isDirect()) {
+            MemoryUtil.memCopy(MemoryUtil.memAddress0(src) + srcOff, MemoryUtil.memAddress0(mapped), size);
+        } else {
+            mapped.put(0, src, (int) srcOff, (int) size);
+        }
         SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
 
         try (var stack = stackPush()) {
-            final SDL_GPUTransferBufferLocation src = SDL_GPUTransferBufferLocation.calloc(stack)
+            final SDL_GPUTransferBufferLocation srcLoc = SDL_GPUTransferBufferLocation.calloc(stack)
                 .transfer_buffer(xfer)
                 .offset(0);
 
             final SDL_GPUBufferRegion dst = SDL_GPUBufferRegion.calloc(stack)
                 .buffer(gpuBuffer)
-                .offset((int) offset)
+                .offset((int) dstOff)
                 .size((int) size);
 
-            SDL_UploadToGPUBuffer(copyPass, src, dst, cycle);
+            SDL_UploadToGPUBuffer(copyPass, srcLoc, dst, cycle);
         }
 
         frameManager.recordUploadCommands(size, 1);
@@ -1647,7 +1718,7 @@ public final class ResourceManager {
                 SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
                 throw new IllegalStateException("fillBuffer: bad mapping size=" + chunk + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
             }
-            copyMappedFromData(mapped, pattern, chunk, COPY_CALLSITE_UPLOAD_BUFFER);
+            copyMappedFromData(mapped, pattern, chunk, COPY_CALLSITE_FILL_BUFFER);
             SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
 
             int uploads = 0;
@@ -2576,12 +2647,20 @@ public final class ResourceManager {
         arrayShadowWanted.clear();
         for (ByteBuffer bb : pboStagingData.values()) memFree(bb);
         pboStagingData.clear();
-        for (PersistentMapping pm : persistentMappings.values()) {
+        for (var e : persistentMappings.int2ObjectEntrySet()) {
+            final PersistentMapping pm = e.getValue();
             untrackPersistentDirty(pm);
-            releasePersistentStaging(pm);
+            releasePersistentStaging(pm, e.getIntKey(), "shutdown");
         }
         persistentMappings.clear();
         mappingsVersion++;
+        for (MappedRange m : plainMappings.values()) {
+            if (m.staging != null) memFree(m.staging);
+            m.staging = null;
+        }
+        plainMappings.clear();
+        Arrays.fill(plainMappingPool, null);
+        plainMappingPoolCount = 0;
     }
 
     public record TextureMeta(int glTarget, int glFormat, int sdlFormat, int width, int height, int depth, int levels, int usage) {}

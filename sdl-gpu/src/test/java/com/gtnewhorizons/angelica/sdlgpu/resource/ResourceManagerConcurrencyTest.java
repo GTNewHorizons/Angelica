@@ -3,7 +3,9 @@ package com.gtnewhorizons.angelica.sdlgpu.resource;
 import com.gtnewhorizons.angelica.sdlgpu.SdlTestRig;
 import com.gtnewhorizons.angelica.sdlgpu.frame.ContextState;
 import org.junit.jupiter.api.Test;
+import org.lwjgl.system.MemoryUtil;
 
+import java.nio.ByteBuffer;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
@@ -158,5 +160,100 @@ class ResourceManagerConcurrencyTest {
         });
 
         assertTrue(created.get() >= threads, "each thread should have created at least one FBO");
+    }
+
+    @Test
+    void putPlainMappingIfAbsent_oneWinnerAcrossThreads() throws Exception {
+        final ResourceManager rm = SdlTestRig.resourceManager();
+        final int glId = 9001;
+        final int n = 8;
+        final AtomicInteger winners = new AtomicInteger();
+
+        race(n, slot -> {
+            final ByteBuffer staging = MemoryUtil.memAlloc(16);
+            if (rm.putPlainMappingIfAbsent(glId, staging, 0L, 16L, false, slot)) winners.incrementAndGet();
+            else MemoryUtil.memFree(staging);
+        });
+
+        assertEquals(1, winners.get(), "exactly one thread may map the buffer");
+        final ByteBuffer staging = rm.takePlainStaging(glId);
+        assertTrue(staging != null, "the winning mapping must still be registered");
+        MemoryUtil.memFree(staging);
+        assertNull(rm.takePlainStaging(glId));
+    }
+
+    @Test
+    void plainMappingTakenFromAnotherThread() throws Exception {
+        final ResourceManager rm = SdlTestRig.resourceManager();
+        final int glId = 9002;
+        final ByteBuffer staging = MemoryUtil.memAlloc(32);
+        try {
+            assertTrue(rm.putPlainMappingIfAbsent(glId, staging, 8L, 32L, true, 0x2A));
+            final MappedRange peeked = new MappedRange();
+            final MappedRange taken = new MappedRange();
+            final AtomicBoolean peekedOk = new AtomicBoolean();
+            final AtomicBoolean takenOk = new AtomicBoolean();
+            final AtomicBoolean secondTake = new AtomicBoolean(true);
+
+            race(1, slot -> {
+                peekedOk.set(rm.peekPlainMapping(glId, peeked));
+                takenOk.set(rm.takePlainMapping(glId, taken));
+                secondTake.set(rm.takePlainMapping(glId, new MappedRange()));
+            });
+
+            assertTrue(peekedOk.get(), "peek from another thread must see the mapping");
+            assertSame(staging, peeked.staging);
+            assertTrue(takenOk.get(), "take from another thread must succeed");
+            assertSame(staging, taken.staging);
+            assertEquals(glId, taken.glId);
+            assertEquals(8L, taken.offset);
+            assertEquals(32L, taken.length);
+            assertTrue(taken.invalidate);
+            assertEquals(0x2A, taken.accessFlags);
+            assertFalse(secondTake.get(), "a taken mapping must be gone");
+            assertFalse(rm.peekPlainMapping(glId, new MappedRange()));
+        } finally {
+            MemoryUtil.memFree(staging);
+        }
+    }
+
+    @Test
+    void deleteBufferFromAnotherThreadDropsPlainMapping() throws Exception {
+        final ResourceManager rm = SdlTestRig.resourceManager();
+        final int glId = 9003;
+        assertTrue(rm.putPlainMappingIfAbsent(glId, MemoryUtil.memAlloc(16), 0L, 16L, false, 0));
+
+        race(1, slot -> rm.deleteBuffer(glId));
+
+        assertFalse(rm.peekPlainMapping(glId, new MappedRange()));
+        assertFalse(rm.takePlainMapping(glId, new MappedRange()));
+        final ByteBuffer again = MemoryUtil.memAlloc(16);
+        assertTrue(rm.putPlainMappingIfAbsent(glId, again, 0L, 16L, false, 0), "a deleted buffer's id must be mappable again");
+        MemoryUtil.memFree(rm.takePlainStaging(glId));
+    }
+
+    @Test
+    void persistentAndPlainMappingsExcludeEachOther() {
+        final ResourceManager rm = SdlTestRig.resourceManager();
+        final int plainFirst = 9004;
+        final int persistentFirst = 9005;
+        final ByteBuffer plainStaging = MemoryUtil.memAlloc(16);
+        final ByteBuffer persistentStaging = MemoryUtil.memAlloc(16);
+        final ByteBuffer refused = MemoryUtil.memAlloc(16);
+        try {
+            assertTrue(rm.putPlainMappingIfAbsent(plainFirst, plainStaging, 0L, 16L, false, 0));
+            assertFalse(rm.putPersistentMappingIfAbsent(plainFirst, new PersistentMapping(refused, 0L, 16L, 0)), "persistent map of a plain-mapped buffer must be refused");
+            assertNull(rm.getPersistentMapping(plainFirst));
+
+            assertTrue(rm.putPersistentMappingIfAbsent(persistentFirst, new PersistentMapping(persistentStaging, 0L, 16L, 0)));
+            assertFalse(rm.putPlainMappingIfAbsent(persistentFirst, refused, 0L, 16L, false, 0), "plain map of a persistently mapped buffer must be refused");
+            assertFalse(rm.peekPlainMapping(persistentFirst, new MappedRange()));
+        } finally {
+            rm.takePlainStaging(plainFirst);
+            rm.removePersistentMapping(persistentFirst);
+            MemoryUtil.memFree(plainStaging);
+            MemoryUtil.memFree(persistentStaging);
+            MemoryUtil.memFree(refused);
+        }
     }
 }

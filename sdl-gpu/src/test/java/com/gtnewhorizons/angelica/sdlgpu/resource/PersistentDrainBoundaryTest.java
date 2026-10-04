@@ -37,13 +37,13 @@ class PersistentDrainBoundaryTest {
         final ResourceManager rm;
         final PersistentBufferSync sync;
         final RecordingSink sink = new RecordingSink();
-        final ByteBuffer staging = MemoryUtil.memCalloc(4096);
+        final ByteBuffer staging = MemoryUtil.memCalloc(16384);
 
         Fixture() {
             final SdlTestRig rig = SdlTestRig.create();
             rm = rig.resourceManager;
             sync = new PersistentBufferSync(rig.frameManager, rm, sink);
-            rm.putPersistentMapping(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
+            rm.putPersistentMappingIfAbsent(1, new PersistentMapping(staging, 0L, staging.capacity(), 0));
             SdlReflect.recordBuffer(rm, 1, 0xCAFEBABEL, staging.capacity(), 0);
         }
 

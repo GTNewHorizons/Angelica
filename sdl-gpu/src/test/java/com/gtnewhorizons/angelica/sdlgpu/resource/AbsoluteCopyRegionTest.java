@@ -52,7 +52,7 @@ class AbsoluteCopyRegionTest {
         for (int i = 0; i < 32; i++) src.put(i, (byte) i);
         src.position(7).limit(24);
         dst.position(9).limit(28);
-        PersistentBufferSync.mirrorPersistentCopy(src, 4, dst, 16, 8);
+        PersistentBufferSync.mirrorPersistentCopy(new PersistentMapping(src, 0L, 32L, 0), 4, new PersistentMapping(dst, 0L, 32L, 0), 16, 8);
         for (int i = 0; i < 8; i++) assertEquals((byte) (4 + i), dst.get(16 + i));
         assertEquals(7, src.position());
         assertEquals(24, src.limit());

@@ -24,6 +24,12 @@ public final class PersistentMapping {
     public static long rangeSize(long packed) { return (packed & 0xFFFFFFFFL) - (packed >>> 32); }
     static long packRange(long min, long max) { return (min << 32) | (max & 0xFFFFFFFFL); }
 
+    public long stagingIndex(long bufferOffset) { return bufferOffset - offset; }
+
+    public boolean covers(long bufferOffset, long size) {
+        return size >= 0 && bufferOffset >= offset && bufferOffset - offset <= length && size <= length - (bufferOffset - offset);
+    }
+
     public boolean isDirty() { return dirtyRange.get() != CLEAN; }
 
     public long claimDirty() { return dirtyRange.getAndSet(CLEAN); }

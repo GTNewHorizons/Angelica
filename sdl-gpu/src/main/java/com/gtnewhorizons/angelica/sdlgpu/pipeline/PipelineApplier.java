@@ -698,8 +698,8 @@ public final class PipelineApplier {
         final int offset = st.uboRangeOffset[binding];
         final PersistentMapping pm = resourceManager.getPersistentMapping(glId);
         if (pm != null) {
-            if (offset < 0 || offset + size > pm.staging.capacity()) return 0L;
-            return MemoryUtil.memAddress0(pm.staging) + offset;
+            if (!pm.covers(offset, size)) return 0L;
+            return MemoryUtil.memAddress0(pm.staging) + pm.stagingIndex(offset);
         }
         final ByteBuffer shadow = resourceManager.getUboShadow(glId);
         if (shadow != null) {
