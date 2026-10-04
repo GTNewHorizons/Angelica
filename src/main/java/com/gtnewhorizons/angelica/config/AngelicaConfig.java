@@ -434,6 +434,11 @@ public class AngelicaConfig {
         @Config.DefaultBoolean(true)
         @Config.RequiresMcRestart
         public boolean narrowLegendsMod;
+
+        @Config.Comment("Narrow Power Converters transformer exclusions to allow GL redirection")
+        @Config.DefaultBoolean(true)
+        @Config.RequiresMcRestart
+        public boolean narrowPowerConverters;
     }
 
     @Config.Comment("Renders chunks before neighbors are ready. Improves loading at render distance edges, useful for low render distance servers.")

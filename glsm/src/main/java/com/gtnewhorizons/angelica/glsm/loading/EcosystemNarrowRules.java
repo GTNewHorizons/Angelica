@@ -85,6 +85,11 @@ public final class EcosystemNarrowRules {
             "com.tihyo.legends.management.asm.AbstractTransformer",
             "com.tihyo.legends.management.asm.ASMHelper",
             "com.tihyo.legends.management.asm.Transformer"
+        )),
+
+        new NarrowRule("PowerConverters", "covers1624.powerconverters.", List.of(
+            "covers1624.powerconverters.asm",
+            "covers1624.powerconverters.randomdebugshit.CoFHDevEnvHacks"
         ))
     );
 
