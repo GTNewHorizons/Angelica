@@ -66,6 +66,7 @@ import org.lwjgl.input.Keyboard;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.io.UncheckedIOException;
 import java.nio.file.FileSystem;
 import java.nio.file.FileSystemNotFoundException;
 import java.nio.file.FileSystems;
@@ -324,6 +325,7 @@ public class Iris {
         // the player is in the overworld.
         // See: https://github.com/IrisShaders/Iris/issues/323
         lastDimensionName = "Overworld";
+        compileEveryShaderFolder();
         Iris.getPipelineManager().preparePipeline("Overworld");
     }
 
@@ -776,15 +778,18 @@ public class Iris {
 
         final Map<String, ProgramSet> programSets = currentPack.getEveryProgramSet();
         final LoadingScreenRenderer progress = Minecraft.getMinecraft().loadingScreen;
-        progress.resetProgressAndMessage(I18n.format("options.iris.saveCompiledShaders.progress"));
+        if (progress != null) progress.resetProgressAndMessage(I18n.format("options.iris.saveCompiledShaders.progress"));
         boolean everyFolderCompiled = true;
+        boolean loopFinished = false;
         ProgramBinaryCache.beginFullCompile();
         try {
             int i = 0;
             for (Map.Entry<String, ProgramSet> entry : programSets.entrySet()) {
                 final String folder = entry.getKey() != null ? entry.getKey() : I18n.format("options.iris.saveCompiledShaders.baseFolder");
-                progress.resetProgresAndWorkingMessage(I18n.format("options.iris.saveCompiledShaders.progressStep", i + 1, programSets.size(), folder));
-                progress.setLoadingProgress(i * 100 / programSets.size());
+                if (progress != null) {
+                    progress.resetProgresAndWorkingMessage(I18n.format("options.iris.saveCompiledShaders.progressStep", i + 1, programSets.size(), folder));
+                    progress.setLoadingProgress(i * 100 / programSets.size());
+                }
                 i++;
                 final ProgramSet programs = entry.getValue();
                 try {
@@ -806,30 +811,37 @@ public class Iris {
                     logger.error("Failed to compile shader folder '{}' for saving", folder, e);
                 }
             }
+            loopFinished = true;
         } finally {
-            ProgramBinaryCache.finishFullCompile();
+            ProgramBinaryCache.finishFullCompile(loopFinished && everyFolderCompiled ? currentPackSettings : null);
             PerFrameUniformBlockHarvester.clear();
-        }
-        if (everyFolderCompiled && currentPackSettings != null) {
-            ProgramBinaryCache.rememberCompiledFor(currentPackSettings);
         }
     }
 
+    @Nullable
     private static String describeSettings(String packName, Path packRoot, Properties options, Iterable<StringPair> environmentDefines) {
         final StringBuilder settings = new StringBuilder(packName).append('\n');
         if (Files.isRegularFile(packRoot)) {
             try {
                 settings.append(Files.size(packRoot)).append('|').append(Files.getLastModifiedTime(packRoot).toMillis());
-            } catch (IOException ignored) {}
+            } catch (IOException e) {
+                return null;
+            }
         } else if (Files.isDirectory(packRoot)) {
             try (Stream<Path> files = Files.walk(packRoot)) {
                 files.filter(Files::isRegularFile).sorted().forEach(file -> {
                     try {
                         settings.append(packRoot.relativize(file)).append('|').append(Files.size(file)).append('|')
                             .append(Files.getLastModifiedTime(file).toMillis()).append('\n');
-                    } catch (IOException ignored) {}
+                    } catch (IOException e) {
+                        throw new UncheckedIOException(e);
+                    }
                 });
-            } catch (IOException ignored) {}
+            } catch (IOException | UncheckedIOException e) {
+                return null;
+            }
+        } else {
+            return null;
         }
         settings.append('\n');
         new TreeMap<>(options).forEach((key, value) -> settings.append(key).append('=').append(value).append('\n'));

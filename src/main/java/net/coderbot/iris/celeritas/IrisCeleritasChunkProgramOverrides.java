@@ -87,10 +87,9 @@ public class IrisCeleritasChunkProgramOverrides {
     }
 
     @Nullable
-    private GlProgram<IrisCeleritasChunkShaderInterface> createShader(IrisTerrainPass pass, CeleritasTerrainPipeline pipeline, RenderPassConfiguration<?> configuration) {
+    private GlProgram<IrisCeleritasChunkShaderInterface> createShader(IrisTerrainPass pass, CeleritasTerrainPipeline pipeline, ChunkVertexType vertexType) {
         final CeleritasTerrainPipeline.PassInfo passInfo = pipeline.getPassInfo(pass);
         final String name = "iris:celeritas-chunk-" + pass.getName();
-        final var vertexType = pass.toTerrainPass(configuration).vertexType();
         final BlendModeOverride blendOverride = passInfo.blendModeOverride();
         final List<BufferBlendOverride> bufferOverrides = passInfo.bufferBlendOverrides();
         final Function<ShaderBindingContext, IrisCeleritasChunkShaderInterface> factory = context -> new IrisCeleritasChunkShaderInterface(
@@ -147,13 +146,21 @@ public class IrisCeleritasChunkProgramOverrides {
      * Create shaders for all Iris terrain passes.
      */
     public void createShaders(CeleritasTerrainPipeline pipeline, RenderPassConfiguration<?> configuration) {
+        createShaders(pipeline, pass -> pass.toTerrainPass(configuration).vertexType());
+    }
+
+    public void createShaders(CeleritasTerrainPipeline pipeline, ChunkVertexType vertexType) {
+        createShaders(pipeline, pass -> vertexType);
+    }
+
+    private void createShaders(CeleritasTerrainPipeline pipeline, Function<IrisTerrainPass, ChunkVertexType> vertexTypeOf) {
         if (pipeline != null) {
             for (IrisTerrainPass pass : IrisTerrainPass.VALUES) {
                 if (pass.isShadow() && !pipeline.hasShadowPass()) {
                     this.programs.put(pass, null);
                     continue;
                 }
-                this.programs.put(pass, createShader(pass, pipeline, configuration));
+                this.programs.put(pass, createShader(pass, pipeline, vertexTypeOf.apply(pass)));
             }
         } else {
             deleteShaders();

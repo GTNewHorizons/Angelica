@@ -7,15 +7,21 @@ import com.gtnewhorizons.angelica.glsm.ffp.ShaderManager;
 import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.jetbrains.annotations.Nullable;
 import org.lwjgl.opengl.GL11;
 import org.lwjgl.opengl.GL20;
 import org.lwjgl.opengl.GL41;
 
 import java.nio.ByteBuffer;
 import java.nio.IntBuffer;
+import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 
 import static com.gtnewhorizons.angelica.glsm.backend.BackendManager.RENDER_BACKEND;
@@ -33,7 +39,12 @@ public final class ProgramBinaryCache {
     private static String driverId;
     private static String fullCompileLayer;
     private static Set<String> keysInUse;
+    private static List<CompletableFuture<Boolean>> fullCompileWrites;
+    private static Object fullCompileGeneration;
     private static final AtomicBoolean rejectWarned = new AtomicBoolean();
+    private static final Object WRITE_LOCK = new Object();
+    private static final Map<String, Object> compileGenerations = new HashMap<>();
+    private static int deleteCount;
 
     private ProgramBinaryCache() {}
 
@@ -108,7 +119,17 @@ public final class ProgramBinaryCache {
             final String formatTag = Integer.toString(format.get(0));
             final ShaderDiskCache.Key diskKey = key.diskKey;
             keep(diskKey);
-            AngelicaWorkers.run(() -> ShaderDiskCache.putBlob(diskKey, formatTag, binary));
+            final int deletesBefore;
+            synchronized (WRITE_LOCK) {
+                deletesBefore = deleteCount;
+            }
+            final CompletableFuture<Boolean> write = AngelicaWorkers.submit(() -> {
+                synchronized (WRITE_LOCK) {
+                    return deletesBefore == deleteCount && ShaderDiskCache.putBlob(diskKey, formatTag, binary);
+                }
+            });
+            final List<CompletableFuture<Boolean>> writes = fullCompileWrites;
+            if (writes != null) writes.add(write);
         } finally {
             MemoryUtilities.memFree(data);
             MemoryUtilities.memFree(written);
@@ -119,31 +140,50 @@ public final class ProgramBinaryCache {
     public static void beginFullCompile() {
         fullCompileLayer = packLayer;
         keysInUse = new HashSet<>();
+        fullCompileWrites = new ArrayList<>();
+        synchronized (WRITE_LOCK) {
+            fullCompileGeneration = new Object();
+            if (fullCompileLayer != null) compileGenerations.put(fullCompileLayer, fullCompileGeneration);
+        }
     }
-
-    public static void finishFullCompile() {
+    public static void finishFullCompile(@Nullable String completedSettings) {
         final String layer = fullCompileLayer;
         final Set<String> used = keysInUse;
+        final List<CompletableFuture<Boolean>> writes = fullCompileWrites;
+        final Object generation = fullCompileGeneration;
         fullCompileLayer = null;
         keysInUse = null;
-        if (layer != null && used != null) AngelicaWorkers.run(() -> ShaderDiskCache.retainLayer(layer, used));
+        fullCompileWrites = null;
+        fullCompileGeneration = null;
+        if (layer == null || used == null || writes == null) return;
+
+        final ShaderDiskCache.Key marker = completedSettings != null ? compiledSettingsKey(layer, completedSettings) : null;
+        final String markerHex = marker != null ? marker.hex() : null;
+        CompletableFuture.allOf(writes.toArray(new CompletableFuture<?>[0])).whenComplete((ignored, failure) -> {
+            synchronized (WRITE_LOCK) {
+                if (compileGenerations.get(layer) != generation) return;
+                if (marker == null || failure != null) return;
+                for (CompletableFuture<Boolean> write : writes) {
+                    if (!write.join()) return;
+                }
+                ShaderDiskCache.retainLayer(layer, used);
+                ShaderDiskCache.retainLayer(layer + "/settings", Collections.singleton(markerHex));
+                ShaderDiskCache.putString(marker, "");
+            }
+        });
     }
 
     public static void deleteAll() {
-        ShaderDiskCache.deleteLayer(LAYER);
+        synchronized (WRITE_LOCK) {
+            deleteCount++;
+            compileGenerations.clear();
+            ShaderDiskCache.deleteLayer(LAYER);
+        }
     }
 
     public static boolean wasCompiledFor(String settings) {
         final String layer = packLayer;
         return layer != null && ShaderDiskCache.getString(compiledSettingsKey(layer, settings)) != null;
-    }
-
-    public static void rememberCompiledFor(String settings) {
-        final String layer = packLayer;
-        if (layer == null) return;
-        final ShaderDiskCache.Key key = compiledSettingsKey(layer, settings);
-        ShaderDiskCache.retainLayer(layer + "/settings", Collections.singleton(key.hex()));
-        ShaderDiskCache.putString(key, "");
     }
 
     private static ShaderDiskCache.Key compiledSettingsKey(String layer, String settings) {

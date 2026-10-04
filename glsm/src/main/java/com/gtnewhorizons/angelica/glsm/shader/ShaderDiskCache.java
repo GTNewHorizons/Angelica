@@ -120,9 +120,9 @@ public final class ShaderDiskCache {
         }
     }
 
-    public static void put(Key key, byte[] payload) {
+    public static boolean put(Key key, byte[] payload) {
         final Path r = root;
-        if (r == null) return;
+        if (r == null) return false;
         final Path target = key.path(r);
         final Path tmp = target.resolveSibling(key.hex() + '.' + TMP_SEQ.getAndIncrement() + ".tmp");
         try {
@@ -133,11 +133,13 @@ public final class ShaderDiskCache {
                 write(tmp, payload);
             }
             Files.move(tmp, target, StandardCopyOption.ATOMIC_MOVE, StandardCopyOption.REPLACE_EXISTING);
+            return true;
         } catch (IOException e) {
             try {
                 Files.deleteIfExists(tmp);
             } catch (IOException ignored) {}
             if (writeWarned.compareAndSet(false, true)) LOGGER.warn("Shader disk cache write failed for {}", target, e);
+            return false;
         }
     }
 
@@ -206,7 +208,7 @@ public final class ShaderDiskCache {
         }
     }
 
-    public static void putBlob(Key key, String tag, byte[] data) {
+    public static boolean putBlob(Key key, String tag, byte[] data) {
         final ByteArrayOutputStream bytes = new ByteArrayOutputStream(data.length + 64);
         try (DataOutputStream out = new DataOutputStream(bytes)) {
             writeStr(out, tag);
@@ -214,7 +216,7 @@ public final class ShaderDiskCache {
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
-        put(key, bytes.toByteArray());
+        return put(key, bytes.toByteArray());
     }
 
     public record Blob(String tag, byte[] data) {}
