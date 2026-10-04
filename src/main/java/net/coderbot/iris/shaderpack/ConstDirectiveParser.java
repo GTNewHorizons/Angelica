@@ -8,13 +8,23 @@ public class ConstDirectiveParser {
 	public static List<ConstDirective> findDirectives(String source) {
 		List<ConstDirective> directives = new ArrayList<>();
 
-		// Match any valid newline sequence
-		// https://stackoverflow.com/a/31060125
-		for (String line : source.split("\\R")) {
-			findDirectiveInLine(line).ifPresent(directives::add);
+		int from = 0;
+		while (true) {
+			final int match = source.indexOf("const", from);
+			if (match < 0) break;
+			int start = match;
+			while (start > 0 && !isLineBreak(source.charAt(start - 1))) start--;
+			int end = match + "const".length();
+			while (end < source.length() && !isLineBreak(source.charAt(end))) end++;
+			findDirectiveInLine(source.substring(start, end)).ifPresent(directives::add);
+			from = end;
 		}
 
 		return directives;
+	}
+
+	private static boolean isLineBreak(char c) {
+		return c == '\n' || c == '\r' || c == '\u000B' || c == '\f' || c == '\u0085' || c == '\u2028' || c == '\u2029';
 	}
 
 	public static Optional<ConstDirective> findDirectiveInLine(String line) {

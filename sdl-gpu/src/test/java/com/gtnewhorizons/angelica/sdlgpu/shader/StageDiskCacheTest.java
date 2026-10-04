@@ -73,7 +73,7 @@ class StageDiskCacheTest {
 
     private static byte[] poison(String marker) {
         final ShaderManager.StageReflection reflection = new ShaderManager.StageReflection(
-            ShaderManager.ResourceCounts.EMPTY, List.of(marker), List.of(), List.of(), 0, List.of(), List.of(), List.of(), List.of(),
+            ShaderManager.ResourceCounts.EMPTY, List.of(marker), List.of(), List.of(), List.of(), 0, List.of(), List.of(), List.of(), List.of(),
             -1, 0, 0, 0, 0, ShaderManager.BlockReflection.emptyBlocks());
         return ShaderStageSerializer.encode(POISON_SPIRV, reflection, ShaderManager.GraphicsBindingMap.EMPTY, Set.of("poison_bool"), "poison_source");
     }

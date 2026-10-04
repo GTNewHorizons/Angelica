@@ -102,6 +102,7 @@ final class ShaderStageSerializer {
         out.writeInt(r.counts().numStorageBuffers());
         out.writeInt(r.counts().numStorageTextures());
         writeStrList(out, r.samplerNames());
+        writeStrList(out, r.unusedSamplerNames());
         writeStrList(out, r.extraUniformNames());
         writeStrList(out, r.storageImageNames());
         out.writeInt(r.uboSize());
@@ -139,6 +140,7 @@ final class ShaderStageSerializer {
     private static StageReflection readReflection(ByteBuffer in) {
         final ResourceCounts counts = new ResourceCounts(in.getInt(), in.getInt(), in.getInt(), in.getInt());
         final List<String> samplerNames = readStrList(in);
+        final List<String> unusedSamplerNames = readStrList(in);
         final List<String> extraNames = readStrList(in);
         final List<String> storageImageNames = readStrList(in);
         final int uboSize = in.getInt();
@@ -156,7 +158,7 @@ final class ShaderStageSerializer {
         for (int b = 0; b < blockCount; b++) {
             blocks[b] = new BlockReflection(in.getInt(), in.getInt(), readList(in, ShaderStageSerializer::readMember), in.get() != 0);
         }
-        return new StageReflection(counts, samplerNames, extraNames, storageImageNames, uboSize, uboMembers, vsInputs, vsOutputs, fsInputs,
+        return new StageReflection(counts, samplerNames, unusedSamplerNames, extraNames, storageImageNames, uboSize, uboMembers, vsInputs, vsOutputs, fsInputs,
             maxOutputLocation, roBuf, rwBuf, roTex, rwTex, blocks);
     }
 

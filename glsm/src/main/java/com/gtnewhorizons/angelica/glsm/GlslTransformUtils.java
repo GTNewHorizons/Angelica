@@ -72,6 +72,10 @@ public class GlslTransformUtils {
     }
 
     public static String renameReservedWords(String source, int targetVersion) {
+        if (!containsWholeWord(source, "sample") && !containsWholeWord(source, "new")
+            && (targetVersion < 400 || !containsWholeWord(source, "sampler"))) {
+            return source;
+        }
         for (var entry : VERSIONED_RESERVED_WORDS.entrySet()) {
             // Rename identifiers that become reserved words at or above this GLSL version
             if (targetVersion >= entry.getKey()) {
@@ -81,6 +85,23 @@ public class GlslTransformUtils {
             }
         }
         return source;
+    }
+
+    static boolean containsWholeWord(String source, String word) {
+        int from = 0;
+        while (true) {
+            final int match = source.indexOf(word, from);
+            if (match < 0) return false;
+            final int end = match + word.length();
+            if ((match == 0 || !isAsciiWordChar(source.charAt(match - 1))) && (end == source.length() || !isAsciiWordChar(source.charAt(end)))) {
+                return true;
+            }
+            from = match + 1;
+        }
+    }
+
+    private static boolean isAsciiWordChar(char c) {
+        return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '_';
     }
 
     public static String restoreReservedWords(String source) {

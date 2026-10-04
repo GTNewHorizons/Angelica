@@ -1631,6 +1631,76 @@ public final class ResourceManager {
         returnTransferBuffer(xfer, size);
     }
 
+    /**
+     * Fills {@code size} bytes of a buffer by staging {@code pattern} once and uploading it repeatedly. Staging every
+     * byte instead maps a transfer buffer per chunk, which stalls for seconds on the hundreds of megabytes some shader
+     * packs allocate as storage buffers.
+     */
+    public void fillBuffer(long copyPass, ByteBuffer pattern, long gpuBuffer, long offset, long size) {
+        final int chunk = pattern.remaining();
+        if (chunk <= 0 || size <= 0) return;
+        final long xfer = acquireTransferBuffer(chunk);
+        if (xfer == 0) return;
+        try {
+            final ByteBuffer mapped = SDL_MapGPUTransferBuffer(device.getDevice(), xfer, true, getTransferBufferMapSize(chunk));
+            if (mapped == null || mapped.capacity() < chunk) {
+                SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+                throw new IllegalStateException("fillBuffer: bad mapping size=" + chunk + " mapped=" + (mapped == null ? "null" : "cap=" + mapped.capacity()));
+            }
+            copyMappedFromData(mapped, pattern, chunk, COPY_CALLSITE_UPLOAD_BUFFER);
+            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+
+            int uploads = 0;
+            try (var stack = stackPush()) {
+                final SDL_GPUTransferBufferLocation src = SDL_GPUTransferBufferLocation.calloc(stack).transfer_buffer(xfer).offset(0);
+                final SDL_GPUBufferRegion dst = SDL_GPUBufferRegion.calloc(stack).buffer(gpuBuffer);
+                for (long done = 0; done < size; done += chunk) {
+                    dst.offset((int) (offset + done)).size((int) Math.min(chunk, size - done));
+                    SDL_UploadToGPUBuffer(copyPass, src, dst, false);
+                    uploads++;
+                }
+            }
+            frameManager.recordUploadCommands(size, uploads);
+        } finally {
+            returnTransferBuffer(xfer, chunk);
+        }
+    }
+
+    public boolean zeroTexture3D(long copyPass, long gpuTexture, int w, int h, int d, int level, int bytesPerTexel) {
+        final long sliceBytes = (long) w * h * bytesPerTexel;
+        if (sliceBytes <= 0 || sliceBytes > Integer.MAX_VALUE) return false;
+        final long xfer = acquireTransferBuffer(sliceBytes);
+        if (xfer == 0) return false;
+        try {
+            final ByteBuffer mapped = SDL_MapGPUTransferBuffer(device.getDevice(), xfer, true, getTransferBufferMapSize(sliceBytes));
+            if (mapped == null || mapped.capacity() < sliceBytes) {
+                SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+                return false;
+            }
+            MemoryUtil.memSet(MemoryUtil.memAddress(mapped), 0, sliceBytes);
+            SDL_UnmapGPUTransferBuffer(device.getDevice(), xfer);
+
+            flushBatchedUploads(copyPass);
+            try (var stack = stackPush()) {
+                final SDL_GPUTextureTransferInfo src = SDL_GPUTextureTransferInfo.calloc(stack).transfer_buffer(xfer).offset(0);
+                final SDL_GPUTextureRegion dst = SDL_GPUTextureRegion.calloc(stack)
+                    .texture(gpuTexture)
+                    .mip_level(level)
+                    .x(0).y(0)
+                    .w(w).h(h).d(1);
+                for (int z = 0; z < d; z++) {
+                    dst.z(z);
+                    SDL_UploadToGPUTexture(copyPass, src, dst, false);
+                }
+            }
+            markTextureContentDefined(gpuTexture);
+            frameManager.recordUploadCommands(sliceBytes * d, d);
+            return true;
+        } finally {
+            returnTransferBuffer(xfer, sliceBytes);
+        }
+    }
+
     public static final int BATCH_SEGMENT_CAPACITY = 4 * 1024 * 1024;
 
     public void uploadToTexture(long copyPass, ByteBuffer data, long gpuTexture, int x, int y, int w, int h, int level) {

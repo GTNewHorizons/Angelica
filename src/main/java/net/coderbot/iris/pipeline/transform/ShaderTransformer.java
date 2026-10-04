@@ -576,16 +576,16 @@ public class ShaderTransformer {
         if (vshResult != null && fshResult != null) {
             throw new RuntimeException("Program " + patchType.name() + " writes images from both VSH and FSH; only one stage may write per program under SDL_GPU");
         }
-        if (vshResult != null) {
-            result.put(PatchShaderType.VERTEX, vshResult.strippedSource());
-            result.put(PatchShaderType.COMPUTE, vshResult.computeSource());
-            if (artifactsOut != null) artifactsOut.remove(PatchShaderType.VERTEX);
-            Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), vshResult.mode(), vshResult.writtenImages());
-        } else if (fshResult != null) {
-            result.put(PatchShaderType.FRAGMENT, fshResult.strippedSource());
-            result.put(PatchShaderType.COMPUTE, fshResult.computeSource());
-            if (artifactsOut != null) artifactsOut.remove(PatchShaderType.FRAGMENT);
-            Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), fshResult.mode(), fshResult.writtenImages());
+        final RwImageStoreExtractor.Result extracted = vshResult != null ? vshResult : fshResult;
+        if (extracted == null) return;
+        final PatchShaderType stage = vshResult != null ? PatchShaderType.VERTEX : PatchShaderType.FRAGMENT;
+        result.put(stage, extracted.strippedSource());
+        if (artifactsOut != null) artifactsOut.remove(stage);
+        if (patchType == Patch.COMPOSITE || patchType == Patch.CELERITAS_TERRAIN) {
+            result.put(PatchShaderType.COMPUTE, extracted.computeSource());
+            Iris.logger.info("[RwImageStoreExtractor] Extracted compute pre-pass for {} (mode={}, written={})", patchType.name(), extracted.mode(), extracted.writtenImages());
+        } else {
+            Iris.logger.info("[RwImageStoreExtractor] Dropped image writes from {} (written={})", patchType.name(), extracted.writtenImages());
         }
     }
 

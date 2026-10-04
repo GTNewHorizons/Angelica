@@ -106,14 +106,20 @@ public final class ProgramBinaryCache {
     }
 
     public static void save(Key key, int program) {
+        if (!saveBinary(key, program) && fullCompileWrites != null) {
+            fullCompileWrites.add(CompletableFuture.completedFuture(false));
+        }
+    }
+
+    private static boolean saveBinary(Key key, int program) {
         final int length = GLStateManager.glGetProgrami(program, GL41.GL_PROGRAM_BINARY_LENGTH);
-        if (length <= 0) return;
+        if (length <= 0) return false;
         final ByteBuffer data = MemoryUtilities.memAlloc(length);
         final IntBuffer written = MemoryUtilities.memAllocInt(1);
         final IntBuffer format = MemoryUtilities.memAllocInt(1);
         try {
             GLStateManager.glGetProgramBinary(program, written, format, data);
-            if (written.get(0) <= 0) return;
+            if (written.get(0) <= 0) return false;
             data.limit(written.get(0));
             final byte[] binary = ShaderCacheIO.toHeap(data);
             final String formatTag = Integer.toString(format.get(0));
@@ -130,11 +136,24 @@ public final class ProgramBinaryCache {
             });
             final List<CompletableFuture<Boolean>> writes = fullCompileWrites;
             if (writes != null) writes.add(write);
+            return true;
         } finally {
             MemoryUtilities.memFree(data);
             MemoryUtilities.memFree(written);
             MemoryUtilities.memFree(format);
         }
+    }
+
+    public static boolean isFullCompileRunning() {
+        return keysInUse != null;
+    }
+
+    public static boolean saveRetained(Key key, int program) {
+        if (ShaderDiskCache.getBlob(key.diskKey) != null) {
+            keep(key.diskKey);
+            return true;
+        }
+        return saveBinary(key, program);
     }
 
     public static void beginFullCompile() {

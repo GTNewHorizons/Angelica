@@ -36,7 +36,7 @@ class AttribLocationPatchTest {
             inputs[i] = new ShaderManager.VsInput(names[i], i, i, i < VEC_SIZES.length ? VEC_SIZES[i] : 4, i < BASE_TYPES.length ? BASE_TYPES[i] : Spvc.SPVC_BASETYPE_FP32);
         }
         final ShaderManager.StageReflection e = ShaderManager.StageReflection.EMPTY;
-        return new ShaderManager.StageReflection(e.counts(), e.samplerNames(), e.extraUniformNames(),
+        return new ShaderManager.StageReflection(e.counts(), e.samplerNames(), e.unusedSamplerNames(), e.extraUniformNames(),
             e.storageImageNames(), e.uboSize(), e.uboMembers(), List.of(inputs), e.vsOutputs(), e.fsInputs(),
             e.maxOutputLocation(), e.numReadonlyStorageBuffers(), e.numReadwriteStorageBuffers(),
             e.numReadonlyStorageTextures(), e.numReadwriteStorageTextures(), e.blocks());

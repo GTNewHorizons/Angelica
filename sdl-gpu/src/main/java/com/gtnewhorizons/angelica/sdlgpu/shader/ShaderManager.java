@@ -53,6 +53,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.function.Consumer;
 import java.util.function.IntConsumer;
+import java.util.function.Supplier;
 
 import static org.lwjgl.sdl.SDLGPU.*;
 import static org.lwjgl.system.MemoryStack.*;
@@ -64,6 +65,7 @@ import it.unimi.dsi.fastutil.ints.Int2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.ints.IntArrayList;
 import it.unimi.dsi.fastutil.ints.IntArrays;
 import it.unimi.dsi.fastutil.ints.IntIterator;
+import it.unimi.dsi.fastutil.ints.IntOpenHashSet;
 import it.unimi.dsi.fastutil.longs.Long2ObjectOpenHashMap;
 import it.unimi.dsi.fastutil.longs.LongOpenHashSet;
 import it.unimi.dsi.fastutil.objects.Object2IntOpenHashMap;
@@ -234,7 +236,35 @@ public final class ShaderManager {
         final int shaderKind = shaderKindFor(obj);
         final int glType = obj.type;
         final String finalSrc = obj.source;
-        obj.spirvFuture = AngelicaWorkers.submit(() -> compileStageAsync(finalSrc, shaderKind, glType, shader));
+        final QueuedCompile compile = new QueuedCompile(() -> compileStageAsync(finalSrc, shaderKind, glType, shader));
+        AngelicaWorkers.run(compile);
+        obj.queuedCompile = compile;
+        obj.spirvFuture = compile.result;
+    }
+
+    private static final class QueuedCompile implements Runnable {
+        private final AtomicBoolean claimed = new AtomicBoolean();
+        private final Supplier<AsyncCompile> work;
+        final CompletableFuture<AsyncCompile> result = new CompletableFuture<>();
+
+        QueuedCompile(Supplier<AsyncCompile> work) {
+            this.work = work;
+        }
+
+        @Override
+        public void run() {
+            if (!claimed.compareAndSet(false, true)) return;
+            try {
+                result.complete(work.get());
+            } catch (Throwable t) {
+                result.completeExceptionally(t);
+            }
+        }
+
+        /** Stops the compile if no thread has started it; false when it is running or done. */
+        boolean cancel() {
+            return claimed.compareAndSet(false, true);
+        }
     }
 
     private static AsyncCompile compileStageAsync(String src, int shaderKind, int glType, int shader) {
@@ -377,6 +407,10 @@ public final class ShaderManager {
         final SpirvCompiler.Result r;
         final boolean alreadyRemapped;
         if (obj.spirvFuture != null) {
+            if (obj.queuedCompile != null) {
+                obj.queuedCompile.run();
+                obj.queuedCompile = null;
+            }
             final AsyncCompile compiled = obj.spirvFuture.join();
             obj.spirvFuture = null;
             r = compiled.result();
@@ -431,6 +465,9 @@ public final class ShaderManager {
         final CompletableFuture<AsyncCompile> future = obj.spirvFuture;
         if (future == null) return;
         obj.spirvFuture = null;
+        final QueuedCompile queued = obj.queuedCompile;
+        obj.queuedCompile = null;
+        if (queued != null && queued.cancel()) return;
         future.thenAccept(ShaderManager::freeSpirvResult);
     }
 
@@ -567,7 +604,7 @@ public final class ShaderManager {
         registerExtraNames(prog, vs.reflection);
         registerExtraNames(prog, fs.reflection);
 
-        for (final String name : prog.allSamplerNames) ensureLocation(prog, name);
+        registerSamplerLocations(prog, vs.reflection, fs.reflection);
         for (final String name : prog.allImageNames) ensureLocation(prog, name);
 
         prog.buildUniformSlotArrays();
@@ -611,7 +648,7 @@ public final class ShaderManager {
 
         applyUboMembers(prog, refl, false);
         registerExtraNames(prog, refl);
-        for (final String name : prog.allSamplerNames) ensureLocation(prog, name);
+        registerSamplerLocations(prog, refl);
         for (final String name : prog.allImageNames) ensureLocation(prog, name);
         prog.buildUniformSlotArrays();
 
@@ -820,8 +857,52 @@ public final class ShaderManager {
         return built;
     }
 
+    private static ShaderDiskCache.Key variantKey(String vertexSource, List<UscaledRetype.Attrib> attribs) {
+        final ShaderDiskCache.Key key = ShaderDiskCache.key("sdl-vertex-variant").str(SpirvCompiler.toolchainId()).str(CrossCompileUtil.spvcId())
+            .str(vertexSource).i(attribs.size());
+        for (UscaledRetype.Attrib a : attribs) {
+            key.str(a.name()).i(a.location()).i(a.declVecSize()).i(a.boundVecSize()).i(a.signed() ? 1 : 0);
+        }
+        return key;
+    }
+
     private VertexVariant buildVertexVariant(int program, ProgramObject prog, List<UscaledRetype.Attrib> attribs) {
-        final String preprocessed = SpirvCompiler.preprocess(prog.vertexSource, Shaderc.shaderc_vertex_shader, "variant" + program, SpirvCompiler.Options.vulkanForced460Core());
+        final ShaderDiskCache.Key diskKey = ShaderDiskCache.isEnabled() ? variantKey(prog.vertexSource, attribs) : null;
+        final ShaderStageSerializer.Stage cached = diskKey != null ? loadStage(diskKey) : null;
+        final ShaderStageSerializer.Stage stage = cached != null ? cached : compileVertexVariant(program, prog.vertexSource, attribs, diskKey);
+        if (stage == null) return null;
+
+        final StageReflection refl = stage.reflection();
+        if (!sameVaryingLayout(prog.vertexReflection.vsOutputs(), refl.vsOutputs())) {
+            LOG.error("Vertex attribute conversion: program {} variant changed VS output locations; the fragment stage is patched against the base layout. Falling back to normalized coercion.", program);
+            return null;
+        }
+        final VertexVariant v = new VertexVariant();
+        v.spirv = ShaderCacheIO.toNative(stage.spirv());
+
+        final Object2IntOpenHashMap<String> bindings = new Object2IntOpenHashMap<>(prog.attribLocationBindings);
+        bindings.defaultReturnValue(-1);
+        for (UscaledRetype.Attrib a : attribs) bindings.put(a.name() + UscaledRetype.SUFFIX, a.location());
+        v.inputMask = patchAttribLocations(v.spirv, refl, bindings, v.inputVecSize, v.inputBaseType, null, null);
+        if (v.inputMask != prog.vertexInputMask) {
+            memFree(v.spirv);
+            LOG.error("Vertex attribute conversion: program {} variant resolved inputs to 0x{} but the program binds 0x{}; a renamed input landed on the wrong location. Falling back to normalized coercion.",
+                program, Integer.toHexString(v.inputMask), Integer.toHexString(prog.vertexInputMask));
+            return null;
+        }
+        v.sdlShader = createSDLShader(v.spirv, SDL_GPU_SHADERSTAGE_VERTEX, prog.vertexResources.numSamplers(), prog.vertexResources.numUBOs(), prog.vertexResources.numStorageBuffers(), prog.vertexResources.numStorageTextures());
+        if (v.sdlShader == 0) {
+            memFree(v.spirv);
+            LOG.error("Vertex attribute conversion: program {} variant shader creation failed: {}", program, SDLError.SDL_GetError());
+            return null;
+        }
+        LOG.info("Vertex attribute conversion: program {} converted {}", program, attribs);
+        if (SystemProperties.dumpShaders()) dumpVariantSource(program, stage.source());
+        return v;
+    }
+
+    private static ShaderStageSerializer.Stage compileVertexVariant(int program, String vertexSource, List<UscaledRetype.Attrib> attribs, ShaderDiskCache.Key diskKey) {
+        final String preprocessed = SpirvCompiler.preprocess(vertexSource, Shaderc.shaderc_vertex_shader, "variant" + program, SpirvCompiler.Options.vulkanForced460Core());
         if (preprocessed == null) {
             LOG.warn("Vertex attribute conversion: program {} preprocessing failed; falling back to normalized coercion, values will be scaled", program);
             return null;
@@ -839,32 +920,11 @@ public final class ShaderManager {
         try {
             remapSpirvForSDLGPU(r.spirv(), GL20.GL_VERTEX_SHADER);
             final StageReflection refl = reflectStage(r.spirv(), true);
-            if (!sameVaryingLayout(prog.vertexReflection.vsOutputs(), refl.vsOutputs())) {
-                LOG.error("Vertex attribute conversion: program {} variant changed VS output locations; the fragment stage is patched against the base layout. Falling back to normalized coercion.", program);
-                return null;
+            final byte[] heap = ShaderCacheIO.toHeap(r.spirv());
+            if (diskKey != null && refl != StageReflection.EMPTY) {
+                ShaderDiskCache.put(diskKey, ShaderStageSerializer.encode(heap, refl, GraphicsBindingMap.EMPTY, null, src));
             }
-            final VertexVariant v = new VertexVariant();
-            v.spirv = copyBuffer(r.spirv());
-
-            final Object2IntOpenHashMap<String> bindings = new Object2IntOpenHashMap<>(prog.attribLocationBindings);
-            bindings.defaultReturnValue(-1);
-            for (UscaledRetype.Attrib a : attribs) bindings.put(a.name() + UscaledRetype.SUFFIX, a.location());
-            v.inputMask = patchAttribLocations(v.spirv, refl, bindings, v.inputVecSize, v.inputBaseType, null, null);
-            if (v.inputMask != prog.vertexInputMask) {
-                memFree(v.spirv);
-                LOG.error("Vertex attribute conversion: program {} variant resolved inputs to 0x{} but the program binds 0x{}; a renamed input landed on the wrong location. Falling back to normalized coercion.",
-                    program, Integer.toHexString(v.inputMask), Integer.toHexString(prog.vertexInputMask));
-                return null;
-            }
-            v.sdlShader = createSDLShader(v.spirv, SDL_GPU_SHADERSTAGE_VERTEX, prog.vertexResources.numSamplers(), prog.vertexResources.numUBOs(), prog.vertexResources.numStorageBuffers(), prog.vertexResources.numStorageTextures());
-            if (v.sdlShader == 0) {
-                memFree(v.spirv);
-                LOG.error("Vertex attribute conversion: program {} variant shader creation failed: {}", program, SDLError.SDL_GetError());
-                return null;
-            }
-            LOG.info("Vertex attribute conversion: program {} converted {}", program, attribs);
-            if (SystemProperties.dumpShaders()) dumpVariantSource(program, src);
-            return v;
+            return new ShaderStageSerializer.Stage(heap, refl, GraphicsBindingMap.EMPTY, Set.of(), src);
         } finally {
             memFree(r.spirv());
         }
@@ -1476,6 +1536,7 @@ public final class ShaderManager {
         public boolean deletePending;
         public int attachCount;
         public CompletableFuture<AsyncCompile> spirvFuture;
+        QueuedCompile queuedCompile;
         public StageReflection reflection = StageReflection.EMPTY;
         public GraphicsBindingMap graphicsBindingMap = GraphicsBindingMap.EMPTY;
         public Set<String> boolUniforms = Set.of();
@@ -1520,6 +1581,7 @@ public final class ShaderManager {
     public record StageReflection(
         ResourceCounts counts,
         List<String> samplerNames,      // SAMPLED_IMAGE, sorted by binding (post-remap)
+        List<String> unusedSamplerNames, // declared samplers the entry point never reads
         List<String> extraUniformNames, // SEPARATE_SAMPLERS - registered in nameToLocation only
         List<String> storageImageNames, // SEPARATE_IMAGE + STORAGE_IMAGE (RO + RW), sorted by binding (post-remap)
         int uboSize,                    // binding-0 UBO total size in bytes; 0 if absent
@@ -1535,7 +1597,7 @@ public final class ShaderManager {
         BlockReflection[] blocks
     ) {
         public static final StageReflection EMPTY = new StageReflection(
-            ResourceCounts.EMPTY, List.of(), List.of(), List.of(), 0, List.of(), List.of(), List.of(), List.of(),
+            ResourceCounts.EMPTY, List.of(), List.of(), List.of(), List.of(), 0, List.of(), List.of(), List.of(), List.of(),
             -1, 0, 0, 0, 0, BlockReflection.emptyBlocks());
     }
 
@@ -1739,6 +1801,7 @@ public final class ShaderManager {
         return new StageReflection(
             new ResourceCounts(samplerNames.size(), numUBOs, numStorageBuffers, numStorageTextures),
             samplerNames,
+            unusedSamplerNames(compiler, resources, stack),
             extraNames,
             storageImageNames,
             uboSize,
@@ -1820,6 +1883,36 @@ public final class ShaderManager {
             namesOut.add(name != null ? name : ("sampler_" + i));
             bindingsOut.add(binding);
         });
+    }
+
+    private static List<String> unusedSamplerNames(long compiler, long resources, MemoryStack stack) {
+        final PointerBuffer pActive = stack.mallocPointer(1);
+        final PointerBuffer pActiveResources = stack.mallocPointer(1);
+        if (Spvc.spvc_compiler_get_active_interface_variables(compiler, pActive) != Spvc.SPVC_SUCCESS
+            || Spvc.spvc_compiler_create_shader_resources_for_active_variables(compiler, pActiveResources, pActive.get(0)) != Spvc.SPVC_SUCCESS) {
+            return List.of();
+        }
+        final IntOpenHashSet active = new IntOpenHashSet();
+        forEachResource(pActiveResources.get(0), Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack, (i, r) -> active.add(r.id()));
+        final List<String> unused = new ArrayList<>();
+        forEachResource(resources, Spvc.SPVC_RESOURCE_TYPE_SAMPLED_IMAGE, stack, (i, r) -> {
+            if (active.contains(r.id())) return;
+            final String name = Spvc.spvc_compiler_get_name(compiler, r.id());
+            if (name != null && !name.isEmpty()) unused.add(name);
+        });
+        return unused;
+    }
+
+    private static void registerSamplerLocations(ProgramObject prog, StageReflection... stages) {
+        final Set<String> read = new HashSet<>();
+        for (StageReflection stage : stages) {
+            for (String name : stage.samplerNames()) {
+                if (!stage.unusedSamplerNames().contains(name)) read.add(name);
+            }
+        }
+        for (String name : prog.allSamplerNames) {
+            if (read.contains(name)) ensureLocation(prog, name);
+        }
     }
 
     private static void collectResourceNames(long resources, long compiler, int resourceType, List<String> out, MemoryStack stack) {

@@ -5,6 +5,7 @@ import com.google.gson.Gson;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParseException;
 import com.google.gson.stream.JsonReader;
+import com.gtnewhorizons.angelica.glsm.threading.AngelicaWorkers;
 import it.unimi.dsi.fastutil.ints.Int2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectMap;
 import it.unimi.dsi.fastutil.objects.Object2ObjectOpenHashMap;
@@ -36,6 +37,7 @@ import java.io.BufferedReader;
 import java.io.IOException;
 import java.io.InputStreamReader;
 import java.io.StringReader;
+import java.io.UncheckedIOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.NoSuchFileException;
@@ -53,7 +55,10 @@ import java.util.Objects;
 import java.util.Optional;
 import java.util.Properties;
 import java.util.Set;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CompletionException;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 public class ShaderPack {
@@ -79,6 +84,7 @@ public class ShaderPack {
 	private final boolean mappedByDimensionProperties;
 	private final String legacyDefaultFolder;
 	private final Function<AbsolutePackPath, String> sourceProvider;
+	private final ImmutableList<AbsolutePackPath> sourceFiles;
 	private final ShaderProperties shaderProperties;
 	private boolean hasLoggedCacheLimitReached = false;
 
@@ -90,7 +96,8 @@ public class ShaderPack {
 	@Getter private final Object2ObjectMap<String, ImageInformation> customImages;
 	@Getter private final Int2ObjectMap<ShaderStorageInfo> bufferObjects;
 	@Getter private final ShaderPackOptions shaderPackOptions;
-	@Getter private final OptionMenuContainer menuContainer;
+	private final ProfileSet profiles;
+	private OptionMenuContainer menuContainer;
 
 	private final ProfileSet.ProfileResult profile;
 	private final String profileInfo;
@@ -200,8 +207,18 @@ public class ShaderPack {
 		}
 		this.legacyDefaultFolder = legacyDefault;
 
+		// Only the options screen reads translations, so they load alongside the rest of the pack
+		final CompletableFuture<LanguageMap> languageMapFuture = AngelicaWorkers.submit(() -> {
+			try {
+				return new LanguageMap(root.resolve("lang"));
+			} catch (IOException e) {
+				throw new UncheckedIOException(e);
+			}
+		});
+
 		// Read all files and included files recursively
-		IncludeGraph graph = new IncludeGraph(root, starts.build());
+		this.sourceFiles = starts.build();
+		IncludeGraph graph = new IncludeGraph(root, sourceFiles);
 
 		if (!graph.getFailures().isEmpty()) {
 			graph.getFailures().forEach((path, error) -> {
@@ -211,13 +228,14 @@ public class ShaderPack {
 			throw new IOException("Failed to resolve some #include directives, see previous messages for details");
 		}
 
-		this.languageMap = new LanguageMap(root.resolve("lang"));
-
 		// Discover, merge, and apply shader pack options
 		this.shaderPackOptions = new ShaderPackOptions(graph, changedConfigs);
 		graph = this.shaderPackOptions.getIncludes();
 
-		final String mcVersionOverride = IdMap.detectLegacySection(root) ? null : IdMap.modernFallbackMcVersion();
+		final boolean hasLegacyIdSection = IdMap.detectLegacySection(root);
+		final String mcVersionOverride = hasLegacyIdSection ? null : IdMap.modernFallbackMcVersion();
+		final ShaderPackOptions options = this.shaderPackOptions;
+		final CompletableFuture<IdMap> idMapFuture = AngelicaWorkers.submit(() -> new IdMap(root, hasLegacyIdSection, options, environmentDefines));
 
 		List<StringPair> finalEnvironmentDefines = new ArrayList<>();
 		for (StringPair define : environmentDefines) {
@@ -275,7 +293,7 @@ public class ShaderPack {
 			}
 		});
 
-		this.menuContainer = new OptionMenuContainer(shaderProperties, this.shaderPackOptions, profiles);
+		this.profiles = profiles;
 
 		{
 			String profileName = getCurrentProfileName();
@@ -305,17 +323,10 @@ public class ShaderPack {
 				return null;
 			}
 
-			ImmutableList<String> lines = includeProcessor.getIncludedFile(path);
+			final byte[] contentHash = includeProcessor.getIncludedFileHash(path);
 
-			if (lines == null) {
+			if (contentHash == null) {
 				return null;
-			}
-
-			StringBuilder builder = new StringBuilder();
-
-			for (String line : lines) {
-				builder.append(line);
-				builder.append('\n');
 			}
 
 			// Apply GLSL preprocessor to source, while making environment defines available.
@@ -324,19 +335,27 @@ public class ShaderPack {
 			// #define statements in the actual source - instead, we tell the preprocessor about them
 			// directly. This removes one obstacle to accurate reporting of line numbers for errors,
 			// though there exist many more (such as relocating all #extension directives and similar things)
-			String source = builder.toString();
+			return JcppProcessor.glslPreprocessSource(contentHash, () -> {
+				final ImmutableList<String> lines = includeProcessor.getIncludedFile(path);
+				int length = 0;
+				for (String line : lines) {
+					length += line.length() + 1;
+				}
 
-			// Apply shader pack workarounds for version compatibility (before preprocessing)
-			source = ShaderPackWorkarounds.apply(source);
+				final StringBuilder builder = new StringBuilder(length);
 
-			source = JcppProcessor.glslPreprocessSource(source, finalEnvironmentDefines1);
+				for (String line : lines) {
+					builder.append(line);
+					builder.append('\n');
+				}
 
-			return source;
+				// Apply shader pack workarounds for version compatibility (before preprocessing)
+				return ShaderPackWorkarounds.apply(builder.toString());
+			}, finalEnvironmentDefines1);
 		};
 
-		this.base = new ProgramSet(AbsolutePackPath.fromAbsolutePath("/"), sourceProvider, shaderProperties, this);
-
-		this.idMap = new IdMap(root, shaderPackOptions, environmentDefines);
+		final AbsolutePackPath rootDirectory = AbsolutePackPath.fromAbsolutePath("/");
+		this.base = new ProgramSet(rootDirectory, preprocessInParallel(rootDirectory), shaderProperties, this);
 
 		customNoiseTexture = shaderProperties.getNoiseTexturePath().map(path -> {
 			try {
@@ -375,8 +394,33 @@ public class ShaderPack {
 		this.customImages = shaderProperties.getCustomImages();
 		this.bufferObjects = shaderProperties.getBufferObjects();
 
+		this.idMap = await(idMapFuture);
+		this.languageMap = await(languageMapFuture);
+	}
+
+	// Only the options screen reads the menu, don't build unless it's needed
+	public OptionMenuContainer getMenuContainer() {
+		if (menuContainer == null) {
+			menuContainer = new OptionMenuContainer(shaderProperties, shaderPackOptions, profiles);
+		}
+		return menuContainer;
+	}
+
+	/** Publishes this pack's custom images to the shader transformers; call when the pack becomes the current one. */
+	public void activate() {
 		SamplerToStorageImageRewriter.setActiveCandidates(SamplerToStorageImageRewriter.buildCandidates(this.customImages.values()));
 		RwImageStoreExtractor.setActiveCustomImages(this.customImages);
+	}
+
+	private static <T> T await(CompletableFuture<T> future) throws IOException {
+		try {
+			return future.join();
+		} catch (CompletionException e) {
+			if (e.getCause() instanceof UncheckedIOException io) throw io.getCause();
+			if (e.getCause() instanceof RuntimeException runtime) throw runtime;
+			if (e.getCause() instanceof Error error) throw error;
+			throw e;
+		}
 	}
 
 	private String getCurrentProfileName() {
@@ -667,6 +711,26 @@ public class ShaderPack {
 		}
 	}
 
+	private Function<AbsolutePackPath, String> preprocessInParallel(AbsolutePackPath directory) {
+		final String directoryPath = directory.getPathString();
+		final String prefix = directoryPath.endsWith("/") ? directoryPath : directoryPath + "/";
+		final List<AbsolutePackPath> files = new ArrayList<>();
+		final List<Supplier<String>> tasks = new ArrayList<>();
+		for (AbsolutePackPath file : sourceFiles) {
+			final String path = file.getPathString();
+			if (path.startsWith(prefix) && path.indexOf('/', prefix.length()) < 0) {
+				files.add(file);
+				tasks.add(() -> sourceProvider.apply(file));
+			}
+		}
+		final List<String> sources = AngelicaWorkers.invokeAll(tasks);
+		final Map<AbsolutePackPath, String> preprocessed = new HashMap<>();
+		for (int i = 0; i < files.size(); i++) {
+			preprocessed.put(files.get(i), sources.get(i));
+		}
+		return path -> preprocessed.containsKey(path) ? preprocessed.get(path) : sourceProvider.apply(path);
+	}
+
     /**
      * Gets or creates the appropriate ProgramSet for the given dimension.
      *
@@ -721,12 +785,8 @@ public class ShaderPack {
 		if (programSet == null) {
 			// Create ProgramSet on-demand for dimension folder
 			try {
-				programSet = new ProgramSet(
-					AbsolutePackPath.fromAbsolutePath("/" + folderName),
-					sourceProvider,
-					shaderProperties,
-					this
-				);
+				final AbsolutePackPath directory = AbsolutePackPath.fromAbsolutePath("/" + folderName);
+				programSet = new ProgramSet(directory, preprocessInParallel(directory), shaderProperties, this);
 				dimensionProgramSets.put(folderName, programSet);
 
 				// Check cache size limit and evict LRU dimensions if needed
