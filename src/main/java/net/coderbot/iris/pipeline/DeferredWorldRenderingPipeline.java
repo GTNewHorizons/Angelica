@@ -1626,6 +1626,16 @@ public class DeferredWorldRenderingPipeline implements WorldRenderingPipeline, R
 		}
 	}
 
+	public void compileInstancedVariants() {
+		final Set<Pass> visited = new HashSet<>();
+		table.forEach(pass -> {
+			if (pass == null || !visited.add(pass)) return;
+			for (Instancing kind : Instancing.VALUES) {
+				if (kind != Instancing.NONE) pass.instancedVariant(kind);
+			}
+		});
+	}
+
 	private static void destroyPasses(ProgramTable<Pass> table) {
 		Set<Pass> destroyed = new HashSet<>();
 

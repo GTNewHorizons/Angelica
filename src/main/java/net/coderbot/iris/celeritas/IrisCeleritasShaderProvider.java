@@ -70,6 +70,14 @@ public class IrisCeleritasShaderProvider implements IrisShaderProvider {
         overrides.deleteShaders();
     }
 
+    // A separate overrides instance, so the terrain programs in use are left alone
+    public void compileTerrainPrograms(CeleritasTerrainPipeline pipeline) {
+        if (pipeline == null || renderPassConfiguration == null) return;
+        final IrisCeleritasChunkProgramOverrides scratch = new IrisCeleritasChunkProgramOverrides();
+        scratch.createShaders(pipeline, renderPassConfiguration);
+        scratch.deleteShaders();
+    }
+
     public IrisCeleritasChunkProgramOverrides getOverrides() {
         return overrides;
     }

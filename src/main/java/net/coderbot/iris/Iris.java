@@ -791,7 +791,16 @@ public class Iris {
                     shaderPackLoadId++;
                     ShaderTransformExecutor.prepare();
                     PerFrameUniformBlockHarvester.harvest(programs);
-                    getPipelineManager().discardPipeline(new DeferredWorldRenderingPipeline(programs));
+                    final DeferredWorldRenderingPipeline pipeline = new DeferredWorldRenderingPipeline(programs);
+                    try {
+                        // Both are otherwise built lazily on first draw, after this pipeline is gone
+                        pipeline.compileInstancedVariants();
+                        if (IrisShaderProviderHolder.getProvider() instanceof IrisCeleritasShaderProvider terrain) {
+                            terrain.compileTerrainPrograms(pipeline.getCeleritasTerrainPipeline());
+                        }
+                    } finally {
+                        getPipelineManager().discardPipeline(pipeline);
+                    }
                 } catch (Exception e) {
                     everyFolderCompiled = false;
                     logger.error("Failed to compile shader folder '{}' for saving", folder, e);
@@ -811,6 +820,15 @@ public class Iris {
         if (Files.isRegularFile(packRoot)) {
             try {
                 settings.append(Files.size(packRoot)).append('|').append(Files.getLastModifiedTime(packRoot).toMillis());
+            } catch (IOException ignored) {}
+        } else if (Files.isDirectory(packRoot)) {
+            try (Stream<Path> files = Files.walk(packRoot)) {
+                files.filter(Files::isRegularFile).sorted().forEach(file -> {
+                    try {
+                        settings.append(packRoot.relativize(file)).append('|').append(Files.size(file)).append('|')
+                            .append(Files.getLastModifiedTime(file).toMillis()).append('\n');
+                    } catch (IOException ignored) {}
+                });
             } catch (IOException ignored) {}
         }
         settings.append('\n');
