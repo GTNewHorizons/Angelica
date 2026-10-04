@@ -309,6 +309,11 @@ public class GLStateManager {
         return Thread.currentThread() == MainThread;
     }
 
+    public static void requireContext(String call) {
+        if (Thread.currentThread() == MainThread || RENDER_BACKEND.hasContextOnThread()) return;
+        throw new IllegalStateException(call + " on thread " + Thread.currentThread().getName() + ", which has no GL context");
+    }
+
     @Getter private static GLSMInitConfig initConfig;
 
     public static ContextCapabilities capabilities;
@@ -2526,11 +2531,13 @@ public class GLStateManager {
     }
 
     public static int glGenTextures() {
+        requireContext("glGenTextures");
         flushDeferredTextureDeletes();
         return RENDER_BACKEND.genTextures();
     }
 
     public static void glGenTextures(IntBuffer textures) {
+        requireContext("glGenTextures");
         flushDeferredTextureDeletes();
         RENDER_BACKEND.genTextures(textures);
     }
@@ -5326,13 +5333,18 @@ public class GLStateManager {
     }
     public static void glClearTexImage(int texture, int level, int format, int type, ByteBuffer data) { RENDER_BACKEND.clearTexImage(texture, level, format, type); }
 
-    public static int glGenSamplers() { return RENDER_BACKEND.genSamplers(); }
+    public static int glGenSamplers() {
+        requireContext("glGenSamplers");
+        return RENDER_BACKEND.genSamplers();
+    }
 
     public static void glGenSamplers(IntBuffer samplers) {
+        requireContext("glGenSamplers");
         for (int i = samplers.position(); i < samplers.limit(); i++) samplers.put(i, RENDER_BACKEND.genSamplers());
     }
 
     public static void glGenSamplers(int[] samplers) {
+        requireContext("glGenSamplers");
         for (int i = 0; i < samplers.length; i++) samplers[i] = RENDER_BACKEND.genSamplers();
     }
 
@@ -6749,26 +6761,32 @@ public class GLStateManager {
     }
 
     public static int glGenBuffers() {
+        requireContext("glGenBuffers");
         return RENDER_BACKEND.genBuffers();
     }
 
     public static void glGenBuffers(IntBuffer buffers) {
+        requireContext("glGenBuffers");
         for (int i = buffers.position(); i < buffers.limit(); i++) buffers.put(i, RENDER_BACKEND.genBuffers());
     }
 
     public static void glGenBuffers(int[] buffers) {
+        requireContext("glGenBuffers");
         for (int i = 0; i < buffers.length; i++) buffers[i] = RENDER_BACKEND.genBuffers();
     }
 
     public static int glCreateBuffers() {
+        requireContext("glCreateBuffers");
         return RENDER_BACKEND.createBuffers();
     }
 
     public static void glCreateBuffers(IntBuffer buffers) {
+        requireContext("glCreateBuffers");
         for (int i = buffers.position(); i < buffers.limit(); i++) buffers.put(i, RENDER_BACKEND.createBuffers());
     }
 
     public static void glCreateBuffers(int[] buffers) {
+        requireContext("glCreateBuffers");
         for (int i = 0; i < buffers.length; i++) buffers[i] = RENDER_BACKEND.createBuffers();
     }
 
@@ -7159,6 +7177,7 @@ public class GLStateManager {
     }
 
     public static int glGenVertexArrays() {
+        requireContext("glGenVertexArrays");
         return RENDER_BACKEND.genVertexArrays();
     }
 
@@ -7212,6 +7231,7 @@ public class GLStateManager {
     }
 
     public static int glGenFramebuffers() {
+        requireContext("glGenFramebuffers");
         return RENDER_BACKEND.genFramebuffers();
     }
 
@@ -7229,15 +7249,24 @@ public class GLStateManager {
 
     public static void glFramebufferTexture(int target, int attachment, int texture, int level) { RENDER_BACKEND.framebufferTexture(target, attachment, texture, level); }
 
-    public static int glGenRenderbuffers() { return RENDER_BACKEND.genRenderbuffers(); }
+    public static int glGenRenderbuffers() {
+        requireContext("glGenRenderbuffers");
+        return RENDER_BACKEND.genRenderbuffers();
+    }
     public static void glDeleteRenderbuffers(int renderbuffer) { RENDER_BACKEND.deleteRenderbuffers(renderbuffer); }
     public static void glBindRenderbuffer(int target, int renderbuffer) { RENDER_BACKEND.bindRenderbuffer(target, renderbuffer); }
     public static void glRenderbufferStorage(int target, int internalformat, int width, int height) { RENDER_BACKEND.renderbufferStorage(target, internalformat, width, height); }
     public static void glRenderbufferStorageMultisample(int target, int samples, int internalformat, int width, int height) { RENDER_BACKEND.renderbufferStorageMultisample(target, samples, internalformat, width, height); }
     public static void glFramebufferRenderbuffer(int target, int attachment, int renderbuffertarget, int renderbuffer) { RENDER_BACKEND.framebufferRenderbuffer(target, attachment, renderbuffertarget, renderbuffer); }
 
-    public static void glGenQueries(IntBuffer ids) { RENDER_BACKEND.genQueries(ids); }
-    public static int glGenQueries() { return RENDER_BACKEND.genQueries(); }
+    public static void glGenQueries(IntBuffer ids) {
+        requireContext("glGenQueries");
+        RENDER_BACKEND.genQueries(ids);
+    }
+    public static int glGenQueries() {
+        requireContext("glGenQueries");
+        return RENDER_BACKEND.genQueries();
+    }
     public static void glDeleteQueries(int id) { RENDER_BACKEND.deleteQueries(id); }
     public static void glBeginQuery(int target, int id) { RENDER_BACKEND.beginQuery(target, id); }
     public static void glEndQuery(int target) { RENDER_BACKEND.endQuery(target); }
@@ -7935,6 +7964,7 @@ public class GLStateManager {
     }
 
     public static int glCreateShader(int type) {
+        requireContext("glCreateShader");
         return RENDER_BACKEND.createShader(type);
     }
 
@@ -7943,6 +7973,7 @@ public class GLStateManager {
     }
 
     public static int glCreateProgram() {
+        requireContext("glCreateProgram");
         final int program = RENDER_BACKEND.createProgram();
         programsPendingDeletion.remove(program);
         programLifetimeGeneration++;

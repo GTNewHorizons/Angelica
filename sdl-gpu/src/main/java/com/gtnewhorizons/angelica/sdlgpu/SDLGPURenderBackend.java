@@ -543,6 +543,10 @@ public class SDLGPURenderBackend extends RenderBackend {
         return device.getDevice() != 0;
     }
 
+    @Override public boolean hasContextOnThread() {
+        return hasContext() && (Thread.currentThread() == GLStateManager.getMainThread() || tlState.get() != null);
+    }
+
     @Override public boolean isCurrent() {
         return Thread.currentThread() == GLStateManager.getMainThread();
     }

@@ -165,7 +165,7 @@ public class DSAUnsupported implements DSAAccess {
 
     @Override
     public int createTexture(int target) {
-        final int texture = RENDER_BACKEND.genTextures();
+        final int texture = GLStateManager.glGenTextures();
         GLStateManager.glBindTexture(GL11.GL_TEXTURE_2D, texture);
         return texture;
     }

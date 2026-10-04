@@ -254,9 +254,13 @@ public class DarkModeFontTransform {
         ),
     //endregion
     //region Exclude Methods
-            // Applied Energistics 2 
+            // Applied Energistics 2
         RecolorTarget.excludeMethod(
             new MethodInfo("appeng.client.render.StackSizeRenderer drawStackSize(IILjava/lang/String;Lnet/minecraft/client/gui/FontRenderer;Lappeng/api/config/TerminalFontSize;)V")
+        ),
+            // AE2 FluidCraft-Rework
+        RecolorTarget.excludeMethod(
+            new MethodInfo("com.glodblock.github.client.gui.GuiLevelTerminal drawReadableAmount(Lnet/minecraft/client/gui/FontRenderer;JZI)V")
         ),
             // GregTech
         RecolorTarget.excludeMethodCall(
