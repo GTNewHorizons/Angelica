@@ -252,6 +252,11 @@ public class DarkModeFontTransform {
             new MethodInfo("com.cleanroommc.modularui.widgets.RichTextWidget draw(Lcom/cleanroommc/modularui/screen/viewport/ModularGuiContext;Lcom/cleanroommc/modularui/theme/WidgetThemeEntry;)V"),
             new MethodInfo("com.cleanroommc.modularui.drawable.text.RichText drawAtZeroPadded(Lcom/cleanroommc/modularui/screen/viewport/GuiContext;Lcom/cleanroommc/modularui/widget/sizer/Area;Lcom/cleanroommc/modularui/theme/WidgetTheme;)V")
         ),
+            // Hardcore Ender Expansion
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("chylex.hee.gui.GuiTransportBeacon func_73863_a(IIF)V # drawScreen"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
+        ),
     //endregion
     //region Exclude Methods
             // Applied Energistics 2
