@@ -175,6 +175,10 @@ public class DarkModeFontTransform {
             new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawString(Ljava/lang/String;IIFI)V"),
             new MethodInfo("net.minecraft.client.gui.FontRenderer func_78276_b(Ljava/lang/String;III)I # drawString")
         ),
+        RecolorTarget.includeMethodCall(
+            new MethodInfo("vswe.stevesfactory.interfaces.GuiBase drawSplitString(Ljava/lang/String;IIIFI)V"),
+            new MethodInfo("net.minecraft.client.gui.FontRenderer func_78279_b(Ljava/lang/String;IIII)V # drawSplitString")
+        ),
             // Steve's Carts 2
         RecolorTarget.includeMethodCall(
             new MethodInfo("vswe.stevescarts.Interfaces.GuiNEIKiller func_73863_a(IIF)V # drawScreen"),
