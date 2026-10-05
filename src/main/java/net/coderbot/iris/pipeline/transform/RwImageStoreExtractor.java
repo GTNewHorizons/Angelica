@@ -227,6 +227,11 @@ public final class RwImageStoreExtractor {
             final String firstArg = GlslAstHelpers.firstArgIdentifier(expr);
             if (!writtenImages.contains(firstArg)) continue;
             if (RW_CALLS.contains(fname)) {
+                final ImageDecl d = declared.get(firstArg);
+                if (d != null && !isCallTopLevelStatement(expr)) {
+                    edits.add(replaceOf(expr, scalarZeroFor(d.glslType())));
+                    continue;
+                }
                 final var stmt = GlslAstHelpers.enclosingOfType(expr, GLSLParser.StatementContext.class);
                 if (stmt != null) edits.add(replaceOf(stmt, ";"));
             } else if ("imageLoad".equals(fname)) {
@@ -376,6 +381,14 @@ public final class RwImageStoreExtractor {
         if (glslType.startsWith("iimage")) return "int";
         if (glslType.startsWith("uimage")) return "uint";
         return "float";
+    }
+
+    private static String scalarZeroFor(String glslType) {
+        return switch (scalarFor(glslType)) {
+            case "int" -> "0";
+            case "uint" -> "0u";
+            default -> "0.0";
+        };
     }
 
     private static String componentVecFor(String glslType) {
