@@ -393,14 +393,33 @@ public class BatchingFontRenderer {
         pushQuadIdx();
     }
 
+    private static final float[] MAX_AA_REACH = {0f, 6f, 8f};
+
     private void pushTexRect(float x, float y, float w, float h, float itOff, int rgba, float uStart, float vStart, float uSz, float vSz, boolean flipV) {
         ensureCapacity();
+
+        final float tBu0 = uStart;
+        final float tBu1 = uStart + uSz;
+        final float tBv0 = vStart;
+        final float tBv1 = vStart + vSz;
+
+        if (FontConfig.fontAAMode > 0 && w > 0 && h > 0) {
+            final float margin = MAX_AA_REACH[FontConfig.fontAAMode] * preprocessAAStrength() + 0.5f;
+            final float marginU = margin * (uSz / w);
+            final float marginV = margin * (vSz / h);
+            itOff *= (h + 2 * margin) / h;
+            x -= margin; w += 2 * margin;
+            y -= margin; h += 2 * margin;
+            uStart -= marginU; uSz += 2 * marginU;
+            vStart -= marginV; vSz += 2 * marginV;
+        }
+
         float vTop = flipV ? vStart + vSz : vStart;
         float vBot = flipV ? vStart : vStart + vSz;
-        pushVtx(x + itOff, y, rgba, uStart, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff, y + h, rgba, uStart, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vTop, uStart, uStart + uSz, vStart, vStart + vSz);
-        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vBot, uStart, uStart + uSz, vStart, vStart + vSz);
+        pushVtx(x + itOff, y, rgba, uStart, vTop, tBu0, tBu1, tBv0, tBv1);
+        pushVtx(x - itOff, y + h, rgba, uStart, vBot, tBu0, tBu1, tBv0, tBv1);
+        pushVtx(x + itOff + w, y, rgba, uStart + uSz, vTop, tBu0, tBu1, tBv0, tBv1);
+        pushVtx(x - itOff + w, y + h, rgba, uStart + uSz, vBot, tBu0, tBu1, tBv0, tBv1);
         pushQuadIdx();
     }
 
@@ -859,6 +878,10 @@ public class BatchingFontRenderer {
         truncateBatchToWatermark();
     }
 
+    private static float preprocessAAStrength() {
+        return FontConfig.fontAAStrength / 120.f;
+    }
+
     private void setupFontDrawState() {
         GLStateManager.enableTexture();
         GLStateManager.enableAlphaTest();
@@ -873,7 +896,7 @@ public class BatchingFontRenderer {
         }
         if (FontConfig.fontAAStrength != fontAAStrengthLast) {
             fontAAStrengthLast = FontConfig.fontAAStrength;
-            GLStateManager.glUniform1f(AAStrength, FontConfig.fontAAStrength / 120.f);
+            GLStateManager.glUniform1f(AAStrength, preprocessAAStrength());
         }
         if (FontConfig.fontBrightness != fontBrightnessLast) {
             fontBrightnessLast = FontConfig.fontBrightness;
